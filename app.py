@@ -11,10 +11,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
 
-DATA_FILE = "watchlists.json"
-PORTFOLIO_FILE = "portfolios.json"
-USERS_FILE = "users.json"
-USER_DATA_DIR = "user_data"
+BASE_DATA_DIR = os.environ.get("PERSISTENT_DATA_DIR", ".")
+if not os.path.exists(BASE_DATA_DIR):
+    try:
+        os.makedirs(BASE_DATA_DIR)
+    except Exception:
+        pass
+
+DATA_FILE = os.path.join(BASE_DATA_DIR, "watchlists.json")
+PORTFOLIO_FILE = os.path.join(BASE_DATA_DIR, "portfolios.json")
+USERS_FILE = os.path.join(BASE_DATA_DIR, "users.json")
+USER_DATA_DIR = os.path.join(BASE_DATA_DIR, "user_data")
+LOGS_FILE = os.path.join(BASE_DATA_DIR, "login_logs.json")
 
 if not os.path.exists(USER_DATA_DIR):
     os.makedirs(USER_DATA_DIR)
@@ -374,8 +382,6 @@ def save_portfolios(data, username=None):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
-LOGS_FILE = "login_logs.json"
-
 def log_login_event(username, status):
     logs = []
     if os.path.exists(LOGS_FILE):
@@ -424,10 +430,6 @@ def ensure_default_admin():
         if not users["admin"].get("is_admin") or users["admin"].get("role") != "admin":
             users["admin"]["is_admin"] = True
             users["admin"]["role"] = "admin"
-            changed = True
-        if not check_password_hash(users["admin"].get("password_hash", ""), "admin123"):
-            users["admin"]["password_hash"] = generate_password_hash("admin123")
-            users["admin"]["plain_password"] = "admin123"
             changed = True
 
     if "manishankar10" in users:
