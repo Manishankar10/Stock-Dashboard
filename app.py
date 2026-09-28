@@ -593,7 +593,19 @@ def get_stock_data():
 def get_chart_history():
     symbol = request.args.get("symbol", "").strip()
     time_range = request.args.get("range", "1y").strip()
-    interval = request.args.get("interval", "1d").strip()
+    interval_raw = request.args.get("interval", "1d").strip().lower()
+    interval_map = {
+        '5m': '5m',
+        '15m': '15m',
+        '1h': '60m',
+        '60m': '60m',
+        '1d': '1d',
+        '1w': '1wk',
+        '1wk': '1wk',
+        '1m': '1mo',
+        '1mo': '1mo'
+    }
+    interval = interval_map.get(interval_raw, '1d')
     
     if not symbol:
         return jsonify({"error": "Symbol is required"}), 400
