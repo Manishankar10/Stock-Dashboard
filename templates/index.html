@@ -3,66 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indian Stock Watchlists, Portfolios & Technical Charts</title>
+    <title>Capital Desk - Institutional Market & Portfolio Intelligence</title>
     <!-- Lightweight Charts Library (TradingView Canvas Engine) -->
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <!-- Chart.js for Dashboard Visual Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 15px; background-color: #f5f7fa; color: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 15px; background-color: #f8fafc; color: #0f172a; }
         
         /* Full Screen Container */
         .container { max-width: 98vw; width: 98vw; margin: 0 auto; }
         
-        /* Top Navigation Header & Tabs */
+        /* Top Navigation Header & Brand Bar */
         .app-header {
             background: white;
             border-radius: 12px;
-            padding: 16px 24px;
+            padding: 14px 22px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 15px;
         }
-        .app-title {
-            font-size: 22px;
-            font-weight: 700;
-            color: #2c3e50;
-            margin: 0;
+        .brand-logo-group {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
         }
+        .brand-logo-img {
+            height: 42px;
+            width: 42px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .app-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        .app-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         .nav-tabs {
             display: flex;
-            gap: 8px;
-            background: #f1f2f6;
-            padding: 5px;
+            gap: 6px;
+            background: #f1f5f9;
+            padding: 4px;
             border-radius: 8px;
+            border: 1px solid #e2e8f0;
         }
         .tab-btn {
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 6px;
             border: none;
             background: transparent;
-            color: #57606f;
+            color: #475569;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-        .tab-btn:hover { color: #2c3e50; }
+        .tab-btn:hover { color: #0f172a; }
         .tab-btn.active {
-            background: #2962ff;
+            background: #0f172a;
             color: white;
-            box-shadow: 0 2px 8px rgba(41, 98, 255, 0.3);
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
         }
 
         .tab-content { display: none; }
@@ -71,78 +92,77 @@
         /* General Controls & Form Inputs */
         .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; position: relative; }
         input[type="text"], input[type="number"], input[type="date"], select {
-            padding: 9px 12px;
-            border: 1px solid #ccc;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
             border-radius: 6px;
             font-size: 13px;
             background: white;
+            color: #0f172a;
         }
         input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus {
             outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
         
-        button {
-            padding: 9px 16px;
+        /* Unified Professional Button System */
+        button, .btn-primary {
+            padding: 8px 16px;
             border: none;
             border-radius: 6px;
-            background-color: #3498db;
+            background-color: #0f172a;
             color: white;
             cursor: pointer;
             font-weight: 600;
             font-size: 13px;
-            transition: background 0.2s;
-        }
-        button:hover { background-color: #2980b9; }
-        button.danger { background-color: #e74c3c; padding: 9px 16px; }
-        button.danger:hover { background-color: #c0392b; }
-        
-        /* Action Buttons Styling */
-        .actions-cell {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-        .btn-action {
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            padding: 6px 12px;
+            gap: 6px;
+        }
+        button:hover, .btn-primary:hover {
+            background-color: #1e293b;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+        .btn-secondary:hover {
+            background-color: #f8fafc;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+        button.danger, .btn-danger {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+        button.danger:hover, .btn-danger:hover {
+            background-color: #fee2e2;
+            border-color: #f87171;
+            color: #b91c1c;
+        }
+
+        .btn-details {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            border: 1px solid #cbd5e1;
+            padding: 5px 12px;
             font-size: 12px;
             font-weight: 600;
             border-radius: 6px;
-            border: none;
             cursor: pointer;
             transition: all 0.2s ease;
-            white-space: nowrap;
-            line-height: 1.2;
         }
-        .btn-action-chart {
-            background-color: #10b981;
+        .btn-details:hover {
+            background-color: #0f172a;
             color: white;
-        }
-        .btn-action-chart:hover {
-            background-color: #059669;
-            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
-        }
-        .btn-action-edit {
-            background-color: #f59e0b;
-            color: white;
-        }
-        .btn-action-edit:hover {
-            background-color: #d97706;
-            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
-        }
-        .btn-action-delete {
-            background-color: #ef4444;
-            color: white;
-        }
-        .btn-action-delete:hover {
-            background-color: #dc2626;
-            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+            border-color: #0f172a;
         }
 
         /* Card Layouts & Metric Headers */
@@ -150,20 +170,21 @@
             background: white;
             padding: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
             margin-bottom: 25px;
         }
         .header-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid #f1f2f6;
+            border-bottom: 1px solid #e2e8f0;
             padding-bottom: 14px;
             margin-bottom: 20px;
             flex-wrap: wrap;
             gap: 10px;
         }
-        .header-bar h2 { margin: 0; color: #2c3e50; font-size: 20px; }
+        .header-bar h2 { margin: 0; color: #0f172a; font-size: 18px; font-weight: 700; }
         
         .summary-grid {
             display: grid;
@@ -172,69 +193,68 @@
             margin-bottom: 24px;
         }
         .metric-card {
-            background: #f8f9fa;
+            background: #f8fafc;
             border-radius: 10px;
             padding: 16px 20px;
-            border: 1px solid #eef0f3;
+            border: 1px solid #e2e8f0;
         }
-        .metric-card .title { font-size: 13px; color: #7f8c8d; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
-        .metric-card .value { font-size: 22px; font-weight: 700; color: #2c3e50; }
+        .metric-card .title { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .metric-card .value { font-size: 22px; font-weight: 800; color: #0f172a; }
         .metric-card .sub-value { font-size: 13px; font-weight: 600; margin-top: 4px; }
         
-        /* Full Screen Responsive Table Scroll Container */
+        /* Non-Congested Clean Table Container (NO Horizontal Scrollbar) */
         .table-responsive-container {
             width: 100%;
-            overflow-x: auto;
-            overflow-y: auto;
-            max-height: 68vh;
+            overflow: hidden;
             border-radius: 10px;
             border: 1px solid #e2e8f0;
             background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
 
         table {
             width: 100%;
-            min-width: 1450px;
             border-collapse: collapse;
+            table-layout: auto;
         }
         th, td {
-            padding: 14px 18px;
+            padding: 12px 16px;
             text-align: left;
-            border-bottom: 1px solid #f1f2f6;
+            border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
-            white-space: nowrap;
         }
         th {
-            position: sticky;
-            top: 0;
-            background-color: #f8f9fa;
-            z-index: 10;
-            font-weight: 600;
+            background-color: #f8fafc;
+            font-weight: 700;
             color: #475569;
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border-bottom: 1px solid #e2e8f0;
         }
         tfoot tr {
-            position: sticky;
-            bottom: 0;
-            background-color: #f8f9fa;
-            z-index: 9;
-            font-weight: bold;
+            background-color: #f8fafc;
+            font-weight: 700;
             border-top: 2px solid #cbd5e1;
-            box-shadow: 0 -1px 2px rgba(0,0,0,0.05);
+            color: #0f172a;
         }
-        .company-name { color: #7f8c8d; font-size: 12px; margin-top: 2px; }
-        .pos { color: #27ae60; font-weight: bold; }
-        .neg { color: #c0392b; font-weight: bold; }
-        .badge { background-color: #e1b12c; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
-        .badge-nse { background-color: #2980b9; }
-        .badge-bse { background-color: #8e44ad; }
-        .badge-st { background-color: #e67e22; }
-        .badge-lt { background-color: #27ae60; }
-        .loading { text-align: center; font-style: italic; color: #7f8c8d; margin-top: 20px; }
+        tbody tr.pf-row {
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        tbody tr.pf-row:hover {
+            background-color: #f8fafc;
+        }
+
+        .company-name { color: #64748b; font-size: 12px; margin-top: 2px; }
+        .pos { color: #10b981; font-weight: 700; }
+        .neg { color: #ef4444; font-weight: 700; }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 5px; display: inline-block; }
+        .badge-nse { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .badge-bse { background-color: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+        .badge-st { background-color: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+        .badge-lt { background-color: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+        .loading { text-align: center; font-style: italic; color: #64748b; margin-top: 20px; }
 
         /* Filter & Sort Bar */
         .filter-sort-bar {
@@ -243,7 +263,7 @@
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 12px;
-            background: #f8f9fa;
+            background: #f8fafc;
             padding: 12px 18px;
             border-radius: 8px;
             margin-bottom: 16px;
@@ -262,14 +282,14 @@
         .portfolio-selector-bar {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             overflow-x: auto;
             padding-bottom: 5px;
             margin-bottom: 20px;
         }
         .pf-select-btn {
-            padding: 8px 18px;
-            border-radius: 20px;
+            padding: 7px 16px;
+            border-radius: 6px;
             border: 1px solid #cbd5e1;
             background: white;
             color: #475569;
@@ -277,11 +297,12 @@
             font-weight: 600;
             cursor: pointer;
             white-space: nowrap;
+            transition: all 0.2s ease;
         }
         .pf-select-btn.active {
-            background: #2c3e50;
+            background: #0f172a;
             color: white;
-            border-color: #2c3e50;
+            border-color: #0f172a;
         }
 
         /* Autocomplete Styles */
@@ -289,14 +310,14 @@
         .autocomplete-wrapper input { width: 100%; box-sizing: border-box; }
         .autocomplete-dropdown {
             position: absolute; top: 100%; left: 0; right: 0; background: white; 
-            border: 1px solid #ddd; border-top: none; z-index: 999;
-            max-height: 250px; overflow-y: auto; box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            border: 1px solid #cbd5e1; border-top: none; z-index: 999;
+            max-height: 250px; overflow-y: auto; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             border-radius: 0 0 6px 6px; display: none;
         }
-        .autocomplete-item { padding: 10px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f8f9fa; }
-        .autocomplete-item:hover { background-color: #f1f2f6; }
-        .autocomplete-symbol { font-weight: bold; color: #2c3e50; }
-        .autocomplete-name { color: #7f8c8d; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+        .autocomplete-item { padding: 10px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f8fafc; }
+        .autocomplete-item:hover { background-color: #f1f5f9; }
+        .autocomplete-symbol { font-weight: bold; color: #0f172a; }
+        .autocomplete-name { color: #64748b; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
 
         /* Dashboard Charts Grid */
         .dashboard-grid {
@@ -309,20 +330,21 @@
             background: white;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
         .chart-card h3 {
             margin-top: 0;
             margin-bottom: 15px;
-            font-size: 16px;
-            color: #2c3e50;
-            border-bottom: 1px solid #f1f2f6;
+            font-size: 15px;
+            color: #0f172a;
+            border-bottom: 1px solid #f1f5f9;
             padding-bottom: 10px;
         }
         .chart-wrapper { position: relative; height: 320px; width: 100%; }
 
         /* Technical Chart Modal Styles */
-        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); }
+        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15,23,42,0.8); backdrop-filter: blur(4px); }
         .modal-content { background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #d1d4dc; }
         .chart-topbar { padding: 12px 20px; background: #1e222d; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2e39; flex-wrap: wrap; gap: 10px; }
         .chart-topbar .stock-title { font-size: 18px; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 10px; }
@@ -330,7 +352,7 @@
         .timeframe-group, .indicator-group { display: flex; gap: 5px; background: #131722; padding: 4px; border-radius: 6px; border: 1px solid #2a2e39; }
         .tf-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
         .tf-btn:hover { color: #d1d4dc; background: #2a2e39; }
-        .tf-btn.active { background: #2962ff; color: #ffffff; }
+        .tf-btn.active { background: #2563eb; color: #ffffff; }
         .ind-checkbox { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #b2b5be; cursor: pointer; padding: 0 6px; }
         .legend-bar { padding: 8px 20px; background: #181c27; font-size: 13px; color: #b2b5be; display: flex; gap: 20px; border-bottom: 1px solid #2a2e39; font-family: monospace; flex-wrap: wrap; }
         .legend-item { display: flex; gap: 5px; }
@@ -341,12 +363,12 @@
         .close-btn { color: #a3a6af; font-size: 26px; font-weight: bold; cursor: pointer; line-height: 1; }
         .close-btn:hover { color: white; }
 
-        /* Edit Holding Small Modal */
-        .small-modal { display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-        .small-modal-content { background: white; margin: 12% auto; padding: 24px; border-radius: 10px; width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-        .small-modal-content h3 { margin-top: 0; margin-bottom: 15px; color: #2c3e50; }
+        /* Small Modals (Edit Holding & Details Popup) */
+        .small-modal { display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); }
+        .small-modal-content { background: white; margin: 8% auto; padding: 24px; border-radius: 12px; width: 420px; max-width: 92vw; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; }
+        .small-modal-content h3 { margin-top: 0; margin-bottom: 15px; color: #0f172a; font-size: 18px; }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #7f8c8d; margin-bottom: 5px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 5px; }
         .form-group input, .form-group select { width: 100%; box-sizing: border-box; }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -355,24 +377,31 @@
 </head>
 <body>
     <div class="container">
-        <!-- Main Top Bar with Tabs, Refresh & Backup Controls -->
+        <!-- Main Top Bar with Capital Desk Logo & Controls -->
         <div class="app-header">
-            <h1 class="app-title">📈 Indian Stock Watchlist & Portfolios</h1>
+            <div class="brand-logo-group">
+                <img src="/static/logo.jpg" alt="Capital Desk Logo" class="brand-logo-img">
+                <div>
+                    <h1 class="app-title">Capital Desk</h1>
+                    <div class="app-subtitle">Portfolio & Market Intelligence</div>
+                </div>
+            </div>
+            
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <div class="nav-tabs">
                     <button class="tab-btn active" id="btn-tab-watchlists" onclick="switchTab('watchlists')">📋 Watchlists</button>
                     <button class="tab-btn" id="btn-tab-portfolios" onclick="switchTab('portfolios')">💼 Portfolios</button>
-                    <button class="tab-btn" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Dashboard & Analytics</button>
+                    <button class="tab-btn" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Analytics</button>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <button id="btn-manual-refresh" onclick="manualRefreshPrices()" style="background-color: #2962ff; color: white; display: flex; align-items: center; gap: 6px;" title="Fetch latest real-time stock prices">
-                        <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Prices
+                    <button id="btn-manual-refresh" onclick="manualRefreshPrices()" class="btn-secondary" title="Fetch latest real-time stock prices">
+                        <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh
                     </button>
-                    <span id="last-updated-badge" style="font-size: 12px; color: #475569; background: #f1f5f9; padding: 6px 12px; border-radius: 6px; font-weight: 600; border: 1px solid #cbd5e1;">
+                    <span id="last-updated-badge" style="font-size: 12px; color: #475569; background: #f8fafc; padding: 6px 12px; border-radius: 6px; font-weight: 600; border: 1px solid #e2e8f0;">
                         🕒 Updated: Just now
                     </span>
-                    <button onclick="exportDataBackup()" style="background-color: #27ae60; color: white;" title="Download JSON Backup file of watchlists and portfolios">📥 Backup Data</button>
-                    <button onclick="triggerImportBackup()" style="background-color: #8e44ad; color: white;" title="Restore watchlists and portfolios from a backup JSON file">📤 Restore Data</button>
+                    <button onclick="exportDataBackup()" class="btn-secondary" title="Download JSON Backup file">📥 Backup</button>
+                    <button onclick="triggerImportBackup()" class="btn-secondary" title="Restore from JSON Backup file">📤 Restore</button>
                     <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="handleBackupFileSelect(event)">
                 </div>
             </div>
@@ -535,8 +564,64 @@
                 <input type="date" id="editBuyDate">
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                <button style="background: #95a5a6;" onclick="closeEditModal()">Cancel</button>
-                <button onclick="saveEditHolding()">Save Changes</button>
+                <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveEditHolding()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         HOLDING DETAILS & ACTIONS POPUP MODAL
+    ========================================================= -->
+    <div id="holdingDetailsModal" class="small-modal">
+        <div class="small-modal-content" style="width: 500px; max-width: 94vw; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+                <div>
+                    <h2 id="detail-modal-sym" style="margin: 0; font-size: 20px; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 8px;">RELIANCE.NS</h2>
+                    <div id="detail-modal-name" style="font-size: 13px; color: #64748b; margin-top: 2px;">Reliance Industries Ltd</div>
+                </div>
+                <span class="close-btn" onclick="closeHoldingDetailsModal()" style="font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Holding Duration</div>
+                    <div id="detail-modal-duration" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Buy Date</div>
+                    <div id="detail-modal-buydate" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Quantity</div>
+                    <div id="detail-modal-qty" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Avg Buy Price</div>
+                    <div id="detail-modal-buyprice" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Invested Amount</div>
+                    <div id="detail-modal-invested" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Current Value</div>
+                    <div id="detail-modal-curval" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Return (P&L)</div>
+                    <div id="detail-modal-pnl" style="font-size: 13px; font-weight: 700; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Day P&L</div>
+                    <div id="detail-modal-daypnl" style="font-size: 13px; font-weight: 700; margin-top: 4px;">-</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                <button id="btn-detail-chart" class="btn-primary" style="font-size: 12px;">📊 Technical Chart</button>
+                <button id="btn-detail-edit" class="btn-secondary" style="font-size: 12px;">✏️ Edit</button>
+                <button id="btn-detail-delete" class="btn-danger" style="font-size: 12px;">🗑️ Delete</button>
             </div>
         </div>
     </div>
@@ -1214,7 +1299,7 @@
                 return 0;
             });
 
-            // Table Scroll Container
+            // Table Container (Non-congested, Fits 100% Screen Container)
             const scrollContainer = document.createElement('div');
             scrollContainer.className = 'table-responsive-container';
 
@@ -1222,23 +1307,22 @@
             const thead = document.createElement('thead');
             thead.innerHTML = `
                 <tr>
-                    <th style="min-width:200px;">Stock</th>
-                    <th style="min-width:80px;">Qty</th>
-                    <th style="min-width:120px;">Buy Price</th>
-                    <th style="min-width:120px;">LTP (₹)</th>
-                    <th style="min-width:140px;">Invested (₹)</th>
-                    <th style="min-width:140px;">Current Val (₹)</th>
-                    <th style="min-width:160px;">Overall P&L</th>
-                    <th style="min-width:130px;">Day P&L</th>
-                    <th style="min-width:230px;">Buy Date & Holding Duration</th>
-                    <th style="min-width:220px;">Actions</th>
+                    <th>Stock</th>
+                    <th style="text-align:right;">Qty</th>
+                    <th style="text-align:right;">Buy Price</th>
+                    <th style="text-align:right;">LTP (₹)</th>
+                    <th style="text-align:right;">Invested (₹)</th>
+                    <th style="text-align:right;">Current Val (₹)</th>
+                    <th style="text-align:right;">Overall P&L</th>
+                    <th style="text-align:right;">Day P&L</th>
+                    <th style="text-align:center;">Details</th>
                 </tr>
             `;
 
             const tbody = document.createElement('tbody');
 
             if (holdings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#95a5a6; padding: 30px;">No holdings match the selected filter/sort criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#64748b; padding: 30px;">No holdings match the selected filter/sort criteria.</td></tr>';
             } else {
                 holdings.forEach(item => {
                     const sym = item.symbol;
@@ -1246,86 +1330,61 @@
                     const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
 
                     const tr = document.createElement('tr');
+                    tr.className = 'pf-row';
                     tr.id = `pf-row-${sym}`;
+                    tr.title = 'Click row to view complete details & actions';
+                    tr.onclick = (e) => {
+                        // Prevent opening if clicking on an interactive button
+                        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                        openHoldingDetailsModal(item);
+                    };
 
                     const tdStock = document.createElement('td');
-                    tdStock.style.minWidth = '200px';
                     tdStock.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="pf-name-${sym}">Loading...</div>`;
 
                     const tdQty = document.createElement('td');
-                    tdQty.style.minWidth = '80px';
+                    tdQty.style.textAlign = 'right';
                     tdQty.innerText = item.quantity;
 
                     const tdBuy = document.createElement('td');
-                    tdBuy.style.minWidth = '120px';
+                    tdBuy.style.textAlign = 'right';
                     tdBuy.innerText = `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
                     const tdLtp = document.createElement('td');
-                    tdLtp.style.minWidth = '120px';
+                    tdLtp.style.textAlign = 'right';
                     tdLtp.id = `pf-ltp-${sym}`;
                     tdLtp.innerText = '-';
 
                     const tdInv = document.createElement('td');
-                    tdInv.style.minWidth = '140px';
+                    tdInv.style.textAlign = 'right';
                     tdInv.id = `pf-inv-${sym}`;
                     tdInv.innerText = `₹${(item.buy_price * item.quantity).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
                     const tdVal = document.createElement('td');
-                    tdVal.style.minWidth = '140px';
+                    tdVal.style.textAlign = 'right';
                     tdVal.id = `pf-val-${sym}`;
                     tdVal.innerText = '-';
 
                     const tdPnl = document.createElement('td');
-                    tdPnl.style.minWidth = '160px';
+                    tdPnl.style.textAlign = 'right';
                     tdPnl.id = `pf-pnl-${sym}`;
                     tdPnl.innerText = '-';
 
                     const tdDayPnl = document.createElement('td');
-                    tdDayPnl.style.minWidth = '130px';
+                    tdDayPnl.style.textAlign = 'right';
                     tdDayPnl.id = `pf-daypnl-${sym}`;
                     tdDayPnl.innerText = '-';
 
-                    // Holding Duration TD
-                    const tdDuration = document.createElement('td');
-                    tdDuration.style.minWidth = '230px';
-                    const daysHeld = getHoldingDays(item.buy_date);
-                    const durationText = formatHoldingDuration(item.buy_date);
-                    const dateStr = formatDateFormatted(item.buy_date);
-                    const isLongTerm = daysHeld >= 365;
-
-                    tdDuration.innerHTML = `
-                        <div style="font-size: 11px; font-weight: 600; color: #2c3e50;">
-                            📅 ${dateStr} <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>
-                        </div>
-                        <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-top: 3px;">
-                            ⏱️ ${durationText}
-                        </div>
-                    `;
-
-                    const tdActions = document.createElement('td');
-                    tdActions.style.minWidth = '220px';
-                    const actionsDiv = document.createElement('div');
-                    actionsDiv.className = 'actions-cell';
-
-                    const chartBtn = document.createElement('button');
-                    chartBtn.className = 'btn-action btn-action-chart';
-                    chartBtn.innerHTML = '📊 Chart';
-                    chartBtn.onclick = () => openInHouseChart(sym);
-
-                    const editBtn = document.createElement('button');
-                    editBtn.className = 'btn-action btn-action-edit';
-                    editBtn.innerHTML = '✏️ Edit';
-                    editBtn.onclick = () => openEditModal(sym, item.buy_price, item.quantity, item.buy_date);
-
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'btn-action btn-action-delete';
-                    delBtn.innerHTML = '🗑️ Delete';
-                    delBtn.onclick = () => removePortfolioStock(sym);
-
-                    actionsDiv.appendChild(chartBtn);
-                    actionsDiv.appendChild(editBtn);
-                    actionsDiv.appendChild(delBtn);
-                    tdActions.appendChild(actionsDiv);
+                    const tdDetails = document.createElement('td');
+                    tdDetails.style.textAlign = 'center';
+                    const detailBtn = document.createElement('button');
+                    detailBtn.className = 'btn-details';
+                    detailBtn.innerHTML = '🔍 Details';
+                    detailBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openHoldingDetailsModal(item);
+                    };
+                    tdDetails.appendChild(detailBtn);
 
                     tr.appendChild(tdStock);
                     tr.appendChild(tdQty);
@@ -1335,8 +1394,7 @@
                     tr.appendChild(tdVal);
                     tr.appendChild(tdPnl);
                     tr.appendChild(tdDayPnl);
-                    tr.appendChild(tdDuration);
-                    tr.appendChild(tdActions);
+                    tr.appendChild(tdDetails);
 
                     tbody.appendChild(tr);
                 });
@@ -1346,11 +1404,11 @@
             tfoot.innerHTML = `
                 <tr>
                     <td colspan="4">PORTFOLIO TOTAL:</td>
-                    <td id="pf-foot-inv">₹0.00</td>
-                    <td id="pf-foot-val">₹0.00</td>
-                    <td id="pf-foot-pnl">₹0.00</td>
-                    <td id="pf-foot-daypnl">₹0.00</td>
-                    <td colspan="2"></td>
+                    <td id="pf-foot-inv" style="text-align:right;">₹0.00</td>
+                    <td id="pf-foot-val" style="text-align:right;">₹0.00</td>
+                    <td id="pf-foot-pnl" style="text-align:right;">₹0.00</td>
+                    <td id="pf-foot-daypnl" style="text-align:right;">₹0.00</td>
+                    <td></td>
                 </tr>
             `;
 
@@ -1903,6 +1961,60 @@
             document.getElementById('legSmaGroup').style.display = (showSma20 || showSma50) ? 'inline-block' : 'none';
         }
 
+        let currentDetailHolding = null;
+
+        function openHoldingDetailsModal(item) {
+            currentDetailHolding = item;
+            const sym = item.symbol;
+            const info = stockPricesData[sym] || {};
+            const ltp = info.price || 0;
+            const dayChange = info.change || 0;
+
+            const invAmt = item.buy_price * item.quantity;
+            const curVal = ltp > 0 ? (ltp * item.quantity) : invAmt;
+            const pnlAmt = curVal - invAmt;
+            const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
+            const dayPnLAmt = dayChange * item.quantity;
+
+            const daysHeld = getHoldingDays(item.buy_date);
+            const durationText = formatHoldingDuration(item.buy_date);
+            const dateStr = formatDateFormatted(item.buy_date);
+            const isLongTerm = daysHeld >= 365;
+
+            const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
+            const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+
+            document.getElementById('detail-modal-sym').innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
+            document.getElementById('detail-modal-name').innerText = info.name || sym;
+
+            document.getElementById('detail-modal-duration').innerText = `⏱️ ${durationText}`;
+            document.getElementById('detail-modal-buydate').innerText = `📅 ${dateStr}`;
+            document.getElementById('detail-modal-qty').innerText = item.quantity;
+            document.getElementById('detail-modal-buyprice').innerText = `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('detail-modal-invested').innerText = `₹${invAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('detail-modal-curval').innerText = ltp > 0 ? `₹${curVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '-';
+
+            const pnlSign = pnlAmt >= 0 ? '+' : '';
+            const pnlEl = document.getElementById('detail-modal-pnl');
+            pnlEl.innerText = `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`;
+            pnlEl.className = pnlAmt >= 0 ? 'pos' : 'neg';
+
+            const daySign = dayPnLAmt >= 0 ? '+' : '';
+            const dayPnlEl = document.getElementById('detail-modal-daypnl');
+            dayPnlEl.innerText = `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            dayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
+
+            document.getElementById('btn-detail-chart').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openInHouseChart(sym); };
+            document.getElementById('btn-detail-edit').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openEditModal(sym, item.buy_price, item.quantity, item.buy_date); };
+            document.getElementById('btn-detail-delete').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); removePortfolioStock(sym); };
+
+            document.getElementById('holdingDetailsModal').style.display = 'block';
+        }
+
+        function closeHoldingDetailsModal() {
+            document.getElementById('holdingDetailsModal').style.display = 'none';
+        }
+
         function closeChartModal() {
             const modal = document.getElementById('chartModal');
             modal.style.display = 'none';
@@ -1913,13 +2025,16 @@
         window.onclick = function(event) {
             const modal = document.getElementById('chartModal');
             const editModal = document.getElementById('editHoldingModal');
+            const detailModal = document.getElementById('holdingDetailsModal');
             if (event.target == modal) closeChartModal();
             if (event.target == editModal) closeEditModal();
+            if (event.target == detailModal) closeHoldingDetailsModal();
         }
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeChartModal();
                 closeEditModal();
+                closeHoldingDetailsModal();
             }
         });
 
