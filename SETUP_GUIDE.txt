@@ -1,0 +1,64 @@
+==============================================================================
+    INDIAN STOCK WATCHLIST & PORTFOLIO MANAGER - SETUP & CLONING GUIDE
+==============================================================================
+
+1. PREREQUISITES ON THE NEW DEVICE
+------------------------------------------------------------------------------
+  - Python 3.8 or higher (Download from https://www.python.org/)
+    * IMPORTANT (Windows): Ensure "Add Python to PATH" is checked during setup.
+  - Git (Download from https://git-scm.com/) [Optional, or download ZIP]
+
+------------------------------------------------------------------------------
+2. STEP-BY-STEP SETUP INSTRUCTIONS
+------------------------------------------------------------------------------
+  Step 1: Clone the Repository
+    Open Command Prompt, PowerShell, or Terminal on your new device and run:
+      git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+      cd YOUR_REPO_NAME
+
+    (Or click "Code -> Download ZIP" on GitHub and extract the folder).
+
+  Step 2: Install Required Dependencies
+    Run the following command in terminal/cmd inside the project directory:
+      pip install -r requirements.txt
+
+  Step 3: Launch the Server
+    - Windows: Double-click 'run.bat' OR run in PowerShell/CMD:
+        python app.py
+    - Mac / Linux:
+        python3 app.py
+
+  Step 4: Open in Web Browser
+    Open your browser and navigate to:
+      http://127.0.0.1:5000
+
+    Note: The application will display a fresh, clean starter screen out of
+    the box (your personal data is protected by .gitignore).
+
+------------------------------------------------------------------------------
+3. HOW TO RESTORE YOUR PERSONAL PORTFOLIO & WATCHLISTS ON A NEW DEVICE
+------------------------------------------------------------------------------
+  OPTION A: One-Click Web UI Restore (Recommended)
+    1. On your ORIGINAL device: Click the "📥 Backup Data" button in the top header.
+       This will download a 'stock_watchlist_backup_YYYY-MM-DD.json' file.
+    2. Transfer that .json file to your new device (via Email, Drive, USB, etc.).
+    3. On your NEW device: Open http://127.0.0.1:5000, click "📤 Restore Data"
+       in the top header, and select your backup .json file.
+    4. Done! All your watchlists, custom portfolios, buy prices, quantities,
+       and dates will restore instantly.
+
+  OPTION B: Auto-Load Local File Restore
+    1. Copy your backup .json file into the root folder of the project on the new device.
+    2. Rename the file to 'backup.json' (or 'my_backup.json').
+    3. Start the application ('python app.py'). The server will automatically
+       detect 'backup.json' on first run and load all your portfolios.
+
+------------------------------------------------------------------------------
+4. GITHUB PUSH COMMANDS (For Repository Owner)
+------------------------------------------------------------------------------
+  To push this repository to GitHub for the first time:
+    git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+    git branch -M main
+    git push -u origin main
+
+==============================================================================
