@@ -1,0 +1,22 @@
+# Personal Data Storage Files (Do not commit to Git)
+watchlists.json
+portfolios.json
+my_backup.json
+backup.json
+backup_*.json
+*.json.bak
+
+# Python environment & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+.venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store

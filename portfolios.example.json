@@ -1,0 +1,16 @@
+{
+    "Sample Portfolio": [
+        {
+            "symbol": "RELIANCE.NS",
+            "buy_price": 2750.0,
+            "quantity": 10,
+            "buy_date": "2025-01-15"
+        },
+        {
+            "symbol": "TCS.NS",
+            "buy_price": 3800.0,
+            "quantity": 5,
+            "buy_date": "2025-02-01"
+        }
+    ]
+}

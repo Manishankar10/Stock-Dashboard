@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Stock Watchlists, Portfolios & Technical Charts</title>
+    <!-- Lightweight Charts Library (TradingView Canvas Engine) -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Chart.js for Dashboard Visual Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 15px; background-color: #f5f7fa; color: #333; }
+        
+        /* Full Screen Container */
+        .container { max-width: 98vw; width: 98vw; margin: 0 auto; }
+        
+        /* Top Navigation Header & Tabs */
+        .app-header {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .app-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            background: #f1f2f6;
+            padding: 5px;
+            border-radius: 8px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: #57606f;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tab-btn:hover { color: #2c3e50; }
+        .tab-btn.active {
+            background: #2962ff;
+            color: white;
+            box-shadow: 0 2px 8px rgba(41, 98, 255, 0.3);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* General Controls & Form Inputs */
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; position: relative; }
+        input[type="text"], input[type="number"], input[type="date"], select {
+            padding: 9px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+        
+        button {
+            padding: 9px 16px;
+            border: none;
+            border-radius: 6px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #2980b9; }
+        button.danger { background-color: #e74c3c; padding: 9px 16px; }
+        button.danger:hover { background-color: #c0392b; }
+        
+        /* Action Buttons Styling */
+        .actions-cell {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+        .btn-action-chart {
+            background-color: #10b981;
+            color: white;
+        }
+        .btn-action-chart:hover {
+            background-color: #059669;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+        .btn-action-edit {
+            background-color: #f59e0b;
+            color: white;
+        }
+        .btn-action-edit:hover {
+            background-color: #d97706;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+        }
+        .btn-action-delete {
+            background-color: #ef4444;
+            color: white;
+        }
+        .btn-action-delete:hover {
+            background-color: #dc2626;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Card Layouts & Metric Headers */
+        .card-container {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f1f2f6;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header-bar h2 { margin: 0; color: #2c3e50; font-size: 20px; }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .metric-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 16px 20px;
+            border: 1px solid #eef0f3;
+        }
+        .metric-card .title { font-size: 13px; color: #7f8c8d; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+        .metric-card .value { font-size: 22px; font-weight: 700; color: #2c3e50; }
+        .metric-card .sub-value { font-size: 13px; font-weight: 600; margin-top: 4px; }
+        
+        /* Full Screen Responsive Table Scroll Container */
+        .table-responsive-container {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 68vh;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        table {
+            width: 100%;
+            min-width: 1450px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid #f1f2f6;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 10;
+            font-weight: 600;
+            color: #475569;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        tfoot tr {
+            position: sticky;
+            bottom: 0;
+            background-color: #f8f9fa;
+            z-index: 9;
+            font-weight: bold;
+            border-top: 2px solid #cbd5e1;
+            box-shadow: 0 -1px 2px rgba(0,0,0,0.05);
+        }
+        .company-name { color: #7f8c8d; font-size: 12px; margin-top: 2px; }
+        .pos { color: #27ae60; font-weight: bold; }
+        .neg { color: #c0392b; font-weight: bold; }
+        .badge { background-color: #e1b12c; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
+        .badge-nse { background-color: #2980b9; }
+        .badge-bse { background-color: #8e44ad; }
+        .badge-st { background-color: #e67e22; }
+        .badge-lt { background-color: #27ae60; }
+        .loading { text-align: center; font-style: italic; color: #7f8c8d; margin-top: 20px; }
+
+        /* Filter & Sort Bar */
+        .filter-sort-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: #f8f9fa;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .filter-group, .sort-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* Portfolio Tabs Bar */
+        .portfolio-selector-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            margin-bottom: 20px;
+        }
+        .pf-select-btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .pf-select-btn.active {
+            background: #2c3e50;
+            color: white;
+            border-color: #2c3e50;
+        }
+
+        /* Autocomplete Styles */
+        .autocomplete-wrapper { position: relative; display: inline-block; width: 280px; }
+        .autocomplete-wrapper input { width: 100%; box-sizing: border-box; }
+        .autocomplete-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; background: white; 
+            border: 1px solid #ddd; border-top: none; z-index: 999;
+            max-height: 250px; overflow-y: auto; box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            border-radius: 0 0 6px 6px; display: none;
+        }
+        .autocomplete-item { padding: 10px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f8f9fa; }
+        .autocomplete-item:hover { background-color: #f1f2f6; }
+        .autocomplete-symbol { font-weight: bold; color: #2c3e50; }
+        .autocomplete-name { color: #7f8c8d; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+
+        /* Dashboard Charts Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .chart-card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #2c3e50;
+            border-bottom: 1px solid #f1f2f6;
+            padding-bottom: 10px;
+        }
+        .chart-wrapper { position: relative; height: 320px; width: 100%; }
+
+        /* Technical Chart Modal Styles */
+        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); }
+        .modal-content { background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #d1d4dc; }
+        .chart-topbar { padding: 12px 20px; background: #1e222d; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2e39; flex-wrap: wrap; gap: 10px; }
+        .chart-topbar .stock-title { font-size: 18px; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 10px; }
+        .chart-controls { display: flex; align-items: center; gap: 15px; }
+        .timeframe-group, .indicator-group { display: flex; gap: 5px; background: #131722; padding: 4px; border-radius: 6px; border: 1px solid #2a2e39; }
+        .tf-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        .tf-btn:hover { color: #d1d4dc; background: #2a2e39; }
+        .tf-btn.active { background: #2962ff; color: #ffffff; }
+        .ind-checkbox { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #b2b5be; cursor: pointer; padding: 0 6px; }
+        .legend-bar { padding: 8px 20px; background: #181c27; font-size: 13px; color: #b2b5be; display: flex; gap: 20px; border-bottom: 1px solid #2a2e39; font-family: monospace; flex-wrap: wrap; }
+        .legend-item { display: flex; gap: 5px; }
+        .legend-val { color: #ffffff; font-weight: bold; }
+        .chart-body-container { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; height: 100%; overflow: hidden; }
+        #mainChartPane { flex: 3; width: 100%; position: relative; }
+        #rsiChartPane { flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; }
+        .close-btn { color: #a3a6af; font-size: 26px; font-weight: bold; cursor: pointer; line-height: 1; }
+        .close-btn:hover { color: white; }
+
+        /* Edit Holding Small Modal */
+        .small-modal { display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .small-modal-content { background: white; margin: 12% auto; padding: 24px; border-radius: 10px; width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .small-modal-content h3 { margin-top: 0; margin-bottom: 15px; color: #2c3e50; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #7f8c8d; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Top Bar with Tabs & Backup Controls -->
+        <div class="app-header">
+            <h1 class="app-title">📈 Indian Stock Watchlist & Portfolios</h1>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div class="nav-tabs">
+                    <button class="tab-btn active" id="btn-tab-watchlists" onclick="switchTab('watchlists')">📋 Watchlists</button>
+                    <button class="tab-btn" id="btn-tab-portfolios" onclick="switchTab('portfolios')">💼 Portfolios</button>
+                    <button class="tab-btn" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Dashboard & Analytics</button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="exportDataBackup()" style="background-color: #27ae60; color: white;" title="Download JSON Backup file of watchlists and portfolios">📥 Backup Data</button>
+                    <button onclick="triggerImportBackup()" style="background-color: #8e44ad; color: white;" title="Restore watchlists and portfolios from a backup JSON file">📤 Restore Data</button>
+                    <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="handleBackupFileSelect(event)">
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             TAB 1: WATCHLISTS
+        ========================================================= -->
+        <div id="tab-watchlists" class="tab-content active">
+            <div class="controls">
+                <input type="text" id="new-watchlist-name" placeholder="Create new watchlist name...">
+                <button onclick="createWatchlist()">Create Watchlist</button>
+            </div>
+            <div id="watchlists-mount">
+                <div class="loading">Loading watchlists...</div>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             TAB 2: PORTFOLIOS
+        ========================================================= -->
+        <div id="tab-portfolios" class="tab-content">
+            <!-- Selector & Portfolio Creation Bar -->
+            <div class="card-container" style="padding: 16px 24px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: 600; color: #7f8c8d; font-size: 14px;">PORTFOLIOS:</span>
+                        <div class="portfolio-selector-bar" id="portfolio-selector-mount" style="margin-bottom: 0;"></div>
+                    </div>
+                    <div class="controls" style="margin-bottom: 0;">
+                        <input type="text" id="new-portfolio-name" placeholder="New portfolio name..." style="width: 200px;">
+                        <button onclick="createPortfolio()">+ Create Portfolio</button>
+                        <button class="danger" onclick="deleteActivePortfolio()">Delete Portfolio</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Portfolio View -->
+            <div id="portfolio-view-mount">
+                <div class="loading">Loading portfolio details...</div>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             TAB 3: DASHBOARD & ANALYTICS
+        ========================================================= -->
+        <div id="tab-dashboard" class="tab-content">
+            <!-- Combined Stats Overview Header -->
+            <div class="summary-grid" id="overall-summary-mount">
+                <div class="metric-card">
+                    <div class="title">Total Net Worth</div>
+                    <div class="value" id="dash-net-worth">₹0.00</div>
+                    <div class="sub-value" style="color:#7f8c8d">Across all portfolios</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Total Invested</div>
+                    <div class="value" id="dash-invested">₹0.00</div>
+                    <div class="sub-value" style="color:#7f8c8d">Capital Deployed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Overall Return (P&L)</div>
+                    <div class="value" id="dash-pnl">₹0.00</div>
+                    <div class="sub-value" id="dash-pnl-pct">0.00%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Today's Return</div>
+                    <div class="value" id="dash-day-pnl">₹0.00</div>
+                    <div class="sub-value" id="dash-day-pnl-pct">0.00%</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Charts Grid -->
+            <div class="dashboard-grid">
+                <div class="chart-card">
+                    <h3>Portfolio Allocation Breakdown</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartPortfolioAllocation"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Invested Amount vs Current Value per Portfolio</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartInvestedVsCurrent"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <h3>Top Performing Holdings Across Portfolios</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartTopHoldings"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         IN-HOUSE TECHNICAL CHART MODAL (LIGHTWEIGHT CHARTS)
+    ========================================================= -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content">
+            <div class="chart-topbar">
+                <div class="stock-title">
+                    <span id="chartSymbolDisplay">NSE:POLYMED</span>
+                    <span id="chartNameDisplay" style="font-size: 14px; color: #787b86; font-weight: normal;">Poly Medicure Ltd</span>
+                </div>
+                <div class="chart-controls">
+                    <div class="timeframe-group">
+                        <button class="tf-btn" onclick="changeRange('1mo')">1M</button>
+                        <button class="tf-btn" onclick="changeRange('3mo')">3M</button>
+                        <button class="tf-btn" onclick="changeRange('6mo')">6M</button>
+                        <button class="tf-btn active" id="tf-1y" onclick="changeRange('1y')">1Y</button>
+                        <button class="tf-btn" onclick="changeRange('2y')">2Y</button>
+                        <button class="tf-btn" onclick="changeRange('5y')">5Y</button>
+                    </div>
+                    <div class="indicator-group">
+                        <label class="ind-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> Volume</label>
+                        <label class="ind-checkbox"><input type="checkbox" id="chkSma20" checked onchange="toggleIndicators()"> <span style="color:#2962ff">SMA 20</span></label>
+                        <label class="ind-checkbox"><input type="checkbox" id="chkSma50" checked onchange="toggleIndicators()"> <span style="color:#ff6d00">SMA 50</span></label>
+                        <label class="ind-checkbox"><input type="checkbox" id="chkRsi" checked onchange="toggleIndicators()"> <span style="color:#e040fb">RSI 14</span></label>
+                    </div>
+                    <span class="close-btn" onclick="closeChartModal()">&times;</span>
+                </div>
+            </div>
+
+            <div class="legend-bar" id="legendBar">
+                <div class="legend-item">DATE: <span class="legend-val" id="legDate">-</span></div>
+                <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
+                <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
+                <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
+                <div class="legend-item">C: <span class="legend-val" id="legClose">-</span></div>
+                <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
+                <div class="legend-item" id="legSmaGroup">SMA20: <span class="legend-val" style="color:#2962ff" id="legSma20">-</span> | SMA50: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span></div>
+                <div class="legend-item" id="legRsiGroup">RSI: <span class="legend-val" style="color:#e040fb" id="legRsi">-</span></div>
+            </div>
+
+            <div class="chart-body-container">
+                <div id="mainChartPane"></div>
+                <div id="rsiChartPane"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         EDIT HOLDING MODAL
+    ========================================================= -->
+    <div id="editHoldingModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3 id="editHoldingTitle">Edit Holding</h3>
+            <input type="hidden" id="editHoldingSymbol">
+            <div class="form-group">
+                <label>Avg Buy Price (₹)</label>
+                <input type="number" step="0.01" id="editBuyPrice">
+            </div>
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" step="0.01" id="editQuantity">
+            </div>
+            <div class="form-group">
+                <label>Buy Date</label>
+                <input type="date" id="editBuyDate">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button style="background: #95a5a6;" onclick="closeEditModal()">Cancel</button>
+                <button onclick="saveEditHolding()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global App State
+        let currentTab = 'watchlists';
+        let watchlistsData = {};
+        let portfoliosData = {};
+        let activePortfolioName = '';
+        let stockPricesData = {};
+        let searchTimeout = null;
+
+        // Portfolio Sort & Filter State
+        let pfFilterOption = 'all'; // 'all', 'st', 'lt'
+        let pfSortOption = 'duration_desc'; // 'duration_desc', 'duration_asc', 'pnl_desc', 'pnl_asc', 'val_desc', 'date_desc', 'date_asc', 'name_asc'
+
+        // Utility Helpers for Safe Escaping & Dates
+        function escapeHtml(str) {
+            return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // Calculate holding days integer for sorting/filtering
+        function getHoldingDays(buyDateStr) {
+            if (!buyDateStr) return 0;
+            const buyDate = new Date(buyDateStr);
+            const today = new Date();
+            const diff = today - buyDate;
+            return diff > 0 ? Math.floor(diff / (1000 * 60 * 60 * 24)) : 0;
+        }
+
+        // Format holding duration into "20 days", "1 month 5 days", "2 years 3 months 2 days", etc.
+        function formatHoldingDuration(buyDateStr) {
+            if (!buyDateStr) return '0 days';
+            
+            const buyDate = new Date(buyDateStr);
+            const today = new Date();
+            
+            if (isNaN(buyDate.getTime()) || buyDate > today) return '0 days';
+
+            let years = today.getFullYear() - buyDate.getFullYear();
+            let months = today.getMonth() - buyDate.getMonth();
+            let days = today.getDate() - buyDate.getDate();
+
+            if (days < 0) {
+                months--;
+                const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                days += prevMonth.getDate();
+            }
+
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+
+            let parts = [];
+            if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
+            if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
+            if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+
+            return parts.join(' ');
+        }
+
+        function formatDateFormatted(buyDateStr) {
+            if (!buyDateStr) return '-';
+            const d = new Date(buyDateStr);
+            if (isNaN(d.getTime())) return buyDateStr;
+            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        // Switch Tabs
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            document.getElementById(`btn-tab-${tabName}`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if (tabName === 'dashboard') {
+                renderDashboard();
+            }
+        }
+
+        // =========================================================
+        // WATCHLIST FUNCTIONS
+        // =========================================================
+        async function fetchWatchlists() {
+            const res = await fetch('/api/watchlists');
+            watchlistsData = await res.json();
+            renderWatchlists();
+            refreshPrices();
+        }
+
+        async function createWatchlist() {
+            const input = document.getElementById('new-watchlist-name');
+            const name = input.value.trim();
+            if (!name) return;
+            
+            const res = await fetch('/api/watchlists', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                input.value = '';
+                watchlistsData = data.watchlists;
+                renderWatchlists();
+                refreshPrices();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function deleteWatchlist(name) {
+            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(name)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                watchlistsData = data.watchlists;
+                renderWatchlists();
+                refreshPrices();
+            }
+        }
+
+        async function addWatchlistStock(watchlistName, symbolInputValue = null) {
+            const input = document.querySelector(`.wl-input[data-wl-name="${CSS.escape(watchlistName)}"]`);
+            const symbol = symbolInputValue || (input ? input.value.trim() : "");
+            if (!symbol) return;
+            
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(watchlistName)}/stocks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if(input) input.value = '';
+                watchlistsData = data.watchlists;
+                renderWatchlists();
+                refreshPrices();
+            }
+        }
+
+        async function removeWatchlistStock(watchlistName, symbol) {
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(watchlistName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                watchlistsData = data.watchlists;
+                renderWatchlists();
+                refreshPrices();
+            }
+        }
+
+        function renderWatchlists() {
+            const mount = document.getElementById('watchlists-mount');
+            mount.innerHTML = '';
+
+            for (const [name, symbols] of Object.entries(watchlistsData)) {
+                const div = document.createElement('div');
+                div.className = 'card-container';
+                
+                let tbody = document.createElement('tbody');
+                if (symbols.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#95a5a6; padding: 20px;">No stocks added yet. Search above to add!</td></tr>';
+                } else {
+                    symbols.forEach(sym => {
+                        const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
+                        const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+
+                        const tr = document.createElement('tr');
+                        tr.id = `row-${sym}`;
+                        
+                        const tdSymbol = document.createElement('td');
+                        tdSymbol.style.minWidth = '320px';
+                        tdSymbol.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="name-${sym}">Loading...</div>`;
+
+                        const tdPrice = document.createElement('td');
+                        tdPrice.style.minWidth = '160px';
+                        tdPrice.id = `price-${sym}`;
+                        tdPrice.innerText = '-';
+
+                        const tdChange = document.createElement('td');
+                        tdChange.style.minWidth = '180px';
+                        tdChange.id = `change-${sym}`;
+                        tdChange.innerText = '-';
+
+                        const tdMcap = document.createElement('td');
+                        tdMcap.style.minWidth = '160px';
+                        tdMcap.id = `mcap-${sym}`;
+                        tdMcap.innerText = '-';
+
+                        const tdActions = document.createElement('td');
+                        tdActions.style.minWidth = '220px';
+                        const actionsDiv = document.createElement('div');
+                        actionsDiv.className = 'actions-cell';
+
+                        const chartBtn = document.createElement('button');
+                        chartBtn.className = 'btn-action btn-action-chart';
+                        chartBtn.innerHTML = '📊 Chart';
+                        chartBtn.onclick = () => openInHouseChart(sym);
+
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'btn-action btn-action-delete';
+                        delBtn.innerHTML = '🗑️ Remove';
+                        delBtn.onclick = () => removeWatchlistStock(name, sym);
+
+                        actionsDiv.appendChild(chartBtn);
+                        actionsDiv.appendChild(delBtn);
+                        tdActions.appendChild(actionsDiv);
+
+                        tr.appendChild(tdSymbol);
+                        tr.appendChild(tdPrice);
+                        tr.appendChild(tdChange);
+                        tr.appendChild(tdMcap);
+                        tr.appendChild(tdActions);
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                const headerBar = document.createElement('div');
+                headerBar.className = 'header-bar';
+                headerBar.innerHTML = `<h2>${escapeHtml(name)}</h2>`;
+                const delListBtn = document.createElement('button');
+                delListBtn.className = 'danger';
+                delListBtn.innerText = 'Delete List';
+                delListBtn.onclick = () => deleteWatchlist(name);
+                headerBar.appendChild(delListBtn);
+
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'controls';
+                controlsDiv.style.justify = 'flex-start';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'autocomplete-wrapper';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'wl-input';
+                input.setAttribute('data-wl-name', name);
+                input.placeholder = 'Search company (e.g. Reliance, Polymed)...';
+                input.onkeyup = (e) => handleSearchInput('wl', input, e);
+                input.autocomplete = 'off';
+
+                const dropdown = document.createElement('div');
+                dropdown.className = 'autocomplete-dropdown';
+
+                wrapper.appendChild(input);
+                wrapper.appendChild(dropdown);
+
+                const addBtn = document.createElement('button');
+                addBtn.innerText = 'Add Symbol';
+                addBtn.onclick = () => addWatchlistStock(name);
+
+                controlsDiv.appendChild(wrapper);
+                controlsDiv.appendChild(addBtn);
+
+                const scrollContainer = document.createElement('div');
+                scrollContainer.className = 'table-responsive-container';
+
+                const table = document.createElement('table');
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th style="min-width:320px;">Company / Symbol</th>
+                        <th style="min-width:160px;">LTP (₹)</th>
+                        <th style="min-width:180px;">Change (%)</th>
+                        <th style="min-width:160px;">Market Cap (Cr)</th>
+                        <th style="min-width:220px;">Actions</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                scrollContainer.appendChild(table);
+
+                div.appendChild(headerBar);
+                div.appendChild(controlsDiv);
+                div.appendChild(scrollContainer);
+                mount.appendChild(div);
+            }
+        }
+
+        // Search Autocomplete Handler
+        function handleSearchInput(type, inputElement, event) {
+            const query = inputElement.value.trim();
+            const dropdown = type === 'wl' 
+                ? inputElement.nextElementSibling 
+                : document.getElementById('dropdown-pf');
+            
+            if (searchTimeout) clearTimeout(searchTimeout);
+            
+            if (query.length < 2) {
+                if (dropdown) dropdown.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const results = await res.json();
+                
+                if (!dropdown) return;
+                dropdown.innerHTML = '';
+                if (results.length > 0) {
+                    results.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        const badgeClass = item.exchange === 'NSE' ? 'badge-nse' : 'badge-bse';
+                        div.innerHTML = `
+                            <div>
+                                <span class="autocomplete-symbol">${item.symbol}</span>
+                                <span class="badge ${badgeClass}">${item.exchange}</span>
+                                <div class="autocomplete-name">${escapeHtml(item.name)}</div>
+                            </div>
+                        `;
+                        div.onclick = () => {
+                            if (type === 'wl') {
+                                const targetName = inputElement.getAttribute('data-wl-name');
+                                addWatchlistStock(targetName, item.symbol);
+                            } else {
+                                const symInput = document.getElementById('pf-add-symbol');
+                                if (symInput) symInput.value = item.symbol;
+                            }
+                            dropdown.style.display = 'none';
+                        };
+                        dropdown.appendChild(div);
+                    });
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            }, 250);
+        }
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.autocomplete-wrapper')) {
+                document.querySelectorAll('.autocomplete-dropdown').forEach(el => el.style.display = 'none');
+            }
+        });
+
+        // =========================================================
+        // PORTFOLIO FUNCTIONS
+        // =========================================================
+        async function fetchPortfolios() {
+            const res = await fetch('/api/portfolios');
+            portfoliosData = await res.json();
+            
+            const names = Object.keys(portfoliosData);
+            if (names.length > 0 && (!activePortfolioName || !portfoliosData[activePortfolioName])) {
+                activePortfolioName = names[0];
+            }
+            renderPortfolios();
+            refreshPrices();
+        }
+
+        async function createPortfolio() {
+            const input = document.getElementById('new-portfolio-name');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const res = await fetch('/api/portfolios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                input.value = '';
+                portfoliosData = data.portfolios;
+                activePortfolioName = name;
+                renderPortfolios();
+                refreshPrices();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function deleteActivePortfolio() {
+            if (!activePortfolioName) return;
+            if (!confirm(`Are you sure you want to delete portfolio "${activePortfolioName}"?`)) return;
+
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                portfoliosData = data.portfolios;
+                const names = Object.keys(portfoliosData);
+                activePortfolioName = names.length > 0 ? names[0] : '';
+                renderPortfolios();
+                refreshPrices();
+            }
+        }
+
+        function selectPortfolio(name) {
+            activePortfolioName = name;
+            renderPortfolios();
+            refreshPrices();
+        }
+
+        async function addPortfolioStock() {
+            if (!activePortfolioName) return;
+            const symInput = document.getElementById('pf-add-symbol');
+            const priceInput = document.getElementById('pf-add-price');
+            const qtyInput = document.getElementById('pf-add-qty');
+            const dateInput = document.getElementById('pf-add-date');
+
+            const symbol = symInput.value.trim();
+            const buy_price = parseFloat(priceInput.value);
+            const quantity = parseFloat(qtyInput.value);
+            const buy_date = dateInput.value || new Date().toISOString().split('T')[0];
+
+            if (!symbol || isNaN(buy_price) || isNaN(quantity) || quantity <= 0) {
+                alert('Please enter valid Stock Symbol, Buy Price, and Quantity!');
+                return;
+            }
+
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, buy_price, quantity, buy_date })
+            });
+            const data = await res.json();
+            if (data.success) {
+                symInput.value = '';
+                priceInput.value = '';
+                qtyInput.value = '';
+                portfoliosData = data.portfolios;
+                renderPortfolios();
+                refreshPrices();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function removePortfolioStock(symbol) {
+            if (!activePortfolioName || !confirm(`Remove ${symbol} from ${activePortfolioName}?`)) return;
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                portfoliosData = data.portfolios;
+                renderPortfolios();
+                refreshPrices();
+            }
+        }
+
+        function openEditModal(symbol, curPrice, curQty, curDate) {
+            document.getElementById('editHoldingSymbol').value = symbol;
+            document.getElementById('editHoldingTitle').innerText = `Edit ${symbol} (${activePortfolioName})`;
+            document.getElementById('editBuyPrice').value = curPrice;
+            document.getElementById('editQuantity').value = curQty;
+            document.getElementById('editBuyDate').value = curDate || new Date().toISOString().split('T')[0];
+            document.getElementById('editHoldingModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editHoldingModal').style.display = 'none';
+        }
+
+        async function saveEditHolding() {
+            const symbol = document.getElementById('editHoldingSymbol').value;
+            const buy_price = parseFloat(document.getElementById('editBuyPrice').value);
+            const quantity = parseFloat(document.getElementById('editQuantity').value);
+            const buy_date = document.getElementById('editBuyDate').value;
+
+            if (isNaN(buy_price) || isNaN(quantity) || quantity <= 0) {
+                alert('Invalid input values!');
+                return;
+            }
+
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, buy_price, quantity, buy_date })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeEditModal();
+                portfoliosData = data.portfolios;
+                renderPortfolios();
+                refreshPrices();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        function renderPortfolios() {
+            // 1. Render Selector Bar
+            const selectorMount = document.getElementById('portfolio-selector-mount');
+            selectorMount.innerHTML = '';
+
+            const pfNames = Object.keys(portfoliosData);
+            if (pfNames.length === 0) {
+                selectorMount.innerHTML = '<span style="color:#95a5a6; font-size:13px;">No portfolios created yet.</span>';
+            } else {
+                pfNames.forEach(name => {
+                    const btn = document.createElement('button');
+                    btn.className = `pf-select-btn ${name === activePortfolioName ? 'active' : ''}`;
+                    btn.innerText = name;
+                    btn.onclick = () => selectPortfolio(name);
+                    selectorMount.appendChild(btn);
+                });
+            }
+
+            // 2. Render Active Portfolio Details View
+            const viewMount = document.getElementById('portfolio-view-mount');
+            viewMount.innerHTML = '';
+
+            if (!activePortfolioName || !portfoliosData[activePortfolioName]) {
+                viewMount.innerHTML = `
+                    <div class="card-container" style="text-align: center; padding: 40px;">
+                        <h3 style="color: #7f8c8d;">No Active Portfolio Selected</h3>
+                        <p style="color: #95a5a6;">Create a portfolio above to start tracking your investments!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let holdings = (portfoliosData[activePortfolioName] || []).slice();
+
+            const container = document.createElement('div');
+            container.className = 'card-container';
+
+            const headerBar = document.createElement('div');
+            headerBar.className = 'header-bar';
+            headerBar.innerHTML = `<h2>${escapeHtml(activePortfolioName)}</h2>`;
+
+            const summaryGrid = document.createElement('div');
+            summaryGrid.className = 'summary-grid';
+            summaryGrid.innerHTML = `
+                <div class="metric-card">
+                    <div class="title">Invested Amount</div>
+                    <div class="value" id="pf-summary-invested">₹0.00</div>
+                    <div class="sub-value" style="color:#7f8c8d">${holdings.length} Holdings</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Current Value</div>
+                    <div class="value" id="pf-summary-value">₹0.00</div>
+                    <div class="sub-value" style="color:#7f8c8d">Live Portfolio Value</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Overall Return (P&L)</div>
+                    <div class="value" id="pf-summary-pnl">₹0.00</div>
+                    <div class="sub-value" id="pf-summary-pnl-pct">0.00%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Today's Return</div>
+                    <div class="value" id="pf-summary-daypnl">₹0.00</div>
+                    <div class="sub-value" id="pf-summary-daypnl-pct">0.00%</div>
+                </div>
+            `;
+
+            // Form controls for adding holding
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'controls';
+            controlsDiv.style.background = '#f8f9fa';
+            controlsDiv.style.padding = '14px 18px';
+            controlsDiv.style.borderRadius = '8px';
+            controlsDiv.style.border = '1px solid #eef0f3';
+
+            const label = document.createElement('span');
+            label.style.fontWeight = '600';
+            label.style.fontSize = '13px';
+            label.style.color = '#2c3e50';
+            label.innerText = 'Add / Update Holding:';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'autocomplete-wrapper';
+
+            const symInput = document.createElement('input');
+            symInput.type = 'text';
+            symInput.id = 'pf-add-symbol';
+            symInput.placeholder = 'Stock Symbol / Company...';
+            symInput.onkeyup = (e) => handleSearchInput('pf', symInput, e);
+            symInput.autocomplete = 'off';
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'autocomplete-dropdown';
+            dropdown.id = 'dropdown-pf';
+
+            wrapper.appendChild(symInput);
+            wrapper.appendChild(dropdown);
+
+            const priceInput = document.createElement('input');
+            priceInput.type = 'number';
+            priceInput.step = '0.01';
+            priceInput.id = 'pf-add-price';
+            priceInput.placeholder = 'Buy Price (₹)';
+            priceInput.style.width = '130px';
+
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number';
+            qtyInput.step = '1';
+            qtyInput.id = 'pf-add-qty';
+            qtyInput.placeholder = 'Quantity';
+            qtyInput.style.width = '100px';
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dateInput = document.createElement('input');
+            dateInput.type = 'date';
+            dateInput.id = 'pf-add-date';
+            dateInput.value = todayStr;
+            dateInput.title = 'Buy Date';
+
+            const addBtn = document.createElement('button');
+            addBtn.innerText = '+ Add Holding';
+            addBtn.onclick = () => addPortfolioStock();
+
+            controlsDiv.appendChild(label);
+            controlsDiv.appendChild(wrapper);
+            controlsDiv.appendChild(priceInput);
+            controlsDiv.appendChild(qtyInput);
+            controlsDiv.appendChild(dateInput);
+            controlsDiv.appendChild(addBtn);
+
+            // Filter & Sort Control Bar
+            const filterSortDiv = document.createElement('div');
+            filterSortDiv.className = 'filter-sort-bar';
+            filterSortDiv.innerHTML = `
+                <div class="filter-group">
+                    🔍 Filter:
+                    <select id="pf-filter-select" onchange="pfFilterOption = this.value; renderPortfolios(); refreshPrices();">
+                        <option value="all" ${pfFilterOption === 'all' ? 'selected' : ''}>All Holdings</option>
+                        <option value="st" ${pfFilterOption === 'st' ? 'selected' : ''}>Short-Term (< 1 Year)</option>
+                        <option value="lt" ${pfFilterOption === 'lt' ? 'selected' : ''}>Long-Term (≥ 1 Year)</option>
+                    </select>
+                </div>
+                <div class="sort-group">
+                    ↕️ Sort By:
+                    <select id="pf-sort-select" onchange="pfSortOption = this.value; renderPortfolios(); refreshPrices();">
+                        <option value="duration_desc" ${pfSortOption === 'duration_desc' ? 'selected' : ''}>Holding Duration (Longest First)</option>
+                        <option value="duration_asc" ${pfSortOption === 'duration_asc' ? 'selected' : ''}>Holding Duration (Shortest First)</option>
+                        <option value="pnl_desc" ${pfSortOption === 'pnl_desc' ? 'selected' : ''}>Overall P&L % (High to Low)</option>
+                        <option value="pnl_asc" ${pfSortOption === 'pnl_asc' ? 'selected' : ''}>Overall P&L % (Low to High)</option>
+                        <option value="val_desc" ${pfSortOption === 'val_desc' ? 'selected' : ''}>Current Value (High to Low)</option>
+                        <option value="date_desc" ${pfSortOption === 'date_desc' ? 'selected' : ''}>Buy Date (Newest First)</option>
+                        <option value="date_asc" ${pfSortOption === 'date_asc' ? 'selected' : ''}>Buy Date (Oldest First)</option>
+                        <option value="name_asc" ${pfSortOption === 'name_asc' ? 'selected' : ''}>Stock Symbol (A-Z)</option>
+                    </select>
+                </div>
+            `;
+
+            // Apply Filtering
+            if (pfFilterOption === 'st') {
+                holdings = holdings.filter(h => getHoldingDays(h.buy_date) < 365);
+            } else if (pfFilterOption === 'lt') {
+                holdings = holdings.filter(h => getHoldingDays(h.buy_date) >= 365);
+            }
+
+            // Apply Sorting
+            holdings.sort((a, b) => {
+                const infoA = stockPricesData[a.symbol] || {};
+                const infoB = stockPricesData[b.symbol] || {};
+                const ltpA = infoA.price || a.buy_price;
+                const ltpB = infoB.price || b.buy_price;
+
+                const invA = a.buy_price * a.quantity;
+                const invB = b.buy_price * b.quantity;
+                const valA = ltpA * a.quantity;
+                const valB = ltpB * b.quantity;
+
+                const pnlPctA = invA > 0 ? ((valA - invA) / invA) * 100 : 0;
+                const pnlPctB = invB > 0 ? ((valB - invB) / invB) * 100 : 0;
+
+                const daysA = getHoldingDays(a.buy_date);
+                const daysB = getHoldingDays(b.buy_date);
+
+                if (pfSortOption === 'duration_desc') return daysB - daysA;
+                if (pfSortOption === 'duration_asc') return daysA - daysB;
+                if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
+                if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
+                if (pfSortOption === 'val_desc') return valB - valA;
+                if (pfSortOption === 'date_desc') return (b.buy_date || '').localeCompare(a.buy_date || '');
+                if (pfSortOption === 'date_asc') return (a.buy_date || '').localeCompare(b.buy_date || '');
+                if (pfSortOption === 'name_asc') return a.symbol.localeCompare(b.symbol);
+                return 0;
+            });
+
+            // Table Scroll Container
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'table-responsive-container';
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th style="min-width:200px;">Stock</th>
+                    <th style="min-width:80px;">Qty</th>
+                    <th style="min-width:120px;">Buy Price</th>
+                    <th style="min-width:120px;">LTP (₹)</th>
+                    <th style="min-width:140px;">Invested (₹)</th>
+                    <th style="min-width:140px;">Current Val (₹)</th>
+                    <th style="min-width:160px;">Overall P&L</th>
+                    <th style="min-width:130px;">Day P&L</th>
+                    <th style="min-width:230px;">Buy Date & Holding Duration</th>
+                    <th style="min-width:220px;">Actions</th>
+                </tr>
+            `;
+
+            const tbody = document.createElement('tbody');
+
+            if (holdings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#95a5a6; padding: 30px;">No holdings match the selected filter/sort criteria.</td></tr>';
+            } else {
+                holdings.forEach(item => {
+                    const sym = item.symbol;
+                    const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
+                    const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+
+                    const tr = document.createElement('tr');
+                    tr.id = `pf-row-${sym}`;
+
+                    const tdStock = document.createElement('td');
+                    tdStock.style.minWidth = '200px';
+                    tdStock.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="pf-name-${sym}">Loading...</div>`;
+
+                    const tdQty = document.createElement('td');
+                    tdQty.style.minWidth = '80px';
+                    tdQty.innerText = item.quantity;
+
+                    const tdBuy = document.createElement('td');
+                    tdBuy.style.minWidth = '120px';
+                    tdBuy.innerText = `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+                    const tdLtp = document.createElement('td');
+                    tdLtp.style.minWidth = '120px';
+                    tdLtp.id = `pf-ltp-${sym}`;
+                    tdLtp.innerText = '-';
+
+                    const tdInv = document.createElement('td');
+                    tdInv.style.minWidth = '140px';
+                    tdInv.id = `pf-inv-${sym}`;
+                    tdInv.innerText = `₹${(item.buy_price * item.quantity).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+                    const tdVal = document.createElement('td');
+                    tdVal.style.minWidth = '140px';
+                    tdVal.id = `pf-val-${sym}`;
+                    tdVal.innerText = '-';
+
+                    const tdPnl = document.createElement('td');
+                    tdPnl.style.minWidth = '160px';
+                    tdPnl.id = `pf-pnl-${sym}`;
+                    tdPnl.innerText = '-';
+
+                    const tdDayPnl = document.createElement('td');
+                    tdDayPnl.style.minWidth = '130px';
+                    tdDayPnl.id = `pf-daypnl-${sym}`;
+                    tdDayPnl.innerText = '-';
+
+                    // Holding Duration TD
+                    const tdDuration = document.createElement('td');
+                    tdDuration.style.minWidth = '230px';
+                    const daysHeld = getHoldingDays(item.buy_date);
+                    const durationText = formatHoldingDuration(item.buy_date);
+                    const dateStr = formatDateFormatted(item.buy_date);
+                    const isLongTerm = daysHeld >= 365;
+
+                    tdDuration.innerHTML = `
+                        <div style="font-size: 11px; font-weight: 600; color: #2c3e50;">
+                            📅 ${dateStr} <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>
+                        </div>
+                        <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-top: 3px;">
+                            ⏱️ ${durationText}
+                        </div>
+                    `;
+
+                    const tdActions = document.createElement('td');
+                    tdActions.style.minWidth = '220px';
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'actions-cell';
+
+                    const chartBtn = document.createElement('button');
+                    chartBtn.className = 'btn-action btn-action-chart';
+                    chartBtn.innerHTML = '📊 Chart';
+                    chartBtn.onclick = () => openInHouseChart(sym);
+
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn-action btn-action-edit';
+                    editBtn.innerHTML = '✏️ Edit';
+                    editBtn.onclick = () => openEditModal(sym, item.buy_price, item.quantity, item.buy_date);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'btn-action btn-action-delete';
+                    delBtn.innerHTML = '🗑️ Delete';
+                    delBtn.onclick = () => removePortfolioStock(sym);
+
+                    actionsDiv.appendChild(chartBtn);
+                    actionsDiv.appendChild(editBtn);
+                    actionsDiv.appendChild(delBtn);
+                    tdActions.appendChild(actionsDiv);
+
+                    tr.appendChild(tdStock);
+                    tr.appendChild(tdQty);
+                    tr.appendChild(tdBuy);
+                    tr.appendChild(tdLtp);
+                    tr.appendChild(tdInv);
+                    tr.appendChild(tdVal);
+                    tr.appendChild(tdPnl);
+                    tr.appendChild(tdDayPnl);
+                    tr.appendChild(tdDuration);
+                    tr.appendChild(tdActions);
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const tfoot = document.createElement('tfoot');
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="4">PORTFOLIO TOTAL:</td>
+                    <td id="pf-foot-inv">₹0.00</td>
+                    <td id="pf-foot-val">₹0.00</td>
+                    <td id="pf-foot-pnl">₹0.00</td>
+                    <td id="pf-foot-daypnl">₹0.00</td>
+                    <td colspan="2"></td>
+                </tr>
+            `;
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            table.appendChild(tfoot);
+            scrollContainer.appendChild(table);
+
+            container.appendChild(headerBar);
+            container.appendChild(summaryGrid);
+            container.appendChild(controlsDiv);
+            container.appendChild(filterSortDiv);
+            container.appendChild(scrollContainer);
+
+            viewMount.appendChild(container);
+        }
+
+        // =========================================================
+        // REFRESH LIVE MARKET DATA & UPDATE CALCULATIONS
+        // =========================================================
+        async function refreshPrices() {
+            let allSymbols = new Set();
+            
+            for (const symbols of Object.values(watchlistsData)) {
+                symbols.forEach(s => allSymbols.add(s));
+            }
+            
+            for (const holdings of Object.values(portfoliosData)) {
+                holdings.forEach(h => allSymbols.add(h.symbol));
+            }
+
+            if (allSymbols.size === 0) return;
+
+            const res = await fetch('/api/stock_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbols: Array.from(allSymbols) })
+            });
+            stockPricesData = await res.json();
+
+            // 1. Update Watchlist Rows
+            for (const [sym, info] of Object.entries(stockPricesData)) {
+                const nameEl = document.getElementById(`name-${sym}`);
+                const priceEl = document.getElementById(`price-${sym}`);
+                const changeEl = document.getElementById(`change-${sym}`);
+                const mcapEl = document.getElementById(`mcap-${sym}`);
+
+                if (info.error) {
+                    if (nameEl) nameEl.innerText = 'Stock unavailable';
+                    if (priceEl) priceEl.innerText = 'Error';
+                    if (changeEl) changeEl.innerText = '-';
+                    if (mcapEl) mcapEl.innerText = '-';
+                    continue;
+                }
+                
+                if (nameEl && info.name) nameEl.innerText = info.name;
+                if (priceEl && info.price !== undefined) priceEl.innerText = '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                if (mcapEl) mcapEl.innerText = info.mcap_cr !== 'N/A' ? '₹' + info.mcap_cr.toLocaleString('en-IN') + ' Cr' : 'N/A';
+                
+                if (changeEl && info.change !== undefined) {
+                    const sign = info.change > 0 ? '+' : '';
+                    const changeText = `${sign}${info.change.toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`;
+                    changeEl.innerText = changeText;
+                    changeEl.className = info.change >= 0 ? 'pos' : 'neg';
+                }
+            }
+
+            // 2. Update Active Portfolio Rows & Calculations
+            if (activePortfolioName && portfoliosData[activePortfolioName]) {
+                const holdings = portfoliosData[activePortfolioName];
+                let totInvested = 0;
+                let totCurrentVal = 0;
+                let totDayPnL = 0;
+
+                holdings.forEach(h => {
+                    const sym = h.symbol;
+                    const info = stockPricesData[sym] || {};
+                    const ltp = info.price || 0;
+                    const dayChange = info.change || 0;
+
+                    const invAmt = h.buy_price * h.quantity;
+                    const curVal = ltp > 0 ? (ltp * h.quantity) : invAmt;
+                    const pnlAmt = curVal - invAmt;
+                    const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
+                    const dayPnLAmt = dayChange * h.quantity;
+
+                    totInvested += invAmt;
+                    totCurrentVal += curVal;
+                    totDayPnL += dayPnLAmt;
+
+                    const pfNameEl = document.getElementById(`pf-name-${sym}`);
+                    const pfLtpEl = document.getElementById(`pf-ltp-${sym}`);
+                    const pfValEl = document.getElementById(`pf-val-${sym}`);
+                    const pfPnlEl = document.getElementById(`pf-pnl-${sym}`);
+                    const pfDayPnlEl = document.getElementById(`pf-daypnl-${sym}`);
+
+                    if (pfNameEl && info.name) pfNameEl.innerText = info.name;
+                    if (pfLtpEl) pfLtpEl.innerText = ltp > 0 ? `₹${ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '-';
+                    if (pfValEl) pfValEl.innerText = `₹${curVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+                    if (pfPnlEl) {
+                        const sign = pnlAmt >= 0 ? '+' : '';
+                        pfPnlEl.innerText = `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
+                        pfPnlEl.className = pnlAmt >= 0 ? 'pos' : 'neg';
+                    }
+
+                    if (pfDayPnlEl) {
+                        const sign = dayPnLAmt >= 0 ? '+' : '';
+                        pfDayPnlEl.innerText = `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        pfDayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
+                    }
+                });
+
+                // Update Summary Header & Footer
+                const totPnL = totCurrentVal - totInvested;
+                const totPnLPct = totInvested > 0 ? (totPnL / totInvested) * 100 : 0;
+                const prevVal = totCurrentVal - totDayPnL;
+                const totDayPnLPct = prevVal > 0 ? (totDayPnL / prevVal) * 100 : 0;
+
+                const invStr = `₹${totInvested.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                const valStr = `₹${totCurrentVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                
+                const pnlSign = totPnL >= 0 ? '+' : '';
+                const pnlStr = `${pnlSign}₹${Math.abs(totPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                const pnlPctStr = `${pnlSign}${totPnLPct.toFixed(2)}%`;
+
+                const daySign = totDayPnL >= 0 ? '+' : '';
+                const dayPnlStr = `${daySign}₹${Math.abs(totDayPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                const dayPnlPctStr = `${daySign}${totDayPnLPct.toFixed(2)}%`;
+
+                const invCard = document.getElementById('pf-summary-invested');
+                const valCard = document.getElementById('pf-summary-value');
+                const pnlCard = document.getElementById('pf-summary-pnl');
+                const pnlPctCard = document.getElementById('pf-summary-pnl-pct');
+                const dayPnlCard = document.getElementById('pf-summary-daypnl');
+                const dayPnlPctCard = document.getElementById('pf-summary-daypnl-pct');
+
+                if (invCard) invCard.innerText = invStr;
+                if (valCard) valCard.innerText = valStr;
+                if (pnlCard) pnlCard.innerText = pnlStr;
+                if (pnlPctCard) {
+                    pnlPctCard.innerText = pnlPctStr;
+                    pnlPctCard.style.color = totPnL >= 0 ? '#27ae60' : '#c0392b';
+                }
+                if (dayPnlCard) dayPnlCard.innerText = dayPnlStr;
+                if (dayPnlPctCard) {
+                    dayPnlPctCard.innerText = dayPnlPctStr;
+                    dayPnlPctCard.style.color = totDayPnL >= 0 ? '#27ae60' : '#c0392b';
+                }
+
+                const footInv = document.getElementById('pf-foot-inv');
+                const footVal = document.getElementById('pf-foot-val');
+                const footPnl = document.getElementById('pf-foot-pnl');
+                const footDayPnl = document.getElementById('pf-foot-daypnl');
+
+                if (footInv) footInv.innerText = invStr;
+                if (footVal) footVal.innerText = valStr;
+                if (footPnl) {
+                    footPnl.innerText = `${pnlStr} (${pnlPctStr})`;
+                    footPnl.className = totPnL >= 0 ? 'pos' : 'neg';
+                }
+                if (footDayPnl) {
+                    footDayPnl.innerText = dayPnlStr;
+                    footDayPnl.className = totDayPnL >= 0 ? 'pos' : 'neg';
+                }
+            }
+
+            if (currentTab === 'dashboard') {
+                renderDashboard();
+            }
+        }
+
+        // =========================================================
+        // DASHBOARD & ANALYTICS CHARTS (CHART.JS)
+        // =========================================================
+        let chartAlloc = null;
+        let chartVs = null;
+        let chartTop = null;
+
+        function renderDashboard() {
+            let overallInvested = 0;
+            let overallCurrentVal = 0;
+            let overallDayPnL = 0;
+
+            let portfolioSummaries = [];
+            let allHoldingsList = [];
+
+            for (const [pfName, holdings] of Object.entries(portfoliosData)) {
+                let pfInv = 0;
+                let pfVal = 0;
+                let pfDayPnL = 0;
+
+                holdings.forEach(h => {
+                    const info = stockPricesData[h.symbol] || {};
+                    const ltp = info.price || 0;
+                    const dayChange = info.change || 0;
+
+                    const invAmt = h.buy_price * h.quantity;
+                    const curVal = ltp > 0 ? (ltp * h.quantity) : invAmt;
+                    const pnlAmt = curVal - invAmt;
+                    const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
+                    const dayPnLAmt = dayChange * h.quantity;
+
+                    pfInv += invAmt;
+                    pfVal += curVal;
+                    pfDayPnL += dayPnLAmt;
+
+                    allHoldingsList.push({
+                        symbol: h.symbol,
+                        name: info.name || h.symbol,
+                        pnlPct: pnlPct,
+                        currentVal: curVal,
+                        pfName: pfName
+                    });
+                });
+
+                overallInvested += pfInv;
+                overallCurrentVal += pfVal;
+                overallDayPnL += pfDayPnL;
+
+                portfolioSummaries.push({
+                    name: pfName,
+                    invested: pfInv,
+                    value: pfVal,
+                    pnl: pfVal - pfInv,
+                    pnlPct: pfInv > 0 ? ((pfVal - pfInv) / pfInv) * 100 : 0
+                });
+            }
+
+            const overallPnL = overallCurrentVal - overallInvested;
+            const overallPnLPct = overallInvested > 0 ? (overallPnL / overallInvested) * 100 : 0;
+            const prevOverallVal = overallCurrentVal - overallDayPnL;
+            const overallDayPnLPct = prevOverallVal > 0 ? (overallDayPnL / prevOverallVal) * 100 : 0;
+
+            document.getElementById('dash-net-worth').innerText = `₹${overallCurrentVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('dash-invested').innerText = `₹${overallInvested.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            
+            const pnlSign = overallPnL >= 0 ? '+' : '';
+            const dashPnlEl = document.getElementById('dash-pnl');
+            const dashPnlPctEl = document.getElementById('dash-pnl-pct');
+            dashPnlEl.innerText = `${pnlSign}₹${Math.abs(overallPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            dashPnlPctEl.innerText = `${pnlSign}${overallPnLPct.toFixed(2)}% Overall`;
+            dashPnlEl.style.color = overallPnL >= 0 ? '#27ae60' : '#c0392b';
+            dashPnlPctEl.style.color = overallPnL >= 0 ? '#27ae60' : '#c0392b';
+
+            const daySign = overallDayPnL >= 0 ? '+' : '';
+            const dashDayPnlEl = document.getElementById('dash-day-pnl');
+            const dashDayPnlPctEl = document.getElementById('dash-day-pnl-pct');
+            dashDayPnlEl.innerText = `${daySign}₹${Math.abs(overallDayPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            dashDayPnlPctEl.innerText = `${daySign}${overallDayPnLPct.toFixed(2)}% Today`;
+            dashDayPnlEl.style.color = overallDayPnL >= 0 ? '#27ae60' : '#c0392b';
+            dashDayPnlPctEl.style.color = overallDayPnL >= 0 ? '#27ae60' : '#c0392b';
+
+            // 1. Chart: Portfolio Allocation
+            const allocCtx = document.getElementById('chartPortfolioAllocation').getContext('2d');
+            if (chartAlloc) chartAlloc.destroy();
+            
+            chartAlloc = new Chart(allocCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: portfolioSummaries.map(p => p.name),
+                    datasets: [{
+                        data: portfolioSummaries.map(p => p.value),
+                        backgroundColor: ['#2962ff', '#27ae60', '#f39c12', '#9b59b6', '#e74c3c', '#1abc9c']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    return ` ${context.label}: ₹${val.toLocaleString('en-IN')}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 2. Chart: Invested vs Current Value
+            const vsCtx = document.getElementById('chartInvestedVsCurrent').getContext('2d');
+            if (chartVs) chartVs.destroy();
+
+            chartVs = new Chart(vsCtx, {
+                type: 'bar',
+                data: {
+                    labels: portfolioSummaries.map(p => p.name),
+                    datasets: [
+                        {
+                            label: 'Invested Amount (₹)',
+                            data: portfolioSummaries.map(p => p.invested),
+                            backgroundColor: '#94a3b8'
+                        },
+                        {
+                            label: 'Current Value (₹)',
+                            data: portfolioSummaries.map(p => p.value),
+                            backgroundColor: '#2962ff'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value) { return '₹' + value.toLocaleString('en-IN'); }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 3. Chart: Top Performers
+            const topCtx = document.getElementById('chartTopHoldings').getContext('2d');
+            if (chartTop) chartTop.destroy();
+
+            allHoldingsList.sort((a, b) => b.pnlPct - a.pnlPct);
+            const topHoldings = allHoldingsList.slice(0, 8);
+
+            chartTop = new Chart(topCtx, {
+                type: 'bar',
+                data: {
+                    labels: topHoldings.map(h => `${h.symbol} (${h.pfName})`),
+                    datasets: [{
+                        label: 'Overall ROI (%)',
+                        data: topHoldings.map(h => parseFloat(h.pnlPct.toFixed(2))),
+                        backgroundColor: topHoldings.map(h => h.pnlPct >= 0 ? '#27ae60' : '#e74c3c')
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                callback: function(value) { return value + '%'; }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /* =========================================================
+           IN-HOUSE LIGHTWEIGHT CHARTS (CANVAS)
+        ========================================================= */
+        let currentChartSymbol = '';
+        let currentChartRange = '1y';
+        let mainChart = null;
+        let rsiChart = null;
+        let candlestickSeries = null;
+        let volumeSeries = null;
+        let sma20Series = null;
+        let sma50Series = null;
+        let rsiSeries = null;
+
+        function openInHouseChart(sym) {
+            currentChartSymbol = sym;
+            currentChartRange = '1y';
+            
+            const modal = document.getElementById('chartModal');
+            modal.style.display = 'block';
+
+            document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tf-1y').classList.add('active');
+
+            loadChartData();
+        }
+
+        function changeRange(rangeStr) {
+            currentChartRange = rangeStr;
+            document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            loadChartData();
+        }
+
+        async function loadChartData() {
+            const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}`);
+            const data = await res.json();
+
+            if (data.error) {
+                alert('Could not load chart data: ' + data.error);
+                return;
+            }
+
+            document.getElementById('chartSymbolDisplay').innerText = data.symbol;
+            document.getElementById('chartNameDisplay').innerText = data.name;
+
+            renderInHouseCharts(data);
+        }
+
+        function renderInHouseCharts(data) {
+            const mainContainer = document.getElementById('mainChartPane');
+            const rsiContainer = document.getElementById('rsiChartPane');
+
+            mainContainer.innerHTML = '';
+            rsiContainer.innerHTML = '';
+
+            mainChart = LightweightCharts.createChart(mainContainer, {
+                width: mainContainer.clientWidth,
+                height: mainContainer.clientHeight,
+                layout: { background: { type: 'solid', color: '#131722' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#1f2434' }, horzLines: { color: '#1f2434' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                rightPriceScale: { borderColor: '#2a2e39' },
+                timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+            });
+
+            candlestickSeries = mainChart.addCandlestickSeries({
+                upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350'
+            });
+            candlestickSeries.setData(data.candles);
+
+            volumeSeries = mainChart.addHistogramSeries({
+                color: '#26a69a', priceFormat: { type: 'volume' }, priceScaleId: '', scaleMargins: { top: 0.75, bottom: 0 }
+            });
+            volumeSeries.setData(data.volume);
+
+            sma20Series = mainChart.addLineSeries({ color: '#2962ff', lineWidth: 2, title: 'SMA 20' });
+            sma20Series.setData(data.sma20);
+
+            sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: 'SMA 50' });
+            sma50Series.setData(data.sma50);
+
+            rsiChart = LightweightCharts.createChart(rsiContainer, {
+                width: rsiContainer.clientWidth,
+                height: rsiContainer.clientHeight,
+                layout: { background: { type: 'solid', color: '#131722' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#1f2434' }, horzLines: { color: '#1f2434' } },
+                rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.1 } },
+                timeScale: { visible: false },
+            });
+
+            rsiSeries = rsiChart.addLineSeries({ color: '#e040fb', lineWidth: 2, title: 'RSI 14' });
+            rsiSeries.setData(data.rsi);
+
+            const rsi70 = rsiChart.addLineSeries({ color: '#ef5350', lineWidth: 1, lineStyle: 2 });
+            const rsi30 = rsiChart.addLineSeries({ color: '#26a69a', lineWidth: 1, lineStyle: 2 });
+            if (data.rsi.length > 0) {
+                rsi70.setData(data.rsi.map(item => ({ time: item.time, value: 70 })));
+                rsi30.setData(data.rsi.map(item => ({ time: item.time, value: 30 })));
+            }
+
+            mainChart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
+                rsiChart.timeScale().setVisibleTimeRange(timeRange);
+            });
+
+            mainChart.subscribeCrosshairMove(param => {
+                if (!param || !param.time) {
+                    if (data.candles.length > 0) {
+                        const last = data.candles[data.candles.length - 1];
+                        const lastVol = data.volume[data.volume.length - 1];
+                        updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol ? lastVol.value : 0, data);
+                    }
+                    return;
+                }
+                const candleData = param.seriesData.get(candlestickSeries);
+                const volData = param.seriesData.get(volumeSeries);
+                if (candleData) {
+                    updateLegend(param.time, candleData.open, candleData.high, candleData.low, candleData.close, volData ? volData.value : 0, data, param.time);
+                }
+            });
+
+            if (data.candles.length > 0) {
+                const last = data.candles[data.candles.length - 1];
+                const lastVol = data.volume[data.volume.length - 1];
+                updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol ? lastVol.value : 0, data);
+            }
+
+            window.onresize = function() {
+                if (mainChart && rsiChart) {
+                    mainChart.applyOptions({ width: mainContainer.clientWidth, height: mainContainer.clientHeight });
+                    rsiChart.applyOptions({ width: rsiContainer.clientWidth, height: rsiContainer.clientHeight });
+                }
+            };
+
+            toggleIndicators();
+        }
+
+        function updateLegend(time, o, h, l, c, vol, fullData, curTime = null) {
+            document.getElementById('legDate').innerText = time;
+            document.getElementById('legOpen').innerText = '₹' + o.toFixed(2);
+            document.getElementById('legHigh').innerText = '₹' + h.toFixed(2);
+            document.getElementById('legLow').innerText = '₹' + l.toFixed(2);
+            document.getElementById('legClose').innerText = '₹' + c.toFixed(2);
+            document.getElementById('legVol').innerText = vol ? vol.toLocaleString('en-IN') : '-';
+
+            const lookupTime = curTime || time;
+            const sma20Obj = fullData.sma20.find(s => s.time === lookupTime);
+            const sma50Obj = fullData.sma50.find(s => s.time === lookupTime);
+            const rsiObj = fullData.rsi.find(s => s.time === lookupTime);
+
+            document.getElementById('legSma20').innerText = sma20Obj ? '₹' + sma20Obj.value.toFixed(2) : '-';
+            document.getElementById('legSma50').innerText = sma50Obj ? '₹' + sma50Obj.value.toFixed(2) : '-';
+            document.getElementById('legRsi').innerText = rsiObj ? rsiObj.value.toFixed(2) : '-';
+        }
+
+        function toggleIndicators() {
+            if (!volumeSeries) return;
+
+            const showVol = document.getElementById('chkVolume').checked;
+            const showSma20 = document.getElementById('chkSma20').checked;
+            const showSma50 = document.getElementById('chkSma50').checked;
+            const showRsi = document.getElementById('chkRsi').checked;
+
+            volumeSeries.applyOptions({ visible: showVol });
+            sma20Series.applyOptions({ visible: showSma20 });
+            sma50Series.applyOptions({ visible: showSma50 });
+
+            document.getElementById('rsiChartPane').style.display = showRsi ? 'block' : 'none';
+            document.getElementById('legRsiGroup').style.display = showRsi ? 'inline-block' : 'none';
+            document.getElementById('legSmaGroup').style.display = (showSma20 || showSma50) ? 'inline-block' : 'none';
+        }
+
+        function closeChartModal() {
+            const modal = document.getElementById('chartModal');
+            modal.style.display = 'none';
+            document.getElementById('mainChartPane').innerHTML = '';
+            document.getElementById('rsiChartPane').innerHTML = '';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('chartModal');
+            const editModal = document.getElementById('editHoldingModal');
+            if (event.target == modal) closeChartModal();
+            if (event.target == editModal) closeEditModal();
+        }
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeChartModal();
+                closeEditModal();
+            }
+        });
+
+        // Data Backup & Restore (Export / Import JSON)
+        function exportDataBackup() {
+            window.location.href = '/api/backup/export';
+        }
+
+        function triggerImportBackup() {
+            document.getElementById('backup-file-input').click();
+        }
+
+        async function handleBackupFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const content = JSON.parse(e.target.result);
+                    const res = await fetch('/api/backup/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(content)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('✅ Data restored successfully! Watchlists & Portfolios updated.');
+                        watchlistsData = data.watchlists || watchlistsData;
+                        portfoliosData = data.portfolios || portfoliosData;
+                        renderWatchlists();
+                        renderPortfolios();
+                        updateDashboardCharts();
+                    } else {
+                        alert('❌ Restore failed: ' + (data.error || 'Invalid file format'));
+                    }
+                } catch (err) {
+                    alert('❌ Failed to read backup file: ' + err.message);
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Initialize App Data
+        async function initApp() {
+            await fetchWatchlists();
+            await fetchPortfolios();
+        }
+
+        initApp();
+        
+        // Auto refresh market prices every 15 seconds
+        setInterval(refreshPrices, 15000);
+    </script>
+</body>
+</html>
