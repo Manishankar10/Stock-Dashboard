@@ -2,6 +2,7 @@ import os
 import json
 import datetime
 import requests
+import math
 import difflib
 from flask import Flask, render_template, request, jsonify
 
@@ -143,17 +144,95 @@ fetcher = StockFetcher()
 
 def calculate_indicators(candles):
     closes = [c['close'] for c in candles]
+    times = [c['time'] for c in candles]
+    n = len(candles)
     
     sma20 = []
     sma50 = []
-    for i in range(len(candles)):
+    sma200 = []
+    bollinger_upper = []
+    bollinger_lower = []
+    bollinger_middle = []
+    
+    for i in range(n):
         if i >= 19:
-            avg_20 = sum(closes[i-19:i+1]) / 20
-            sma20.append({'time': candles[i]['time'], 'value': round(avg_20, 2)})
-        if i >= 49:
-            avg_50 = sum(closes[i-49:i+1]) / 50
-            sma50.append({'time': candles[i]['time'], 'value': round(avg_50, 2)})
+            window = closes[i-19:i+1]
+            avg_20 = sum(window) / 20.0
+            sma20.append({'time': times[i], 'value': round(avg_20, 2)})
             
+            variance = sum((x - avg_20) ** 2 for x in window) / 20.0
+            std_dev = math.sqrt(variance)
+            bollinger_middle.append({'time': times[i], 'value': round(avg_20, 2)})
+            bollinger_upper.append({'time': times[i], 'value': round(avg_20 + 2 * std_dev, 2)})
+            bollinger_lower.append({'time': times[i], 'value': round(avg_20 - 2 * std_dev, 2)})
+            
+        if i >= 49:
+            avg_50 = sum(closes[i-49:i+1]) / 50.0
+            sma50.append({'time': times[i], 'value': round(avg_50, 2)})
+            
+        if i >= 199:
+            avg_200 = sum(closes[i-199:i+1]) / 200.0
+            sma200.append({'time': times[i], 'value': round(avg_200, 2)})
+
+    def calc_ema(period):
+        if n < period:
+            return []
+        k = 2.0 / (period + 1)
+        ema_list = []
+        sma_init = sum(closes[:period]) / float(period)
+        curr_ema = sma_init
+        ema_list.append({'time': times[period-1], 'value': round(curr_ema, 2)})
+        for j in range(period, n):
+            curr_ema = (closes[j] * k) + (curr_ema * (1.0 - k))
+            ema_list.append({'time': times[j], 'value': round(curr_ema, 2)})
+        return ema_list
+
+    ema9 = calc_ema(9)
+    ema21 = calc_ema(21)
+    ema50 = calc_ema(50)
+
+    macd_line = []
+    macd_signal = []
+    macd_hist = []
+    if n >= 26:
+        k12 = 2.0 / 13.0
+        k26 = 2.0 / 27.0
+        ema12_val = sum(closes[:12]) / 12.0
+        ema26_val = sum(closes[:26]) / 26.0
+        
+        for j in range(12, 26):
+            ema12_val = (closes[j] * k12) + (ema12_val * (1.0 - k12))
+            
+        macd_vals = []
+        macd_times = []
+        for j in range(25, n):
+            if j > 25:
+                ema12_val = (closes[j] * k12) + (ema12_val * (1.0 - k12))
+                ema26_val = (closes[j] * k26) + (ema26_val * (1.0 - k26))
+            m_val = ema12_val - ema26_val
+            macd_vals.append(m_val)
+            macd_times.append(times[j])
+            macd_line.append({'time': times[j], 'value': round(m_val, 2)})
+
+        if len(macd_vals) >= 9:
+            k9 = 2.0 / 10.0
+            sig_val = sum(macd_vals[:9]) / 9.0
+            macd_signal.append({'time': macd_times[8], 'value': round(sig_val, 2)})
+            macd_hist.append({
+                'time': macd_times[8],
+                'value': round(macd_vals[8] - sig_val, 2),
+                'color': '#26a69a' if (macd_vals[8] - sig_val) >= 0 else '#ef5350'
+            })
+            for j in range(9, len(macd_vals)):
+                sig_val = (macd_vals[j] * k9) + (sig_val * (1.0 - k9))
+                diff = macd_vals[j] - sig_val
+                macd_signal.append({'time': macd_times[j], 'value': round(sig_val, 2)})
+                macd_hist.append({
+                    'time': macd_times[j],
+                    'value': round(diff, 2),
+                    'color': '#26a69a' if diff >= 0 else '#ef5350'
+                })
+
     rsi = []
     gains = []
     losses = []
@@ -163,19 +242,33 @@ def calculate_indicators(candles):
         losses.append(max(-diff, 0))
         
     if len(gains) >= 14:
-        avg_gain = sum(gains[:14]) / 14
-        avg_loss = sum(losses[:14]) / 14
+        avg_gain = sum(gains[:14]) / 14.0
+        avg_loss = sum(losses[:14]) / 14.0
         
         for i in range(13, len(gains)):
             if i > 13:
-                avg_gain = (avg_gain * 13 + gains[i]) / 14
-                avg_loss = (avg_loss * 13 + losses[i]) / 14
+                avg_gain = (avg_gain * 13 + gains[i]) / 14.0
+                avg_loss = (avg_loss * 13 + losses[i]) / 14.0
             
             rs = avg_gain / avg_loss if avg_loss != 0 else 100
             rsi_val = 100 - (100 / (1 + rs)) if avg_loss != 0 else 100
             rsi.append({'time': candles[i+1]['time'], 'value': round(rsi_val, 2)})
             
-    return sma20, sma50, rsi
+    return {
+        'sma20': sma20,
+        'sma50': sma50,
+        'sma200': sma200,
+        'ema9': ema9,
+        'ema21': ema21,
+        'ema50': ema50,
+        'bollinger_upper': bollinger_upper,
+        'bollinger_middle': bollinger_middle,
+        'bollinger_lower': bollinger_lower,
+        'macd_line': macd_line,
+        'macd_signal': macd_signal,
+        'macd_hist': macd_hist,
+        'rsi': rsi
+    }
 
 def load_data():
     if not os.path.exists(DATA_FILE):
@@ -552,16 +645,26 @@ def get_chart_history():
                     'color': '#26a69a' if is_up else '#ef5350'
                 })
 
-        sma20, sma50, rsi = calculate_indicators(candles)
+        ind = calculate_indicators(candles)
         
         return jsonify({
             'symbol': symbol,
             'name': name,
             'candles': candles,
             'volume': volume_data,
-            'sma20': sma20,
-            'sma50': sma50,
-            'rsi': rsi
+            'sma20': ind['sma20'],
+            'sma50': ind['sma50'],
+            'sma200': ind['sma200'],
+            'ema9': ind['ema9'],
+            'ema21': ind['ema21'],
+            'ema50': ind['ema50'],
+            'bollinger_upper': ind['bollinger_upper'],
+            'bollinger_middle': ind['bollinger_middle'],
+            'bollinger_lower': ind['bollinger_lower'],
+            'macd_line': ind['macd_line'],
+            'macd_signal': ind['macd_signal'],
+            'macd_hist': ind['macd_hist'],
+            'rsi': ind['rsi']
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
