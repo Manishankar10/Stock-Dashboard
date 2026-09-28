@@ -412,11 +412,15 @@
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 5px; display: inline-block; }
         .badge-nse { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
         .badge-bse { background-color: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+        .badge-idx { background-color: #ecfeff; color: #0891b2; border: 1px solid #a5f3fc; }
+        .badge-cmd { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
         .badge-st { background-color: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
         .badge-lt { background-color: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
         
         [data-theme="dark"] .badge-nse { background-color: #1e3a8a; color: #93c5fd; border-color: #1e40af; }
         [data-theme="dark"] .badge-bse { background-color: #581c87; color: #e9d5ff; border-color: #6b21a8; }
+        [data-theme="dark"] .badge-idx { background-color: #164e63; color: #a5f3fc; border-color: #0891b2; }
+        [data-theme="dark"] .badge-cmd { background-color: #78350f; color: #fde68a; border-color: #b45309; }
         [data-theme="dark"] .badge-st { background-color: #7c2d12; color: #ffedd5; border-color: #9a3412; }
         [data-theme="dark"] .badge-lt { background-color: #14532d; color: #dcfce7; border-color: #166534; }
 
@@ -1417,6 +1421,21 @@
             }
         }
 
+        function getSymbolBadge(sym, defaultExch = '') {
+            if (!sym) return { label: 'NSE', class: 'badge-nse' };
+            const s = sym.toUpperCase();
+            if (s.startsWith('^') || defaultExch === 'INDEX') {
+                return { label: 'INDEX', class: 'badge-idx' };
+            }
+            if (s.includes('=F') || s.includes('GOLDBEES') || s.includes('SILVERBEES') || defaultExch === 'COMMODITY') {
+                return { label: 'COMMODITY', class: 'badge-cmd' };
+            }
+            if (s.endsWith('.BO') || defaultExch === 'BSE') {
+                return { label: 'BSE', class: 'badge-bse' };
+            }
+            return { label: 'NSE', class: 'badge-nse' };
+        }
+
         function renderWatchlists() {
             // 1. Render Selector Bar
             const selectorMount = document.getElementById('watchlist-selector-mount');
@@ -1542,8 +1561,7 @@
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding: 25px;">No stocks added to this watchlist yet. Use the search box above to add stocks!</td></tr>';
             } else {
                 symbols.forEach(sym => {
-                    const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
-                    const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+                    const bInfo = getSymbolBadge(sym);
 
                     const tr = document.createElement('tr');
                     tr.id = `row-${sym}`;
@@ -1555,7 +1573,7 @@
                     };
                     
                     const tdSymbol = document.createElement('td');
-                    tdSymbol.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="name-${sym}">Loading...</div>`;
+                    tdSymbol.innerHTML = `<strong>${sym}</strong> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="name-${sym}">Loading...</div>`;
 
                     const tdPrice = document.createElement('td');
                     tdPrice.style.textAlign = 'right';
@@ -1656,11 +1674,11 @@
                     results.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'autocomplete-item';
-                        const badgeClass = item.exchange === 'NSE' ? 'badge-nse' : 'badge-bse';
+                        const bInfo = getSymbolBadge(item.symbol, item.exchange);
                         div.innerHTML = `
                             <div>
                                 <span class="autocomplete-symbol">${item.symbol}</span>
-                                <span class="badge ${badgeClass}">${item.exchange}</span>
+                                <span class="badge ${bInfo.class}">${bInfo.label}</span>
                                 <div class="autocomplete-name">${escapeHtml(item.name)}</div>
                             </div>
                         `;
@@ -2132,8 +2150,7 @@
             } else {
                 holdings.forEach(item => {
                     const sym = item.symbol;
-                    const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
-                    const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+                    const bInfo = getSymbolBadge(sym);
 
                     const tr = document.createElement('tr');
                     tr.className = 'pf-row';
@@ -2146,7 +2163,7 @@
                     };
 
                     const tdStock = document.createElement('td');
-                    tdStock.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="pf-name-${sym}">Loading...</div>`;
+                    tdStock.innerHTML = `<strong>${sym}</strong> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="pf-name-${sym}">Loading...</div>`;
 
                     const tdQty = document.createElement('td');
                     tdQty.style.textAlign = 'right';
@@ -3081,10 +3098,9 @@
             const dateStr = formatDateFormatted(item.buy_date);
             const isLongTerm = daysHeld >= 365;
 
-            const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
-            const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+            const bInfo = getSymbolBadge(sym);
 
-            document.getElementById('detail-modal-sym').innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
+            document.getElementById('detail-modal-sym').innerHTML = `<strong>${sym}</strong> <span class="badge ${bInfo.class}">${bInfo.label}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
             document.getElementById('detail-modal-name').innerText = info.name || sym;
 
             document.getElementById('detail-modal-duration').innerText = `⏱️ ${durationText}`;

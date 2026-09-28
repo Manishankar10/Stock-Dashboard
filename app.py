@@ -76,6 +76,40 @@ POPULAR_INDIAN_STOCKS = {
     "POLYCAB": "Polycab India Ltd"
 }
 
+POPULAR_MARKET_INDEXES = [
+    {"symbol": "^NSEI", "name": "NIFTY 50 Index", "exchange": "INDEX", "aliases": ["NIFTY", "NIFTY50", "NIFTY 50"]},
+    {"symbol": "^NSEBANK", "name": "NIFTY Bank Index", "exchange": "INDEX", "aliases": ["BANKNIFTY", "NIFTYBANK", "NIFTY BANK", "BANK NIFTY"]},
+    {"symbol": "^CNXIT", "name": "NIFTY IT Index", "exchange": "INDEX", "aliases": ["NIFTYIT", "NIFTY IT"]},
+    {"symbol": "^BSESN", "name": "S&P BSE SENSEX Index", "exchange": "INDEX", "aliases": ["SENSEX", "BSESN", "BSE SENSEX"]},
+    {"symbol": "^CRSMID", "name": "NIFTY Midcap 100 Index", "exchange": "INDEX", "aliases": ["MIDCAP", "NIFTY MIDCAP"]},
+    {"symbol": "GOLDBEES.NS", "name": "Nippon India ETF Gold BeES (₹)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLDBEES", "GOLD BEES", "GOLD ETF"]},
+    {"symbol": "GC=F", "name": "Gold Futures (USD)", "exchange": "COMMODITY", "aliases": ["GOLD FUTURES", "GOLD USD"]},
+    {"symbol": "SILVERBEES.NS", "name": "Nippon India ETF Silver BeES (₹)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVERBEES", "SILVER BEES", "SILVER ETF"]},
+    {"symbol": "SI=F", "name": "Silver Futures (USD)", "exchange": "COMMODITY", "aliases": ["SILVER FUTURES", "SILVER USD"]},
+    {"symbol": "CL=F", "name": "Crude Oil Futures (USD)", "exchange": "COMMODITY", "aliases": ["CRUDE", "CRUDE OIL", "CRUDEOIL"]},
+    {"symbol": "^GSPC", "name": "S&P 500 Index (US)", "exchange": "INDEX", "aliases": ["SP500", "S&P 500", "S&P500"]},
+    {"symbol": "^IXIC", "name": "NASDAQ Composite Index (US)", "exchange": "INDEX", "aliases": ["NASDAQ", "NASDAQ 100", "NASDAQ100"]}
+]
+
+def format_financial_symbol(raw_symbol):
+    if not raw_symbol:
+        return ""
+    sym = raw_symbol.strip().upper()
+    
+    # Check direct index / commodity alias matches
+    for idx_item in POPULAR_MARKET_INDEXES:
+        if sym == idx_item["symbol"].upper():
+            return idx_item["symbol"]
+        for alias in idx_item["aliases"]:
+            if sym == alias.upper():
+                return idx_item["symbol"]
+
+    # Keep as-is if starts with ^, contains =F, or ends with .NS / .BO
+    if sym.startswith("^") or "=F" in sym or sym.endswith(".NS") or sym.endswith(".BO"):
+        return sym
+        
+    return sym + ".NS"
+
 class StockFetcher:
     def __init__(self):
         self.session = requests.Session()
@@ -903,16 +937,14 @@ def add_stock(name):
     if not symbol:
         return jsonify({"error": "Symbol is required"}), 400
     
-    symbol = symbol.upper()
-    if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
-        symbol += ".NS"
+    symbol = format_financial_symbol(symbol)
         
     # Check if symbol is valid or typo
     if fetcher.fetch_stock(symbol).get('error'):
         clean_sym = symbol.replace(".NS", "").replace(".BO", "")
         matches = difflib.get_close_matches(clean_sym, POPULAR_INDIAN_STOCKS.keys(), n=1, cutoff=0.5)
         if matches:
-            corrected_sym = matches[0] + ".NS"
+            corrected_sym = format_financial_symbol(matches[0])
             if not fetcher.fetch_stock(corrected_sym).get('error'):
                 symbol = corrected_sym
 
@@ -983,16 +1015,14 @@ def add_portfolio_stock(name):
     except ValueError:
         return jsonify({"error": "Buy price and quantity must be numbers"}), 400
 
-    symbol = symbol.upper()
-    if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
-        symbol += ".NS"
+    symbol = format_financial_symbol(symbol)
 
     # Check for typos and auto-correct if symbol doesn't yield market data
     if fetcher.fetch_stock(symbol).get('error'):
         clean_sym = symbol.replace(".NS", "").replace(".BO", "")
         matches = difflib.get_close_matches(clean_sym, POPULAR_INDIAN_STOCKS.keys(), n=1, cutoff=0.5)
         if matches:
-            corrected_sym = matches[0] + ".NS"
+            corrected_sym = format_financial_symbol(matches[0])
             if not fetcher.fetch_stock(corrected_sym).get('error'):
                 symbol = corrected_sym
 
@@ -1189,43 +1219,70 @@ def search_symbol():
     query = request.args.get("q", "").strip()
     if not query:
         return jsonify([])
-        
+
+    results = []
+    clean_q = query.upper()
+
+    # 1. Preset Indices & Commodities Matching
+    for idx in POPULAR_MARKET_INDEXES:
+        match = False
+        if clean_q in idx["symbol"].upper() or clean_q in idx["name"].upper():
+            match = True
+        else:
+            for alias in idx["aliases"]:
+                if clean_q in alias.upper():
+                    match = True
+                    break
+        if match:
+            results.append({
+                'symbol': idx["symbol"],
+                'name': idx["name"],
+                'exchange': idx["exchange"]
+            })
+
+    # 2. Yahoo Finance Search API
     def do_search(q_str):
-        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={q_str}&quotesCount=10&newsCount=0"
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={q_str}&quotesCount=12&newsCount=0"
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         try:
             res = requests.get(url, headers=headers, timeout=5).json()
-            results = []
+            out = []
             for q in res.get('quotes', []):
-                exch = q.get('exchange')
-                if exch in ['NSI', 'BSE']:
-                    results.append({
-                        'symbol': q.get('symbol'),
-                        'name': q.get('shortname') or q.get('longname') or q.get('symbol'),
-                        'exchange': 'NSE' if exch == 'NSI' else 'BSE'
-                    })
-            return results
+                sym = q.get('symbol', '')
+                exch = q.get('exchange', '')
+                if exch in ['NSI', 'BSE', 'IND', 'INDEX', 'CMX', 'NYM', 'SNP', 'NAS', 'MCX', 'CCY'] or sym.startswith('^') or '=F' in sym or sym.endswith('.NS') or sym.endswith('.BO'):
+                    if not any(r['symbol'] == sym for r in results):
+                        ex_label = 'INDEX' if (sym.startswith('^') or exch in ['IND', 'INDEX']) else ('COMMODITY' if '=F' in sym else ('NSE' if exch == 'NSI' else ('BSE' if exch == 'BSE' else exch)))
+                        out.append({
+                            'symbol': sym,
+                            'name': q.get('shortname') or q.get('longname') or sym,
+                            'exchange': ex_label
+                        })
+            return out
         except Exception:
             return []
 
-    # 1. Direct search
-    results = do_search(query)
+    yahoo_results = do_search(query)
+    results.extend(yahoo_results)
+
     if results:
         return jsonify(results)
 
-    # 2. Fuzzy match auto-correction if direct search returned empty (e.g. PLOYMED -> POLYMED)
-    clean_q = query.upper().replace(".NS", "").replace(".BO", "")
-    matches = difflib.get_close_matches(clean_q, POPULAR_INDIAN_STOCKS.keys(), n=3, cutoff=0.5)
+    # 3. Fuzzy match fallback
+    clean_q_stock = clean_q.replace(".NS", "").replace(".BO", "")
+    matches = difflib.get_close_matches(clean_q_stock, POPULAR_INDIAN_STOCKS.keys(), n=3, cutoff=0.5)
     
     if matches:
         for m in matches:
             fuzzy_results = do_search(m)
             if fuzzy_results:
                 for fr in fuzzy_results:
-                    fr['name'] = f"{fr['name']} (Auto-suggested for '{query}')"
-                return jsonify(fuzzy_results)
+                    if not any(r['symbol'] == fr['symbol'] for r in results):
+                        fr['name'] = f"{fr['name']} (Auto-suggested for '{query}')"
+                        results.append(fr)
+                return jsonify(results)
 
-    return jsonify([])
+    return jsonify(results)
 
 @app.route("/api/stock_data", methods=["POST"])
 def get_stock_data():
