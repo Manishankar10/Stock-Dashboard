@@ -928,6 +928,10 @@
                 <label>Buy Date</label>
                 <input type="date" id="editBuyDate">
             </div>
+            <div class="form-group">
+                <label>Buy Reason / Investment Thesis</label>
+                <input type="text" id="editBuyReason" placeholder="e.g. Strong Q3 earnings, breakout retest, high growth...">
+            </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
                 <button class="btn-primary" onclick="saveEditHolding()">Save Changes</button>
@@ -994,6 +998,10 @@
                 <label>Buy Date</label>
                 <input type="date" id="modal-pf-add-date">
             </div>
+            <div class="form-group">
+                <label>Buy Reason / Investment Thesis (Optional)</label>
+                <input type="text" id="modal-pf-add-reason" placeholder="e.g. Breakout retest, Strong Q3 earnings, Dividend compounding..." onkeydown="if(event.key==='Enter') submitAddHolding()">
+            </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button type="button" class="btn-secondary" onclick="closeAddHoldingModal()">Cancel</button>
                 <button type="button" class="btn-primary" onclick="submitAddHolding()">Add Holding</button>
@@ -1005,7 +1013,7 @@
          HOLDING DETAILS & ACTIONS POPUP MODAL
     ========================================================= -->
     <div id="holdingDetailsModal" class="small-modal">
-        <div class="small-modal-content" style="width: 500px; max-width: 94vw; padding: 24px;">
+        <div class="small-modal-content" style="width: 520px; max-width: 94vw; padding: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
                 <div>
                     <h2 id="detail-modal-sym" style="margin: 0; font-size: 20px; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 8px;">RELIANCE.NS</h2>
@@ -1046,6 +1054,10 @@
                 <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
                     <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Day P&L</div>
                     <div id="detail-modal-daypnl" style="font-size: 13px; font-weight: 700; margin-top: 4px;">-</div>
+                </div>
+                <div style="grid-column: 1 / -1; background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Buy Reason / Investment Thesis</div>
+                    <div id="detail-modal-reason" style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 4px; font-style: italic;">-</div>
                 </div>
             </div>
 
@@ -1647,6 +1659,8 @@
             document.getElementById('modal-pf-add-price').value = '';
             document.getElementById('modal-pf-add-qty').value = '';
             document.getElementById('modal-pf-add-date').value = new Date().toISOString().split('T')[0];
+            const reasonInput = document.getElementById('modal-pf-add-reason');
+            if (reasonInput) reasonInput.value = '';
             
             const modal = document.getElementById('addHoldingModal');
             if (modal) modal.style.display = 'block';
@@ -1663,11 +1677,13 @@
             const priceInput = document.getElementById('modal-pf-add-price');
             const qtyInput = document.getElementById('modal-pf-add-qty');
             const dateInput = document.getElementById('modal-pf-add-date');
+            const reasonInput = document.getElementById('modal-pf-add-reason');
 
             const symbol = symInput.value.trim();
             const buy_price = parseFloat(priceInput.value);
             const quantity = parseFloat(qtyInput.value);
             const buy_date = dateInput.value || new Date().toISOString().split('T')[0];
+            const buy_reason = reasonInput ? reasonInput.value.trim() : '';
 
             if (!symbol || isNaN(buy_price) || isNaN(quantity) || quantity <= 0) {
                 alert('Please enter valid Stock Symbol, Buy Price, and Quantity!');
@@ -1677,7 +1693,7 @@
             const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, buy_price, quantity, buy_date })
+                body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason })
             });
             const data = await res.json();
             if (data.success) {
@@ -1801,12 +1817,14 @@
             }
         }
 
-        function openEditModal(symbol, curPrice, curQty, curDate) {
+        function openEditModal(symbol, curPrice, curQty, curDate, curReason) {
             document.getElementById('editHoldingSymbol').value = symbol;
             document.getElementById('editHoldingTitle').innerText = `Edit ${symbol} (${activePortfolioName})`;
             document.getElementById('editBuyPrice').value = curPrice;
             document.getElementById('editQuantity').value = curQty;
             document.getElementById('editBuyDate').value = curDate || new Date().toISOString().split('T')[0];
+            const reasonEl = document.getElementById('editBuyReason');
+            if (reasonEl) reasonEl.value = curReason || '';
             document.getElementById('editHoldingModal').style.display = 'block';
         }
 
@@ -1819,6 +1837,8 @@
             const buy_price = parseFloat(document.getElementById('editBuyPrice').value);
             const quantity = parseFloat(document.getElementById('editQuantity').value);
             const buy_date = document.getElementById('editBuyDate').value;
+            const reasonEl = document.getElementById('editBuyReason');
+            const buy_reason = reasonEl ? reasonEl.value.trim() : '';
 
             if (isNaN(buy_price) || isNaN(quantity) || quantity <= 0) {
                 alert('Invalid input values!');
@@ -1828,7 +1848,7 @@
             const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, buy_price, quantity, buy_date })
+                body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason })
             });
             const data = await res.json();
             if (data.success) {
@@ -2935,13 +2955,19 @@
 
             const daySign = dayPnLAmt >= 0 ? '+' : '';
             const dayPnlEl = document.getElementById('detail-modal-daypnl');
-            dayPnlEl.innerText = isPrivacyMode 
-                ? `₹ •••••• (${daySign}${dayPnlPct.toFixed(2)}%)` 
-                : `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${daySign}${dayPnlPct.toFixed(2)}%)`;
-            dayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
+            if (dayPnlEl) {
+                dayPnlEl.innerText = isPrivacyMode 
+                    ? `₹ •••••• (${daySign}${dayPnlPct.toFixed(2)}%)` 
+                    : `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${daySign}${dayPnlPct.toFixed(2)}%)`;
+                dayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
+            }
+
+            const reasonText = item.buy_reason || item.notes || 'No buy reason recorded.';
+            const reasonEl = document.getElementById('detail-modal-reason');
+            if (reasonEl) reasonEl.innerText = reasonText;
 
             document.getElementById('btn-detail-chart').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openInHouseChart(sym); };
-            document.getElementById('btn-detail-edit').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openEditModal(sym, item.buy_price, item.quantity, item.buy_date); };
+            document.getElementById('btn-detail-edit').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openEditModal(sym, item.buy_price, item.quantity, item.buy_date, item.buy_reason || item.notes || ''); };
             document.getElementById('btn-detail-delete').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); removePortfolioStock(sym); };
 
             document.getElementById('holdingDetailsModal').style.display = 'block';

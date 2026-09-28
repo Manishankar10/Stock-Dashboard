@@ -907,6 +907,7 @@ def add_portfolio_stock(name):
     buy_price = request.json.get("buy_price")
     quantity = request.json.get("quantity")
     buy_date = request.json.get("buy_date") or datetime.date.today().strftime("%Y-%m-%d")
+    buy_reason = request.json.get("buy_reason") or request.json.get("notes") or ""
     
     if not symbol or buy_price is None or quantity is None:
         return jsonify({"error": "Symbol, buy price, and quantity are required"}), 400
@@ -940,6 +941,7 @@ def add_portfolio_stock(name):
             holding["buy_price"] = buy_price
             holding["quantity"] = quantity
             holding["buy_date"] = buy_date
+            holding["buy_reason"] = buy_reason
             existing = True
             break
             
@@ -948,7 +950,8 @@ def add_portfolio_stock(name):
             "symbol": symbol,
             "buy_price": buy_price,
             "quantity": quantity,
-            "buy_date": buy_date
+            "buy_date": buy_date,
+            "buy_reason": buy_reason
         })
         
     save_portfolios(data)
