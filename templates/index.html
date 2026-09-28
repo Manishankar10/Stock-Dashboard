@@ -668,32 +668,26 @@
 
             <!-- 3. Right: Header Action Controls & User Info -->
             <div class="header-actions-group">
-                <!-- User Account Badge -->
-                <div id="user-badge" class="header-badge" title="User Account">
-                    <span style="flex-shrink: 0;">👤</span> <span id="header-username">User</span>
-                </div>
-
                 <!-- Live Last Updated Badge -->
                 <span id="last-updated-badge" class="header-badge" style="color: var(--text-secondary); font-size: 11px;">
                     🕒 Just now
                 </span>
 
-                <!-- Theme Toggle Icon Only -->
-                <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-header-action" title="Toggle Light / Dark Mode" style="font-size: 14px;">
-                    <span id="theme-icon">🌙</span>
+                <!-- Privacy Mode Toggle (Eye Icon Only) -->
+                <button id="btn-privacy-header" onclick="togglePrivacyMode()" class="btn-header-action" title="Hide / Show Monetary Amounts">
+                    👁️
                 </button>
 
-                <!-- Privacy Mode Toggle (Eye) -->
-                <button id="btn-privacy-header" onclick="togglePrivacyMode()" class="btn-header-action" title="Hide/Show monetary amounts for real-money privacy">
-                    👁️ <span>Hide Amounts</span>
-                </button>
-
-                <!-- Options Menu Dropdown -->
+                <!-- Options Menu Dropdown with Combined Username & Theme Toggle -->
                 <div class="menu-dropdown-wrapper">
-                    <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-header-action" title="Options & Data Tools">
-                        ⚙️ Menu ▾
+                    <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-header-action" title="User Account & Options">
+                        👤 <span id="header-username">User</span> ▾
                     </button>
                     <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                        <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </div>
+                        <div class="menu-divider"></div>
                         <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
                             <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
                         </div>
@@ -726,12 +720,23 @@
              TAB 1: WATCHLISTS
         ========================================================= -->
         <div id="tab-watchlists" class="tab-content active">
-            <div class="controls">
-                <input type="text" id="new-watchlist-name" placeholder="Create new watchlist name...">
-                <button onclick="createWatchlist()">Create Watchlist</button>
+            <!-- Selector & Watchlist Creation Bar -->
+            <div class="card-container" style="padding: 16px 24px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">WATCHLISTS:</span>
+                        <div class="portfolio-selector-bar" id="watchlist-selector-mount" style="margin-bottom: 0;"></div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button onclick="openCreateWatchlistModal()">+ Create Watchlist</button>
+                        <button class="danger" onclick="deleteActiveWatchlist()">Delete Watchlist</button>
+                    </div>
+                </div>
             </div>
-            <div id="watchlists-mount">
-                <div class="loading">Loading watchlists...</div>
+
+            <!-- Active Watchlist View -->
+            <div id="watchlist-view-mount">
+                <div class="loading">Loading watchlist details...</div>
             </div>
         </div>
 
@@ -739,16 +744,15 @@
              TAB 2: PORTFOLIOS
         ========================================================= -->
         <div id="tab-portfolios" class="tab-content">
-            <!-- Selector & Portfolio Creation Bar -->
+            <!-- Selector, Add Holding & Portfolio Creation Bar -->
             <div class="card-container" style="padding: 16px 24px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-weight: 600; color: #7f8c8d; font-size: 14px;">PORTFOLIOS:</span>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">PORTFOLIOS:</span>
                         <div class="portfolio-selector-bar" id="portfolio-selector-mount" style="margin-bottom: 0;"></div>
                     </div>
-                    <div class="controls" style="margin-bottom: 0;">
-                        <input type="text" id="new-portfolio-name" placeholder="New portfolio name..." style="width: 200px;">
-                        <button onclick="createPortfolio()">+ Create Portfolio</button>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="openCreatePortfolioModal()">+ Create Portfolio</button>
                         <button class="danger" onclick="deleteActivePortfolio()">Delete Portfolio</button>
                     </div>
                 </div>
@@ -932,6 +936,72 @@
     </div>
 
     <!-- =========================================================
+         CREATE WATCHLIST POPUP MODAL
+    ========================================================= -->
+    <div id="createWatchlistModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3>Create New Watchlist</h3>
+            <div class="form-group">
+                <label>Watchlist Name</label>
+                <input type="text" id="modal-new-watchlist-name" placeholder="e.g. IT Sector, Dividend Picks..." onkeydown="if(event.key==='Enter') submitCreateWatchlist()">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeCreateWatchlistModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitCreateWatchlist()">Create Watchlist</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         CREATE PORTFOLIO POPUP MODAL
+    ========================================================= -->
+    <div id="createPortfolioModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3>Create New Portfolio</h3>
+            <div class="form-group">
+                <label>Portfolio Name</label>
+                <input type="text" id="modal-new-portfolio-name" placeholder="e.g. Core Wealth, Trading, High Growth..." onkeydown="if(event.key==='Enter') submitCreatePortfolio()">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeCreatePortfolioModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitCreatePortfolio()">Create Portfolio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         ADD HOLDING POPUP MODAL
+    ========================================================= -->
+    <div id="addHoldingModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3 id="addHoldingModalTitle">Add Holding to Portfolio</h3>
+            <div class="form-group" style="position: relative;">
+                <label>Stock Symbol / Company Name</label>
+                <div class="autocomplete-wrapper" style="width: 100%;">
+                    <input type="text" id="modal-pf-add-symbol" placeholder="Search stock (e.g. Reliance, TCS, Polymed)..." autocomplete="off" onkeyup="handleSearchInput('modal-pf', this, event)">
+                    <div class="autocomplete-dropdown" id="dropdown-modal-pf"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Buy Price (₹)</label>
+                <input type="number" step="0.01" id="modal-pf-add-price" placeholder="e.g. 2450.50">
+            </div>
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" step="1" id="modal-pf-add-qty" placeholder="e.g. 50">
+            </div>
+            <div class="form-group">
+                <label>Buy Date</label>
+                <input type="date" id="modal-pf-add-date">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeAddHoldingModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitAddHolding()">Add Holding</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
          HOLDING DETAILS & ACTIONS POPUP MODAL
     ========================================================= -->
     <div id="holdingDetailsModal" class="small-modal">
@@ -992,6 +1062,7 @@
         let currentTab = 'watchlists';
         let watchlistsData = {};
         let portfoliosData = {};
+        let activeWatchlistName = '';
         let activePortfolioName = '';
         let stockPricesData = {};
         let searchTimeout = null;
@@ -999,6 +1070,21 @@
         // Portfolio Sort & Filter State
         let pfFilterOption = 'all'; // 'all', 'st', 'lt'
         let pfSortOption = 'duration_desc'; // 'duration_desc', 'duration_asc', 'pnl_desc', 'pnl_asc', 'val_desc', 'date_desc', 'date_asc', 'name_asc'
+
+        // Watchlist Sort State
+        let wlSortColumn = 'symbol'; // 'symbol', 'price', 'change', 'change_pct'
+        let wlSortDirection = 'asc';  // 'asc', 'desc'
+
+        function toggleWatchlistSort(col) {
+            if (wlSortColumn === col) {
+                wlSortDirection = wlSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                wlSortColumn = col;
+                wlSortDirection = col === 'symbol' ? 'asc' : 'desc';
+            }
+            renderWatchlists();
+            refreshPrices();
+        }
 
         // Privacy Mode State (Show / Hide sensitive financial money values)
         let isPrivacyMode = localStorage.getItem('capital_desk_privacy_mode') === 'true';
@@ -1037,15 +1123,14 @@
             const btnHeader = document.getElementById('btn-privacy-header');
             const btnPf = document.getElementById('btn-privacy-pf');
             const icon = isPrivacyMode ? '🙈' : '👁️';
-            const text = isPrivacyMode ? 'Amounts Hidden' : 'Hide Amounts';
 
             if (btnHeader) {
-                btnHeader.innerHTML = `${icon} <span>${text}</span>`;
+                btnHeader.innerHTML = `${icon}`;
                 btnHeader.title = isPrivacyMode ? 'Click to show portfolio amounts' : 'Click to hide portfolio amounts (Privacy Mode)';
                 btnHeader.style.borderColor = isPrivacyMode ? '#10b981' : '';
             }
             if (btnPf) {
-                btnPf.innerHTML = `${icon} <span>${text}</span>`;
+                btnPf.innerHTML = `${icon}`;
                 btnPf.style.borderColor = isPrivacyMode ? '#10b981' : '';
             }
         }
@@ -1128,6 +1213,17 @@
         async function fetchWatchlists() {
             const res = await fetch('/api/watchlists');
             watchlistsData = await res.json();
+            
+            const names = Object.keys(watchlistsData);
+            if (names.length > 0 && (!activeWatchlistName || !watchlistsData[activeWatchlistName])) {
+                activeWatchlistName = names[0];
+            }
+            renderWatchlists();
+            refreshPrices();
+        }
+
+        function selectWatchlist(name) {
+            activeWatchlistName = name;
             renderWatchlists();
             refreshPrices();
         }
@@ -1146,6 +1242,7 @@
             if (data.success) {
                 input.value = '';
                 watchlistsData = data.watchlists;
+                activeWatchlistName = name;
                 renderWatchlists();
                 refreshPrices();
             } else {
@@ -1153,38 +1250,50 @@
             }
         }
 
-        async function deleteWatchlist(name) {
-            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
-            const res = await fetch(`/api/watchlists/${encodeURIComponent(name)}`, { method: 'DELETE' });
+        async function deleteActiveWatchlist() {
+            if (!activeWatchlistName) return;
+            if (!confirm(`Are you sure you want to delete watchlist "${activeWatchlistName}"?`)) return;
+
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(activeWatchlistName)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 watchlistsData = data.watchlists;
+                const names = Object.keys(watchlistsData);
+                activeWatchlistName = names.length > 0 ? names[0] : '';
                 renderWatchlists();
                 refreshPrices();
+            } else {
+                alert(data.error || 'Failed to delete watchlist');
             }
         }
 
         async function addWatchlistStock(watchlistName, symbolInputValue = null) {
-            const input = document.querySelector(`.wl-input[data-wl-name="${CSS.escape(watchlistName)}"]`);
+            const targetName = watchlistName || activeWatchlistName;
+            if (!targetName) return;
+            const input = document.getElementById('wl-search-input');
             const symbol = symbolInputValue || (input ? input.value.trim() : "");
             if (!symbol) return;
             
-            const res = await fetch(`/api/watchlists/${encodeURIComponent(watchlistName)}/stocks`, {
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ symbol })
             });
             const data = await res.json();
             if (data.success) {
-                if(input) input.value = '';
+                if (input) input.value = '';
                 watchlistsData = data.watchlists;
                 renderWatchlists();
                 refreshPrices();
+            } else {
+                alert(data.error || 'Failed to add stock');
             }
         }
 
         async function removeWatchlistStock(watchlistName, symbol) {
-            const res = await fetch(`/api/watchlists/${encodeURIComponent(watchlistName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+            const targetName = watchlistName || activeWatchlistName;
+            if (!targetName || !confirm(`Remove ${symbol} from ${targetName}?`)) return;
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 watchlistsData = data.watchlists;
@@ -1194,151 +1303,217 @@
         }
 
         function renderWatchlists() {
-            const mount = document.getElementById('watchlists-mount');
-            mount.innerHTML = '';
-
-            for (const [name, symbols] of Object.entries(watchlistsData)) {
-                const div = document.createElement('div');
-                div.className = 'card-container';
-                
-                let tbody = document.createElement('tbody');
-                if (symbols.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#95a5a6; padding: 20px;">No stocks added yet. Search above to add!</td></tr>';
+            // 1. Render Selector Bar
+            const selectorMount = document.getElementById('watchlist-selector-mount');
+            if (selectorMount) {
+                selectorMount.innerHTML = '';
+                const wlNames = Object.keys(watchlistsData);
+                if (wlNames.length === 0) {
+                    selectorMount.innerHTML = '<span style="color:var(--text-secondary); font-size:13px;">No watchlists created yet.</span>';
                 } else {
-                    symbols.forEach(sym => {
-                        const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
-                        const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
-
-                        const tr = document.createElement('tr');
-                        tr.id = `row-${sym}`;
-                        tr.className = 'pf-row';
-                        tr.title = 'Click row to view interactive technical chart';
-                        tr.onclick = (e) => {
-                            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-                            openInHouseChart(sym);
-                        };
-                        
-                        const tdSymbol = document.createElement('td');
-                        tdSymbol.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="name-${sym}">Loading...</div>`;
-
-                        const tdPrice = document.createElement('td');
-                        tdPrice.style.textAlign = 'right';
-                        tdPrice.id = `price-${sym}`;
-                        tdPrice.innerText = '-';
-
-                        const tdChange = document.createElement('td');
-                        tdChange.style.textAlign = 'right';
-                        tdChange.id = `change-${sym}`;
-                        tdChange.innerText = '-';
-
-                        const tdMcap = document.createElement('td');
-                        tdMcap.style.textAlign = 'right';
-                        tdMcap.id = `mcap-${sym}`;
-                        tdMcap.innerText = '-';
-
-                        const tdActions = document.createElement('td');
-                        tdActions.style.textAlign = 'center';
-                        const actionsDiv = document.createElement('div');
-                        actionsDiv.style.display = 'flex';
-                        actionsDiv.style.alignItems = 'center';
-                        actionsDiv.style.justifyContent = 'center';
-                        actionsDiv.style.gap = '12px';
-
-                        const chartBtn = document.createElement('button');
-                        chartBtn.className = 'btn-secondary';
-                        chartBtn.style.padding = '6px 14px';
-                        chartBtn.style.fontSize = '12px';
-                        chartBtn.innerHTML = '📊 Chart';
-                        chartBtn.onclick = () => openInHouseChart(sym);
-
-                        const delBtn = document.createElement('button');
-                        delBtn.className = 'btn-danger';
-                        delBtn.style.padding = '6px 14px';
-                        delBtn.style.fontSize = '12px';
-                        delBtn.innerHTML = '🗑️ Remove';
-                        delBtn.onclick = () => removeWatchlistStock(name, sym);
-
-                        actionsDiv.appendChild(chartBtn);
-                        actionsDiv.appendChild(delBtn);
-                        tdActions.appendChild(actionsDiv);
-
-                        tr.appendChild(tdSymbol);
-                        tr.appendChild(tdPrice);
-                        tr.appendChild(tdChange);
-                        tr.appendChild(tdMcap);
-                        tr.appendChild(tdActions);
-                        tbody.appendChild(tr);
+                    wlNames.forEach(name => {
+                        const btn = document.createElement('button');
+                        btn.className = `pf-select-btn ${name === activeWatchlistName ? 'active' : ''}`;
+                        btn.innerText = name;
+                        btn.onclick = () => selectWatchlist(name);
+                        selectorMount.appendChild(btn);
                     });
                 }
-
-                const headerBar = document.createElement('div');
-                headerBar.className = 'header-bar';
-                headerBar.innerHTML = `<h2>${escapeHtml(name)}</h2>`;
-                const delListBtn = document.createElement('button');
-                delListBtn.className = 'danger';
-                delListBtn.innerText = 'Delete List';
-                delListBtn.onclick = () => deleteWatchlist(name);
-                headerBar.appendChild(delListBtn);
-
-                const controlsDiv = document.createElement('div');
-                controlsDiv.className = 'controls';
-                controlsDiv.style.justify = 'flex-start';
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'autocomplete-wrapper';
-
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'wl-input';
-                input.setAttribute('data-wl-name', name);
-                input.placeholder = 'Search company (e.g. Reliance, Polymed)...';
-                input.onkeyup = (e) => handleSearchInput('wl', input, e);
-                input.autocomplete = 'off';
-
-                const dropdown = document.createElement('div');
-                dropdown.className = 'autocomplete-dropdown';
-
-                wrapper.appendChild(input);
-                wrapper.appendChild(dropdown);
-
-                const addBtn = document.createElement('button');
-                addBtn.innerText = 'Add Symbol';
-                addBtn.onclick = () => addWatchlistStock(name);
-
-                controlsDiv.appendChild(wrapper);
-                controlsDiv.appendChild(addBtn);
-
-                const scrollContainer = document.createElement('div');
-                scrollContainer.className = 'table-responsive-container';
-
-                const table = document.createElement('table');
-                const thead = document.createElement('thead');
-                thead.innerHTML = `
-                    <tr>
-                        <th>Company / Symbol</th>
-                        <th style="text-align:right;">LTP (₹)</th>
-                        <th style="text-align:right;">Change (%)</th>
-                        <th style="text-align:right;">Market Cap (Cr)</th>
-                        <th style="text-align:center;">Actions</th>
-                    </tr>
-                `;
-                table.appendChild(thead);
-                table.appendChild(tbody);
-                scrollContainer.appendChild(table);
-
-                div.appendChild(headerBar);
-                div.appendChild(controlsDiv);
-                div.appendChild(scrollContainer);
-                mount.appendChild(div);
             }
+
+            // 2. Render Active Watchlist View
+            const viewMount = document.getElementById('watchlist-view-mount');
+            if (!viewMount) return;
+            viewMount.innerHTML = '';
+
+            if (!activeWatchlistName || !watchlistsData[activeWatchlistName]) {
+                viewMount.innerHTML = '<div class="card-container" style="text-align:center; padding:40px; color:var(--text-secondary);">No active watchlist selected. Create or select a watchlist above!</div>';
+                return;
+            }
+
+            let symbols = (watchlistsData[activeWatchlistName] || []).slice();
+
+            // Apply Watchlist Sorting
+            symbols.sort((a, b) => {
+                const infoA = stockPricesData[a] || {};
+                const infoB = stockPricesData[b] || {};
+
+                let valA, valB;
+                if (wlSortColumn === 'symbol') {
+                    valA = a;
+                    valB = b;
+                    return wlSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (wlSortColumn === 'price') {
+                    valA = infoA.price !== undefined ? infoA.price : -Infinity;
+                    valB = infoB.price !== undefined ? infoB.price : -Infinity;
+                } else if (wlSortColumn === 'change') {
+                    valA = infoA.change !== undefined ? infoA.change : -Infinity;
+                    valB = infoB.change !== undefined ? infoB.change : -Infinity;
+                } else if (wlSortColumn === 'change_pct') {
+                    valA = infoA.change_pct !== undefined ? infoA.change_pct : -Infinity;
+                    valB = infoB.change_pct !== undefined ? infoB.change_pct : -Infinity;
+                }
+                return wlSortDirection === 'asc' ? valA - valB : valB - valA;
+            });
+
+            const div = document.createElement('div');
+            div.className = 'card-container';
+
+            // Controls & Autocomplete search bar for active watchlist (Direct selection adds stock)
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'controls';
+            controlsDiv.style.justifyContent = 'flex-start';
+            controlsDiv.style.marginBottom = '20px';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'autocomplete-wrapper';
+            wrapper.style.width = '100%';
+            wrapper.style.maxWidth = '420px';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'wl-search-input';
+            input.className = 'wl-input';
+            input.setAttribute('data-wl-name', activeWatchlistName);
+            input.placeholder = 'Search & click company to add (e.g. Reliance, TCS, Polymed)...';
+            input.onkeyup = (e) => {
+                if (e.key === 'Enter') {
+                    const val = input.value.trim();
+                    if (val) addWatchlistStock(activeWatchlistName, val);
+                } else {
+                    handleSearchInput('wl', input, e);
+                }
+            };
+            input.autocomplete = 'off';
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'autocomplete-dropdown';
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(dropdown);
+            controlsDiv.appendChild(wrapper);
+
+            // Table of stocks in active watchlist
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'table-responsive-container';
+
+            const getSortIcon = (col) => {
+                if (wlSortColumn !== col) return '<span style="opacity:0.3; margin-left:4px;">↕</span>';
+                return wlSortDirection === 'asc' ? '<span style="color:#10b981; margin-left:4px;">▲</span>' : '<span style="color:#10b981; margin-left:4px;">▼</span>';
+            };
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th style="cursor:pointer; user-select:none;" onclick="toggleWatchlistSort('symbol')" title="Click to sort by Company / Symbol">
+                        Company / Symbol ${getSortIcon('symbol')}
+                    </th>
+                    <th style="text-align:right; cursor:pointer; user-select:none;" onclick="toggleWatchlistSort('price')" title="Click to sort by LTP">
+                        LTP (₹) ${getSortIcon('price')}
+                    </th>
+                    <th style="text-align:right; cursor:pointer; user-select:none;" onclick="toggleWatchlistSort('change')" title="Click to sort by Change Amount">
+                        Change (₹) ${getSortIcon('change')}
+                    </th>
+                    <th style="text-align:right; cursor:pointer; user-select:none;" onclick="toggleWatchlistSort('change_pct')" title="Click to sort by Change %">
+                        Change (%) ${getSortIcon('change_pct')}
+                    </th>
+                    <th style="text-align:center;">Actions</th>
+                </tr>
+            `;
+
+            let tbody = document.createElement('tbody');
+            if (symbols.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding: 25px;">No stocks added to this watchlist yet. Use the search box above to add stocks!</td></tr>';
+            } else {
+                symbols.forEach(sym => {
+                    const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
+                    const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+
+                    const tr = document.createElement('tr');
+                    tr.id = `row-${sym}`;
+                    tr.className = 'pf-row';
+                    tr.title = 'Click row to view interactive technical chart';
+                    tr.onclick = (e) => {
+                        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                        openInHouseChart(sym);
+                    };
+                    
+                    const tdSymbol = document.createElement('td');
+                    tdSymbol.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="name-${sym}">Loading...</div>`;
+
+                    const tdPrice = document.createElement('td');
+                    tdPrice.style.textAlign = 'right';
+                    tdPrice.id = `price-${sym}`;
+                    tdPrice.innerText = '-';
+
+                    const tdChangeAmt = document.createElement('td');
+                    tdChangeAmt.style.textAlign = 'right';
+                    tdChangeAmt.id = `change-amt-${sym}`;
+                    tdChangeAmt.innerText = '-';
+
+                    const tdChangePct = document.createElement('td');
+                    tdChangePct.style.textAlign = 'right';
+                    tdChangePct.id = `change-pct-${sym}`;
+                    tdChangePct.innerText = '-';
+
+                    const tdActions = document.createElement('td');
+                    tdActions.style.textAlign = 'center';
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.style.display = 'flex';
+                    actionsDiv.style.alignItems = 'center';
+                    actionsDiv.style.justifyContent = 'center';
+                    actionsDiv.style.gap = '8px';
+
+                    const chartBtn = document.createElement('button');
+                    chartBtn.className = 'btn-secondary';
+                    chartBtn.style.padding = '6px 10px';
+                    chartBtn.style.fontSize = '14px';
+                    chartBtn.title = 'View Interactive Technical Chart';
+                    chartBtn.innerHTML = '📊';
+                    chartBtn.onclick = () => openInHouseChart(sym);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'btn-danger';
+                    delBtn.style.padding = '6px 10px';
+                    delBtn.style.fontSize = '14px';
+                    delBtn.title = `Remove ${sym} from ${activeWatchlistName}`;
+                    delBtn.innerHTML = '🗑️';
+                    delBtn.onclick = () => removeWatchlistStock(activeWatchlistName, sym);
+
+                    actionsDiv.appendChild(chartBtn);
+                    actionsDiv.appendChild(delBtn);
+                    tdActions.appendChild(actionsDiv);
+
+                    tr.appendChild(tdSymbol);
+                    tr.appendChild(tdPrice);
+                    tr.appendChild(tdChangeAmt);
+                    tr.appendChild(tdChangePct);
+                    tr.appendChild(tdActions);
+                    tbody.appendChild(tr);
+                });
+            }
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            scrollContainer.appendChild(table);
+
+            div.appendChild(controlsDiv);
+            div.appendChild(scrollContainer);
+            viewMount.appendChild(div);
         }
 
         // Search Autocomplete Handler
         function handleSearchInput(type, inputElement, event) {
             const query = inputElement.value.trim();
-            const dropdown = type === 'wl' 
-                ? inputElement.nextElementSibling 
-                : document.getElementById('dropdown-pf');
+            let dropdown;
+            if (type === 'wl') {
+                dropdown = inputElement.nextElementSibling;
+            } else if (type === 'modal-pf') {
+                dropdown = document.getElementById('dropdown-modal-pf');
+            } else {
+                dropdown = document.getElementById('dropdown-pf');
+            }
             
             if (searchTimeout) clearTimeout(searchTimeout);
             
@@ -1369,6 +1544,9 @@
                             if (type === 'wl') {
                                 const targetName = inputElement.getAttribute('data-wl-name');
                                 addWatchlistStock(targetName, item.symbol);
+                            } else if (type === 'modal-pf') {
+                                const symInput = document.getElementById('modal-pf-add-symbol');
+                                if (symInput) symInput.value = item.symbol;
                             } else {
                                 const symInput = document.getElementById('pf-add-symbol');
                                 if (symInput) symInput.value = item.symbol;
@@ -1382,6 +1560,134 @@
                     dropdown.style.display = 'none';
                 }
             }, 250);
+        }
+
+        // Modal Handler Functions for Watchlist, Portfolio, and Add Holding Popups
+        function openCreateWatchlistModal() {
+            const input = document.getElementById('modal-new-watchlist-name');
+            if (input) input.value = '';
+            const modal = document.getElementById('createWatchlistModal');
+            if (modal) modal.style.display = 'block';
+        }
+
+        function closeCreateWatchlistModal() {
+            const modal = document.getElementById('createWatchlistModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitCreateWatchlist() {
+            const input = document.getElementById('modal-new-watchlist-name');
+            const name = input.value.trim();
+            if (!name) {
+                alert('Please enter a watchlist name!');
+                return;
+            }
+            const res = await fetch('/api/watchlists', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeCreateWatchlistModal();
+                watchlistsData = data.watchlists;
+                activeWatchlistName = name;
+                renderWatchlists();
+                refreshPrices();
+            } else {
+                alert(data.error || 'Failed to create watchlist');
+            }
+        }
+
+        function openCreatePortfolioModal() {
+            const input = document.getElementById('modal-new-portfolio-name');
+            if (input) input.value = '';
+            const modal = document.getElementById('createPortfolioModal');
+            if (modal) modal.style.display = 'block';
+        }
+
+        function closeCreatePortfolioModal() {
+            const modal = document.getElementById('createPortfolioModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitCreatePortfolio() {
+            const input = document.getElementById('modal-new-portfolio-name');
+            const name = input.value.trim();
+            if (!name) {
+                alert('Please enter a portfolio name!');
+                return;
+            }
+            const res = await fetch('/api/portfolios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeCreatePortfolioModal();
+                portfoliosData = data.portfolios;
+                activePortfolioName = name;
+                renderPortfolios();
+                refreshPrices();
+            } else {
+                alert(data.error || 'Failed to create portfolio');
+            }
+        }
+
+        function openAddHoldingModal() {
+            if (!activePortfolioName) {
+                alert('Please create or select a portfolio first!');
+                return;
+            }
+            const titleEl = document.getElementById('addHoldingModalTitle');
+            if (titleEl) titleEl.innerText = `Add Holding to ${activePortfolioName}`;
+            
+            document.getElementById('modal-pf-add-symbol').value = '';
+            document.getElementById('modal-pf-add-price').value = '';
+            document.getElementById('modal-pf-add-qty').value = '';
+            document.getElementById('modal-pf-add-date').value = new Date().toISOString().split('T')[0];
+            
+            const modal = document.getElementById('addHoldingModal');
+            if (modal) modal.style.display = 'block';
+        }
+
+        function closeAddHoldingModal() {
+            const modal = document.getElementById('addHoldingModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitAddHolding() {
+            if (!activePortfolioName) return;
+            const symInput = document.getElementById('modal-pf-add-symbol');
+            const priceInput = document.getElementById('modal-pf-add-price');
+            const qtyInput = document.getElementById('modal-pf-add-qty');
+            const dateInput = document.getElementById('modal-pf-add-date');
+
+            const symbol = symInput.value.trim();
+            const buy_price = parseFloat(priceInput.value);
+            const quantity = parseFloat(qtyInput.value);
+            const buy_date = dateInput.value || new Date().toISOString().split('T')[0];
+
+            if (!symbol || isNaN(buy_price) || isNaN(quantity) || quantity <= 0) {
+                alert('Please enter valid Stock Symbol, Buy Price, and Quantity!');
+                return;
+            }
+
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, buy_price, quantity, buy_date })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeAddHoldingModal();
+                portfoliosData = data.portfolios;
+                renderPortfolios();
+                refreshPrices();
+            } else {
+                alert(data.error || 'Failed to add holding');
+            }
         }
 
         // Close dropdowns on outside click
@@ -1574,7 +1880,10 @@
 
             const headerBar = document.createElement('div');
             headerBar.className = 'header-bar';
-            headerBar.innerHTML = `<h2>${escapeHtml(activePortfolioName)}</h2>`;
+            headerBar.innerHTML = `
+                <h2>${escapeHtml(activePortfolioName)}</h2>
+                <button onclick="openAddHoldingModal()">+ Add Holding</button>
+            `;
 
             const summaryGrid = document.createElement('div');
             summaryGrid.className = 'summary-grid';
@@ -1600,69 +1909,6 @@
                     <div class="sub-value" id="pf-summary-daypnl-pct">0.00%</div>
                 </div>
             `;
-
-            // Form controls for adding holding
-            const controlsDiv = document.createElement('div');
-            controlsDiv.className = 'controls';
-            controlsDiv.style.background = '#f8f9fa';
-            controlsDiv.style.padding = '14px 18px';
-            controlsDiv.style.borderRadius = '8px';
-            controlsDiv.style.border = '1px solid #eef0f3';
-
-            const label = document.createElement('span');
-            label.style.fontWeight = '600';
-            label.style.fontSize = '13px';
-            label.style.color = '#2c3e50';
-            label.innerText = 'Add / Update Holding:';
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'autocomplete-wrapper';
-
-            const symInput = document.createElement('input');
-            symInput.type = 'text';
-            symInput.id = 'pf-add-symbol';
-            symInput.placeholder = 'Stock Symbol / Company...';
-            symInput.onkeyup = (e) => handleSearchInput('pf', symInput, e);
-            symInput.autocomplete = 'off';
-
-            const dropdown = document.createElement('div');
-            dropdown.className = 'autocomplete-dropdown';
-            dropdown.id = 'dropdown-pf';
-
-            wrapper.appendChild(symInput);
-            wrapper.appendChild(dropdown);
-
-            const priceInput = document.createElement('input');
-            priceInput.type = 'number';
-            priceInput.step = '0.01';
-            priceInput.id = 'pf-add-price';
-            priceInput.placeholder = 'Buy Price (₹)';
-            priceInput.style.width = '130px';
-
-            const qtyInput = document.createElement('input');
-            qtyInput.type = 'number';
-            qtyInput.step = '1';
-            qtyInput.id = 'pf-add-qty';
-            qtyInput.placeholder = 'Quantity';
-            qtyInput.style.width = '100px';
-
-            const todayStr = new Date().toISOString().split('T')[0];
-            const dateInput = document.createElement('input');
-            dateInput.type = 'date';
-            dateInput.id = 'pf-add-date';
-            dateInput.value = todayStr;
-            dateInput.title = 'Buy Date';
-
-            const addBtn = document.createElement('button');
-            addBtn.innerText = '+ Add Holding';
-            addBtn.onclick = () => addPortfolioStock();
-
-            controlsDiv.appendChild(label);
-            controlsDiv.appendChild(wrapper);
-            controlsDiv.appendChild(priceInput);
-            controlsDiv.appendChild(qtyInput);
-            controlsDiv.appendChild(dateInput);
-            controlsDiv.appendChild(addBtn);
 
             // Filter & Sort Control Bar
             const filterSortDiv = document.createElement('div');
@@ -1847,7 +2093,6 @@
 
             container.appendChild(headerBar);
             container.appendChild(summaryGrid);
-            container.appendChild(controlsDiv);
             container.appendChild(filterSortDiv);
             container.appendChild(scrollContainer);
 
@@ -1881,26 +2126,30 @@
             for (const [sym, info] of Object.entries(stockPricesData)) {
                 const nameEl = document.getElementById(`name-${sym}`);
                 const priceEl = document.getElementById(`price-${sym}`);
-                const changeEl = document.getElementById(`change-${sym}`);
-                const mcapEl = document.getElementById(`mcap-${sym}`);
+                const changeAmtEl = document.getElementById(`change-amt-${sym}`);
+                const changePctEl = document.getElementById(`change-pct-${sym}`);
 
                 if (info.error) {
                     if (nameEl) nameEl.innerText = 'Stock unavailable';
                     if (priceEl) priceEl.innerText = 'Error';
-                    if (changeEl) changeEl.innerText = '-';
-                    if (mcapEl) mcapEl.innerText = '-';
+                    if (changeAmtEl) changeAmtEl.innerText = '-';
+                    if (changePctEl) changePctEl.innerText = '-';
                     continue;
                 }
                 
                 if (nameEl && info.name) nameEl.innerText = info.name;
                 if (priceEl && info.price !== undefined) priceEl.innerText = '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2});
-                if (mcapEl) mcapEl.innerText = info.mcap_cr !== 'N/A' ? '₹' + info.mcap_cr.toLocaleString('en-IN') + ' Cr' : 'N/A';
                 
-                if (changeEl && info.change !== undefined) {
-                    const sign = info.change > 0 ? '+' : '';
-                    const changeText = `${sign}${info.change.toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`;
-                    changeEl.innerText = changeText;
-                    changeEl.className = info.change >= 0 ? 'pos' : 'neg';
+                if (info.change !== undefined) {
+                    const sign = info.change >= 0 ? '+' : '';
+                    if (changeAmtEl) {
+                        changeAmtEl.innerText = `${sign}₹${Math.abs(info.change).toFixed(2)}`;
+                        changeAmtEl.className = info.change >= 0 ? 'pos' : 'neg';
+                    }
+                    if (changePctEl) {
+                        changePctEl.innerText = `${sign}${info.change_pct.toFixed(2)}%`;
+                        changePctEl.className = info.change >= 0 ? 'pos' : 'neg';
+                    }
                 }
             }
 
@@ -2726,9 +2975,16 @@
             const modal = document.getElementById('chartModal');
             const editModal = document.getElementById('editHoldingModal');
             const detailModal = document.getElementById('holdingDetailsModal');
+            const createWlModal = document.getElementById('createWatchlistModal');
+            const createPfModal = document.getElementById('createPortfolioModal');
+            const addHoldingModal = document.getElementById('addHoldingModal');
+
             if (event.target == modal) closeChartModal();
             if (event.target == editModal) closeEditModal();
             if (event.target == detailModal) closeHoldingDetailsModal();
+            if (event.target == createWlModal) closeCreateWatchlistModal();
+            if (event.target == createPfModal) closeCreatePortfolioModal();
+            if (event.target == addHoldingModal) closeAddHoldingModal();
 
             const menuDropdown = document.getElementById('settings-menu-dropdown');
             if (menuDropdown && !event.target.closest('.menu-dropdown-wrapper')) {
@@ -2740,6 +2996,9 @@
                 closeChartModal();
                 closeEditModal();
                 closeHoldingDetailsModal();
+                closeCreateWatchlistModal();
+                closeCreatePortfolioModal();
+                closeAddHoldingModal();
                 closeSettingsMenu();
             }
         });

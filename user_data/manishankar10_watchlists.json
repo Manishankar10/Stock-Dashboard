@@ -3,7 +3,9 @@
         "MOBAVENUE.BO",
         "GLASSWALL.NS",
         "INFLUX-SM.NS",
-        "MSAFE.BO"
+        "MSAFE.BO",
+        "SEAMECLTD.NS",
+        "VIVIDEL-SM.NS"
     ],
     "Riders": [
         "ROLEXRINGS.NS",
