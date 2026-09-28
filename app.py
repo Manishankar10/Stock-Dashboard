@@ -4,11 +4,20 @@ import datetime
 import requests
 import math
 import difflib
-from flask import Flask, render_template, request, jsonify
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
+
 DATA_FILE = "watchlists.json"
 PORTFOLIO_FILE = "portfolios.json"
+USERS_FILE = "users.json"
+USER_DATA_DIR = "user_data"
+
+if not os.path.exists(USER_DATA_DIR):
+    os.makedirs(USER_DATA_DIR)
 
 # Popular Indian stock dictionary for fuzzy matching & typo auto-correction
 POPULAR_INDIAN_STOCKS = {
@@ -270,80 +279,197 @@ def calculate_indicators(candles):
         'rsi': rsi
     }
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        # Auto-restore if a local backup file exists
-        for backup_name in ["backup.json", "my_backup.json"]:
-            if os.path.exists(backup_name):
-                try:
-                    with open(backup_name, "r") as f:
-                        b_data = json.load(f)
-                        if "watchlists" in b_data:
-                            save_data(b_data["watchlists"])
-                            return b_data["watchlists"]
-                except Exception:
-                    pass
-        # Fallback to example template
-        if os.path.exists("watchlists.example.json"):
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        return {}
+    try:
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_users(users):
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=4)
+
+def get_user_watchlist_file(username):
+    safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
+    return os.path.join(USER_DATA_DIR, f"{safe_user}_watchlists.json")
+
+def get_user_portfolio_file(username):
+    safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
+    return os.path.join(USER_DATA_DIR, f"{safe_user}_portfolios.json")
+
+def load_data(username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return {}
+        
+    filepath = get_user_watchlist_file(username)
+    if not os.path.exists(filepath):
+        default_data = {}
+        if os.path.exists(DATA_FILE):
             try:
-                with open("watchlists.example.json", "r") as f:
-                    example_data = json.load(f)
-                    save_data(example_data)
-                    return example_data
+                with open(DATA_FILE, "r") as f:
+                    default_data = json.load(f)
             except Exception:
                 pass
-        default_data = {"Path Finders": ["RELIANCE.NS", "TCS.NS", "INFY.NS"]}
-        save_data(default_data)
+        if not default_data:
+            default_data = {"Path Finders": ["RELIANCE.NS", "TCS.NS", "INFY.NS"]}
+        save_data(default_data, username)
         return default_data
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+        
+    try:
+        with open(filepath, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
+def save_data(data, username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return
+    filepath = get_user_watchlist_file(username)
+    with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
-def load_portfolios():
-    if not os.path.exists(PORTFOLIO_FILE):
-        # Auto-restore if a local backup file exists
-        for backup_name in ["backup.json", "my_backup.json"]:
-            if os.path.exists(backup_name):
-                try:
-                    with open(backup_name, "r") as f:
-                        b_data = json.load(f)
-                        if "portfolios" in b_data:
-                            save_portfolios(b_data["portfolios"])
-                            return b_data["portfolios"]
-                except Exception:
-                    pass
-        # Fallback to example template
-        if os.path.exists("portfolios.example.json"):
+def load_portfolios(username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return {}
+        
+    filepath = get_user_portfolio_file(username)
+    if not os.path.exists(filepath):
+        default_pfs = {}
+        if os.path.exists(PORTFOLIO_FILE):
             try:
-                with open("portfolios.example.json", "r") as f:
-                    example_data = json.load(f)
-                    save_portfolios(example_data)
-                    return example_data
+                with open(PORTFOLIO_FILE, "r") as f:
+                    default_pfs = json.load(f)
             except Exception:
                 pass
-        default_portfolios = {
-            "Sample Portfolio": [
-                {"symbol": "RELIANCE.NS", "buy_price": 2750.0, "quantity": 10, "buy_date": "2025-01-15"},
-                {"symbol": "TCS.NS", "buy_price": 3800.0, "quantity": 5, "buy_date": "2025-02-01"}
-            ]
-        }
-        save_portfolios(default_portfolios)
-        return default_portfolios
-    with open(PORTFOLIO_FILE, "r") as f:
-        return json.load(f)
+        if not default_pfs:
+            default_pfs = {
+                "Sample Portfolio": [
+                    {"symbol": "RELIANCE.NS", "buy_price": 2750.0, "quantity": 10, "buy_date": "2025-01-15"}
+                ]
+            }
+        save_portfolios(default_pfs, username)
+        return default_pfs
+        
+    try:
+        with open(filepath, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
-def save_portfolios(data):
-    with open(PORTFOLIO_FILE, "w") as f:
+def save_portfolios(data, username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return
+    filepath = get_user_portfolio_file(username)
+    with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "username" not in session:
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Unauthorized. Please log in.", "require_login": True}), 401
+            return redirect(url_for("login_page"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Authentication & User Management Routes
+@app.route("/login")
+def login_page():
+    if "username" in session:
+        return redirect(url_for("index"))
+    return render_template("login.html")
+
+@app.route("/register")
+def register_page():
+    if "username" in session:
+        return redirect(url_for("index"))
+    return render_template("register.html")
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.json or {}
+    username = data.get("username", "").strip().lower()
+    password = data.get("password", "")
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    users = load_users()
+    if username not in users or not check_password_hash(users[username]["password_hash"], password):
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    session["username"] = username
+    return jsonify({"success": True, "message": "Logged in successfully!", "username": username})
+
+@app.route("/api/register", methods=["POST"])
+def api_register():
+    data = request.json or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    if len(username) < 3:
+        return jsonify({"error": "Username must be at least 3 characters long"}), 400
+    if len(password) < 4:
+        return jsonify({"error": "Password must be at least 4 characters long"}), 400
+
+    safe_username = username.lower()
+    users = load_users()
+    if safe_username in users:
+        return jsonify({"error": "Username already exists. Please log in or choose a different name."}), 400
+
+    users[safe_username] = {
+        "username": username,
+        "password_hash": generate_password_hash(password),
+        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    save_users(users)
+
+    # Initialize user-specific watchlist & portfolio files
+    load_data(safe_username)
+    load_portfolios(safe_username)
+
+    session["username"] = safe_username
+    return jsonify({"success": True, "message": "Registration successful!", "username": safe_username})
+
+@app.route("/logout")
+@app.route("/api/logout", methods=["GET", "POST"])
+def logout():
+    session.clear()
+    if request.path.startswith("/api/"):
+        return jsonify({"success": True, "message": "Logged out successfully"})
+    return redirect(url_for("login_page"))
+
+@app.route("/api/user_info")
+def get_user_info():
+    if "username" in session:
+        users = load_users()
+        user_record = users.get(session["username"], {})
+        display_name = user_record.get("username", session["username"])
+        return jsonify({"logged_in": True, "username": display_name})
+    return jsonify({"logged_in": False})
 
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
 @app.route("/api/backup/export", methods=["GET"])
+@login_required
 def export_backup():
     backup_data = {
         "watchlists": load_data(),
@@ -356,6 +482,7 @@ def export_backup():
     return response
 
 @app.route("/api/backup/import", methods=["POST"])
+@login_required
 def import_backup():
     try:
         req_data = request.get_json(force=True)
@@ -384,10 +511,12 @@ def import_backup():
 
 
 @app.route("/api/watchlists", methods=["GET"])
+@login_required
 def get_watchlists():
     return jsonify(load_data())
 
 @app.route("/api/watchlists", methods=["POST"])
+@login_required
 def create_watchlist():
     name = request.json.get("name")
     if not name:
@@ -402,6 +531,7 @@ def create_watchlist():
     return jsonify({"success": True, "watchlists": data})
 
 @app.route("/api/watchlists/<name>", methods=["DELETE"])
+@login_required
 def delete_watchlist(name):
     data = load_data()
     if name in data:
@@ -410,6 +540,7 @@ def delete_watchlist(name):
     return jsonify({"success": True, "watchlists": data})
 
 @app.route("/api/watchlists/<name>/stocks", methods=["POST"])
+@login_required
 def add_stock(name):
     symbol = request.json.get("symbol")
     if not symbol:
@@ -439,6 +570,7 @@ def add_stock(name):
     return jsonify({"success": True, "watchlists": data})
 
 @app.route("/api/watchlists/<name>/stocks/<symbol>", methods=["DELETE"])
+@login_required
 def remove_stock(name, symbol):
     data = load_data()
     if name in data and symbol in data[name]:
@@ -448,10 +580,12 @@ def remove_stock(name, symbol):
 
 # Portfolio Endpoints
 @app.route("/api/portfolios", methods=["GET"])
+@login_required
 def get_portfolios():
     return jsonify(load_portfolios())
 
 @app.route("/api/portfolios", methods=["POST"])
+@login_required
 def create_portfolio():
     name = request.json.get("name")
     if not name:
@@ -466,6 +600,7 @@ def create_portfolio():
     return jsonify({"success": True, "portfolios": data})
 
 @app.route("/api/portfolios/<name>", methods=["DELETE"])
+@login_required
 def delete_portfolio(name):
     data = load_portfolios()
     if name in data:
@@ -474,6 +609,7 @@ def delete_portfolio(name):
     return jsonify({"success": True, "portfolios": data})
 
 @app.route("/api/portfolios/<name>/stocks", methods=["POST"])
+@login_required
 def add_portfolio_stock(name):
     symbol = request.json.get("symbol")
     buy_price = request.json.get("buy_price")
@@ -527,6 +663,7 @@ def add_portfolio_stock(name):
     return jsonify({"success": True, "portfolios": data})
 
 @app.route("/api/portfolios/<name>/stocks/<symbol>", methods=["DELETE"])
+@login_required
 def remove_portfolio_stock(name, symbol):
     data = load_portfolios()
     if name in data:

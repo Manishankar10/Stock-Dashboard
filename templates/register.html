@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account - Capital Desk</title>
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: #0f172a;
+                --bg-card: #1e293b;
+                --border-color: #334155;
+                --text-primary: #f8fafc;
+                --text-secondary: #94a3b8;
+                --btn-primary-bg: #10b981;
+                --btn-primary-hover: #059669;
+                --btn-primary-text: #ffffff;
+                --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+            }
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 440px;
+            padding: 36px 30px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .brand-logo-img {
+            height: 52px;
+            width: auto;
+            max-width: 180px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .auth-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .auth-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        }
+
+        .toggle-pw-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--text-secondary);
+            padding: 4px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--btn-primary-hover);
+        }
+
+        .btn-submit:active {
+            transform: scale(0.99);
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .auth-footer a {
+            color: #10b981;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: #dc2626;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="auth-header">
+            <img src="/static/logo.png" alt="Capital Desk Logo" class="brand-logo-img">
+            <h1 class="auth-title">Create Your Account</h1>
+            <p class="auth-subtitle">Set up your personal market & portfolio workspace</p>
+        </div>
+
+        <div id="auth-error" class="alert-error"></div>
+
+        <form id="register-form" onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label for="username">Choose Username</label>
+                <div class="input-wrapper">
+                    <input type="text" id="username" placeholder="e.g. john_doe" required autofocus autocomplete="username">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Choose Password</label>
+                <div class="input-wrapper">
+                    <input type="password" id="password" placeholder="At least 4 characters" required autocomplete="new-password">
+                    <button type="button" class="toggle-pw-btn" onclick="togglePassword('password', this)" title="Toggle password visibility">👁️</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <div class="input-wrapper">
+                    <input type="password" id="confirm_password" placeholder="Re-enter password" required autocomplete="new-password">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btn-submit">
+                <span>Create Account</span> ➔
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account? <a href="/login">Sign In Here</a>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerText = '🙈';
+            } else {
+                input.type = 'password';
+                btn.innerText = '👁️';
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const errDiv = document.getElementById('auth-error');
+            const submitBtn = document.getElementById('btn-submit');
+            errDiv.style.display = 'none';
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            if (!username || !password || !confirmPassword) {
+                errDiv.innerText = 'Please fill in all fields.';
+                errDiv.style.display = 'block';
+                return;
+            }
+
+            if (username.length < 3) {
+                errDiv.innerText = 'Username must be at least 3 characters long.';
+                errDiv.style.display = 'block';
+                return;
+            }
+
+            if (password.length < 4) {
+                errDiv.innerText = 'Password must be at least 4 characters long.';
+                errDiv.style.display = 'block';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errDiv.innerText = 'Passwords do not match. Please try again.';
+                errDiv.style.display = 'block';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Creating Account...';
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    window.location.href = '/';
+                } else {
+                    errDiv.innerText = data.error || 'Registration failed.';
+                    errDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errDiv.innerText = 'Network error. Please try again.';
+                errDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Create Account</span> ➔';
+            }
+        }
+    </script>
+</body>
+</html>

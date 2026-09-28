@@ -1,0 +1,17 @@
+{
+    "alice": {
+        "username": "alice",
+        "password_hash": "scrypt:32768:8:1$VX2cNCZ6VX63GsnJ$2cfc5451bb9b768829753858e95ec72ff99fb64362c2e91c542a0c0e05110ee8de50888d1536da60939b4db8a1e9fbaf16d1d418bfe83a46995d04c54e2a9651",
+        "created_at": "2026-09-28 14:28:11"
+    },
+    "bob": {
+        "username": "bob",
+        "password_hash": "scrypt:32768:8:1$3hyywCYhHmqQQS0C$5911dff1f7411f9fd154b2f35270e0c911b5b907dc4dfccde54c80d638d848673ab648c87ee47a70425417816d3607c93acc58c2a2647d054c75b4f899c7c053",
+        "created_at": "2026-09-28 14:28:11"
+    },
+    "manishankar10": {
+        "username": "manishankar10",
+        "password_hash": "scrypt:32768:8:1$yotoNJMhlFNMEWop$161dbfb8a20c3bad1c6863d7970d1f28c75166763b2ef0fa98de6a33e4e33eaae59dfe794c9b44127aacc16e8321f404868759f7ff373dc691be5179bc2f21d8",
+        "created_at": "2026-09-28 14:30:39"
+    }
+}
