@@ -1,4 +1,9 @@
-# Personal Data Storage Files (Do not commit to Git)
+# User credentials & authentication data (DO NOT commit to Git!)
+users.json
+login_logs.json
+user_data/
+
+# Personal portfolio & watchlist data
 watchlists.json
 portfolios.json
 my_backup.json
@@ -6,18 +11,22 @@ backup.json
 backup_*.json
 *.json.bak
 
+# Secrets & Environment variables
+.env
+*.env
+
 # Python environment & cache
 __pycache__/
 *.py[cod]
 *$py.class
-.env
 venv/
 .venv/
 env/
 ENV/
 
-# IDE files
+# IDE & OS metadata
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
 static/logo.jpeg
