@@ -6,6 +6,8 @@
     <title>Capital Desk - Institutional Market & Portfolio Intelligence</title>
     <!-- Lightweight Charts Library (TradingView Canvas Engine) -->
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Official TradingView Advanced Chart Widget Library (Drawings & 100+ Indicators) -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <!-- Chart.js for Dashboard Visual Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -430,7 +432,9 @@
         #mainChartPane { flex: 3; width: 100%; position: relative; }
         #rsiChartPane { flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; }
         .close-btn { color: #a3a6af; font-size: 26px; font-weight: bold; cursor: pointer; line-height: 1; }
-        .close-btn:hover { color: white; }
+        .engine-tab-btn { background: transparent; color: #787b86; border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
+        .engine-tab-btn:hover { color: #d1d4dc; background: #2a2e39; }
+        .engine-tab-btn.active { background: #10b981; color: #ffffff; }
 
         /* Small Modals (Edit Holding & Details Popup) */
         .small-modal { display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(3px); }
@@ -627,39 +631,53 @@
                     <span id="chartSymbolDisplay">NSE:POLYMED</span>
                     <span id="chartNameDisplay" style="font-size: 14px; color: #787b86; font-weight: normal;">Poly Medicure Ltd</span>
                 </div>
-                <div class="chart-controls">
-                    <div class="timeframe-group">
-                        <button class="tf-btn" onclick="changeRange('1mo')">1M</button>
-                        <button class="tf-btn" onclick="changeRange('3mo')">3M</button>
-                        <button class="tf-btn" onclick="changeRange('6mo')">6M</button>
-                        <button class="tf-btn active" id="tf-1y" onclick="changeRange('1y')">1Y</button>
-                        <button class="tf-btn" onclick="changeRange('2y')">2Y</button>
-                        <button class="tf-btn" onclick="changeRange('5y')">5Y</button>
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div class="chart-engine-selector" style="display: flex; gap: 6px; background: #131722; padding: 4px; border-radius: 6px; border: 1px solid #2a2e39;">
+                        <button class="engine-tab-btn active" id="btn-tab-tv" onclick="switchChartEngine('tradingview')">🎨 TradingView Pro (Drawings & 100+ Ind)</button>
+                        <button class="engine-tab-btn" id="btn-tab-canvas" onclick="switchChartEngine('canvas')">⚡ Fast Canvas Chart</button>
                     </div>
-                    <div class="indicator-group">
-                        <label class="ind-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> Volume</label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkSma20" checked onchange="toggleIndicators()"> <span style="color:#2962ff">SMA 20</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkSma50" checked onchange="toggleIndicators()"> <span style="color:#ff6d00">SMA 50</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkRsi" checked onchange="toggleIndicators()"> <span style="color:#e040fb">RSI 14</span></label>
+                    <div class="chart-controls" id="canvas_chart_controls" style="display: none;">
+                        <div class="timeframe-group">
+                            <button class="tf-btn" onclick="changeRange('1mo')">1M</button>
+                            <button class="tf-btn" onclick="changeRange('3mo')">3M</button>
+                            <button class="tf-btn" onclick="changeRange('6mo')">6M</button>
+                            <button class="tf-btn active" id="tf-1y" onclick="changeRange('1y')">1Y</button>
+                            <button class="tf-btn" onclick="changeRange('2y')">2Y</button>
+                            <button class="tf-btn" onclick="changeRange('5y')">5Y</button>
+                        </div>
+                        <div class="indicator-group">
+                            <label class="ind-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> Volume</label>
+                            <label class="ind-checkbox"><input type="checkbox" id="chkSma20" checked onchange="toggleIndicators()"> <span style="color:#2962ff">SMA 20</span></label>
+                            <label class="ind-checkbox"><input type="checkbox" id="chkSma50" checked onchange="toggleIndicators()"> <span style="color:#ff6d00">SMA 50</span></label>
+                            <label class="ind-checkbox"><input type="checkbox" id="chkRsi" checked onchange="toggleIndicators()"> <span style="color:#e040fb">RSI 14</span></label>
+                        </div>
                     </div>
                     <span class="close-btn" onclick="closeChartModal()">&times;</span>
                 </div>
             </div>
 
-            <div class="legend-bar" id="legendBar">
-                <div class="legend-item">DATE: <span class="legend-val" id="legDate">-</span></div>
-                <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
-                <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
-                <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
-                <div class="legend-item">C: <span class="legend-val" id="legClose">-</span></div>
-                <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
-                <div class="legend-item" id="legSmaGroup">SMA20: <span class="legend-val" style="color:#2962ff" id="legSma20">-</span> | SMA50: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span></div>
-                <div class="legend-item" id="legRsiGroup">RSI: <span class="legend-val" style="color:#e040fb" id="legRsi">-</span></div>
+            <!-- TradingView Advanced Chart Container -->
+            <div id="tv_chart_wrapper" style="flex: 1; width: 100%; height: 100%; min-height: 550px; background: #131722;">
+                <div id="tradingview_advanced_chart" style="width: 100%; height: 100%;"></div>
             </div>
 
-            <div class="chart-body-container">
-                <div id="mainChartPane"></div>
-                <div id="rsiChartPane"></div>
+            <!-- In-House Canvas Chart Container -->
+            <div id="inhouse_chart_wrapper" style="display: none; flex: 1; flex-direction: column; width: 100%; height: 100%;">
+                <div class="legend-bar" id="legendBar">
+                    <div class="legend-item">DATE: <span class="legend-val" id="legDate">-</span></div>
+                    <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
+                    <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
+                    <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
+                    <div class="legend-item">C: <span class="legend-val" id="legClose">-</span></div>
+                    <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
+                    <div class="legend-item" id="legSmaGroup">SMA20: <span class="legend-val" style="color:#2962ff" id="legSma20">-</span> | SMA50: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span></div>
+                    <div class="legend-item" id="legRsiGroup">RSI: <span class="legend-val" style="color:#e040fb" id="legRsi">-</span></div>
+                </div>
+
+                <div class="chart-body-container">
+                    <div id="mainChartPane"></div>
+                    <div id="rsiChartPane"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1921,6 +1939,7 @@
         ========================================================= */
         let currentChartSymbol = '';
         let currentChartRange = '1y';
+        let currentChartEngine = 'tradingview';
         let mainChart = null;
         let rsiChart = null;
         let candlestickSeries = null;
@@ -1936,10 +1955,85 @@
             const modal = document.getElementById('chartModal');
             modal.style.display = 'block';
 
-            document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('tf-1y').classList.add('active');
+            const info = stockPricesData[sym] || {};
+            document.getElementById('chartSymbolDisplay').innerText = sym;
+            document.getElementById('chartNameDisplay').innerText = info.name || sym;
 
-            loadChartData();
+            switchChartEngine(currentChartEngine);
+        }
+
+        function switchChartEngine(engine) {
+            currentChartEngine = engine;
+            const tvBtn = document.getElementById('btn-tab-tv');
+            const canvasBtn = document.getElementById('btn-tab-canvas');
+            const tvWrapper = document.getElementById('tv_chart_wrapper');
+            const canvasWrapper = document.getElementById('inhouse_chart_wrapper');
+            const canvasControls = document.getElementById('canvas_chart_controls');
+
+            if (engine === 'tradingview') {
+                if (tvBtn) tvBtn.classList.add('active');
+                if (canvasBtn) canvasBtn.classList.remove('active');
+                if (tvWrapper) tvWrapper.style.display = 'block';
+                if (canvasWrapper) canvasWrapper.style.display = 'none';
+                if (canvasControls) canvasControls.style.display = 'none';
+                renderTradingViewWidget(currentChartSymbol);
+            } else {
+                if (tvBtn) tvBtn.classList.remove('active');
+                if (canvasBtn) canvasBtn.classList.add('active');
+                if (tvWrapper) tvWrapper.style.display = 'none';
+                if (canvasWrapper) canvasWrapper.style.display = 'flex';
+                if (canvasControls) canvasControls.style.display = 'flex';
+                
+                document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
+                const defaultTf = document.getElementById('tf-1y');
+                if (defaultTf) defaultTf.classList.add('active');
+                
+                loadChartData();
+            }
+        }
+
+        function renderTradingViewWidget(symbol) {
+            if (!symbol) return;
+            
+            let tvSymbol = symbol;
+            if (symbol.endsWith('.NS')) {
+                tvSymbol = 'NSE:' + symbol.replace('.NS', '');
+            } else if (symbol.endsWith('.BO')) {
+                tvSymbol = 'BSE:' + symbol.replace('.BO', '');
+            } else if (!symbol.includes(':')) {
+                tvSymbol = 'NSE:' + symbol;
+            }
+
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const container = document.getElementById('tradingview_advanced_chart');
+            if (container) {
+                container.innerHTML = '';
+            }
+
+            if (typeof TradingView !== 'undefined') {
+                new TradingView.widget({
+                    "autosize": true,
+                    "symbol": tvSymbol,
+                    "interval": "D",
+                    "timezone": "Asia/Kolkata",
+                    "theme": isDark ? "dark" : "light",
+                    "style": "1",
+                    "locale": "en",
+                    "toolbar_bg": isDark ? "#1e293b" : "#f1f5f9",
+                    "enable_publishing": false,
+                    "hide_side_toolbar": false,
+                    "allow_symbol_change": true,
+                    "details": true,
+                    "hotlist": true,
+                    "calendar": true,
+                    "studies": [
+                        "STD;EMA",
+                        "STD;RSI",
+                        "STD;MACD"
+                    ],
+                    "container_id": "tradingview_advanced_chart"
+                });
+            }
         }
 
         function changeRange(rangeStr) {
@@ -2157,6 +2251,8 @@
             modal.style.display = 'none';
             document.getElementById('mainChartPane').innerHTML = '';
             document.getElementById('rsiChartPane').innerHTML = '';
+            const tvContainer = document.getElementById('tradingview_advanced_chart');
+            if (tvContainer) tvContainer.innerHTML = '';
         }
 
         window.onclick = function(event) {
@@ -2243,6 +2339,10 @@
             }
             if (currentTab === 'dashboard') {
                 renderDashboard();
+            }
+            const modal = document.getElementById('chartModal');
+            if (modal && modal.style.display === 'block' && currentChartEngine === 'tradingview') {
+                renderTradingViewWidget(currentChartSymbol);
             }
         }
 

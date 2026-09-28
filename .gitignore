@@ -20,3 +20,4 @@ ENV/
 .vscode/
 .idea/
 .DS_Store
+static/logo.jpeg
