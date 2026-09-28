@@ -21,6 +21,7 @@ if not os.path.exists(BASE_DATA_DIR):
 DATA_FILE = os.path.join(BASE_DATA_DIR, "watchlists.json")
 PORTFOLIO_FILE = os.path.join(BASE_DATA_DIR, "portfolios.json")
 USERS_FILE = os.path.join(BASE_DATA_DIR, "users.json")
+USERS_EXAMPLE_FILE = os.path.join(os.path.dirname(__file__), "users.example.json")
 USER_DATA_DIR = os.path.join(BASE_DATA_DIR, "user_data")
 LOGS_FILE = os.path.join(BASE_DATA_DIR, "login_logs.json")
 
@@ -289,6 +290,14 @@ def calculate_indicators(candles):
 
 def load_users():
     if not os.path.exists(USERS_FILE):
+        if os.path.exists(USERS_EXAMPLE_FILE):
+            try:
+                with open(USERS_EXAMPLE_FILE, "r") as f:
+                    seed_users = json.load(f)
+                save_users(seed_users)
+                return seed_users
+            except Exception:
+                pass
         return {}
     try:
         with open(USERS_FILE, "r") as f:
@@ -440,13 +449,15 @@ def ensure_default_admin():
 
     for uname, record in users.items():
         if "plain_password" not in record:
-            if uname == "admin":
-                record["plain_password"] = "admin123"
-            elif uname == "manishankar10":
+            if uname in ("admin", "manishankar10"):
                 record["plain_password"] = "admin123"
             else:
                 record["plain_password"] = f"{uname}123"
             changed = True
+        
+        # Initialize default watchlist and portfolio data for all seed users
+        load_data(uname)
+        load_portfolios(uname)
 
     if changed:
         save_users(users)
@@ -745,6 +756,58 @@ def admin_get_logs():
         except Exception:
             logs = []
     return jsonify(logs)
+
+@app.route("/api/admin/system_backup/export", methods=["GET"])
+@admin_required
+def admin_export_system_backup():
+    users = load_users()
+    user_data_map = {}
+    for uname in users.keys():
+        user_data_map[uname] = {
+            "watchlists": load_data(uname),
+            "portfolios": load_portfolios(uname),
+            "alerts": load_user_alerts(uname)
+        }
+    
+    backup_data = {
+        "users": users,
+        "user_data": user_data_map,
+        "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    response = jsonify(backup_data)
+    filename = f"capital_desk_full_system_backup_{datetime.date.today().strftime('%Y-%m-%d')}.json"
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
+
+@app.route("/api/admin/system_backup/import", methods=["POST"])
+@admin_required
+def admin_import_system_backup():
+    try:
+        req_data = request.get_json(force=True)
+        if not req_data or "users" not in req_data:
+            return jsonify({"error": "Invalid system backup file. Must contain 'users'"}), 400
+            
+        users = req_data.get("users", {})
+        save_users(users)
+        
+        user_data_map = req_data.get("user_data", {})
+        for uname, udata in user_data_map.items():
+            if "watchlists" in udata:
+                save_data(udata["watchlists"], uname)
+            if "portfolios" in udata:
+                save_portfolios(udata["portfolios"], uname)
+            if "alerts" in udata:
+                save_user_alerts(udata["alerts"], uname)
+                
+        try:
+            with open(USERS_EXAMPLE_FILE, "w") as f:
+                json.dump(users, f, indent=4)
+        except Exception:
+            pass
+
+        return jsonify({"success": True, "message": f"Successfully restored {len(users)} users and all data!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/user_info")
 def get_user_info():

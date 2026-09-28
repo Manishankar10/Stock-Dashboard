@@ -315,9 +315,11 @@
                 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 15px;"><strong>Security & Auth:</strong> Session Cookies + Password Hashing</p>
                 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
-                    <a href="/api/backup/export" class="btn" style="text-decoration: none;">📥 Download Full System Backup (JSON)</a>
+                    <a href="/api/admin/system_backup/export" class="btn" style="text-decoration: none;">📥 Download Full System Backup (Users & Portfolios JSON)</a>
+                    <button class="btn btn-secondary" onclick="triggerImportSystemBackup()">📤 Import System Backup JSON</button>
                     <button class="btn btn-secondary" onclick="loadAdminStats()">🔄 Refresh Admin Data</button>
                 </div>
+                <input type="file" id="system-backup-file-input" accept=".json" style="display: none;" onchange="handleSystemBackupFileSelect(event)">
             </div>
         </div>
     </div>
@@ -599,6 +601,40 @@
             } else {
                 alert(`❌ ${data.error}`);
             }
+        }
+
+        function triggerImportSystemBackup() {
+            document.getElementById('system-backup-file-input').click();
+        }
+
+        async function handleSystemBackupFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const content = JSON.parse(e.target.result);
+                    const res = await fetch('/api/admin/system_backup/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(content)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(`✅ ${data.message}`);
+                        loadAdminStats();
+                        loadAdminUsers();
+                    } else {
+                        alert('❌ System restore failed: ' + (data.error || 'Invalid file format'));
+                    }
+                } catch (err) {
+                    alert('❌ Failed to read backup file: ' + err.message);
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
         }
 
         // Theme Toggle Functionality
