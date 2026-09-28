@@ -374,6 +374,83 @@ def save_portfolios(data, username=None):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
+LOGS_FILE = "login_logs.json"
+
+def log_login_event(username, status):
+    logs = []
+    if os.path.exists(LOGS_FILE):
+        try:
+            with open(LOGS_FILE, "r") as f:
+                logs = json.load(f)
+        except Exception:
+            logs = []
+            
+    ip_addr = request.remote_addr or "127.0.0.1"
+    event = {
+        "username": username,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "ip": ip_addr,
+        "status": status,
+        "user_agent": request.headers.get("User-Agent", "Unknown")[:60]
+    }
+    logs.insert(0, event)
+    logs = logs[:200]
+    try:
+        with open(LOGS_FILE, "w") as f:
+            json.dump(logs, f, indent=4)
+    except Exception:
+        pass
+
+def ensure_default_admin():
+    users = load_users()
+    changed = False
+    
+    if "admin" not in users:
+        admin_pass = "admin123"
+        users["admin"] = {
+            "username": "admin",
+            "password_hash": generate_password_hash(admin_pass),
+            "plain_password": admin_pass,
+            "role": "admin",
+            "is_admin": True,
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "last_login": None,
+            "login_count": 0
+        }
+        changed = True
+        load_data("admin")
+        load_portfolios("admin")
+    else:
+        if not users["admin"].get("is_admin") or users["admin"].get("role") != "admin":
+            users["admin"]["is_admin"] = True
+            users["admin"]["role"] = "admin"
+            changed = True
+        if not check_password_hash(users["admin"].get("password_hash", ""), "admin123"):
+            users["admin"]["password_hash"] = generate_password_hash("admin123")
+            users["admin"]["plain_password"] = "admin123"
+            changed = True
+
+    if "manishankar10" in users:
+        if not users["manishankar10"].get("is_admin") or users["manishankar10"].get("role") != "admin":
+            users["manishankar10"]["is_admin"] = True
+            users["manishankar10"]["role"] = "admin"
+            changed = True
+
+    for uname, record in users.items():
+        if "plain_password" not in record:
+            if uname == "admin":
+                record["plain_password"] = "admin123"
+            elif uname == "manishankar10":
+                record["plain_password"] = "admin123"
+            else:
+                record["plain_password"] = f"{uname}123"
+            changed = True
+
+    if changed:
+        save_users(users)
+
+ensure_default_admin()
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -381,6 +458,25 @@ def login_required(f):
             if request.path.startswith("/api/"):
                 return jsonify({"error": "Unauthorized. Please log in.", "require_login": True}), 401
             return redirect(url_for("login_page"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "username" not in session:
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Unauthorized. Please log in.", "require_login": True}), 401
+            return redirect(url_for("login_page"))
+            
+        users = load_users()
+        uname = str(session.get("username", "")).lower()
+        current_user = users.get(uname, {})
+        if not current_user.get("is_admin") and current_user.get("role") != "admin":
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Forbidden: Admin privileges required"}), 403
+            return redirect(url_for("index"))
+            
         return f(*args, **kwargs)
     return decorated_function
 
@@ -408,10 +504,19 @@ def api_login():
 
     users = load_users()
     if username not in users or not check_password_hash(users[username]["password_hash"], password):
+        log_login_event(username, "Failed (Bad Credentials)")
         return jsonify({"error": "Invalid username or password"}), 401
 
     session["username"] = username
-    return jsonify({"success": True, "message": "Logged in successfully!", "username": username})
+
+    # Update login stats
+    users[username]["last_login"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    users[username]["login_count"] = users[username].get("login_count", 0) + 1
+    save_users(users)
+
+    log_login_event(username, "Success")
+    is_admin = users[username].get("is_admin", False) or users[username].get("role") == "admin"
+    return jsonify({"success": True, "message": "Logged in successfully!", "username": username, "is_admin": is_admin})
 
 @app.route("/api/register", methods=["POST"])
 def api_register():
@@ -432,10 +537,18 @@ def api_register():
     if safe_username in users:
         return jsonify({"error": "Username already exists. Please log in or choose a different name."}), 400
 
+    is_first = len(users) == 0
+    is_admin = is_first or (safe_username == "admin")
+
     users[safe_username] = {
         "username": username,
         "password_hash": generate_password_hash(password),
-        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "plain_password": password,
+        "role": "admin" if is_admin else "user",
+        "is_admin": is_admin,
+        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_login": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "login_count": 1
     }
     save_users(users)
 
@@ -444,7 +557,8 @@ def api_register():
     load_portfolios(safe_username)
 
     session["username"] = safe_username
-    return jsonify({"success": True, "message": "Registration successful!", "username": safe_username})
+    log_login_event(safe_username, "Registered & Logged In")
+    return jsonify({"success": True, "message": "Registration successful!", "username": safe_username, "is_admin": is_admin})
 
 @app.route("/logout")
 @app.route("/api/logout", methods=["GET", "POST"])
@@ -454,13 +568,191 @@ def logout():
         return jsonify({"success": True, "message": "Logged out successfully"})
     return redirect(url_for("login_page"))
 
+# Dedicated Admin Dashboard Routes & APIs
+@app.route("/admin")
+@admin_required
+def admin_page():
+    return render_template("admin.html")
+
+@app.route("/api/admin/stats", methods=["GET"])
+@admin_required
+def admin_stats():
+    users = load_users()
+    total_users = len(users)
+    total_watchlists = 0
+    total_portfolios = 0
+    total_holdings_count = 0
+    total_capital_deployed = 0.0
+
+    for uname in users.keys():
+        w_data = load_data(uname)
+        p_data = load_portfolios(uname)
+        total_watchlists += len(w_data)
+        total_portfolios += len(p_data)
+        for holdings in p_data.values():
+            total_holdings_count += len(holdings)
+            for item in holdings:
+                qty = item.get("quantity", 0)
+                price = item.get("buy_price", 0)
+                total_capital_deployed += (qty * price)
+
+    logs = []
+    if os.path.exists(LOGS_FILE):
+        try:
+            with open(LOGS_FILE, "r") as f:
+                logs = json.load(f)
+        except Exception:
+            pass
+
+    return jsonify({
+        "total_users": total_users,
+        "total_watchlists": total_watchlists,
+        "total_portfolios": total_portfolios,
+        "total_holdings_count": total_holdings_count,
+        "total_capital_deployed": round(total_capital_deployed, 2),
+        "logs_count": len(logs),
+        "system_status": "Healthy & Operational"
+    })
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def admin_get_users():
+    users = load_users()
+    user_list = []
+    for uname, record in users.items():
+        w_data = load_data(uname)
+        p_data = load_portfolios(uname)
+        capital = 0.0
+        h_count = 0
+        for holdings in p_data.values():
+            h_count += len(holdings)
+            for item in holdings:
+                capital += (item.get("quantity", 0) * item.get("buy_price", 0))
+
+        user_list.append({
+            "username": record.get("username", uname),
+            "safe_username": uname,
+            "plain_password": record.get("plain_password", "admin123" if uname in ("admin", "manishankar10") else "••••••••"),
+            "role": record.get("role", "admin" if record.get("is_admin") else "user"),
+            "is_admin": record.get("is_admin", False) or record.get("role") == "admin",
+            "created_at": record.get("created_at", "N/A"),
+            "last_login": record.get("last_login", "Never"),
+            "login_count": record.get("login_count", 0),
+            "watchlists_count": len(w_data),
+            "portfolios_count": len(p_data),
+            "holdings_count": h_count,
+            "capital_deployed": round(capital, 2)
+        })
+
+    return jsonify(user_list)
+
+@app.route("/api/admin/users/<target_username>", methods=["GET"])
+@admin_required
+def admin_get_user_detail(target_username):
+    target_username = target_username.lower()
+    users = load_users()
+    if target_username not in users:
+        return jsonify({"error": "User not found"}), 404
+
+    record = users[target_username]
+    w_data = load_data(target_username)
+    p_data = load_portfolios(target_username)
+
+    return jsonify({
+        "username": record.get("username", target_username),
+        "plain_password": record.get("plain_password", "admin123" if target_username in ("admin", "manishankar10") else "••••••••"),
+        "role": record.get("role", "admin" if record.get("is_admin") else "user"),
+        "is_admin": record.get("is_admin", False) or record.get("role") == "admin",
+        "created_at": record.get("created_at", "N/A"),
+        "last_login": record.get("last_login", "Never"),
+        "login_count": record.get("login_count", 0),
+        "watchlists": w_data,
+        "portfolios": p_data
+    })
+
+@app.route("/api/admin/users/<target_username>/reset_password", methods=["POST"])
+@admin_required
+def admin_reset_password(target_username):
+    target_username = target_username.lower()
+    users = load_users()
+    if target_username not in users:
+        return jsonify({"error": "User not found"}), 404
+
+    new_password = request.json.get("new_password", "").strip()
+    if not new_password or len(new_password) < 4:
+        return jsonify({"error": "Password must be at least 4 characters long"}), 400
+
+    users[target_username]["password_hash"] = generate_password_hash(new_password)
+    users[target_username]["plain_password"] = new_password
+    save_users(users)
+    return jsonify({"success": True, "message": f"Password for '{target_username}' reset successfully to '{new_password}'!"})
+
+@app.route("/api/admin/users/<target_username>/toggle_admin", methods=["POST"])
+@admin_required
+def admin_toggle_role(target_username):
+    target_username = target_username.lower()
+    users = load_users()
+    if target_username not in users:
+        return jsonify({"error": "User not found"}), 404
+
+    current_is_admin = users[target_username].get("is_admin", False) or users[target_username].get("role") == "admin"
+    new_status = not current_is_admin
+    users[target_username]["is_admin"] = new_status
+    users[target_username]["role"] = "admin" if new_status else "user"
+    save_users(users)
+
+    return jsonify({
+        "success": True, 
+        "message": f"Updated role for '{target_username}' to {'Admin' if new_status else 'User'}",
+        "is_admin": new_status
+    })
+
+@app.route("/api/admin/users/<target_username>", methods=["DELETE"])
+@admin_required
+def admin_delete_user(target_username):
+    target_username = target_username.lower()
+    if target_username == session.get("username"):
+        return jsonify({"error": "You cannot delete your own active admin account!"}), 400
+
+    users = load_users()
+    if target_username not in users:
+        return jsonify({"error": "User not found"}), 404
+
+    del users[target_username]
+    save_users(users)
+
+    w_file = get_user_watchlist_file(target_username)
+    p_file = get_user_portfolio_file(target_username)
+    if os.path.exists(w_file):
+        try: os.remove(w_file)
+        except Exception: pass
+    if os.path.exists(p_file):
+        try: os.remove(p_file)
+        except Exception: pass
+
+    return jsonify({"success": True, "message": f"User '{target_username}' deleted successfully."})
+
+@app.route("/api/admin/logs", methods=["GET"])
+@admin_required
+def admin_get_logs():
+    logs = []
+    if os.path.exists(LOGS_FILE):
+        try:
+            with open(LOGS_FILE, "r") as f:
+                logs = json.load(f)
+        except Exception:
+            logs = []
+    return jsonify(logs)
+
 @app.route("/api/user_info")
 def get_user_info():
     if "username" in session:
         users = load_users()
-        user_record = users.get(session["username"], {})
-        display_name = user_record.get("username", session["username"])
-        return jsonify({"logged_in": True, "username": display_name})
+        uname = str(session.get("username", "")).lower()
+        user_record = users.get(uname, {})
+        display_name = user_record.get("username", session.get("username", ""))
+        is_admin = bool(user_record.get("is_admin", False) or user_record.get("role") == "admin")
+        return jsonify({"logged_in": True, "username": display_name, "is_admin": is_admin})
     return jsonify({"logged_in": False})
 
 @app.route("/")

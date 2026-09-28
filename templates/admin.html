@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Intelligence Center - Capital Desk</title>
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-header: #ffffff;
+            --bg-subtle: #f8fafc;
+            --border-color: #e2e8f0;
+            --border-input: #cbd5e1;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --table-header-bg: #f8fafc;
+            --table-hover-bg: #f1f5f9;
+            --modal-bg: #ffffff;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-header: #1e293b;
+            --bg-subtle: #0f172a;
+            --border-color: #334155;
+            --border-input: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --table-header-bg: #0f172a;
+            --table-hover-bg: #334155;
+            --modal-bg: #1e293b;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container { max-width: 1400px; width: 100%; padding: 0 10px; margin: 0 auto; box-sizing: border-box; }
+
+        .app-header {
+            background: var(--bg-header);
+            border-radius: 12px;
+            padding: 14px 22px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-logo-group { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-img { height: 44px; width: auto; max-width: 160px; border-radius: 8px; object-fit: contain; }
+        .app-title { font-size: 19px; font-weight: 800; color: var(--text-primary); margin: 0; }
+        .app-subtitle { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 18px 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+        .metric-card .title { font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .metric-card .value { font-size: 22px; font-weight: 800; color: var(--text-primary); }
+        .metric-card .sub-value { font-size: 13px; font-weight: 600; margin-top: 4px; color: var(--text-secondary); }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: var(--bg-subtle);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 9px 18px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active {
+            background: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .table-responsive-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+        }
+
+        table { width: 100%; border-collapse: collapse; min-width: 750px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+        th { background-color: var(--table-header-bg); font-weight: 700; color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        tbody tr:hover { background-color: var(--table-hover-bg); }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block; }
+        .badge-admin { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .badge-user { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-success { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .badge-danger { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+        [data-theme="dark"] .badge-admin { background-color: #78350f; color: #fde68a; border-color: #92400e; }
+        [data-theme="dark"] .badge-user { background-color: #075985; color: #bae6fd; border-color: #0369a1; }
+        [data-theme="dark"] .badge-success { background-color: #064e3b; color: #a7f3d0; border-color: #047857; }
+        [data-theme="dark"] .badge-danger { background-color: #7f1d1d; color: #fca5a5; border-color: #991b1b; }
+
+        button, .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button:hover, .btn:hover { background-color: var(--btn-primary-hover); }
+
+        .btn-secondary {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover { background-color: var(--table-hover-bg); }
+
+        .btn-danger {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+        .btn-danger:hover { background-color: #fee2e2; }
+
+        /* Modal styling */
+        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.75); backdrop-filter: blur(4px); }
+        .modal-content { background: var(--modal-bg); margin: 4% auto; padding: 24px; border-radius: 14px; width: 700px; max-width: 94vw; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 18px; }
+        .modal-title { font-size: 18px; font-weight: 700; margin: 0; }
+        .close-btn { font-size: 24px; font-weight: bold; cursor: pointer; color: var(--text-secondary); }
+
+        @media (max-width: 768px) {
+            .app-header { flex-direction: column; align-items: stretch; gap: 12px; }
+            .nav-tabs { overflow-x: auto; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Top App Header -->
+        <div class="app-header">
+            <div class="brand-logo-group">
+                <img src="/static/logo.png" alt="Capital Desk Logo" class="brand-logo-img">
+                <div>
+                    <h1 class="app-title">Admin Control Portal</h1>
+                    <div class="app-subtitle">User Management & System Intelligence</div>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <a href="/" class="btn btn-secondary" style="text-decoration: none; padding: 5px 10px; font-size: 12px; white-space: nowrap;">📊 Market Workspace</a>
+                <button onclick="toggleTheme()" class="btn-secondary" style="padding: 5px 8px;" title="Toggle Light / Dark Mode">
+                    <span id="theme-icon">🌙</span>
+                </button>
+                <div id="admin-badge" style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; background: var(--bg-subtle); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-color); max-width: 140px; flex-shrink: 1;" title="Admin Account">
+                    <span style="flex-shrink: 0;">🛡️</span> <span id="admin-username" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90px; display: inline-block; vertical-align: middle;">Admin</span>
+                </div>
+                <button onclick="logoutAdmin()" class="btn-danger" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;">Log Out 🚪</button>
+            </div>
+        </div>
+
+        <!-- Summary Metrics Bar -->
+        <div class="summary-grid">
+            <div class="metric-card">
+                <div class="title">Total Users Registered</div>
+                <div class="value" id="stat-total-users">0</div>
+                <div class="sub-value">Active User Accounts</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Total Watchlists</div>
+                <div class="value" id="stat-total-watchlists">0</div>
+                <div class="sub-value">Custom User Lists</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Total Portfolios</div>
+                <div class="value" id="stat-total-portfolios">0</div>
+                <div class="sub-value" id="stat-total-holdings">0 Holdings Tracked</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Total System Capital</div>
+                <div class="value" id="stat-total-capital">₹0.00</div>
+                <div class="sub-value" id="stat-system-status" style="color:#10b981">Healthy & Operational</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" id="tab-btn-users" onclick="switchAdminTab('users')">👥 User Accounts & Data</button>
+            <button class="tab-btn" id="tab-btn-logs" onclick="switchAdminTab('logs')">📜 Real-Time Login Audit Logs</button>
+            <button class="tab-btn" id="tab-btn-system" onclick="switchAdminTab('system')">⚙️ System Info & Backup</button>
+        </div>
+
+        <!-- TAB 1: User Management -->
+        <div id="tab-users" class="tab-content active">
+            <div class="table-responsive-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Login Password</th>
+                            <th>Registered Date</th>
+                            <th>Last Login</th>
+                            <th style="text-align:center;">Logins</th>
+                            <th style="text-align:center;">Lists</th>
+                            <th style="text-align:center;">Portfolios</th>
+                            <th style="text-align:right;">Deployed Capital</th>
+                            <th style="text-align:center;">Admin Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <tr><td colspan="10" style="text-align:center; padding: 25px; color: var(--text-secondary);">Loading user directory...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 2: Login Logs -->
+        <div id="tab-logs" class="tab-content">
+            <div class="table-responsive-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Username</th>
+                            <th>IP Address</th>
+                            <th>Status</th>
+                            <th>Device / User Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-table-body">
+                        <tr><td colspan="5" style="text-align:center; padding: 25px; color: var(--text-secondary);">Loading activity logs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: System Tools & Backup -->
+        <div id="tab-system" class="tab-content">
+            <div class="metric-card" style="margin-bottom: 20px;">
+                <h3 style="margin-top: 0; margin-bottom: 12px;">🖥️ Server Environment & Health</h3>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;"><strong>Engine:</strong> Flask (Python 3.11+ WSGI Backend)</p>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;"><strong>Market Provider:</strong> Yahoo Finance API Canvas & Real-time Ticks</p>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 15px;"><strong>Security & Auth:</strong> Session Cookies + Password Hashing</p>
+                
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                    <a href="/api/backup/export" class="btn" style="text-decoration: none;">📥 Download Full System Backup (JSON)</a>
+                    <button class="btn btn-secondary" onclick="loadAdminStats()">🔄 Refresh Admin Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Inspect User Data -->
+    <div id="inspectUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="inspect-modal-title">Inspect User Data</h3>
+                <span class="close-btn" onclick="closeInspectModal()">&times;</span>
+            </div>
+            <div id="inspect-modal-body">Loading user data...</div>
+        </div>
+    </div>
+
+    <!-- MODAL: Reset Password -->
+    <div id="resetPassModal" class="modal">
+        <div class="modal-content" style="width: 440px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Reset User Password</h3>
+                <span class="close-btn" onclick="closeResetPassModal()">&times;</span>
+            </div>
+            <form onsubmit="handleResetPassword(event)">
+                <input type="hidden" id="reset-target-username">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px;">Setting new password for user: <strong id="reset-user-display"></strong></p>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px;">New Password</label>
+                    <input type="text" id="reset-new-password" placeholder="Enter new password..." required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeResetPassModal()">Cancel</button>
+                    <button type="submit" class="btn">Save New Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function switchAdminTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if (tabName === 'logs') loadAdminLogs();
+        }
+
+        async function checkAdminAuth() {
+            try {
+                const res = await fetch('/api/user_info');
+                const data = await res.json();
+                if (!data.logged_in || !data.is_admin) {
+                    alert('Access Denied: Admin privileges required.');
+                    window.location.href = '/';
+                    return;
+                }
+                const unameEl = document.getElementById('admin-username');
+                const badgeEl = document.getElementById('admin-badge');
+                if (unameEl) unameEl.innerText = data.username;
+                if (badgeEl) badgeEl.title = `Admin Account: ${data.username}`;
+            } catch (e) {
+                window.location.href = '/login';
+            }
+        }
+
+        async function logoutAdmin() {
+            await fetch('/api/logout');
+            window.location.href = '/login';
+        }
+
+        async function loadAdminStats() {
+            try {
+                const res = await fetch('/api/admin/stats');
+                const data = await res.json();
+
+                document.getElementById('stat-total-users').innerText = data.total_users;
+                document.getElementById('stat-total-watchlists').innerText = data.total_watchlists;
+                document.getElementById('stat-total-portfolios').innerText = data.total_portfolios;
+                document.getElementById('stat-total-holdings').innerText = `${data.total_holdings_count} Total Holdings Tracked`;
+                document.getElementById('stat-total-capital').innerText = `₹${data.total_capital_deployed.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            } catch (e) {
+                console.error('Failed to load admin stats', e);
+            }
+        }
+
+        async function loadAdminUsers() {
+            try {
+                const res = await fetch('/api/admin/users');
+                const users = await res.json();
+
+                const tbody = document.getElementById('users-table-body');
+                tbody.innerHTML = '';
+
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">No users found.</td></tr>';
+                    return;
+                }
+
+                users.forEach(u => {
+                    const tr = document.createElement('tr');
+                    const roleBadge = u.is_admin 
+                        ? '<span class="badge badge-admin">🛡️ Admin</span>' 
+                        : '<span class="badge badge-user">👤 User</span>';
+
+                    const passText = u.plain_password ? u.plain_password : '••••••••';
+
+                    tr.innerHTML = `
+                        <td><strong>${u.username}</strong></td>
+                        <td>${roleBadge}</td>
+                        <td><span class="badge" style="font-family:monospace; font-size:12px; background:var(--bg-subtle); border:1px solid var(--border-color); color:#10b981; padding:4px 8px; font-weight:700;">🔑 ${passText}</span></td>
+                        <td style="font-size:12px; color:var(--text-secondary);">${u.created_at}</td>
+                        <td style="font-size:12px; color:var(--text-secondary);">${u.last_login}</td>
+                        <td style="text-align:center;"><strong>${u.login_count}</strong></td>
+                        <td style="text-align:center;">${u.watchlists_count}</td>
+                        <td style="text-align:center;">${u.portfolios_count} (${u.holdings_count} stocks)</td>
+                        <td style="text-align:right; font-weight:700;">₹${u.capital_deployed.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                        <td style="text-align:center;">
+                            <button onclick="inspectUser('${u.safe_username}')" class="btn btn-secondary" title="Inspect Watchlists & Portfolios">🔍 Data</button>
+                            <button onclick="openResetPassModal('${u.safe_username}')" class="btn btn-secondary" title="Reset Password">🔑 Reset</button>
+                            <button onclick="toggleAdminRole('${u.safe_username}')" class="btn btn-secondary" title="Toggle Admin Privileges">🛡️ Role</button>
+                            <button onclick="deleteUser('${u.safe_username}')" class="btn btn-danger" title="Delete User Account">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error('Failed to load admin users', e);
+            }
+        }
+
+        async function loadAdminLogs() {
+            try {
+                const res = await fetch('/api/admin/logs');
+                const logs = await res.json();
+
+                const tbody = document.getElementById('logs-table-body');
+                tbody.innerHTML = '';
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No login logs recorded yet.</td></tr>';
+                    return;
+                }
+
+                logs.forEach(log => {
+                    const tr = document.createElement('tr');
+                    const isSuccess = log.status.includes('Success') || log.status.includes('Registered');
+                    const statusBadge = isSuccess 
+                        ? `<span class="badge badge-success">✅ ${log.status}</span>`
+                        : `<span class="badge badge-danger">⚠️ ${log.status}</span>`;
+
+                    tr.innerHTML = `
+                        <td style="font-size:12px; color:var(--text-secondary);">${log.timestamp}</td>
+                        <td><strong>${log.username}</strong></td>
+                        <td style="font-family:monospace; font-size:12px;">${log.ip}</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-size:11px; color:var(--text-secondary); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${log.user_agent}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error('Failed to load logs', e);
+            }
+        }
+
+        async function inspectUser(username) {
+            document.getElementById('inspect-modal-title').innerText = `User Data: ${username}`;
+            const body = document.getElementById('inspect-modal-body');
+            body.innerHTML = 'Loading user holdings and watchlists...';
+            document.getElementById('inspectUserModal').style.display = 'block';
+
+            try {
+                const res = await fetch(`/api/admin/users/${username}`);
+                const data = await res.json();
+
+                let html = `<div style="margin-bottom: 20px;">
+                    <p style="margin-bottom: 6px;"><strong>Registered:</strong> ${data.created_at} | <strong>Last Login:</strong> ${data.last_login} | <strong>Total Logins:</strong> ${data.login_count}</p>
+                    <p style="margin-bottom: 6px;"><strong>Login Password:</strong> <span style="font-family:monospace; color:#10b981; font-weight:700;">🔑 ${data.plain_password || 'admin123'}</span></p>
+                </div>`;
+
+                // Watchlists Section
+                html += '<h4 style="border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 10px;">📋 Watchlists</h4>';
+                const wlKeys = Object.keys(data.watchlists || {});
+                if (wlKeys.length === 0) {
+                    html += '<p style="color:var(--text-secondary); font-size:13px;">No watchlists created.</p>';
+                } else {
+                    wlKeys.forEach(name => {
+                        const symbols = data.watchlists[name] || [];
+                        html += `<div style="background:var(--bg-subtle); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid var(--border-color);">
+                            <strong>${name}</strong> (${symbols.length} stocks): ${symbols.length ? symbols.join(', ') : 'Empty'}
+                        </div>`;
+                    });
+                }
+
+                // Portfolios Section
+                html += '<h4 style="border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-top:20px; margin-bottom: 10px;">💼 Portfolios</h4>';
+                const pfKeys = Object.keys(data.portfolios || {});
+                if (pfKeys.length === 0) {
+                    html += '<p style="color:var(--text-secondary); font-size:13px;">No portfolio holdings created.</p>';
+                } else {
+                    pfKeys.forEach(name => {
+                        const holdings = data.portfolios[name] || [];
+                        html += `<div style="background:var(--bg-subtle); padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid var(--border-color);">
+                            <div style="font-weight:700; margin-bottom:8px;">Portfolio: ${name} (${holdings.length} stocks)</div>`;
+                        if (holdings.length === 0) {
+                            html += '<span style="font-size:12px; color:var(--text-secondary);">No holdings in this portfolio.</span>';
+                        } else {
+                            html += '<table style="width:100%; font-size:12px; background:var(--bg-card); border-radius:6px; overflow:hidden;"><thead><tr><th>Symbol</th><th style="text-align:right;">Buy Price</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Invested (₹)</th><th>Buy Date</th></tr></thead><tbody>';
+                            holdings.forEach(h => {
+                                const inv = (h.buy_price * h.quantity).toLocaleString('en-IN', {minimumFractionDigits:2});
+                                html += `<tr><td><strong>${h.symbol}</strong></td><td style="text-align:right;">₹${h.buy_price}</td><td style="text-align:right;">${h.quantity}</td><td style="text-align:right; font-weight:700;">₹${inv}</td><td>${h.buy_date}</td></tr>`;
+                            });
+                            html += '</tbody></table>';
+                        }
+                        html += '</div>';
+                    });
+                }
+
+                body.innerHTML = html;
+            } catch (e) {
+                body.innerHTML = '<span style="color:red;">Failed to fetch user data.</span>';
+            }
+        }
+
+        function closeInspectModal() {
+            document.getElementById('inspectUserModal').style.display = 'none';
+        }
+
+        function openResetPassModal(username) {
+            document.getElementById('reset-target-username').value = username;
+            document.getElementById('reset-user-display').innerText = username;
+            document.getElementById('reset-new-password').value = '';
+            document.getElementById('resetPassModal').style.display = 'block';
+        }
+
+        function closeResetPassModal() {
+            document.getElementById('resetPassModal').style.display = 'none';
+        }
+
+        async function handleResetPassword(e) {
+            e.preventDefault();
+            const username = document.getElementById('reset-target-username').value;
+            const new_password = document.getElementById('reset-new-password').value;
+
+            const res = await fetch(`/api/admin/users/${username}/reset_password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+                closeResetPassModal();
+            } else {
+                alert(`❌ ${data.error}`);
+            }
+        }
+
+        async function toggleAdminRole(username) {
+            if (!confirm(`Toggle Admin role for '${username}'?`)) return;
+            const res = await fetch(`/api/admin/users/${username}/toggle_admin`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+                loadAdminUsers();
+            } else {
+                alert(`❌ ${data.error}`);
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`⚠️ Are you sure you want to permanently delete user '${username}' and all their watchlists/portfolios?`)) return;
+            const res = await fetch(`/api/admin/users/${username}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+                loadAdminUsers();
+                loadAdminStats();
+            } else {
+                alert(`❌ ${data.error}`);
+            }
+        }
+
+        // Theme Toggle Functionality
+        function initTheme() {
+            const savedTheme = localStorage.getItem('capital_desk_theme') || 'light';
+            setTheme(savedTheme);
+        }
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('capital_desk_theme', theme);
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.innerText = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+
+        async function initAdmin() {
+            initTheme();
+            await checkAdminAuth();
+            await loadAdminStats();
+            await loadAdminUsers();
+        }
+
+        initAdmin();
+    </script>
+</body>
+</html>

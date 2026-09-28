@@ -82,26 +82,28 @@
         .app-header {
             background: var(--bg-header);
             border-radius: 12px;
-            padding: 14px 22px;
+            padding: 10px 18px;
             margin-bottom: 20px;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-sm);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
+            gap: 12px;
+            position: relative;
+            z-index: 100;
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
         .brand-logo-group {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            flex-shrink: 0;
         }
         .brand-logo-img {
-            height: 48px;
+            height: 38px;
             width: auto;
-            max-width: 160px;
+            max-width: 140px;
             border-radius: 8px;
             object-fit: contain;
             border: 1px solid var(--border-color);
@@ -109,41 +111,99 @@
             background-color: var(--bg-card);
         }
         .app-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             color: var(--text-primary);
             margin: 0;
             letter-spacing: -0.5px;
+            white-space: nowrap;
         }
         .app-subtitle {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .header-actions-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .header-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--bg-subtle);
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        #user-badge {
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 1;
+        }
+        #header-username {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .btn-header-action {
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .btn-header-action:hover {
+            background-color: var(--table-hover-bg);
+            border-color: var(--border-input);
         }
 
         .nav-tabs {
             display: flex;
-            gap: 6px;
+            gap: 4px;
             background: var(--bg-subtle);
-            padding: 4px;
+            padding: 3px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
+            flex-shrink: 0;
         }
         .tab-btn {
-            padding: 8px 16px;
+            padding: 6px 14px;
             border-radius: 6px;
             border: none;
             background: transparent;
             color: var(--text-secondary);
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12.5px;
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
+            white-space: nowrap;
         }
         .tab-btn:hover { color: var(--text-primary); }
         .tab-btn.active {
@@ -590,6 +650,7 @@
     <div class="container">
         <!-- Main Top Bar with Capital Desk Logo & Controls -->
         <div class="app-header">
+            <!-- 1. Left: Brand Logo & Title -->
             <div class="brand-logo-group">
                 <img src="/static/logo.png" alt="Capital Desk Logo" class="brand-logo-img">
                 <div>
@@ -598,53 +659,66 @@
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                <div class="nav-tabs">
-                    <button class="tab-btn active" id="btn-tab-watchlists" onclick="switchTab('watchlists')">📋 Watchlists</button>
-                    <button class="tab-btn" id="btn-tab-portfolios" onclick="switchTab('portfolios')">💼 Portfolios</button>
-                    <button class="tab-btn" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Analytics</button>
+            <!-- 2. Middle: Navigation Tabs -->
+            <div class="nav-tabs">
+                <button class="tab-btn active" id="btn-tab-watchlists" onclick="switchTab('watchlists')">📋 Watchlists</button>
+                <button class="tab-btn" id="btn-tab-portfolios" onclick="switchTab('portfolios')">💼 Portfolios</button>
+                <button class="tab-btn" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Analytics</button>
+            </div>
+
+            <!-- 3. Right: Header Action Controls & User Info -->
+            <div class="header-actions-group">
+                <!-- User Account Badge -->
+                <div id="user-badge" class="header-badge" title="User Account">
+                    <span style="flex-shrink: 0;">👤</span> <span id="header-username">User</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <!-- User Account Badge -->
-                    <div id="user-badge" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-primary); background: var(--bg-subtle); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-                        👤 <span id="header-username">User</span>
-                    </div>
 
-                    <!-- Live Last Updated Badge -->
-                    <span id="last-updated-badge" style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 6px 12px; border-radius: 6px; font-weight: 600; border: 1px solid var(--border-color);">
-                        🕒 Updated: Just now
-                    </span>
+                <!-- Live Last Updated Badge -->
+                <span id="last-updated-badge" class="header-badge" style="color: var(--text-secondary); font-size: 11px;">
+                    🕒 Just now
+                </span>
 
-                    <!-- Theme Toggle Icon Only -->
-                    <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-secondary" title="Toggle Light / Dark Mode" style="padding: 6px 10px; font-size: 15px;">
-                        <span id="theme-icon">🌙</span>
+                <!-- Theme Toggle Icon Only -->
+                <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-header-action" title="Toggle Light / Dark Mode" style="font-size: 14px;">
+                    <span id="theme-icon">🌙</span>
+                </button>
+
+                <!-- Privacy Mode Toggle (Eye) -->
+                <button id="btn-privacy-header" onclick="togglePrivacyMode()" class="btn-header-action" title="Hide/Show monetary amounts for real-money privacy">
+                    👁️ <span>Hide Amounts</span>
+                </button>
+
+                <!-- Options Menu Dropdown -->
+                <div class="menu-dropdown-wrapper">
+                    <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-header-action" title="Options & Data Tools">
+                        ⚙️ Menu ▾
                     </button>
-
-                    <!-- Hidden Options Menu Dropdown -->
-                    <div class="menu-dropdown-wrapper">
-                        <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-secondary" title="Options & Data Tools" style="padding: 6px 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            ⚙️ Menu ▾
-                        </button>
-                        <div id="settings-menu-dropdown" class="menu-dropdown-content">
-                            <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
-                                <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
-                            </div>
-                            <div class="menu-divider"></div>
-                            <div class="menu-item" onclick="exportDataBackup(); closeSettingsMenu();">
-                                📥 Backup Data (JSON)
-                            </div>
-                            <div class="menu-item" onclick="triggerImportBackup(); closeSettingsMenu();">
-                                📤 Restore Data (JSON)
-                            </div>
-                            <div class="menu-divider"></div>
-                            <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">
-                                🚪 Log Out
-                            </div>
+                    <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                        <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
+                            <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
+                        </div>
+                        <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">
+                            👁️ Toggle Privacy Mode
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="exportDataBackup(); closeSettingsMenu();">
+                            📥 Backup Data (JSON)
+                        </div>
+                        <div class="menu-item" onclick="triggerImportBackup(); closeSettingsMenu();">
+                            📤 Restore Data (JSON)
+                        </div>
+                        <div class="menu-divider"></div>
+                        <a href="/admin" id="admin-menu-link" class="menu-item" style="display: none; text-decoration: none; color: #10b981;">
+                            🛡️ Admin Control Panel
+                        </a>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">
+                            🚪 Log Out
                         </div>
                     </div>
-                    
-                    <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="handleBackupFileSelect(event)">
                 </div>
+
+                <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="handleBackupFileSelect(event)">
             </div>
         </div>
 
@@ -925,6 +999,61 @@
         // Portfolio Sort & Filter State
         let pfFilterOption = 'all'; // 'all', 'st', 'lt'
         let pfSortOption = 'duration_desc'; // 'duration_desc', 'duration_asc', 'pnl_desc', 'pnl_asc', 'val_desc', 'date_desc', 'date_asc', 'name_asc'
+
+        // Privacy Mode State (Show / Hide sensitive financial money values)
+        let isPrivacyMode = localStorage.getItem('capital_desk_privacy_mode') === 'true';
+
+        function formatMoney(amount, forceShow = false) {
+            if (isPrivacyMode && !forceShow) return '₹ ••••••';
+            if (amount === undefined || amount === null || isNaN(amount)) return '-';
+            return '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatMoneyWithSign(amount, forceShow = false) {
+            if (isPrivacyMode && !forceShow) return '₹ ••••••';
+            if (amount === undefined || amount === null || isNaN(amount)) return '-';
+            const sign = amount >= 0 ? '+' : '';
+            return `${sign}₹${Math.abs(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        function formatQty(qty, forceShow = false) {
+            if (isPrivacyMode && !forceShow) return '••••';
+            if (qty === undefined || qty === null || isNaN(qty)) return '-';
+            return qty.toString();
+        }
+
+        function togglePrivacyMode() {
+            isPrivacyMode = !isPrivacyMode;
+            localStorage.setItem('capital_desk_privacy_mode', isPrivacyMode ? 'true' : 'false');
+            updatePrivacyUI();
+            renderPortfolios();
+            refreshPrices();
+            if (currentTab === 'dashboard') {
+                renderDashboard();
+            }
+        }
+
+        function updatePrivacyUI() {
+            const btnHeader = document.getElementById('btn-privacy-header');
+            const btnPf = document.getElementById('btn-privacy-pf');
+            const icon = isPrivacyMode ? '🙈' : '👁️';
+            const text = isPrivacyMode ? 'Amounts Hidden' : 'Hide Amounts';
+
+            if (btnHeader) {
+                btnHeader.innerHTML = `${icon} <span>${text}</span>`;
+                btnHeader.title = isPrivacyMode ? 'Click to show portfolio amounts' : 'Click to hide portfolio amounts (Privacy Mode)';
+                btnHeader.style.borderColor = isPrivacyMode ? '#10b981' : '';
+            }
+            if (btnPf) {
+                btnPf.innerHTML = `${icon} <span>${text}</span>`;
+                btnPf.style.borderColor = isPrivacyMode ? '#10b981' : '';
+            }
+        }
+
+        function initPrivacyMode() {
+            isPrivacyMode = localStorage.getItem('capital_desk_privacy_mode') === 'true';
+            updatePrivacyUI();
+        }
 
         // Utility Helpers for Safe Escaping & Dates
         function escapeHtml(str) {
@@ -1643,11 +1772,11 @@
 
                     const tdQty = document.createElement('td');
                     tdQty.style.textAlign = 'right';
-                    tdQty.innerText = item.quantity;
+                    tdQty.innerText = formatQty(item.quantity);
 
                     const tdBuy = document.createElement('td');
                     tdBuy.style.textAlign = 'right';
-                    tdBuy.innerText = `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                    tdBuy.innerText = formatMoney(item.buy_price);
 
                     const tdLtp = document.createElement('td');
                     tdLtp.style.textAlign = 'right';
@@ -1657,7 +1786,7 @@
                     const tdInv = document.createElement('td');
                     tdInv.style.textAlign = 'right';
                     tdInv.id = `pf-inv-${sym}`;
-                    tdInv.innerText = `₹${(item.buy_price * item.quantity).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                    tdInv.innerText = formatMoney(item.buy_price * item.quantity);
 
                     const tdVal = document.createElement('td');
                     tdVal.style.textAlign = 'right';
@@ -1807,18 +1936,22 @@
                     const pfDayPnlEl = document.getElementById(`pf-daypnl-${sym}`);
 
                     if (pfNameEl && info.name) pfNameEl.innerText = info.name;
-                    if (pfLtpEl) pfLtpEl.innerText = ltp > 0 ? `₹${ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '-';
-                    if (pfValEl) pfValEl.innerText = `₹${curVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                    if (pfLtpEl) pfLtpEl.innerText = ltp > 0 ? formatMoney(ltp) : '-';
+                    if (pfValEl) pfValEl.innerText = formatMoney(curVal);
 
                     if (pfPnlEl) {
                         const sign = pnlAmt >= 0 ? '+' : '';
-                        pfPnlEl.innerText = `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
+                        pfPnlEl.innerText = isPrivacyMode
+                            ? `₹ •••••• (${sign}${pnlPct.toFixed(2)}%)`
+                            : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
                         pfPnlEl.className = pnlAmt >= 0 ? 'pos' : 'neg';
                     }
 
                     if (pfDayPnlEl) {
                         const sign = dayPnLAmt >= 0 ? '+' : '';
-                        pfDayPnlEl.innerText = `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
+                        pfDayPnlEl.innerText = isPrivacyMode
+                            ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
+                            : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
                         pfDayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
                     }
                 });
@@ -1829,15 +1962,15 @@
                 const prevVal = totCurrentVal - totDayPnL;
                 const totDayPnLPct = prevVal > 0 ? (totDayPnL / prevVal) * 100 : 0;
 
-                const invStr = `₹${totInvested.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-                const valStr = `₹${totCurrentVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                const invStr = formatMoney(totInvested);
+                const valStr = formatMoney(totCurrentVal);
                 
                 const pnlSign = totPnL >= 0 ? '+' : '';
-                const pnlStr = `${pnlSign}₹${Math.abs(totPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                const pnlStr = isPrivacyMode ? '₹ ••••••' : `${pnlSign}₹${Math.abs(totPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
                 const pnlPctStr = `${pnlSign}${totPnLPct.toFixed(2)}%`;
 
                 const daySign = totDayPnL >= 0 ? '+' : '';
-                const dayPnlStr = `${daySign}₹${Math.abs(totDayPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                const dayPnlStr = isPrivacyMode ? '₹ ••••••' : `${daySign}₹${Math.abs(totDayPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
                 const dayPnlPctStr = `${daySign}${totDayPnLPct.toFixed(2)}%`;
 
                 const invCard = document.getElementById('pf-summary-invested');
@@ -1868,11 +2001,11 @@
                 if (footInv) footInv.innerText = invStr;
                 if (footVal) footVal.innerText = valStr;
                 if (footPnl) {
-                    footPnl.innerText = `${pnlStr} (${pnlPctStr})`;
+                    footPnl.innerText = isPrivacyMode ? `₹ •••••• (${pnlPctStr})` : `${pnlStr} (${pnlPctStr})`;
                     footPnl.className = totPnL >= 0 ? 'pos' : 'neg';
                 }
                 if (footDayPnl) {
-                    footDayPnl.innerText = `${dayPnlStr} (${dayPnlPctStr})`;
+                    footDayPnl.innerText = isPrivacyMode ? `₹ •••••• (${dayPnlPctStr})` : `${dayPnlStr} (${dayPnlPctStr})`;
                     footDayPnl.className = totDayPnL >= 0 ? 'pos' : 'neg';
                 }
             }
@@ -1970,13 +2103,13 @@
             const prevOverallVal = overallCurrentVal - overallDayPnL;
             const overallDayPnLPct = prevOverallVal > 0 ? (overallDayPnL / prevOverallVal) * 100 : 0;
 
-            document.getElementById('dash-net-worth').innerText = `₹${overallCurrentVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('dash-invested').innerText = `₹${overallInvested.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('dash-net-worth').innerText = formatMoney(overallCurrentVal);
+            document.getElementById('dash-invested').innerText = formatMoney(overallInvested);
             
             const pnlSign = overallPnL >= 0 ? '+' : '';
             const dashPnlEl = document.getElementById('dash-pnl');
             const dashPnlPctEl = document.getElementById('dash-pnl-pct');
-            dashPnlEl.innerText = `${pnlSign}₹${Math.abs(overallPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            dashPnlEl.innerText = isPrivacyMode ? '₹ ••••••' : `${pnlSign}₹${Math.abs(overallPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
             dashPnlPctEl.innerText = `${pnlSign}${overallPnLPct.toFixed(2)}% Overall`;
             dashPnlEl.style.color = overallPnL >= 0 ? '#27ae60' : '#c0392b';
             dashPnlPctEl.style.color = overallPnL >= 0 ? '#27ae60' : '#c0392b';
@@ -1984,7 +2117,7 @@
             const daySign = overallDayPnL >= 0 ? '+' : '';
             const dashDayPnlEl = document.getElementById('dash-day-pnl');
             const dashDayPnlPctEl = document.getElementById('dash-day-pnl-pct');
-            dashDayPnlEl.innerText = `${daySign}₹${Math.abs(overallDayPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            dashDayPnlEl.innerText = isPrivacyMode ? '₹ ••••••' : `${daySign}₹${Math.abs(overallDayPnL).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
             dashDayPnlPctEl.innerText = `${daySign}${overallDayPnLPct.toFixed(2)}% Today`;
             dashDayPnlEl.style.color = overallDayPnL >= 0 ? '#27ae60' : '#c0392b';
             dashDayPnlPctEl.style.color = overallDayPnL >= 0 ? '#27ae60' : '#c0392b';
@@ -2539,19 +2672,23 @@
 
             document.getElementById('detail-modal-duration').innerText = `⏱️ ${durationText}`;
             document.getElementById('detail-modal-buydate').innerText = `📅 ${dateStr}`;
-            document.getElementById('detail-modal-qty').innerText = item.quantity;
-            document.getElementById('detail-modal-buyprice').innerText = `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('detail-modal-invested').innerText = `₹${invAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('detail-modal-curval').innerText = ltp > 0 ? `₹${curVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '-';
+            document.getElementById('detail-modal-qty').innerText = formatQty(item.quantity);
+            document.getElementById('detail-modal-buyprice').innerText = formatMoney(item.buy_price);
+            document.getElementById('detail-modal-invested').innerText = formatMoney(invAmt);
+            document.getElementById('detail-modal-curval').innerText = ltp > 0 ? formatMoney(curVal) : '-';
 
             const pnlSign = pnlAmt >= 0 ? '+' : '';
             const pnlEl = document.getElementById('detail-modal-pnl');
-            pnlEl.innerText = `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`;
+            pnlEl.innerText = isPrivacyMode 
+                ? `₹ •••••• (${pnlSign}${pnlPct.toFixed(2)}%)` 
+                : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`;
             pnlEl.className = pnlAmt >= 0 ? 'pos' : 'neg';
 
             const daySign = dayPnLAmt >= 0 ? '+' : '';
             const dayPnlEl = document.getElementById('detail-modal-daypnl');
-            dayPnlEl.innerText = `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${daySign}${dayPnlPct.toFixed(2)}%)`;
+            dayPnlEl.innerText = isPrivacyMode 
+                ? `₹ •••••• (${daySign}${dayPnlPct.toFixed(2)}%)` 
+                : `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${daySign}${dayPnlPct.toFixed(2)}%)`;
             dayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
 
             document.getElementById('btn-detail-chart').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openInHouseChart(sym); };
@@ -2685,7 +2822,18 @@
                 const data = await res.json();
                 if (data.logged_in) {
                     const userEl = document.getElementById('header-username');
-                    if (userEl) userEl.innerText = data.username;
+                    const userBadge = document.getElementById('user-badge');
+                    const fullText = data.is_admin ? `${data.username} (Admin)` : data.username;
+                    if (userEl) {
+                        userEl.innerText = fullText;
+                    }
+                    if (userBadge) {
+                        userBadge.title = `Logged in as: ${fullText}`;
+                    }
+                    if (data.is_admin) {
+                        const adminLink = document.getElementById('admin-menu-link');
+                        if (adminLink) adminLink.style.display = 'flex';
+                    }
                 } else {
                     window.location.href = '/login';
                 }
@@ -2702,6 +2850,7 @@
         // Initialize App Data
         async function initApp() {
             initTheme();
+            initPrivacyMode();
             await checkAuthAndLoadUserInfo();
             await fetchWatchlists();
             await fetchPortfolios();
