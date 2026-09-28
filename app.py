@@ -76,13 +76,44 @@ class StockFetcher:
             self.crumb = None
 
     def fetch_stock(self, symbol):
+        import time
+        t_now = int(time.time())
+
+        # 1. Primary: Fast Real-Time 1-minute Tick Chart API
+        try:
+            url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=2d&_={t_now}'
+            r = self.session.get(url, timeout=4)
+            if r.status_code == 200:
+                res = r.json()
+                result_list = res.get('chart', {}).get('result', [])
+                if result_list:
+                    meta = result_list[0].get('meta', {})
+                    price = meta.get('regularMarketPrice')
+                    prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
+                    name = meta.get('shortName') or meta.get('longName') or symbol
+                    
+                    if price is not None:
+                        change = (price - prev_close) if prev_close else 0.0
+                        change_pct = (change / prev_close * 100) if prev_close else 0.0
+                        return {
+                            'symbol': symbol,
+                            'name': name,
+                            'price': round(float(price), 2),
+                            'change': round(float(change), 2),
+                            'change_pct': round(float(change_pct), 2),
+                            'mcap_cr': 'N/A'
+                        }
+        except Exception:
+            pass
+
+        # 2. Backup: Quote Summary API with Crumb
         if not self.crumb:
             self._init_crumb()
 
         if self.crumb:
             try:
-                url = f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/{symbol}?modules=price,summaryDetail&crumb={self.crumb}'
-                r = self.session.get(url, timeout=5)
+                url = f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/{symbol}?modules=price,summaryDetail&crumb={self.crumb}&_={t_now}'
+                r = self.session.get(url, timeout=4)
                 if r.status_code == 200:
                     price_module = r.json()['quoteSummary']['result'][0]['price']
                     
@@ -105,30 +136,6 @@ class StockFetcher:
                         }
             except Exception:
                 pass
-
-        # Backup: Chart API
-        try:
-            url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=2d'
-            r = self.session.get(url, timeout=5)
-            if r.status_code == 200:
-                meta = r.json()['chart']['result'][0]['meta']
-                price = meta.get('regularMarketPrice')
-                prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
-                change = price - prev_close if price and prev_close else 0
-                change_pct = (change / prev_close * 100) if prev_close else 0
-                name = meta.get('shortName') or meta.get('longName') or symbol
-                
-                if price is not None:
-                    return {
-                        'symbol': symbol,
-                        'name': name,
-                        'price': round(float(price), 2),
-                        'change': round(float(change), 2),
-                        'change_pct': round(float(change_pct), 2),
-                        'mcap_cr': 'N/A'
-                    }
-        except Exception:
-            pass
 
         return {'error': 'No Data Available'}
 
