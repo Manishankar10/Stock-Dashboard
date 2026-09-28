@@ -440,6 +440,36 @@
         .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
         .form-group input, .form-group select { width: 100%; box-sizing: border-box; }
 
+        /* Dropdown Options Menu Styles */
+        .menu-dropdown-wrapper { position: relative; display: inline-block; }
+        .menu-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 110%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            min-width: 210px;
+            z-index: 1000;
+            padding: 6px 0;
+        }
+        .menu-dropdown-content.show { display: block; }
+        .menu-item {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .menu-item:hover { background-color: var(--table-hover-bg); color: var(--btn-primary-bg); }
+        .menu-divider { height: 1px; background-color: var(--border-color); margin: 4px 0; }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spinning { animation: spin 0.8s linear infinite; }
     </style>
@@ -463,17 +493,35 @@
                     <button class="tab-btn" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Analytics</button>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <button id="btn-manual-refresh" onclick="manualRefreshPrices()" class="btn-secondary" title="Fetch latest real-time stock prices">
-                        <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh
-                    </button>
+                    <!-- Live Last Updated Badge -->
                     <span id="last-updated-badge" style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 6px 12px; border-radius: 6px; font-weight: 600; border: 1px solid var(--border-color);">
                         🕒 Updated: Just now
                     </span>
-                    <button onclick="exportDataBackup()" class="btn-secondary" title="Download JSON Backup file">📥 Backup</button>
-                    <button onclick="triggerImportBackup()" class="btn-secondary" title="Restore from JSON Backup file">📤 Restore</button>
-                    <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-secondary" title="Toggle Light / Dark Mode">
-                        <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
+
+                    <!-- Theme Toggle Icon Only -->
+                    <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-secondary" title="Toggle Light / Dark Mode" style="padding: 6px 10px; font-size: 15px;">
+                        <span id="theme-icon">🌙</span>
                     </button>
+
+                    <!-- Hidden Options Menu Dropdown -->
+                    <div class="menu-dropdown-wrapper">
+                        <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-secondary" title="Options & Data Tools" style="padding: 6px 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            ⚙️ Menu ▾
+                        </button>
+                        <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                            <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
+                                <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
+                            </div>
+                            <div class="menu-divider"></div>
+                            <div class="menu-item" onclick="exportDataBackup(); closeSettingsMenu();">
+                                📥 Backup Data (JSON)
+                            </div>
+                            <div class="menu-item" onclick="triggerImportBackup(); closeSettingsMenu();">
+                                📤 Restore Data (JSON)
+                            </div>
+                        </div>
+                    </div>
+                    
                     <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="handleBackupFileSelect(event)">
                 </div>
             </div>
@@ -869,36 +917,42 @@
                         tr.id = `row-${sym}`;
                         
                         const tdSymbol = document.createElement('td');
-                        tdSymbol.style.minWidth = '320px';
                         tdSymbol.innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span><div class="company-name" id="name-${sym}">Loading...</div>`;
 
                         const tdPrice = document.createElement('td');
-                        tdPrice.style.minWidth = '160px';
+                        tdPrice.style.textAlign = 'right';
                         tdPrice.id = `price-${sym}`;
                         tdPrice.innerText = '-';
 
                         const tdChange = document.createElement('td');
-                        tdChange.style.minWidth = '180px';
+                        tdChange.style.textAlign = 'right';
                         tdChange.id = `change-${sym}`;
                         tdChange.innerText = '-';
 
                         const tdMcap = document.createElement('td');
-                        tdMcap.style.minWidth = '160px';
+                        tdMcap.style.textAlign = 'right';
                         tdMcap.id = `mcap-${sym}`;
                         tdMcap.innerText = '-';
 
                         const tdActions = document.createElement('td');
-                        tdActions.style.minWidth = '220px';
+                        tdActions.style.textAlign = 'center';
                         const actionsDiv = document.createElement('div');
-                        actionsDiv.className = 'actions-cell';
+                        actionsDiv.style.display = 'flex';
+                        actionsDiv.style.alignItems = 'center';
+                        actionsDiv.style.justifyContent = 'center';
+                        actionsDiv.style.gap = '12px';
 
                         const chartBtn = document.createElement('button');
-                        chartBtn.className = 'btn-action btn-action-chart';
+                        chartBtn.className = 'btn-secondary';
+                        chartBtn.style.padding = '6px 14px';
+                        chartBtn.style.fontSize = '12px';
                         chartBtn.innerHTML = '📊 Chart';
                         chartBtn.onclick = () => openInHouseChart(sym);
 
                         const delBtn = document.createElement('button');
-                        delBtn.className = 'btn-action btn-action-delete';
+                        delBtn.className = 'btn-danger';
+                        delBtn.style.padding = '6px 14px';
+                        delBtn.style.fontSize = '12px';
                         delBtn.innerHTML = '🗑️ Remove';
                         delBtn.onclick = () => removeWatchlistStock(name, sym);
 
@@ -959,11 +1013,11 @@
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
-                        <th style="min-width:320px;">Company / Symbol</th>
-                        <th style="min-width:160px;">LTP (₹)</th>
-                        <th style="min-width:180px;">Change (%)</th>
-                        <th style="min-width:160px;">Market Cap (Cr)</th>
-                        <th style="min-width:220px;">Actions</th>
+                        <th>Company / Symbol</th>
+                        <th style="text-align:right;">LTP (₹)</th>
+                        <th style="text-align:right;">Change (%)</th>
+                        <th style="text-align:right;">Market Cap (Cr)</th>
+                        <th style="text-align:center;">Actions</th>
                     </tr>
                 `;
                 table.appendChild(thead);
@@ -2087,6 +2141,17 @@
             document.getElementById('holdingDetailsModal').style.display = 'none';
         }
 
+        function toggleSettingsMenu(event) {
+            if (event) event.stopPropagation();
+            const dropdown = document.getElementById('settings-menu-dropdown');
+            if (dropdown) dropdown.classList.toggle('show');
+        }
+
+        function closeSettingsMenu() {
+            const dropdown = document.getElementById('settings-menu-dropdown');
+            if (dropdown) dropdown.classList.remove('show');
+        }
+
         function closeChartModal() {
             const modal = document.getElementById('chartModal');
             modal.style.display = 'none';
@@ -2101,12 +2166,18 @@
             if (event.target == modal) closeChartModal();
             if (event.target == editModal) closeEditModal();
             if (event.target == detailModal) closeHoldingDetailsModal();
+
+            const menuDropdown = document.getElementById('settings-menu-dropdown');
+            if (menuDropdown && !event.target.closest('.menu-dropdown-wrapper')) {
+                menuDropdown.classList.remove('show');
+            }
         }
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeChartModal();
                 closeEditModal();
                 closeHoldingDetailsModal();
+                closeSettingsMenu();
             }
         });
 
