@@ -9,6 +9,10 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
     <link rel="apple-touch-icon" href="/static/icon.png">
+    <!-- Institutional Financial Typography (Inter & Plus Jakarta Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-body: #f8fafc;
@@ -56,12 +60,20 @@
             -webkit-overflow-scrolling: touch;
         }
         body {
-            font-family: monospace;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
             margin: 0;
             padding: 15px;
             background-color: var(--bg-body);
             color: var(--text-primary);
             transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        table, .metric-card .value, .sub-value {
+            font-feature-settings: "tnum" 1, "cv05" 1;
+            font-variant-numeric: tabular-nums;
         }
 
         .container { max-width: 1400px; width: 100%; padding: 0 10px; margin: 0 auto; box-sizing: border-box; }
@@ -82,8 +94,8 @@
 
         .brand-logo-group { display: flex; align-items: center; gap: 12px; }
         .brand-logo-img { height: 44px; width: auto; max-width: 160px; border-radius: 8px; object-fit: contain; }
-        .app-title { font-size: 19px; font-weight: 800; color: var(--text-primary); margin: 0; }
-        .app-subtitle { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .app-title { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); margin: 0; }
+        .app-subtitle { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 
         .summary-grid {
             display: grid;
@@ -98,9 +110,9 @@
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-sm);
         }
-        .metric-card .title { font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .metric-card .value { font-size: 22px; font-weight: 800; color: var(--text-primary); }
-        .metric-card .sub-value { font-size: 13px; font-weight: 600; margin-top: 4px; color: var(--text-secondary); }
+        .metric-card .title { font-size: 11.5px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .metric-card .value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+        .metric-card .sub-value { font-size: 12.5px; font-weight: 500; margin-top: 4px; color: var(--text-secondary); }
 
         .nav-tabs {
             display: flex;
