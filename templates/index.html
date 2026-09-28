@@ -2456,6 +2456,17 @@
             activePriceLines = [];
         }
 
+        function toggleSettingsMenu(event) {
+            if (event) event.stopPropagation();
+            const dropdown = document.getElementById('settings-menu-dropdown');
+            if (dropdown) dropdown.classList.toggle('show');
+        }
+
+        function closeSettingsMenu() {
+            const dropdown = document.getElementById('settings-menu-dropdown');
+            if (dropdown) dropdown.classList.remove('show');
+        }
+
         window.onclick = function(event) {
             const modal = document.getElementById('chartModal');
             const editModal = document.getElementById('editHoldingModal');
