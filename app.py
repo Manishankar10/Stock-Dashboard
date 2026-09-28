@@ -593,11 +593,12 @@ def get_stock_data():
 def get_chart_history():
     symbol = request.args.get("symbol", "").strip()
     time_range = request.args.get("range", "1y").strip()
+    interval = request.args.get("interval", "1d").strip()
     
     if not symbol:
         return jsonify({"error": "Symbol is required"}), 400
 
-    url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={time_range}'
+    url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range={time_range}'
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     try:
         r = requests.get(url, headers=headers, timeout=10)
@@ -619,10 +620,11 @@ def get_chart_history():
         
         candles = []
         volume_data = []
+        is_intraday = interval in ('5m', '15m', '30m', '60m', '1h', '90m')
         
         for i in range(len(timestamps)):
             if None not in (opens[i], highs[i], lows[i], closes[i]):
-                date_str = datetime.datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d')
+                time_val = int(timestamps[i]) if is_intraday else datetime.datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d')
                 open_val = round(float(opens[i]), 2)
                 high_val = round(float(highs[i]), 2)
                 low_val = round(float(lows[i]), 2)
@@ -632,7 +634,7 @@ def get_chart_history():
                 is_up = close_val >= open_val
                 
                 candles.append({
-                    'time': date_str,
+                    'time': time_val,
                     'open': open_val,
                     'high': high_val,
                     'low': low_val,
@@ -640,7 +642,7 @@ def get_chart_history():
                 })
                 
                 volume_data.append({
-                    'time': date_str,
+                    'time': time_val,
                     'value': vol_val,
                     'color': '#26a69a' if is_up else '#ef5350'
                 })

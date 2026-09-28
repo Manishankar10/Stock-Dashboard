@@ -426,6 +426,9 @@
         .tf-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
         .tf-btn:hover { color: #d1d4dc; background: #2a2e39; }
         .tf-btn.active { background: #10b981; color: #ffffff; }
+        .int-btn { background: transparent; color: #787b86; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        .int-btn:hover { color: #d1d4dc; background: #2a2e39; }
+        .int-btn.active { background: #10b981; color: #ffffff; }
         .ind-checkbox { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #b2b5be; cursor: pointer; padding: 0 6px; }
         .legend-bar { padding: 8px 20px; background: #181c27; font-size: 13px; color: #b2b5be; display: flex; gap: 20px; border-bottom: 1px solid #2a2e39; font-family: monospace; flex-wrap: wrap; }
         .legend-item { display: flex; gap: 5px; }
@@ -643,14 +646,25 @@
                         <button class="tf-btn" id="chart-type-area" onclick="setChartType('area')" title="Area Chart">⛰️</button>
                     </div>
 
+                    <!-- Time Interval (Candle Frequency) Group -->
+                    <div class="timeframe-group" style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39;">
+                        <span style="color: #787b86; font-weight: 600; font-size: 11px; align-self: center; padding: 0 4px;">FREQ:</span>
+                        <button class="int-btn" id="int-5m" onclick="changeInterval('5m')" title="5 Minutes Candles">5m</button>
+                        <button class="int-btn" id="int-15m" onclick="changeInterval('15m')" title="15 Minutes Candles">15m</button>
+                        <button class="int-btn" id="int-1h" onclick="changeInterval('1h')" title="1 Hour Candles">1H</button>
+                        <button class="int-btn active" id="int-1d" onclick="changeInterval('1d')" title="Daily Candles">1D</button>
+                        <button class="int-btn" id="int-1w" onclick="changeInterval('1w')" title="Weekly Candles">1W</button>
+                        <button class="int-btn" id="int-1mo" onclick="changeInterval('1mo')" title="Monthly Candles">1M</button>
+                    </div>
+
                     <!-- Timeframe Group -->
                     <div class="timeframe-group" style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39;">
-                        <button class="tf-btn" onclick="changeRange('1mo')">1M</button>
-                        <button class="tf-btn" onclick="changeRange('3mo')">3M</button>
-                        <button class="tf-btn" onclick="changeRange('6mo')">6M</button>
+                        <button class="tf-btn" id="tf-1mo" onclick="changeRange('1mo')">1M</button>
+                        <button class="tf-btn" id="tf-3mo" onclick="changeRange('3mo')">3M</button>
+                        <button class="tf-btn" id="tf-6mo" onclick="changeRange('6mo')">6M</button>
                         <button class="tf-btn active" id="tf-1y" onclick="changeRange('1y')">1Y</button>
-                        <button class="tf-btn" onclick="changeRange('2y')">2Y</button>
-                        <button class="tf-btn" onclick="changeRange('5y')">5Y</button>
+                        <button class="tf-btn" id="tf-2y" onclick="changeRange('2y')">2Y</button>
+                        <button class="tf-btn" id="tf-5y" onclick="changeRange('5y')">5Y</button>
                         <button class="tf-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View" style="background: #10b981; color: #ffffff; margin-left: 4px;">🔄 Center View</button>
                     </div>
 
@@ -1499,11 +1513,11 @@
                     const tr = document.createElement('tr');
                     tr.className = 'pf-row';
                     tr.id = `pf-row-${sym}`;
-                    tr.title = 'Click row to view complete details & actions';
+                    tr.title = 'Click row to view interactive technical chart';
                     tr.onclick = (e) => {
                         // Prevent opening if clicking on an interactive button
                         if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-                        openHoldingDetailsModal(item);
+                        openInHouseChart(sym);
                     };
 
                     const tdStock = document.createElement('td');
@@ -1963,6 +1977,7 @@
            IN-HOUSE LIGHTWEIGHT CHARTS (PRO CANVAS ENGINE)
         ========================================================= */
         let currentChartSymbol = '';
+        let currentChartInterval = '1d';
         let currentChartRange = '1y';
         let chartType = 'candlestick';
         
@@ -1995,6 +2010,7 @@
 
         function openInHouseChart(sym) {
             currentChartSymbol = sym;
+            currentChartInterval = '1d';
             currentChartRange = '1y';
             
             const modal = document.getElementById('chartModal');
@@ -2004,23 +2020,58 @@
             document.getElementById('chartSymbolDisplay').innerText = sym;
             document.getElementById('chartNameDisplay').innerText = info.name || sym;
 
-            document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
-            const defaultTf = document.getElementById('tf-1y');
-            if (defaultTf) defaultTf.classList.add('active');
+            updateIntervalButtonsUI();
+            updateRangeButtonsUI();
 
+            loadChartData();
+        }
+
+        function changeInterval(intervalStr) {
+            currentChartInterval = intervalStr;
+
+            if (intervalStr === '5m') {
+                currentChartRange = '1d';
+            } else if (intervalStr === '15m') {
+                currentChartRange = '5d';
+            } else if (intervalStr === '1h') {
+                currentChartRange = '1mo';
+            } else if (intervalStr === '1d') {
+                currentChartRange = '1y';
+            } else if (intervalStr === '1w') {
+                currentChartRange = '2y';
+            } else if (intervalStr === '1mo') {
+                currentChartRange = '5y';
+            }
+
+            updateIntervalButtonsUI();
+            updateRangeButtonsUI();
             loadChartData();
         }
 
         function changeRange(rangeStr) {
             currentChartRange = rangeStr;
-            document.querySelectorAll('.tf-btn').forEach(btn => {
-                if (btn.innerText === rangeStr.toUpperCase() || btn.id === `tf-${rangeStr}`) {
+            updateRangeButtonsUI();
+            loadChartData();
+        }
+
+        function updateIntervalButtonsUI() {
+            document.querySelectorAll('.int-btn').forEach(btn => {
+                if (btn.id === `int-${currentChartInterval}`) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
                 }
             });
-            loadChartData();
+        }
+
+        function updateRangeButtonsUI() {
+            document.querySelectorAll('.tf-btn').forEach(btn => {
+                if (btn.id === `tf-${currentChartRange}`) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
         }
 
         function setChartType(type) {
@@ -2098,7 +2149,7 @@
         }
 
         async function loadChartData() {
-            const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}`);
+            const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}&interval=${currentChartInterval}`);
             const data = await res.json();
 
             if (data.error) {
@@ -2280,7 +2331,14 @@
         }
 
         function updateLegend(time, o, h, l, c, vol, fullData, curTime = null) {
-            document.getElementById('legDate').innerText = time;
+            let timeStr = '-';
+            if (typeof time === 'number') {
+                const d = new Date(time * 1000);
+                timeStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else if (time) {
+                timeStr = time;
+            }
+            document.getElementById('legDate').innerText = timeStr;
             document.getElementById('legOpen').innerText = '₹' + (o ? o.toFixed(2) : '-');
             document.getElementById('legHigh').innerText = '₹' + (h ? h.toFixed(2) : '-');
             document.getElementById('legLow').innerText = '₹' + (l ? l.toFixed(2) : '-');
