@@ -1660,6 +1660,8 @@
                     const pnlAmt = curVal - invAmt;
                     const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
                     const dayPnLAmt = dayChange * h.quantity;
+                    const prevHoldingVal = curVal - dayPnLAmt;
+                    const dayPnlPct = prevHoldingVal > 0 ? (dayPnLAmt / prevHoldingVal) * 100 : (ltp > 0 ? (dayChange / ltp) * 100 : 0);
 
                     totInvested += invAmt;
                     totCurrentVal += curVal;
@@ -1683,7 +1685,7 @@
 
                     if (pfDayPnlEl) {
                         const sign = dayPnLAmt >= 0 ? '+' : '';
-                        pfDayPnlEl.innerText = `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        pfDayPnlEl.innerText = `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
                         pfDayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
                     }
                 });
@@ -1737,7 +1739,7 @@
                     footPnl.className = totPnL >= 0 ? 'pos' : 'neg';
                 }
                 if (footDayPnl) {
-                    footDayPnl.innerText = dayPnlStr;
+                    footDayPnl.innerText = `${dayPnlStr} (${dayPnlPctStr})`;
                     footDayPnl.className = totDayPnL >= 0 ? 'pos' : 'neg';
                 }
             }
@@ -2296,6 +2298,63 @@
             document.getElementById('legMacdGroup').style.display = showMacd ? 'inline-block' : 'none';
 
             document.getElementById('legSmaGroup').style.display = (showSma20 || showSma50 || showSma200 || showEma9 || showBollinger) ? 'inline-block' : 'none';
+        }
+
+        let currentDetailHolding = null;
+
+        function openHoldingDetailsModal(item) {
+            currentDetailHolding = item;
+            const sym = item.symbol;
+            const info = stockPricesData[sym] || {};
+            const ltp = info.price || 0;
+            const dayChange = info.change || 0;
+
+            const invAmt = item.buy_price * item.quantity;
+            const curVal = ltp > 0 ? (ltp * item.quantity) : invAmt;
+            const pnlAmt = curVal - invAmt;
+            const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
+            
+            const dayPnLAmt = dayChange * item.quantity;
+            const prevHoldingVal = curVal - dayPnLAmt;
+            const dayPnlPct = prevHoldingVal > 0 ? (dayPnLAmt / prevHoldingVal) * 100 : (ltp > 0 ? (dayChange / ltp) * 100 : 0);
+
+            const daysHeld = getHoldingDays(item.buy_date);
+            const durationText = formatHoldingDuration(item.buy_date);
+            const dateStr = formatDateFormatted(item.buy_date);
+            const isLongTerm = daysHeld >= 365;
+
+            const exch = sym.endsWith('.BO') ? 'BSE' : 'NSE';
+            const badgeClass = exch === 'NSE' ? 'badge-nse' : 'badge-bse';
+
+            document.getElementById('detail-modal-sym').innerHTML = `<strong>${sym}</strong> <span class="badge ${badgeClass}">${exch}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
+            document.getElementById('detail-modal-name').innerText = info.name || sym;
+
+            document.getElementById('detail-modal-duration').innerText = `⏱️ ${durationText}`;
+            document.getElementById('detail-modal-buydate').innerText = `📅 ${dateStr}`;
+            document.getElementById('detail-modal-qty').innerText = item.quantity;
+            document.getElementById('detail-modal-buyprice').innerText = `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('detail-modal-invested').innerText = `₹${invAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('detail-modal-curval').innerText = ltp > 0 ? `₹${curVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '-';
+
+            const pnlSign = pnlAmt >= 0 ? '+' : '';
+            const pnlEl = document.getElementById('detail-modal-pnl');
+            pnlEl.innerText = `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`;
+            pnlEl.className = pnlAmt >= 0 ? 'pos' : 'neg';
+
+            const daySign = dayPnLAmt >= 0 ? '+' : '';
+            const dayPnlEl = document.getElementById('detail-modal-daypnl');
+            dayPnlEl.innerText = `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${daySign}${dayPnlPct.toFixed(2)}%)`;
+            dayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
+
+            document.getElementById('btn-detail-chart').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openInHouseChart(sym); };
+            document.getElementById('btn-detail-edit').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openEditModal(sym, item.buy_price, item.quantity, item.buy_date); };
+            document.getElementById('btn-detail-delete').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); removePortfolioStock(sym); };
+
+            document.getElementById('holdingDetailsModal').style.display = 'block';
+        }
+
+        function closeHoldingDetailsModal() {
+            document.getElementById('holdingDetailsModal').style.display = 'none';
         }
 
         function closeChartModal() {
