@@ -651,6 +651,7 @@
                         <button class="tf-btn active" id="tf-1y" onclick="changeRange('1y')">1Y</button>
                         <button class="tf-btn" onclick="changeRange('2y')">2Y</button>
                         <button class="tf-btn" onclick="changeRange('5y')">5Y</button>
+                        <button class="tf-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View" style="background: #10b981; color: #ffffff; margin-left: 4px;">🔄 Center View</button>
                     </div>
 
                     <!-- Drawing Tools Quick Bar -->
@@ -2083,6 +2084,19 @@
             }
         }
 
+        function resetChartView() {
+            if (mainChart) {
+                mainChart.timeScale().fitContent();
+                mainChart.priceScale('right').applyOptions({ autoScale: true });
+            }
+            if (rsiChart) {
+                rsiChart.timeScale().fitContent();
+            }
+            if (macdChart) {
+                macdChart.timeScale().fitContent();
+            }
+        }
+
         async function loadChartData() {
             const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}`);
             const data = await res.json();
@@ -2119,8 +2133,20 @@
                 layout: { background: { type: 'solid', color: '#131722' }, textColor: '#d1d4dc' },
                 grid: { vertLines: { color: '#1f2434' }, horzLines: { color: '#1f2434' } },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                rightPriceScale: { borderColor: '#2a2e39' },
-                timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+                rightPriceScale: { borderColor: '#2a2e39', autoScale: true, alignLabels: true },
+                timeScale: {
+                    borderColor: '#2a2e39',
+                    timeVisible: true,
+                    secondsVisible: false,
+                    rightOffset: 10,
+                    barSpacing: 8,
+                    minBarSpacing: 0.2,
+                    fixLeftEdge: false,
+                    fixRightEdge: false
+                },
+                handleScroll: { mouseWheel: true, pressedMove: true, horzTouchDrag: true, vertTouchDrag: true },
+                handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
+                kineticScroll: { touch: true, mouse: true }
             });
 
             if (chartType === 'candlestick') {
@@ -2173,6 +2199,9 @@
                 grid: { vertLines: { color: '#1f2434' }, horzLines: { color: '#1f2434' } },
                 rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.1 } },
                 timeScale: { visible: false },
+                handleScroll: { mouseWheel: true, pressedMove: true, horzTouchDrag: true, vertTouchDrag: true },
+                handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
+                kineticScroll: { touch: true, mouse: true }
             });
 
             rsiSeries = rsiChart.addLineSeries({ color: '#e040fb', lineWidth: 2, title: 'RSI 14' });
@@ -2193,6 +2222,9 @@
                 grid: { vertLines: { color: '#1f2434' }, horzLines: { color: '#1f2434' } },
                 rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.1 } },
                 timeScale: { visible: false },
+                handleScroll: { mouseWheel: true, pressedMove: true, horzTouchDrag: true, vertTouchDrag: true },
+                handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
+                kineticScroll: { touch: true, mouse: true }
             });
 
             macdHistSeries = macdChart.addHistogramSeries({ title: 'Histogram' });
