@@ -689,7 +689,7 @@
                 <button class="tab-btn active" id="btn-tab-watchlists" onclick="switchTab('watchlists')">📋 Watchlists</button>
                 <button class="tab-btn" id="btn-tab-portfolios" onclick="switchTab('portfolios')">💼 Portfolios</button>
                 <button class="tab-btn" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Analytics</button>
-                <a href="/insights" class="tab-btn" style="text-decoration: none;">💡 Insights</a>
+                <button class="tab-btn" id="btn-tab-insights" onclick="switchTab('insights')">💡 Insights</button>
             </div>
 
             <!-- 3. Right: Header Action Controls & User Info -->
@@ -1450,13 +1450,28 @@
         }
 
         // Switch Tabs
-        function switchTab(tabName) {
+        function switchTab(tabName, pushState = true) {
             currentTab = tabName;
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-            document.getElementById(`btn-tab-${tabName}`).classList.add('active');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
+            const btnEl = document.getElementById(`btn-tab-${tabName}`);
+            const tabEl = document.getElementById(`tab-${tabName}`);
+            if (btnEl) btnEl.classList.add('active');
+            if (tabEl) tabEl.classList.add('active');
+
+            if (pushState) {
+                const pathMap = {
+                    'watchlists': '/watchlists',
+                    'portfolios': '/portfolios',
+                    'dashboard': '/analytics',
+                    'insights': '/insights'
+                };
+                const routePath = pathMap[tabName] || '/watchlists';
+                if (window.location.pathname !== routePath) {
+                    window.history.pushState({ tab: tabName }, '', routePath);
+                }
+            }
 
             if (tabName === 'dashboard') {
                 renderDashboard();
@@ -1464,6 +1479,18 @@
                 loadInsightsTab();
             }
         }
+
+        window.onpopstate = function(event) {
+            if (event.state && event.state.tab) {
+                switchTab(event.state.tab, false);
+            } else {
+                const path = window.location.pathname;
+                if (path === '/portfolios') switchTab('portfolios', false);
+                else if (path === '/analytics') switchTab('dashboard', false);
+                else if (path === '/insights') switchTab('insights', false);
+                else switchTab('watchlists', false);
+            }
+        };
 
         let currentInsightsScope = 'all';
 
@@ -3947,6 +3974,17 @@
             await fetchAlerts();
             await fetchWatchlists();
             await fetchPortfolios();
+
+            const initialTab = "{{ initial_tab|default('watchlists') }}";
+            const pathname = window.location.pathname;
+            let targetTab = initialTab;
+
+            if (pathname === '/portfolios') targetTab = 'portfolios';
+            else if (pathname === '/analytics') targetTab = 'dashboard';
+            else if (pathname === '/insights') targetTab = 'insights';
+            else if (pathname === '/' || pathname === '/watchlists') targetTab = 'watchlists';
+
+            switchTab(targetTab, false);
         }
 
         initApp();

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics & Visual Intelligence - Capital Desk</title>
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <!-- Institutional Financial Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Dashboard Visual Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-header: #ffffff;
+            --bg-subtle: #f8fafc;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-header: #1e293b;
+            --bg-subtle: #0f172a;
+            --border-color: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, .app-title, .brand-logo-group { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .container { max-width: 1400px; width: 100%; margin: 0 auto; }
+
+        /* Header Navigation */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-header);
+            padding: 14px 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-logo-group { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text-primary); }
+        .brand-logo-img { width: 34px; height: 34px; object-fit: contain; }
+        .app-title { font-size: 20px; font-weight: 700; margin: 0; color: var(--text-primary); }
+        .app-subtitle { font-size: 11px; color: var(--text-secondary); font-weight: 500; margin-top: 1px; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: var(--bg-subtle);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active { background: var(--btn-primary-bg); color: #ffffff; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25); }
+
+        .header-actions-group { display: flex; align-items: center; gap: 10px; }
+        .btn-header-action {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Summary Grid & Metric Cards */
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .metric-card {
+            background: var(--bg-card);
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+        .metric-card .title { font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; }
+        .metric-card .value { font-size: 22px; font-weight: 700; margin-top: 6px; color: var(--text-primary); }
+        .metric-card .sub-value { font-size: 12px; font-weight: 600; margin-top: 4px; color: var(--text-secondary); }
+
+        .pos { color: #10b981; }
+        .neg { color: #ef4444; }
+
+        /* Dashboard Charts Grid */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .chart-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+        .chart-card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .chart-wrapper { position: relative; height: 300px; width: 100%; }
+
+        .menu-dropdown-wrapper { position: relative; display: inline-block; }
+        .menu-dropdown-content { display: none; position: absolute; right: 0; top: 110%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-md); min-width: 210px; z-index: 1000; padding: 6px 0; }
+        .menu-dropdown-content.show { display: block; }
+        .menu-item { padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+        .menu-item:hover { background-color: var(--bg-subtle); color: var(--btn-primary-bg); }
+        .menu-divider { height: 1px; background-color: var(--border-color); margin: 4px 0; }
+
+        @media (max-width: 900px) {
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="app-header">
+            <a href="/" class="brand-logo-group">
+                <img src="/static/logo.png" alt="Capital Desk Logo" class="brand-logo-img">
+                <div>
+                    <h1 class="app-title">Capital Desk</h1>
+                    <div class="app-subtitle">Portfolio & Market Intelligence</div>
+                </div>
+            </a>
+            
+            <div class="nav-tabs">
+                <a href="/watchlists" class="tab-btn">📋 Watchlists</a>
+                <a href="/portfolios" class="tab-btn">💼 Portfolios</a>
+                <a href="/analytics" class="tab-btn active">📊 Analytics</a>
+                <a href="/insights" class="tab-btn">💡 Insights</a>
+            </div>
+
+            <div class="header-actions-group">
+                <button id="btn-privacy-header" onclick="togglePrivacyMode()" class="btn-header-action" title="Toggle Privacy Mode">👁️</button>
+                
+                <div class="menu-dropdown-wrapper">
+                    <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-header-action">
+                        👤 <span id="header-username">User</span> ▾
+                    </button>
+                    <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                        <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="loadAnalytics(); closeSettingsMenu();">🔄 Refresh Analytics</div>
+                        <div class="menu-divider"></div>
+                        <a href="/admin" id="admin-menu-link" class="menu-item" style="display: none; color: #10b981;">🛡️ Admin Control Panel</a>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">🚪 Log Out</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combined Stats Overview Header -->
+        <div class="summary-grid">
+            <div class="metric-card">
+                <div class="title">Total Net Worth</div>
+                <div class="value" id="dash-net-worth">₹0.00</div>
+                <div class="sub-value">Across all portfolios</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Total Invested</div>
+                <div class="value" id="dash-invested">₹0.00</div>
+                <div class="sub-value">Capital Deployed</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Overall Return (P&L)</div>
+                <div class="value" id="dash-pnl">₹0.00</div>
+                <div class="sub-value" id="dash-pnl-pct">0.00%</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Today's Return</div>
+                <div class="value" id="dash-day-pnl">₹0.00</div>
+                <div class="sub-value" id="dash-day-pnl-pct">0.00%</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Charts Grid -->
+        <div class="dashboard-grid">
+            <div class="chart-card">
+                <h3>Portfolio Allocation Breakdown</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPortfolioAllocation"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>Invested Amount vs Current Value per Portfolio</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartInvestedVsCurrent"></canvas>
+                </div>
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+                <h3>Top Performing Holdings Across Portfolios</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartTopHoldings"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Core -->
+    <script>
+        let isPrivacyMode = false;
+        let chartAllocInstance = null;
+        let chartVsInstance = null;
+        let chartTopInstance = null;
+
+        function initTheme() {
+            const theme = localStorage.getItem('capital_desk_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            const icon = document.getElementById('theme-menu-icon');
+            const text = document.getElementById('theme-menu-text');
+            if (icon && text) {
+                icon.innerText = theme === 'dark' ? '☀️' : '🌙';
+                text.innerText = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            }
+        }
+
+        function toggleTheme() {
+            const curr = document.documentElement.getAttribute('data-theme') || 'dark';
+            const next = curr === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('capital_desk_theme', next);
+            initTheme();
+        }
+
+        function togglePrivacyMode() {
+            isPrivacyMode = !isPrivacyMode;
+            localStorage.setItem('capital_desk_privacy_mode', isPrivacyMode ? 'true' : 'false');
+            loadAnalytics();
+        }
+
+        function toggleSettingsMenu(e) { e.stopPropagation(); document.getElementById('settings-menu-dropdown').classList.toggle('show'); }
+        function closeSettingsMenu() { document.getElementById('settings-menu-dropdown').classList.remove('show'); }
+        window.onclick = function() { closeSettingsMenu(); };
+
+        async function checkUserSession() {
+            try {
+                const res = await fetch('/api/user');
+                const data = await res.json();
+                if (data.username) {
+                    document.getElementById('header-username').innerText = data.username;
+                    if (data.is_admin || data.role === 'admin') {
+                        document.getElementById('admin-menu-link').style.display = 'flex';
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function logoutUser() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
+        async function loadAnalytics() {
+            try {
+                const pfRes = await fetch('/api/portfolios');
+                const portfolios = await pfRes.json();
+                
+                const allSymbols = new Set();
+                Object.values(portfolios).forEach(list => list.forEach(item => allSymbols.add(item.symbol)));
+
+                let prices = {};
+                if (allSymbols.size > 0) {
+                    const priceRes = await fetch('/api/stock_data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbols: Array.from(allSymbols) })
+                    });
+                    prices = await priceRes.json();
+                }
+
+                renderAnalytics(portfolios, prices);
+            } catch(e) {}
+        }
+
+        function renderAnalytics(portfolios, prices) {
+            let totInvested = 0, totCurVal = 0, totDayPnl = 0;
+            const pfNames = Object.keys(portfolios);
+            const pfInvestedList = [];
+            const pfCurrentList = [];
+            const holdingsList = [];
+
+            pfNames.forEach(name => {
+                let pfInv = 0, pfCur = 0;
+                portfolios[name].forEach(item => {
+                    const info = prices[item.symbol] || {};
+                    const ltp = info.price || 0;
+                    const change = info.change || 0;
+                    const inv = item.buy_price * item.quantity;
+                    const cur = ltp > 0 ? (ltp * item.quantity) : inv;
+
+                    pfInv += inv;
+                    pfCur += cur;
+                    totDayPnl += (change * item.quantity);
+
+                    const pnl = cur - inv;
+                    const pnlPct = inv > 0 ? (pnl / inv * 100) : 0;
+                    holdingsList.push({
+                        symbol: item.symbol,
+                        curVal: cur,
+                        pnlPct: pnlPct
+                    });
+                });
+
+                totInvested += pfInv;
+                totCurVal += pfCur;
+                pfInvestedList.push(pfInv);
+                pfCurrentList.push(pfCur);
+            });
+
+            const overallPnl = totCurVal - totInvested;
+            const overallPnlPct = totInvested > 0 ? (overallPnl / totInvested * 100) : 0;
+
+            document.getElementById('dash-net-worth').innerText = isPrivacyMode ? '₹ ••••••' : '₹' + totCurVal.toLocaleString('en-IN', {minimumFractionDigits:2});
+            document.getElementById('dash-invested').innerText = isPrivacyMode ? '₹ ••••••' : '₹' + totInvested.toLocaleString('en-IN', {minimumFractionDigits:2});
+            
+            const pnlEl = document.getElementById('dash-pnl');
+            pnlEl.innerText = isPrivacyMode ? '₹ ••••••' : (overallPnl >= 0 ? '+' : '') + '₹' + Math.abs(overallPnl).toLocaleString('en-IN', {minimumFractionDigits:2});
+            pnlEl.className = 'value ' + (overallPnl >= 0 ? 'pos' : 'neg');
+
+            const pnlPctEl = document.getElementById('dash-pnl-pct');
+            pnlPctEl.innerText = `${overallPnl >= 0 ? '+' : ''}${overallPnlPct.toFixed(2)}% Return`;
+            pnlPctEl.className = 'sub-value ' + (overallPnl >= 0 ? 'pos' : 'neg');
+
+            const dayPnlEl = document.getElementById('dash-day-pnl');
+            dayPnlEl.innerText = isPrivacyMode ? '₹ ••••••' : (totDayPnl >= 0 ? '+' : '') + '₹' + Math.abs(totDayPnl).toLocaleString('en-IN', {minimumFractionDigits:2});
+            dayPnlEl.className = 'value ' + (totDayPnl >= 0 ? 'pos' : 'neg');
+
+            // Render Charts
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            // 1. Doughnut Chart
+            if (chartAllocInstance) chartAllocInstance.destroy();
+            const ctxAlloc = document.getElementById('chartPortfolioAllocation').getContext('2d');
+            chartAllocInstance = new Chart(ctxAlloc, {
+                type: 'doughnut',
+                data: {
+                    labels: pfNames,
+                    datasets: [{
+                        data: pfCurrentList,
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: textColor } } }
+                }
+            });
+
+            // 2. Bar Chart
+            if (chartVsInstance) chartVsInstance.destroy();
+            const ctxVs = document.getElementById('chartInvestedVsCurrent').getContext('2d');
+            chartVsInstance = new Chart(ctxVs, {
+                type: 'bar',
+                data: {
+                    labels: pfNames,
+                    datasets: [
+                        { label: 'Invested (₹)', data: pfInvestedList, backgroundColor: '#64748b' },
+                        { label: 'Current Value (₹)', data: pfCurrentList, backgroundColor: '#10b981' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: textColor } },
+                        y: { ticks: { color: textColor } }
+                    },
+                    plugins: { legend: { labels: { color: textColor } } }
+                }
+            });
+
+            // 3. Top Holdings Bar Chart
+            holdingsList.sort((a, b) => b.pnlPct - a.pnlPct);
+            const top5 = holdingsList.slice(0, 6);
+
+            if (chartTopInstance) chartTopInstance.destroy();
+            const ctxTop = document.getElementById('chartTopHoldings').getContext('2d');
+            chartTopInstance = new Chart(ctxTop, {
+                type: 'bar',
+                data: {
+                    labels: top5.map(h => h.symbol),
+                    datasets: [{
+                        label: 'Overall Return (%)',
+                        data: top5.map(h => h.pnlPct),
+                        backgroundColor: top5.map(h => h.pnlPct >= 0 ? '#10b981' : '#ef4444')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: textColor } },
+                        y: { ticks: { color: textColor } }
+                    },
+                    plugins: { legend: { labels: { color: textColor } } }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            checkUserSession();
+            loadAnalytics();
+        });
+    </script>
+</body>
+</html>

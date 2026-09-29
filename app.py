@@ -545,7 +545,7 @@ def register_page():
 @app.route("/insights")
 @login_required
 def insights_page():
-    return render_template("insights.html")
+    return render_template("index.html", initial_tab="insights")
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
@@ -862,9 +862,20 @@ def get_user_info():
     return jsonify({"logged_in": False})
 
 @app.route("/")
+@app.route("/watchlists")
 @login_required
 def index():
-    return render_template("index.html")
+    return render_template("index.html", initial_tab="watchlists")
+
+@app.route("/portfolios")
+@login_required
+def portfolios_page():
+    return render_template("index.html", initial_tab="portfolios")
+
+@app.route("/analytics")
+@login_required
+def analytics_page():
+    return render_template("index.html", initial_tab="dashboard")
 
 @app.route("/api/backup/export", methods=["GET"])
 @login_required
