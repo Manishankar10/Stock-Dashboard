@@ -120,6 +120,7 @@ class StockFetcher:
                             'price': round(float(price), 2),
                             'change': round(float(change), 2),
                             'change_pct': round(float(change_pct), 2),
+                            'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
                             'mcap_cr': 'N/A'
                         }
         except Exception:
@@ -151,6 +152,7 @@ class StockFetcher:
                             'price': round(float(price), 2),
                             'change': round(float(change), 2) if change else 0,
                             'change_pct': round(float(change_pct), 2) if change_pct else 0,
+                            'previous_close': round(float(price - change), 2) if price is not None and change is not None else None,
                             'mcap_cr': round(float(mcap) / 10000000, 2) if mcap else 'N/A'
                         }
             except Exception:
@@ -1332,6 +1334,14 @@ def get_chart_history():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ============================================================
+# SMALLCASES MODULE
+# Kept in a separate module so the existing application remains untouched.
+# ============================================================
+from smallcases import smallcases_bp, init_smallcases
+init_smallcases(fetcher, login_required, BASE_DATA_DIR)
+app.register_blueprint(smallcases_bp)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
