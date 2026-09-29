@@ -721,6 +721,9 @@
                         <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
                             <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
                         </div>
+                        <div class="menu-item" onclick="openStockNewsModal(''); closeSettingsMenu();">
+                            📰 Latest Market News
+                        </div>
                         <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">
                             👁️ Toggle Privacy Mode
                         </div>
@@ -909,6 +912,8 @@
                         <label class="ind-checkbox"><input type="checkbox" id="chkMacd" onchange="toggleIndicators()"> <span style="color:#3b82f6">MACD</span></label>
                     </div>
 
+                    <button class="btn-secondary" style="font-size: 12px; padding: 5px 12px; background: #2a2e39; border-color: #363a45; color: #ffffff;" onclick="openStockNewsModal(currentChartSymbol)">📰 News</button>
+
                     <span class="close-btn" onclick="closeChartModal()" style="font-size: 26px; cursor: pointer;">&times;</span>
                 </div>
             </div>
@@ -1092,10 +1097,39 @@
             </div>
 
             <div style="display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                <button id="btn-detail-news" class="btn-secondary" style="font-size: 12px;">📰 News</button>
                 <button id="btn-detail-alert" class="btn-secondary" style="font-size: 12px;">🔔 Set Alert</button>
                 <button id="btn-detail-chart" class="btn-primary" style="font-size: 12px;">📊 Technical Chart</button>
                 <button id="btn-detail-edit" class="btn-secondary" style="font-size: 12px;">✏️ Edit</button>
                 <button id="btn-detail-delete" class="btn-danger" style="font-size: 12px;">🗑️ Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         STOCK NEWS POPUP MODAL
+    ========================================================= -->
+    <div id="stockNewsModal" class="small-modal">
+        <div class="small-modal-content" style="width: 620px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 id="news-modal-title" style="margin: 0; font-size: 18px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        📰 Latest Market News
+                    </h3>
+                    <div id="news-modal-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Fetching real-time updates...</div>
+                </div>
+                <span class="close-btn" onclick="closeStockNewsModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            </div>
+
+            <div id="news-articles-container" style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
+                    Loading latest news coverage...
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 16px;">
+                <button type="button" class="btn-secondary" onclick="closeStockNewsModal()">Close</button>
             </div>
         </div>
     </div>
@@ -1606,6 +1640,14 @@
                     chartBtn.innerHTML = '📊';
                     chartBtn.onclick = () => openInHouseChart(sym);
 
+                    const newsBtn = document.createElement('button');
+                    newsBtn.className = 'btn-secondary';
+                    newsBtn.style.padding = '6px 10px';
+                    newsBtn.style.fontSize = '14px';
+                    newsBtn.title = `Latest News for ${sym}`;
+                    newsBtn.innerHTML = '📰';
+                    newsBtn.onclick = () => openStockNewsModal(sym);
+
                     const alertBtn = document.createElement('button');
                     alertBtn.className = 'btn-secondary';
                     alertBtn.style.padding = '6px 10px';
@@ -1623,6 +1665,7 @@
                     delBtn.onclick = () => removeWatchlistStock(activeWatchlistName, sym);
 
                     actionsDiv.appendChild(chartBtn);
+                    actionsDiv.appendChild(newsBtn);
                     actionsDiv.appendChild(alertBtn);
                     actionsDiv.appendChild(delBtn);
                     tdActions.appendChild(actionsDiv);
@@ -3130,6 +3173,10 @@
             const reasonEl = document.getElementById('detail-modal-reason');
             if (reasonEl) reasonEl.innerText = reasonText;
 
+            const btnNews = document.getElementById('btn-detail-news');
+            if (btnNews) {
+                btnNews.onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openStockNewsModal(sym); };
+            }
             document.getElementById('btn-detail-alert').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openCreateAlertModal(sym); };
             document.getElementById('btn-detail-chart').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openInHouseChart(sym); };
             document.getElementById('btn-detail-edit').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openEditModal(sym, item.buy_price, item.quantity, item.buy_date, item.buy_reason || item.notes || ''); };
@@ -3140,6 +3187,85 @@
 
         function closeHoldingDetailsModal() {
             document.getElementById('holdingDetailsModal').style.display = 'none';
+        }
+
+        async function openStockNewsModal(symbol = '') {
+            const modal = document.getElementById('stockNewsModal');
+            const titleEl = document.getElementById('news-modal-title');
+            const subtitleEl = document.getElementById('news-modal-subtitle');
+            const container = document.getElementById('news-articles-container');
+
+            const cleanSym = symbol ? symbol.trim() : '';
+            titleEl.innerHTML = cleanSym ? `📰 News for <strong>${cleanSym}</strong>` : `📰 Latest Market News`;
+            subtitleEl.innerText = cleanSym ? `Real-time news headlines & coverage for ${cleanSym}` : `Real-time updates for Indian Stock Market & Economy`;
+            
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
+                    Fetching latest live news...
+                </div>
+            `;
+
+            modal.style.display = 'block';
+
+            try {
+                const url = cleanSym ? `/api/news/${encodeURIComponent(cleanSym)}` : `/api/news`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.success && data.articles && data.articles.length > 0) {
+                    container.innerHTML = '';
+                    data.articles.forEach(art => {
+                        const card = document.createElement('div');
+                        card.style.cssText = `
+                            background: var(--bg-subtle);
+                            border: 1px solid var(--border-color);
+                            border-radius: 8px;
+                            padding: 14px;
+                            transition: transform 0.15s ease, box-shadow 0.15s ease;
+                        `;
+                        
+                        let timeStr = art.pub_date || '';
+                        try {
+                            const dt = new Date(art.pub_date);
+                            if (!isNaN(dt)) {
+                                timeStr = dt.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                            }
+                        } catch(e) {}
+
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px;">
+                                <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 14px; color: var(--text-primary); text-decoration: none; line-height: 1.4;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
+                                    ${art.title} ↗
+                                </a>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+                                <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                                    🏢 ${art.publisher}
+                                </span>
+                                <span>🕒 ${timeStr}</span>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            📰 No recent news articles found for ${cleanSym || 'the market'}.
+                        </div>
+                    `;
+                }
+            } catch(err) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #ef4444;">
+                        ❌ Failed to load news updates: ${err.message}
+                    </div>
+                `;
+            }
+        }
+
+        function closeStockNewsModal() {
+            document.getElementById('stockNewsModal').style.display = 'none';
         }
 
         function closeChartModal() {

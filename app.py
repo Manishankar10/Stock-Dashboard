@@ -4,6 +4,8 @@ import datetime
 import requests
 import math
 import difflib
+import urllib.parse
+import xml.etree.ElementTree as ET
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1389,6 +1391,73 @@ def get_chart_history():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/news", methods=["GET"])
+@app.route("/api/news/<path:symbol>", methods=["GET"])
+@login_required
+def get_stock_news_api(symbol=None):
+    try:
+        raw_sym = (symbol or "").strip()
+        if not raw_sym:
+            clean_query = "Indian Stock Market Nifty Sensex"
+            display_title = "Market Overview News"
+        else:
+            upper_sym = raw_sym.upper()
+            clean_query = upper_sym.replace('.NS', '').replace('.BO', '')
+            if clean_query == '^NSEI':
+                clean_query = 'Nifty 50'
+            elif clean_query == '^NSEBANK':
+                clean_query = 'Nifty Bank'
+            elif clean_query == '^BSESN':
+                clean_query = 'Sensex'
+            elif clean_query in ['GOLDBEES', 'GC=F']:
+                clean_query = 'Gold price'
+            elif clean_query in ['SILVERBEES', 'SI=F']:
+                clean_query = 'Silver price'
+            elif clean_query == 'CL=F':
+                clean_query = 'Crude Oil price'
+            display_title = raw_sym
+
+        query_str = f"{clean_query} stock news" if raw_sym else clean_query
+        encoded_query = urllib.parse.quote(query_str)
+        url = f"https://news.google.com/rss/search?q={encoded_query}+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        resp = requests.get(url, headers=headers, timeout=6)
+        
+        articles = []
+        if resp.status_code == 200:
+            root = ET.fromstring(resp.content)
+            for item in root.findall('.//item')[:12]:
+                title_elem = item.find('title')
+                link_elem = item.find('link')
+                pub_elem = item.find('pubDate')
+
+                title = title_elem.text if title_elem is not None else ""
+                link = link_elem.text if link_elem is not None else "#"
+                pub_date = pub_elem.text if pub_elem is not None else ""
+
+                parts = title.rsplit(' - ', 1)
+                headline = parts[0]
+                publisher = parts[1] if len(parts) > 1 else "Financial News"
+
+                articles.append({
+                    'title': headline,
+                    'publisher': publisher,
+                    'link': link,
+                    'pub_date': pub_date
+                })
+
+        return jsonify({
+            'success': True,
+            'symbol': display_title,
+            'query': clean_query,
+            'articles': articles
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e), 'articles': []})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
