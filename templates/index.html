@@ -653,6 +653,37 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spinning { animation: spin 0.8s linear infinite; }
 
+        /* Insights Sticky Sub-header & Inner Scrollable News Feed */
+        .insights-sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 95;
+            background: var(--bg-card);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border-color);
+        }
+        .insights-news-feed-scroll {
+            max-height: calc(100vh - 220px);
+            min-height: 420px;
+            overflow-y: auto;
+            padding-right: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .insights-news-feed-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .insights-news-feed-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .insights-news-feed-scroll::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.25);
+            border-radius: 10px;
+        }
+        .insights-news-feed-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.55);
+        }
+
         /* Mobile & Small Device Optimization (Media Queries) */
         @media (max-width: 768px) {
             body {
@@ -956,7 +987,7 @@
             </div>
 
             <!-- Controls & Sub-header (Moved below Indexes & FII/DII) -->
-            <div class="card-container" style="padding: 18px 24px; margin-bottom: 20px;">
+            <div class="card-container insights-sticky-header" style="padding: 16px 20px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div>
                         <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
@@ -1011,7 +1042,7 @@
                         </div>
                     </div>
 
-                    <div id="insights-news-feed" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div id="insights-news-feed" class="insights-news-feed-scroll" style="display: flex; flex-direction: column; gap: 12px;">
                         <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
                             <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
                             Fetching real-time news for portfolio & watchlist stocks...
@@ -1727,8 +1758,7 @@
         let currentInsightsScope = 'all';
         let cachedInsightsArticles = [];
 
-        function showInsightsSkeletons() {
-            // 1. News Feed Skeletons
+        function showNewsSkeletonsOnly() {
             const feedEl = document.getElementById('insights-news-feed');
             if (feedEl) {
                 let newsSkeletons = '';
@@ -1753,6 +1783,11 @@
                 }
                 feedEl.innerHTML = newsSkeletons;
             }
+        }
+
+        function showInsightsSkeletons() {
+            // 1. News Feed Skeletons
+            showNewsSkeletonsOnly();
 
             // 2. Market Indexes Grid Skeletons
             const idxGrid = document.getElementById('insights-indexes-grid');
@@ -1845,6 +1880,7 @@
         }
 
         async function loadInsightsTab(scope = null) {
+            const isScopeChange = (scope !== null);
             if (scope) currentInsightsScope = scope;
             
             const btnAll = document.getElementById('insights-scope-all');
@@ -1854,6 +1890,28 @@
             if (btnAll) btnAll.className = currentInsightsScope === 'all' ? 'btn-primary' : 'btn-secondary';
             if (btnPf) btnPf.className = currentInsightsScope === 'portfolio' ? 'btn-primary' : 'btn-secondary';
             if (btnWl) btnWl.className = currentInsightsScope === 'watchlist' ? 'btn-primary' : 'btn-secondary';
+
+            if (isScopeChange) {
+                showNewsSkeletonsOnly();
+                const feedEl = document.getElementById('insights-news-feed');
+                fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            cachedInsightsArticles = data.articles || [];
+                            populateInsightsStockFilterOptions();
+                            filterAndRenderInsightsNews();
+                        } else if (feedEl) {
+                            feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${data.error}</div>`;
+                        }
+                    })
+                    .catch(err => {
+                        if (feedEl) {
+                            feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${err.message}</div>`;
+                        }
+                    });
+                return;
+            }
 
             showInsightsSkeletons();
 
