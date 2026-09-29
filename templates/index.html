@@ -3727,6 +3727,36 @@
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                     fontSize: 11
                 },
+                localization: {
+                    locale: 'en-IN',
+                    timeFormatter: timestamp => {
+                        if (typeof timestamp === 'number') {
+                            const date = new Date(timestamp * 1000);
+                            return date.toLocaleString('en-IN', {
+                                timeZone: 'Asia/Kolkata',
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                            }) + ' (IST)';
+                        }
+                        return String(timestamp);
+                    },
+                    dateFormatter: timestamp => {
+                        if (typeof timestamp === 'number') {
+                            const date = new Date(timestamp * 1000);
+                            return date.toLocaleDateString('en-IN', {
+                                timeZone: 'Asia/Kolkata',
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                            });
+                        }
+                        return String(timestamp);
+                    }
+                },
                 grid: {
                     vertLines: { color: '#1f2434', style: LightweightCharts.LineStyle.Dotted },
                     horzLines: { color: '#1f2434', style: LightweightCharts.LineStyle.Dotted }
@@ -3756,7 +3786,17 @@
                     fixLeftEdge: false,
                     fixRightEdge: false,
                     lockVisibleTimeRangeOnResize: true,
-                    rightBarStaysOnScroll: true
+                    rightBarStaysOnScroll: true,
+                    tickMarkFormatter: (time, tickMarkType, locale) => {
+                        if (typeof time === 'number') {
+                            const date = new Date(time * 1000);
+                            if (['5m', '15m', '1h', '60m'].includes(currentChartInterval)) {
+                                return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+                            }
+                            return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
+                        }
+                        return String(time);
+                    }
                 }
             });
 
@@ -3908,9 +3948,13 @@
             let timeStr = '-';
             if (typeof time === 'number') {
                 const d = new Date(time * 1000);
-                timeStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const datePart = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
+                const timePart = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+                timeStr = `${datePart} ${timePart} (IST)`;
+            } else if (typeof time === 'object' && time !== null && time.year) {
+                timeStr = `${time.day} ${time.month} ${time.year}`;
             } else if (time) {
-                timeStr = time;
+                timeStr = String(time) + ' (IST)';
             }
             document.getElementById('legDate').innerText = timeStr;
             document.getElementById('legOpen').innerText = '₹' + (o ? o.toFixed(2) : '-');

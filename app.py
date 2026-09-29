@@ -7,6 +7,7 @@ import difflib
 import urllib.parse
 import xml.etree.ElementTree as ET
 from functools import wraps
+from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -1358,10 +1359,11 @@ def get_chart_history():
         candles = []
         volume_data = []
         is_intraday = interval in ('5m', '15m', '30m', '60m', '1h', '90m')
+        ist_tz = ZoneInfo("Asia/Kolkata")
         
         for i in range(len(timestamps)):
             if None not in (opens[i], highs[i], lows[i], closes[i]):
-                time_val = int(timestamps[i]) if is_intraday else datetime.datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d')
+                time_val = int(timestamps[i]) if is_intraday else datetime.datetime.fromtimestamp(timestamps[i], tz=ist_tz).strftime('%Y-%m-%d')
                 open_val = round(float(opens[i]), 2)
                 high_val = round(float(highs[i]), 2)
                 low_val = round(float(lows[i]), 2)
