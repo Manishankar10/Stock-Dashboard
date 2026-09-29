@@ -665,7 +665,7 @@
         }
         .insights-news-feed-scroll {
             max-height: calc(100vh - 220px);
-            min-height: 420px;
+            min-height: 533px;
             overflow-y: auto;
             padding-right: 4px;
             -webkit-overflow-scrolling: touch;
@@ -1152,11 +1152,15 @@
                     </div>
 
                     <!-- Drawing Tools Quick Bar -->
-                    <div style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39;">
-                        <button class="tf-btn" onclick="addHorizontalLine('support')" title="Add Horizontal Support Line">➖ Support</button>
-                        <button class="tf-btn" onclick="addHorizontalLine('target')" title="Add Target Price Line">🎯 Target</button>
-                        <button class="tf-btn" onclick="addHorizontalLine('stoploss')" title="Add Stop-Loss Price Line">🛑 StopLoss</button>
-                        <button class="tf-btn" onclick="clearDrawings()" title="Clear All Drawn Lines" style="color: #ef5350;">🧹 Clear Lines</button>
+                    <div style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39; flex-wrap: wrap;">
+                        <button class="tf-btn" id="tool-btn-support" onclick="addHorizontalLine('support')" title="Add Horizontal Support Line">➖ Support</button>
+                        <button class="tf-btn" id="tool-btn-target" onclick="addHorizontalLine('target')" title="Add Target Price Line">🎯 Target</button>
+                        <button class="tf-btn" id="tool-btn-stoploss" onclick="addHorizontalLine('stoploss')" title="Add Stop-Loss Price Line">🛑 StopLoss</button>
+                        <button class="tf-btn" id="tool-btn-trendline" onclick="activateDrawingTool('trendline')" title="Draw Diagonal Trendline (Click 2 points)">📐 Trendline</button>
+                        <button class="tf-btn" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle')" title="Draw Resistance/Support Rectangle Zone">⬜ Rectangle</button>
+                        <button class="tf-btn" id="tool-btn-vertical" onclick="activateDrawingTool('vertical')" title="Draw Vertical Time Marker Line">⏱️ Time Line</button>
+                        <button class="tf-btn" id="tool-btn-note" onclick="activateDrawingTool('note')" title="Add Text Callout / Note on Chart">📍 Note</button>
+                        <button class="tf-btn" onclick="clearDrawings()" title="Clear All Drawn Lines & Shapes" style="color: #ef5350;">🧹 Clear All</button>
                     </div>
 
                     <!-- Indicators Toggle Dropdown -->
@@ -4532,6 +4536,399 @@
                 activePriceLines = [];
             }
             clearSavedPriceLines(currentChartSymbol);
+            clearSavedChartShapes(currentChartSymbol);
+            cancelDrawingTool();
+            redrawCanvasOverlay();
+        }
+
+        // =========================================================
+        // ADVANCED CHART DRAWING TOOLS (Trendline, Rectangle, Time Line, Note)
+        // =========================================================
+        let currentDrawingTool = null; // 'trendline' | 'rectangle' | 'vertical' | 'note'
+        let drawingPoints = [];
+        let tempMousePos = null;
+        let drawingCanvas = null;
+
+        function getSavedChartShapes(sym) {
+            try {
+                const data = localStorage.getItem('capital_desk_chart_shapes_' + sym);
+                return data ? JSON.parse(data) : [];
+            } catch(e) { return []; }
+        }
+
+        function saveChartShapeForSymbol(sym, shapeData) {
+            try {
+                const existing = getSavedChartShapes(sym);
+                existing.push(shapeData);
+                localStorage.setItem('capital_desk_chart_shapes_' + sym, JSON.stringify(existing));
+            } catch(e){}
+        }
+
+        function clearSavedChartShapes(sym) {
+            try {
+                localStorage.removeItem('capital_desk_chart_shapes_' + sym);
+            } catch(e){}
+        }
+
+        function activateDrawingTool(toolType) {
+            if (!mainSeries || !mainChart) {
+                alert('Please wait for chart data to load.');
+                return;
+            }
+
+            currentDrawingTool = toolType;
+            drawingPoints = [];
+            tempMousePos = null;
+
+            updateDrawingToolButtonsUI();
+            showDrawingBanner(toolType);
+            enableCanvasInteractions(true);
+        }
+
+        function updateDrawingToolButtonsUI() {
+            const tools = ['support', 'target', 'stoploss', 'trendline', 'rectangle', 'vertical', 'note'];
+            tools.forEach(t => {
+                const btn = document.getElementById(`tool-btn-${t}`);
+                if (btn) {
+                    if (t === currentDrawingTool) {
+                        btn.classList.add('active');
+                        btn.style.background = '#10b981';
+                        btn.style.color = '#ffffff';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.style.background = 'transparent';
+                        btn.style.color = '#787b86';
+                    }
+                }
+            });
+        }
+
+        function showDrawingBanner(toolType) {
+            let banner = document.getElementById('drawingToolBanner');
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!banner && mainContainer) {
+                banner = document.createElement('div');
+                banner.id = 'drawingToolBanner';
+                banner.style.cssText = `
+                    position: absolute;
+                    top: 10px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(16, 185, 129, 0.95);
+                    color: #ffffff;
+                    padding: 6px 16px;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    z-index: 100;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    backdrop-filter: blur(4px);
+                    pointer-events: auto;
+                `;
+                mainContainer.appendChild(banner);
+            }
+
+            let msg = 'Click on chart to draw';
+            if (toolType === 'trendline') msg = '📐 Trendline: Click 1st point (Start), then 2nd point (End). Press Esc to cancel.';
+            else if (toolType === 'rectangle') msg = '⬜ Rectangle Zone: Click 1st corner, then opposite corner. Press Esc to cancel.';
+            else if (toolType === 'vertical') msg = '⏱️ Time Line: Click on chart to place vertical marker. Press Esc to cancel.';
+            else if (toolType === 'note') msg = '📍 Text Note: Click on chart to place text note. Press Esc to cancel.';
+
+            if (banner) {
+                banner.innerHTML = `<span>${msg}</span> <button onclick="cancelDrawingTool()" style="background: rgba(0,0,0,0.25); border: none; color: #fff; padding: 2px 8px; border-radius: 10px; cursor: pointer; font-size: 11px;">Cancel (Esc)</button>`;
+                banner.style.display = 'flex';
+            }
+        }
+
+        function hideDrawingBanner() {
+            const banner = document.getElementById('drawingToolBanner');
+            if (banner) banner.style.display = 'none';
+        }
+
+        function cancelDrawingTool() {
+            currentDrawingTool = null;
+            drawingPoints = [];
+            tempMousePos = null;
+            updateDrawingToolButtonsUI();
+            hideDrawingBanner();
+            enableCanvasInteractions(false);
+            redrawCanvasOverlay();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && currentDrawingTool) {
+                cancelDrawingTool();
+            }
+        });
+
+        function setupCanvasOverlay() {
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!mainContainer) return;
+
+            let canvas = document.getElementById('chartDrawingCanvas');
+            if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.id = 'chartDrawingCanvas';
+                canvas.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    z-index: 20;
+                `;
+                mainContainer.appendChild(canvas);
+
+                canvas.addEventListener('mousemove', handleCanvasMouseMove);
+                canvas.addEventListener('click', handleCanvasClick);
+            }
+            drawingCanvas = canvas;
+            resizeDrawingCanvas();
+        }
+
+        function resizeDrawingCanvas() {
+            const mainContainer = document.getElementById('mainChartPane');
+            if (drawingCanvas && mainContainer) {
+                drawingCanvas.width = mainContainer.clientWidth;
+                drawingCanvas.height = mainContainer.clientHeight;
+                redrawCanvasOverlay();
+            }
+        }
+
+        function enableCanvasInteractions(enable) {
+            if (drawingCanvas) {
+                drawingCanvas.style.pointerEvents = enable ? 'auto' : 'none';
+                drawingCanvas.style.cursor = enable ? 'crosshair' : 'default';
+            }
+        }
+
+        function getChartPointFromEvent(e) {
+            if (!mainChart || !mainSeries || !drawingCanvas) return null;
+            const rect = drawingCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const price = mainSeries.coordinateToPrice(y);
+            let time = mainChart.timeScale().coordinateToTime(x);
+
+            if (!time && cachedChartData && cachedChartData.candles) {
+                const logical = mainChart.timeScale().coordinateToLogical(x);
+                if (logical !== null) {
+                    const idx = Math.max(0, Math.min(cachedChartData.candles.length - 1, Math.round(logical)));
+                    if (cachedChartData.candles[idx]) {
+                        time = cachedChartData.candles[idx].time;
+                    }
+                }
+            }
+
+            return { x, y, price, time };
+        }
+
+        function handleCanvasMouseMove(e) {
+            if (!currentDrawingTool) return;
+            const pt = getChartPointFromEvent(e);
+            if (pt) {
+                tempMousePos = pt;
+                redrawCanvasOverlay();
+            }
+        }
+
+        function handleCanvasClick(e) {
+            if (!currentDrawingTool) return;
+            const pt = getChartPointFromEvent(e);
+            if (!pt || !pt.time || !pt.price) return;
+
+            if (currentDrawingTool === 'vertical') {
+                const shape = {
+                    type: 'vertical',
+                    time: pt.time,
+                    color: '#f59e0b'
+                };
+                saveChartShapeForSymbol(currentChartSymbol, shape);
+                cancelDrawingTool();
+            } else if (currentDrawingTool === 'note') {
+                const noteText = prompt('Enter note text:', 'Key Level / Breakout');
+                if (noteText) {
+                    const shape = {
+                        type: 'note',
+                        time: pt.time,
+                        price: pt.price,
+                        text: noteText,
+                        color: '#10b981'
+                    };
+                    saveChartShapeForSymbol(currentChartSymbol, shape);
+                }
+                cancelDrawingTool();
+            } else if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle') {
+                if (drawingPoints.length === 0) {
+                    drawingPoints.push(pt);
+                    const banner = document.getElementById('drawingToolBanner');
+                    if (banner) {
+                        const actionName = currentDrawingTool === 'trendline' ? 'Trendline' : 'Rectangle Zone';
+                        const span = banner.querySelector('span');
+                        if (span) span.innerText = `Click 2nd point to complete ${actionName}`;
+                    }
+                } else {
+                    const pt1 = drawingPoints[0];
+                    const pt2 = pt;
+
+                    const shape = {
+                        type: currentDrawingTool,
+                        time1: pt1.time,
+                        price1: pt1.price,
+                        time2: pt2.time,
+                        price2: pt2.price,
+                        color: currentDrawingTool === 'trendline' ? '#3b82f6' : '#a855f7',
+                        fillColor: currentDrawingTool === 'rectangle' ? 'rgba(168, 85, 247, 0.18)' : null
+                    };
+
+                    saveChartShapeForSymbol(currentChartSymbol, shape);
+                    cancelDrawingTool();
+                }
+            }
+        }
+
+        function redrawCanvasOverlay() {
+            if (!drawingCanvas) return;
+            const ctx = drawingCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+            if (!mainChart || !mainSeries || !currentChartSymbol) return;
+
+            const shapes = getSavedChartShapes(currentChartSymbol);
+
+            // Draw all saved shapes
+            shapes.forEach(s => drawSingleShape(ctx, s));
+
+            // Draw active live preview shape if in drawing mode
+            if (currentDrawingTool && tempMousePos) {
+                if ((currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle') && drawingPoints.length === 1) {
+                    const pt1 = drawingPoints[0];
+                    const pt2 = tempMousePos;
+                    const previewShape = {
+                        type: currentDrawingTool,
+                        time1: pt1.time,
+                        price1: pt1.price,
+                        time2: pt2.time,
+                        price2: pt2.price,
+                        color: currentDrawingTool === 'trendline' ? '#60a5fa' : '#c084fc',
+                        fillColor: currentDrawingTool === 'rectangle' ? 'rgba(192, 132, 252, 0.25)' : null,
+                        isPreview: true
+                    };
+                    drawSingleShape(ctx, previewShape);
+                } else if (currentDrawingTool === 'vertical') {
+                    const previewShape = {
+                        type: 'vertical',
+                        time: tempMousePos.time,
+                        color: '#fbbf24',
+                        isPreview: true
+                    };
+                    drawSingleShape(ctx, previewShape);
+                }
+            }
+        }
+
+        function drawSingleShape(ctx, s) {
+            const timeScale = mainChart.timeScale();
+
+            if (s.type === 'trendline') {
+                const x1 = timeScale.timeToCoordinate(s.time1);
+                const y1 = mainSeries.priceToCoordinate(s.price1);
+                const x2 = timeScale.timeToCoordinate(s.time2);
+                const y2 = mainSeries.priceToCoordinate(s.price2);
+
+                if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.strokeStyle = s.color || '#3b82f6';
+                    ctx.lineWidth = s.isPreview ? 2 : 2.5;
+                    if (s.isPreview) ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+
+                    // Draw end handle dots
+                    ctx.fillStyle = s.color || '#3b82f6';
+                    ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(x2, y2, 4, 0, 2 * Math.PI); ctx.fill();
+                    ctx.restore();
+                }
+            } else if (s.type === 'rectangle') {
+                const x1 = timeScale.timeToCoordinate(s.time1);
+                const y1 = mainSeries.priceToCoordinate(s.price1);
+                const x2 = timeScale.timeToCoordinate(s.time2);
+                const y2 = mainSeries.priceToCoordinate(s.price2);
+
+                if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                    ctx.save();
+                    const rectX = Math.min(x1, x2);
+                    const rectY = Math.min(y1, y2);
+                    const w = Math.abs(x2 - x1);
+                    const h = Math.abs(y2 - y1);
+
+                    ctx.fillStyle = s.fillColor || 'rgba(168, 85, 247, 0.18)';
+                    ctx.fillRect(rectX, rectY, w, h);
+
+                    ctx.strokeStyle = s.color || '#a855f7';
+                    ctx.lineWidth = 1.5;
+                    if (s.isPreview) ctx.setLineDash([4, 4]);
+                    ctx.strokeRect(rectX, rectY, w, h);
+                    ctx.restore();
+                }
+            } else if (s.type === 'vertical') {
+                const x = timeScale.timeToCoordinate(s.time);
+                if (x !== null) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, drawingCanvas.height);
+                    ctx.strokeStyle = s.color || '#f59e0b';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+
+                    // Draw top tag
+                    ctx.fillStyle = s.color || '#f59e0b';
+                    ctx.fillRect(x - 22, 4, 44, 16);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('TIME', x, 16);
+                    ctx.restore();
+                }
+            } else if (s.type === 'note') {
+                const x = timeScale.timeToCoordinate(s.time);
+                const y = mainSeries.priceToCoordinate(s.price);
+
+                if (x !== null && y !== null) {
+                    ctx.save();
+                    // Draw pin point
+                    ctx.fillStyle = s.color || '#10b981';
+                    ctx.beginPath(); ctx.arc(x, y, 5, 0, 2 * Math.PI); ctx.fill();
+
+                    // Draw note pill
+                    const text = s.text || 'Note';
+                    ctx.font = '11px sans-serif';
+                    const textWidth = ctx.measureText(text).width;
+                    const pillW = textWidth + 14;
+                    const pillH = 20;
+
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                    ctx.strokeStyle = s.color || '#10b981';
+                    ctx.lineWidth = 1;
+                    ctx.fillRect(x + 8, y - 10, pillW, pillH);
+                    ctx.strokeRect(x + 8, y - 10, pillW, pillH);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(text, x + 15, y + 4);
+                    ctx.restore();
+                }
+            }
         }
 
         let indicatorDataMap = new Map();
@@ -4620,6 +5017,7 @@
                 if (macdChart && macdContainer && macdContainer.clientWidth > 0) {
                     macdChart.applyOptions({ width: macdContainer.clientWidth, height: macdContainer.clientHeight });
                 }
+                resizeDrawingCanvas();
             });
         }
 
@@ -4875,8 +5273,15 @@
             // Restore active drawing lines saved for this stock
             restoreSavedPriceLines(currentChartSymbol);
 
+            setupCanvasOverlay();
+            if (mainChart) {
+                mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => redrawCanvasOverlay());
+                mainChart.subscribeCrosshairMove(() => redrawCanvasOverlay());
+            }
+
             toggleIndicators();
             resizeChartPanes();
+            redrawCanvasOverlay();
         }
 
         function updateLegend(time, o, h, l, c, vol, fullData, curTime = null) {
