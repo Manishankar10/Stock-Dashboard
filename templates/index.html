@@ -2687,9 +2687,8 @@
                     const curVal = ltp > 0 ? (ltp * h.quantity) : invAmt;
                     const pnlAmt = curVal - invAmt;
                     const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
-                    const dayPnLAmt = dayChange * h.quantity;
-                    const prevHoldingVal = curVal - dayPnLAmt;
-                    const dayPnlPct = prevHoldingVal > 0 ? (dayPnLAmt / prevHoldingVal) * 100 : (ltp > 0 ? (dayChange / ltp) * 100 : 0);
+                    const dayPnLAmt = ltp > 0 ? dayChange * h.quantity : 0;
+                    const dayPnlPct = info.change_pct !== undefined ? info.change_pct : 0;
 
                     totInvested += invAmt;
                     totCurrentVal += curVal;
@@ -2872,7 +2871,7 @@
                     const curVal = ltp > 0 ? (ltp * h.quantity) : invAmt;
                     const pnlAmt = curVal - invAmt;
                     const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
-                    const dayPnLAmt = dayChange * h.quantity;
+                    const dayPnLAmt = ltp > 0 ? dayChange * h.quantity : 0;
 
                     pfInv += invAmt;
                     pfVal += curVal;
@@ -3451,15 +3450,13 @@
             const info = stockPricesData[sym] || {};
             const ltp = info.price || 0;
             const dayChange = info.change || 0;
-
             const invAmt = item.buy_price * item.quantity;
             const curVal = ltp > 0 ? (ltp * item.quantity) : invAmt;
             const pnlAmt = curVal - invAmt;
             const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
             
-            const dayPnLAmt = dayChange * item.quantity;
-            const prevHoldingVal = curVal - dayPnLAmt;
-            const dayPnlPct = prevHoldingVal > 0 ? (dayPnLAmt / prevHoldingVal) * 100 : (ltp > 0 ? (dayChange / ltp) * 100 : 0);
+            const dayPnLAmt = ltp > 0 ? dayChange * item.quantity : 0;
+            const dayPnlPct = info.change_pct !== undefined ? info.change_pct : 0;
 
             const daysHeld = getHoldingDays(item.buy_date);
             const durationText = formatHoldingDuration(item.buy_date);

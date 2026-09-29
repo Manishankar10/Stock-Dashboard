@@ -1529,7 +1529,7 @@ def get_insights_api():
             cur_val = (ltp * qty) if ltp > 0 else inv_amt
             pnl_amt = cur_val - inv_amt
             pnl_pct = (pnl_amt / inv_amt * 100) if inv_amt > 0 else 0.0
-            day_pnl_amt = change_amt * qty
+            day_pnl_amt = (change_amt * qty) if ltp > 0 else 0.0
             day_pct = float(p_info.get("change_pct", 0) or 0)
 
             tot_invested += inv_amt
