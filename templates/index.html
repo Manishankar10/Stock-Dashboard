@@ -89,6 +89,46 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         
+        /* Professional Subtle & Minimal Invisible Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.25);
+            border-radius: 10px;
+            transition: background 0.2s ease;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.55);
+        }
+        ::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* Firefox Support */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+        }
+
+        /* Skeleton Shimmer Loading Animation */
+        @keyframes skeleton-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton-box {
+            background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border-color) 50%, var(--bg-subtle) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s infinite ease-in-out;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
         /* Tabular Figures Alignment for Financial Tables & Metric Cards */
         table, .metric-card .value, .sub-value {
             font-feature-settings: "tnum" 1, "cv05" 1;
@@ -361,20 +401,25 @@
         .metric-card .value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
         .metric-card .sub-value { font-size: 12.5px; font-weight: 500; margin-top: 4px; }
         
-        /* Touch Scrollable Responsive Table Container */
+        /* Touch & Mouse Inner-Scrollable Responsive Table Container */
         .table-responsive-container {
             width: 100%;
+            max-height: calc(100vh - 280px);
+            min-height: 250px;
             overflow-x: auto;
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             border-radius: 10px;
             border: 1px solid var(--border-color);
             background: var(--bg-card);
             box-shadow: var(--shadow-sm);
+            position: relative;
         }
 
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             table-layout: auto;
         }
         th, td {
@@ -415,13 +460,18 @@
             text-transform: uppercase;
             letter-spacing: 0.04em;
             border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 1px 0 var(--border-color);
         }
-        tfoot tr {
+        tfoot tr td {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
             background-color: var(--table-header-bg);
-            font-weight: 600;
-            font-size: 12.5px;
             border-top: 2px solid var(--border-color);
-            color: var(--text-primary);
+            box-shadow: 0 -1px 0 var(--border-color);
         }
         tbody tr.pf-row {
             cursor: pointer;
@@ -877,7 +927,35 @@
              TAB 4: INSIGHTS & INTELLIGENCE
         ========================================================= -->
         <div id="tab-insights" class="tab-content">
-            <!-- Controls & Sub-header -->
+            <!-- Market Indexes & FII/DII Institutional Flow Cards Row -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;" class="insights-top-cards">
+                <!-- Market Indexes Performance Card -->
+                <div class="card-container" style="padding: 16px 20px; margin-bottom: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                            🏛️ Key Market Indexes <span style="font-size: 11px; font-weight: 500; color: var(--text-secondary); text-transform: none;">(Nifty 50, CNXMidcap, CNXSmallcap, Sensex, Bank Nifty)</span>
+                        </h3>
+                        <span style="font-size: 11px; color: var(--text-secondary);" id="indexes-last-update">Live Updates</span>
+                    </div>
+                    <div id="insights-indexes-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px;">
+                        <!-- Dynamically populated index cards -->
+                    </div>
+                </div>
+
+                <!-- FII / DII Institutional Flow Data Card -->
+                <div class="card-container" style="padding: 16px 20px; margin-bottom: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                            🏦 FII / DII Flow <span style="font-size: 10.5px; font-weight: 500; color: var(--text-secondary);" id="fiidii-date-tag">Today</span>
+                        </h3>
+                    </div>
+                    <div id="insights-fiidii-mount" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Dynamically populated FII DII metrics -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls & Sub-header (Moved below Indexes & FII/DII) -->
             <div class="card-container" style="padding: 18px 24px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div>
@@ -904,11 +982,33 @@
                 
                 <!-- Left Column: Live Aggregated News Cards -->
                 <div style="display: flex; flex-direction: column; gap: 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                            📰 Live Tracked Stock News <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
-                        </h3>
-                        <span id="insights-news-count" style="font-size: 12px; color: var(--text-secondary);">Updating...</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 8px; background: var(--bg-card); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-color); min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex-shrink: 1;">
+                            <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;">
+                                📰 Live Stock News <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+                            </h3>
+                            <span id="insights-news-count" style="font-size: 11px; color: var(--text-secondary); background: var(--bg-subtle); padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; max-width: 240px;">Updating...</span>
+                        </div>
+
+                        <!-- Filter & Sort Controls for News -->
+                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0; white-space: nowrap;">
+                            <!-- Stock Specific Filter Dropdown -->
+                            <div style="display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-secondary); font-weight: 600;">
+                                <span>🎯 Stock:</span>
+                                <select id="insights-stock-filter" onchange="filterAndRenderInsightsNews()" style="padding: 3px 6px; font-size: 11.5px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); cursor: pointer; max-width: 120px; text-overflow: ellipsis;">
+                                    <option value="all">All Stocks</option>
+                                </select>
+                            </div>
+
+                            <!-- Date Sort Dropdown -->
+                            <div style="display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-secondary); font-weight: 600;">
+                                <span>📅 Sort:</span>
+                                <select id="insights-date-sort" onchange="filterAndRenderInsightsNews()" style="padding: 3px 6px; font-size: 11.5px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); cursor: pointer;">
+                                    <option value="date_desc">Newest First</option>
+                                    <option value="date_asc">Oldest First</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="insights-news-feed" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1519,6 +1619,124 @@
         };
 
         let currentInsightsScope = 'all';
+        let cachedInsightsArticles = [];
+
+        function showInsightsSkeletons() {
+            // 1. News Feed Skeletons
+            const feedEl = document.getElementById('insights-news-feed');
+            if (feedEl) {
+                let newsSkeletons = '';
+                for (let i = 0; i < 4; i++) {
+                    newsSkeletons += `
+                        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-sm);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <span class="skeleton-box" style="width: 80px; height: 16px;"></span>
+                                    <span class="skeleton-box" style="width: 60px; height: 16px;"></span>
+                                </div>
+                                <span class="skeleton-box" style="width: 70px; height: 12px;"></span>
+                            </div>
+                            <span class="skeleton-box" style="width: 95%; height: 16px;"></span>
+                            <span class="skeleton-box" style="width: 65%; height: 14px;"></span>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
+                                <span class="skeleton-box" style="width: 110px; height: 12px;"></span>
+                                <span class="skeleton-box" style="width: 90px; height: 12px;"></span>
+                            </div>
+                        </div>
+                    `;
+                }
+                feedEl.innerHTML = newsSkeletons;
+            }
+
+            // 2. Market Indexes Grid Skeletons
+            const idxGrid = document.getElementById('insights-indexes-grid');
+            if (idxGrid) {
+                let idxSkeletons = '';
+                for (let i = 0; i < 5; i++) {
+                    idxSkeletons += `
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; height: 68px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="skeleton-box" style="width: 55px; height: 12px;"></span>
+                                <span class="skeleton-box" style="width: 32px; height: 12px;"></span>
+                            </div>
+                            <span class="skeleton-box" style="width: 75px; height: 15px;"></span>
+                            <span class="skeleton-box" style="width: 90px; height: 11px;"></span>
+                        </div>
+                    `;
+                }
+                idxGrid.innerHTML = idxSkeletons;
+            }
+
+            // 3. FII / DII Flow Skeletons
+            const fiiMount = document.getElementById('insights-fiidii-mount');
+            if (fiiMount) {
+                fiiMount.innerHTML = `
+                    <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; height: 34px;">
+                        <span class="skeleton-box" style="width: 70px; height: 12px;"></span>
+                        <span class="skeleton-box" style="width: 85px; height: 14px;"></span>
+                    </div>
+                    <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; height: 34px;">
+                        <span class="skeleton-box" style="width: 70px; height: 12px;"></span>
+                        <span class="skeleton-box" style="width: 85px; height: 14px;"></span>
+                    </div>
+                    <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; height: 34px;">
+                        <span class="skeleton-box" style="width: 100px; height: 12px;"></span>
+                        <span class="skeleton-box" style="width: 90px; height: 14px;"></span>
+                    </div>
+                `;
+            }
+
+            // 4. Highlights Skeletons
+            const gainerSymEl = document.getElementById('insights-top-gainer-sym');
+            const gainerValEl = document.getElementById('insights-top-gainer-val');
+            if (gainerSymEl) gainerSymEl.innerHTML = '<span class="skeleton-box" style="width: 70px; height: 14px;"></span>';
+            if (gainerValEl) gainerValEl.innerHTML = '<span class="skeleton-box" style="width: 90px; height: 12px;"></span>';
+
+            const loserSymEl = document.getElementById('insights-top-loser-sym');
+            const loserValEl = document.getElementById('insights-top-loser-val');
+            if (loserSymEl) loserSymEl.innerHTML = '<span class="skeleton-box" style="width: 70px; height: 14px;"></span>';
+            if (loserValEl) loserValEl.innerHTML = '<span class="skeleton-box" style="width: 90px; height: 12px;"></span>';
+
+            const dayGainEl = document.getElementById('insights-day-gain-val');
+            if (dayGainEl) dayGainEl.innerHTML = '<span class="skeleton-box" style="width: 80px; height: 14px;"></span>';
+
+            // 5. Distribution Skeletons
+            const distMount = document.getElementById('insights-distribution-mount');
+            if (distMount) {
+                distMount.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span class="skeleton-box" style="width: 80px; height: 12px;"></span>
+                                <span class="skeleton-box" style="width: 35px; height: 12px;"></span>
+                            </div>
+                            <div class="skeleton-box" style="width: 100%; height: 8px;"></div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span class="skeleton-box" style="width: 90px; height: 12px;"></span>
+                                <span class="skeleton-box" style="width: 35px; height: 12px;"></span>
+                            </div>
+                            <div class="skeleton-box" style="width: 100%; height: 8px;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 6. Investment Thesis Skeleton
+            const thesisMount = document.getElementById('insights-thesis-mount');
+            if (thesisMount) {
+                thesisMount.innerHTML = `
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="skeleton-box" style="width: 70px; height: 13px;"></span>
+                            <span class="skeleton-box" style="width: 65px; height: 13px;"></span>
+                        </div>
+                        <span class="skeleton-box" style="width: 90%; height: 11px;"></span>
+                    </div>
+                `;
+            }
+        }
 
         async function loadInsightsTab(scope = null) {
             if (scope) currentInsightsScope = scope;
@@ -1531,184 +1749,348 @@
             if (btnPf) btnPf.className = currentInsightsScope === 'portfolio' ? 'btn-primary' : 'btn-secondary';
             if (btnWl) btnWl.className = currentInsightsScope === 'watchlist' ? 'btn-primary' : 'btn-secondary';
 
+            showInsightsSkeletons();
+
+            // 1. Parallel Fetch: Highlights, Distribution & Thesis Summary (~100ms)
+            fetch('/api/insights/summary')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderInsightsSummaryUI(data);
+                    }
+                })
+                .catch(err => console.error('Error loading insights summary:', err));
+
+            // 2. Parallel Fetch: Market Indexes Grid (~300ms)
+            fetch('/api/insights/indexes')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderInsightsIndexesUI(data.market_indexes || []);
+                    }
+                })
+                .catch(err => console.error('Error loading market indexes:', err));
+
+            // 3. Parallel Fetch: FII / DII Flow (~300ms)
+            fetch('/api/insights/fiidii')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderInsightsFiiDiiUI(data.fii_dii);
+                    }
+                })
+                .catch(err => console.error('Error loading FII/DII data:', err));
+
+            // 4. Parallel Fetch: News Articles Feed (~400ms)
             const feedEl = document.getElementById('insights-news-feed');
-            if (!feedEl) return;
+            fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        cachedInsightsArticles = data.articles || [];
+                        populateInsightsStockFilterOptions();
+                        filterAndRenderInsightsNews();
+                    } else if (feedEl) {
+                        feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${data.error}</div>`;
+                    }
+                })
+                .catch(err => {
+                    if (feedEl) {
+                        feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${err.message}</div>`;
+                    }
+                });
+        }
 
-            feedEl.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
-                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
-                    Fetching real-time news & portfolio intelligence...
-                </div>
-            `;
+        function renderInsightsSummaryUI(data) {
+            const m = data.metrics || {};
+            const gainer = m.top_gainer;
+            const loser = m.top_loser;
 
-            try {
-                const res = await fetch(`/api/insights?scope=${encodeURIComponent(currentInsightsScope)}`);
-                const data = await res.json();
+            const gainerSymEl = document.getElementById('insights-top-gainer-sym');
+            const gainerValEl = document.getElementById('insights-top-gainer-val');
+            if (gainerSymEl && gainer) {
+                gainerSymEl.innerText = gainer.symbol;
+                gainerValEl.innerText = `+${gainer.change_pct}% (₹${gainer.ltp})`;
+            } else if (gainerSymEl) {
+                gainerSymEl.innerText = 'N/A';
+                gainerValEl.innerText = '-';
+            }
 
-                if (!data.success) {
-                    feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading insights: ${data.error}</div>`;
-                    return;
-                }
+            const loserSymEl = document.getElementById('insights-top-loser-sym');
+            const loserValEl = document.getElementById('insights-top-loser-val');
+            if (loserSymEl && loser) {
+                loserSymEl.innerText = loser.symbol;
+                loserValEl.innerText = `${loser.change_pct}% (₹${loser.ltp})`;
+            } else if (loserSymEl) {
+                loserSymEl.innerText = 'N/A';
+                loserValEl.innerText = '-';
+            }
 
-                // 1. Render News Feed Cards
-                const countEl = document.getElementById('insights-news-count');
-                if (countEl) countEl.innerText = `${data.articles.length} stories found`;
+            const dayGainEl = document.getElementById('insights-day-gain-val');
+            if (dayGainEl) {
+                const dg = m.day_pnl_amt || 0;
+                const sign = dg >= 0 ? '+' : '';
+                dayGainEl.innerText = isPrivacyMode ? `₹ ••••••` : `${sign}₹${Math.abs(dg).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+                dayGainEl.style.color = dg >= 0 ? '#10b981' : '#ef4444';
+            }
 
-                if (data.articles.length === 0) {
-                    feedEl.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
-                            📰 No recent news coverage found for ${currentInsightsScope} stocks.
+            const distMount = document.getElementById('insights-distribution-mount');
+            if (distMount && data.distribution) {
+                const dist = data.distribution;
+                distMount.innerHTML = `
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                            <span>📈 Equities (${dist.equities.count})</span>
+                            <span>${dist.equities.pct}%</span>
                         </div>
-                    `;
+                        <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${dist.equities.pct}%; background: #10b981; height: 100%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                            <span>📊 Market Indices (${dist.indices.count})</span>
+                            <span>${dist.indices.pct}%</span>
+                        </div>
+                        <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${dist.indices.pct}%; background: #06b6d4; height: 100%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                            <span>🪙 Commodities & Gold (${dist.commodities.count})</span>
+                            <span>${dist.commodities.pct}%</span>
+                        </div>
+                        <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${dist.commodities.pct}%; background: #f59e0b; height: 100%;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const thesisMount = document.getElementById('insights-thesis-mount');
+            const thesisCountEl = document.getElementById('insights-thesis-count');
+            const theses = data.theses || [];
+            if (thesisCountEl) thesisCountEl.innerText = `${theses.length} Active Notes`;
+
+            if (thesisMount) {
+                if (theses.length === 0) {
+                    thesisMount.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center; padding: 15px;">No buy reasons added yet. Edit a holding to record your investment thesis!</div>`;
                 } else {
-                    feedEl.innerHTML = '';
-                    data.articles.forEach(art => {
-                        const card = document.createElement('div');
-                        card.style.cssText = `
-                            background: var(--bg-card);
+                    thesisMount.innerHTML = '';
+                    theses.forEach(t => {
+                        const item = document.createElement('div');
+                        item.style.cssText = `
+                            background: var(--bg-subtle);
                             border: 1px solid var(--border-color);
-                            border-radius: 12px;
-                            padding: 16px;
-                            box-shadow: var(--shadow-sm);
-                            transition: transform 0.15s ease, border-color 0.15s ease;
+                            border-radius: 8px;
+                            padding: 10px 12px;
+                            font-size: 12px;
                         `;
-                        
-                        let timeStr = art.pub_date || '';
-                        try {
-                            const dt = new Date(art.pub_date);
-                            if (!isNaN(dt)) {
-                                timeStr = dt.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                            }
-                        } catch(e) {}
+                        const pnlSign = t.pnl_pct >= 0 ? '+' : '';
+                        const pnlColor = t.pnl_pct >= 0 ? '#10b981' : '#ef4444';
 
-                        const tagBadgeClass = art.tag_type === 'PORTFOLIO' ? 'badge-nse' : (art.tag_type === 'WATCHLIST' ? 'badge-bse' : 'badge-idx');
-
-                        card.innerHTML = `
-                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span class="stock-symbol" style="font-size: 12.5px;">${escapeHtml(art.symbol)}</span>
-                                    <span class="badge ${tagBadgeClass}" style="font-size: 10px;">${art.tag_type}</span>
-                                </div>
-                                <span style="font-size: 11px; color: var(--text-secondary);">🕒 ${timeStr}</span>
+                        item.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <strong style="color: var(--text-primary); font-size: 13px;">${escapeHtml(t.symbol)}</strong>
+                                <span style="color: ${pnlColor}; font-weight: 700;">${pnlSign}${t.pnl_pct}% Return</span>
                             </div>
-                            <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 14px; color: var(--text-primary); text-decoration: none; line-height: 1.4; display: block; margin-bottom: 8px;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
-                                ${escapeHtml(art.title)} ↗
-                            </a>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 6px;">
-                                <span>🏢 ${escapeHtml(art.publisher)}</span>
-                                <span style="color: #10b981; font-weight: 600;">Read full story →</span>
-                            </div>
+                            <div style="color: var(--text-secondary); font-style: italic; font-size: 11px;">"${escapeHtml(t.buy_reason)}"</div>
                         `;
-                        feedEl.appendChild(card);
+                        thesisMount.appendChild(item);
                     });
                 }
-
-                // 2. Render Metrics & Highlights
-                const m = data.metrics || {};
-                const gainer = m.top_gainer;
-                const loser = m.top_loser;
-
-                const gainerSymEl = document.getElementById('insights-top-gainer-sym');
-                const gainerValEl = document.getElementById('insights-top-gainer-val');
-                if (gainerSymEl && gainer) {
-                    gainerSymEl.innerText = gainer.symbol;
-                    gainerValEl.innerText = `+${gainer.change_pct}% (₹${gainer.ltp})`;
-                } else if (gainerSymEl) {
-                    gainerSymEl.innerText = 'N/A';
-                    gainerValEl.innerText = '-';
-                }
-
-                const loserSymEl = document.getElementById('insights-top-loser-sym');
-                const loserValEl = document.getElementById('insights-top-loser-val');
-                if (loserSymEl && loser) {
-                    loserSymEl.innerText = loser.symbol;
-                    loserValEl.innerText = `${loser.change_pct}% (₹${loser.ltp})`;
-                } else if (loserSymEl) {
-                    loserSymEl.innerText = 'N/A';
-                    loserValEl.innerText = '-';
-                }
-
-                const dayGainEl = document.getElementById('insights-day-gain-val');
-                if (dayGainEl) {
-                    const dg = m.day_pnl_amt || 0;
-                    const sign = dg >= 0 ? '+' : '';
-                    dayGainEl.innerText = isPrivacyMode ? `₹ ••••••` : `${sign}₹${Math.abs(dg).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
-                    dayGainEl.style.color = dg >= 0 ? '#10b981' : '#ef4444';
-                }
-
-                // 3. Render Asset Distribution
-                const distMount = document.getElementById('insights-distribution-mount');
-                if (distMount && data.distribution) {
-                    const dist = data.distribution;
-                    distMount.innerHTML = `
-                        <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
-                                <span>📈 Equities (${dist.equities.count})</span>
-                                <span>${dist.equities.pct}%</span>
-                            </div>
-                            <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
-                                <div style="width: ${dist.equities.pct}%; background: #10b981; height: 100%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
-                                <span>📊 Market Indices (${dist.indices.count})</span>
-                                <span>${dist.indices.pct}%</span>
-                            </div>
-                            <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
-                                <div style="width: ${dist.indices.pct}%; background: #06b6d4; height: 100%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
-                                <span>🪙 Commodities & Gold (${dist.commodities.count})</span>
-                                <span>${dist.commodities.pct}%</span>
-                            </div>
-                            <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
-                                <div style="width: ${dist.commodities.pct}%; background: #f59e0b; height: 100%;"></div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // 4. Render Thesis Notes
-                const thesisMount = document.getElementById('insights-thesis-mount');
-                const thesisCountEl = document.getElementById('insights-thesis-count');
-                const theses = data.theses || [];
-                if (thesisCountEl) thesisCountEl.innerText = `${theses.length} Active Notes`;
-
-                if (thesisMount) {
-                    if (theses.length === 0) {
-                        thesisMount.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center; padding: 15px;">No buy reasons added yet. Edit a holding to record your investment thesis!</div>`;
-                    } else {
-                        thesisMount.innerHTML = '';
-                        theses.forEach(t => {
-                            const item = document.createElement('div');
-                            item.style.cssText = `
-                                background: var(--bg-subtle);
-                                border: 1px solid var(--border-color);
-                                border-radius: 8px;
-                                padding: 10px 12px;
-                                font-size: 12px;
-                            `;
-                            const pnlSign = t.pnl_pct >= 0 ? '+' : '';
-                            const pnlColor = t.pnl_pct >= 0 ? '#10b981' : '#ef4444';
-
-                            item.innerHTML = `
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                    <strong style="color: var(--text-primary); font-size: 13px;">${escapeHtml(t.symbol)}</strong>
-                                    <span style="color: ${pnlColor}; font-weight: 700;">${pnlSign}${t.pnl_pct}% Return</span>
-                                </div>
-                                <div style="color: var(--text-secondary); font-style: italic; font-size: 11px;">"${escapeHtml(t.buy_reason)}"</div>
-                            `;
-                            thesisMount.appendChild(item);
-                        });
-                    }
-                }
-
-            } catch(err) {
-                feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${err.message}</div>`;
             }
+        }
+
+        function renderInsightsIndexesUI(marketIndexes) {
+            const idxGrid = document.getElementById('insights-indexes-grid');
+            if (!idxGrid) return;
+            idxGrid.innerHTML = '';
+            if (marketIndexes.length === 0) {
+                idxGrid.innerHTML = '<span style="font-size:12px; color:var(--text-secondary);">No indexes available</span>';
+                return;
+            }
+            marketIndexes.forEach(idx => {
+                const isPos = idx.change >= 0;
+                const sign = isPos ? '+' : '';
+                const colorClass = isPos ? '#10b981' : '#ef4444';
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: var(--bg-subtle);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 10px 12px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    cursor: pointer;
+                    transition: transform 0.15s ease, border-color 0.15s ease;
+                `;
+                card.onclick = () => openInHouseChart(idx.symbol);
+                card.title = `Click to view technical chart for ${idx.name}`;
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 700; font-size: 12px; color: var(--text-primary);">${escapeHtml(idx.badge || idx.name)}</span>
+                        <span class="badge badge-idx" style="font-size: 9px; padding: 1px 5px;">INDEX</span>
+                    </div>
+                    <div style="font-weight: 800; font-size: 14px; color: var(--text-primary);">₹${idx.price ? idx.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}</div>
+                    <div style="font-size: 11px; font-weight: 600; color: ${colorClass}; margin-top: 2px;">
+                        ${sign}${idx.change_pct}% (${sign}₹${Math.abs(idx.change).toFixed(2)})
+                    </div>
+                `;
+                idxGrid.appendChild(card);
+            });
+        }
+
+        function renderInsightsFiiDiiUI(fd) {
+            const fiiMount = document.getElementById('insights-fiidii-mount');
+            const fiiDateTag = document.getElementById('fiidii-date-tag');
+            if (!fiiMount || !fd) return;
+
+            if (fiiDateTag && fd.date) fiiDateTag.innerText = fd.date;
+
+            const fiiPos = fd.fii_net >= 0;
+            const diiPos = fd.dii_net >= 0;
+            const totPos = fd.total_net >= 0;
+
+            const fiiSign = fiiPos ? '+' : '';
+            const diiSign = diiPos ? '+' : '';
+            const totSign = totPos ? '+' : '';
+
+            fiiMount.innerHTML = `
+                <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">FII Flow</span>
+                        <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${fiiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.fii_action || (fiiPos ? 'BUY' : 'SELL')}</span>
+                    </div>
+                    <span style="font-size: 13px; font-weight: 700; color: ${fiiPos ? '#10b981' : '#ef4444'};">${fiiSign}₹${Math.abs(fd.fii_net).toLocaleString('en-IN')} Cr</span>
+                </div>
+                <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">DII Flow</span>
+                        <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${diiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.dii_action || (diiPos ? 'BUY' : 'SELL')}</span>
+                    </div>
+                    <span style="font-size: 13px; font-weight: 700; color: ${diiPos ? '#10b981' : '#ef4444'};">${diiSign}₹${Math.abs(fd.dii_net).toLocaleString('en-IN')} Cr</span>
+                </div>
+                <div style="background: ${totPos ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'}; border: 1px solid ${totPos ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; padding: 8px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11.5px; color: var(--text-primary); font-weight: 700;">Net Institutional:</span>
+                    <span style="font-size: 13px; font-weight: 800; color: ${totPos ? '#10b981' : '#ef4444'};">${totSign}₹${Math.abs(fd.total_net).toLocaleString('en-IN')} Cr</span>
+                </div>
+            `;
+        }
+
+        function populateInsightsStockFilterOptions() {
+            const selectEl = document.getElementById('insights-stock-filter');
+            if (!selectEl) return;
+
+            const selectedVal = selectEl.value || 'all';
+            
+            // Extract unique symbols from cached articles
+            const symbols = new Set();
+            cachedInsightsArticles.forEach(art => {
+                if (art.symbol) symbols.add(art.symbol);
+            });
+
+            const sortedSymbols = Array.from(symbols).sort();
+
+            selectEl.innerHTML = '<option value="all">All Stocks</option>';
+            sortedSymbols.forEach(sym => {
+                const opt = document.createElement('option');
+                opt.value = sym;
+                opt.innerText = sym;
+                if (sym === selectedVal) opt.selected = true;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function filterAndRenderInsightsNews() {
+            const feedEl = document.getElementById('insights-news-feed');
+            const countEl = document.getElementById('insights-news-count');
+            const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
+            const dateSort = document.getElementById('insights-date-sort')?.value || 'date_desc';
+
+            if (!feedEl) return;
+
+            let articles = cachedInsightsArticles.slice();
+
+            // Filter Stock Specific
+            if (stockFilter !== 'all') {
+                articles = articles.filter(art => art.symbol === stockFilter);
+            }
+
+            // Sort by Date
+            articles.sort((a, b) => {
+                const timeA = a.pub_date ? new Date(a.pub_date).getTime() : 0;
+                const timeB = b.pub_date ? new Date(b.pub_date).getTime() : 0;
+                if (dateSort === 'date_asc') {
+                    return timeA - timeB;
+                } else {
+                    return timeB - timeA;
+                }
+            });
+
+            if (countEl) {
+                const filterLabel = stockFilter !== 'all' ? ` (Filtered: ${stockFilter})` : '';
+                countEl.innerText = `${articles.length} stories found${filterLabel}`;
+            }
+
+            if (articles.length === 0) {
+                feedEl.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+                        📰 No news articles found matching the selected stock filter (${escapeHtml(stockFilter)}).
+                    </div>
+                `;
+                return;
+            }
+
+            feedEl.innerHTML = '';
+            articles.forEach(art => {
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: var(--bg-card);
+                    border: 1px solid var(--border-color);
+                    border-radius: 12px;
+                    padding: 16px;
+                    box-shadow: var(--shadow-sm);
+                    transition: transform 0.15s ease, border-color 0.15s ease;
+                `;
+                
+                let timeStr = art.pub_date || '';
+                try {
+                    const dt = new Date(art.pub_date);
+                    if (!isNaN(dt)) {
+                        timeStr = dt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    }
+                } catch(e) {}
+
+                const tagBadgeClass = art.tag_type === 'PORTFOLIO' ? 'badge-nse' : (art.tag_type === 'WATCHLIST' ? 'badge-bse' : 'badge-idx');
+
+                card.style.cursor = 'pointer';
+                card.onclick = (e) => {
+                    if (!e.target.closest('a')) {
+                        window.open(art.link, '_blank', 'noopener,noreferrer');
+                    }
+                };
+
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="stock-symbol" style="font-size: 12.5px;">${escapeHtml(art.symbol)}</span>
+                            <span class="badge ${tagBadgeClass}" style="font-size: 10px;">${art.tag_type}</span>
+                        </div>
+                        <span style="font-size: 11px; color: var(--text-secondary);">🕒 ${timeStr}</span>
+                    </div>
+                    <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 14px; color: var(--text-primary); text-decoration: none; line-height: 1.4; display: block; margin-bottom: 8px;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
+                        ${escapeHtml(art.title)} ↗
+                    </a>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 6px;">
+                        <span>🏢 ${escapeHtml(art.publisher)}</span>
+                        <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="color: #10b981; font-weight: 600; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Read full story →</a>
+                    </div>
+                `;
+                feedEl.appendChild(card);
+            });
         }
 
         // =========================================================
@@ -4132,17 +4514,27 @@
                             }
                         } catch(e) {}
 
+                        card.style.cursor = 'pointer';
+                        card.onclick = (e) => {
+                            if (!e.target.closest('a')) {
+                                window.open(art.link, '_blank', 'noopener,noreferrer');
+                            }
+                        };
+
                         card.innerHTML = `
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px;">
                                 <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 14px; color: var(--text-primary); text-decoration: none; line-height: 1.4;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
                                     ${art.title} ↗
                                 </a>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
-                                <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">
-                                    🏢 ${art.publisher}
-                                </span>
-                                <span>🕒 ${timeStr}</span>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                                        🏢 ${art.publisher}
+                                    </span>
+                                    <span>🕒 ${timeStr}</span>
+                                </div>
+                                <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="color: #10b981; font-weight: 600; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Read full story →</a>
                             </div>
                         `;
                         container.appendChild(card);
