@@ -430,6 +430,36 @@ def save_portfolios(data, username=None):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
+def get_user_transactions_file(username):
+    safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
+    return os.path.join(USER_DATA_DIR, f"{safe_user}_transactions.json")
+
+def load_user_transactions(username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return []
+        
+    filepath = get_user_transactions_file(username)
+    if not os.path.exists(filepath):
+        return []
+        
+    try:
+        with open(filepath, "r") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+def save_user_transactions(data, username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return
+    filepath = get_user_transactions_file(username)
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
+
 def log_login_event(username, status):
     logs = []
     if os.path.exists(LOGS_FILE):
@@ -1026,6 +1056,7 @@ def add_portfolio_stock(name):
     quantity = request.json.get("quantity")
     buy_date = request.json.get("buy_date") or datetime.date.today().strftime("%Y-%m-%d")
     buy_reason = request.json.get("buy_reason") or request.json.get("notes") or ""
+    mode = request.json.get("mode", "add") # "add", "buy_more", or "edit"
     
     if not symbol or buy_price is None or quantity is None:
         return jsonify({"error": "Symbol, buy price, and quantity are required"}), 400
@@ -1035,6 +1066,9 @@ def add_portfolio_stock(name):
         quantity = float(quantity)
     except ValueError:
         return jsonify({"error": "Buy price and quantity must be numbers"}), 400
+
+    if quantity <= 0:
+        return jsonify({"error": "Quantity must be greater than 0"}), 400
 
     symbol = format_financial_symbol(symbol)
 
@@ -1050,28 +1084,157 @@ def add_portfolio_stock(name):
     data = load_portfolios()
     if name not in data:
         return jsonify({"error": "Portfolio not found"}), 404
-        
-    existing = False
+
+    existing_holding = None
     for holding in data[name]:
         if holding.get("symbol") == symbol:
-            holding["buy_price"] = buy_price
-            holding["quantity"] = quantity
-            holding["buy_date"] = buy_date
-            holding["buy_reason"] = buy_reason
-            existing = True
+            existing_holding = holding
             break
-            
-    if not existing:
+
+    if mode == "edit" and existing_holding:
+        existing_holding["buy_price"] = round(buy_price, 2)
+        existing_holding["quantity"] = round(quantity, 4)
+        existing_holding["buy_date"] = buy_date
+        existing_holding["buy_reason"] = buy_reason
+    elif existing_holding:
+        old_qty = float(existing_holding.get("quantity", 0))
+        old_price = float(existing_holding.get("buy_price", 0))
+        new_total_qty = old_qty + quantity
+        new_avg_price = ((old_qty * old_price) + (quantity * buy_price)) / new_total_qty if new_total_qty > 0 else buy_price
+
+        existing_holding["quantity"] = round(new_total_qty, 4)
+        existing_holding["buy_price"] = round(new_avg_price, 2)
+        existing_holding["buy_date"] = buy_date
+        if buy_reason:
+            existing_holding["buy_reason"] = buy_reason
+
+        # Log BUY transaction for additional purchase
+        tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
+        tx = {
+            "id": tx_id,
+            "portfolio": name,
+            "symbol": symbol,
+            "type": "BUY",
+            "quantity": round(quantity, 4),
+            "price": round(buy_price, 2),
+            "total_amount": round(buy_price * quantity, 2),
+            "realized_pnl": 0.0,
+            "realized_pnl_pct": 0.0,
+            "avg_buy_price": round(buy_price, 2),
+            "date": buy_date,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "notes": buy_reason
+        }
+        txs = load_user_transactions()
+        txs.insert(0, tx)
+        save_user_transactions(txs)
+    else:
         data[name].append({
             "symbol": symbol,
-            "buy_price": buy_price,
-            "quantity": quantity,
+            "buy_price": round(buy_price, 2),
+            "quantity": round(quantity, 4),
             "buy_date": buy_date,
             "buy_reason": buy_reason
         })
-        
+
+        # Log BUY transaction for new holding
+        tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
+        tx = {
+            "id": tx_id,
+            "portfolio": name,
+            "symbol": symbol,
+            "type": "BUY",
+            "quantity": round(quantity, 4),
+            "price": round(buy_price, 2),
+            "total_amount": round(buy_price * quantity, 2),
+            "realized_pnl": 0.0,
+            "realized_pnl_pct": 0.0,
+            "avg_buy_price": round(buy_price, 2),
+            "date": buy_date,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "notes": buy_reason
+        }
+        txs = load_user_transactions()
+        txs.insert(0, tx)
+        save_user_transactions(txs)
+
     save_portfolios(data)
-    return jsonify({"success": True, "portfolios": data})
+    return jsonify({"success": True, "portfolios": data, "transactions": load_user_transactions()})
+
+@app.route("/api/portfolios/<name>/stocks/sell", methods=["POST"])
+@login_required
+def sell_portfolio_stock(name):
+    symbol = request.json.get("symbol")
+    sell_price = request.json.get("sell_price")
+    quantity = request.json.get("quantity")
+    sell_date = request.json.get("sell_date") or datetime.date.today().strftime("%Y-%m-%d")
+    notes = request.json.get("notes") or request.json.get("reason") or ""
+
+    if not symbol or sell_price is None or quantity is None:
+        return jsonify({"error": "Symbol, sell price, and quantity are required"}), 400
+
+    try:
+        sell_price = float(sell_price)
+        sell_qty = float(quantity)
+    except ValueError:
+        return jsonify({"error": "Sell price and quantity must be valid numbers"}), 400
+
+    if sell_qty <= 0:
+        return jsonify({"error": "Quantity to sell must be greater than 0"}), 400
+
+    symbol = format_financial_symbol(symbol)
+    data = load_portfolios()
+    if name not in data:
+        return jsonify({"error": "Portfolio not found"}), 404
+
+    target_holding = None
+    for holding in data[name]:
+        if holding.get("symbol") == symbol:
+            target_holding = holding
+            break
+
+    if not target_holding:
+        return jsonify({"error": f"Stock {symbol} not found in portfolio '{name}'"}), 404
+
+    curr_qty = float(target_holding.get("quantity", 0))
+    avg_buy_price = float(target_holding.get("buy_price", 0))
+
+    if sell_qty > curr_qty + 0.0001:
+        return jsonify({"error": f"Cannot sell {sell_qty} shares. You only own {curr_qty} shares."}), 400
+
+    realized_pnl_amt = (sell_price - avg_buy_price) * sell_qty
+    realized_pnl_pct = ((sell_price - avg_buy_price) / avg_buy_price * 100) if avg_buy_price > 0 else 0.0
+
+    rem_qty = curr_qty - sell_qty
+    if rem_qty <= 0.0001:
+        data[name] = [h for h in data[name] if h.get("symbol") != symbol]
+    else:
+        target_holding["quantity"] = round(rem_qty, 4)
+
+    save_portfolios(data)
+
+    # Record SELL transaction log
+    tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
+    tx = {
+        "id": tx_id,
+        "portfolio": name,
+        "symbol": symbol,
+        "type": "SELL",
+        "quantity": round(sell_qty, 4),
+        "price": round(sell_price, 2),
+        "total_amount": round(sell_price * sell_qty, 2),
+        "realized_pnl": round(realized_pnl_amt, 2),
+        "realized_pnl_pct": round(realized_pnl_pct, 2),
+        "avg_buy_price": round(avg_buy_price, 2),
+        "date": sell_date,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "notes": notes
+    }
+    txs = load_user_transactions()
+    txs.insert(0, tx)
+    save_user_transactions(txs)
+
+    return jsonify({"success": True, "portfolios": data, "transaction": tx, "transactions": txs})
 
 @app.route("/api/portfolios/<name>/stocks/<symbol>", methods=["DELETE"])
 @login_required
@@ -1081,6 +1244,19 @@ def remove_portfolio_stock(name, symbol):
         data[name] = [item for item in data[name] if item.get("symbol") != symbol]
         save_portfolios(data)
     return jsonify({"success": True, "portfolios": data})
+
+@app.route("/api/transactions", methods=["GET"])
+@login_required
+def get_transactions():
+    return jsonify(load_user_transactions())
+
+@app.route("/api/transactions/<tx_id>", methods=["DELETE"])
+@login_required
+def delete_transaction(tx_id):
+    txs = load_user_transactions()
+    txs = [t for t in txs if t.get("id") != tx_id]
+    save_user_transactions(txs)
+    return jsonify({"success": True, "transactions": txs})
 
 # =========================================================
 # PRICE ALERTS & NOTIFICATIONS ENDPOINTS

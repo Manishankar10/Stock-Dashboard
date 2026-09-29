@@ -1274,10 +1274,114 @@
     </div>
 
     <!-- =========================================================
+         SELL HOLDING POPUP MODAL
+    ========================================================= -->
+    <div id="sellHoldingModal" class="small-modal">
+        <div class="small-modal-content" style="width: 480px; max-width: 94vw; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="sellModalTitle" style="margin:0; font-size: 18px; color: #ef4444; display: flex; align-items: center; gap: 8px;">
+                    🔴 Sell Stock Holding
+                </h3>
+                <span class="close-btn" onclick="closeSellHoldingModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            </div>
+            
+            <input type="hidden" id="modal-sell-symbol">
+            <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                <div><span style="color: var(--text-secondary);">Current Holding:</span> <strong id="sell-info-qty" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Avg Cost Basis:</span> <strong id="sell-info-avgprice" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Live LTP:</span> <strong id="sell-info-ltp" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Portfolio:</span> <strong id="sell-info-portfolio" style="color: var(--text-primary);">-</strong></div>
+            </div>
+
+            <div class="form-group">
+                <label>Quantity to Sell</label>
+                <input type="number" step="any" id="modal-sell-qty" placeholder="e.g. 10" oninput="calculateSellPreview()">
+            </div>
+            <div class="form-group">
+                <label>Selling Price per Share (₹)</label>
+                <input type="number" step="0.01" id="modal-sell-price" placeholder="e.g. 2800.00" oninput="calculateSellPreview()">
+            </div>
+            <div class="form-group">
+                <label>Sale Date</label>
+                <input type="date" id="modal-sell-date">
+            </div>
+            <div class="form-group">
+                <label>Notes / Reason for Selling (Optional)</label>
+                <input type="text" id="modal-sell-notes" placeholder="e.g. Profit booking, Stop-loss hit, Rebalancing..." onkeydown="if(event.key==='Enter') submitSellHolding()">
+            </div>
+
+            <div id="sell-preview-box" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px 14px; border-radius: 8px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12.5px;">
+                <span style="color: var(--text-primary); font-weight: 600;">Expected Realized Return:</span>
+                <span id="sell-preview-pnl" style="font-weight: 800; font-size: 14px; color: #10b981;">₹0.00 (+0.00%)</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeSellHoldingModal()">Cancel</button>
+                <button type="button" class="btn-danger" style="background: #ef4444; color: white;" onclick="submitSellHolding()">Submit Sell Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         BUY MORE HOLDING POPUP MODAL
+    ========================================================= -->
+    <div id="buyMoreModal" class="small-modal">
+        <div class="small-modal-content" style="width: 480px; max-width: 94vw; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="buyMoreModalTitle" style="margin:0; font-size: 18px; color: #10b981; display: flex; align-items: center; gap: 8px;">
+                    🟢 Buy Additional Shares
+                </h3>
+                <span class="close-btn" onclick="closeBuyMoreModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            </div>
+            
+            <input type="hidden" id="modal-buymore-symbol">
+            <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                <div><span style="color: var(--text-secondary);">Existing Holding:</span> <strong id="buymore-info-qty" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Current Avg Price:</span> <strong id="buymore-info-avgprice" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Live LTP:</span> <strong id="buymore-info-ltp" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Portfolio:</span> <strong id="buymore-info-portfolio" style="color: var(--text-primary);">-</strong></div>
+            </div>
+
+            <div class="form-group">
+                <label>Additional Quantity to Buy</label>
+                <input type="number" step="any" id="modal-buymore-qty" placeholder="e.g. 20" oninput="calculateBuyMorePreview()">
+            </div>
+            <div class="form-group">
+                <label>New Buy Price per Share (₹)</label>
+                <input type="number" step="0.01" id="modal-buymore-price" placeholder="e.g. 2400.00" oninput="calculateBuyMorePreview()">
+            </div>
+            <div class="form-group">
+                <label>Buy Date</label>
+                <input type="date" id="modal-buymore-date">
+            </div>
+            <div class="form-group">
+                <label>Buy Reason / Notes (Optional)</label>
+                <input type="text" id="modal-buymore-reason" placeholder="e.g. Average down, dip buying, quarterly accumulation..." onkeydown="if(event.key==='Enter') submitBuyMoreHolding()">
+            </div>
+
+            <div id="buymore-preview-box" style="background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: 8px; margin-top: 14px; display: flex; flex-direction: column; gap: 4px; font-size: 12px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">New Total Shares:</span>
+                    <strong id="buymore-preview-qty" style="color: var(--text-primary);">-</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">New Weighted Avg Price:</span>
+                    <strong id="buymore-preview-avgprice" style="color: #10b981; font-size: 13px;">-</strong>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeBuyMoreModal()">Cancel</button>
+                <button type="button" class="btn-primary" style="background: #10b981; color: white;" onclick="submitBuyMoreHolding()">Submit Buy Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
          HOLDING DETAILS & ACTIONS POPUP MODAL
     ========================================================= -->
     <div id="holdingDetailsModal" class="small-modal">
-        <div class="small-modal-content" style="width: 520px; max-width: 94vw; padding: 24px;">
+        <div class="small-modal-content" style="width: 540px; max-width: 94vw; padding: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
                 <div>
                     <h2 id="detail-modal-sym" style="margin: 0; font-size: 20px; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 8px;">RELIANCE.NS</h2>
@@ -1325,10 +1429,12 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+            <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                <button id="btn-detail-buymore" class="btn-primary" style="font-size: 12px; background: #10b981;">🟢 Buy More</button>
+                <button id="btn-detail-sell" class="btn-danger" style="font-size: 12px; background: #ef4444;">🔴 Sell</button>
+                <button id="btn-detail-chart" class="btn-primary" style="font-size: 12px;">📊 Chart</button>
                 <button id="btn-detail-news" class="btn-secondary" style="font-size: 12px;">📰 News</button>
-                <button id="btn-detail-alert" class="btn-secondary" style="font-size: 12px;">🔔 Set Alert</button>
-                <button id="btn-detail-chart" class="btn-primary" style="font-size: 12px;">📊 Technical Chart</button>
+                <button id="btn-detail-alert" class="btn-secondary" style="font-size: 12px;">🔔 Alert</button>
                 <button id="btn-detail-edit" class="btn-secondary" style="font-size: 12px;">✏️ Edit</button>
                 <button id="btn-detail-delete" class="btn-danger" style="font-size: 12px;">🗑️ Delete</button>
             </div>
@@ -2917,10 +3023,251 @@
         // =========================================================
         // PORTFOLIO FUNCTIONS
         // =========================================================
+        // Global Transactions State
+        let userTransactionsData = [];
+
+        async function fetchTransactions() {
+            try {
+                const res = await fetch('/api/transactions');
+                if (res.ok) {
+                    userTransactionsData = await res.json();
+                    renderTransactionsTable();
+                }
+            } catch(e) {
+                console.error('Error fetching transactions:', e);
+            }
+        }
+
+        async function deleteTransaction(txId) {
+            if (!confirm('Are you sure you want to delete this transaction record?')) return;
+            try {
+                const res = await fetch(`/api/transactions/${encodeURIComponent(txId)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    userTransactionsData = data.transactions;
+                    renderTransactionsTable();
+                }
+            } catch(e) {
+                alert('Failed to delete transaction');
+            }
+        }
+
+        // =========================================================
+        // BUY MORE & SELL MODAL HANDLERS
+        // =========================================================
+        let currentSellHolding = null;
+        let currentBuyMoreHolding = null;
+
+        function openSellHoldingModal(symbol, curQty, curAvgPrice) {
+            if (!activePortfolioName) return;
+            const holdings = portfoliosData[activePortfolioName] || [];
+            const item = holdings.find(h => h.symbol === symbol);
+            if (!item) return;
+
+            currentSellHolding = item;
+            const info = stockPricesData[symbol] || {};
+            const ltp = info.price || item.buy_price;
+
+            document.getElementById('modal-sell-symbol').value = symbol;
+            document.getElementById('sellModalTitle').innerText = `🔴 Sell ${symbol}`;
+            document.getElementById('sell-info-qty').innerText = formatQty(item.quantity);
+            document.getElementById('sell-info-avgprice').innerText = formatMoney(item.buy_price);
+            document.getElementById('sell-info-ltp').innerText = ltp > 0 ? formatMoney(ltp) : '-';
+            document.getElementById('sell-info-portfolio').innerText = activePortfolioName;
+
+            document.getElementById('modal-sell-qty').value = item.quantity;
+            document.getElementById('modal-sell-price').value = ltp > 0 ? ltp.toFixed(2) : item.buy_price.toFixed(2);
+            document.getElementById('modal-sell-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-sell-notes').value = '';
+
+            calculateSellPreview();
+            document.getElementById('sellHoldingModal').style.display = 'block';
+        }
+
+        function closeSellHoldingModal() {
+            document.getElementById('sellHoldingModal').style.display = 'none';
+        }
+
+        function calculateSellPreview() {
+            if (!currentSellHolding) return;
+            const qtyInput = parseFloat(document.getElementById('modal-sell-qty').value) || 0;
+            const priceInput = parseFloat(document.getElementById('modal-sell-price').value) || 0;
+            const avgBuyPrice = currentSellHolding.buy_price;
+
+            const pnlAmt = (priceInput - avgBuyPrice) * qtyInput;
+            const pnlPct = avgBuyPrice > 0 ? ((priceInput - avgBuyPrice) / avgBuyPrice) * 100 : 0;
+            const pnlSign = pnlAmt >= 0 ? '+' : '';
+            const pnlColor = pnlAmt >= 0 ? '#10b981' : '#ef4444';
+
+            const previewEl = document.getElementById('sell-preview-pnl');
+            if (previewEl) {
+                previewEl.innerText = isPrivacyMode 
+                    ? `₹ •••••• (${pnlSign}${pnlPct.toFixed(2)}%)` 
+                    : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits:2})} (${pnlSign}${pnlPct.toFixed(2)}%)`;
+                previewEl.style.color = pnlColor;
+            }
+        }
+
+        async function submitSellHolding() {
+            if (!activePortfolioName || !currentSellHolding) return;
+            const symbol = document.getElementById('modal-sell-symbol').value;
+            const quantity = parseFloat(document.getElementById('modal-sell-qty').value);
+            const sell_price = parseFloat(document.getElementById('modal-sell-price').value);
+            const sell_date = document.getElementById('modal-sell-date').value || new Date().toISOString().split('T')[0];
+            const notes = document.getElementById('modal-sell-notes').value.trim();
+
+            if (isNaN(quantity) || quantity <= 0) {
+                alert('Please enter a valid quantity to sell!');
+                return;
+            }
+            if (quantity > currentSellHolding.quantity + 0.0001) {
+                alert(`Cannot sell ${quantity} shares. You only hold ${currentSellHolding.quantity} shares!`);
+                return;
+            }
+            if (isNaN(sell_price) || sell_price <= 0) {
+                alert('Please enter a valid selling price!');
+                return;
+            }
+
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks/sell`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, quantity, sell_price, sell_date, notes })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeSellHoldingModal();
+                portfoliosData = data.portfolios;
+                if (data.transactions) userTransactionsData = data.transactions;
+                renderPortfolios();
+                refreshPrices();
+            } else {
+                alert(data.error || 'Failed to submit sell order');
+            }
+        }
+
+        function openBuyMoreModal(symbol, curAvgPrice) {
+            if (!activePortfolioName) return;
+            const holdings = portfoliosData[activePortfolioName] || [];
+            const item = holdings.find(h => h.symbol === symbol);
+
+            currentBuyMoreHolding = item || { symbol: symbol, quantity: 0, buy_price: curAvgPrice || 0 };
+            const info = stockPricesData[symbol] || {};
+            const ltp = info.price || (item ? item.buy_price : 0);
+
+            document.getElementById('modal-buymore-symbol').value = symbol;
+            document.getElementById('buyMoreModalTitle').innerText = `🟢 Buy More ${symbol}`;
+            document.getElementById('buymore-info-qty').innerText = formatQty(currentBuyMoreHolding.quantity);
+            document.getElementById('buymore-info-avgprice').innerText = formatMoney(currentBuyMoreHolding.buy_price);
+            document.getElementById('buymore-info-ltp').innerText = ltp > 0 ? formatMoney(ltp) : '-';
+            document.getElementById('buymore-info-portfolio').innerText = activePortfolioName;
+
+            document.getElementById('modal-buymore-qty').value = '';
+            document.getElementById('modal-buymore-price').value = ltp > 0 ? ltp.toFixed(2) : (currentBuyMoreHolding.buy_price || '');
+            document.getElementById('modal-buymore-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-buymore-reason').value = '';
+
+            calculateBuyMorePreview();
+            document.getElementById('buyMoreModal').style.display = 'block';
+        }
+
+        function closeBuyMoreModal() {
+            document.getElementById('buyMoreModal').style.display = 'none';
+        }
+
+        function calculateBuyMorePreview() {
+            if (!currentBuyMoreHolding) return;
+            const oldQty = currentBuyMoreHolding.quantity || 0;
+            const oldPrice = currentBuyMoreHolding.buy_price || 0;
+
+            const addQty = parseFloat(document.getElementById('modal-buymore-qty').value) || 0;
+            const addPrice = parseFloat(document.getElementById('modal-buymore-price').value) || 0;
+
+            const totalQty = oldQty + addQty;
+            const avgPrice = totalQty > 0 ? ((oldQty * oldPrice) + (addQty * addPrice)) / totalQty : addPrice;
+
+            document.getElementById('buymore-preview-qty').innerText = totalQty > 0 ? formatQty(totalQty) + ' shares' : '-';
+            document.getElementById('buymore-preview-avgprice').innerText = avgPrice > 0 ? '₹' + avgPrice.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-';
+        }
+
+        async function submitBuyMoreHolding() {
+            if (!activePortfolioName || !currentBuyMoreHolding) return;
+            const symbol = document.getElementById('modal-buymore-symbol').value;
+            const quantity = parseFloat(document.getElementById('modal-buymore-qty').value);
+            const buy_price = parseFloat(document.getElementById('modal-buymore-price').value);
+            const buy_date = document.getElementById('modal-buymore-date').value || new Date().toISOString().split('T')[0];
+            const buy_reason = document.getElementById('modal-buymore-reason').value.trim();
+
+            if (isNaN(quantity) || quantity <= 0) {
+                alert('Please enter a valid quantity to buy!');
+                return;
+            }
+            if (isNaN(buy_price) || buy_price <= 0) {
+                alert('Please enter a valid buy price!');
+                return;
+            }
+
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, quantity, buy_price, buy_date, buy_reason, mode: 'buy_more' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeBuyMoreModal();
+                portfoliosData = data.portfolios;
+                if (data.transactions) userTransactionsData = data.transactions;
+                renderPortfolios();
+                refreshPrices();
+            } else {
+                alert(data.error || 'Failed to submit buy order');
+            }
+        }
+
+        function exportTransactionsToCSV() {
+            if (userTransactionsData.length === 0) {
+                alert('No transaction records available to export!');
+                return;
+            }
+
+            let csvRows = [];
+            csvRows.push(['Date', 'Portfolio', 'Symbol', 'Type', 'Quantity', 'Price (INR)', 'Total Value (INR)', 'Realized P&L (INR)', 'Realized P&L (%)', 'Notes']);
+
+            userTransactionsData.forEach(t => {
+                csvRows.push([
+                    `"${t.date || ''}"`,
+                    `"${(t.portfolio || '').replace(/"/g, '""')}"`,
+                    `"${t.symbol}"`,
+                    `"${t.type}"`,
+                    t.quantity,
+                    t.price.toFixed(2),
+                    t.total_amount.toFixed(2),
+                    t.type === 'SELL' ? t.realized_pnl.toFixed(2) : '0.00',
+                    t.type === 'SELL' ? `"${t.realized_pnl_pct.toFixed(2)}%"` : '"0.00%"',
+                    `"${(t.notes || '').replace(/"/g, '""')}"`
+                ]);
+            });
+
+            const csvContent = '\uFEFF' + csvRows.map(e => e.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const dateStr = new Date().toISOString().split('T')[0];
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `portfolio_transactions_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // =========================================================
+        // PORTFOLIO FUNCTIONS
+        // =========================================================
         async function fetchPortfolios() {
             const res = await fetch('/api/portfolios');
             portfoliosData = await res.json();
             
+            await fetchTransactions();
+
             const names = Object.keys(portfoliosData);
             if (names.length > 0 && (!activePortfolioName || !portfoliosData[activePortfolioName])) {
                 activePortfolioName = names[0];
@@ -3000,6 +3347,7 @@
                 priceInput.value = '';
                 qtyInput.value = '';
                 portfoliosData = data.portfolios;
+                if (data.transactions) userTransactionsData = data.transactions;
                 renderPortfolios();
                 refreshPrices();
             } else {
@@ -3008,7 +3356,7 @@
         }
 
         async function removePortfolioStock(symbol) {
-            if (!activePortfolioName || !confirm(`Remove ${symbol} from ${activePortfolioName}?`)) return;
+            if (!activePortfolioName || !confirm(`Remove ${symbol} from ${activePortfolioName}? (This will delete it from database without a sell transaction)`)) return;
             const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
@@ -3049,7 +3397,7 @@
             const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason })
+                body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason, mode: 'edit' })
             });
             const data = await res.json();
             if (data.success) {
@@ -3060,6 +3408,107 @@
             } else {
                 alert(data.error);
             }
+        }
+
+        function renderTransactionsTable() {
+            const tbody = document.getElementById('transactions-tbody');
+            const summaryMount = document.getElementById('tx-summary-cards');
+            if (!tbody) return;
+
+            const query = (document.getElementById('tx-search-input')?.value || '').toLowerCase().trim();
+            let txs = userTransactionsData.slice();
+
+            if (query) {
+                txs = txs.filter(t => 
+                    t.symbol.toLowerCase().includes(query) ||
+                    (t.portfolio || '').toLowerCase().includes(query) ||
+                    (t.type || '').toLowerCase().includes(query) ||
+                    (t.notes || '').toLowerCase().includes(query)
+                );
+            }
+
+            let totalRealizedPnl = 0;
+            let sellCount = 0;
+            let buyCount = 0;
+
+            userTransactionsData.forEach(t => {
+                if (t.type === 'SELL') {
+                    totalRealizedPnl += (t.realized_pnl || 0);
+                    sellCount++;
+                } else {
+                    buyCount++;
+                }
+            });
+
+            if (summaryMount) {
+                const pnlPos = totalRealizedPnl >= 0;
+                const pnlSign = pnlPos ? '+' : '';
+                const pnlColor = pnlPos ? '#10b981' : '#ef4444';
+
+                summaryMount.innerHTML = `
+                    <div style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">TOTAL REALIZED P&L</div>
+                        <div style="font-size: 15px; font-weight: 800; color: ${pnlColor}; margin-top: 2px;">
+                            ${isPrivacyMode ? '₹ ••••••' : `${pnlSign}₹${Math.abs(totalRealizedPnl).toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
+                        </div>
+                    </div>
+                    <div style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">SELL EXECUTIONS</div>
+                        <div style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
+                            ${sellCount} Trades Closed
+                        </div>
+                    </div>
+                    <div style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">BUY EXECUTIONS</div>
+                        <div style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
+                            ${buyCount} Purchases
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (txs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 25px; color: var(--text-secondary);">No transactions recorded yet. Executed Buy & Sell orders will appear here automatically!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            txs.forEach(t => {
+                const tr = document.createElement('tr');
+                const isSell = t.type === 'SELL';
+                const bInfo = getSymbolBadge(t.symbol);
+
+                const dateStr = formatDateFormatted(t.date || t.timestamp);
+                const pnlAmt = t.realized_pnl || 0;
+                const pnlPct = t.realized_pnl_pct || 0;
+                const pnlSign = pnlAmt >= 0 ? '+' : '';
+                const pnlColor = pnlAmt >= 0 ? '#10b981' : '#ef4444';
+
+                tr.innerHTML = `
+                    <td><span style="font-size: 12px; font-weight: 600; color: var(--text-primary);">${dateStr}</span></td>
+                    <td><span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(t.portfolio || 'Portfolio')}</span></td>
+                    <td>
+                        <span class="stock-symbol" style="font-size: 13px;">${escapeHtml(t.symbol)}</span> 
+                        <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                    </td>
+                    <td style="text-align:center;">
+                        <span style="font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; ${isSell ? 'background: rgba(239,68,68,0.15); color: #ef4444;' : 'background: rgba(16,185,129,0.15); color: #10b981;'}">
+                            ${isSell ? 'SELL' : 'BUY'}
+                        </span>
+                    </td>
+                    <td style="text-align:right; font-weight: 600;">${formatQty(t.quantity)}</td>
+                    <td style="text-align:right;">₹${(t.price || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td style="text-align:right; font-weight: 700;">₹${(t.total_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td style="text-align:right; font-weight: 700; color: ${isSell ? pnlColor : 'var(--text-secondary)'};">
+                        ${isSell ? (isPrivacyMode ? '₹ ••••••' : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits:2})} (${pnlSign}${pnlPct.toFixed(2)}%)`) : '-'}
+                    </td>
+                    <td style="font-style: italic; font-size: 11px; color: var(--text-secondary);">${escapeHtml(t.notes || '-')}</td>
+                    <td style="text-align:center;">
+                        <button class="btn-danger" style="font-size: 10px; padding: 2px 6px;" onclick="deleteTransaction('${t.id}')" title="Delete transaction record">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         function renderPortfolios() {
@@ -3212,7 +3661,7 @@
                 <tr>
                     <th>Stock</th>
                     <th style="text-align:right;">Qty</th>
-                    <th style="text-align:right;">Buy Price</th>
+                    <th style="text-align:right;">Avg Buy Price</th>
                     <th style="text-align:right;">LTP (₹)</th>
                     <th style="text-align:right;">Invested (₹)</th>
                     <th style="text-align:right;">Current Val (₹)</th>
@@ -3236,7 +3685,6 @@
                     tr.id = `pf-row-${sym}`;
                     tr.title = 'Click row to view interactive technical chart';
                     tr.onclick = (e) => {
-                        // Prevent opening if clicking on an interactive button
                         if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
                         openInHouseChart(sym);
                     };
@@ -3324,7 +3772,54 @@
             container.appendChild(filterSortDiv);
             container.appendChild(scrollContainer);
 
+            // 3. Render Realized P&L & Transactions Ledger
+            const txContainer = document.createElement('div');
+            txContainer.style.cssText = 'margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);';
+            txContainer.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="margin:0; font-size: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            📜 Realized P&L & Transaction Log
+                        </h3>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                            Complete ledger of past Buy & Sell executions for accountability & tracking
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="tx-search-input" placeholder="Search transactions..." style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); min-width: 200px;" onkeyup="renderTransactionsTable()">
+                        <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="exportTransactionsToCSV()" title="Export transaction ledger to CSV/Excel">📊 Export Ledger</button>
+                    </div>
+                </div>
+                
+                <div id="tx-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                </div>
+
+                <div class="table-responsive-container" style="max-height: 420px; overflow-y: auto;">
+                    <table class="wl-table" id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Execution Date</th>
+                                <th>Portfolio</th>
+                                <th>Stock Symbol</th>
+                                <th style="text-align:center;">Type</th>
+                                <th style="text-align:right;">Qty</th>
+                                <th style="text-align:right;">Price (₹)</th>
+                                <th style="text-align:right;">Total Value (₹)</th>
+                                <th style="text-align:right;">Realized P&L</th>
+                                <th>Notes / Thesis</th>
+                                <th style="text-align:center; width: 60px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-tbody">
+                            <tr><td colspan="10" style="text-align:center; padding: 25px; color: var(--text-secondary);">Loading transaction logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            container.appendChild(txContainer);
+
             viewMount.appendChild(container);
+            renderTransactionsTable();
         }
 
         // =========================================================
@@ -4453,6 +4948,15 @@
             const reasonText = item.buy_reason || item.notes || 'No buy reason recorded.';
             const reasonEl = document.getElementById('detail-modal-reason');
             if (reasonEl) reasonEl.innerText = reasonText;
+
+            const btnBuyMore = document.getElementById('btn-detail-buymore');
+            if (btnBuyMore) {
+                btnBuyMore.onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openBuyMoreModal(sym, item.buy_price); };
+            }
+            const btnSell = document.getElementById('btn-detail-sell');
+            if (btnSell) {
+                btnSell.onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openSellHoldingModal(sym, item.quantity, item.buy_price); };
+            }
 
             const btnNews = document.getElementById('btn-detail-news');
             if (btnNews) {
