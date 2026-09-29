@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watchlists - Capital Desk</title>
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <!-- Institutional Financial Typography (Inter & Plus Jakarta Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Lightweight Charts Library (TradingView Canvas Engine) -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Official TradingView Advanced Chart Widget Library -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-header: #ffffff;
+            --bg-subtle: #f8fafc;
+            --bg-input: #ffffff;
+            --border-color: #e2e8f0;
+            --border-input: #cbd5e1;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --table-header-bg: #f8fafc;
+            --table-hover-bg: #f1f5f9;
+            --modal-bg: #ffffff;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-header: #1e293b;
+            --bg-subtle: #0f172a;
+            --bg-input: #0f172a;
+            --border-color: #334155;
+            --border-input: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --table-header-bg: #0f172a;
+            --table-hover-bg: #334155;
+            --modal-bg: #1e293b;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, .app-title, .brand-logo-group {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .container { max-width: 1400px; width: 100%; margin: 0 auto; }
+
+        /* Header Navigation */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-header);
+            padding: 14px 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-logo-group { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text-primary); }
+        .brand-logo-img { width: 34px; height: 34px; object-fit: contain; }
+        .app-title { font-size: 20px; font-weight: 700; margin: 0; color: var(--text-primary); }
+        .app-subtitle { font-size: 11px; color: var(--text-secondary); font-weight: 500; margin-top: 1px; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: var(--bg-subtle);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active {
+            background: var(--btn-primary-bg);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+        }
+
+        .header-actions-group { display: flex; align-items: center; gap: 10px; }
+        .btn-header-action {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-header-action:hover { border-color: var(--btn-primary-bg); }
+
+        /* Card Container & Buttons */
+        .card-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        button {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        button:hover { background-color: var(--btn-primary-hover); }
+        button.secondary { background-color: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); }
+        button.danger { background-color: #ef4444; color: #ffffff; }
+
+        .btn-secondary { background-color: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-danger { background-color: #ef4444; color: #ffffff; }
+
+        /* Watchlist Selector Buttons */
+        .portfolio-selector-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+        .pf-select-btn {
+            background: var(--bg-subtle);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .pf-select-btn.active {
+            background: var(--btn-primary-bg);
+            color: #ffffff;
+            border-color: var(--btn-primary-bg);
+        }
+
+        /* Controls & Autocomplete */
+        .controls { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+        .controls input {
+            padding: 10px 14px;
+            border: 1px solid var(--border-input);
+            border-radius: 8px;
+            font-size: 13px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            outline: none;
+        }
+        .controls input:focus { border-color: var(--btn-primary-bg); }
+
+        .autocomplete-wrapper { position: relative; width: 340px; }
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: 4px;
+        }
+        .autocomplete-dropdown.show { display: block; }
+        .autocomplete-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .autocomplete-item:hover { background-color: var(--table-hover-bg); }
+
+        /* Tables */
+        .table-responsive-container { width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; background: var(--bg-card); font-size: 13px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--table-header-bg); color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        tr.pf-row:hover { background-color: var(--table-hover-bg); cursor: pointer; }
+
+        .pos { color: #10b981; font-weight: 600; }
+        .neg { color: #ef4444; font-weight: 600; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
+        .badge-nse { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .badge-bse { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
+        .badge-idx { background: rgba(6, 182, 212, 0.12); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.25); }
+        .badge-cmd { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); }
+
+        /* Modals */
+        .modal, .small-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+        .small-modal-content { background: var(--modal-bg); margin: 8% auto; padding: 24px; border-radius: 12px; width: 520px; max-width: 94vw; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .close-btn { color: var(--text-secondary); font-size: 26px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover { color: var(--text-primary); }
+
+        /* Dropdown Options Menu */
+        .menu-dropdown-wrapper { position: relative; display: inline-block; }
+        .menu-dropdown-content { display: none; position: absolute; right: 0; top: 110%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-md); min-width: 210px; z-index: 1000; padding: 6px 0; }
+        .menu-dropdown-content.show { display: block; }
+        .menu-item { padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+        .menu-item:hover { background-color: var(--table-hover-bg); color: var(--btn-primary-bg); }
+        .menu-divider { height: 1px; background-color: var(--border-color); margin: 4px 0; }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinning { animation: spin 0.8s linear infinite; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="app-header">
+            <a href="/" class="brand-logo-group">
+                <img src="/static/logo.png" alt="Capital Desk Logo" class="brand-logo-img">
+                <div>
+                    <h1 class="app-title">Capital Desk</h1>
+                    <div class="app-subtitle">Portfolio & Market Intelligence</div>
+                </div>
+            </a>
+            
+            <div class="nav-tabs">
+                <a href="/watchlists" class="tab-btn active">📋 Watchlists</a>
+                <a href="/portfolios" class="tab-btn">💼 Portfolios</a>
+                <a href="/analytics" class="tab-btn">📊 Analytics</a>
+                <a href="/insights" class="tab-btn">💡 Insights</a>
+            </div>
+
+            <div class="header-actions-group">
+                <span id="last-updated-badge" style="color: var(--text-secondary); font-size: 11px;">🕒 Just now</span>
+                <button id="btn-notifications-header" onclick="openNotificationsModal()" class="btn-header-action" title="Notifications">
+                    🔔 <span id="notif-badge" class="badge" style="background:#ef4444; color:white; font-size:10px; padding:2px 5px; border-radius:10px; display:none;">0</span>
+                </button>
+                <button id="btn-privacy-header" onclick="togglePrivacyMode()" class="btn-header-action" title="Toggle Privacy Mode">👁️</button>
+                
+                <div class="menu-dropdown-wrapper">
+                    <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-header-action">
+                        👤 <span id="header-username">User</span> ▾
+                    </button>
+                    <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                        <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="refreshPrices(); closeSettingsMenu();">🔄 Refresh Live Prices</div>
+                        <div class="menu-item" onclick="openStockNewsModal(''); closeSettingsMenu();">📰 Latest Market News</div>
+                        <div class="menu-divider"></div>
+                        <a href="/admin" id="admin-menu-link" class="menu-item" style="display: none; color: #10b981;">🛡️ Admin Control Panel</a>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">🚪 Log Out</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Watchlists View -->
+        <div class="card-container" style="padding: 16px 24px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-weight: 600; color: var(--text-secondary); font-size: 13px;">WATCHLISTS:</span>
+                    <div class="portfolio-selector-bar" id="watchlist-selector-mount" style="margin-bottom: 0;"></div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button onclick="openCreateWatchlistModal()">+ Create Watchlist</button>
+                    <button class="danger" onclick="deleteActiveWatchlist()">Delete Watchlist</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="watchlist-view-mount">
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading watchlist details...</div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="createWatchlistModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3>Create New Watchlist</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Watchlist Name</label>
+                <input type="text" id="modal-new-watchlist-name" placeholder="e.g. IT Sector, Dividend Picks..." style="width:100%; padding:8px 12px; border:1px solid var(--border-input); border-radius:6px; background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeCreateWatchlistModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitCreateWatchlist()">Create Watchlist</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock News Modal -->
+    <div id="stockNewsModal" class="small-modal">
+        <div class="small-modal-content" style="width: 620px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 id="news-modal-title" style="margin: 0; font-size: 18px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">📰 Latest Market News</h3>
+                    <div id="news-modal-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Fetching real-time updates...</div>
+                </div>
+                <span class="close-btn" onclick="closeStockNewsModal()">&times;</span>
+            </div>
+            <div id="news-articles-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
+            <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 16px;">
+                <button type="button" class="btn-secondary" onclick="closeStockNewsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Modal -->
+    <div id="chartModal" class="modal">
+        <div style="background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; color: #d1d4dc;">
+            <div style="padding: 10px 18px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 18px; font-weight: 600; color: #ffffff;" id="chartModalTitle">Stock Chart</div>
+                <button class="btn-secondary" style="font-size: 12px; padding: 5px 12px;" onclick="openStockNewsModal(currentChartSymbol)">📰 News</button>
+                <span class="close-btn" onclick="closeChartModal()" style="color:#ffffff;">&times;</span>
+            </div>
+            <div style="flex: 1; width: 100%; position: relative;" id="mainChartPane"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Core -->
+    <script>
+        let watchlistsData = {};
+        let stockPricesData = {};
+        let activeWatchlistName = '';
+        let isPrivacyMode = false;
+        let currentChartSymbol = '';
+        let wlSortColumn = 'symbol';
+        let wlSortDirection = 'asc';
+
+        function escapeHtml(str) { return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+        function initTheme() {
+            const theme = localStorage.getItem('capital_desk_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            const icon = document.getElementById('theme-menu-icon');
+            const text = document.getElementById('theme-menu-text');
+            if (icon && text) {
+                icon.innerText = theme === 'dark' ? '☀️' : '🌙';
+                text.innerText = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            }
+        }
+
+        function toggleTheme() {
+            const curr = document.documentElement.getAttribute('data-theme') || 'dark';
+            const next = curr === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('capital_desk_theme', next);
+            initTheme();
+        }
+
+        function togglePrivacyMode() {
+            isPrivacyMode = !isPrivacyMode;
+            localStorage.setItem('capital_desk_privacy_mode', isPrivacyMode ? 'true' : 'false');
+            renderWatchlists();
+        }
+
+        function toggleSettingsMenu(e) {
+            e.stopPropagation();
+            document.getElementById('settings-menu-dropdown').classList.toggle('show');
+        }
+
+        function closeSettingsMenu() {
+            document.getElementById('settings-menu-dropdown').classList.remove('show');
+        }
+
+        window.onclick = function() { closeSettingsMenu(); };
+
+        function getSymbolBadge(sym) {
+            if (!sym) return { label: 'NSE', class: 'badge-nse' };
+            const s = sym.toUpperCase();
+            if (s.startsWith('^')) return { label: 'INDEX', class: 'badge-idx' };
+            if (s.includes('=F') || s.includes('GOLDBEES') || s.includes('SILVERBEES')) return { label: 'COMMODITY', class: 'badge-cmd' };
+            if (s.endsWith('.BO')) return { label: 'BSE', class: 'badge-bse' };
+            return { label: 'NSE', class: 'badge-nse' };
+        }
+
+        async function checkUserSession() {
+            try {
+                const res = await fetch('/api/user');
+                const data = await res.json();
+                if (data.username) {
+                    document.getElementById('header-username').innerText = data.username;
+                    if (data.is_admin || data.role === 'admin') {
+                        document.getElementById('admin-menu-link').style.display = 'flex';
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function logoutUser() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
+        async function fetchWatchlists() {
+            const res = await fetch('/api/watchlists');
+            watchlistsData = await res.json();
+            const names = Object.keys(watchlistsData);
+            if (names.length > 0 && (!activeWatchlistName || !watchlistsData[activeWatchlistName])) {
+                activeWatchlistName = names[0];
+            }
+            renderWatchlists();
+            refreshPrices();
+        }
+
+        function selectWatchlist(name) {
+            activeWatchlistName = name;
+            renderWatchlists();
+            refreshPrices();
+        }
+
+        async function refreshPrices() {
+            const allSymbols = new Set();
+            Object.values(watchlistsData).forEach(list => list.forEach(s => allSymbols.add(s)));
+            if (allSymbols.size === 0) return;
+
+            try {
+                const res = await fetch('/api/stock_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: Array.from(allSymbols) })
+                });
+                stockPricesData = await res.json();
+                updateUIWithPrices();
+            } catch(e) {}
+        }
+
+        function updateUIWithPrices() {
+            Object.keys(stockPricesData).forEach(sym => {
+                const data = stockPricesData[sym];
+                if (!data || data.error) return;
+
+                const nameEl = document.getElementById(`name-${sym}`);
+                if (nameEl && data.name) nameEl.innerText = data.name;
+
+                const priceEl = document.getElementById(`price-${sym}`);
+                if (priceEl) priceEl.innerText = isPrivacyMode ? '₹ ••••••' : `₹${data.price.toFixed(2)}`;
+
+                const changeAmtEl = document.getElementById(`change-amt-${sym}`);
+                if (changeAmtEl) {
+                    const sign = data.change >= 0 ? '+' : '';
+                    changeAmtEl.innerText = `${sign}₹${Math.abs(data.change).toFixed(2)}`;
+                    changeAmtEl.className = data.change >= 0 ? 'pos' : 'neg';
+                }
+
+                const changePctEl = document.getElementById(`change-pct-${sym}`);
+                if (changePctEl) {
+                    const sign = data.change_pct >= 0 ? '+' : '';
+                    changePctEl.innerText = `${sign}${data.change_pct.toFixed(2)}%`;
+                    changePctEl.className = data.change_pct >= 0 ? 'pos' : 'neg';
+                }
+            });
+        }
+
+        function renderWatchlists() {
+            const selectorMount = document.getElementById('watchlist-selector-mount');
+            if (selectorMount) {
+                selectorMount.innerHTML = '';
+                const wlNames = Object.keys(watchlistsData);
+                if (wlNames.length === 0) {
+                    selectorMount.innerHTML = '<span style="color:var(--text-secondary); font-size:13px;">No watchlists created yet.</span>';
+                } else {
+                    wlNames.forEach(name => {
+                        const btn = document.createElement('button');
+                        btn.className = `pf-select-btn ${name === activeWatchlistName ? 'active' : ''}`;
+                        btn.innerText = name;
+                        btn.onclick = () => selectWatchlist(name);
+                        selectorMount.appendChild(btn);
+                    });
+                }
+            }
+
+            const viewMount = document.getElementById('watchlist-view-mount');
+            if (!viewMount) return;
+            viewMount.innerHTML = '';
+
+            if (!activeWatchlistName || !watchlistsData[activeWatchlistName]) {
+                viewMount.innerHTML = '<div class="card-container" style="text-align:center; padding:40px; color:var(--text-secondary);">No active watchlist selected.</div>';
+                return;
+            }
+
+            let symbols = (watchlistsData[activeWatchlistName] || []).slice();
+
+            const card = document.createElement('div');
+            card.className = 'card-container';
+
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'controls';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'autocomplete-wrapper';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'wl-search-input';
+            input.placeholder = 'Search stock (e.g. Reliance, TCS, Nifty 50)...';
+            input.onkeyup = (e) => handleSearchInput('wl', input, e);
+            input.autocomplete = 'off';
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'autocomplete-dropdown';
+            dropdown.id = 'dropdown-wl';
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(dropdown);
+            controlsDiv.appendChild(wrapper);
+            card.appendChild(controlsDiv);
+
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'table-responsive-container';
+
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Company / Symbol</th>
+                        <th style="text-align:right;">LTP (₹)</th>
+                        <th style="text-align:right;">Change (₹)</th>
+                        <th style="text-align:right;">Change (%)</th>
+                        <th style="text-align:center;">Actions</th>
+                    </tr>
+                </thead>
+            `;
+
+            const tbody = document.createElement('tbody');
+            if (symbols.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding: 25px;">No stocks in this watchlist yet. Use the search box above to add!</td></tr>';
+            } else {
+                symbols.forEach(sym => {
+                    const bInfo = getSymbolBadge(sym);
+                    const tr = document.createElement('tr');
+                    tr.className = 'pf-row';
+                    tr.onclick = (e) => {
+                        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                        openInHouseChart(sym);
+                    };
+
+                    tr.innerHTML = `
+                        <td><strong>${sym}</strong> <span class="badge ${bInfo.class}">${bInfo.label}</span><div style="font-size:12px; color:var(--text-secondary);" id="name-${sym}">Loading...</div></td>
+                        <td style="text-align:right;" id="price-${sym}">-</td>
+                        <td style="text-align:right;" id="change-amt-${sym}">-</td>
+                        <td style="text-align:right;" id="change-pct-${sym}">-</td>
+                        <td style="text-align:center;">
+                            <button class="btn-secondary" style="padding:4px 8px;" onclick="openInHouseChart('${sym}')">📊</button>
+                            <button class="btn-secondary" style="padding:4px 8px;" onclick="openStockNewsModal('${sym}')">📰</button>
+                            <button class="btn-danger" style="padding:4px 8px;" onclick="removeWatchlistStock('${activeWatchlistName}', '${sym}')">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            table.appendChild(tbody);
+            scrollContainer.appendChild(table);
+            card.appendChild(scrollContainer);
+            viewMount.appendChild(card);
+            updateUIWithPrices();
+        }
+
+        async function handleSearchInput(type, inputEl, event) {
+            const query = inputEl.value.trim();
+            const dropdown = document.getElementById(`dropdown-${type}`);
+            if (!dropdown) return;
+            if (query.length < 1) { dropdown.classList.remove('show'); return; }
+
+            const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+            const results = await res.json();
+            dropdown.innerHTML = '';
+            if (results.length === 0) {
+                dropdown.innerHTML = '<div class="autocomplete-item" style="color:var(--text-secondary);">No stocks found</div>';
+            } else {
+                results.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.innerHTML = `<div><strong>${item.symbol}</strong> <span class="badge badge-nse">${item.exchange}</span><br><span style="font-size:11px; color:var(--text-secondary);">${item.name}</span></div>`;
+                    div.onclick = () => {
+                        addWatchlistStock(activeWatchlistName, item.symbol);
+                        dropdown.classList.remove('show');
+                        inputEl.value = '';
+                    };
+                    dropdown.appendChild(div);
+                });
+            }
+            dropdown.classList.add('show');
+        }
+
+        async function addWatchlistStock(name, sym) {
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(name)}/stocks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: sym })
+            });
+            const data = await res.json();
+            if (data.success) {
+                watchlistsData = data.watchlists;
+                renderWatchlists();
+                refreshPrices();
+            }
+        }
+
+        async function removeWatchlistStock(name, sym) {
+            if (!confirm(`Remove ${sym} from ${name}?`)) return;
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(name)}/stocks/${encodeURIComponent(sym)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                watchlistsData = data.watchlists;
+                renderWatchlists();
+                refreshPrices();
+            }
+        }
+
+        function openCreateWatchlistModal() { document.getElementById('createWatchlistModal').style.display = 'block'; }
+        function closeCreateWatchlistModal() { document.getElementById('createWatchlistModal').style.display = 'none'; }
+        async function submitCreateWatchlist() {
+            const name = document.getElementById('modal-new-watchlist-name').value.trim();
+            if (!name) return;
+            const res = await fetch('/api/watchlists', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeCreateWatchlistModal();
+                watchlistsData = data.watchlists;
+                activeWatchlistName = name;
+                renderWatchlists();
+            }
+        }
+
+        async function deleteActiveWatchlist() {
+            if (!activeWatchlistName || !confirm(`Delete watchlist "${activeWatchlistName}"?`)) return;
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(activeWatchlistName)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                watchlistsData = data.watchlists;
+                const names = Object.keys(watchlistsData);
+                activeWatchlistName = names.length > 0 ? names[0] : '';
+                renderWatchlists();
+            }
+        }
+
+        async function openStockNewsModal(sym) {
+            const modal = document.getElementById('stockNewsModal');
+            const container = document.getElementById('news-articles-container');
+            modal.style.display = 'block';
+            container.innerHTML = '<div style="text-align:center; padding:30px;">⏳ Fetching live news...</div>';
+            const res = await fetch(sym ? `/api/news/${encodeURIComponent(sym)}` : '/api/news');
+            const data = await res.json();
+            if (data.success && data.articles.length > 0) {
+                container.innerHTML = '';
+                data.articles.forEach(art => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background:var(--bg-subtle); padding:12px; border-radius:8px; border:1px solid var(--border-color);';
+                    card.innerHTML = `<a href="${art.link}" target="_blank" style="font-weight:600; text-decoration:none; color:var(--text-primary);">${art.title} ↗</a><div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">🏢 ${art.publisher}</div>`;
+                    container.appendChild(card);
+                });
+            } else {
+                container.innerHTML = '<div style="text-align:center; padding:30px;">No news found.</div>';
+            }
+        }
+        function closeStockNewsModal() { document.getElementById('stockNewsModal').style.display = 'none'; }
+
+        function openInHouseChart(sym) {
+            currentChartSymbol = sym;
+            document.getElementById('chartModalTitle').innerText = `${sym} Interactive Chart`;
+            document.getElementById('chartModal').style.display = 'block';
+        }
+        function closeChartModal() { document.getElementById('chartModal').style.display = 'none'; }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            checkUserSession();
+            fetchWatchlists();
+            setInterval(refreshPrices, 15000);
+        });
+    </script>
+</body>
+</html>

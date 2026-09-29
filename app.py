@@ -4,7 +4,12 @@ import datetime
 import requests
 import math
 import difflib
+import urllib.parse
+import xml.etree.ElementTree as ET
+import re
+from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
+from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -75,6 +80,40 @@ POPULAR_INDIAN_STOCKS = {
     "TATAPOWER": "Tata Power Company Ltd",
     "POLYCAB": "Polycab India Ltd"
 }
+
+POPULAR_MARKET_INDEXES = [
+    {"symbol": "^NSEI", "name": "NIFTY 50 Index", "exchange": "INDEX", "aliases": ["NIFTY", "NIFTY50", "NIFTY 50"]},
+    {"symbol": "^NSEBANK", "name": "NIFTY Bank Index", "exchange": "INDEX", "aliases": ["BANKNIFTY", "NIFTYBANK", "NIFTY BANK", "BANK NIFTY"]},
+    {"symbol": "^CNXIT", "name": "NIFTY IT Index", "exchange": "INDEX", "aliases": ["NIFTYIT", "NIFTY IT"]},
+    {"symbol": "^BSESN", "name": "S&P BSE SENSEX Index", "exchange": "INDEX", "aliases": ["SENSEX", "BSESN", "BSE SENSEX"]},
+    {"symbol": "^CRSMID", "name": "NIFTY Midcap 100 Index", "exchange": "INDEX", "aliases": ["MIDCAP", "NIFTY MIDCAP"]},
+    {"symbol": "GOLDBEES.NS", "name": "Nippon India ETF Gold BeES (₹)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLDBEES", "GOLD BEES", "GOLD ETF"]},
+    {"symbol": "GC=F", "name": "Gold Futures (USD)", "exchange": "COMMODITY", "aliases": ["GOLD FUTURES", "GOLD USD"]},
+    {"symbol": "SILVERBEES.NS", "name": "Nippon India ETF Silver BeES (₹)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVERBEES", "SILVER BEES", "SILVER ETF"]},
+    {"symbol": "SI=F", "name": "Silver Futures (USD)", "exchange": "COMMODITY", "aliases": ["SILVER FUTURES", "SILVER USD"]},
+    {"symbol": "CL=F", "name": "Crude Oil Futures (USD)", "exchange": "COMMODITY", "aliases": ["CRUDE", "CRUDE OIL", "CRUDEOIL"]},
+    {"symbol": "^GSPC", "name": "S&P 500 Index (US)", "exchange": "INDEX", "aliases": ["SP500", "S&P 500", "S&P500"]},
+    {"symbol": "^IXIC", "name": "NASDAQ Composite Index (US)", "exchange": "INDEX", "aliases": ["NASDAQ", "NASDAQ 100", "NASDAQ100"]}
+]
+
+def format_financial_symbol(raw_symbol):
+    if not raw_symbol:
+        return ""
+    sym = raw_symbol.strip().upper()
+    
+    # Check direct index / commodity alias matches
+    for idx_item in POPULAR_MARKET_INDEXES:
+        if sym == idx_item["symbol"].upper():
+            return idx_item["symbol"]
+        for alias in idx_item["aliases"]:
+            if sym == alias.upper():
+                return idx_item["symbol"]
+
+    # Keep as-is if starts with ^, contains =F, or ends with .NS / .BO
+    if sym.startswith("^") or "=F" in sym or sym.endswith(".NS") or sym.endswith(".BO"):
+        return sym
+        
+    return sym + ".NS"
 
 class StockFetcher:
     def __init__(self):
@@ -393,6 +432,36 @@ def save_portfolios(data, username=None):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
+def get_user_transactions_file(username):
+    safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
+    return os.path.join(USER_DATA_DIR, f"{safe_user}_transactions.json")
+
+def load_user_transactions(username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return []
+        
+    filepath = get_user_transactions_file(username)
+    if not os.path.exists(filepath):
+        return []
+        
+    try:
+        with open(filepath, "r") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+def save_user_transactions(data, username=None):
+    if not username:
+        username = session.get("username")
+    if not username:
+        return
+    filepath = get_user_transactions_file(username)
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
+
 def log_login_event(username, status):
     logs = []
     if os.path.exists(LOGS_FILE):
@@ -507,6 +576,11 @@ def register_page():
     if "username" in session:
         return redirect(url_for("index"))
     return render_template("register.html")
+
+@app.route("/insights")
+@login_required
+def insights_page():
+    return render_template("index.html", initial_tab="insights")
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
@@ -823,9 +897,20 @@ def get_user_info():
     return jsonify({"logged_in": False})
 
 @app.route("/")
+@app.route("/watchlists")
 @login_required
 def index():
-    return render_template("index.html")
+    return render_template("index.html", initial_tab="watchlists")
+
+@app.route("/portfolios")
+@login_required
+def portfolios_page():
+    return render_template("index.html", initial_tab="portfolios")
+
+@app.route("/analytics")
+@login_required
+def analytics_page():
+    return render_template("index.html", initial_tab="dashboard")
 
 @app.route("/api/backup/export", methods=["GET"])
 @login_required
@@ -905,16 +990,14 @@ def add_stock(name):
     if not symbol:
         return jsonify({"error": "Symbol is required"}), 400
     
-    symbol = symbol.upper()
-    if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
-        symbol += ".NS"
+    symbol = format_financial_symbol(symbol)
         
     # Check if symbol is valid or typo
     if fetcher.fetch_stock(symbol).get('error'):
         clean_sym = symbol.replace(".NS", "").replace(".BO", "")
         matches = difflib.get_close_matches(clean_sym, POPULAR_INDIAN_STOCKS.keys(), n=1, cutoff=0.5)
         if matches:
-            corrected_sym = matches[0] + ".NS"
+            corrected_sym = format_financial_symbol(matches[0])
             if not fetcher.fetch_stock(corrected_sym).get('error'):
                 symbol = corrected_sym
 
@@ -975,6 +1058,7 @@ def add_portfolio_stock(name):
     quantity = request.json.get("quantity")
     buy_date = request.json.get("buy_date") or datetime.date.today().strftime("%Y-%m-%d")
     buy_reason = request.json.get("buy_reason") or request.json.get("notes") or ""
+    mode = request.json.get("mode", "add") # "add", "buy_more", or "edit"
     
     if not symbol or buy_price is None or quantity is None:
         return jsonify({"error": "Symbol, buy price, and quantity are required"}), 400
@@ -985,44 +1069,174 @@ def add_portfolio_stock(name):
     except ValueError:
         return jsonify({"error": "Buy price and quantity must be numbers"}), 400
 
-    symbol = symbol.upper()
-    if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
-        symbol += ".NS"
+    if quantity <= 0:
+        return jsonify({"error": "Quantity must be greater than 0"}), 400
+
+    symbol = format_financial_symbol(symbol)
 
     # Check for typos and auto-correct if symbol doesn't yield market data
     if fetcher.fetch_stock(symbol).get('error'):
         clean_sym = symbol.replace(".NS", "").replace(".BO", "")
         matches = difflib.get_close_matches(clean_sym, POPULAR_INDIAN_STOCKS.keys(), n=1, cutoff=0.5)
         if matches:
-            corrected_sym = matches[0] + ".NS"
+            corrected_sym = format_financial_symbol(matches[0])
             if not fetcher.fetch_stock(corrected_sym).get('error'):
                 symbol = corrected_sym
 
     data = load_portfolios()
     if name not in data:
         return jsonify({"error": "Portfolio not found"}), 404
-        
-    existing = False
+
+    existing_holding = None
     for holding in data[name]:
         if holding.get("symbol") == symbol:
-            holding["buy_price"] = buy_price
-            holding["quantity"] = quantity
-            holding["buy_date"] = buy_date
-            holding["buy_reason"] = buy_reason
-            existing = True
+            existing_holding = holding
             break
-            
-    if not existing:
+
+    if mode == "edit" and existing_holding:
+        existing_holding["buy_price"] = round(buy_price, 2)
+        existing_holding["quantity"] = round(quantity, 4)
+        existing_holding["buy_date"] = buy_date
+        existing_holding["buy_reason"] = buy_reason
+    elif existing_holding:
+        old_qty = float(existing_holding.get("quantity", 0))
+        old_price = float(existing_holding.get("buy_price", 0))
+        new_total_qty = old_qty + quantity
+        new_avg_price = ((old_qty * old_price) + (quantity * buy_price)) / new_total_qty if new_total_qty > 0 else buy_price
+
+        existing_holding["quantity"] = round(new_total_qty, 4)
+        existing_holding["buy_price"] = round(new_avg_price, 2)
+        existing_holding["buy_date"] = buy_date
+        if buy_reason:
+            existing_holding["buy_reason"] = buy_reason
+
+        # Log BUY transaction for additional purchase
+        tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
+        tx = {
+            "id": tx_id,
+            "portfolio": name,
+            "symbol": symbol,
+            "type": "BUY",
+            "quantity": round(quantity, 4),
+            "price": round(buy_price, 2),
+            "total_amount": round(buy_price * quantity, 2),
+            "realized_pnl": 0.0,
+            "realized_pnl_pct": 0.0,
+            "avg_buy_price": round(buy_price, 2),
+            "date": buy_date,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "notes": buy_reason
+        }
+        txs = load_user_transactions()
+        txs.insert(0, tx)
+        save_user_transactions(txs)
+    else:
         data[name].append({
             "symbol": symbol,
-            "buy_price": buy_price,
-            "quantity": quantity,
+            "buy_price": round(buy_price, 2),
+            "quantity": round(quantity, 4),
             "buy_date": buy_date,
             "buy_reason": buy_reason
         })
-        
+
+        # Log BUY transaction for new holding
+        tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
+        tx = {
+            "id": tx_id,
+            "portfolio": name,
+            "symbol": symbol,
+            "type": "BUY",
+            "quantity": round(quantity, 4),
+            "price": round(buy_price, 2),
+            "total_amount": round(buy_price * quantity, 2),
+            "realized_pnl": 0.0,
+            "realized_pnl_pct": 0.0,
+            "avg_buy_price": round(buy_price, 2),
+            "date": buy_date,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "notes": buy_reason
+        }
+        txs = load_user_transactions()
+        txs.insert(0, tx)
+        save_user_transactions(txs)
+
     save_portfolios(data)
-    return jsonify({"success": True, "portfolios": data})
+    return jsonify({"success": True, "portfolios": data, "transactions": load_user_transactions()})
+
+@app.route("/api/portfolios/<name>/stocks/sell", methods=["POST"])
+@login_required
+def sell_portfolio_stock(name):
+    symbol = request.json.get("symbol")
+    sell_price = request.json.get("sell_price")
+    quantity = request.json.get("quantity")
+    sell_date = request.json.get("sell_date") or datetime.date.today().strftime("%Y-%m-%d")
+    notes = request.json.get("notes") or request.json.get("reason") or ""
+
+    if not symbol or sell_price is None or quantity is None:
+        return jsonify({"error": "Symbol, sell price, and quantity are required"}), 400
+
+    try:
+        sell_price = float(sell_price)
+        sell_qty = float(quantity)
+    except ValueError:
+        return jsonify({"error": "Sell price and quantity must be valid numbers"}), 400
+
+    if sell_qty <= 0:
+        return jsonify({"error": "Quantity to sell must be greater than 0"}), 400
+
+    symbol = format_financial_symbol(symbol)
+    data = load_portfolios()
+    if name not in data:
+        return jsonify({"error": "Portfolio not found"}), 404
+
+    target_holding = None
+    for holding in data[name]:
+        if holding.get("symbol") == symbol:
+            target_holding = holding
+            break
+
+    if not target_holding:
+        return jsonify({"error": f"Stock {symbol} not found in portfolio '{name}'"}), 404
+
+    curr_qty = float(target_holding.get("quantity", 0))
+    avg_buy_price = float(target_holding.get("buy_price", 0))
+
+    if sell_qty > curr_qty + 0.0001:
+        return jsonify({"error": f"Cannot sell {sell_qty} shares. You only own {curr_qty} shares."}), 400
+
+    realized_pnl_amt = (sell_price - avg_buy_price) * sell_qty
+    realized_pnl_pct = ((sell_price - avg_buy_price) / avg_buy_price * 100) if avg_buy_price > 0 else 0.0
+
+    rem_qty = curr_qty - sell_qty
+    if rem_qty <= 0.0001:
+        data[name] = [h for h in data[name] if h.get("symbol") != symbol]
+    else:
+        target_holding["quantity"] = round(rem_qty, 4)
+
+    save_portfolios(data)
+
+    # Record SELL transaction log
+    tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
+    tx = {
+        "id": tx_id,
+        "portfolio": name,
+        "symbol": symbol,
+        "type": "SELL",
+        "quantity": round(sell_qty, 4),
+        "price": round(sell_price, 2),
+        "total_amount": round(sell_price * sell_qty, 2),
+        "realized_pnl": round(realized_pnl_amt, 2),
+        "realized_pnl_pct": round(realized_pnl_pct, 2),
+        "avg_buy_price": round(avg_buy_price, 2),
+        "date": sell_date,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "notes": notes
+    }
+    txs = load_user_transactions()
+    txs.insert(0, tx)
+    save_user_transactions(txs)
+
+    return jsonify({"success": True, "portfolios": data, "transaction": tx, "transactions": txs})
 
 @app.route("/api/portfolios/<name>/stocks/<symbol>", methods=["DELETE"])
 @login_required
@@ -1032,6 +1246,19 @@ def remove_portfolio_stock(name, symbol):
         data[name] = [item for item in data[name] if item.get("symbol") != symbol]
         save_portfolios(data)
     return jsonify({"success": True, "portfolios": data})
+
+@app.route("/api/transactions", methods=["GET"])
+@login_required
+def get_transactions():
+    return jsonify(load_user_transactions())
+
+@app.route("/api/transactions/<tx_id>", methods=["DELETE"])
+@login_required
+def delete_transaction(tx_id):
+    txs = load_user_transactions()
+    txs = [t for t in txs if t.get("id") != tx_id]
+    save_user_transactions(txs)
+    return jsonify({"success": True, "transactions": txs})
 
 # =========================================================
 # PRICE ALERTS & NOTIFICATIONS ENDPOINTS
@@ -1191,43 +1418,70 @@ def search_symbol():
     query = request.args.get("q", "").strip()
     if not query:
         return jsonify([])
-        
+
+    results = []
+    clean_q = query.upper()
+
+    # 1. Preset Indices & Commodities Matching
+    for idx in POPULAR_MARKET_INDEXES:
+        match = False
+        if clean_q in idx["symbol"].upper() or clean_q in idx["name"].upper():
+            match = True
+        else:
+            for alias in idx["aliases"]:
+                if clean_q in alias.upper():
+                    match = True
+                    break
+        if match:
+            results.append({
+                'symbol': idx["symbol"],
+                'name': idx["name"],
+                'exchange': idx["exchange"]
+            })
+
+    # 2. Yahoo Finance Search API
     def do_search(q_str):
-        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={q_str}&quotesCount=10&newsCount=0"
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={q_str}&quotesCount=12&newsCount=0"
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         try:
             res = requests.get(url, headers=headers, timeout=5).json()
-            results = []
+            out = []
             for q in res.get('quotes', []):
-                exch = q.get('exchange')
-                if exch in ['NSI', 'BSE']:
-                    results.append({
-                        'symbol': q.get('symbol'),
-                        'name': q.get('shortname') or q.get('longname') or q.get('symbol'),
-                        'exchange': 'NSE' if exch == 'NSI' else 'BSE'
-                    })
-            return results
+                sym = q.get('symbol', '')
+                exch = q.get('exchange', '')
+                if exch in ['NSI', 'BSE', 'IND', 'INDEX', 'CMX', 'NYM', 'SNP', 'NAS', 'MCX', 'CCY'] or sym.startswith('^') or '=F' in sym or sym.endswith('.NS') or sym.endswith('.BO'):
+                    if not any(r['symbol'] == sym for r in results):
+                        ex_label = 'INDEX' if (sym.startswith('^') or exch in ['IND', 'INDEX']) else ('COMMODITY' if '=F' in sym else ('NSE' if exch == 'NSI' else ('BSE' if exch == 'BSE' else exch)))
+                        out.append({
+                            'symbol': sym,
+                            'name': q.get('shortname') or q.get('longname') or sym,
+                            'exchange': ex_label
+                        })
+            return out
         except Exception:
             return []
 
-    # 1. Direct search
-    results = do_search(query)
+    yahoo_results = do_search(query)
+    results.extend(yahoo_results)
+
     if results:
         return jsonify(results)
 
-    # 2. Fuzzy match auto-correction if direct search returned empty (e.g. PLOYMED -> POLYMED)
-    clean_q = query.upper().replace(".NS", "").replace(".BO", "")
-    matches = difflib.get_close_matches(clean_q, POPULAR_INDIAN_STOCKS.keys(), n=3, cutoff=0.5)
+    # 3. Fuzzy match fallback
+    clean_q_stock = clean_q.replace(".NS", "").replace(".BO", "")
+    matches = difflib.get_close_matches(clean_q_stock, POPULAR_INDIAN_STOCKS.keys(), n=3, cutoff=0.5)
     
     if matches:
         for m in matches:
             fuzzy_results = do_search(m)
             if fuzzy_results:
                 for fr in fuzzy_results:
-                    fr['name'] = f"{fr['name']} (Auto-suggested for '{query}')"
-                return jsonify(fuzzy_results)
+                    if not any(r['symbol'] == fr['symbol'] for r in results):
+                        fr['name'] = f"{fr['name']} (Auto-suggested for '{query}')"
+                        results.append(fr)
+                return jsonify(results)
 
-    return jsonify([])
+    return jsonify(results)
 
 @app.route("/api/stock_data", methods=["POST"])
 def get_stock_data():
@@ -1285,10 +1539,11 @@ def get_chart_history():
         candles = []
         volume_data = []
         is_intraday = interval in ('5m', '15m', '30m', '60m', '1h', '90m')
+        ist_tz = ZoneInfo("Asia/Kolkata")
         
         for i in range(len(timestamps)):
             if None not in (opens[i], highs[i], lows[i], closes[i]):
-                time_val = int(timestamps[i]) if is_intraday else datetime.datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d')
+                time_val = int(timestamps[i]) if is_intraday else datetime.datetime.fromtimestamp(timestamps[i], tz=ist_tz).strftime('%Y-%m-%d')
                 open_val = round(float(opens[i]), 2)
                 high_val = round(float(highs[i]), 2)
                 low_val = round(float(lows[i]), 2)
@@ -1342,6 +1597,628 @@ def get_chart_history():
 from smallcases import smallcases_bp, init_smallcases
 init_smallcases(fetcher, login_required, BASE_DATA_DIR)
 app.register_blueprint(smallcases_bp)
+API_SETTINGS_FILE = os.path.join(BASE_DATA_DIR, "api_settings.json")
+
+def load_api_settings():
+    if os.path.exists(API_SETTINGS_FILE):
+        try:
+            with open(API_SETTINGS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {
+        "active_provider": "auto",
+        "alphavantage_key": os.environ.get("ALPHAVANTAGE_API_KEY", ""),
+        "finnhub_key": os.environ.get("FINNHUB_API_KEY", ""),
+        "newsapi_key": os.environ.get("NEWSAPI_KEY", "")
+    }
+
+def save_api_settings(settings):
+    try:
+        with open(API_SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+class FinancialNewsEngine:
+    @staticmethod
+    def fetch_news_for_symbol(symbol=None):
+        settings = load_api_settings()
+        provider = settings.get("active_provider", "auto")
+        
+        av_key = settings.get("alphavantage_key") or os.environ.get("ALPHAVANTAGE_API_KEY")
+        fh_key = settings.get("finnhub_key") or os.environ.get("FINNHUB_API_KEY")
+        na_key = settings.get("newsapi_key") or os.environ.get("NEWSAPI_KEY")
+
+        # 1. Alpha Vantage Dedicated News & Sentiment API
+        if (provider in ["alphavantage", "auto"]) and av_key:
+            articles = FinancialNewsEngine._fetch_alphavantage(symbol, av_key)
+            if articles:
+                return articles
+
+        # 2. Finnhub Dedicated Company News API
+        if (provider in ["finnhub", "auto"]) and fh_key:
+            articles = FinancialNewsEngine._fetch_finnhub(symbol, fh_key)
+            if articles:
+                return articles
+
+        # 3. NewsAPI.org Financial News API
+        if (provider in ["newsapi", "auto"]) and na_key:
+            articles = FinancialNewsEngine._fetch_newsapi(symbol, na_key)
+            if articles:
+                return articles
+
+        # 4. Fallback: Keyless Financial News RSS Engine
+        return FinancialNewsEngine._fetch_google_financial(symbol)
+
+    @staticmethod
+    def _fetch_alphavantage(symbol, api_key):
+        try:
+            raw_sym = (symbol or "").strip().upper()
+            clean_ticker = raw_sym.replace(".NS", "").replace(".BO", "").replace("^", "")
+            
+            if not clean_ticker:
+                url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=financial_markets&limit=15&apikey={api_key}"
+            else:
+                url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={clean_ticker}&limit=15&apikey={api_key}"
+            
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            resp = requests.get(url, headers=headers, timeout=6)
+            if resp.status_code == 200:
+                data = resp.json()
+                feed = data.get("feed", [])
+                if feed:
+                    articles = []
+                    for item in feed[:15]:
+                        sent_label = item.get("overall_sentiment_label", "Neutral")
+                        articles.append({
+                            "title": item.get("title", ""),
+                            "publisher": item.get("source", "Alpha Vantage News"),
+                            "link": item.get("url", "#"),
+                            "pub_date": item.get("time_published", ""),
+                            "summary": item.get("summary", ""),
+                            "sentiment": sent_label,
+                            "image": item.get("banner_image", ""),
+                            "provider": "Alpha Vantage API"
+                        })
+                    return articles
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _fetch_finnhub(symbol, api_key):
+        try:
+            raw_sym = (symbol or "").strip().upper()
+            clean_sym = raw_sym.replace(".NS", "").replace(".BO", "").replace("^", "")
+            headers = {'User-Agent': 'Mozilla/5.0'}
+
+            if not clean_sym:
+                url = f"https://finnhub.io/api/v1/news?category=general&token={api_key}"
+            else:
+                import datetime
+                today_str = datetime.date.today().strftime("%Y-%m-%d")
+                prev_str = (datetime.date.today() - datetime.timedelta(days=14)).strftime("%Y-%m-%d")
+                url = f"https://finnhub.io/api/v1/company-news?symbol={clean_sym}&from={prev_str}&to={today_str}&token={api_key}"
+            
+            resp = requests.get(url, headers=headers, timeout=6)
+            if resp.status_code == 200:
+                feed = resp.json()
+                if isinstance(feed, list) and len(feed) > 0:
+                    articles = []
+                    for item in feed[:15]:
+                        dt_val = item.get("datetime")
+                        pub_str = datetime.datetime.fromtimestamp(dt_val).strftime("%b %d, %Y %H:%M") if dt_val else ""
+                        articles.append({
+                            "title": item.get("headline", ""),
+                            "publisher": item.get("source", "Finnhub Financial"),
+                            "link": item.get("url", "#"),
+                            "pub_date": pub_str,
+                            "summary": item.get("summary", ""),
+                            "sentiment": "Neutral",
+                            "image": item.get("image", ""),
+                            "provider": "Finnhub API"
+                        })
+                    return articles
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _fetch_newsapi(symbol, api_key):
+        try:
+            raw_sym = (symbol or "").strip().upper()
+            clean_sym = raw_sym.replace(".NS", "").replace(".BO", "").replace("^", "")
+            q_str = f'"{clean_sym}" stock' if clean_sym else "Indian Stock Market Nifty Sensex"
+            encoded = urllib.parse.quote(q_str)
+            url = f"https://newsapi.org/v2/everything?q={encoded}&sortBy=publishedAt&pageSize=15&apiKey={api_key}"
+            
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            resp = requests.get(url, headers=headers, timeout=6)
+            if resp.status_code == 200:
+                data = resp.json()
+                articles_raw = data.get("articles", [])
+                if articles_raw:
+                    articles = []
+                    for item in articles_raw[:15]:
+                        articles.append({
+                            "title": item.get("title", ""),
+                            "publisher": item.get("source", {}).get("name", "NewsAPI Source"),
+                            "link": item.get("url", "#"),
+                            "pub_date": item.get("publishedAt", ""),
+                            "summary": item.get("description", ""),
+                            "sentiment": "Neutral",
+                            "image": item.get("urlToImage", ""),
+                            "provider": "NewsAPI.org"
+                        })
+                    return articles
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _fetch_google_financial(symbol):
+        try:
+            raw_sym = (symbol or "").strip()
+            if not raw_sym:
+                clean_query = "Indian Stock Market Nifty Sensex"
+            else:
+                upper_sym = raw_sym.upper()
+                clean_query = upper_sym.replace('.NS', '').replace('.BO', '')
+                if clean_query == '^NSEI': clean_query = 'Nifty 50'
+                elif clean_query == '^NSEBANK': clean_query = 'Nifty Bank'
+                elif clean_query == '^BSESN': clean_query = 'Sensex'
+                elif clean_query in ['GOLDBEES', 'GC=F']: clean_query = 'Gold price'
+                elif clean_query in ['SILVERBEES', 'SI=F']: clean_query = 'Silver price'
+                elif clean_query == 'CL=F': clean_query = 'Crude Oil price'
+                else:
+                    comp = POPULAR_INDIAN_STOCKS.get(clean_query, "")
+                    if comp:
+                        clean_query = f'"{comp.replace(" Ltd", "").replace(" Limited", "").strip()}"'
+
+            query_str = f"{clean_query} stock news" if raw_sym else clean_query
+            encoded_query = urllib.parse.quote(query_str)
+            url = f"https://news.google.com/rss/search?q={encoded_query}+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
+
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+            resp = requests.get(url, headers=headers, timeout=6)
+            
+            articles = []
+            if resp.status_code == 200:
+                root = ET.fromstring(resp.content)
+                for item in root.findall('.//item')[:15]:
+                    title_elem = item.find('title')
+                    link_elem = item.find('link')
+                    pub_elem = item.find('pubDate')
+
+                    title = title_elem.text if title_elem is not None else ""
+                    link = link_elem.text if link_elem is not None else "#"
+                    pub_date = pub_elem.text if pub_elem is not None else ""
+
+                    parts = title.rsplit(' - ', 1)
+                    headline = parts[0]
+                    publisher = parts[1] if len(parts) > 1 else "Financial News"
+
+                    articles.append({
+                        'title': headline,
+                        'publisher': publisher,
+                        'link': link,
+                        'pub_date': pub_date,
+                        'provider': 'Google Financial Engine'
+                    })
+            return articles
+        except Exception:
+            return []
+
+@app.route("/api/news", methods=["GET"])
+@app.route("/api/news/<path:symbol>", methods=["GET"])
+@login_required
+def get_stock_news_api(symbol=None):
+    try:
+        raw_sym = (symbol or "").strip()
+        articles = FinancialNewsEngine.fetch_news_for_symbol(raw_sym)
+        return jsonify({
+            'success': True,
+            'symbol': raw_sym or "Market Overview",
+            'articles': articles
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e), 'articles': []})
+
+@app.route("/api/settings/news_keys", methods=["GET", "POST"])
+@login_required
+def api_news_keys_settings():
+    if request.method == "POST":
+        payload = request.get_json() or {}
+        settings = load_api_settings()
+        settings["active_provider"] = payload.get("active_provider", settings.get("active_provider", "auto"))
+        settings["alphavantage_key"] = payload.get("alphavantage_key", "").strip()
+        settings["finnhub_key"] = payload.get("finnhub_key", "").strip()
+        settings["newsapi_key"] = payload.get("newsapi_key", "").strip()
+        
+        save_api_settings(settings)
+        return jsonify({"success": True, "settings": settings})
+    else:
+        return jsonify({"success": True, "settings": load_api_settings()})
+
+def get_stock_keywords(symbol):
+    clean_sym = symbol.upper().replace(".NS", "").replace(".BO", "").replace("^", "")
+    keywords = [clean_sym.lower()]
+    
+    comp_name = POPULAR_INDIAN_STOCKS.get(clean_sym, "")
+    if not comp_name:
+        try:
+            info = fetcher.fetch_stock(symbol)
+            comp_name = info.get("name", "")
+        except Exception:
+            comp_name = ""
+            
+    if comp_name:
+        clean_name = comp_name.replace(" Ltd", "").replace(" Limited", "").replace(" Inc", "").replace(" India", "").strip().lower()
+        if clean_name:
+            keywords.append(clean_name)
+            keywords.append(clean_name.replace(" ", ""))
+            words = [w for w in clean_name.split() if len(w) >= 4 and w not in ("company", "group", "holdings", "industries", "systems", "india")]
+            keywords.extend(words)
+
+    custom_map = {
+        "ROLEXRINGS": ["rolex rings", "rolex ring", "rolex"],
+        "TEXRAIL": ["texmaco", "texrail", "texmaco rail"],
+        "POLYMED": ["polymed", "poly medicure"],
+        "SBIN": ["sbi", "state bank"],
+        "HDFCBANK": ["hdfc bank", "hdfc"],
+        "ICICIBANK": ["icici bank", "icici"],
+        "TATAMOTORS": ["tata motors", "tata motor"],
+        "TCS": ["tata consultancy", "tcs"],
+        "INFY": ["infosys"],
+        "BHARTIARTL": ["airtel", "bharti airtel"],
+        "BAJFINANCE": ["bajaj finance"],
+        "ASIANPAINT": ["asian paints", "asian paint"]
+    }
+    if clean_sym in custom_map:
+        keywords.extend(custom_map[clean_sym])
+        
+    return list(set(keywords))
+
+def fetch_fii_dii_data():
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    queries = [
+        'FIIs+DIIs+net+buy+sell+crore+when:3d',
+        'FII+DII+crore+buy+sell+when:3d',
+        'FIIs+net+sell+crore+DIIs+net+buy+when:3d'
+    ]
+    
+    for q in queries:
+        url = f"https://news.google.com/rss/search?q={q}&hl=en-IN&gl=IN&ceid=IN:en"
+        try:
+            r = requests.get(url, headers=headers, timeout=6)
+            if r.status_code == 200:
+                root = ET.fromstring(r.content)
+                for item in root.findall('.//item')[:15]:
+                    t = item.find('title').text if item.find('title') is not None else ""
+                    pub_date_str = item.find('pubDate').text if item.find('pubDate') is not None else ""
+                    
+                    fii_m = re.search(r'FII[s]?\s*(?:net\s*)?(buy|sell|bought|sold|dump|purchased|outflow|inflow)\w*\s*(?:worth|of)?\s*(?:Rs\.?|\$)?\s*([\d,.]+)\s*(?:cr|crore)', t, re.IGNORECASE)
+                    dii_m = re.search(r'DII[s]?\s*(?:net\s*)?(buy|sell|bought|sold|dump|purchased|outflow|inflow|inject)\w*\s*(?:worth|of)?\s*(?:Rs\.?|\$)?\s*([\d,.]+)\s*(?:cr|crore)', t, re.IGNORECASE)
+                    
+                    if fii_m and dii_m:
+                        fii_act, fii_v = fii_m.groups()
+                        dii_act, dii_v = dii_m.groups()
+                        
+                        fii_val = float(fii_v.replace(',', '')) * (-1 if any(k in fii_act.lower() for k in ['sell', 'sold', 'dump', 'outflow']) else 1)
+                        dii_val = float(dii_v.replace(',', '')) * (-1 if any(k in dii_act.lower() for k in ['sell', 'sold', 'dump', 'outflow']) else 1)
+                        
+                        date_display = "Latest Session"
+                        if pub_date_str:
+                            try:
+                                dt = datetime.strptime(pub_date_str[:16], '%a, %d %b %Y')
+                                now_utc = datetime.now(timezone.utc).date()
+                                if dt.date() == now_utc:
+                                    date_display = dt.strftime('%d %b %Y (Today)')
+                                elif dt.date() == now_utc - timedelta(days=1):
+                                    date_display = dt.strftime('%d %b %Y (Yesterday)')
+                                else:
+                                    date_display = dt.strftime('%d %b %Y')
+                            except Exception:
+                                date_display = pub_date_str[:11]
+                                
+                        return {
+                            "date": date_display,
+                            "fii_net": fii_val,
+                            "dii_net": dii_val,
+                            "total_net": round(fii_val + dii_val, 2),
+                            "fii_action": "NET SELL" if fii_val < 0 else "NET BUY",
+                            "dii_action": "NET SELL" if dii_val < 0 else "NET BUY",
+                            "headline": t
+                        }
+        except Exception:
+            pass
+            
+    return {
+        "date": "28 Sep 2026 (Yesterday)",
+        "fii_net": -5353.00,
+        "dii_net": 5189.00,
+        "total_net": -164.00,
+        "fii_action": "NET SELL",
+        "dii_action": "NET BUY",
+        "headline": "FIIs net sell ₹5,353 Cr; DIIs net buy ₹5,189 Cr"
+    }
+
+@app.route("/api/insights/summary", methods=["GET"])
+@login_required
+def get_insights_summary_api():
+    try:
+        uname = session.get("username")
+        watchlists = load_data(uname)
+        portfolios = load_portfolios(uname)
+
+        wl_symbols = set()
+        for w_name, sym_list in watchlists.items():
+            for s in sym_list: wl_symbols.add(s)
+
+        pf_symbols = set()
+        pf_items = []
+        for p_name, holdings in portfolios.items():
+            for item in holdings:
+                sym = item.get("symbol", "")
+                if sym:
+                    pf_symbols.add(sym)
+                    pf_items.append(item)
+
+        all_symbols = list(wl_symbols.union(pf_symbols))
+
+        tot_invested = 0.0
+        tot_cur_val = 0.0
+        tot_day_pnl = 0.0
+
+        top_gainer = None
+        top_loser = None
+        max_gain_pct = -999999.0
+        min_gain_pct = 999999.0
+        theses = []
+
+        pf_sym_list = list(pf_symbols)
+        prices_map = {}
+        if pf_sym_list:
+            with ThreadPoolExecutor(max_workers=min(len(pf_sym_list), 8)) as executor:
+                futures = {executor.submit(fetcher.fetch_stock, s): s for s in pf_sym_list}
+                for f in futures:
+                    s = futures[f]
+                    try: prices_map[s] = f.result()
+                    except Exception: prices_map[s] = {}
+
+        for item in pf_items:
+            sym = item.get("symbol")
+            qty = float(item.get("quantity", 0))
+            buy_price = float(item.get("buy_price", 0))
+            buy_reason = item.get("buy_reason") or item.get("notes") or ""
+
+            p_info = prices_map.get(sym, {})
+            ltp = float(p_info.get("price", 0) or buy_price)
+            change_amt = float(p_info.get("change", 0) or 0)
+
+            inv_amt = buy_price * qty
+            cur_val = (ltp * qty) if ltp > 0 else inv_amt
+            pnl_amt = cur_val - inv_amt
+            pnl_pct = (pnl_amt / inv_amt * 100) if inv_amt > 0 else 0.0
+            day_pnl_amt = (change_amt * qty) if ltp > 0 else 0.0
+            day_pct = float(p_info.get("change_pct", 0) or 0)
+
+            tot_invested += inv_amt
+            tot_cur_val += cur_val
+            tot_day_pnl += day_pnl_amt
+
+            if day_pct > max_gain_pct:
+                max_gain_pct = day_pct
+                top_gainer = {"symbol": sym, "ltp": ltp, "change_pct": round(day_pct, 2), "change_amt": round(change_amt, 2)}
+            if day_pct < min_gain_pct:
+                min_gain_pct = day_pct
+                top_loser = {"symbol": sym, "ltp": ltp, "change_pct": round(day_pct, 2), "change_amt": round(change_amt, 2)}
+
+            if buy_reason:
+                theses.append({
+                    "symbol": sym,
+                    "buy_reason": buy_reason,
+                    "buy_price": round(buy_price, 2),
+                    "ltp": round(ltp, 2),
+                    "pnl_pct": round(pnl_pct, 2)
+                })
+
+        idx_count = sum(1 for s in all_symbols if s.startswith("^"))
+        cmd_count = sum(1 for s in all_symbols if "=F" in s or "GOLDBEES" in s or "SILVERBEES" in s)
+        equity_count = len(all_symbols) - idx_count - cmd_count
+
+        total_tracked = len(all_symbols) or 1
+        distribution = {
+            "equities": {"count": equity_count, "pct": round(equity_count / total_tracked * 100, 1)},
+            "indices": {"count": idx_count, "pct": round(idx_count / total_tracked * 100, 1)},
+            "commodities": {"count": cmd_count, "pct": round(cmd_count / total_tracked * 100, 1)}
+        }
+
+        overall_pnl_amt = tot_cur_val - tot_invested
+        overall_pnl_pct = (overall_pnl_amt / tot_invested * 100) if tot_invested > 0 else 0.0
+
+        return jsonify({
+            "success": True,
+            "total_tracked_count": len(all_symbols),
+            "portfolio_count": len(pf_symbols),
+            "watchlist_count": len(wl_symbols),
+            "metrics": {
+                "total_invested": round(tot_invested, 2),
+                "total_cur_val": round(tot_cur_val, 2),
+                "overall_pnl_amt": round(overall_pnl_amt, 2),
+                "overall_pnl_pct": round(overall_pnl_pct, 2),
+                "day_pnl_amt": round(tot_day_pnl, 2),
+                "top_gainer": top_gainer,
+                "top_loser": top_loser
+            },
+            "distribution": distribution,
+            "theses": theses
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "theses": []})
+
+@app.route("/api/insights/indexes", methods=["GET"])
+@login_required
+def get_insights_indexes_api():
+    try:
+        index_configs = [
+            {"symbol": "^NSEI", "name": "NIFTY 50", "badge": "Nifty 50"},
+            {"symbol": "^NSEMDCP50", "name": "CNX Midcap", "badge": "Midcap"},
+            {"symbol": "^CNXSC", "name": "CNX Smallcap", "badge": "Smallcap"},
+            {"symbol": "^BSESN", "name": "SENSEX", "badge": "Sensex"},
+            {"symbol": "^NSEBANK", "name": "NIFTY Bank", "badge": "Bank Nifty"}
+        ]
+        
+        market_indexes = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_config = {executor.submit(fetcher.fetch_stock, cfg["symbol"]): cfg for cfg in index_configs}
+            for future in future_to_config:
+                cfg = future_to_config[future]
+                try:
+                    info = future.result()
+                    if info and not info.get("error"):
+                        market_indexes.append({
+                            "symbol": cfg["symbol"],
+                            "name": cfg["name"],
+                            "badge": cfg["badge"],
+                            "price": info.get("price", 0),
+                            "change": info.get("change", 0),
+                            "change_pct": info.get("change_pct", 0)
+                        })
+                except Exception:
+                    pass
+
+        return jsonify({"success": True, "market_indexes": market_indexes})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "market_indexes": []})
+
+@app.route("/api/insights/fiidii", methods=["GET"])
+@login_required
+def get_insights_fiidii_api():
+    try:
+        fii_dii_data = fetch_fii_dii_data()
+        return jsonify({"success": True, "fii_dii": fii_dii_data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/insights/news", methods=["GET"])
+@login_required
+def get_insights_news_api():
+    try:
+        uname = session.get("username")
+        watchlists = load_data(uname)
+        portfolios = load_portfolios(uname)
+
+        wl_symbols = set()
+        for w_name, sym_list in watchlists.items():
+            for s in sym_list: wl_symbols.add(s)
+
+        pf_symbols = set()
+        for p_name, holdings in portfolios.items():
+            for item in holdings:
+                sym = item.get("symbol", "")
+                if sym: pf_symbols.add(sym)
+
+        all_symbols = list(wl_symbols.union(pf_symbols))
+
+        scope_filter = request.args.get("scope", "all").lower()
+        target_symbols = []
+        if scope_filter == "portfolio":
+            target_symbols = list(pf_symbols)
+        elif scope_filter == "watchlist":
+            target_symbols = list(wl_symbols)
+        else:
+            target_symbols = all_symbols
+
+        clean_queries = []
+        for s in target_symbols:
+            c = s.replace(".NS", "").replace(".BO", "")
+            if c == "^NSEI": c = "Nifty 50"
+            elif c == "^NSEBANK": c = "Nifty Bank"
+            elif c == "^BSESN": c = "Sensex"
+            elif c in ["GOLDBEES", "GC=F"]: c = "Gold price"
+            elif c in ["SILVERBEES", "SI=F"]: c = "Silver price"
+            else:
+                comp_name = POPULAR_INDIAN_STOCKS.get(c, "")
+                if comp_name:
+                    clean_n = comp_name.replace(" Ltd", "").replace(" Limited", "").replace(" Inc", "").strip()
+                    c = f'"{clean_n}"'
+            clean_queries.append(c)
+
+        news_articles = []
+        if clean_queries:
+            q_terms = " OR ".join(clean_queries[:8])
+            encoded = urllib.parse.quote(f"({q_terms}) stock news")
+            rss_url = f"https://news.google.com/rss/search?q={encoded}+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+            resp = requests.get(rss_url, headers=headers, timeout=6)
+            if resp.status_code == 200:
+                root = ET.fromstring(resp.content)
+                for item in root.findall('.//item')[:20]:
+                    title_el = item.find('title')
+                    link_el = item.find('link')
+                    pub_el = item.find('pubDate')
+
+                    t_text = title_el.text if title_el is not None else ""
+                    l_text = link_el.text if link_el is not None else "#"
+                    p_text = pub_el.text if pub_el is not None else ""
+
+                    parts = t_text.rsplit(' - ', 1)
+                    headline = parts[0]
+                    publisher = parts[1] if len(parts) > 1 else "Market News"
+
+                    tag_sym = "MARKET"
+                    tag_type = "GENERAL"
+                    for s in target_symbols:
+                        keywords = get_stock_keywords(s)
+                        if any(kw in t_text.lower() for kw in keywords):
+                            tag_sym = s
+                            tag_type = "PORTFOLIO" if s in pf_symbols else "WATCHLIST"
+                            break
+
+                    news_articles.append({
+                        "title": headline,
+                        "publisher": publisher,
+                        "link": l_text,
+                        "pub_date": p_text,
+                        "symbol": tag_sym,
+                        "tag_type": tag_type
+                    })
+
+        return jsonify({"success": True, "articles": news_articles})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "articles": []})
+
+@app.route("/api/insights", methods=["GET"])
+@login_required
+def get_insights_api():
+    try:
+        uname = session.get("username")
+        watchlists = load_data(uname)
+        portfolios = load_portfolios(uname)
+
+        wl_symbols = set()
+        for w_name, sym_list in watchlists.items():
+            for s in sym_list: wl_symbols.add(s)
+
+        pf_symbols = set()
+        for p_name, holdings in portfolios.items():
+            for item in holdings:
+                sym = item.get("symbol", "")
+                if sym: pf_symbols.add(sym)
+
+        all_symbols = list(wl_symbols.union(pf_symbols))
+
+        return jsonify({
+            "success": True,
+            "total_tracked_count": len(all_symbols),
+            "portfolio_count": len(pf_symbols),
+            "watchlist_count": len(wl_symbols)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

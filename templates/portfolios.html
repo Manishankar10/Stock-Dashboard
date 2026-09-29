@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolios - Capital Desk</title>
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <!-- Institutional Financial Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-header: #ffffff;
+            --bg-subtle: #f8fafc;
+            --bg-input: #ffffff;
+            --border-color: #e2e8f0;
+            --border-input: #cbd5e1;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --table-header-bg: #f8fafc;
+            --table-hover-bg: #f1f5f9;
+            --modal-bg: #ffffff;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-header: #1e293b;
+            --bg-subtle: #0f172a;
+            --bg-input: #0f172a;
+            --border-color: #334155;
+            --border-input: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --table-header-bg: #0f172a;
+            --table-hover-bg: #334155;
+            --modal-bg: #1e293b;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, .app-title, .brand-logo-group { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .container { max-width: 1400px; width: 100%; margin: 0 auto; }
+
+        /* Header Navigation */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-header);
+            padding: 14px 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-logo-group { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text-primary); }
+        .brand-logo-img { width: 34px; height: 34px; object-fit: contain; }
+        .app-title { font-size: 20px; font-weight: 700; margin: 0; color: var(--text-primary); }
+        .app-subtitle { font-size: 11px; color: var(--text-secondary); font-weight: 500; margin-top: 1px; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: var(--bg-subtle);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active { background: var(--btn-primary-bg); color: #ffffff; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25); }
+
+        .header-actions-group { display: flex; align-items: center; gap: 10px; }
+        .btn-header-action {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Card Container & Buttons */
+        .card-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        button {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover { background-color: var(--btn-primary-hover); }
+        button.secondary, .btn-secondary { background-color: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); }
+        button.danger, .btn-danger { background-color: #ef4444; color: #ffffff; }
+
+        .portfolio-selector-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+        .pf-select-btn {
+            background: var(--bg-subtle);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .pf-select-btn.active { background: var(--btn-primary-bg); color: #ffffff; border-color: var(--btn-primary-bg); }
+
+        /* Summary Grid */
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .metric-card {
+            background: var(--bg-card);
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+        .metric-card .title { font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; }
+        .metric-card .value { font-size: 22px; font-weight: 700; margin-top: 6px; color: var(--text-primary); }
+        .metric-card .sub-value { font-size: 12px; font-weight: 600; margin-top: 4px; }
+
+        /* Tables */
+        .table-responsive-container { width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; background: var(--bg-card); font-size: 13px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--table-header-bg); color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 11px; }
+        tr.pf-row:hover { background-color: var(--table-hover-bg); cursor: pointer; }
+
+        .pos { color: #10b981; font-weight: 600; }
+        .neg { color: #ef4444; font-weight: 600; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
+        .badge-nse { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .badge-bse { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
+        .badge-idx { background: rgba(6, 182, 212, 0.12); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.25); }
+        .badge-cmd { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); }
+
+        /* Modals */
+        .modal, .small-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+        .small-modal-content { background: var(--modal-bg); margin: 8% auto; padding: 24px; border-radius: 12px; width: 520px; max-width: 94vw; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .close-btn { color: var(--text-secondary); font-size: 26px; font-weight: bold; cursor: pointer; }
+
+        .menu-dropdown-wrapper { position: relative; display: inline-block; }
+        .menu-dropdown-content { display: none; position: absolute; right: 0; top: 110%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-md); min-width: 210px; z-index: 1000; padding: 6px 0; }
+        .menu-dropdown-content.show { display: block; }
+        .menu-item { padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+        .menu-item:hover { background-color: var(--table-hover-bg); color: var(--btn-primary-bg); }
+        .menu-divider { height: 1px; background-color: var(--border-color); margin: 4px 0; }
+
+        @media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="app-header">
+            <a href="/" class="brand-logo-group">
+                <img src="/static/logo.png" alt="Capital Desk Logo" class="brand-logo-img">
+                <div>
+                    <h1 class="app-title">Capital Desk</h1>
+                    <div class="app-subtitle">Portfolio & Market Intelligence</div>
+                </div>
+            </a>
+            
+            <div class="nav-tabs">
+                <a href="/watchlists" class="tab-btn">📋 Watchlists</a>
+                <a href="/portfolios" class="tab-btn active">💼 Portfolios</a>
+                <a href="/analytics" class="tab-btn">📊 Analytics</a>
+                <a href="/insights" class="tab-btn">💡 Insights</a>
+            </div>
+
+            <div class="header-actions-group">
+                <span id="last-updated-badge" style="color: var(--text-secondary); font-size: 11px;">🕒 Just now</span>
+                <button id="btn-privacy-header" onclick="togglePrivacyMode()" class="btn-header-action" title="Toggle Privacy Mode">👁️</button>
+                
+                <div class="menu-dropdown-wrapper">
+                    <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-header-action">
+                        👤 <span id="header-username">User</span> ▾
+                    </button>
+                    <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                        <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="refreshPrices(); closeSettingsMenu();">🔄 Refresh Live Prices</div>
+                        <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">👁️ Toggle Privacy Mode</div>
+                        <div class="menu-divider"></div>
+                        <a href="/admin" id="admin-menu-link" class="menu-item" style="display: none; color: #10b981;">🛡️ Admin Control Panel</a>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">🚪 Log Out</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolios Controls Bar -->
+        <div class="card-container" style="padding: 16px 24px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-weight: 600; color: var(--text-secondary); font-size: 13px;">PORTFOLIOS:</span>
+                    <div class="portfolio-selector-bar" id="portfolio-selector-mount" style="margin-bottom: 0;"></div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button onclick="openAddHoldingModal()">+ Add Holding</button>
+                    <button class="btn-primary" onclick="openCreatePortfolioModal()">+ Create Portfolio</button>
+                    <button class="danger" onclick="deleteActivePortfolio()">Delete Portfolio</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolios View Mount -->
+        <div id="portfolio-view-mount">
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading portfolio details...</div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="createPortfolioModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3>Create New Portfolio</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Portfolio Name</label>
+                <input type="text" id="modal-new-portfolio-name" placeholder="e.g. Core Wealth, High Growth..." style="width:100%; padding:8px 12px; border:1px solid var(--border-input); border-radius:6px; background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeCreatePortfolioModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitCreatePortfolio()">Create Portfolio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Holding Modal -->
+    <div id="addHoldingModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3>Add Holding to Portfolio</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Stock Symbol / Company Name</label>
+                <input type="text" id="modal-pf-add-symbol" placeholder="Search symbol (e.g. RELIANCE, TCS, ^NSEI)..." style="width:100%; padding:8px 12px; border:1px solid var(--border-input); border-radius:6px; background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Buy Price (₹)</label>
+                <input type="number" step="0.01" id="modal-pf-add-price" placeholder="e.g. 2450.50" style="width:100%; padding:8px 12px; border:1px solid var(--border-input); border-radius:6px; background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Quantity</label>
+                <input type="number" step="1" id="modal-pf-add-qty" placeholder="e.g. 50" style="width:100%; padding:8px 12px; border:1px solid var(--border-input); border-radius:6px; background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Buy Date</label>
+                <input type="date" id="modal-pf-add-date" style="width:100%; padding:8px 12px; border:1px solid var(--border-input); border-radius:6px; background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Buy Reason / Investment Thesis</label>
+                <input type="text" id="modal-pf-add-reason" placeholder="e.g. Breakout retest, Strong Q3 earnings..." style="width:100%; padding:8px 12px; border:1px solid var(--border-input); border-radius:6px; background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeAddHoldingModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitAddHolding()">Add Holding</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Core -->
+    <script>
+        let portfoliosData = {};
+        let stockPricesData = {};
+        let activePortfolioName = '';
+        let isPrivacyMode = false;
+
+        function escapeHtml(str) { return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+        function initTheme() {
+            const theme = localStorage.getItem('capital_desk_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            const icon = document.getElementById('theme-menu-icon');
+            const text = document.getElementById('theme-menu-text');
+            if (icon && text) {
+                icon.innerText = theme === 'dark' ? '☀️' : '🌙';
+                text.innerText = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            }
+        }
+
+        function toggleTheme() {
+            const curr = document.documentElement.getAttribute('data-theme') || 'dark';
+            const next = curr === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('capital_desk_theme', next);
+            initTheme();
+        }
+
+        function togglePrivacyMode() {
+            isPrivacyMode = !isPrivacyMode;
+            localStorage.setItem('capital_desk_privacy_mode', isPrivacyMode ? 'true' : 'false');
+            renderPortfolios();
+        }
+
+        function toggleSettingsMenu(e) {
+            e.stopPropagation();
+            document.getElementById('settings-menu-dropdown').classList.toggle('show');
+        }
+
+        function closeSettingsMenu() { document.getElementById('settings-menu-dropdown').classList.remove('show'); }
+        window.onclick = function() { closeSettingsMenu(); };
+
+        function getSymbolBadge(sym) {
+            if (!sym) return { label: 'NSE', class: 'badge-nse' };
+            const s = sym.toUpperCase();
+            if (s.startsWith('^')) return { label: 'INDEX', class: 'badge-idx' };
+            if (s.includes('=F') || s.includes('GOLDBEES') || s.includes('SILVERBEES')) return { label: 'COMMODITY', class: 'badge-cmd' };
+            if (s.endsWith('.BO')) return { label: 'BSE', class: 'badge-bse' };
+            return { label: 'NSE', class: 'badge-nse' };
+        }
+
+        async function checkUserSession() {
+            try {
+                const res = await fetch('/api/user');
+                const data = await res.json();
+                if (data.username) {
+                    document.getElementById('header-username').innerText = data.username;
+                    if (data.is_admin || data.role === 'admin') {
+                        document.getElementById('admin-menu-link').style.display = 'flex';
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function logoutUser() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
+        async function fetchPortfolios() {
+            const res = await fetch('/api/portfolios');
+            portfoliosData = await res.json();
+            const names = Object.keys(portfoliosData);
+            if (names.length > 0 && (!activePortfolioName || !portfoliosData[activePortfolioName])) {
+                activePortfolioName = names[0];
+            }
+            renderPortfolios();
+            refreshPrices();
+        }
+
+        function selectPortfolio(name) {
+            activePortfolioName = name;
+            renderPortfolios();
+            refreshPrices();
+        }
+
+        async function refreshPrices() {
+            const allSymbols = new Set();
+            Object.values(portfoliosData).forEach(list => list.forEach(item => allSymbols.add(item.symbol)));
+            if (allSymbols.size === 0) return;
+
+            try {
+                const res = await fetch('/api/stock_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: Array.from(allSymbols) })
+                });
+                stockPricesData = await res.json();
+                renderPortfolios();
+            } catch(e) {}
+        }
+
+        function renderPortfolios() {
+            const selectorMount = document.getElementById('portfolio-selector-mount');
+            if (selectorMount) {
+                selectorMount.innerHTML = '';
+                const names = Object.keys(portfoliosData);
+                if (names.length === 0) {
+                    selectorMount.innerHTML = '<span style="color:var(--text-secondary); font-size:13px;">No portfolios created yet.</span>';
+                } else {
+                    names.forEach(name => {
+                        const btn = document.createElement('button');
+                        btn.className = `pf-select-btn ${name === activePortfolioName ? 'active' : ''}`;
+                        btn.innerText = name;
+                        btn.onclick = () => selectPortfolio(name);
+                        selectorMount.appendChild(btn);
+                    });
+                }
+            }
+
+            const viewMount = document.getElementById('portfolio-view-mount');
+            if (!viewMount) return;
+            viewMount.innerHTML = '';
+
+            if (!activePortfolioName || !portfoliosData[activePortfolioName]) {
+                viewMount.innerHTML = '<div class="card-container" style="text-align:center; padding:40px; color:var(--text-secondary);">No active portfolio selected.</div>';
+                return;
+            }
+
+            let holdings = portfoliosData[activePortfolioName] || [];
+
+            let totInvested = 0, totCurVal = 0, totDayPnl = 0;
+            holdings.forEach(item => {
+                const info = stockPricesData[item.symbol] || {};
+                const ltp = info.price || 0;
+                const change = info.change || 0;
+                const inv = item.buy_price * item.quantity;
+                const cur = ltp > 0 ? (ltp * item.quantity) : inv;
+                totInvested += inv;
+                totCurVal += cur;
+                totDayPnl += (change * item.quantity);
+            });
+
+            const overallPnl = totCurVal - totInvested;
+            const overallPnlPct = totInvested > 0 ? (overallPnl / totInvested * 100) : 0;
+
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'summary-grid';
+            summaryDiv.innerHTML = `
+                <div class="metric-card">
+                    <div class="title">Total Invested</div>
+                    <div class="value">${isPrivacyMode ? '₹ ••••••' : '₹' + totInvested.toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Current Value</div>
+                    <div class="value">${isPrivacyMode ? '₹ ••••••' : '₹' + totCurVal.toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Overall Return (P&L)</div>
+                    <div class="value ${overallPnl >= 0 ? 'pos' : 'neg'}">${isPrivacyMode ? '₹ ••••••' : (overallPnl >= 0 ? '+' : '') + '₹' + Math.abs(overallPnl).toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+                    <div class="sub-value ${overallPnl >= 0 ? 'pos' : 'neg'}">${overallPnlPct.toFixed(2)}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Today's Return</div>
+                    <div class="value ${totDayPnl >= 0 ? 'pos' : 'neg'}">${isPrivacyMode ? '₹ ••••••' : (totDayPnl >= 0 ? '+' : '') + '₹' + Math.abs(totDayPnl).toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+                </div>
+            `;
+            viewMount.appendChild(summaryDiv);
+
+            const card = document.createElement('div');
+            card.className = 'card-container';
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'table-responsive-container';
+
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Company / Symbol</th>
+                        <th style="text-align:right;">Qty</th>
+                        <th style="text-align:right;">Buy Price (₹)</th>
+                        <th style="text-align:right;">LTP (₹)</th>
+                        <th style="text-align:right;">Invested (₹)</th>
+                        <th style="text-align:right;">Current Value (₹)</th>
+                        <th style="text-align:right;">Overall Return</th>
+                        <th style="text-align:left;">Buy Reason / Thesis</th>
+                        <th style="text-align:center;">Actions</th>
+                    </tr>
+                </thead>
+            `;
+
+            const tbody = document.createElement('tbody');
+            if (holdings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-secondary); padding: 30px;">No holdings in this portfolio yet. Click "+ Add Holding" above to add stocks!</td></tr>';
+            } else {
+                holdings.forEach(item => {
+                    const sym = item.symbol;
+                    const bInfo = getSymbolBadge(sym);
+                    const info = stockPricesData[sym] || {};
+                    const ltp = info.price || 0;
+                    const inv = item.buy_price * item.quantity;
+                    const cur = ltp > 0 ? (ltp * item.quantity) : inv;
+                    const pnl = cur - inv;
+                    const pnlPct = inv > 0 ? (pnl / inv * 100) : 0;
+                    const reason = item.buy_reason || item.notes || '-';
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'pf-row';
+                    tr.innerHTML = `
+                        <td><strong>${sym}</strong> <span class="badge ${bInfo.class}">${bInfo.label}</span></td>
+                        <td style="text-align:right;">${item.quantity}</td>
+                        <td style="text-align:right;">₹${item.buy_price.toFixed(2)}</td>
+                        <td style="text-align:right;">${ltp > 0 ? (isPrivacyMode ? '₹ ••••••' : '₹' + ltp.toFixed(2)) : '-'}</td>
+                        <td style="text-align:right;">${isPrivacyMode ? '₹ ••••••' : '₹' + inv.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                        <td style="text-align:right;">${isPrivacyMode ? '₹ ••••••' : '₹' + cur.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                        <td style="text-align:right;" class="${pnl >= 0 ? 'pos' : 'neg'}">${isPrivacyMode ? '₹ ••••••' : (pnl >= 0 ? '+' : '') + '₹' + Math.abs(pnl).toFixed(2) + ' (' + pnlPct.toFixed(2) + '%)'}</td>
+                        <td style="text-align:left; font-style:italic; color:var(--text-secondary);">${escapeHtml(reason)}</td>
+                        <td style="text-align:center;">
+                            <button class="btn-danger" style="padding:4px 8px;" onclick="removePortfolioStock('${sym}')">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            table.appendChild(tbody);
+            scrollContainer.appendChild(table);
+            card.appendChild(scrollContainer);
+            viewMount.appendChild(card);
+        }
+
+        function openAddHoldingModal() { document.getElementById('addHoldingModal').style.display = 'block'; }
+        function closeAddHoldingModal() { document.getElementById('addHoldingModal').style.display = 'none'; }
+        
+        async function submitAddHolding() {
+            const sym = document.getElementById('modal-pf-add-symbol').value.trim();
+            const price = parseFloat(document.getElementById('modal-pf-add-price').value);
+            const qty = parseFloat(document.getElementById('modal-pf-add-qty').value);
+            const date = document.getElementById('modal-pf-add-date').value;
+            const reason = document.getElementById('modal-pf-add-reason').value.trim();
+
+            if (!sym || !price || !qty) return;
+
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: sym, buy_price: price, quantity: qty, buy_date: date, buy_reason: reason })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeAddHoldingModal();
+                portfoliosData = data.portfolios;
+                renderPortfolios();
+                refreshPrices();
+            }
+        }
+
+        async function removePortfolioStock(sym) {
+            if (!confirm(`Remove ${sym} from ${activePortfolioName}?`)) return;
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks/${encodeURIComponent(sym)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                portfoliosData = data.portfolios;
+                renderPortfolios();
+                refreshPrices();
+            }
+        }
+
+        function openCreatePortfolioModal() { document.getElementById('createPortfolioModal').style.display = 'block'; }
+        function closeCreatePortfolioModal() { document.getElementById('createPortfolioModal').style.display = 'none'; }
+        async function submitCreatePortfolio() {
+            const name = document.getElementById('modal-new-portfolio-name').value.trim();
+            if (!name) return;
+            const res = await fetch('/api/portfolios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeCreatePortfolioModal();
+                portfoliosData = data.portfolios;
+                activePortfolioName = name;
+                renderPortfolios();
+            }
+        }
+
+        async function deleteActivePortfolio() {
+            if (!activePortfolioName || !confirm(`Delete portfolio "${activePortfolioName}"?`)) return;
+            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                portfoliosData = data.portfolios;
+                const names = Object.keys(portfoliosData);
+                activePortfolioName = names.length > 0 ? names[0] : '';
+                renderPortfolios();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            checkUserSession();
+            fetchPortfolios();
+            setInterval(refreshPrices, 15000);
+        });
+    </script>
+</body>
+</html>
