@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Insights & Market Intelligence - Capital Desk</title>
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <!-- Institutional Financial Typography (Inter & Plus Jakarta Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-header: #ffffff;
+            --bg-subtle: #f8fafc;
+            --border-color: #e2e8f0;
+            --border-input: #cbd5e1;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --table-header-bg: #f8fafc;
+            --table-hover-bg: #f1f5f9;
+            --modal-bg: #ffffff;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-header: #1e293b;
+            --bg-subtle: #0f172a;
+            --border-color: #334155;
+            --border-input: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --table-header-bg: #0f172a;
+            --table-hover-bg: #334155;
+            --modal-bg: #1e293b;
+            --btn-primary-bg: #10b981;
+            --btn-primary-hover: #059669;
+            --btn-primary-text: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 12px 16px;
+            font-variant-numeric: tabular-nums;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, .app-title, .brand-logo-group {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .container { max-width: 1280px; margin: 0 auto; width: 100%; }
+
+        /* Header Navigation Styles */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-header);
+            padding: 14px 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-logo-group { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text-primary); }
+        .brand-logo-img { width: 34px; height: 34px; object-fit: contain; }
+        .app-title { font-size: 20px; font-weight: 700; margin: 0; color: var(--text-primary); letter-spacing: -0.3px; }
+        .app-subtitle { font-size: 11px; color: var(--text-secondary); font-weight: 500; margin-top: 1px; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: var(--bg-subtle);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active {
+            background: var(--btn-primary-bg);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+        }
+
+        .header-actions-group { display: flex; align-items: center; gap: 10px; }
+        .btn-header-action {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+        .btn-header-action:hover { border-color: var(--btn-primary-bg); }
+
+        /* Card Container Styles */
+        .card-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .btn-primary:hover { background-color: var(--btn-primary-hover); }
+
+        .btn-secondary {
+            background-color: var(--bg-subtle);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-secondary:hover { border-color: var(--btn-primary-bg); }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .badge-nse { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .badge-bse { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
+        .badge-idx { background: rgba(6, 182, 212, 0.12); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.25); }
+        .badge-cmd { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); }
+
+        /* Dropdown Options Menu */
+        .menu-dropdown-wrapper { position: relative; display: inline-block; }
+        .menu-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 110%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            min-width: 210px;
+            z-index: 1000;
+            padding: 6px 0;
+        }
+        .menu-dropdown-content.show { display: block; }
+        .menu-item {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s ease;
+            text-decoration: none;
+        }
+        .menu-item:hover { background-color: var(--table-hover-bg); color: var(--btn-primary-bg); }
+        .menu-divider { height: 1px; background-color: var(--border-color); margin: 4px 0; }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinning { animation: spin 0.8s linear infinite; }
+
+        /* Insights Grid Layout */
+        .insights-grid {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .nav-tabs {
+                width: 100%;
+                justify-content: space-around;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Main Top Bar with Capital Desk Logo & Controls -->
+        <div class="app-header">
+            <!-- 1. Left: Brand Logo & Title -->
+            <a href="/" class="brand-logo-group">
+                <img src="/static/logo.png" alt="Capital Desk Logo" class="brand-logo-img">
+                <div>
+                    <h1 class="app-title">Capital Desk</h1>
+                    <div class="app-subtitle">Portfolio & Market Intelligence</div>
+                </div>
+            </a>
+            
+            <!-- 2. Middle: Navigation Tabs -->
+            <div class="nav-tabs">
+                <a href="/" class="tab-btn">📋 Watchlists</a>
+                <a href="/" class="tab-btn">💼 Portfolios</a>
+                <a href="/" class="tab-btn">📊 Analytics</a>
+                <a href="/insights" class="tab-btn active">💡 Insights</a>
+            </div>
+
+            <!-- 3. Right: Header Action Controls & User Info -->
+            <div class="header-actions-group">
+                <!-- Privacy Mode Toggle -->
+                <button id="btn-privacy-header" onclick="togglePrivacyMode()" class="btn-header-action" title="Hide / Show Monetary Amounts">
+                    👁️
+                </button>
+
+                <!-- Options Menu Dropdown -->
+                <div class="menu-dropdown-wrapper">
+                    <button id="btn-settings-menu" onclick="toggleSettingsMenu(event)" class="btn-header-action" title="User Account & Options">
+                        👤 <span id="header-username">User</span> ▾
+                    </button>
+                    <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                        <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="loadInsightsTab(); closeSettingsMenu();">
+                            🔄 Refresh News & Insights
+                        </div>
+                        <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">
+                            👁️ Toggle Privacy Mode
+                        </div>
+                        <div class="menu-divider"></div>
+                        <a href="/admin" id="admin-menu-link" class="menu-item" style="display: none; color: #10b981;">
+                            🛡️ Admin Control Panel
+                        </a>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">
+                            🚪 Log Out
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             INSIGHTS HEADER & CONTROLS
+        ========================================================= -->
+        <div class="card-container" style="padding: 18px 24px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        💡 Smart Insights & Market Intelligence
+                    </h2>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                        Real-time news headlines, portfolio highlights, and investment thesis notes for all your tracked stocks.
+                    </div>
+                </div>
+
+                <!-- Scope Filter Buttons -->
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Scope:</span>
+                    <button id="insights-scope-all" class="btn-primary" style="font-size: 12px; padding: 6px 14px;" onclick="loadInsightsTab('all')">All Tracked Assets</button>
+                    <button id="insights-scope-portfolio" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="loadInsightsTab('portfolio')">💼 Portfolio Only</button>
+                    <button id="insights-scope-watchlist" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="loadInsightsTab('watchlist')">📋 Watchlists Only</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             INSIGHTS TWO-COLUMN DASHBOARD
+        ========================================================= -->
+        <div class="insights-grid">
+            
+            <!-- Left Column: Live Aggregated News Cards -->
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                        📰 Live Tracked Stock News <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+                    </h3>
+                    <span id="insights-news-count" style="font-size: 12px; color: var(--text-secondary);">Updating...</span>
+                </div>
+
+                <div id="insights-news-feed" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+                        <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
+                        Fetching real-time news for portfolio & watchlist stocks...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Analytics & Investment Thesis -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                
+                <!-- Highlights Card -->
+                <div class="card-container" style="padding: 20px;">
+                    <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">
+                        ⚡ Today's Highlights
+                    </h3>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Top Performer</div>
+                            <div id="insights-top-gainer-sym" style="font-size: 14px; font-weight: 700; color: #10b981; margin-top: 4px;">-</div>
+                            <div id="insights-top-gainer-val" style="font-size: 12px; font-weight: 600; color: #10b981;">-</div>
+                        </div>
+                        <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Largest Lag</div>
+                            <div id="insights-top-loser-sym" style="font-size: 14px; font-weight: 700; color: #ef4444; margin-top: 4px;">-</div>
+                            <div id="insights-top-loser-val" style="font-size: 12px; font-weight: 600; color: #ef4444;">-</div>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; color: var(--text-primary); font-weight: 600;">Portfolio Day Gain:</span>
+                        <span id="insights-day-gain-val" style="font-size: 13px; font-weight: 700; color: #10b981;">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Asset Distribution Card -->
+                <div class="card-container" style="padding: 20px;">
+                    <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">
+                        📊 Asset Concentration
+                    </h3>
+                    <div id="insights-distribution-mount" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Dynamically generated progress bars -->
+                    </div>
+                </div>
+
+                <!-- Investment Thesis Tracker Card -->
+                <div class="card-container" style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                        <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">
+                            📝 Investment Thesis Tracker
+                        </h3>
+                        <span id="insights-thesis-count" class="badge badge-nse" style="font-size: 10px;">0 Notes</span>
+                    </div>
+                    <div id="insights-thesis-mount" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Dynamically generated thesis list -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        let isPrivacyMode = false;
+        let currentInsightsScope = 'all';
+
+        function escapeHtml(str) {
+            return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('capital_desk_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('capital_desk_theme', next);
+            updateThemeIcon(next);
+        }
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('theme-menu-icon');
+            const text = document.getElementById('theme-menu-text');
+            if (icon && text) {
+                icon.innerText = theme === 'dark' ? '☀️' : '🌙';
+                text.innerText = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            }
+        }
+
+        function togglePrivacyMode() {
+            isPrivacyMode = !isPrivacyMode;
+            localStorage.setItem('capital_desk_privacy_mode', isPrivacyMode ? 'true' : 'false');
+            loadInsightsTab();
+        }
+
+        function initPrivacyMode() {
+            isPrivacyMode = localStorage.getItem('capital_desk_privacy_mode') === 'true';
+        }
+
+        function toggleSettingsMenu(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('settings-menu-dropdown');
+            if (dropdown) dropdown.classList.toggle('show');
+        }
+
+        function closeSettingsMenu() {
+            const dropdown = document.getElementById('settings-menu-dropdown');
+            if (dropdown) dropdown.classList.remove('show');
+        }
+
+        window.onclick = function() {
+            closeSettingsMenu();
+        };
+
+        async function checkUserSession() {
+            try {
+                const res = await fetch('/api/user');
+                const data = await res.json();
+                if (data.username) {
+                    document.getElementById('header-username').innerText = data.username;
+                    if (data.is_admin || data.role === 'admin') {
+                        const adminLink = document.getElementById('admin-menu-link');
+                        if (adminLink) adminLink.style.display = 'flex';
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function logoutUser() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
+        async function loadInsightsTab(scope = null) {
+            if (scope) currentInsightsScope = scope;
+            
+            const btnAll = document.getElementById('insights-scope-all');
+            const btnPf = document.getElementById('insights-scope-portfolio');
+            const btnWl = document.getElementById('insights-scope-watchlist');
+
+            if (btnAll) btnAll.className = currentInsightsScope === 'all' ? 'btn-primary' : 'btn-secondary';
+            if (btnPf) btnPf.className = currentInsightsScope === 'portfolio' ? 'btn-primary' : 'btn-secondary';
+            if (btnWl) btnWl.className = currentInsightsScope === 'watchlist' ? 'btn-primary' : 'btn-secondary';
+
+            const feedEl = document.getElementById('insights-news-feed');
+            if (!feedEl) return;
+
+            feedEl.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
+                    Fetching real-time news & portfolio intelligence...
+                </div>
+            `;
+
+            try {
+                const res = await fetch(`/api/insights?scope=${encodeURIComponent(currentInsightsScope)}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading insights: ${data.error}</div>`;
+                    return;
+                }
+
+                // 1. Render News Feed Cards
+                const countEl = document.getElementById('insights-news-count');
+                if (countEl) countEl.innerText = `${data.articles.length} stories found`;
+
+                if (data.articles.length === 0) {
+                    feedEl.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+                            📰 No recent news coverage found for ${currentInsightsScope} stocks.
+                        </div>
+                    `;
+                } else {
+                    feedEl.innerHTML = '';
+                    data.articles.forEach(art => {
+                        const card = document.createElement('div');
+                        card.style.cssText = `
+                            background: var(--bg-card);
+                            border: 1px solid var(--border-color);
+                            border-radius: 12px;
+                            padding: 16px;
+                            box-shadow: var(--shadow-sm);
+                            transition: transform 0.15s ease, border-color 0.15s ease;
+                        `;
+                        
+                        let timeStr = art.pub_date || '';
+                        try {
+                            const dt = new Date(art.pub_date);
+                            if (!isNaN(dt)) {
+                                timeStr = dt.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                            }
+                        } catch(e) {}
+
+                        const tagBadgeClass = art.tag_type === 'PORTFOLIO' ? 'badge-nse' : (art.tag_type === 'WATCHLIST' ? 'badge-bse' : 'badge-idx');
+
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <strong style="font-size: 12px; color: var(--text-primary);">${escapeHtml(art.symbol)}</strong>
+                                    <span class="badge ${tagBadgeClass}" style="font-size: 10px;">${art.tag_type}</span>
+                                </div>
+                                <span style="font-size: 11px; color: var(--text-secondary);">🕒 ${timeStr}</span>
+                            </div>
+                            <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 14px; color: var(--text-primary); text-decoration: none; line-height: 1.4; display: block; margin-bottom: 8px;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
+                                ${escapeHtml(art.title)} ↗
+                            </a>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 6px;">
+                                <span>🏢 ${escapeHtml(art.publisher)}</span>
+                                <span style="color: #10b981; font-weight: 600;">Read full story →</span>
+                            </div>
+                        `;
+                        feedEl.appendChild(card);
+                    });
+                }
+
+                // 2. Render Metrics & Highlights
+                const m = data.metrics || {};
+                const gainer = m.top_gainer;
+                const loser = m.top_loser;
+
+                const gainerSymEl = document.getElementById('insights-top-gainer-sym');
+                const gainerValEl = document.getElementById('insights-top-gainer-val');
+                if (gainerSymEl && gainer) {
+                    gainerSymEl.innerText = gainer.symbol;
+                    gainerValEl.innerText = `+${gainer.change_pct}% (₹${gainer.ltp})`;
+                } else if (gainerSymEl) {
+                    gainerSymEl.innerText = 'N/A';
+                    gainerValEl.innerText = '-';
+                }
+
+                const loserSymEl = document.getElementById('insights-top-loser-sym');
+                const loserValEl = document.getElementById('insights-top-loser-val');
+                if (loserSymEl && loser) {
+                    loserSymEl.innerText = loser.symbol;
+                    loserValEl.innerText = `${loser.change_pct}% (₹${loser.ltp})`;
+                } else if (loserSymEl) {
+                    loserSymEl.innerText = 'N/A';
+                    loserValEl.innerText = '-';
+                }
+
+                const dayGainEl = document.getElementById('insights-day-gain-val');
+                if (dayGainEl) {
+                    const dg = m.day_pnl_amt || 0;
+                    const sign = dg >= 0 ? '+' : '';
+                    dayGainEl.innerText = isPrivacyMode ? `₹ ••••••` : `${sign}₹${Math.abs(dg).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+                    dayGainEl.style.color = dg >= 0 ? '#10b981' : '#ef4444';
+                }
+
+                // 3. Render Asset Distribution
+                const distMount = document.getElementById('insights-distribution-mount');
+                if (distMount && data.distribution) {
+                    const dist = data.distribution;
+                    distMount.innerHTML = `
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                <span>📈 Equities (${dist.equities.count})</span>
+                                <span>${dist.equities.pct}%</span>
+                            </div>
+                            <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${dist.equities.pct}%; background: #10b981; height: 100%;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                <span>📊 Market Indices (${dist.indices.count})</span>
+                                <span>${dist.indices.pct}%</span>
+                            </div>
+                            <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${dist.indices.pct}%; background: #06b6d4; height: 100%;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                <span>🪙 Commodities & Gold (${dist.commodities.count})</span>
+                                <span>${dist.commodities.pct}%</span>
+                            </div>
+                            <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${dist.commodities.pct}%; background: #f59e0b; height: 100%;"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 4. Render Thesis Notes
+                const thesisMount = document.getElementById('insights-thesis-mount');
+                const thesisCountEl = document.getElementById('insights-thesis-count');
+                const theses = data.theses || [];
+                if (thesisCountEl) thesisCountEl.innerText = `${theses.length} Active Notes`;
+
+                if (thesisMount) {
+                    if (theses.length === 0) {
+                        thesisMount.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center; padding: 15px;">No buy reasons added yet. Edit a holding to record your investment thesis!</div>`;
+                    } else {
+                        thesisMount.innerHTML = '';
+                        theses.forEach(t => {
+                            const item = document.createElement('div');
+                            item.style.cssText = `
+                                background: var(--bg-subtle);
+                                border: 1px solid var(--border-color);
+                                border-radius: 8px;
+                                padding: 10px 12px;
+                                font-size: 12px;
+                            `;
+                            const pnlSign = t.pnl_pct >= 0 ? '+' : '';
+                            const pnlColor = t.pnl_pct >= 0 ? '#10b981' : '#ef4444';
+
+                            item.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <strong style="color: var(--text-primary); font-size: 13px;">${escapeHtml(t.symbol)}</strong>
+                                    <span style="color: ${pnlColor}; font-weight: 700;">${pnlSign}${t.pnl_pct}% Return</span>
+                                </div>
+                                <div style="color: var(--text-secondary); font-style: italic; font-size: 11px;">"${escapeHtml(t.buy_reason)}"</div>
+                            `;
+                            thesisMount.appendChild(item);
+                        });
+                    }
+                }
+
+            } catch(err) {
+                feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${err.message}</div>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initPrivacyMode();
+            checkUserSession();
+            loadInsightsTab('all');
+        });
+    </script>
+</body>
+</html>

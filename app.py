@@ -542,6 +542,11 @@ def register_page():
         return redirect(url_for("index"))
     return render_template("register.html")
 
+@app.route("/insights")
+@login_required
+def insights_page():
+    return render_template("insights.html")
+
 @app.route("/api/login", methods=["POST"])
 def api_login():
     data = request.json or {}
@@ -1458,6 +1463,177 @@ def get_stock_news_api(symbol=None):
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e), 'articles': []})
+
+@app.route("/api/insights", methods=["GET"])
+@login_required
+def get_insights_api():
+    try:
+        uname = session.get("username")
+        watchlists = load_data(uname)
+        portfolios = load_portfolios(uname)
+
+        wl_symbols = set()
+        for w_name, sym_list in watchlists.items():
+            for s in sym_list:
+                wl_symbols.add(s)
+
+        pf_symbols = set()
+        pf_items = []
+        for p_name, holdings in portfolios.items():
+            for item in holdings:
+                sym = item.get("symbol", "")
+                if sym:
+                    pf_symbols.add(sym)
+                    pf_items.append(item)
+
+        all_symbols = list(wl_symbols.union(pf_symbols))
+
+        prices_map = {}
+        if all_symbols:
+            for s in all_symbols:
+                prices_map[s] = fetcher.fetch_stock(s)
+
+        top_gainer = None
+        top_loser = None
+        max_gain_pct = -999999.0
+        min_gain_pct = 999999.0
+
+        tot_invested = 0.0
+        tot_cur_val = 0.0
+        tot_day_pnl = 0.0
+
+        theses = []
+
+        for item in pf_items:
+            sym = item.get("symbol")
+            qty = float(item.get("quantity", 0))
+            buy_price = float(item.get("buy_price", 0))
+            buy_reason = item.get("buy_reason") or item.get("notes") or ""
+
+            p_info = prices_map.get(sym, {})
+            ltp = float(p_info.get("price", 0) or 0)
+            change_amt = float(p_info.get("change", 0) or 0)
+
+            inv_amt = buy_price * qty
+            cur_val = (ltp * qty) if ltp > 0 else inv_amt
+            pnl_amt = cur_val - inv_amt
+            pnl_pct = (pnl_amt / inv_amt * 100) if inv_amt > 0 else 0.0
+            day_pnl_amt = change_amt * qty
+            day_pct = float(p_info.get("change_pct", 0) or 0)
+
+            tot_invested += inv_amt
+            tot_cur_val += cur_val
+            tot_day_pnl += day_pnl_amt
+
+            if day_pct > max_gain_pct:
+                max_gain_pct = day_pct
+                top_gainer = {"symbol": sym, "ltp": ltp, "change_pct": round(day_pct, 2), "change_amt": round(change_amt, 2)}
+            if day_pct < min_gain_pct:
+                min_gain_pct = day_pct
+                top_loser = {"symbol": sym, "ltp": ltp, "change_pct": round(day_pct, 2), "change_amt": round(change_amt, 2)}
+
+            if buy_reason:
+                theses.append({
+                    "symbol": sym,
+                    "buy_reason": buy_reason,
+                    "buy_price": round(buy_price, 2),
+                    "ltp": round(ltp, 2),
+                    "pnl_pct": round(pnl_pct, 2)
+                })
+
+        idx_count = sum(1 for s in all_symbols if s.startswith("^"))
+        cmd_count = sum(1 for s in all_symbols if "=F" in s or "GOLDBEES" in s or "SILVERBEES" in s)
+        equity_count = len(all_symbols) - idx_count - cmd_count
+
+        total_tracked = len(all_symbols) or 1
+        distribution = {
+            "equities": {"count": equity_count, "pct": round(equity_count / total_tracked * 100, 1)},
+            "indices": {"count": idx_count, "pct": round(idx_count / total_tracked * 100, 1)},
+            "commodities": {"count": cmd_count, "pct": round(cmd_count / total_tracked * 100, 1)}
+        }
+
+        scope_filter = request.args.get("scope", "all").lower()
+        target_symbols = []
+        if scope_filter == "portfolio":
+            target_symbols = list(pf_symbols)
+        elif scope_filter == "watchlist":
+            target_symbols = list(wl_symbols)
+        else:
+            target_symbols = all_symbols
+
+        clean_queries = []
+        for s in target_symbols:
+            c = s.replace(".NS", "").replace(".BO", "")
+            if c == "^NSEI": c = "Nifty 50"
+            elif c == "^NSEBANK": c = "Nifty Bank"
+            elif c == "^BSESN": c = "Sensex"
+            elif c in ["GOLDBEES", "GC=F"]: c = "Gold price"
+            elif c in ["SILVERBEES", "SI=F"]: c = "Silver price"
+            clean_queries.append(c)
+
+        news_articles = []
+        if clean_queries:
+            q_terms = " OR ".join(clean_queries[:8])
+            encoded = urllib.parse.quote(f"({q_terms}) stock news")
+            rss_url = f"https://news.google.com/rss/search?q={encoded}+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+            resp = requests.get(rss_url, headers=headers, timeout=6)
+            if resp.status_code == 200:
+                root = ET.fromstring(resp.content)
+                for item in root.findall('.//item')[:15]:
+                    title_el = item.find('title')
+                    link_el = item.find('link')
+                    pub_el = item.find('pubDate')
+
+                    t_text = title_el.text if title_el is not None else ""
+                    l_text = link_el.text if link_el is not None else "#"
+                    p_text = pub_el.text if pub_el is not None else ""
+
+                    parts = t_text.rsplit(' - ', 1)
+                    headline = parts[0]
+                    publisher = parts[1] if len(parts) > 1 else "Market News"
+
+                    tag_sym = "MARKET"
+                    tag_type = "GENERAL"
+                    for s in target_symbols:
+                        base = s.replace(".NS", "").replace(".BO", "").replace("^", "")
+                        if base and base.lower() in t_text.lower():
+                            tag_sym = s
+                            tag_type = "PORTFOLIO" if s in pf_symbols else "WATCHLIST"
+                            break
+
+                    news_articles.append({
+                        "title": headline,
+                        "publisher": publisher,
+                        "link": l_text,
+                        "pub_date": p_text,
+                        "symbol": tag_sym,
+                        "tag_type": tag_type
+                    })
+
+        overall_pnl_amt = tot_cur_val - tot_invested
+        overall_pnl_pct = (overall_pnl_amt / tot_invested * 100) if tot_invested > 0 else 0.0
+
+        return jsonify({
+            "success": True,
+            "total_tracked_count": len(all_symbols),
+            "portfolio_count": len(pf_symbols),
+            "watchlist_count": len(wl_symbols),
+            "metrics": {
+                "total_invested": round(tot_invested, 2),
+                "total_cur_val": round(tot_cur_val, 2),
+                "overall_pnl_amt": round(overall_pnl_amt, 2),
+                "overall_pnl_pct": round(overall_pnl_pct, 2),
+                "day_pnl_amt": round(tot_day_pnl, 2),
+                "top_gainer": top_gainer,
+                "top_loser": top_loser
+            },
+            "distribution": distribution,
+            "theses": theses,
+            "articles": news_articles
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "articles": [], "theses": []})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
