@@ -38,8 +38,8 @@ def _file(username=None):
     return os.path.join(_DATA_DIR, 'user_data', f'{_safe_user(username)}_smallcases.json')
 
 
-def _load():
-    path = _file()
+def load_user_smallcases(username=None):
+    path = _file(username)
     if not os.path.exists(path):
         return {}
     try:
@@ -50,12 +50,21 @@ def _load():
         return {}
 
 
-def _save(data):
-    os.makedirs(os.path.dirname(_file()), exist_ok=True)
-    tmp = _file() + '.tmp'
+def save_user_smallcases(data, username=None):
+    filepath = _file(username)
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    tmp = filepath + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    os.replace(tmp, _file())
+    os.replace(tmp, filepath)
+
+
+def _load():
+    return load_user_smallcases()
+
+
+def _save(data):
+    save_user_smallcases(data)
 
 
 def _id(prefix):

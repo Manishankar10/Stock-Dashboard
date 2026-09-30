@@ -621,8 +621,8 @@
         .active-drawing-delete-btn:hover { background: rgba(239, 83, 80, 0.2); }
         .chart-action-btn { background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
         .chart-action-btn:hover { background: #2a2e39; color: #ffffff; }
-        .chart-close-btn { background: transparent; border: none; color: #a3a6af; font-size: 24px; font-weight: bold; cursor: pointer; line-height: 1; padding: 2px 8px; border-radius: 6px; transition: all 0.15s ease; margin-left: 4px; }
-        .chart-close-btn:hover { color: #ffffff; background: rgba(239, 83, 80, 0.25); }
+        .chart-close-btn { background: rgba(239, 83, 80, 0.15); border: 1px solid rgba(239, 83, 80, 0.4); color: #ef5350; font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1; padding: 5px 12px; border-radius: 6px; transition: all 0.15s ease; margin-left: 8px; flex-shrink: 0; z-index: 200; display: inline-flex; align-items: center; justify-content: center; }
+        .chart-close-btn:hover { color: #ffffff; background: #ef5350; border-color: #ef5350; transform: scale(1.05); }
         .tf-btn, .int-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
         .tf-btn:hover, .int-btn:hover { color: #d1d4dc; background: #2a2e39; }
         .tf-btn.active, .int-btn.active { background: #10b981; color: #ffffff; }
@@ -1484,6 +1484,7 @@
                             </button>
                             <div class="chart-popover-menu" id="popover-indicators">
                                 <div class="popover-menu-title">Indicators</div>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkCdRider" checked onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 600;">CDRider (Supertrend)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> <span>Volume</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkSma50" onchange="toggleIndicators()"> <span style="color:#ff6d00">50 DMA</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkSma200" onchange="toggleIndicators()"> <span style="color:#e11d48">200 DMA</span></label>
@@ -1587,7 +1588,7 @@
                     </div>
 
                     <!-- Top Right Close Icon -->
-                    <button class="chart-close-btn" onclick="closeChartModal()" title="Close Chart Modal (Esc)">&times;</button>
+                    <button type="button" class="chart-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
                 </div>
             </div>
 
@@ -1600,6 +1601,7 @@
                 <div class="legend-item">C: <span class="legend-val" id="legClose">-</span></div>
                 <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
                 <div class="legend-item" id="legSmaGroup">
+                    CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> <span id="legCdRiderGroup">|</span>
                     50 DMA: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |
                     200 DMA: <span class="legend-val" style="color:#e11d48" id="legSma200">-</span> |
                     EMA 9: <span class="legend-val" style="color:#06b6d4" id="legEma9">-</span> |
@@ -5325,6 +5327,7 @@
         let volumeSeries = null;
         
         // Indicator Series
+        let cdRiderSeries = null;
         let sma50Series = null;
         let sma200Series = null;
         let ema9Series = null;
@@ -6184,6 +6187,7 @@
             }
 
             addSeriesToMap(data.volume, 'vol');
+            addSeriesToMap(data.cdrider, 'cdrider');
             addSeriesToMap(data.sma50, 'sma50');
             addSeriesToMap(data.sma200, 'sma200');
             addSeriesToMap(data.ema9, 'ema9');
@@ -6446,6 +6450,16 @@
             if (data.volume) volumeSeries.setData(data.volume);
 
             // Indicators
+            cdRiderSeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'CDRider' });
+            if (data.cdrider) cdRiderSeries.setData(data.cdrider);
+
+            const allMarkers = [];
+            if (data.cdrider_buy) allMarkers.push(...data.cdrider_buy);
+            if (data.cdrider_sell) allMarkers.push(...data.cdrider_sell);
+            if (allMarkers.length > 0 && mainSeries) {
+                mainSeries.setMarkers(allMarkers.sort((a, b) => (typeof a.time === 'number' && typeof b.time === 'number' ? a.time - b.time : 0)));
+            }
+
             sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: '50 DMA' });
             if (data.sma50) sma50Series.setData(data.sma50);
 
@@ -6808,6 +6822,9 @@
             const lookupTime = curTime || time;
             const rec = lookupTime !== null ? indicatorDataMap.get(lookupTime) : null;
 
+            const elCdRider = document.getElementById('legCdRider');
+            if (elCdRider) elCdRider.innerText = (rec && rec.cdrider !== undefined) ? '₹' + rec.cdrider.toFixed(2) : '-';
+
             const elSma50 = document.getElementById('legSma50');
             if (elSma50) elSma50.innerText = (rec && rec.sma50 !== undefined) ? '₹' + rec.sma50.toFixed(2) : '-';
             
@@ -6827,6 +6844,7 @@
         function toggleIndicators() {
             if (!volumeSeries) return;
 
+            const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : true;
             const showVol = document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true;
             const showSma50 = document.getElementById('chkSma50') ? document.getElementById('chkSma50').checked : false;
             const showSma200 = document.getElementById('chkSma200') ? document.getElementById('chkSma200').checked : false;
@@ -6837,6 +6855,7 @@
 
             try {
                 localStorage.setItem('capital_desk_chart_indicators', JSON.stringify({
+                    chkCdRider: showCdRider,
                     chkVolume: showVol,
                     chkSma50: showSma50,
                     chkSma200: showSma200,
@@ -6847,11 +6866,16 @@
                 }));
             } catch(e){}
 
+            if (cdRiderSeries) cdRiderSeries.applyOptions({ visible: showCdRider });
             volumeSeries.applyOptions({ visible: showVol });
             if (sma50Series) sma50Series.applyOptions({ visible: showSma50 });
             if (sma200Series) sma200Series.applyOptions({ visible: showSma200 });
             if (ema9Series) ema9Series.applyOptions({ visible: showEma9 });
             if (gann2DaySeries) gann2DaySeries.applyOptions({ visible: showGann2Day });
+
+            if (document.getElementById('legCdRiderGroup')) {
+                document.getElementById('legCdRiderGroup').style.display = showCdRider ? 'inline' : 'none';
+            }
 
             document.getElementById('rsiChartPane').style.display = showRsi ? 'block' : 'none';
             document.getElementById('legRsiGroup').style.display = showRsi ? 'inline-block' : 'none';
@@ -6859,7 +6883,7 @@
             document.getElementById('macdChartPane').style.display = showMacd ? 'block' : 'none';
             document.getElementById('legMacdGroup').style.display = showMacd ? 'inline-block' : 'none';
 
-            document.getElementById('legSmaGroup').style.display = (showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
+            document.getElementById('legSmaGroup').style.display = (showCdRider || showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
 
             resizeChartPanes();
         }
@@ -7035,16 +7059,46 @@
         }
 
         function closeChartModal() {
+            const modal = document.getElementById('chartModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+
             if (candleTimerIntervalId) {
                 clearInterval(candleTimerIntervalId);
                 candleTimerIntervalId = null;
             }
-            const modal = document.getElementById('chartModal');
-            if (modal) modal.style.display = 'none';
-            document.getElementById('mainChartPane').innerHTML = '';
-            document.getElementById('rsiChartPane').innerHTML = '';
-            document.getElementById('macdChartPane').innerHTML = '';
+
+            if (chartResizeObserver) {
+                try { chartResizeObserver.disconnect(); } catch(e){}
+                chartResizeObserver = null;
+            }
+
+            if (mainChart) {
+                try { mainChart.remove(); } catch(e){}
+                mainChart = null;
+            }
+            if (rsiChart) {
+                try { rsiChart.remove(); } catch(e){}
+                rsiChart = null;
+            }
+            if (macdChart) {
+                try { macdChart.remove(); } catch(e){}
+                macdChart = null;
+            }
+
+            const mainContainer = document.getElementById('mainChartPane');
+            const rsiContainer = document.getElementById('rsiChartPane');
+            const macdContainer = document.getElementById('macdChartPane');
+            if (mainContainer) mainContainer.innerHTML = '';
+            if (rsiContainer) rsiContainer.innerHTML = '';
+            if (macdContainer) macdContainer.innerHTML = '';
+
             activePriceLines = [];
+            drawingCanvas = null;
+            currentDrawingTool = null;
+            hideCanvasObjectMenu();
+            hideDrawingBanner();
         }
 
         function toggleSettingsMenu(event) {

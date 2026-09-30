@@ -327,6 +327,81 @@ def calculate_indicators(candles):
         if trailing_stop is not None:
             gann_2day.append({'time': times[i], 'value': round(trailing_stop, 2)})
 
+    # CDRider Indicator (Supertrend 10, 3.0 ATR)
+    cdrider = []
+    cdrider_buy = []
+    cdrider_sell = []
+    if n >= 10:
+        tr = [0.0] * n
+        tr[0] = candles[0]['high'] - candles[0]['low']
+        for i in range(1, n):
+            h = candles[i]['high']
+            l = candles[i]['low']
+            prev_c = candles[i-1]['close']
+            tr[i] = max(h - l, abs(h - prev_c), abs(l - prev_c))
+
+        atr = [0.0] * n
+        atr[9] = sum(tr[:10]) / 10.0
+        for i in range(10, n):
+            atr[i] = (atr[i-1] * 9.0 + tr[i]) / 10.0
+
+        up = [0.0] * n
+        dn = [0.0] * n
+        trend = [1] * n
+
+        for i in range(10, n):
+            hl2 = (candles[i]['high'] + candles[i]['low']) / 2.0
+            basic_up = hl2 - (3.0 * atr[i])
+            basic_dn = hl2 + (3.0 * atr[i])
+
+            prev_up = up[i-1] if i > 10 else basic_up
+            prev_dn = dn[i-1] if i > 10 else basic_dn
+            prev_close = candles[i-1]['close']
+
+            curr_up = max(basic_up, prev_up) if prev_close > prev_up else basic_up
+            curr_dn = min(basic_dn, prev_dn) if prev_close < prev_dn else basic_dn
+
+            up[i] = curr_up
+            dn[i] = curr_dn
+
+            prev_trend = trend[i-1] if i > 10 else 1
+            curr_close = candles[i]['close']
+
+            if prev_trend == -1 and curr_close > prev_dn:
+                curr_trend = 1
+            elif prev_trend == 1 and curr_close < prev_up:
+                curr_trend = -1
+            else:
+                curr_trend = prev_trend
+
+            trend[i] = curr_trend
+            val = curr_up if curr_trend == 1 else curr_dn
+            time_val = times[i]
+
+            cdrider.append({
+                'time': time_val,
+                'value': round(val, 2),
+                'color': '#10b981' if curr_trend == 1 else '#ef5350'
+            })
+
+            if i > 10:
+                if curr_trend == 1 and prev_trend == -1:
+                    cdrider_buy.append({
+                        'time': time_val,
+                        'position': 'belowBar',
+                        'color': '#10b981',
+                        'shape': 'arrowUp',
+                        'text': 'BUY'
+                    })
+                elif curr_trend == -1 and prev_trend == 1:
+                    cdrider_sell.append({
+                        'time': time_val,
+                        'position': 'aboveBar',
+                        'color': '#ef5350',
+                        'shape': 'arrowDown',
+                        'text': 'SELL'
+                    })
+
     return {
         'sma20': sma20,
         'sma50': sma50,
@@ -338,6 +413,9 @@ def calculate_indicators(candles):
         'bollinger_middle': bollinger_middle,
         'bollinger_lower': bollinger_lower,
         'gann_2day': gann_2day,
+        'cdrider': cdrider,
+        'cdrider_buy': cdrider_buy,
+        'cdrider_sell': cdrider_sell,
         'macd_line': macd_line,
         'macd_signal': macd_signal,
         'macd_hist': macd_hist,
@@ -857,7 +935,9 @@ def admin_export_system_backup():
         user_data_map[uname] = {
             "watchlists": load_data(uname),
             "portfolios": load_portfolios(uname),
-            "alerts": load_user_alerts(uname)
+            "transactions": load_user_transactions(uname),
+            "alerts": load_user_alerts(uname),
+            "smallcases": load_user_smallcases(uname)
         }
     
     backup_data = {
@@ -887,8 +967,12 @@ def admin_import_system_backup():
                 save_data(udata["watchlists"], uname)
             if "portfolios" in udata:
                 save_portfolios(udata["portfolios"], uname)
+            if "transactions" in udata:
+                save_user_transactions(udata["transactions"], uname)
             if "alerts" in udata:
                 save_user_alerts(udata["alerts"], uname)
+            if "smallcases" in udata:
+                save_user_smallcases(udata["smallcases"], uname)
                 
         try:
             with open(USERS_EXAMPLE_FILE, "w") as f:
@@ -896,7 +980,7 @@ def admin_import_system_backup():
         except Exception:
             pass
 
-        return jsonify({"success": True, "message": f"Successfully restored {len(users)} users and all data!"})
+        return jsonify({"success": True, "message": f"Successfully restored {len(users)} users and all data (watchlists, portfolios, transactions, alerts, smallcases)!"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -933,6 +1017,9 @@ def export_backup():
     backup_data = {
         "watchlists": load_data(),
         "portfolios": load_portfolios(),
+        "transactions": load_user_transactions(),
+        "alerts": load_user_alerts(),
+        "smallcases": load_user_smallcases(),
         "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     response = jsonify(backup_data)
@@ -950,20 +1037,32 @@ def import_backup():
             
         watchlists = req_data.get("watchlists")
         portfolios = req_data.get("portfolios")
+        transactions = req_data.get("transactions")
+        alerts = req_data.get("alerts")
+        smallcases = req_data.get("smallcases")
         
-        if watchlists is None and portfolios is None:
-            return jsonify({"error": "Invalid backup file. Must contain 'watchlists' or 'portfolios'"}), 400
+        if watchlists is None and portfolios is None and transactions is None and alerts is None and smallcases is None:
+            return jsonify({"error": "Invalid backup file. Must contain watchlists, portfolios, transactions, alerts, or smallcases"}), 400
             
         if watchlists is not None:
             save_data(watchlists)
         if portfolios is not None:
             save_portfolios(portfolios)
+        if transactions is not None:
+            save_user_transactions(transactions)
+        if alerts is not None:
+            save_user_alerts(alerts)
+        if smallcases is not None:
+            save_user_smallcases(smallcases)
             
         return jsonify({
             "success": True, 
             "message": "Data restored successfully!",
             "watchlists": load_data(),
-            "portfolios": load_portfolios()
+            "portfolios": load_portfolios(),
+            "transactions": load_user_transactions(),
+            "alerts": load_user_alerts(),
+            "smallcases": load_user_smallcases()
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1598,6 +1697,9 @@ def get_chart_history():
             'bollinger_middle': ind['bollinger_middle'],
             'bollinger_lower': ind['bollinger_lower'],
             'gann_2day': ind.get('gann_2day', []),
+            'cdrider': ind.get('cdrider', []),
+            'cdrider_buy': ind.get('cdrider_buy', []),
+            'cdrider_sell': ind.get('cdrider_sell', []),
             'macd_line': ind['macd_line'],
             'macd_signal': ind['macd_signal'],
             'macd_hist': ind['macd_hist'],
@@ -1610,7 +1712,7 @@ def get_chart_history():
 # SMALLCASES MODULE
 # Kept in a separate module so the existing application remains untouched.
 # ============================================================
-from smallcases import smallcases_bp, init_smallcases
+from smallcases import smallcases_bp, init_smallcases, load_user_smallcases, save_user_smallcases
 init_smallcases(fetcher, login_required, BASE_DATA_DIR)
 app.register_blueprint(smallcases_bp)
 API_SETTINGS_FILE = os.path.join(BASE_DATA_DIR, "api_settings.json")
