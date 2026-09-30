@@ -590,20 +590,20 @@
         /* Technical Chart Modal & Popover Menu Styles */
         .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15,23,42,0.85); backdrop-filter: blur(4px); }
         .modal-content { background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #d1d4dc; }
-        .chart-topbar { padding: 10px 16px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: space-between; align-items: center; gap: 12px; position: relative; z-index: 100; flex-wrap: wrap; }
+        .chart-topbar { padding: 10px 16px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: flex-start; align-items: center; gap: 12px; position: relative; z-index: 100; flex-wrap: wrap; text-align: left; }
         .chart-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .chart-symbol-text { font-weight: 800; font-size: 16px; color: #ffffff; letter-spacing: 0.5px; }
         .chart-name-text { font-size: 13px; color: #787b86; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-        .chart-header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .chart-popovers-container { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .chart-popover-wrapper { position: relative; display: inline-block; }
-        .chart-popover-btn { background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s ease; white-space: nowrap; }
+        .chart-header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-start; text-align: left; }
+        .chart-popovers-container { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-start; text-align: left; }
+        .chart-popover-wrapper { position: relative; display: inline-block; text-align: left; }
+        .chart-popover-btn { background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: flex-start; gap: 6px; transition: all 0.15s ease; white-space: nowrap; text-align: left; }
         .chart-popover-btn:hover { background: #2a2e39; border-color: #363a45; color: #ffffff; }
         .popover-arrow { font-size: 10px; color: #787b86; transition: transform 0.2s ease; }
-        .chart-popover-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1e222d; border: 1px solid #363a45; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding: 8px 0; min-width: 190px; z-index: 1000; flex-direction: column; }
+        .chart-popover-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0 !important; right: auto !important; background: #1e222d; border: 1px solid #363a45; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding: 8px 0; min-width: 190px; z-index: 1000; flex-direction: column; text-align: left !important; }
         .chart-popover-menu.show { display: flex !important; }
-        .popover-menu-title { padding: 4px 12px 6px; font-size: 10px; font-weight: 700; color: #787b86; text-transform: uppercase; letter-spacing: 0.8px; }
-        .popover-menu-item { background: transparent; border: none; color: #d1d4dc; padding: 8px 14px; font-size: 12px; font-weight: 500; text-align: left; cursor: pointer; width: 100%; display: flex; align-items: center; gap: 8px; transition: background 0.12s ease; }
+        .popover-menu-title { padding: 4px 12px 6px; font-size: 10px; font-weight: 700; color: #787b86; text-transform: uppercase; letter-spacing: 0.8px; text-align: left !important; }
+        .popover-menu-item { background: transparent; border: none; color: #d1d4dc; padding: 8px 14px; font-size: 12px; font-weight: 500; text-align: left !important; justify-content: flex-start !important; cursor: pointer; width: 100%; display: flex; align-items: center; gap: 8px; transition: background 0.12s ease; }
         .popover-menu-item:hover { background: #2a2e39; color: #ffffff; }
         .popover-menu-item.active { background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; }
         .popover-item-checkbox { padding: 6px 14px; font-size: 12px; color: #d1d4dc; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; }
@@ -635,6 +635,95 @@
         .engine-tab-btn { background: transparent; color: #787b86; border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
         .engine-tab-btn:hover { color: #d1d4dc; background: #2a2e39; }
         .engine-tab-btn.active { background: #10b981; color: #ffffff; }
+
+        /* Dynamic Theme Overrides for Technical Chart Modal & Popovers */
+        [data-theme="light"] #chartModalContent {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.15);
+        }
+        [data-theme="light"] #chartModal .chart-topbar {
+            background: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+        [data-theme="light"] #chartModal .chart-symbol-text {
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #chartModal .chart-name-text {
+            color: #64748b !important;
+        }
+        [data-theme="light"] #chartModal .chart-popover-btn {
+            background: #ffffff !important;
+            color: #334155 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        [data-theme="light"] #chartModal .chart-popover-btn:hover {
+            background: #f1f5f9 !important;
+            border-color: #94a3b8 !important;
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #chartModal .chart-popover-menu {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12) !important;
+        }
+        [data-theme="light"] #chartModal .popover-menu-title {
+            color: #64748b !important;
+        }
+        [data-theme="light"] #chartModal .popover-menu-item {
+            color: #334155 !important;
+        }
+        [data-theme="light"] #chartModal .popover-menu-item:hover {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #chartModal .popover-item-checkbox {
+            color: #334155 !important;
+        }
+        [data-theme="light"] #chartModal .popover-item-checkbox:hover {
+            background: #f1f5f9 !important;
+        }
+        [data-theme="light"] #chartModal .popover-divider {
+            background: #e2e8f0 !important;
+        }
+        [data-theme="light"] #chartModal .active-drawing-item {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            color: #1e293b !important;
+        }
+        [data-theme="light"] #chartModal .active-drawing-item span {
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #chartModal .chart-action-btn {
+            background: #ffffff !important;
+            color: #334155 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        [data-theme="light"] #chartModal .chart-action-btn:hover {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #chartModal .tf-btn, [data-theme="light"] #chartModal .int-btn {
+            color: #64748b !important;
+        }
+        [data-theme="light"] #chartModal .tf-btn:hover, [data-theme="light"] #chartModal .int-btn:hover {
+            color: #0f172a !important;
+            background: #f1f5f9 !important;
+        }
+        [data-theme="light"] #chartModal .legend-bar {
+            background: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            color: #475569 !important;
+        }
+        [data-theme="light"] #chartModal .legend-val {
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #rsiChartPane {
+            border-top: 1px solid #e2e8f0 !important;
+        }
+        [data-theme="light"] #macdChartPane {
+            border-top: 1px solid #e2e8f0 !important;
+        }
 
         /* Small Modals (Edit Holding & Details Popup) */
         .small-modal { display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(3px); }
@@ -1122,7 +1211,7 @@
                             <!-- Stock Specific Filter Dropdown -->
                             <div style="display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-secondary); font-weight: 600;">
                                 <span>🎯 Stock:</span>
-                                <select id="insights-stock-filter" onchange="filterAndRenderInsightsNews()" style="padding: 3px 6px; font-size: 11.5px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); cursor: pointer; max-width: 120px; text-overflow: ellipsis;">
+                                <select id="insights-stock-filter" onchange="handleInsightsStockFilterChange()" style="padding: 3px 6px; font-size: 11.5px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); cursor: pointer; max-width: 120px; text-overflow: ellipsis;">
                                     <option value="all">All Stocks</option>
                                 </select>
                             </div>
@@ -1138,11 +1227,25 @@
                         </div>
                     </div>
 
+                    <!-- Category Pill Filter Bar -->
+                    <div id="insights-category-pills" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--bg-card); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-color);">
+                        <button type="button" class="btn-primary" id="cat-pill-all" onclick="setNewsCategory('all')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px;">📰 All Stories</button>
+                        <button type="button" class="btn-secondary" id="cat-pill-research" onclick="setNewsCategory('research')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px;">📊 Research Reports & Ratings</button>
+                        <button type="button" class="btn-secondary" id="cat-pill-corporate" onclick="setNewsCategory('corporate')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px;">📢 Earnings & Filings</button>
+                        <button type="button" class="btn-secondary" id="cat-pill-macro" onclick="setNewsCategory('macro')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px;">💡 Macro & Economy</button>
+                    </div>
+
                     <div id="insights-news-feed" class="insights-news-feed-scroll" style="display: flex; flex-direction: column; gap: 12px;">
                         <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
                             <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
                             Fetching real-time news for portfolio & watchlist stocks...
                         </div>
+                    </div>
+
+                    <div id="insights-load-more-container" style="text-align: center; margin-top: 16px; display: none;">
+                        <button type="button" id="btn-load-more-news" onclick="loadMoreInsightsNews()" class="btn-secondary" style="padding: 10px 24px; font-weight: 700; font-size: 13px; border-radius: 8px;">
+                            📥 Load More News Stories
+                        </button>
                     </div>
                 </div>
 
@@ -1464,7 +1567,7 @@
          IN-HOUSE TECHNICAL CHART MODAL (LIGHTWEIGHT CHARTS PRO)
     ========================================================= -->
     <div id="chartModal" class="modal">
-        <div class="modal-content" style="background-color: #131722; color: #d1d4dc;">
+        <div class="modal-content" id="chartModalContent">
             <!-- Top Controls Bar -->
             <div class="chart-topbar">
                 <div class="chart-header-left">
@@ -2770,7 +2873,34 @@
         }
 
         let currentInsightsScope = 'all';
+        let currentNewsCategory = 'all';
         let cachedInsightsArticles = [];
+
+        async function setNewsCategory(cat) {
+            currentNewsCategory = cat;
+            const categories = ['all', 'research', 'corporate', 'macro'];
+            categories.forEach(c => {
+                const btn = document.getElementById(`cat-pill-${c}`);
+                if (btn) btn.className = c === cat ? 'btn-primary' : 'btn-secondary';
+            });
+
+            showNewsSkeletonsOnly();
+            const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
+            const stockParam = stockFilter !== 'all' ? `&stock=${encodeURIComponent(stockFilter)}` : '';
+            
+            try {
+                const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${stockParam}&category=${encodeURIComponent(cat)}&limit=30`);
+                const data = await res.json();
+                if (data.success && data.articles) {
+                    cachedInsightsArticles = data.articles;
+                    filterAndRenderInsightsNews();
+                } else {
+                    filterAndRenderInsightsNews();
+                }
+            } catch(e) {
+                filterAndRenderInsightsNews();
+            }
+        }
 
         function showNewsSkeletonsOnly() {
             const feedEl = document.getElementById('insights-news-feed');
@@ -2907,6 +3037,7 @@
 
             if (isScopeChange) {
                 showNewsSkeletonsOnly();
+                populateInsightsStockFilterOptions();
                 const feedEl = document.getElementById('insights-news-feed');
                 fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}`)
                     .then(res => res.json())
@@ -2961,13 +3092,17 @@
 
             // 4. Parallel Fetch: News Articles Feed (~400ms)
             const feedEl = document.getElementById('insights-news-feed');
-            fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}`)
+            const loadMoreContainer = document.getElementById('insights-load-more-container');
+            fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}&limit=30`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
                         cachedInsightsArticles = data.articles || [];
                         populateInsightsStockFilterOptions();
                         filterAndRenderInsightsNews();
+                        if (loadMoreContainer) {
+                            loadMoreContainer.style.display = 'block';
+                        }
                     } else if (feedEl) {
                         feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${data.error}</div>`;
                     }
@@ -3158,28 +3293,79 @@
             `;
         }
 
+        function isPortfolioSymbol(sym) {
+            if (!sym || sym === 'MARKET' || sym === 'GENERAL') return false;
+            for (const holdings of Object.values(portfoliosData || {})) {
+                if (holdings.some(h => h.symbol === sym)) return true;
+            }
+            return false;
+        }
+
+        function isWatchlistSymbol(sym) {
+            if (!sym || sym === 'MARKET' || sym === 'GENERAL') return false;
+            for (const list of Object.values(watchlistsData || {})) {
+                if (list.includes(sym)) return true;
+            }
+            return false;
+        }
+
         function populateInsightsStockFilterOptions() {
             const selectEl = document.getElementById('insights-stock-filter');
             if (!selectEl) return;
 
             const selectedVal = selectEl.value || 'all';
-            
-            // Extract unique symbols from cached articles
             const symbols = new Set();
-            cachedInsightsArticles.forEach(art => {
-                if (art.symbol) symbols.add(art.symbol);
-            });
+
+            if (currentInsightsScope === 'portfolio') {
+                for (const holdings of Object.values(portfoliosData || {})) {
+                    holdings.forEach(h => symbols.add(h.symbol));
+                }
+                (cachedInsightsArticles || []).forEach(art => {
+                    if (art.symbol && isPortfolioSymbol(art.symbol)) {
+                        symbols.add(art.symbol);
+                    }
+                });
+            } else if (currentInsightsScope === 'watchlist') {
+                for (const wlSymbols of Object.values(watchlistsData || {})) {
+                    wlSymbols.forEach(s => symbols.add(s));
+                }
+                (cachedInsightsArticles || []).forEach(art => {
+                    if (art.symbol && isWatchlistSymbol(art.symbol)) {
+                        symbols.add(art.symbol);
+                    }
+                });
+            } else {
+                for (const wlSymbols of Object.values(watchlistsData || {})) {
+                    wlSymbols.forEach(s => symbols.add(s));
+                }
+                for (const holdings of Object.values(portfoliosData || {})) {
+                    holdings.forEach(h => symbols.add(h.symbol));
+                }
+                (cachedInsightsArticles || []).forEach(art => {
+                    if (art.symbol && art.symbol !== 'MARKET' && art.symbol !== 'GENERAL') {
+                        symbols.add(art.symbol);
+                    }
+                });
+            }
 
             const sortedSymbols = Array.from(symbols).sort();
 
             selectEl.innerHTML = '<option value="all">All Stocks</option>';
+            let foundSelected = false;
             sortedSymbols.forEach(sym => {
                 const opt = document.createElement('option');
                 opt.value = sym;
                 opt.innerText = sym;
-                if (sym === selectedVal) opt.selected = true;
+                if (sym === selectedVal) {
+                    opt.selected = true;
+                    foundSelected = true;
+                }
                 selectEl.appendChild(opt);
             });
+
+            if (!foundSelected) {
+                selectEl.value = 'all';
+            }
         }
 
         function filterAndRenderInsightsNews() {
@@ -3192,12 +3378,18 @@
 
             let articles = cachedInsightsArticles.slice();
 
-            // Filter Stock Specific
+            // Scope Strict Filtering
+            if (currentInsightsScope === 'portfolio') {
+                articles = articles.filter(art => art.tag_type === 'PORTFOLIO' || isPortfolioSymbol(art.symbol));
+            } else if (currentInsightsScope === 'watchlist') {
+                articles = articles.filter(art => art.tag_type === 'WATCHLIST' || isWatchlistSymbol(art.symbol));
+            }
+
+            // Single Stock Specific Filter
             if (stockFilter !== 'all') {
                 articles = articles.filter(art => art.symbol === stockFilter);
             }
 
-            // Sort by Date
             articles.sort((a, b) => {
                 const timeA = a.pub_date ? new Date(a.pub_date).getTime() : 0;
                 const timeB = b.pub_date ? new Date(b.pub_date).getTime() : 0;
@@ -3209,14 +3401,20 @@
             });
 
             if (countEl) {
-                const filterLabel = stockFilter !== 'all' ? ` (Filtered: ${stockFilter})` : '';
+                const scopeName = currentInsightsScope === 'portfolio' ? 'Portfolio' : (currentInsightsScope === 'watchlist' ? 'Watchlist' : 'All Market');
+                const catLabel = currentNewsCategory !== 'all' ? ` • ${currentNewsCategory.toUpperCase()}` : '';
+                const filterLabel = stockFilter !== 'all' ? ` (${stockFilter}${catLabel})` : ` (${scopeName}${catLabel})`;
                 countEl.innerText = `${articles.length} stories found${filterLabel}`;
             }
 
             if (articles.length === 0) {
+                const scopeTitle = currentInsightsScope === 'portfolio' ? 'your portfolio holdings' : (currentInsightsScope === 'watchlist' ? 'your watchlist stocks' : 'the market');
+                const emptyMsg = stockFilter !== 'all' 
+                    ? `No news articles found matching stock ${escapeHtml(stockFilter)} (${currentNewsCategory.toUpperCase()}).`
+                    : `No news articles found for ${scopeTitle} (${currentNewsCategory.toUpperCase()}).`;
                 feedEl.innerHTML = `
                     <div style="text-align: center; padding: 40px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
-                        📰 No news articles found matching the selected stock filter (${escapeHtml(stockFilter)}).
+                        📰 ${emptyMsg}
                     </div>
                 `;
                 return;
@@ -3244,6 +3442,15 @@
 
                 const tagBadgeClass = art.tag_type === 'PORTFOLIO' ? 'badge-nse' : (art.tag_type === 'WATCHLIST' ? 'badge-bse' : 'badge-idx');
 
+                let catBadge = '';
+                if (art.category === 'RESEARCH') {
+                    catBadge = '<span class="badge" style="background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); font-size: 10px;">📊 RESEARCH</span>';
+                } else if (art.category === 'EARNINGS') {
+                    catBadge = '<span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); font-size: 10px;">📢 EARNINGS</span>';
+                } else if (art.category === 'MACRO') {
+                    catBadge = '<span class="badge" style="background: rgba(6,182,212,0.15); color: #06b6d4; border: 1px solid rgba(6,182,212,0.3); font-size: 10px;">💡 MACRO</span>';
+                }
+
                 card.style.cursor = 'pointer';
                 card.onclick = (e) => {
                     if (!e.target.closest('a')) {
@@ -3252,10 +3459,11 @@
                 };
 
                 card.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                             <span class="stock-symbol" style="font-size: 12.5px;">${escapeHtml(art.symbol)}</span>
                             <span class="badge ${tagBadgeClass}" style="font-size: 10px;">${art.tag_type}</span>
+                            ${catBadge}
                         </div>
                         <span style="font-size: 11px; color: var(--text-secondary);">🕒 ${timeStr}</span>
                     </div>
@@ -3269,6 +3477,99 @@
                 `;
                 feedEl.appendChild(card);
             });
+        }
+
+        async function handleInsightsStockFilterChange() {
+            const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
+            const feedEl = document.getElementById('insights-news-feed');
+            const loadMoreContainer = document.getElementById('insights-load-more-container');
+
+            if (stockFilter !== 'all') {
+                if (feedEl) {
+                    feedEl.innerHTML = `
+                        <div style="text-align: center; padding: 30px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+                            <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
+                            Fetching dedicated live news stories for <strong>${escapeHtml(stockFilter)}</strong>...
+                        </div>
+                    `;
+                }
+                try {
+                    const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}&stock=${encodeURIComponent(stockFilter)}&category=${encodeURIComponent(currentNewsCategory)}&limit=50`);
+                    const data = await res.json();
+                    if (data.success && data.articles) {
+                        cachedInsightsArticles = data.articles;
+                        filterAndRenderInsightsNews();
+                    } else {
+                        filterAndRenderInsightsNews();
+                    }
+                } catch(e) {
+                    filterAndRenderInsightsNews();
+                }
+            } else {
+                try {
+                    const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`);
+                    const data = await res.json();
+                    if (data.success && data.articles) {
+                        cachedInsightsArticles = data.articles;
+                        filterAndRenderInsightsNews();
+                    }
+                } catch(e) {
+                    filterAndRenderInsightsNews();
+                }
+            }
+
+            if (loadMoreContainer) {
+                loadMoreContainer.style.display = 'block';
+            }
+        }
+
+        async function loadMoreInsightsNews() {
+            const btn = document.getElementById('btn-load-more-news');
+            const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Fetching More Stories...';
+            }
+
+            try {
+                const stockParam = stockFilter !== 'all' ? `&stock=${encodeURIComponent(stockFilter)}` : '';
+                const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${stockParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=100`);
+                const data = await res.json();
+                if (data.success && data.articles) {
+                    const existingTitles = new Set(cachedInsightsArticles.map(a => a.title));
+                    let addedCount = 0;
+                    data.articles.forEach(art => {
+                        if (!existingTitles.has(art.title)) {
+                            cachedInsightsArticles.push(art);
+                            existingTitles.add(art.title);
+                            addedCount++;
+                        }
+                    });
+                    populateInsightsStockFilterOptions();
+                    filterAndRenderInsightsNews();
+
+                    if (btn) {
+                        if (addedCount > 0) {
+                            btn.innerHTML = `✅ Added ${addedCount} More Stories (Total: ${cachedInsightsArticles.length})`;
+                            setTimeout(() => {
+                                btn.disabled = false;
+                                btn.innerHTML = '📥 Load More News Stories';
+                            }, 2500);
+                        } else {
+                            btn.innerHTML = '✨ All Latest News Loaded';
+                            setTimeout(() => {
+                                btn.disabled = false;
+                                btn.innerHTML = '📥 Load More News Stories';
+                            }, 2500);
+                        }
+                    }
+                }
+            } catch(e) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '⚠️ Failed to Load - Try Again';
+                }
+            }
         }
 
         // =========================================================
@@ -4495,9 +4796,11 @@
         function renderTransactionsTable() {
             const tbody = document.getElementById('transactions-tbody');
             const summaryMount = document.getElementById('tx-summary-cards');
+            const footerMount = document.getElementById('tx-table-footer');
             if (!tbody) return;
 
             const query = (document.getElementById('tx-search-input')?.value || '').toLowerCase().trim();
+            const rowLimitVal = document.getElementById('tx-rows-select')?.value || 'all';
             let txs = userTransactionsData.slice();
 
             if (query) {
@@ -4551,11 +4854,27 @@
 
             if (txs.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 25px; color: var(--text-secondary);">No transactions recorded yet. Executed Buy & Sell orders will appear here automatically!</td></tr>';
+                if (footerMount) footerMount.innerHTML = '<span>Showing 0 transactions</span>';
                 return;
             }
 
+            let displayTxs = txs;
+            if (rowLimitVal !== 'all') {
+                const limit = parseInt(rowLimitVal, 10);
+                if (!isNaN(limit)) {
+                    displayTxs = txs.slice(0, limit);
+                }
+            }
+
+            if (footerMount) {
+                footerMount.innerHTML = `
+                    <span>Showing <strong>${displayTxs.length}</strong> of <strong>${txs.length}</strong> recorded transactions ${rowLimitVal !== 'all' ? `(Limited to ${rowLimitVal})` : '(All)'}</span>
+                    <span style="font-style: italic;">Sorted by execution date</span>
+                `;
+            }
+
             tbody.innerHTML = '';
-            txs.forEach(t => {
+            displayTxs.forEach(t => {
                 const tr = document.createElement('tr');
                 const isSell = t.type === 'SELL';
                 const bInfo = getSymbolBadge(t.symbol);
@@ -4868,7 +5187,16 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="tx-search-input" placeholder="Search transactions..." style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); min-width: 200px;" onkeyup="renderTransactionsTable()">
+                        <input type="text" id="tx-search-input" placeholder="Search transactions..." style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); min-width: 180px;" onkeyup="renderTransactionsTable()">
+                        <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); font-weight: 600;">
+                            <span>Show Rows:</span>
+                            <select id="tx-rows-select" onchange="renderTransactionsTable()" style="padding: 5px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); cursor: pointer;">
+                                <option value="all" selected>Show All</option>
+                                <option value="20">20 Rows</option>
+                                <option value="50">50 Rows</option>
+                                <option value="100">100 Rows</option>
+                            </select>
+                        </div>
                         <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="exportTransactionsToCSV()" title="Export transaction ledger to CSV/Excel">📊 Export Ledger</button>
                     </div>
                 </div>
@@ -4876,7 +5204,7 @@
                 <div id="tx-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
                 </div>
 
-                <div class="table-responsive-container" style="max-height: 420px; overflow-y: auto;">
+                <div class="table-responsive-container" style="max-height: 520px; overflow-y: auto;">
                     <table class="wl-table" id="transactions-table">
                         <thead>
                             <tr>
@@ -4910,6 +5238,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="tx-table-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 12px; color: var(--text-secondary); padding: 0 4px;"></div>
             `;
             container.appendChild(txContainer);
 
@@ -6103,6 +6432,7 @@
 
         function drawSingleShape(ctx, s) {
             const timeScale = mainChart.timeScale();
+            const isDark = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
 
             if (s.type === 'pricerange') {
                 const x1 = getShapeX(timeScale, s.time1, s.logical1);
@@ -6173,7 +6503,7 @@
                     const badgeY = Math.max(5, topY - badgeH - 6);
 
                     // Badge Background Pill
-                    ctx.fillStyle = '#1e222d';
+                    ctx.fillStyle = isDark ? '#1e222d' : '#ffffff';
                     ctx.strokeStyle = color;
                     ctx.lineWidth = 1.5;
 
@@ -6187,7 +6517,7 @@
                     ctx.stroke();
 
                     // Badge Text
-                    ctx.fillStyle = '#ffffff';
+                    ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
@@ -6276,13 +6606,13 @@
                     const pillW = textWidth + 14;
                     const pillH = 20;
 
-                    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                    ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)';
                     ctx.strokeStyle = s.color || '#10b981';
                     ctx.lineWidth = 1;
                     ctx.fillRect(x + 8, y - 10, pillW, pillH);
                     ctx.strokeRect(x + 8, y - 10, pillW, pillH);
 
-                    ctx.fillStyle = '#ffffff';
+                    ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
                     ctx.textAlign = 'left';
                     ctx.fillText(text, x + 15, y + 4);
                     ctx.restore();
@@ -6484,10 +6814,13 @@
                 latestCandlePrice = data.candles[data.candles.length - 1].close;
             }
 
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const themeColors = getChartThemeColors(currentTheme);
+
             const baseChartConfig = {
                 layout: {
-                    background: { type: 'solid', color: '#131722' },
-                    textColor: '#d1d4dc',
+                    background: { type: 'solid', color: themeColors.bgColor },
+                    textColor: themeColors.textColor,
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                     fontSize: 11
                 },
@@ -6522,13 +6855,13 @@
                     }
                 },
                 grid: {
-                    vertLines: { color: '#1f2434', style: LightweightCharts.LineStyle.Dotted },
-                    horzLines: { color: '#1f2434', style: LightweightCharts.LineStyle.Dotted }
+                    vertLines: { color: themeColors.gridColor, style: LightweightCharts.LineStyle.Dotted },
+                    horzLines: { color: themeColors.gridColor, style: LightweightCharts.LineStyle.Dotted }
                 },
                 crosshair: {
                     mode: LightweightCharts.CrosshairMode.Normal,
-                    vertLine: { width: 1, color: '#758696', style: LightweightCharts.LineStyle.LargeDashed, labelBackgroundColor: '#2a2e39' },
-                    horzLine: { width: 1, color: '#758696', style: LightweightCharts.LineStyle.LargeDashed, labelBackgroundColor: '#2a2e39' }
+                    vertLine: { width: 1, color: themeColors.crosshairLineColor, style: LightweightCharts.LineStyle.LargeDashed, labelBackgroundColor: themeColors.crosshairLabelBg },
+                    horzLine: { width: 1, color: themeColors.crosshairLineColor, style: LightweightCharts.LineStyle.LargeDashed, labelBackgroundColor: themeColors.crosshairLabelBg }
                 },
                 handleScroll: { mouseWheel: true, pressedMove: true, horzTouchDrag: true, vertTouchDrag: true },
                 handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
@@ -6540,7 +6873,7 @@
                 width: mainContainer.clientWidth || 800,
                 height: mainContainer.clientHeight || 400,
                 rightPriceScale: {
-                    borderColor: '#2a2e39',
+                    borderColor: themeColors.borderColor,
                     autoScale: true,
                     alignLabels: true,
                     entireTextOnly: false,
@@ -6550,7 +6883,7 @@
                     }
                 },
                 timeScale: {
-                    borderColor: '#2a2e39',
+                    borderColor: themeColors.borderColor,
                     timeVisible: true,
                     secondsVisible: false,
                     rightOffset: 12,
@@ -6611,7 +6944,7 @@
             ema9Series = mainChart.addLineSeries({ color: '#06b6d4', lineWidth: 2, title: 'EMA 9' });
             if (data.ema9) ema9Series.setData(data.ema9);
 
-            gann2DaySeries = mainChart.addLineSeries({ color: '#ffffff', lineWidth: 2, title: 'Gann 2-Day Low' });
+            gann2DaySeries = mainChart.addLineSeries({ color: themeColors.gannColor, lineWidth: 2, title: 'Gann 2-Day Low' });
             if (data.gann_2day) gann2DaySeries.setData(data.gann_2day);
 
             // RSI Sub-Pane Chart
@@ -6619,7 +6952,7 @@
                 ...baseChartConfig,
                 width: rsiContainer.clientWidth || 800,
                 height: rsiContainer.clientHeight || 150,
-                rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.1 } },
+                rightPriceScale: { borderColor: themeColors.borderColor, scaleMargins: { top: 0.1, bottom: 0.1 } },
                 timeScale: { visible: false }
             });
 
@@ -6638,7 +6971,7 @@
                 ...baseChartConfig,
                 width: macdContainer.clientWidth || 800,
                 height: macdContainer.clientHeight || 150,
-                rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.1 } },
+                rightPriceScale: { borderColor: themeColors.borderColor, scaleMargins: { top: 0.1, bottom: 0.1 } },
                 timeScale: { visible: false }
             });
 
@@ -7776,6 +8109,47 @@
             setTheme(savedTheme);
         }
 
+        function getChartThemeColors(theme) {
+            const isDark = theme === 'dark';
+            return {
+                isDark: isDark,
+                bgColor: isDark ? '#131722' : '#ffffff',
+                textColor: isDark ? '#d1d4dc' : '#1e293b',
+                gridColor: isDark ? '#1f2434' : '#f0f3fa',
+                borderColor: isDark ? '#2a2e39' : '#e2e8f0',
+                crosshairLineColor: isDark ? '#758696' : '#94a3b8',
+                crosshairLabelBg: isDark ? '#2a2e39' : '#cbd5e1',
+                gannColor: isDark ? '#ffffff' : '#1e293b'
+            };
+        }
+
+        function applyChartTheme(theme) {
+            const colors = getChartThemeColors(theme || document.documentElement.getAttribute('data-theme') || 'light');
+            const options = {
+                layout: {
+                    background: { type: 'solid', color: colors.bgColor },
+                    textColor: colors.textColor
+                },
+                grid: {
+                    vertLines: { color: colors.gridColor, style: LightweightCharts.LineStyle.Dotted },
+                    horzLines: { color: colors.gridColor, style: LightweightCharts.LineStyle.Dotted }
+                },
+                crosshair: {
+                    vertLine: { labelBackgroundColor: colors.crosshairLabelBg, color: colors.crosshairLineColor },
+                    horzLine: { labelBackgroundColor: colors.crosshairLabelBg, color: colors.crosshairLineColor }
+                },
+                rightPriceScale: { borderColor: colors.borderColor },
+                timeScale: { borderColor: colors.borderColor }
+            };
+
+            if (mainChart) mainChart.applyOptions(options);
+            if (rsiChart) rsiChart.applyOptions(options);
+            if (macdChart) macdChart.applyOptions(options);
+            if (gann2DaySeries) gann2DaySeries.applyOptions({ color: colors.gannColor });
+
+            redrawCanvasOverlay();
+        }
+
         function setTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('capital_desk_theme', theme);
@@ -7791,6 +8165,7 @@
             if (currentTab === 'dashboard') {
                 renderDashboard();
             }
+            applyChartTheme(theme);
         }
 
         function toggleTheme() {

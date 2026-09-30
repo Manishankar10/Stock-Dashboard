@@ -1654,31 +1654,61 @@ def get_chart_history():
         volume_data = []
         is_intraday = interval in ('5m', '15m', '30m', '60m', '1h', '90m')
         ist_tz = ZoneInfo("Asia/Kolkata")
+        candle_map = {}
         
         for i in range(len(timestamps)):
             if None not in (opens[i], highs[i], lows[i], closes[i]):
-                time_val = int(timestamps[i]) if is_intraday else datetime.datetime.fromtimestamp(timestamps[i], tz=ist_tz).strftime('%Y-%m-%d')
+                ts = int(timestamps[i])
+                dt = datetime.datetime.fromtimestamp(ts, tz=ist_tz)
+                
+                if is_intraday:
+                    period_key = ts
+                    time_val = ts
+                elif interval in ('1w', '1wk'):
+                    iso_year, iso_week, _ = dt.isocalendar()
+                    period_key = f"{iso_year}-W{iso_week:02d}"
+                    monday = dt - datetime.timedelta(days=dt.weekday())
+                    time_val = monday.strftime('%Y-%m-%d')
+                elif interval in ('1m', '1mo'):
+                    period_key = dt.strftime('%Y-%m')
+                    time_val = dt.strftime('%Y-%m-01')
+                else: # 1d
+                    period_key = dt.strftime('%Y-%m-%d')
+                    time_val = dt.strftime('%Y-%m-%d')
+
                 open_val = round(float(opens[i]), 2)
                 high_val = round(float(highs[i]), 2)
                 low_val = round(float(lows[i]), 2)
                 close_val = round(float(closes[i]), 2)
                 vol_val = int(volumes[i]) if volumes[i] else 0
-                
-                is_up = close_val >= open_val
-                
-                candles.append({
-                    'time': time_val,
-                    'open': open_val,
-                    'high': high_val,
-                    'low': low_val,
-                    'close': close_val
-                })
-                
-                volume_data.append({
-                    'time': time_val,
-                    'value': vol_val,
-                    'color': '#26a69a' if is_up else '#ef5350'
-                })
+
+                if period_key in candle_map:
+                    idx = candle_map[period_key]
+                    existing_c = candles[idx]
+                    existing_v = volume_data[idx]
+                    
+                    existing_c['high'] = max(existing_c['high'], high_val)
+                    existing_c['low'] = min(existing_c['low'], low_val)
+                    existing_c['close'] = close_val
+                    
+                    existing_v['value'] += vol_val
+                    is_up = existing_c['close'] >= existing_c['open']
+                    existing_v['color'] = '#26a69a' if is_up else '#ef5350'
+                else:
+                    is_up = close_val >= open_val
+                    candle_map[period_key] = len(candles)
+                    candles.append({
+                        'time': time_val,
+                        'open': open_val,
+                        'high': high_val,
+                        'low': low_val,
+                        'close': close_val
+                    })
+                    volume_data.append({
+                        'time': time_val,
+                        'value': vol_val,
+                        'color': '#26a69a' if is_up else '#ef5350'
+                    })
 
         ind = calculate_indicators(candles)
         
@@ -2292,71 +2322,195 @@ def get_insights_news_api():
 
         all_symbols = list(wl_symbols.union(pf_symbols))
 
+        category_filter = request.args.get("category", "all").lower()
         scope_filter = request.args.get("scope", "all").lower()
+        stock_param = request.args.get("stock", "").strip()
+        limit = min(int(request.args.get("limit", 60)), 100)
+
         target_symbols = []
-        if scope_filter == "portfolio":
+        if stock_param and stock_param != "all":
+            target_symbols = [stock_param]
+        elif scope_filter == "portfolio":
             target_symbols = list(pf_symbols)
         elif scope_filter == "watchlist":
             target_symbols = list(wl_symbols)
         else:
             target_symbols = all_symbols
 
-        clean_queries = []
-        for s in target_symbols:
-            c = s.replace(".NS", "").replace(".BO", "")
-            if c == "^NSEI": c = "Nifty 50"
-            elif c == "^NSEBANK": c = "Nifty Bank"
-            elif c == "^BSESN": c = "Sensex"
-            elif c in ["GOLDBEES", "GC=F"]: c = "Gold price"
-            elif c in ["SILVERBEES", "SI=F"]: c = "Silver price"
-            else:
-                comp_name = POPULAR_INDIAN_STOCKS.get(c, "")
-                if comp_name:
-                    clean_n = comp_name.replace(" Ltd", "").replace(" Limited", "").replace(" Inc", "").strip()
-                    c = f'"{clean_n}"'
-            clean_queries.append(c)
+        if not target_symbols and scope_filter in ["portfolio", "watchlist"]:
+            return jsonify({"success": True, "articles": [], "total": 0})
 
         news_articles = []
-        if clean_queries:
-            q_terms = " OR ".join(clean_queries[:8])
-            encoded = urllib.parse.quote(f"({q_terms}) stock news")
-            rss_url = f"https://news.google.com/rss/search?q={encoded}+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-            resp = requests.get(rss_url, headers=headers, timeout=6)
-            if resp.status_code == 200:
-                root = ET.fromstring(resp.content)
-                for item in root.findall('.//item')[:20]:
-                    title_el = item.find('title')
-                    link_el = item.find('link')
-                    pub_el = item.find('pubDate')
+        seen_titles = set()
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 
-                    t_text = title_el.text if title_el is not None else ""
-                    l_text = link_el.text if link_el is not None else "#"
-                    p_text = pub_el.text if pub_el is not None else ""
+        # Category Query Suffixes
+        cat_suffix = ""
+        if category_filter == "research":
+            cat_suffix = ' ("research report" OR "target price" OR "brokerage rating" OR "buy" OR "sell")'
+        elif category_filter == "corporate":
+            cat_suffix = ' ("quarterly results" OR "earnings" OR "dividend" OR "financial results" OR "SEBI")'
+        elif category_filter == "macro":
+            cat_suffix = ' ("Indian economy" OR "RBI monetary policy" OR "inflation" OR "sector outlook")'
 
-                    parts = t_text.rsplit(' - ', 1)
-                    headline = parts[0]
-                    publisher = parts[1] if len(parts) > 1 else "Market News"
+        # 1. Stock Specific Query
+        if stock_param and stock_param != "all":
+            clean_s = stock_param.replace(".NS", "").replace(".BO", "")
+            comp_name = POPULAR_INDIAN_STOCKS.get(clean_s, "")
+            query_str = f'"{clean_s}" OR "{stock_param}" stock news'
+            if comp_name:
+                clean_n = comp_name.replace(" Ltd", "").replace(" Limited", "").replace(" Inc", "").strip()
+                query_str = f'"{clean_n}" OR "{clean_s}" stock news'
 
-                    tag_sym = "MARKET"
-                    tag_type = "GENERAL"
-                    for s in target_symbols:
-                        keywords = get_stock_keywords(s)
-                        if any(kw in t_text.lower() for kw in keywords):
-                            tag_sym = s
-                            tag_type = "PORTFOLIO" if s in pf_symbols else "WATCHLIST"
-                            break
+            if cat_suffix:
+                query_str = f'({query_str}){cat_suffix}'
 
-                    news_articles.append({
-                        "title": headline,
-                        "publisher": publisher,
-                        "link": l_text,
-                        "pub_date": p_text,
-                        "symbol": tag_sym,
-                        "tag_type": tag_type
-                    })
+            encoded = urllib.parse.quote(query_str)
+            rss_url = f"https://news.google.com/rss/search?q={encoded}+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
+            try:
+                resp = requests.get(rss_url, headers=headers, timeout=6)
+                if resp.status_code == 200:
+                    root = ET.fromstring(resp.content)
+                    for item in root.findall('.//item')[:limit]:
+                        title_el = item.find('title')
+                        link_el = item.find('link')
+                        pub_el = item.find('pubDate')
 
-        return jsonify({"success": True, "articles": news_articles})
+                        t_text = title_el.text if title_el is not None else ""
+                        l_text = link_el.text if link_el is not None else "#"
+                        p_text = pub_el.text if pub_el is not None else ""
+
+                        parts = t_text.rsplit(' - ', 1)
+                        headline = parts[0]
+                        publisher = parts[1] if len(parts) > 1 else "Market News"
+
+                        t_lower = t_text.lower()
+                        cat_tag = "GENERAL"
+                        if any(w in t_lower for w in ["research", "brokerage", "target price", "rating", "buy", "sell"]):
+                            cat_tag = "RESEARCH"
+                        elif any(w in t_lower for w in ["results", "earnings", "dividend", "q1", "q2", "q3", "q4", "sebi", "financial"]):
+                            cat_tag = "EARNINGS"
+                        elif any(w in t_lower for w in ["rbi", "economy", "inflation", "gdp", "budget", "repo rate"]):
+                            cat_tag = "MACRO"
+
+                        if headline not in seen_titles:
+                            seen_titles.add(headline)
+                            news_articles.append({
+                                "title": headline,
+                                "publisher": publisher,
+                                "link": l_text,
+                                "pub_date": p_text,
+                                "symbol": stock_param,
+                                "tag_type": "PORTFOLIO" if stock_param in pf_symbols else ("WATCHLIST" if stock_param in wl_symbols else "STOCK"),
+                                "category": cat_tag
+                            })
+            except Exception:
+                pass
+
+        # 2. General / Multi-Symbol Query Batches
+        if len(news_articles) < limit and target_symbols:
+            clean_queries = []
+            for s in target_symbols:
+                c = s.replace(".NS", "").replace(".BO", "")
+                if c == "^NSEI": c = "Nifty 50"
+                elif c == "^NSEBANK": c = "Nifty Bank"
+                elif c == "^BSESN": c = "Sensex"
+                elif c in ["GOLDBEES", "GC=F"]: c = "Gold price"
+                elif c in ["SILVERBEES", "SI=F"]: c = "Silver price"
+                else:
+                    comp_name = POPULAR_INDIAN_STOCKS.get(c, "")
+                    if comp_name:
+                        clean_n = comp_name.replace(" Ltd", "").replace(" Limited", "").replace(" Inc", "").strip()
+                        c = f'"{clean_n}"'
+                clean_queries.append(c)
+
+            batches = []
+            if clean_queries:
+                for b_start in range(0, len(clean_queries), 6):
+                    batch_terms = clean_queries[b_start:b_start+6]
+                    base_q = " OR ".join(batch_terms)
+                    if cat_suffix:
+                        base_q = f"({base_q}){cat_suffix}"
+                    batches.append(base_q)
+
+            if category_filter == "macro":
+                batches.append("Indian economy RBI monetary policy GDP Inflation SEBI share market news")
+            elif scope_filter == "all" and not stock_param:
+                batches.append("Indian stock market NSE NIFTY Sensex share price news")
+
+            for batch_q in batches:
+                if len(news_articles) >= limit:
+                    break
+                encoded = urllib.parse.quote(f"({batch_q}) stock news")
+                rss_url = f"https://news.google.com/rss/search?q={encoded}+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
+                try:
+                    resp = requests.get(rss_url, headers=headers, timeout=6)
+                    if resp.status_code == 200:
+                        root = ET.fromstring(resp.content)
+                        for item in root.findall('.//item'):
+                            if len(news_articles) >= limit:
+                                break
+                            title_el = item.find('title')
+                            link_el = item.find('link')
+                            pub_el = item.find('pubDate')
+
+                            t_text = title_el.text if title_el is not None else ""
+                            l_text = link_el.text if link_el is not None else "#"
+                            p_text = pub_el.text if pub_el is not None else ""
+
+                            parts = t_text.rsplit(' - ', 1)
+                            headline = parts[0]
+                            publisher = parts[1] if len(parts) > 1 else "Market News"
+
+                            if headline in seen_titles:
+                                continue
+
+                            tag_sym = "MARKET"
+                            tag_type = "GENERAL"
+                            for s in target_symbols:
+                                keywords = get_stock_keywords(s)
+                                if any(kw in t_text.lower() for kw in keywords):
+                                    tag_sym = s
+                                    tag_type = "PORTFOLIO" if s in pf_symbols else ("WATCHLIST" if s in wl_symbols else "STOCK")
+                                    break
+
+                            t_lower = t_text.lower()
+                            cat_tag = "GENERAL"
+                            if any(w in t_lower for w in ["research", "brokerage", "target price", "rating", "buy", "sell"]):
+                                cat_tag = "RESEARCH"
+                            elif any(w in t_lower for w in ["results", "earnings", "dividend", "q1", "q2", "q3", "q4", "sebi", "financial"]):
+                                cat_tag = "EARNINGS"
+                            elif any(w in t_lower for w in ["rbi", "economy", "inflation", "gdp", "budget", "repo rate"]):
+                                cat_tag = "MACRO"
+
+                            # Scope filter enforcement
+                            if scope_filter == "portfolio" and tag_type != "PORTFOLIO":
+                                continue
+                            if scope_filter == "watchlist" and tag_type != "WATCHLIST":
+                                continue
+
+                            seen_titles.add(headline)
+                            news_articles.append({
+                                "title": headline,
+                                "publisher": publisher,
+                                "link": l_text,
+                                "pub_date": p_text,
+                                "symbol": tag_sym,
+                                "tag_type": tag_type,
+                                "category": cat_tag
+                            })
+                except Exception:
+                    pass
+
+        # Final scope cleanup check
+        if scope_filter == "portfolio":
+            news_articles = [a for a in news_articles if a.get("tag_type") == "PORTFOLIO" or a.get("symbol") in pf_symbols]
+        elif scope_filter == "watchlist":
+            news_articles = [a for a in news_articles if a.get("tag_type") == "WATCHLIST" or a.get("symbol") in wl_symbols]
+
+        return jsonify({"success": True, "articles": news_articles, "total": len(news_articles)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "articles": []})
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "articles": []})
 
