@@ -295,7 +295,7 @@
         
         /* Mild Green Primary Buttons */
         button, .btn-primary {
-            padding: 8px 16px;
+            padding: 8px 8px;
             border: none;
             border-radius: 6px;
             background-color: var(--btn-primary-bg);
@@ -1484,7 +1484,7 @@
                             </button>
                             <div class="chart-popover-menu" id="popover-indicators">
                                 <div class="popover-menu-title">Indicators</div>
-                                <label class="popover-item-checkbox"><input type="checkbox" id="chkCdRider" checked onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 600;">CDRider (Supertrend)</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkCdRider" onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 600;">CDRider (Supertrend)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> <span>Volume</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkSma50" onchange="toggleIndicators()"> <span style="color:#ff6d00">50 DMA</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkSma200" onchange="toggleIndicators()"> <span style="color:#e11d48">200 DMA</span></label>
@@ -1498,7 +1498,7 @@
 
                         <!-- 2. Drawing Tools Popover -->
                         <div class="chart-popover-wrapper">
-                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event); renderActiveDrawingsList();">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event);">
                                 <span>✏️ Tools</span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-tools" style="min-width: 260px; max-height: 480px; overflow-y: auto;">
@@ -1522,19 +1522,31 @@
                                 <button class="popover-menu-item" id="tool-btn-stoploss" onclick="addHorizontalLinePrompt('stoploss'); closeAllChartPopovers();">🛑 StopLoss Line</button>
                                 <button class="popover-menu-item" id="tool-btn-trendline" onclick="activateDrawingTool('trendline'); closeAllChartPopovers();">📈 Diagonal Trendline</button>
                                 <button class="popover-menu-item" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle'); closeAllChartPopovers();">⬛ Rectangle Zone</button>
+                                <button class="popover-menu-item" id="tool-btn-pricerange" onclick="activateDrawingTool('pricerange'); closeAllChartPopovers();">📏 Price Range & % Calculator</button>
                                 <button class="popover-menu-item" id="tool-btn-vertical" onclick="activateDrawingTool('vertical'); closeAllChartPopovers();">🕒 Time Line Marker</button>
                                 <button class="popover-menu-item" id="tool-btn-note" onclick="activateDrawingTool('note'); closeAllChartPopovers();">📍 Text Callout / Note</button>
-
-                                <div class="popover-divider"></div>
-                                <div class="popover-menu-title">Active Drawings (<span id="activeDrawingsCount">0</span>)</div>
-                                <div id="activeDrawingsListMount" style="max-height: 160px; overflow-y: auto; padding: 0 8px;"></div>
 
                                 <div class="popover-divider"></div>
                                 <button class="popover-menu-item item-danger" onclick="clearDrawings(); closeAllChartPopovers();">🧹 Clear All Drawings</button>
                             </div>
                         </div>
 
-                        <!-- 3. Time Interval / Candle Frequency Popover -->
+                        <!-- 3. Standalone Active Drawings Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" id="btnActiveDrawingsPopover" onclick="toggleChartPopover('popover-active-drawings', event); renderActiveDrawingsList();" title="View & Manage Active Drawings">
+                                <span>📐 Active Drawings (<span id="activeDrawingsCountNav">0</span>)</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-active-drawings" style="min-width: 280px; width: 300px; padding: 12px;">
+                                <div class="popover-menu-title" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #787b86; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px;">
+                                    <span>ACTIVE DRAWINGS (<span id="activeDrawingsCount">0</span>)</span>
+                                </div>
+                                <div id="activeDrawingsListMount" style="max-height: 280px; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; gap: 8px;"></div>
+                                <div class="popover-divider" style="margin: 12px 0 8px;"></div>
+                                <button class="popover-menu-item item-danger" style="width: 100%; justify-content: center; padding: 8px; font-weight: 600;" onclick="clearDrawings(); closeAllChartPopovers();">🧹 Clear All Drawings</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. Time Interval / Candle Frequency Popover -->
                         <div class="chart-popover-wrapper">
                             <button class="chart-popover-btn" onclick="toggleChartPopover('popover-interval', event)">
                                 <span id="intervalBtnLabel">⏱️ 1D</span> <span class="popover-arrow">▾</span>
@@ -1550,7 +1562,7 @@
                             </div>
                         </div>
 
-                        <!-- 4. Timeframe Range Popover -->
+                        <!-- 5. Timeframe Range Popover -->
                         <div class="chart-popover-wrapper">
                             <button class="chart-popover-btn" onclick="toggleChartPopover('popover-range', event)">
                                 <span id="rangeBtnLabel">📅 1Y</span> <span class="popover-arrow">▾</span>
@@ -1569,7 +1581,7 @@
                             </div>
                         </div>
 
-                        <!-- 5. Chart Type Popover -->
+                        <!-- 6. Chart Type Popover -->
                         <div class="chart-popover-wrapper">
                             <button class="chart-popover-btn" onclick="toggleChartPopover('popover-type', event)">
                                 <span id="typeBtnLabel">🕯️ Candles</span> <span class="popover-arrow">▾</span>
@@ -5328,6 +5340,7 @@
         
         // Indicator Series
         let cdRiderSeries = null;
+        let cachedCdRiderMarkers = [];
         let sma50Series = null;
         let sma200Series = null;
         let ema9Series = null;
@@ -5537,16 +5550,19 @@
         function renderActiveDrawingsList() {
             const mount = document.getElementById('activeDrawingsListMount');
             const countEl = document.getElementById('activeDrawingsCount');
-            if (!mount) return;
+            const countNavEl = document.getElementById('activeDrawingsCountNav');
 
             const lines = getSavedPriceLines(currentChartSymbol);
             const shapes = getSavedChartShapes(currentChartSymbol);
             const totalCount = lines.length + shapes.length;
 
             if (countEl) countEl.innerText = totalCount;
+            if (countNavEl) countNavEl.innerText = totalCount;
+
+            if (!mount) return;
 
             if (totalCount === 0) {
-                mount.innerHTML = `<div style="text-align: center; color: #787b86; padding: 10px 0; font-size: 11px;">No drawings placed.</div>`;
+                mount.innerHTML = `<div style="text-align: center; color: #787b86; padding: 18px 0; font-size: 12px; font-weight: 500;">No active drawings on chart.</div>`;
                 return;
             }
 
@@ -5554,11 +5570,15 @@
 
             lines.forEach(l => {
                 const labelName = l.label || 'Support';
+                const itemColor = l.color || '#10b981';
                 html += `
-                    <div class="active-drawing-item">
-                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                            <input type="color" value="${l.color || '#10b981'}" onchange="updatePriceLineColorById('${l.id}', this.value)" style="width: 14px; height: 14px; border: none; padding: 0; background: transparent; cursor: pointer; flex-shrink: 0;" title="Change line color">
-                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${labelName}: ₹${l.price}</span>
+                    <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc;">
+                        <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                            <div style="position: relative; display: flex; align-items: center; flex-shrink: 0;">
+                                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${itemColor}; cursor: pointer;" title="Change line color"></span>
+                                <input type="color" value="${itemColor}" onchange="updatePriceLineColorById('${l.id}', this.value)" style="position: absolute; top: 0; left: 0; width: 12px; height: 12px; opacity: 0; cursor: pointer;">
+                            </div>
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: #e1e3e6;">${labelName}: ₹${l.price}</span>
                         </div>
                         <button class="active-drawing-delete-btn" onclick="deletePriceLineById('${l.id}')" title="Delete this line">🗑️</button>
                     </div>
@@ -5567,16 +5587,22 @@
 
             shapes.forEach(s => {
                 let name = 'Shape';
-                if (s.type === 'trendline') name = '📈 Trendline';
-                else if (s.type === 'rectangle') name = '⬛ Rectangle';
-                else if (s.type === 'vertical') name = '🕒 Time Line';
-                else if (s.type === 'note') name = `📍 Note: ${s.text || ''}`;
+                let icon = '📐';
+                if (s.type === 'trendline') { name = 'Trendline'; icon = '📈'; }
+                else if (s.type === 'rectangle') { name = 'Rectangle'; icon = '⬛'; }
+                else if (s.type === 'pricerange') { name = 'Price Range & %'; icon = '📏'; }
+                else if (s.type === 'vertical') { name = 'Time Line'; icon = '🕒'; }
+                else if (s.type === 'note') { name = `Note: ${s.text || ''}`; icon = '📍'; }
 
+                const itemColor = s.color || '#3b82f6';
                 html += `
-                    <div class="active-drawing-item">
-                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                            <input type="color" value="${s.color || '#3b82f6'}" onchange="updateShapeColorById('${s.id}', this.value)" style="width: 14px; height: 14px; border: none; padding: 0; background: transparent; cursor: pointer; flex-shrink: 0;" title="Change shape color">
-                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${name}</span>
+                    <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc;">
+                        <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                            <div style="position: relative; display: flex; align-items: center; flex-shrink: 0;">
+                                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${itemColor}; cursor: pointer;" title="Change shape color"></span>
+                                <input type="color" value="${itemColor}" onchange="updateShapeColorById('${s.id}', this.value)" style="position: absolute; top: 0; left: 0; width: 12px; height: 12px; opacity: 0; cursor: pointer;">
+                            </div>
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: #e1e3e6;">${icon} ${name}</span>
                         </div>
                         <button class="active-drawing-delete-btn" onclick="deleteShapeById('${s.id}')" title="Delete this shape">🗑️</button>
                     </div>
@@ -5723,6 +5749,7 @@
 
             let msg = 'Click on chart to draw';
             if (toolType === 'support_click') msg = '🟢 Support Line: Click anywhere on chart or Right Y-Axis to place line at price level.';
+            else if (toolType === 'pricerange') msg = '📏 Price Range % Calculator: Click 1st point (Start Price), then 2nd point (End Price). Press Esc to cancel.';
             else if (toolType === 'trendline') msg = '📐 Trendline: Click 1st point (Start), then 2nd point (End). Press Esc to cancel.';
             else if (toolType === 'rectangle') msg = '⬜ Rectangle Zone: Click 1st corner, then opposite corner. Press Esc to cancel.';
             else if (toolType === 'vertical') msg = '⏱️ Time Line: Click on chart to place vertical marker. Press Esc to cancel.';
@@ -5805,19 +5832,23 @@
             const y = e.clientY - rect.top;
 
             const price = mainSeries.coordinateToPrice(y);
-            let time = mainChart.timeScale().coordinateToTime(x);
+            const time = mainChart.timeScale().coordinateToTime(x);
+            const logical = mainChart.timeScale().coordinateToLogical(x);
 
-            if (!time && cachedChartData && cachedChartData.candles) {
-                const logical = mainChart.timeScale().coordinateToLogical(x);
-                if (logical !== null) {
-                    const idx = Math.max(0, Math.min(cachedChartData.candles.length - 1, Math.round(logical)));
-                    if (cachedChartData.candles[idx]) {
-                        time = cachedChartData.candles[idx].time;
-                    }
-                }
+            return { x, y, price, time, logical };
+        }
+
+        function getShapeX(timeScale, time, logical) {
+            if (!timeScale) return null;
+            if (time) {
+                const x = timeScale.timeToCoordinate(time);
+                if (x !== null && x !== undefined) return x;
             }
-
-            return { x, y, price, time };
+            if (logical !== null && logical !== undefined) {
+                const x = timeScale.logicalToCoordinate(logical);
+                if (x !== null && x !== undefined) return x;
+            }
+            return null;
         }
 
         function handleCanvasMouseMove(e) {
@@ -5835,31 +5866,33 @@
 
             // If a drawing tool is active:
             if (currentDrawingTool) {
-                if (!pt.price) return;
+                if (pt.price === null || pt.price === undefined) return;
 
                 if (currentDrawingTool === 'support_click') {
                     addHorizontalLineAtPrice('support', parseFloat(pt.price.toFixed(2)), activeToolColor || '#10b981', 'Support');
                     cancelDrawingTool();
                     return;
                 } else if (currentDrawingTool === 'vertical') {
-                    if (!pt.time) return;
+                    if (pt.logical === null || pt.logical === undefined) return;
                     const shape = {
                         id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                         type: 'vertical',
                         time: pt.time,
+                        logical: pt.logical,
                         color: activeToolColor || '#f59e0b'
                     };
                     saveChartShapeForSymbol(currentChartSymbol, shape);
                     cancelDrawingTool();
                     return;
                 } else if (currentDrawingTool === 'note') {
-                    if (!pt.time) return;
+                    if (pt.logical === null || pt.logical === undefined) return;
                     const noteText = prompt('Enter text for note:', 'Key Support / Target');
                     if (noteText) {
                         const shape = {
                             id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                             type: 'note',
                             time: pt.time,
+                            logical: pt.logical,
                             price: pt.price,
                             text: noteText,
                             color: activeToolColor || '#10b981'
@@ -5868,13 +5901,13 @@
                     }
                     cancelDrawingTool();
                     return;
-                } else if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle') {
-                    if (!pt.time) return;
+                } else if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle' || currentDrawingTool === 'pricerange') {
+                    if (pt.logical === null || pt.logical === undefined) return;
                     if (drawingPoints.length === 0) {
                         drawingPoints.push(pt);
                         const banner = document.getElementById('drawingToolBanner');
                         if (banner) {
-                            const actionName = currentDrawingTool === 'trendline' ? 'Trendline' : 'Rectangle Zone';
+                            const actionName = currentDrawingTool === 'trendline' ? 'Trendline' : currentDrawingTool === 'rectangle' ? 'Rectangle Zone' : 'Price Range % Calculator';
                             const span = banner.querySelector('span');
                             if (span) span.innerText = `Click 2nd point to complete ${actionName}`;
                         }
@@ -5886,10 +5919,12 @@
                             id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                             type: currentDrawingTool,
                             time1: pt1.time,
+                            logical1: pt1.logical,
                             price1: pt1.price,
                             time2: pt2.time,
+                            logical2: pt2.logical,
                             price2: pt2.price,
-                            color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : '#a855f7'),
+                            color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : currentDrawingTool === 'rectangle' ? '#a855f7' : '#10b981'),
                             fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null
                         };
 
@@ -5926,20 +5961,20 @@
             const shapes = getSavedChartShapes(currentChartSymbol);
             for (let s of shapes) {
                 if (s.type === 'vertical') {
-                    const shapeX = timeScale.timeToCoordinate(s.time);
+                    const shapeX = getShapeX(timeScale, s.time, s.logical);
                     if (shapeX !== null && Math.abs(x - shapeX) < 8) {
                         return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color };
                     }
                 } else if (s.type === 'note') {
-                    const shapeX = timeScale.timeToCoordinate(s.time);
+                    const shapeX = getShapeX(timeScale, s.time, s.logical);
                     const shapeY = mainSeries.priceToCoordinate(s.price);
                     if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 30 && Math.abs(y - shapeY) < 20) {
                         return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color };
                     }
                 } else if (s.type === 'trendline') {
-                    const x1 = timeScale.timeToCoordinate(s.time1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = timeScale.timeToCoordinate(s.time2);
+                    const x2 = getShapeX(timeScale, s.time2, s.logical2);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         const dist = distanceToSegment(x, y, x1, y1, x2, y2);
@@ -5947,15 +5982,22 @@
                             return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color };
                         }
                     }
-                } else if (s.type === 'rectangle') {
-                    const x1 = timeScale.timeToCoordinate(s.time1);
+                } else if (s.type === 'rectangle' || s.type === 'pricerange') {
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = timeScale.timeToCoordinate(s.time2);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
-                    if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
-                        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+                    if (x1 !== null && y1 !== null && y2 !== null) {
+                        const startX = x1, endX = (x2 !== null) ? x2 : x1;
+                        const minX = Math.min(startX, endX) - 20, maxX = Math.max(startX, endX) + 20;
                         const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
                         if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                            if (s.type === 'pricerange') {
+                                const diff = s.price2 - s.price1;
+                                const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
+                                const label = `Price Range: ${diff >= 0 ? '+' : ''}₹${diff.toFixed(2)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
+                                return { kind: 'shape', id: s.id, name: label, color: s.color };
+                            }
                             return { kind: 'shape', id: s.id, name: 'Rectangle Zone', color: s.color };
                         }
                     }
@@ -6030,16 +6072,18 @@
 
             // Draw active live preview shape if in drawing mode
             if (currentDrawingTool && tempMousePos) {
-                if ((currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle') && drawingPoints.length === 1) {
+                if ((currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle' || currentDrawingTool === 'pricerange') && drawingPoints.length === 1) {
                     const pt1 = drawingPoints[0];
                     const pt2 = tempMousePos;
                     const previewShape = {
                         type: currentDrawingTool,
                         time1: pt1.time,
+                        logical1: pt1.logical,
                         price1: pt1.price,
                         time2: pt2.time,
+                        logical2: pt2.logical,
                         price2: pt2.price,
-                        color: currentDrawingTool === 'trendline' ? '#60a5fa' : '#c084fc',
+                        color: activeToolColor || (currentDrawingTool === 'trendline' ? '#60a5fa' : currentDrawingTool === 'rectangle' ? '#c084fc' : '#10b981'),
                         fillColor: currentDrawingTool === 'rectangle' ? 'rgba(192, 132, 252, 0.25)' : null,
                         isPreview: true
                     };
@@ -6048,6 +6092,7 @@
                     const previewShape = {
                         type: 'vertical',
                         time: tempMousePos.time,
+                        logical: tempMousePos.logical,
                         color: '#fbbf24',
                         isPreview: true
                     };
@@ -6059,10 +6104,100 @@
         function drawSingleShape(ctx, s) {
             const timeScale = mainChart.timeScale();
 
-            if (s.type === 'trendline') {
-                const x1 = timeScale.timeToCoordinate(s.time1);
+            if (s.type === 'pricerange') {
+                const x1 = getShapeX(timeScale, s.time1, s.logical1);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = timeScale.timeToCoordinate(s.time2);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1);
+                const y2 = mainSeries.priceToCoordinate(s.price2);
+
+                if (x1 !== null && y1 !== null && y2 !== null) {
+                    ctx.save();
+
+                    const isUp = s.price2 >= s.price1;
+                    const color = s.color || (isUp ? '#10b981' : '#ef5350');
+                    const fillColor = isUp ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 83, 80, 0.18)';
+
+                    let startX = x1, endX = (x2 !== null) ? x2 : x1;
+                    if (Math.abs(endX - startX) < 20) {
+                        startX = x1 - 25;
+                        endX = x1 + 25;
+                    }
+
+                    const leftX = Math.min(startX, endX);
+                    const rightX = Math.max(startX, endX);
+                    const topY = Math.min(y1, y2);
+                    const bottomY = Math.max(y1, y2);
+                    const boxWidth = Math.max(20, rightX - leftX);
+                    const boxHeight = Math.max(4, bottomY - topY);
+
+                    // 1. Draw Shaded Translucent Range Box
+                    ctx.fillStyle = fillColor;
+                    ctx.fillRect(leftX, topY, boxWidth, boxHeight);
+
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.5;
+                    if (s.isPreview) ctx.setLineDash([4, 4]);
+                    ctx.strokeRect(leftX, topY, boxWidth, boxHeight);
+
+                    // 2. Center Stem & Handles
+                    const centerX = leftX + boxWidth / 2;
+                    ctx.beginPath();
+                    ctx.setLineDash([]);
+                    ctx.moveTo(centerX, y1);
+                    ctx.lineTo(centerX, y2);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = color;
+                    ctx.stroke();
+
+                    // Handles (TradingView End Circles)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+
+                    ctx.beginPath(); ctx.arc(centerX, y1, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(centerX, y2, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+                    // 3. Floating Price & Percentage Badge
+                    const diff = s.price2 - s.price1;
+                    const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
+                    const diffSign = diff >= 0 ? '+' : '';
+                    const pctSign = pct >= 0 ? '+' : '';
+
+                    const badgeText = `${diffSign}₹${diff.toFixed(2)} (${pctSign}${pct.toFixed(2)}%)`;
+
+                    ctx.font = 'bold 11px monospace';
+                    const textMetrics = ctx.measureText(badgeText);
+                    const badgeW = textMetrics.width + 16;
+                    const badgeH = 22;
+                    const badgeX = Math.max(10, centerX - badgeW / 2);
+                    const badgeY = Math.max(5, topY - badgeH - 6);
+
+                    // Badge Background Pill
+                    ctx.fillStyle = '#1e222d';
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.5;
+
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 5);
+                    } else {
+                        ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                    }
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Badge Text
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
+
+                    ctx.restore();
+                }
+            } else if (s.type === 'trendline') {
+                const x1 = getShapeX(timeScale, s.time1, s.logical1);
+                const y1 = mainSeries.priceToCoordinate(s.price1);
+                const x2 = getShapeX(timeScale, s.time2, s.logical2);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -6082,9 +6217,9 @@
                     ctx.restore();
                 }
             } else if (s.type === 'rectangle') {
-                const x1 = timeScale.timeToCoordinate(s.time1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = timeScale.timeToCoordinate(s.time2);
+                const x2 = getShapeX(timeScale, s.time2, s.logical2);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -6104,7 +6239,7 @@
                     ctx.restore();
                 }
             } else if (s.type === 'vertical') {
-                const x = timeScale.timeToCoordinate(s.time);
+                const x = getShapeX(timeScale, s.time, s.logical);
                 if (x !== null) {
                     ctx.save();
                     ctx.beginPath();
@@ -6125,7 +6260,7 @@
                     ctx.restore();
                 }
             } else if (s.type === 'note') {
-                const x = timeScale.timeToCoordinate(s.time);
+                const x = getShapeX(timeScale, s.time, s.logical);
                 const y = mainSeries.priceToCoordinate(s.price);
 
                 if (x !== null && y !== null) {
@@ -6404,7 +6539,16 @@
                 ...baseChartConfig,
                 width: mainContainer.clientWidth || 800,
                 height: mainContainer.clientHeight || 400,
-                rightPriceScale: { borderColor: '#2a2e39', autoScale: true, alignLabels: true },
+                rightPriceScale: {
+                    borderColor: '#2a2e39',
+                    autoScale: true,
+                    alignLabels: true,
+                    entireTextOnly: false,
+                    scaleMargins: {
+                        top: 0.25,
+                        bottom: 0.15
+                    }
+                },
                 timeScale: {
                     borderColor: '#2a2e39',
                     timeVisible: true,
@@ -6450,15 +6594,13 @@
             if (data.volume) volumeSeries.setData(data.volume);
 
             // Indicators
-            cdRiderSeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'CDRider' });
+            cdRiderSeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'CDRider', visible: false });
             if (data.cdrider) cdRiderSeries.setData(data.cdrider);
 
             const allMarkers = [];
             if (data.cdrider_buy) allMarkers.push(...data.cdrider_buy);
             if (data.cdrider_sell) allMarkers.push(...data.cdrider_sell);
-            if (allMarkers.length > 0 && mainSeries) {
-                mainSeries.setMarkers(allMarkers.sort((a, b) => (typeof a.time === 'number' && typeof b.time === 'number' ? a.time - b.time : 0)));
-            }
+            cachedCdRiderMarkers = allMarkers.sort((a, b) => (typeof a.time === 'number' && typeof b.time === 'number' ? a.time - b.time : 0));
 
             sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: '50 DMA' });
             if (data.sma50) sma50Series.setData(data.sma50);
@@ -6544,7 +6686,7 @@
                 const volVal = volData ? volData.value : 0;
 
                 updateLegend(param.time, o, h, l, c, volVal, data, param.time);
-                updateRightAxisTimePriceBadge(param);
+                updateRightAxisTimePriceBadge(null);
             });
 
             if (data.candles && data.candles.length > 0) {
@@ -6553,19 +6695,261 @@
                 updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol, data);
             }
 
-        let currentCrosshairPrice = null;
-        let candleTimerIntervalId = null;
+            setupRightPriceAxisHoverZone();
 
-        function addSupportLineFromCrosshair(e) {
+            // Setup automatic ResizeObserver for smooth resizing on window change or pane toggling
+            if (chartResizeObserver) {
+                chartResizeObserver.disconnect();
+            }
+            const bodyContainer = document.querySelector('.chart-body-container');
+            if (bodyContainer && window.ResizeObserver) {
+                chartResizeObserver = new ResizeObserver(() => {
+                    resizeChartPanes();
+                });
+                chartResizeObserver.observe(bodyContainer);
+            } else {
+                window.onresize = function() {
+                    resizeChartPanes();
+                };
+            }
+
+            // Restore active drawing lines saved for this stock
+            restoreSavedPriceLines(currentChartSymbol);
+
+            setupCanvasOverlay();
+            if (mainChart) {
+                mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => redrawCanvasOverlay());
+                mainChart.subscribeCrosshairMove(() => redrawCanvasOverlay());
+            }
+
+            toggleIndicators();
+            resizeChartPanes();
+            redrawCanvasOverlay();
+            startCandleCountdownTimer();
+        }
+
+        let currentRightAxisPrice = null;
+        let currentPlusActionPrice = null;
+        let candleTimerIntervalId = null;
+        let isRightAxisHovered = false;
+
+        let isYScaleAuto = true;
+
+        function toggleYScaleMode() {
+            if (!mainChart) return;
+            isYScaleAuto = !isYScaleAuto;
+            mainChart.priceScale('right').applyOptions({ autoScale: isYScaleAuto });
+            const btn = document.getElementById('btnToggleYScale');
+            if (btn) {
+                btn.innerText = isYScaleAuto ? '🔓 Free Y-Scale' : '🔒 Auto Scale';
+                btn.style.color = isYScaleAuto ? '#d1d4dc' : '#10b981';
+            }
+        }
+        window.toggleYScaleMode = toggleYScaleMode;
+
+        function setupRightPriceAxisHoverZone() {
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!mainContainer) return;
+
+            mainContainer.onmousemove = (e) => {
+                if (!mainSeries || !mainChart) return;
+                const rect = mainContainer.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+
+                if (y < 0 || y > mainContainer.clientHeight) {
+                    handleRightAxisMouseLeave();
+                    return;
+                }
+
+                const price = mainSeries.coordinateToPrice(y);
+                if (price === null || price === undefined || isNaN(price)) return;
+
+                currentRightAxisPrice = parseFloat(price.toFixed(2));
+                renderRightAxisPlusBadge(y, currentRightAxisPrice);
+            };
+
+            mainContainer.onmousedown = (e) => {
+                const rect = mainContainer.getBoundingClientRect();
+                if (e.clientX >= rect.right - 70) {
+                    if (mainChart && isYScaleAuto) {
+                        mainChart.priceScale('right').applyOptions({ autoScale: false });
+                        isYScaleAuto = false;
+                        const btn = document.getElementById('btnToggleYScale');
+                        if (btn) { btn.innerText = '🔒 Auto Scale'; btn.style.color = '#10b981'; }
+                    }
+                }
+            };
+
+            mainContainer.onmouseleave = () => {
+                handleRightAxisMouseLeave();
+            };
+
+            mainContainer.ondblclick = (e) => {
+                const rect = mainContainer.getBoundingClientRect();
+                if (e.clientX >= rect.right - 70) {
+                    if (mainChart) {
+                        isYScaleAuto = true;
+                        mainChart.priceScale('right').applyOptions({ autoScale: true });
+                        const btn = document.getElementById('btnToggleYScale');
+                        if (btn) { btn.innerText = '🔓 Free Y-Scale'; btn.style.color = '#d1d4dc'; }
+                    }
+                }
+            };
+        }
+
+        function renderRightAxisPlusBadge(y, price) {
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!mainContainer) return;
+
+            let badge = document.getElementById('rightPriceAxisPlusBadge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.id = 'rightPriceAxisPlusBadge';
+                badge.style.cssText = `
+                    position: absolute;
+                    right: 2px;
+                    z-index: 30;
+                    display: none;
+                    align-items: center;
+                    pointer-events: auto;
+                `;
+                badge.innerHTML = `
+                    <button type="button" id="axisPlusBtn" onclick="toggleRightAxisPlusMenu(event)" style="background: #10b981; border: 1px solid #059669; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; margin-right: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); transition: transform 0.12s, background 0.12s;" title="Click + for Target, Support Line or Price Alert">+</button>
+                    <div id="axisPriceTextLabel" style="background: #1e222d; border: 1px solid #10b981; color: #f8fafc; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; box-shadow: 0 2px 8px rgba(0,0,0,0.5); pointer-events: none;"></div>
+                `;
+                mainContainer.appendChild(badge);
+
+                badge.onmouseenter = () => { isRightAxisHovered = true; };
+                badge.onmouseleave = () => { handleRightAxisMouseLeave(); };
+            }
+
+            const btn = badge.querySelector('#axisPlusBtn');
+            if (btn) {
+                btn.onclick = (e) => { toggleRightAxisPlusMenu(e); };
+                btn.onmouseenter = () => { isRightAxisHovered = true; btn.style.transform = 'scale(1.25)'; btn.style.background = '#059669'; };
+                btn.onmouseleave = () => { btn.style.transform = 'scale(1.0)'; btn.style.background = '#10b981'; };
+            }
+
+            const priceLabel = badge.querySelector('#axisPriceTextLabel');
+            if (priceLabel && price !== null && price !== undefined) {
+                priceLabel.innerText = '₹' + price.toFixed(2);
+            }
+
+            const topPos = Math.max(4, Math.min(y - 12, mainContainer.clientHeight - 30));
+            badge.style.top = topPos + 'px';
+            badge.style.display = 'flex';
+        }
+
+        function handleRightAxisMouseLeave() {
+            isRightAxisHovered = false;
+            setTimeout(() => {
+                const menu = document.getElementById('plusActionMenu');
+                const badge = document.getElementById('rightPriceAxisPlusBadge');
+                if (!isRightAxisHovered && (!menu || menu.style.display !== 'block')) {
+                    if (badge) badge.style.display = 'none';
+                }
+            }, 150);
+        }
+
+        function toggleRightAxisPlusMenu(e) {
             if (e) e.stopPropagation();
-            if (currentCrosshairPrice !== null && !isNaN(currentCrosshairPrice)) {
-                const p = parseFloat(currentCrosshairPrice.toFixed(2));
-                addHorizontalLineAtPrice('support', p, activeToolColor || '#10b981', 'Support');
-                showSupportAddedToast(p);
+            if (currentRightAxisPrice === null || isNaN(currentRightAxisPrice)) return;
+
+            currentPlusActionPrice = currentRightAxisPrice;
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!mainContainer) return;
+
+            let menu = document.getElementById('plusActionMenu');
+            if (!menu) {
+                menu = document.createElement('div');
+                menu.id = 'plusActionMenu';
+                menu.style.cssText = `
+                    position: absolute;
+                    z-index: 120;
+                    background: #1e222d;
+                    border: 1px solid #363a45;
+                    border-radius: 8px;
+                    padding: 6px;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+                    display: none;
+                    min-width: 230px;
+                `;
+                menu.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 6px 6px; border-bottom: 1px solid #2a2e39; margin-bottom: 4px;">
+                        <span style="font-size: 10px; font-weight: 700; color: #787b86; text-transform: uppercase; letter-spacing: 0.5px;">Quick Price Action</span>
+                        <button type="button" id="btnClosePlusMenu" onclick="hidePlusActionMenu()" style="background: transparent; border: none; color: #94a3b8; font-size: 14px; font-weight: bold; cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px; transition: color 0.15s;" onmouseover="this.style.color='#ef5350'" onmouseout="this.style.color='#94a3b8'" title="Close Menu">✕</button>
+                    </div>
+                    <button type="button" id="btnPlusActionTarget" onclick="executePlusAction('target')" style="background: transparent; border: none; color: #f59e0b; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                        🎯 Add Target Line (₹<span id="plusActionTargetPrice">-</span>)
+                    </button>
+                    <button type="button" id="btnPlusActionSupport" onclick="executePlusAction('support')" style="background: transparent; border: none; color: #10b981; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                        🟢 Add Support Line (₹<span id="plusActionSupportPrice">-</span>)
+                    </button>
+                    <button type="button" id="btnPlusActionAlert" onclick="executePlusAction('alert')" style="background: transparent; border: none; color: #3b82f6; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                        🔔 Create Price Alert (₹<span id="plusActionAlertPrice">-</span>)
+                    </button>
+                `;
+                mainContainer.appendChild(menu);
+
+                const btnClose = menu.querySelector('#btnClosePlusMenu');
+                if (btnClose) btnClose.onclick = (ev) => { ev.stopPropagation(); hidePlusActionMenu(); };
+                const btnTgt = menu.querySelector('#btnPlusActionTarget');
+                if (btnTgt) btnTgt.onclick = () => executePlusAction('target');
+                const btnSup = menu.querySelector('#btnPlusActionSupport');
+                if (btnSup) btnSup.onclick = () => executePlusAction('support');
+                const btnAlt = menu.querySelector('#btnPlusActionAlert');
+                if (btnAlt) btnAlt.onclick = () => executePlusAction('alert');
+
+                menu.onmouseleave = () => {
+                    setTimeout(() => {
+                        const badge = document.getElementById('rightPriceAxisPlusBadge');
+                        const isBadgeHovered = badge && badge.matches(':hover');
+                        const isMenuHovered = menu.matches(':hover');
+                        if (!isMenuHovered && !isBadgeHovered) {
+                            hidePlusActionMenu();
+                        }
+                    }, 200);
+                };
+            }
+
+            const targetEl = document.getElementById('plusActionTargetPrice');
+            if (targetEl) targetEl.innerText = currentPlusActionPrice.toFixed(2);
+            document.getElementById('plusActionSupportPrice').innerText = currentPlusActionPrice.toFixed(2);
+            document.getElementById('plusActionAlertPrice').innerText = currentPlusActionPrice.toFixed(2);
+
+            const badge = document.getElementById('rightPriceAxisPlusBadge');
+            const topPos = badge ? badge.offsetTop : 50;
+            menu.style.top = Math.max(10, Math.min(topPos - 10, mainContainer.clientHeight - 90)) + 'px';
+            menu.style.right = '70px';
+            menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+        }
+
+        function hidePlusActionMenu() {
+            const menu = document.getElementById('plusActionMenu');
+            if (menu) menu.style.display = 'none';
+        }
+
+        function executePlusAction(actionType) {
+            if (!currentPlusActionPrice) return;
+            const price = currentPlusActionPrice;
+            hidePlusActionMenu();
+
+            if (actionType === 'target') {
+                addHorizontalLineAtPrice('target', price, '#f59e0b', 'Target');
+                showSupportAddedToast(price, '🎯 Target Line');
+            } else if (actionType === 'support') {
+                addHorizontalLineAtPrice('support', price, activeToolColor || '#10b981', 'Support');
+                showSupportAddedToast(price, '🟢 Support Line');
+            } else if (actionType === 'alert') {
+                openCreateAlertModal(currentChartSymbol, price);
             }
         }
 
-        function showSupportAddedToast(price) {
+        window.toggleRightAxisPlusMenu = toggleRightAxisPlusMenu;
+        window.hidePlusActionMenu = hidePlusActionMenu;
+        window.executePlusAction = executePlusAction;
+
+        function showSupportAddedToast(price, labelStr = '🟢 Support Line') {
             let toast = document.getElementById('supportAddedToast');
             const mainContainer = document.getElementById('mainChartPane');
             if (!toast && mainContainer) {
@@ -6590,7 +6974,7 @@
                 mainContainer.appendChild(toast);
             }
             if (toast) {
-                toast.innerText = `🟢 Support Line added at ₹${price}`;
+                toast.innerText = `${labelStr} added at ₹${price}`;
                 toast.style.opacity = '1';
                 toast.style.display = 'block';
                 setTimeout(() => {
@@ -6602,35 +6986,37 @@
         function updateRightAxisTimePriceBadge(param) {
             const mainContainer = document.getElementById('mainChartPane');
             if (!mainContainer) return;
-            let container = document.getElementById('rightAxisCrosshairContainer');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'rightAxisCrosshairContainer';
-                container.style.cssText = `
-                    position: absolute;
-                    right: 2px;
-                    z-index: 28;
-                    display: none;
-                    align-items: center;
-                    pointer-events: auto;
-                    transition: top 0.04s ease-out;
-                `;
-                container.innerHTML = `
-                    <button id="crosshairPlusBtn" onclick="addSupportLineFromCrosshair(event)" style="background: #2a2e39; border: 1px solid #787b86; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; margin-right: 4px; cursor: pointer; transition: background 0.15s, transform 0.1s;" title="Click + to add Support Line at this price">+</button>
-                    <div id="rightAxisTimePriceBadge" style="background: rgba(19, 23, 34, 0.95); border: 1px solid #3b82f6; color: #f8fafc; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: monospace; box-shadow: 0 4px 12px rgba(0,0,0,0.4); white-space: nowrap;"></div>
-                `;
-                mainContainer.appendChild(container);
 
-                const btn = container.querySelector('#crosshairPlusBtn');
-                if (btn) {
-                    btn.onmouseenter = () => { btn.style.background = '#10b981'; btn.style.transform = 'scale(1.15)'; };
-                    btn.onmouseleave = () => { btn.style.background = '#2a2e39'; btn.style.transform = 'scale(1.0)'; };
-                }
+            let badge = document.getElementById('rightAxisTimePriceBadge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.id = 'rightAxisTimePriceBadge';
+                badge.style.cssText = `
+                    position: absolute;
+                    right: 65px;
+                    z-index: 24;
+                    background: rgba(19, 23, 34, 0.95);
+                    border: 1px solid #3b82f6;
+                    color: #f8fafc;
+                    padding: 3px 8px;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    font-family: monospace;
+                    pointer-events: none;
+                    display: none;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                    white-space: nowrap;
+                    transition: top 0.05s ease-out;
+                `;
+                mainContainer.appendChild(badge);
             }
 
-            if (!param || !param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
-                container.style.display = 'none';
-                currentCrosshairPrice = null;
+            if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
+                badge.style.display = 'none';
+                if (!isRightAxisHovered) {
+                    handleRightAxisMouseLeave();
+                }
                 return;
             }
 
@@ -6639,7 +7025,10 @@
                 price = mainSeries.coordinateToPrice(param.point.y);
             }
 
-            currentCrosshairPrice = price;
+            if (price !== null && price !== undefined && !isNaN(price)) {
+                currentRightAxisPrice = parseFloat(price.toFixed(2));
+                renderRightAxisPlusBadge(param.point.y, currentRightAxisPrice);
+            }
 
             let priceStr = (price !== null && price !== undefined && !isNaN(price)) ? '₹' + price.toFixed(2) : '';
             let timeStr = '';
@@ -6655,14 +7044,13 @@
                 timeStr = String(param.time);
             }
 
-            const badgeTextEl = container.querySelector('#rightAxisTimePriceBadge');
             if (priceStr || timeStr) {
-                if (badgeTextEl) badgeTextEl.innerText = `${priceStr}${priceStr && timeStr ? ' | ' : ''}${timeStr}`;
+                badge.innerText = `${priceStr}${priceStr && timeStr ? ' | ' : ''}${timeStr}`;
                 const topPos = Math.max(5, Math.min(param.point.y - 12, mainContainer.clientHeight - 30));
-                container.style.top = topPos + 'px';
-                container.style.display = 'flex';
+                badge.style.top = topPos + 'px';
+                badge.style.display = 'block';
             } else {
-                container.style.display = 'none';
+                badge.style.display = 'none';
             }
         }
 
@@ -6769,37 +7157,6 @@
             badge.style.display = 'flex';
         }
 
-            // Setup automatic ResizeObserver for smooth resizing on window change or pane toggling
-            if (chartResizeObserver) {
-                chartResizeObserver.disconnect();
-            }
-            const bodyContainer = document.querySelector('.chart-body-container');
-            if (bodyContainer && window.ResizeObserver) {
-                chartResizeObserver = new ResizeObserver(() => {
-                    resizeChartPanes();
-                });
-                chartResizeObserver.observe(bodyContainer);
-            } else {
-                window.onresize = function() {
-                    resizeChartPanes();
-                };
-            }
-
-            // Restore active drawing lines saved for this stock
-            restoreSavedPriceLines(currentChartSymbol);
-
-            setupCanvasOverlay();
-            if (mainChart) {
-                mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => redrawCanvasOverlay());
-                mainChart.subscribeCrosshairMove(() => redrawCanvasOverlay());
-            }
-
-            toggleIndicators();
-            resizeChartPanes();
-            redrawCanvasOverlay();
-            startCandleCountdownTimer();
-        }
-
         function updateLegend(time, o, h, l, c, vol, fullData, curTime = null) {
             let timeStr = '-';
             if (typeof time === 'number') {
@@ -6844,7 +7201,7 @@
         function toggleIndicators() {
             if (!volumeSeries) return;
 
-            const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : true;
+            const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false;
             const showVol = document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true;
             const showSma50 = document.getElementById('chkSma50') ? document.getElementById('chkSma50').checked : false;
             const showSma200 = document.getElementById('chkSma200') ? document.getElementById('chkSma200').checked : false;
@@ -6867,6 +7224,9 @@
             } catch(e){}
 
             if (cdRiderSeries) cdRiderSeries.applyOptions({ visible: showCdRider });
+            if (mainSeries) {
+                mainSeries.setMarkers(showCdRider ? cachedCdRiderMarkers : []);
+            }
             volumeSeries.applyOptions({ visible: showVol });
             if (sma50Series) sma50Series.applyOptions({ visible: showSma50 });
             if (sma200Series) sma200Series.applyOptions({ visible: showSma200 });
@@ -7148,13 +7508,13 @@
             }
         }
 
-        function openCreateAlertModal(symbol) {
+        function openCreateAlertModal(symbol, customPrice = null) {
             const sym = symbol || (currentDetailHolding ? currentDetailHolding.symbol : '');
             if (!sym) return;
             document.getElementById('modal-alert-symbol').value = sym;
-            const stockInfo = stockPricesData[sym] || {};
-            const curPrice = stockInfo.price || '';
-            document.getElementById('modal-alert-price').value = curPrice;
+            const stockInfo = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
+            const valToSet = (customPrice !== null && customPrice !== undefined) ? customPrice : (stockInfo.price || '');
+            document.getElementById('modal-alert-price').value = valToSet;
             document.getElementById('modal-alert-note').value = '';
             document.getElementById('createAlertModal').style.display = 'block';
         }
@@ -7347,9 +7707,15 @@
             if (menuDropdown && !event.target.closest('.menu-dropdown-wrapper')) {
                 menuDropdown.classList.remove('show');
             }
+
+            const plusMenu = document.getElementById('plusActionMenu');
+            if (plusMenu && plusMenu.style.display === 'block' && !event.target.closest('#plusActionMenu') && !event.target.closest('#axisPlusBtn')) {
+                hidePlusActionMenu();
+            }
         }
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
+                hidePlusActionMenu();
                 closeChartModal();
                 closeEditModal();
                 closeHoldingDetailsModal();
