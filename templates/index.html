@@ -612,6 +612,13 @@
         .popover-divider { height: 1px; background: #2a2e39; margin: 4px 0; }
         .item-danger { color: #ef5350 !important; }
         .item-danger:hover { background: rgba(239, 83, 80, 0.15) !important; }
+        .color-dot { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; border: 2px solid transparent; flex-shrink: 0; }
+        .color-dot:hover { transform: scale(1.25); }
+        .color-dot.active { transform: scale(1.25); border-color: #ffffff; box-shadow: 0 0 8px rgba(255,255,255,0.7); }
+        .active-drawing-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 4px; background: #131722; border: 1px solid #2a2e39; border-radius: 6px; font-size: 11px; color: #d1d4dc; gap: 8px; }
+        .active-drawing-item:hover { border-color: #363a45; }
+        .active-drawing-delete-btn { background: transparent; border: none; color: #ef5350; cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 4px; transition: background 0.15s ease; flex-shrink: 0; }
+        .active-drawing-delete-btn:hover { background: rgba(239, 83, 80, 0.2); }
         .chart-action-btn { background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
         .chart-action-btn:hover { background: #2a2e39; color: #ffffff; }
         .chart-close-btn { background: transparent; border: none; color: #a3a6af; font-size: 24px; font-weight: bold; cursor: pointer; line-height: 1; padding: 2px 8px; border-radius: 6px; transition: all 0.15s ease; margin-left: 4px; }
@@ -1490,18 +1497,37 @@
 
                         <!-- 2. Drawing Tools Popover -->
                         <div class="chart-popover-wrapper">
-                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event)">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event); renderActiveDrawingsList();">
                                 <span>✏️ Tools</span> <span class="popover-arrow">▾</span>
                             </button>
-                            <div class="chart-popover-menu" id="popover-tools">
+                            <div class="chart-popover-menu" id="popover-tools" style="min-width: 260px; max-height: 480px; overflow-y: auto;">
+                                <div class="popover-menu-title">Tool Color</div>
+                                <div class="tool-color-selector" style="display: flex; gap: 6px; padding: 4px 12px 8px; align-items: center; flex-wrap: wrap;">
+                                    <div class="color-dot active" style="background: #10b981;" onclick="setActiveToolColor('#10b981', this)" title="Emerald Green"></div>
+                                    <div class="color-dot" style="background: #ef5350;" onclick="setActiveToolColor('#ef5350', this)" title="Red"></div>
+                                    <div class="color-dot" style="background: #3b82f6;" onclick="setActiveToolColor('#3b82f6', this)" title="Blue"></div>
+                                    <div class="color-dot" style="background: #f59e0b;" onclick="setActiveToolColor('#f59e0b', this)" title="Yellow"></div>
+                                    <div class="color-dot" style="background: #a855f7;" onclick="setActiveToolColor('#a855f7', this)" title="Purple"></div>
+                                    <div class="color-dot" style="background: #ffffff; border: 1px solid #787b86;" onclick="setActiveToolColor('#ffffff', this)" title="White"></div>
+                                    <div class="color-dot" style="background: #f97316;" onclick="setActiveToolColor('#f97316', this)" title="Orange"></div>
+                                    <input type="color" id="toolCustomColorPicker" value="#10b981" onchange="setActiveToolColor(this.value, null)" style="width: 20px; height: 20px; padding: 0; border: none; background: transparent; cursor: pointer;" title="Custom Color">
+                                </div>
+
+                                <div class="popover-divider"></div>
                                 <div class="popover-menu-title">Drawing Tools</div>
-                                <button class="popover-menu-item" id="tool-btn-support" onclick="addHorizontalLine('support'); closeAllChartPopovers();">🟢 Support Line</button>
-                                <button class="popover-menu-item" id="tool-btn-target" onclick="addHorizontalLine('target'); closeAllChartPopovers();">🎯 Target Price</button>
-                                <button class="popover-menu-item" id="tool-btn-stoploss" onclick="addHorizontalLine('stoploss'); closeAllChartPopovers();">🛑 StopLoss Line</button>
+                                <button class="popover-menu-item" id="tool-btn-support-click" onclick="activateDrawingTool('support_click'); closeAllChartPopovers();">📍 Support Line (Click Chart / Y-Axis)</button>
+                                <button class="popover-menu-item" id="tool-btn-support" onclick="addHorizontalLinePrompt('support'); closeAllChartPopovers();">🟢 Support Line (Enter Price)</button>
+                                <button class="popover-menu-item" id="tool-btn-target" onclick="addHorizontalLinePrompt('target'); closeAllChartPopovers();">🎯 Target Price Line</button>
+                                <button class="popover-menu-item" id="tool-btn-stoploss" onclick="addHorizontalLinePrompt('stoploss'); closeAllChartPopovers();">🛑 StopLoss Line</button>
                                 <button class="popover-menu-item" id="tool-btn-trendline" onclick="activateDrawingTool('trendline'); closeAllChartPopovers();">📈 Diagonal Trendline</button>
                                 <button class="popover-menu-item" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle'); closeAllChartPopovers();">⬛ Rectangle Zone</button>
                                 <button class="popover-menu-item" id="tool-btn-vertical" onclick="activateDrawingTool('vertical'); closeAllChartPopovers();">🕒 Time Line Marker</button>
                                 <button class="popover-menu-item" id="tool-btn-note" onclick="activateDrawingTool('note'); closeAllChartPopovers();">📍 Text Callout / Note</button>
+
+                                <div class="popover-divider"></div>
+                                <div class="popover-menu-title">Active Drawings (<span id="activeDrawingsCount">0</span>)</div>
+                                <div id="activeDrawingsListMount" style="max-height: 160px; overflow-y: auto; padding: 0 8px;"></div>
+
                                 <div class="popover-divider"></div>
                                 <button class="popover-menu-item item-danger" onclick="clearDrawings(); closeAllChartPopovers();">🧹 Clear All Drawings</button>
                             </div>
@@ -5356,6 +5382,30 @@
             } catch(e){}
         }
 
+        let activeToolColor = '#10b981'; // Active drawing color
+
+        function setActiveToolColor(colorHex, el) {
+            activeToolColor = colorHex;
+            document.querySelectorAll('.tool-color-selector .color-dot').forEach(dot => dot.classList.remove('active'));
+            if (el) {
+                el.classList.add('active');
+            }
+            const picker = document.getElementById('toolCustomColorPicker');
+            if (picker) picker.value = colorHex;
+        }
+
+        function hexToRgba(hex, alpha) {
+            if (!hex) return `rgba(16, 185, 129, ${alpha})`;
+            let c = hex.replace('#', '');
+            if (c.length === 3) c = c.split('').map(x => x + x).join('');
+            const num = parseInt(c, 16);
+            if (isNaN(num)) return `rgba(16, 185, 129, ${alpha})`;
+            return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        }
+
+        // =========================================================
+        // DRAWINGS STORAGE & INDIVIDUAL MANAGEMENT
+        // =========================================================
         function getSavedPriceLines(sym) {
             try {
                 const data = localStorage.getItem('capital_desk_chart_lines_' + sym);
@@ -5365,215 +5415,73 @@
 
         function savePriceLineForSymbol(sym, lineData) {
             try {
+                if (!lineData.id) {
+                    lineData.id = 'pl_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                }
                 const existing = getSavedPriceLines(sym);
                 existing.push(lineData);
                 localStorage.setItem('capital_desk_chart_lines_' + sym, JSON.stringify(existing));
+                renderActiveDrawingsList();
             } catch(e){}
         }
 
         function clearSavedPriceLines(sym) {
             try {
                 localStorage.removeItem('capital_desk_chart_lines_' + sym);
+                renderActiveDrawingsList();
             } catch(e){}
         }
 
         function restoreSavedPriceLines(sym) {
             if (!mainSeries || !sym) return;
+            // Remove existing line objects from series first
+            if (activePriceLines.length > 0) {
+                activePriceLines.forEach(item => {
+                    try { mainSeries.removePriceLine(item.lineObj); } catch(e){}
+                });
+                activePriceLines = [];
+            }
+
             const lines = getSavedPriceLines(sym);
             lines.forEach(item => {
                 try {
                     const priceLine = mainSeries.createPriceLine({
                         price: item.price,
-                        color: item.color || '#eab308',
+                        color: item.color || '#10b981',
                         lineWidth: 2,
                         lineStyle: LightweightCharts.LineStyle.Dashed,
                         axisLabelVisible: true,
                         title: `${item.label || 'Line'}: ₹${item.price}`
                     });
-                    activePriceLines.push(priceLine);
+                    activePriceLines.push({ id: item.id, lineObj: priceLine, data: item });
                 } catch(e){}
             });
+            renderActiveDrawingsList();
         }
 
-        function openInHouseChart(sym) {
-            currentChartSymbol = sym;
-            
-            // Restore saved interval, range, and chart type preferences
-            currentChartInterval = localStorage.getItem('capital_desk_chart_interval') || '1d';
-            currentChartRange = localStorage.getItem('capital_desk_chart_range') || '1y';
-            chartType = localStorage.getItem('capital_desk_chart_type') || 'candlestick';
-
-            // Restore chart type button active states
-            const btnCandles = document.getElementById('chart-type-candles');
-            const btnLine = document.getElementById('chart-type-line');
-            const btnArea = document.getElementById('chart-type-area');
-            if (btnCandles) btnCandles.classList.toggle('active', chartType === 'candlestick');
-            if (btnLine) btnLine.classList.toggle('active', chartType === 'line');
-            if (btnArea) btnArea.classList.toggle('active', chartType === 'area');
-
-            // Restore saved indicator checkboxes
-            loadSavedChartIndicators();
-
-            const modal = document.getElementById('chartModal');
-            modal.style.display = 'block';
-
-            const info = stockPricesData[sym] || {};
-            document.getElementById('chartSymbolDisplay').innerText = sym;
-            document.getElementById('chartNameDisplay').innerText = info.name || sym;
-
-            updateIntervalButtonsUI();
-            updateRangeButtonsUI();
-
-            setTimeout(() => {
-                loadChartData();
-            }, 20);
-        }
-
-        function changeInterval(intervalStr) {
-            currentChartInterval = intervalStr;
-
-            if (intervalStr === '5m') {
-                currentChartRange = '1d';
-            } else if (intervalStr === '15m') {
-                currentChartRange = '5d';
-            } else if (intervalStr === '1h') {
-                currentChartRange = '1mo';
-            } else if (intervalStr === '1d') {
-                currentChartRange = '1y';
-            } else if (intervalStr === '1w') {
-                currentChartRange = '2y';
-            } else if (intervalStr === '1mo') {
-                currentChartRange = '5y';
+        function deletePriceLineById(id) {
+            const idx = activePriceLines.findIndex(pl => pl.id === id);
+            if (idx !== -1) {
+                try { mainSeries.removePriceLine(activePriceLines[idx].lineObj); } catch(e){}
+                activePriceLines.splice(idx, 1);
             }
-
-            localStorage.setItem('capital_desk_chart_interval', currentChartInterval);
-            localStorage.setItem('capital_desk_chart_range', currentChartRange);
-
-            updateIntervalButtonsUI();
-            updateRangeButtonsUI();
-            loadChartData();
-        }
-
-        function changeRange(rangeStr) {
-            currentChartRange = rangeStr;
-            localStorage.setItem('capital_desk_chart_range', currentChartRange);
-            updateRangeButtonsUI();
-            loadChartData();
-        }
-
-        function updateIntervalButtonsUI() {
-            document.querySelectorAll('.int-btn').forEach(btn => {
-                if (btn.id === `int-${currentChartInterval}`) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-            const labelEl = document.getElementById('intervalBtnLabel');
-            if (labelEl) {
-                labelEl.innerText = `⏱️ ${currentChartInterval.toUpperCase()}`;
-            }
-        }
-
-        function updateRangeButtonsUI() {
-            document.querySelectorAll('.tf-btn').forEach(btn => {
-                if (btn.id === `tf-${currentChartRange}`) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-            const labelEl = document.getElementById('rangeBtnLabel');
-            if (labelEl) {
-                labelEl.innerText = `📅 ${currentChartRange.toUpperCase()}`;
-            }
-        }
-
-        function setChartType(type) {
-            chartType = type;
-            localStorage.setItem('capital_desk_chart_type', type);
-            const btnCandles = document.getElementById('chart-type-candles');
-            const btnLine = document.getElementById('chart-type-line');
-            const btnArea = document.getElementById('chart-type-area');
-            if (btnCandles) btnCandles.classList.toggle('active', type === 'candlestick');
-            if (btnLine) btnLine.classList.toggle('active', type === 'line');
-            if (btnArea) btnArea.classList.toggle('active', type === 'area');
-
-            const labelEl = document.getElementById('typeBtnLabel');
-            if (labelEl) {
-                const titleMap = { candlestick: '🕯️ Candles', line: '📈 Line', area: '🌊 Area' };
-                labelEl.innerText = titleMap[type] || '🕯️ Type';
-            }
-
-            if (cachedChartData) {
-                renderInHouseCharts(cachedChartData);
-            }
-        }
-
-        function addHorizontalLine(type) {
-            if (!mainSeries || !latestCandlePrice) {
-                alert('Please wait for chart data to load.');
-                return;
-            }
-
-            let defaultPrice = latestCandlePrice;
-            let label = 'Support';
-            let color = '#eab308';
-
-            if (type === 'target') {
-                defaultPrice = parseFloat((latestCandlePrice * 1.05).toFixed(2));
-                label = 'Target';
-                color = '#10b981';
-            } else if (type === 'stoploss') {
-                defaultPrice = parseFloat((latestCandlePrice * 0.95).toFixed(2));
-                label = 'Stop Loss';
-                color = '#ef5350';
-            }
-
-            const inputVal = prompt(`Enter price level for ${label}:`, defaultPrice);
-            if (!inputVal) return;
-
-            const price = parseFloat(inputVal);
-            if (isNaN(price)) {
-                alert('Invalid price value.');
-                return;
-            }
-
-            const lineData = { type: type, price: price, color: color, label: label };
-
-            const priceLine = mainSeries.createPriceLine({
-                price: price,
-                color: color,
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Dashed,
-                axisLabelVisible: true,
-                title: `${label}: ₹${price}`
-            });
-
-            activePriceLines.push(priceLine);
-            savePriceLineForSymbol(currentChartSymbol, lineData);
-        }
-
-        function clearDrawings() {
-            if (mainSeries && activePriceLines.length > 0) {
-                activePriceLines.forEach(pl => {
-                    try { mainSeries.removePriceLine(pl); } catch(e){}
-                });
-                activePriceLines = [];
-            }
-            clearSavedPriceLines(currentChartSymbol);
-            clearSavedChartShapes(currentChartSymbol);
-            cancelDrawingTool();
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const updated = lines.filter(item => item.id !== id);
+            localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(updated));
             redrawCanvasOverlay();
+            renderActiveDrawingsList();
         }
 
-        // =========================================================
-        // ADVANCED CHART DRAWING TOOLS (Trendline, Rectangle, Time Line, Note)
-        // =========================================================
-        let currentDrawingTool = null; // 'trendline' | 'rectangle' | 'vertical' | 'note'
-        let drawingPoints = [];
-        let tempMousePos = null;
-        let drawingCanvas = null;
+        function updatePriceLineColorById(id, newColor) {
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const item = lines.find(x => x.id === id);
+            if (item) {
+                item.color = newColor;
+                localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                restoreSavedPriceLines(currentChartSymbol);
+                redrawCanvasOverlay();
+            }
+        }
 
         function getSavedChartShapes(sym) {
             try {
@@ -5584,17 +5492,169 @@
 
         function saveChartShapeForSymbol(sym, shapeData) {
             try {
+                if (!shapeData.id) {
+                    shapeData.id = 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                }
                 const existing = getSavedChartShapes(sym);
                 existing.push(shapeData);
                 localStorage.setItem('capital_desk_chart_shapes_' + sym, JSON.stringify(existing));
+                renderActiveDrawingsList();
             } catch(e){}
         }
 
         function clearSavedChartShapes(sym) {
             try {
                 localStorage.removeItem('capital_desk_chart_shapes_' + sym);
+                renderActiveDrawingsList();
             } catch(e){}
         }
+
+        function deleteShapeById(id) {
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            const updated = shapes.filter(s => s.id !== id);
+            localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(updated));
+            redrawCanvasOverlay();
+            renderActiveDrawingsList();
+        }
+
+        function updateShapeColorById(id, newColor) {
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            const shape = shapes.find(s => s.id === id);
+            if (shape) {
+                shape.color = newColor;
+                if (shape.type === 'rectangle') {
+                    shape.fillColor = hexToRgba(newColor, 0.18);
+                }
+                localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                redrawCanvasOverlay();
+                renderActiveDrawingsList();
+            }
+        }
+
+        function renderActiveDrawingsList() {
+            const mount = document.getElementById('activeDrawingsListMount');
+            const countEl = document.getElementById('activeDrawingsCount');
+            if (!mount) return;
+
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            const totalCount = lines.length + shapes.length;
+
+            if (countEl) countEl.innerText = totalCount;
+
+            if (totalCount === 0) {
+                mount.innerHTML = `<div style="text-align: center; color: #787b86; padding: 10px 0; font-size: 11px;">No drawings placed.</div>`;
+                return;
+            }
+
+            let html = '';
+
+            lines.forEach(l => {
+                const labelName = l.label || 'Support';
+                html += `
+                    <div class="active-drawing-item">
+                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                            <input type="color" value="${l.color || '#10b981'}" onchange="updatePriceLineColorById('${l.id}', this.value)" style="width: 14px; height: 14px; border: none; padding: 0; background: transparent; cursor: pointer; flex-shrink: 0;" title="Change line color">
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${labelName}: ₹${l.price}</span>
+                        </div>
+                        <button class="active-drawing-delete-btn" onclick="deletePriceLineById('${l.id}')" title="Delete this line">🗑️</button>
+                    </div>
+                `;
+            });
+
+            shapes.forEach(s => {
+                let name = 'Shape';
+                if (s.type === 'trendline') name = '📈 Trendline';
+                else if (s.type === 'rectangle') name = '⬛ Rectangle';
+                else if (s.type === 'vertical') name = '🕒 Time Line';
+                else if (s.type === 'note') name = `📍 Note: ${s.text || ''}`;
+
+                html += `
+                    <div class="active-drawing-item">
+                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                            <input type="color" value="${s.color || '#3b82f6'}" onchange="updateShapeColorById('${s.id}', this.value)" style="width: 14px; height: 14px; border: none; padding: 0; background: transparent; cursor: pointer; flex-shrink: 0;" title="Change shape color">
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${name}</span>
+                        </div>
+                        <button class="active-drawing-delete-btn" onclick="deleteShapeById('${s.id}')" title="Delete this shape">🗑️</button>
+                    </div>
+                `;
+            });
+
+            mount.innerHTML = html;
+        }
+
+        function addHorizontalLinePrompt(type) {
+            if (!mainSeries || !latestCandlePrice) {
+                alert('Please wait for chart data to load.');
+                return;
+            }
+
+            let defaultPrice = latestCandlePrice;
+            let label = 'Support';
+            let color = activeToolColor || '#10b981';
+
+            if (type === 'target') {
+                defaultPrice = parseFloat((latestCandlePrice * 1.05).toFixed(2));
+                label = 'Target';
+                color = activeToolColor || '#10b981';
+            } else if (type === 'stoploss') {
+                defaultPrice = parseFloat((latestCandlePrice * 0.95).toFixed(2));
+                label = 'Stop Loss';
+                color = activeToolColor || '#ef5350';
+            }
+
+            const inputVal = prompt(`Enter custom price for ${label}:`, defaultPrice);
+            if (!inputVal) return;
+
+            const price = parseFloat(inputVal);
+            if (isNaN(price)) {
+                alert('Invalid price value.');
+                return;
+            }
+
+            addHorizontalLineAtPrice(type, price, color, label);
+        }
+
+        function addHorizontalLineAtPrice(type, price, color, customLabel = null) {
+            if (!mainSeries) return;
+            const label = customLabel || (type === 'target' ? 'Target' : type === 'stoploss' ? 'Stop Loss' : 'Support');
+            const lineId = 'pl_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+            const lineData = { id: lineId, type: type, price: price, color: color || activeToolColor, label: label };
+
+            const priceLine = mainSeries.createPriceLine({
+                price: price,
+                color: color || activeToolColor,
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `${label}: ₹${price}`
+            });
+
+            activePriceLines.push({ id: lineId, lineObj: priceLine, data: lineData });
+            savePriceLineForSymbol(currentChartSymbol, lineData);
+        }
+
+        function clearDrawings() {
+            if (mainSeries && activePriceLines.length > 0) {
+                activePriceLines.forEach(item => {
+                    try { mainSeries.removePriceLine(item.lineObj); } catch(e){}
+                });
+                activePriceLines = [];
+            }
+            clearSavedPriceLines(currentChartSymbol);
+            clearSavedChartShapes(currentChartSymbol);
+            cancelDrawingTool();
+            hideCanvasObjectMenu();
+            redrawCanvasOverlay();
+        }
+
+        // =========================================================
+        // ADVANCED CHART DRAWING TOOLS (Trendline, Rectangle, Time Line, Note, Support Click)
+        // =========================================================
+        let currentDrawingTool = null; // 'support_click' | 'trendline' | 'rectangle' | 'vertical' | 'note'
+        let drawingPoints = [];
+        let tempMousePos = null;
+        let drawingCanvas = null;
 
         function activateDrawingTool(toolType) {
             if (!mainSeries || !mainChart) {
@@ -5602,6 +5662,7 @@
                 return;
             }
 
+            hideCanvasObjectMenu();
             currentDrawingTool = toolType;
             drawingPoints = [];
             tempMousePos = null;
@@ -5612,7 +5673,7 @@
         }
 
         function updateDrawingToolButtonsUI() {
-            const tools = ['support', 'target', 'stoploss', 'trendline', 'rectangle', 'vertical', 'note'];
+            const tools = ['support_click', 'support', 'target', 'stoploss', 'trendline', 'rectangle', 'vertical', 'note'];
             tools.forEach(t => {
                 const btn = document.getElementById(`tool-btn-${t}`);
                 if (btn) {
@@ -5658,7 +5719,8 @@
             }
 
             let msg = 'Click on chart to draw';
-            if (toolType === 'trendline') msg = '📐 Trendline: Click 1st point (Start), then 2nd point (End). Press Esc to cancel.';
+            if (toolType === 'support_click') msg = '🟢 Support Line: Click anywhere on chart or Right Y-Axis to place line at price level.';
+            else if (toolType === 'trendline') msg = '📐 Trendline: Click 1st point (Start), then 2nd point (End). Press Esc to cancel.';
             else if (toolType === 'rectangle') msg = '⬜ Rectangle Zone: Click 1st corner, then opposite corner. Press Esc to cancel.';
             else if (toolType === 'vertical') msg = '⏱️ Time Line: Click on chart to place vertical marker. Press Esc to cancel.';
             else if (toolType === 'note') msg = '📍 Text Note: Click on chart to place text note. Press Esc to cancel.';
@@ -5685,8 +5747,9 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && currentDrawingTool) {
+            if (e.key === 'Escape') {
                 cancelDrawingTool();
+                hideCanvasObjectMenu();
             }
         });
 
@@ -5764,58 +5827,190 @@
         }
 
         function handleCanvasClick(e) {
-            if (!currentDrawingTool) return;
             const pt = getChartPointFromEvent(e);
-            if (!pt || !pt.time || !pt.price) return;
+            if (!pt) return;
 
-            if (currentDrawingTool === 'vertical') {
-                const shape = {
-                    type: 'vertical',
-                    time: pt.time,
-                    color: '#f59e0b'
-                };
-                saveChartShapeForSymbol(currentChartSymbol, shape);
-                cancelDrawingTool();
-            } else if (currentDrawingTool === 'note') {
-                const noteText = prompt('Enter note text:', 'Key Level / Breakout');
-                if (noteText) {
+            // If a drawing tool is active:
+            if (currentDrawingTool) {
+                if (!pt.price) return;
+
+                if (currentDrawingTool === 'support_click') {
+                    addHorizontalLineAtPrice('support', parseFloat(pt.price.toFixed(2)), activeToolColor || '#10b981', 'Support');
+                    cancelDrawingTool();
+                    return;
+                } else if (currentDrawingTool === 'vertical') {
+                    if (!pt.time) return;
                     const shape = {
-                        type: 'note',
+                        id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                        type: 'vertical',
                         time: pt.time,
-                        price: pt.price,
-                        text: noteText,
-                        color: '#10b981'
+                        color: activeToolColor || '#f59e0b'
                     };
-                    saveChartShapeForSymbol(currentChartSymbol, shape);
-                }
-                cancelDrawingTool();
-            } else if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle') {
-                if (drawingPoints.length === 0) {
-                    drawingPoints.push(pt);
-                    const banner = document.getElementById('drawingToolBanner');
-                    if (banner) {
-                        const actionName = currentDrawingTool === 'trendline' ? 'Trendline' : 'Rectangle Zone';
-                        const span = banner.querySelector('span');
-                        if (span) span.innerText = `Click 2nd point to complete ${actionName}`;
-                    }
-                } else {
-                    const pt1 = drawingPoints[0];
-                    const pt2 = pt;
-
-                    const shape = {
-                        type: currentDrawingTool,
-                        time1: pt1.time,
-                        price1: pt1.price,
-                        time2: pt2.time,
-                        price2: pt2.price,
-                        color: currentDrawingTool === 'trendline' ? '#3b82f6' : '#a855f7',
-                        fillColor: currentDrawingTool === 'rectangle' ? 'rgba(168, 85, 247, 0.18)' : null
-                    };
-
                     saveChartShapeForSymbol(currentChartSymbol, shape);
                     cancelDrawingTool();
+                    return;
+                } else if (currentDrawingTool === 'note') {
+                    if (!pt.time) return;
+                    const noteText = prompt('Enter text for note:', 'Key Support / Target');
+                    if (noteText) {
+                        const shape = {
+                            id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                            type: 'note',
+                            time: pt.time,
+                            price: pt.price,
+                            text: noteText,
+                            color: activeToolColor || '#10b981'
+                        };
+                        saveChartShapeForSymbol(currentChartSymbol, shape);
+                    }
+                    cancelDrawingTool();
+                    return;
+                } else if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle') {
+                    if (!pt.time) return;
+                    if (drawingPoints.length === 0) {
+                        drawingPoints.push(pt);
+                        const banner = document.getElementById('drawingToolBanner');
+                        if (banner) {
+                            const actionName = currentDrawingTool === 'trendline' ? 'Trendline' : 'Rectangle Zone';
+                            const span = banner.querySelector('span');
+                            if (span) span.innerText = `Click 2nd point to complete ${actionName}`;
+                        }
+                    } else {
+                        const pt1 = drawingPoints[0];
+                        const pt2 = pt;
+
+                        const shape = {
+                            id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                            type: currentDrawingTool,
+                            time1: pt1.time,
+                            price1: pt1.price,
+                            time2: pt2.time,
+                            price2: pt2.price,
+                            color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : '#a855f7'),
+                            fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null
+                        };
+
+                        saveChartShapeForSymbol(currentChartSymbol, shape);
+                        cancelDrawingTool();
+                    }
+                    return;
                 }
             }
+
+            // Normal Mode: Check if user clicked on an existing shape/line to inspect or delete
+            const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
+            if (clickedObj) {
+                showCanvasObjectMenu(clickedObj, pt.x, pt.y);
+            } else {
+                hideCanvasObjectMenu();
+            }
+        }
+
+        function findShapeOrLineAtPoint(x, y) {
+            if (!mainChart || !mainSeries) return null;
+            const timeScale = mainChart.timeScale();
+
+            // Check price lines first
+            const lines = getSavedPriceLines(currentChartSymbol);
+            for (let l of lines) {
+                const lineY = mainSeries.priceToCoordinate(l.price);
+                if (lineY !== null && Math.abs(y - lineY) < 8) {
+                    return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color };
+                }
+            }
+
+            // Check shapes
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            for (let s of shapes) {
+                if (s.type === 'vertical') {
+                    const shapeX = timeScale.timeToCoordinate(s.time);
+                    if (shapeX !== null && Math.abs(x - shapeX) < 8) {
+                        return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color };
+                    }
+                } else if (s.type === 'note') {
+                    const shapeX = timeScale.timeToCoordinate(s.time);
+                    const shapeY = mainSeries.priceToCoordinate(s.price);
+                    if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 30 && Math.abs(y - shapeY) < 20) {
+                        return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color };
+                    }
+                } else if (s.type === 'trendline') {
+                    const x1 = timeScale.timeToCoordinate(s.time1);
+                    const y1 = mainSeries.priceToCoordinate(s.price1);
+                    const x2 = timeScale.timeToCoordinate(s.time2);
+                    const y2 = mainSeries.priceToCoordinate(s.price2);
+                    if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        const dist = distanceToSegment(x, y, x1, y1, x2, y2);
+                        if (dist < 9) {
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color };
+                        }
+                    }
+                } else if (s.type === 'rectangle') {
+                    const x1 = timeScale.timeToCoordinate(s.time1);
+                    const y1 = mainSeries.priceToCoordinate(s.price1);
+                    const x2 = timeScale.timeToCoordinate(s.time2);
+                    const y2 = mainSeries.priceToCoordinate(s.price2);
+                    if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+                        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+                        if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                            return { kind: 'shape', id: s.id, name: 'Rectangle Zone', color: s.color };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function distanceToSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+            if (l2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+        }
+
+        function showCanvasObjectMenu(obj, x, y) {
+            let popup = document.getElementById('canvasObjectPopup');
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!popup && mainContainer) {
+                popup = document.createElement('div');
+                popup.id = 'canvasObjectPopup';
+                popup.style.cssText = `
+                    position: absolute;
+                    background: #1e222d;
+                    border: 1px solid #363a45;
+                    border-radius: 8px;
+                    padding: 6px 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    z-index: 500;
+                    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+                    font-size: 11px;
+                    color: #d1d4dc;
+                `;
+                mainContainer.appendChild(popup);
+            }
+
+            if (popup && mainContainer) {
+                popup.style.left = Math.min(x, mainContainer.clientWidth - 180) + 'px';
+                popup.style.top = Math.max(10, y - 40) + 'px';
+
+                const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
+                const colorFn = obj.kind === 'line' ? `updatePriceLineColorById('${obj.id}', this.value)` : `updateShapeColorById('${obj.id}', this.value)`;
+
+                popup.innerHTML = `
+                    <span style="font-weight: 700; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${obj.name}</span>
+                    <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}" style="width: 18px; height: 18px; border: none; padding: 0; background: transparent; cursor: pointer;" title="Change color">
+                    <button onclick="${deleteFn}" style="background: rgba(239, 83, 80, 0.2); border: 1px solid #ef5350; color: #ef5350; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Delete Item">🗑️ Delete</button>
+                `;
+                popup.style.display = 'flex';
+            }
+        }
+
+        function hideCanvasObjectMenu() {
+            const popup = document.getElementById('canvasObjectPopup');
+            if (popup) popup.style.display = 'none';
         }
 
         function redrawCanvasOverlay() {
@@ -6044,6 +6239,80 @@
             });
         }
 
+        function openInHouseChart(sym) {
+            if (!sym) return;
+            currentChartSymbol = sym;
+            currentChartRange = '1y';
+            currentChartInterval = '1d';
+            
+            const modal = document.getElementById('chartModal');
+            if (modal) {
+                modal.style.display = 'block';
+            }
+
+            const info = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
+            const symDisplay = document.getElementById('chartSymbolDisplay');
+            const nameDisplay = document.getElementById('chartNameDisplay');
+            if (symDisplay) symDisplay.innerText = sym;
+            if (nameDisplay) nameDisplay.innerText = info.name || sym;
+
+            const intervalLabel = document.getElementById('intervalBtnLabel');
+            if (intervalLabel) intervalLabel.innerText = '⏱️ 1D';
+
+            const rangeLabel = document.getElementById('rangeBtnLabel');
+            if (rangeLabel) rangeLabel.innerText = '📅 1Y';
+
+            loadChartData();
+        }
+
+        function openChart(sym) {
+            openInHouseChart(sym);
+        }
+
+        function changeRange(rangeStr) {
+            currentChartRange = rangeStr;
+            const btnLabel = document.getElementById('rangeBtnLabel');
+            if (btnLabel) btnLabel.innerText = '📅 ' + rangeStr.toUpperCase();
+
+            document.querySelectorAll('#popover-range .tf-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === `tf-${rangeStr}`);
+            });
+            loadChartData();
+        }
+
+        function changeInterval(intervalStr) {
+            currentChartInterval = intervalStr;
+            const btnLabel = document.getElementById('intervalBtnLabel');
+            if (btnLabel) btnLabel.innerText = '⏱️ ' + intervalStr.toUpperCase();
+
+            document.querySelectorAll('#popover-interval .int-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === `int-${intervalStr}`);
+            });
+            loadChartData();
+        }
+
+        function setChartType(type) {
+            chartType = type;
+            const btnLabel = document.getElementById('typeBtnLabel');
+            if (btnLabel) {
+                if (type === 'candlestick') btnLabel.innerText = '🕯️ Candles';
+                else if (type === 'line') btnLabel.innerText = '📈 Line';
+                else if (type === 'area') btnLabel.innerText = '🌊 Area';
+            }
+
+            document.querySelectorAll('#popover-type .tf-btn').forEach(btn => {
+                btn.classList.toggle('active', (
+                    (type === 'candlestick' && btn.id === 'chart-type-candles') ||
+                    (type === 'line' && btn.id === 'chart-type-line') ||
+                    (type === 'area' && btn.id === 'chart-type-area')
+                ));
+            });
+
+            if (cachedChartData) {
+                renderInHouseCharts(cachedChartData);
+            }
+        }
+
         async function loadChartData() {
             const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}&interval=${currentChartInterval}`);
             const data = await res.json();
@@ -6245,6 +6514,7 @@
                         const lastVol = data.volume && data.volume.length > 0 ? data.volume[data.volume.length - 1].value : 0;
                         updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol, data);
                     }
+                    updateRightAxisTimePriceBadge(null);
                     return;
                 }
 
@@ -6260,6 +6530,7 @@
                 const volVal = volData ? volData.value : 0;
 
                 updateLegend(param.time, o, h, l, c, volVal, data, param.time);
+                updateRightAxisTimePriceBadge(param);
             });
 
             if (data.candles && data.candles.length > 0) {
@@ -6267,6 +6538,222 @@
                 const lastVol = data.volume && data.volume.length > 0 ? data.volume[data.volume.length - 1].value : 0;
                 updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol, data);
             }
+
+        let currentCrosshairPrice = null;
+        let candleTimerIntervalId = null;
+
+        function addSupportLineFromCrosshair(e) {
+            if (e) e.stopPropagation();
+            if (currentCrosshairPrice !== null && !isNaN(currentCrosshairPrice)) {
+                const p = parseFloat(currentCrosshairPrice.toFixed(2));
+                addHorizontalLineAtPrice('support', p, activeToolColor || '#10b981', 'Support');
+                showSupportAddedToast(p);
+            }
+        }
+
+        function showSupportAddedToast(price) {
+            let toast = document.getElementById('supportAddedToast');
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!toast && mainContainer) {
+                toast = document.createElement('div');
+                toast.id = 'supportAddedToast';
+                toast.style.cssText = `
+                    position: absolute;
+                    top: 15px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 35;
+                    background: #10b981;
+                    color: #ffffff;
+                    padding: 6px 14px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                    pointer-events: none;
+                    transition: opacity 0.3s;
+                `;
+                mainContainer.appendChild(toast);
+            }
+            if (toast) {
+                toast.innerText = `🟢 Support Line added at ₹${price}`;
+                toast.style.opacity = '1';
+                toast.style.display = 'block';
+                setTimeout(() => {
+                    if (toast) toast.style.opacity = '0';
+                }, 2000);
+            }
+        }
+
+        function updateRightAxisTimePriceBadge(param) {
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!mainContainer) return;
+            let container = document.getElementById('rightAxisCrosshairContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'rightAxisCrosshairContainer';
+                container.style.cssText = `
+                    position: absolute;
+                    right: 2px;
+                    z-index: 28;
+                    display: none;
+                    align-items: center;
+                    pointer-events: auto;
+                    transition: top 0.04s ease-out;
+                `;
+                container.innerHTML = `
+                    <button id="crosshairPlusBtn" onclick="addSupportLineFromCrosshair(event)" style="background: #2a2e39; border: 1px solid #787b86; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; margin-right: 4px; cursor: pointer; transition: background 0.15s, transform 0.1s;" title="Click + to add Support Line at this price">+</button>
+                    <div id="rightAxisTimePriceBadge" style="background: rgba(19, 23, 34, 0.95); border: 1px solid #3b82f6; color: #f8fafc; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: monospace; box-shadow: 0 4px 12px rgba(0,0,0,0.4); white-space: nowrap;"></div>
+                `;
+                mainContainer.appendChild(container);
+
+                const btn = container.querySelector('#crosshairPlusBtn');
+                if (btn) {
+                    btn.onmouseenter = () => { btn.style.background = '#10b981'; btn.style.transform = 'scale(1.15)'; };
+                    btn.onmouseleave = () => { btn.style.background = '#2a2e39'; btn.style.transform = 'scale(1.0)'; };
+                }
+            }
+
+            if (!param || !param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
+                container.style.display = 'none';
+                currentCrosshairPrice = null;
+                return;
+            }
+
+            let price = null;
+            if (mainSeries) {
+                price = mainSeries.coordinateToPrice(param.point.y);
+            }
+
+            currentCrosshairPrice = price;
+
+            let priceStr = (price !== null && price !== undefined && !isNaN(price)) ? '₹' + price.toFixed(2) : '';
+            let timeStr = '';
+
+            if (typeof param.time === 'number') {
+                const d = new Date(param.time * 1000);
+                const datePart = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
+                const timePart = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+                timeStr = ['5m', '15m', '1h', '60m'].includes(currentChartInterval) ? `${datePart}, ${timePart}` : datePart;
+            } else if (typeof param.time === 'object' && param.time !== null && param.time.year) {
+                timeStr = `${param.time.day} ${param.time.month} ${param.time.year}`;
+            } else if (param.time) {
+                timeStr = String(param.time);
+            }
+
+            const badgeTextEl = container.querySelector('#rightAxisTimePriceBadge');
+            if (priceStr || timeStr) {
+                if (badgeTextEl) badgeTextEl.innerText = `${priceStr}${priceStr && timeStr ? ' | ' : ''}${timeStr}`;
+                const topPos = Math.max(5, Math.min(param.point.y - 12, mainContainer.clientHeight - 30));
+                container.style.top = topPos + 'px';
+                container.style.display = 'flex';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function startCandleCountdownTimer() {
+            if (candleTimerIntervalId) clearInterval(candleTimerIntervalId);
+            candleTimerIntervalId = setInterval(updateCandleTimerDisplay, 1000);
+            updateCandleTimerDisplay();
+        }
+
+        function updateCandleTimerDisplay() {
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!mainContainer) return;
+
+            let badge = document.getElementById('candleCountdownTimerBadge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.id = 'candleCountdownTimerBadge';
+                badge.style.cssText = `
+                    position: absolute;
+                    right: 0px;
+                    z-index: 25;
+                    background: #00b094;
+                    color: #ffffff;
+                    padding: 2px 6px;
+                    border-radius: 4px 0 0 4px;
+                    font-family: -apple-system, BlinkMacSystemFont, monospace;
+                    font-size: 11px;
+                    font-weight: bold;
+                    pointer-events: none;
+                    display: none;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+                    min-width: 65px;
+                `;
+                badge.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 4px; line-height: 1.2;">
+                        <span id="candleTimerIcon" style="background: rgba(255,255,255,0.25); color: #ffffff; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900;">D</span>
+                        <span id="candleTimerPriceText" style="font-weight: 700;">-</span>
+                    </div>
+                    <div id="candleTimerClockText" style="font-size: 10px; opacity: 0.95; font-weight: 600; letter-spacing: 0.3px; line-height: 1.1;">00:00:00</div>
+                `;
+                mainContainer.appendChild(badge);
+            }
+
+            if (!mainSeries || !cachedChartData || !cachedChartData.candles || cachedChartData.candles.length === 0) {
+                badge.style.display = 'none';
+                return;
+            }
+
+            const lastCandle = cachedChartData.candles[cachedChartData.candles.length - 1];
+            const latestPrice = lastCandle.close;
+            const yCoord = mainSeries.priceToCoordinate(latestPrice);
+
+            if (yCoord === null || yCoord === undefined || yCoord < 0) {
+                badge.style.display = 'none';
+                return;
+            }
+
+            const now = new Date();
+            let secondsLeft = 0;
+            const interval = currentChartInterval || '1d';
+
+            if (interval === '5m') {
+                const secs = Math.floor(now.getTime() / 1000);
+                secondsLeft = 300 - (secs % 300);
+            } else if (interval === '15m') {
+                const secs = Math.floor(now.getTime() / 1000);
+                secondsLeft = 900 - (secs % 900);
+            } else if (interval === '1h' || interval === '60m') {
+                const secs = Math.floor(now.getTime() / 1000);
+                secondsLeft = 3600 - (secs % 3600);
+            } else {
+                const marketClose = new Date(now);
+                marketClose.setHours(15, 30, 0, 0);
+                if (now > marketClose) {
+                    marketClose.setDate(marketClose.getDate() + 1);
+                }
+                secondsLeft = Math.max(0, Math.floor((marketClose.getTime() - now.getTime()) / 1000));
+            }
+
+            const hrs = String(Math.floor(secondsLeft / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((secondsLeft % 3600) / 60)).padStart(2, '0');
+            const secs = String(secondsLeft % 60).padStart(2, '0');
+
+            let badgeIcon = 'D';
+            if (interval === '5m') badgeIcon = '5m';
+            else if (interval === '15m') badgeIcon = '15m';
+            else if (interval === '1h' || interval === '60m') badgeIcon = '1H';
+            else if (interval === '1w') badgeIcon = 'W';
+            else if (interval === '1mo') badgeIcon = 'M';
+
+            const priceTextEl = badge.querySelector('#candleTimerPriceText');
+            const clockTextEl = badge.querySelector('#candleTimerClockText');
+            const iconEl = badge.querySelector('#candleTimerIcon');
+
+            if (priceTextEl) priceTextEl.innerText = latestPrice.toFixed(2);
+            if (clockTextEl) clockTextEl.innerText = `${hrs}:${mins}:${secs}`;
+            if (iconEl) iconEl.innerText = badgeIcon;
+
+            const topPos = Math.max(4, Math.min(yCoord - 14, mainContainer.clientHeight - 36));
+            badge.style.top = topPos + 'px';
+            badge.style.display = 'flex';
+        }
 
             // Setup automatic ResizeObserver for smooth resizing on window change or pane toggling
             if (chartResizeObserver) {
@@ -6296,6 +6783,7 @@
             toggleIndicators();
             resizeChartPanes();
             redrawCanvasOverlay();
+            startCandleCountdownTimer();
         }
 
         function updateLegend(time, o, h, l, c, vol, fullData, curTime = null) {
@@ -6547,8 +7035,12 @@
         }
 
         function closeChartModal() {
+            if (candleTimerIntervalId) {
+                clearInterval(candleTimerIntervalId);
+                candleTimerIntervalId = null;
+            }
             const modal = document.getElementById('chartModal');
-            modal.style.display = 'none';
+            if (modal) modal.style.display = 'none';
             document.getElementById('mainChartPane').innerHTML = '';
             document.getElementById('rsiChartPane').innerHTML = '';
             document.getElementById('macdChartPane').innerHTML = '';
