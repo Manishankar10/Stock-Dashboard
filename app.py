@@ -15,6 +15,10 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+
+# Fundamentals module
+from fundamentals import fundamentals_bp
+app.register_blueprint(fundamentals_bp)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
 
 BASE_DATA_DIR = os.environ.get("PERSISTENT_DATA_DIR", ".")
@@ -201,6 +205,47 @@ class StockFetcher:
         return {'error': 'No Data Available'}
 
 fetcher = StockFetcher()
+
+
+def resolve_watchlist_symbol(raw_symbol):
+    """Resolve an Indian stock symbol against Yahoo Finance.
+
+    The base symbol is cleaned first. NSE is always checked first; if Yahoo
+    has no data for the NSE ticker, BSE is checked next. The resolved Yahoo
+    ticker is returned for storage. Existing index/commodity symbols continue
+    to use the existing formatter.
+    """
+    if raw_symbol is None:
+        return None, "INVALID"
+
+    cleaned = str(raw_symbol).strip().upper()
+    cleaned = re.sub(r"\s+", "", cleaned)
+    if not cleaned:
+        return None, "INVALID"
+
+    # Preserve the application's existing handling for indexes/commodities.
+    formatted = format_financial_symbol(cleaned)
+    if formatted.startswith("^") or "=F" in formatted:
+        if not fetcher.fetch_stock(formatted).get("error"):
+            return formatted, "SPECIAL"
+        return None, "NOT_FOUND"
+
+    base = re.sub(r"\.(NS|BO)$", "", cleaned, flags=re.IGNORECASE)
+    if not base:
+        return None, "INVALID"
+
+    # Always prefer NSE, as requested.
+    nse_symbol = f"{base}.NS"
+    if not fetcher.fetch_stock(nse_symbol).get("error"):
+        return nse_symbol, "NSE"
+
+    # If NSE is unavailable, check BSE.
+    bse_symbol = f"{base}.BO"
+    if not fetcher.fetch_stock(bse_symbol).get("error"):
+        return bse_symbol, "BSE"
+
+    return None, "NOT_FOUND"
+
 
 def calculate_indicators(candles):
     closes = [c['close'] for c in candles]
@@ -1004,27 +1049,104 @@ def add_stock(name):
     symbol = request.json.get("symbol")
     if not symbol:
         return jsonify({"error": "Symbol is required"}), 400
-    
-    symbol = format_financial_symbol(symbol)
-        
-    # Check if symbol is valid or typo
-    if fetcher.fetch_stock(symbol).get('error'):
-        clean_sym = symbol.replace(".NS", "").replace(".BO", "")
+
+    resolved_symbol, exchange = resolve_watchlist_symbol(symbol)
+
+    # Retain the existing typo-correction behavior when Yahoo cannot resolve
+    # the supplied symbol directly.
+    if not resolved_symbol:
+        clean_sym = re.sub(r"\.(NS|BO)$", "", str(symbol).strip().upper())
         matches = difflib.get_close_matches(clean_sym, POPULAR_INDIAN_STOCKS.keys(), n=1, cutoff=0.5)
         if matches:
-            corrected_sym = format_financial_symbol(matches[0])
-            if not fetcher.fetch_stock(corrected_sym).get('error'):
-                symbol = corrected_sym
+            resolved_symbol, exchange = resolve_watchlist_symbol(matches[0])
+
+    if not resolved_symbol:
+        return jsonify({
+            "error": f"Symbol '{str(symbol).strip()}' was not found on Yahoo Finance (NSE or BSE)."
+        }), 400
 
     data = load_data()
     if name not in data:
         return jsonify({"error": "Watchlist not found"}), 404
-        
-    if symbol not in data[name]:
-        data[name].append(symbol)
+
+    if resolved_symbol not in data[name]:
+        data[name].append(resolved_symbol)
         save_data(data)
-        
-    return jsonify({"success": True, "watchlists": data})
+
+    return jsonify({"success": True, "symbol": resolved_symbol, "exchange": exchange, "watchlists": data})
+
+
+@app.route("/api/watchlists/<name>/stocks/import-txt", methods=["POST"])
+@login_required
+def import_watchlist_txt(name):
+    """Import comma-separated watchlist symbols after Yahoo validation."""
+    data = load_data()
+    if name not in data:
+        return jsonify({"error": "Watchlist not found"}), 404
+
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "TXT file is required"}), 400
+
+    try:
+        content = file.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return jsonify({"error": "Unable to read the TXT file. Please use UTF-8 text."}), 400
+
+    # Comma is the documented format; line breaks are also accepted so a
+    # manually edited sample remains easy to use.
+    raw_symbols = [part.strip() for part in re.split(r"[,\r\n]+", content) if part.strip()]
+
+    # Preserve first occurrence while ignoring duplicates caused by spacing,
+    # case, or repeated entries in the TXT file.
+    unique_symbols = []
+    seen = set()
+    for raw in raw_symbols:
+        normalized = re.sub(r"\s+", "", raw).upper()
+        normalized = re.sub(r"\.(NS|BO)$", "", normalized)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            unique_symbols.append(raw.strip())
+
+    if not unique_symbols:
+        return jsonify({"error": "The TXT file does not contain any stock symbols."}), 400
+
+    added_symbols = []
+    not_added_symbols = []
+    already_present_symbols = []
+    bse_symbols = []
+
+    for raw_symbol in unique_symbols:
+        resolved_symbol, exchange = resolve_watchlist_symbol(raw_symbol)
+        if not resolved_symbol:
+            not_added_symbols.append(raw_symbol)
+            continue
+
+        if resolved_symbol in data[name]:
+            already_present_symbols.append(raw_symbol)
+            continue
+
+        data[name].append(resolved_symbol)
+        added_symbols.append(resolved_symbol)
+        if exchange == "BSE":
+            bse_symbols.append(resolved_symbol)
+
+    if added_symbols:
+        save_data(data)
+
+    return jsonify({
+        "success": True,
+        "total_stocks": len(unique_symbols),
+        "added_count": len(added_symbols),
+        "added_symbols": added_symbols,
+        "not_added_count": len(not_added_symbols),
+        "not_added_symbols": not_added_symbols,
+        "already_present_count": len(already_present_symbols),
+        "already_present_symbols": already_present_symbols,
+        "bse_count": len(bse_symbols),
+        "bse_symbols": bse_symbols,
+        "watchlists": data
+    })
 
 @app.route("/api/watchlists/<name>/stocks/<symbol>", methods=["DELETE"])
 @login_required
