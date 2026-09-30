@@ -41,7 +41,7 @@ YAHOO_Q1 = "https://query1.finance.yahoo.com"
 YAHOO_Q2 = "https://query2.finance.yahoo.com"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
 
-_FUNDAMENTALS_CACHE_TTL = 180
+_FUNDAMENTALS_CACHE_TTL = 1800
 _fundamentals_cache = {}
 
 # Yahoo's crumb is tied to the session cookie. Keep both together.

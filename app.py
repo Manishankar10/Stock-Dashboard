@@ -120,9 +120,19 @@ def format_financial_symbol(raw_symbol):
         
     return sym + ".NS"
 
+try:
+    from curl_cffi import requests as stock_http_requests
+    _STOCK_CURL_CFFI = True
+except ImportError:
+    import requests as stock_http_requests
+    _STOCK_CURL_CFFI = False
+
 class StockFetcher:
     def __init__(self):
-        self.session = requests.Session()
+        if _STOCK_CURL_CFFI:
+            self.session = stock_http_requests.Session(impersonate="chrome")
+        else:
+            self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
