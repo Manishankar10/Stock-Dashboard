@@ -152,10 +152,38 @@ class StockFetcher:
         import time
         t_now = int(time.time())
 
-        # 1. Primary: Fast Real-Time 1-minute Tick Chart API
+        # 1. Primary: Fast & Highly Reliable 1d Chart API (No crumb required, no rate limit)
+        try:
+            url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d&_={t_now}'
+            r = self.session.get(url, timeout=5)
+            if r.status_code == 200:
+                res = r.json()
+                result_list = res.get('chart', {}).get('result', [])
+                if result_list:
+                    meta = result_list[0].get('meta', {})
+                    price = meta.get('regularMarketPrice')
+                    prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
+                    name = meta.get('shortName') or meta.get('longName') or symbol
+                    
+                    if price is not None:
+                        change = (price - prev_close) if prev_close else 0.0
+                        change_pct = (change / prev_close * 100) if prev_close else 0.0
+                        return {
+                            'symbol': symbol,
+                            'name': name,
+                            'price': round(float(price), 2),
+                            'change': round(float(change), 2),
+                            'change_pct': round(float(change_pct), 2),
+                            'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
+                            'mcap_cr': 'N/A'
+                        }
+        except Exception:
+            pass
+
+        # 2. Secondary: Fast Real-Time 1-minute Tick Chart API
         try:
             url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=2d&_={t_now}'
-            r = self.session.get(url, timeout=4)
+            r = self.session.get(url, timeout=5)
             if r.status_code == 200:
                 res = r.json()
                 result_list = res.get('chart', {}).get('result', [])
@@ -1736,9 +1764,57 @@ def get_stock_data():
         return jsonify({})
         
     result = {}
+
+    # 1. High-Performance Bulk Yahoo Spark API (1 single HTTP request for all symbols, ~0.3s)
+    try:
+        sym_str = ','.join(symbols)
+        url = f'https://query1.finance.yahoo.com/v7/finance/spark?symbols={urllib.parse.quote(sym_str, safe=",")}&range=1d&interval=1d'
+        r = fetcher.session.get(url, timeout=5)
+        if r.status_code == 200:
+            res_data = r.json()
+            spark_results = res_data.get('spark', {}).get('result', [])
+            for item in spark_results:
+                sym = item.get('symbol')
+                resp = item.get('response', [{}])[0]
+                meta = resp.get('meta', {})
+                price = meta.get('regularMarketPrice')
+                prev = meta.get('chartPreviousClose') or meta.get('previousClose')
+                name = meta.get('shortName') or meta.get('longName') or sym
+                if price is not None:
+                    chg = (price - prev) if prev else 0.0
+                    chg_pct = (chg / prev * 100) if prev else 0.0
+                    result[sym] = {
+                        'symbol': sym,
+                        'name': name,
+                        'price': round(float(price), 2),
+                        'change': round(float(chg), 2),
+                        'change_pct': round(float(chg_pct), 2),
+                        'previous_close': round(float(prev), 2) if prev is not None else None,
+                        'mcap_cr': 'N/A'
+                    }
+    except Exception:
+        pass
+
+    # 2. Check for missing symbols and fetch them in parallel with ThreadPoolExecutor
+    missing_symbols = [s for s in symbols if s not in result]
+    if missing_symbols:
+        def _fetch_single(s):
+            return s, fetcher.fetch_stock(s)
+
+        with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 10)) as executor:
+            futures = [executor.submit(_fetch_single, s) for s in missing_symbols]
+            for future in futures:
+                try:
+                    s_sym, s_data = future.result(timeout=5)
+                    result[s_sym] = s_data
+                except Exception:
+                    pass
+
+    # 3. Ensure all requested symbols have an explicit entry
     for sym in symbols:
-        result[sym] = fetcher.fetch_stock(sym)
-            
+        if sym not in result:
+            result[sym] = {'error': 'No Data Available'}
+
     return jsonify(result)
 
 @app.route("/api/chart_history", methods=["GET"])
