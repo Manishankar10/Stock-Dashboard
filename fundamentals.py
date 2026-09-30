@@ -25,6 +25,8 @@ except ImportError:
 
 import requests
 import time
+import re
+from bs4 import BeautifulSoup
 
 fundamentals_bp = Blueprint("fundamentals", __name__)
 
@@ -41,7 +43,7 @@ YAHOO_Q1 = "https://query1.finance.yahoo.com"
 YAHOO_Q2 = "https://query2.finance.yahoo.com"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
 
-_FUNDAMENTALS_CACHE_TTL = 1800
+_FUNDAMENTALS_CACHE_TTL = 86400
 _fundamentals_cache = {}
 
 # Yahoo's crumb is tied to the session cookie. Keep both together.
@@ -306,6 +308,247 @@ def _build_chart(symbol):
     return chart
 
 
+def fetch_screener_fundamentals(symbol):
+    """Fetch 100% free fundamental analysis data from Screener.in for Indian stock tickers."""
+    base_sym = symbol.replace(".NS", "").replace(".BO", "").strip().upper()
+    if base_sym.startswith("^") or "=F" in base_sym:
+        return None
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    url = f"https://www.screener.in/company/{base_sym}/consolidated/"
+    try:
+        r = requests.get(url, headers=headers, timeout=8)
+        if r.status_code != 200:
+            url = f"https://www.screener.in/company/{base_sym}/"
+            r = requests.get(url, headers=headers, timeout=8)
+        
+        if r.status_code != 200:
+            try:
+                search_url = f"https://www.screener.in/api/company/search/?q={base_sym}"
+                sr = requests.get(search_url, headers=headers, timeout=5)
+                if sr.status_code == 200 and sr.json():
+                    c_path = sr.json()[0].get("url")
+                    if c_path:
+                        url = f"https://www.screener.in{c_path}"
+                        r = requests.get(url, headers=headers, timeout=8)
+            except Exception:
+                pass
+
+        if r.status_code != 200:
+            return None
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        h1 = soup.find("h1")
+        name = h1.text.strip() if h1 else base_sym
+
+        ratios = {}
+        for li in soup.find_all("li", class_=re.compile(r"flex.*space")):
+            n_el = li.find(class_="name")
+            v_el = li.find(class_="value") or li.find(class_="number")
+            if n_el and v_el:
+                ratios[n_el.text.strip()] = v_el.text.strip()
+
+        def clean_num(val_str):
+            if not val_str:
+                return None
+            cleaned = re.sub(r"[^\d.-]", "", str(val_str).replace(",", ""))
+            try:
+                return float(cleaned) if "." in cleaned else int(cleaned)
+            except Exception:
+                return None
+
+        mcap_val = clean_num(ratios.get("Market Cap"))
+        market_cap = (mcap_val * 10000000) if mcap_val is not None else None
+
+        cur_price = clean_num(ratios.get("Current Price"))
+        pe = clean_num(ratios.get("Stock P/E"))
+        book_val = clean_num(ratios.get("Book Value"))
+        div_yield = clean_num(ratios.get("Dividend Yield"))
+        roce = clean_num(ratios.get("ROCE"))
+        roe = clean_num(ratios.get("ROE"))
+
+        high_low = ratios.get("High / Low", "")
+        high, low = None, None
+        if "/" in high_low:
+            parts = high_low.split("/")
+            high = clean_num(parts[0])
+            low = clean_num(parts[1])
+
+        pb = (cur_price / book_val) if (cur_price is not None and book_val) else None
+
+        about_div = soup.find("div", class_="about")
+        summary = about_div.text.strip() if about_div else ""
+
+        def parse_table(table_id):
+            sec = soup.find("section", id=table_id)
+            if not sec:
+                return {"columns": [], "rows": []}
+            tbl = sec.find("table")
+            if not tbl:
+                return {"columns": [], "rows": []}
+            headers_list = [th.text.strip() for th in tbl.find("thead").find_all("th") if th.text.strip()]
+            cols = headers_list[1:] if len(headers_list) > 1 else []
+            rows_list = []
+            for tr in tbl.find("tbody").find_all("tr"):
+                tds = tr.find_all("td")
+                if not tds:
+                    continue
+                lbl = tds[0].text.strip().replace("\u200b", "").replace("\xa0+", "").replace("\xa0", " ")
+                vals = [clean_num(td.text.strip()) for td in tds[1:]]
+                rows_list.append({"label": lbl, "values": vals})
+            return {"columns": cols, "rows": rows_list}
+
+        q_table = parse_table("quarters")
+        pnl_table = parse_table("profit-loss")
+        bs_table = parse_table("balance-sheet")
+        cf_table = parse_table("cash-flow")
+
+        revenue = None
+        net_income = None
+        op_income = None
+        op_margin = None
+        net_margin = None
+        eps = None
+        rev_growth = None
+        earnings_growth = None
+
+        if pnl_table.get("rows"):
+            for row in pnl_table["rows"]:
+                lbl = row["label"].lower()
+                vals = [v for v in row["values"] if v is not None]
+                if not vals:
+                    continue
+                if "sales" in lbl or "revenue" in lbl:
+                    revenue = vals[-1] * 10000000
+                    if len(vals) >= 2 and vals[-2]:
+                        rev_growth = ((vals[-1] - vals[-2]) / vals[-2]) * 100
+                elif "net profit" in lbl:
+                    net_income = vals[-1] * 10000000
+                    if len(vals) >= 2 and vals[-2]:
+                        earnings_growth = ((vals[-1] - vals[-2]) / vals[-2]) * 100
+                elif "operating profit" in lbl and "margin" not in lbl:
+                    op_income = vals[-1] * 10000000
+                elif "opm" in lbl or "operating margin" in lbl:
+                    op_margin = vals[-1]
+                elif "eps" in lbl:
+                    eps = vals[-1]
+
+        if revenue and net_income:
+            net_margin = (net_income / revenue) * 100
+
+        total_assets = None
+        total_debt = None
+        equity = None
+        if bs_table.get("rows"):
+            for row in bs_table["rows"]:
+                lbl = row["label"].lower()
+                vals = [v for v in row["values"] if v is not None]
+                if not vals:
+                    continue
+                if "total assets" in lbl:
+                    total_assets = vals[-1] * 10000000
+                elif "borrowings" in lbl or "debt" in lbl:
+                    total_debt = vals[-1] * 10000000
+                elif "equity capital" in lbl:
+                    equity = vals[-1] * 10000000
+
+        debt_equity = (total_debt / equity) if (total_debt is not None and equity) else None
+
+        ownership = {"insiders_percent": None, "institutions_percent": None}
+        sh_sec = soup.find("section", id="shareholding")
+        if sh_sec:
+            tbl = sh_sec.find("table")
+            if tbl:
+                for tr in tbl.find("tbody").find_all("tr"):
+                    tds = tr.find_all("td")
+                    if tds:
+                        lbl = tds[0].text.strip().lower()
+                        last_v = clean_num(tds[-1].text.strip())
+                        if "promoter" in lbl:
+                            ownership["insiders_percent"] = last_v
+                        elif "fii" in lbl or "dii" in lbl or "institution" in lbl:
+                            prev_inst = ownership.get("institutions_percent") or 0.0
+                            ownership["institutions_percent"] = prev_inst + (last_v or 0.0)
+
+        earnings_rows = []
+        if pnl_table.get("columns") and pnl_table.get("rows"):
+            cols = pnl_table["columns"]
+            rev_vals = next((r["values"] for r in pnl_table["rows"] if "sales" in r["label"].lower() or "revenue" in r["label"].lower()), [])
+            ni_vals = next((r["values"] for r in pnl_table["rows"] if "net profit" in r["label"].lower()), [])
+            eps_vals = next((r["values"] for r in pnl_table["rows"] if "eps" in r["label"].lower()), [])
+            for idx, c_date in enumerate(cols):
+                earnings_rows.append({
+                    "date": c_date,
+                    "revenue": (rev_vals[idx] * 10000000) if idx < len(rev_vals) and rev_vals[idx] else None,
+                    "net_income": (ni_vals[idx] * 10000000) if idx < len(ni_vals) and ni_vals[idx] else None,
+                    "eps": eps_vals[idx] if idx < len(eps_vals) else None,
+                })
+
+        return {
+            "symbol": symbol,
+            "as_of": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "source": "Screener.in (100% Free Data)",
+            "company": {
+                "name": name,
+                "country": "India",
+                "summary": summary,
+            },
+            "quote": {
+                "current_price": cur_price,
+                "previous_close": None,
+                "change": None,
+                "change_percent": None,
+                "fifty_two_week_high": high,
+                "fifty_two_week_low": low,
+            },
+            "valuation": {
+                "market_cap": market_cap,
+                "trailing_pe": pe,
+                "price_to_book": pb,
+                "dividend_yield": div_yield,
+            },
+            "profitability": {
+                "revenue": revenue,
+                "net_income": net_income,
+                "operating_income": op_income,
+                "eps": eps,
+                "roe": roe,
+                "roce": roce,
+                "operating_margin": op_margin,
+                "profit_margin": net_margin,
+            },
+            "growth": {
+                "revenue_growth": rev_growth,
+                "earnings_growth": earnings_growth,
+            },
+            "balance_sheet_summary": {
+                "total_assets": total_assets,
+                "total_debt": total_debt,
+                "debt_to_equity": debt_equity,
+            },
+            "cashflow_summary": {},
+            "income_statement": q_table if q_table.get("rows") else pnl_table,
+            "balance_sheet": bs_table,
+            "cashflow": cf_table,
+            "charts": {
+                "price": [],
+                "annual": earnings_rows,
+            },
+            "actions": [],
+            "ownership": ownership,
+            "analyst": {},
+            "documents": [],
+            "links": [{"label": "Screener.in", "url": f"https://www.screener.in/company/{base_sym}/"}],
+        }
+    except Exception:
+        return None
+
+
 @fundamentals_bp.get("/api/fundamentals")
 def fundamentals():
     symbol = (request.args.get("symbol") or "").strip().upper()
@@ -316,6 +559,13 @@ def fundamentals():
     cached = _fundamentals_cache.get(symbol)
     if cached and now - cached[0] < _FUNDAMENTALS_CACHE_TTL:
         return jsonify(cached[1])
+
+    # 1. Primary: Try 100% Free Screener.in Adapter for Indian Stocks
+    screener_data = fetch_screener_fundamentals(symbol)
+    if screener_data:
+        cleaned_scr = _clean(screener_data)
+        _fundamentals_cache[symbol] = (time.time(), cleaned_scr)
+        return jsonify(cleaned_scr)
 
     modules = [
         "price",
