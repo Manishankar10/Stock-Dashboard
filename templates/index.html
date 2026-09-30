@@ -634,7 +634,59 @@
         #rsiChartPane { flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; }
         .engine-tab-btn { background: transparent; color: #787b86; border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
         .engine-tab-btn:hover { color: #d1d4dc; background: #2a2e39; }
-        .engine-tab-btn.active { background: #10b981; color: #ffffff; }
+        /* Custom Brand Chart Loading Overlay */
+        #chartLoaderOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            transition: opacity 0.2s ease-in-out;
+        }
+        [data-theme="light"] #chartLoaderOverlay {
+            background: rgba(255, 255, 255, 0.92) !important;
+        }
+        .chart-loader-brand-box {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-loader-spinner-ring {
+            position: absolute;
+            inset: 0;
+            border: 3px solid rgba(16, 185, 129, 0.15);
+            border-top: 3px solid #10b981;
+            border-right: 3px solid rgba(16, 185, 129, 0.7);
+            border-radius: 50%;
+            animation: chartSpin 0.9s linear infinite;
+        }
+        .chart-loader-logo {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            border-radius: 50%;
+            animation: chartLogoPulse 1.6s ease-in-out infinite;
+            filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.45));
+        }
+        @keyframes chartSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes chartLogoPulse {
+            0%, 100% { transform: scale(0.92); opacity: 0.85; }
+            50% { transform: scale(1.08); opacity: 1; }
+        }
 
         /* Dynamic Theme Overrides for Technical Chart Modal & Popovers */
         [data-theme="light"] #chartModalContent {
@@ -1728,6 +1780,19 @@
 
             <!-- Main Chart & Sub-Pane Container -->
             <div class="chart-body-container" style="flex: 1; display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; position: relative;">
+                <!-- Brand Animated Chart Loading Overlay -->
+                <div id="chartLoaderOverlay" style="display: none;">
+                    <div class="chart-loader-brand-box">
+                        <div class="chart-loader-spinner-ring"></div>
+                        <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px;">Loading Technical Chart...</div>
+                        <div id="chartLoaderSymbol" style="font-size: 12px; font-weight: 600; color: #10b981; margin-top: 4px; background: rgba(16, 185, 129, 0.12); padding: 3px 10px; border-radius: 12px; display: inline-block;"></div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">Fetching historical candlestick data & technical indicators...</div>
+                    </div>
+                </div>
+
                 <div id="mainChartPane" style="flex: 3; width: 100%; position: relative;"></div>
                 <div id="rsiChartPane" style="flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39;"></div>
                 <div id="macdChartPane" style="flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; display: none;"></div>
@@ -6950,19 +7015,55 @@
             }
         }
 
-        async function loadChartData() {
-            const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}&interval=${currentChartInterval}`);
-            const data = await res.json();
-
-            if (data.error) {
-                alert('Could not load chart data: ' + data.error);
-                return;
+        function showChartLoader(symbol, interval, range) {
+            const overlay = document.getElementById('chartLoaderOverlay');
+            if (overlay) {
+                const symLabel = document.getElementById('chartLoaderSymbol');
+                if (symLabel) {
+                    const symTxt = symbol || currentChartSymbol || 'Stock';
+                    const intTxt = (interval || currentChartInterval || '1d').toUpperCase();
+                    const rngTxt = (range || currentChartRange || '1y').toUpperCase();
+                    symLabel.innerText = `${symTxt} · ${intTxt} · ${rngTxt}`;
+                }
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
             }
+        }
 
-            document.getElementById('chartSymbolDisplay').innerText = data.symbol;
-            document.getElementById('chartNameDisplay').innerText = data.name;
+        function hideChartLoader() {
+            const overlay = document.getElementById('chartLoaderOverlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    if (overlay.style.opacity === '0') {
+                        overlay.style.display = 'none';
+                    }
+                }, 200);
+            }
+        }
 
-            renderInHouseCharts(data);
+        async function loadChartData() {
+            showChartLoader(currentChartSymbol, currentChartInterval, currentChartRange);
+            try {
+                const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}&interval=${currentChartInterval}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    hideChartLoader();
+                    alert('Could not load chart data: ' + data.error);
+                    return;
+                }
+
+                document.getElementById('chartSymbolDisplay').innerText = data.symbol;
+                document.getElementById('chartNameDisplay').innerText = data.name;
+
+                renderInHouseCharts(data);
+            } catch (err) {
+                console.error('Chart fetch error:', err);
+                hideChartLoader();
+            } finally {
+                hideChartLoader();
+            }
         }
 
         function renderInHouseCharts(data) {
