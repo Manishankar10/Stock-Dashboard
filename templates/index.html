@@ -1783,6 +1783,36 @@
     </div>
 
     <!-- =========================================================
+         IMPORT WATCHLIST TXT POPUP MODAL
+    ========================================================= -->
+    <div id="importWatchlistTxtModal" class="small-modal" style="z-index: 10020;">
+        <div class="small-modal-content" style="width: 620px; max-width: 95vw;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <h3 style="margin-bottom:0;">Import Watchlist Stocks</h3>
+                <span style="font-size:24px; cursor:pointer; color:var(--text-secondary);" onclick="closeWatchlistTxtImportModal()">&times;</span>
+            </div>
+            <div style="margin-top:16px; color:var(--text-secondary); font-size:13px; line-height:1.6;">
+                Import comma-separated stock symbols into the current watchlist. Spaces are cleaned automatically. Yahoo Finance is checked on <strong>NSE first</strong>, then <strong>BSE</strong> if the NSE symbol is unavailable.
+            </div>
+
+            <div class="form-group" style="margin-top:18px;">
+                <label>Select TXT File</label>
+                <input type="file" id="watchlist-txt-import-input" accept=".txt,text/plain" onchange="handleWatchlistTxtImport(event)">
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <button type="button" class="btn-secondary" onclick="downloadWatchlistSampleTxt()">📄 Download Sample TXT</button>
+            </div>
+
+            <div id="watchlist-import-report" style="display:none; margin-top:18px;"></div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                <button type="button" class="btn-secondary" onclick="closeWatchlistTxtImportModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
          CREATE PORTFOLIO POPUP MODAL
     ========================================================= -->
     <div id="createPortfolioModal" class="small-modal">
@@ -2000,6 +2030,22 @@
                 <button id="btn-detail-edit" class="btn-secondary" style="font-size: 12px;">✏️ Edit</button>
                 <button id="btn-detail-delete" class="btn-danger" style="font-size: 12px;">🗑️ Delete</button>
             </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         FUNDAMENTAL ANALYSIS POPUP MODAL
+    ========================================================= -->
+    <div id="fundamentalsModal" class="small-modal" style="z-index: 10030;">
+        <div class="small-modal-content" style="width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh; margin: 2.5vh auto; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border-color); background:var(--bg-card); flex:0 0 auto;">
+                <div>
+                    <h3 style="margin:0; font-size:16px;">📈 Fundamental Analysis</h3>
+                    <div id="fundamentals-modal-subtitle" style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Loading stock fundamentals...</div>
+                </div>
+                <span class="close-btn" onclick="closeFundamentalsModal()" style="font-size:24px; cursor:pointer; color:var(--text-secondary); line-height:1;">&times;</span>
+            </div>
+            <iframe id="fundamentalsFrame" title="Fundamental Analysis" style="width:100%; height:100%; border:0; background:var(--bg-primary); flex:1 1 auto;"></iframe>
         </div>
     </div>
 
@@ -2296,6 +2342,7 @@
         let smallcaseListCache = [];
         let smallcaseSummaryCache = {};
         let selectedSmallcaseId = null;
+        let selectedSmallcaseDetail = null;
         let selectedExitSymbol = null;
         let smallcaseSortState = {
             list: { key: 'name', dir: 1 },
@@ -2311,6 +2358,10 @@
         function closeSmallcaseModal(id) {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
+            if (id === 'scDetailModal') {
+                selectedSmallcaseDetail = null;
+                refreshPrices();
+            }
         }
 
         async function loadSmallcasesTab() {
@@ -2568,6 +2619,7 @@
                     return;
                 }
                 selectedSmallcaseId = id;
+                selectedSmallcaseDetail = d;
                 document.getElementById('scDetailTitle').innerText = d.name;
                 document.getElementById('scDetailSub').innerText = `${d.description || 'No description'} • ${d.status} • XIRR as of ${d.xirr_as_of ? d.xirr_as_of.slice(0,10) : '-'}`;
 
@@ -3776,14 +3828,31 @@
             wrapper.appendChild(dropdown);
             controlsDiv.appendChild(wrapper);
 
+            const watchlistFileControls = document.createElement('div');
+            watchlistFileControls.style.display = 'flex';
+            watchlistFileControls.style.gap = '8px';
+            watchlistFileControls.style.alignItems = 'center';
+            watchlistFileControls.style.flexWrap = 'wrap';
+
             const exportWlBtn = document.createElement('button');
             exportWlBtn.className = 'btn-secondary';
             exportWlBtn.style.padding = '8px 14px';
             exportWlBtn.style.fontSize = '12px';
-            exportWlBtn.title = 'Export current sorted watchlist table data to Excel (CSV)';
-            exportWlBtn.innerHTML = '📊 Export Excel';
-            exportWlBtn.onclick = () => exportActiveWatchlistToExcel();
-            controlsDiv.appendChild(exportWlBtn);
+            exportWlBtn.title = 'Download all stocks in the current watchlist as comma-separated TXT';
+            exportWlBtn.innerHTML = '⇩ Export';
+            exportWlBtn.onclick = () => exportActiveWatchlistToTxt();
+            watchlistFileControls.appendChild(exportWlBtn);
+
+            const importWlBtn = document.createElement('button');
+            importWlBtn.className = 'btn-secondary';
+            importWlBtn.style.padding = '8px 14px';
+            importWlBtn.style.fontSize = '12px';
+            importWlBtn.title = 'Import comma-separated stock symbols from TXT';
+            importWlBtn.innerHTML = '⇧ Import';
+            importWlBtn.onclick = () => openWatchlistTxtImportModal();
+            watchlistFileControls.appendChild(importWlBtn);
+
+            controlsDiv.appendChild(watchlistFileControls);
 
             // Table of stocks in active watchlist
             const scrollContainer = document.createElement('div');
@@ -3891,6 +3960,9 @@
                     menuDropdown.innerHTML = `
                         <div class="menu-item" onclick="event.stopPropagation(); openInHouseChart('${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
                             📊 Technical Chart
+                        </div>
+                        <div class="menu-item" onclick="event.stopPropagation(); openFundamentalsModal('${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                            📈 Fundamentals
                         </div>
                         <div class="menu-item" onclick="event.stopPropagation(); openStockNewsModal('${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
                             📰 Latest News
@@ -4149,71 +4221,139 @@
         });
 
         // =========================================================
-        // EXPORT TABLE DATA TO EXCEL / CSV (PRESERVES FILTER & SORT)
+        // WATCHLIST TXT EXPORT / IMPORT
         // =========================================================
-        function exportActiveWatchlistToExcel() {
+        function exportActiveWatchlistToTxt() {
             if (!activeWatchlistName || !watchlistsData[activeWatchlistName]) {
                 alert('No active watchlist selected to export!');
                 return;
             }
 
-            let symbols = (watchlistsData[activeWatchlistName] || []).slice();
+            const symbols = (watchlistsData[activeWatchlistName] || []).slice();
             if (symbols.length === 0) {
-                alert('Active watchlist is empty!');
+                alert('The current watchlist is empty.');
                 return;
             }
 
-            // Apply exact current Watchlist Sorting
-            symbols.sort((a, b) => {
-                const infoA = stockPricesData[a] || {};
-                const infoB = stockPricesData[b] || {};
-
-                let valA, valB;
-                if (wlSortColumn === 'symbol') {
-                    valA = a;
-                    valB = b;
-                    return wlSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                } else if (wlSortColumn === 'price') {
-                    valA = infoA.price !== undefined ? infoA.price : -Infinity;
-                    valB = infoB.price !== undefined ? infoB.price : -Infinity;
-                } else if (wlSortColumn === 'change') {
-                    valA = infoA.change !== undefined ? infoA.change : -Infinity;
-                    valB = infoB.change !== undefined ? infoB.change : -Infinity;
-                } else if (wlSortColumn === 'change_pct') {
-                    valA = infoA.change_pct !== undefined ? infoA.change_pct : -Infinity;
-                    valB = infoB.change_pct !== undefined ? infoB.change_pct : -Infinity;
-                }
-                return wlSortDirection === 'asc' ? valA - valB : valB - valA;
-            });
-
-            let csvRows = [];
-            csvRows.push(['Symbol', 'Company Name', 'Exchange/Type', 'LTP (INR)', 'Change (INR)', 'Change (%)']);
-
-            symbols.forEach(sym => {
-                const info = stockPricesData[sym] || {};
-                const bInfo = getSymbolBadge(sym);
-                const name = info.name || sym;
-                const ltp = info.price !== undefined ? info.price.toFixed(2) : 'N/A';
-                const change = info.change !== undefined ? info.change.toFixed(2) : 'N/A';
-                const changePct = info.change_pct !== undefined ? info.change_pct.toFixed(2) + '%' : 'N/A';
-
-                csvRows.push([
-                    `"${sym}"`,
-                    `"${name.replace(/"/g, '""')}"`,
-                    `"${bInfo.label}"`,
-                    ltp,
-                    change,
-                    `"${changePct}"`
-                ]);
-            });
-
-            const csvContent = '\uFEFF' + csvRows.map(e => e.join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const content = symbols.join(',');
+            const blob = new Blob([content + '\n'], { type: 'text/plain;charset=utf-8;' });
             const link = document.createElement('a');
-            const safeName = activeWatchlistName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const safeName = activeWatchlistName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'watchlist';
             const dateStr = new Date().toISOString().split('T')[0];
             link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `${safeName}_watchlist_${dateStr}.csv`);
+            link.download = `${safeName}_watchlist_${dateStr}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+
+        function openWatchlistTxtImportModal() {
+            if (!activeWatchlistName || !watchlistsData[activeWatchlistName]) {
+                alert('No active watchlist selected for import!');
+                return;
+            }
+
+            const modal = document.getElementById('importWatchlistTxtModal');
+            const input = document.getElementById('watchlist-txt-import-input');
+            const report = document.getElementById('watchlist-import-report');
+            if (input) input.value = '';
+            if (report) {
+                report.style.display = 'none';
+                report.innerHTML = '';
+            }
+            if (modal) modal.style.display = 'block';
+        }
+
+        function closeWatchlistTxtImportModal() {
+            const modal = document.getElementById('importWatchlistTxtModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function handleWatchlistTxtImport(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const report = document.getElementById('watchlist-import-report');
+            const showReport = (html) => {
+                if (!report) return;
+                report.style.display = 'block';
+                report.innerHTML = html;
+            };
+
+            if (!file.name.toLowerCase().endsWith('.txt')) {
+                showReport('<div style="color:#ef5350;">Please select a .txt file.</div>');
+                event.target.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            showReport('<div style="color:var(--text-secondary);">Importing and checking symbols with Yahoo Finance...</div>');
+
+            try {
+                const res = await fetch(`/api/watchlists/${encodeURIComponent(activeWatchlistName)}/stocks/import-txt`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    showReport(`<div style="color:#ef5350;">${escapeHtml(data.error || 'Failed to import watchlist TXT file.')}</div>`);
+                    return;
+                }
+
+                watchlistsData = data.watchlists || watchlistsData;
+                    renderWatchlists();
+                refreshPrices();
+
+                const notAdded = data.not_added_symbols || [];
+                const alreadyPresent = data.already_present_symbols || [];
+                const bseSymbols = data.bse_symbols || [];
+
+                let html = `
+                    <div style="border:1px solid var(--border-color); border-radius:8px; padding:14px; background:var(--card-bg);">
+                        <div style="font-weight:600; margin-bottom:12px;">Import Result</div>
+                        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; font-size:13px;">
+                            <div>Total stocks: <strong>${data.total_stocks || 0}</strong></div>
+                            <div>Total added: <strong>${data.added_count || 0}</strong></div>
+                            <div>Total not added: <strong>${data.not_added_count || 0}</strong></div>
+                            <div>Already present: <strong>${data.already_present_count || 0}</strong></div>
+                            <div>Added from BSE: <strong>${data.bse_count || 0}</strong></div>
+                        </div>`;
+
+                if (notAdded.length) {
+                    html += `<div style="margin-top:14px;"><strong>Not added:</strong><div style="margin-top:6px; color:#ef5350; word-break:break-word;">${notAdded.map(escapeHtml).join(', ')}</div></div>`;
+                }
+                if (alreadyPresent.length) {
+                    html += `<div style="margin-top:12px;"><strong>Already present:</strong><div style="margin-top:6px; color:var(--text-secondary); word-break:break-word;">${alreadyPresent.map(escapeHtml).join(', ')}</div></div>`;
+                }
+                if (bseSymbols.length) {
+                    html += `<div style="margin-top:12px;"><strong>Resolved through BSE:</strong><div style="margin-top:6px; color:var(--text-secondary); word-break:break-word;">${bseSymbols.map(escapeHtml).join(', ')}</div></div>`;
+                }
+
+                html += '</div>';
+                showReport(html);
+            } catch (err) {
+                showReport(`<div style="color:#ef5350;">Import failed: ${escapeHtml(err.message)}</div>`);
+            } finally {
+                event.target.value = '';
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function downloadWatchlistSampleTxt() {
+            const link = document.createElement('a');
+            link.href = '/static/sample_watchlist.txt';
+            link.download = 'sample_watchlist.txt';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -5250,15 +5390,43 @@
         // REFRESH LIVE MARKET DATA & UPDATE CALCULATIONS
         // =========================================================
         async function refreshPrices() {
-            let allSymbols = new Set();
-            
-            for (const symbols of Object.values(watchlistsData)) {
+            // Refresh alert definitions so every stock_data call contains the current alert symbols.
+            try { await fetchAlerts(); } catch(e) {}
+
+            // Request only symbols relevant to the current application context.
+            const allSymbols = new Set();
+
+            if (currentTab === 'watchlists') {
+                const symbols = activeWatchlistName && watchlistsData[activeWatchlistName]
+                    ? watchlistsData[activeWatchlistName] : [];
                 symbols.forEach(s => allSymbols.add(s));
-            }
-            
-            for (const holdings of Object.values(portfoliosData)) {
+            } else if (currentTab === 'portfolios') {
+                const holdings = activePortfolioName && portfoliosData[activePortfolioName]
+                    ? portfoliosData[activePortfolioName] : [];
                 holdings.forEach(h => allSymbols.add(h.symbol));
+            } else if (currentTab === 'dashboard') {
+                // Analytics/dashboard: all portfolio holdings.
+                Object.values(portfoliosData).forEach(holdings => {
+                    holdings.forEach(h => allSymbols.add(h.symbol));
+                });
+            } else if (currentTab === 'smallcases') {
+                // Smallcase detail popup: only that Smallcase's holdings.
+                if (selectedSmallcaseDetail && Array.isArray(selectedSmallcaseDetail.holdings)) {
+                    selectedSmallcaseDetail.holdings.forEach(h => {
+                        if (h.symbol) allSymbols.add(h.symbol);
+                    });
+                } else {
+                    // Smallcase list: all symbols represented by all Smallcases.
+                    smallcaseListCache.forEach(sc => {
+                        (sc.symbols || []).forEach(s => allSymbols.add(s));
+                    });
+                }
             }
+
+            // Alert symbols must be checked on every stock_data request.
+            (userAlertsData.alerts || []).forEach(alert => {
+                if (alert && alert.symbol) allSymbols.add(alert.symbol);
+            });
 
             if (allSymbols.size === 0) return;
 
@@ -7662,6 +7830,36 @@
             document.getElementById('holdingDetailsModal').style.display = 'none';
         }
 
+        // =========================================================
+        // FUNDAMENTALS MODAL
+        // =========================================================
+        function openFundamentalsModal(symbol) {
+            const modal = document.getElementById('fundamentalsModal');
+            const frame = document.getElementById('fundamentalsFrame');
+            const subtitle = document.getElementById('fundamentals-modal-subtitle');
+            if (!modal || !frame) return;
+
+            const safeSymbol = String(symbol || '').trim();
+            if (!safeSymbol) return;
+
+            if (subtitle) subtitle.textContent = `Loading fundamentals for ${safeSymbol}...`;
+            frame.src = `/fundamentals?symbol=${encodeURIComponent(safeSymbol)}`;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+
+            frame.onload = () => {
+                if (subtitle) subtitle.textContent = `Fundamental analysis • ${safeSymbol}`;
+            };
+        }
+
+        function closeFundamentalsModal() {
+            const modal = document.getElementById('fundamentalsModal');
+            const frame = document.getElementById('fundamentalsFrame');
+            if (modal) modal.style.display = 'none';
+            if (frame) frame.src = 'about:blank';
+            document.body.style.overflow = '';
+        }
+
         async function openStockNewsModal(symbol = '') {
             const modal = document.getElementById('stockNewsModal');
             const titleEl = document.getElementById('news-modal-title');
@@ -8231,6 +8429,13 @@
         initApp();
         
         // Auto refresh market prices every 15 seconds
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('fundamentalsModal');
+                if (modal && modal.style.display === 'block') closeFundamentalsModal();
+            }
+        });
+
         setInterval(refreshPrices, 15000);
     </script>
 </body>
