@@ -342,16 +342,57 @@ def fetch_screener_fundamentals(symbol):
         if r.status_code != 200:
             return None
 
+        # Re-parse soup from the successfully fetched working URL response
         soup = BeautifulSoup(r.text, "html.parser")
         h1 = soup.find("h1")
         name = h1.text.strip() if h1 else base_sym
 
+        # Top ratios
         ratios = {}
         for li in soup.find_all("li", class_=re.compile(r"flex.*space")):
             n_el = li.find(class_="name")
             v_el = li.find(class_="value") or li.find(class_="number")
             if n_el and v_el:
-                ratios[n_el.text.strip()] = v_el.text.strip()
+                ratios[n_el.text.strip()] = v_el.text.strip().replace("\u20b9", "").strip()
+
+        # Pros & Cons
+        pros = [li.text.strip() for li in soup.select("section#analysis .pros li")]
+        cons = [li.text.strip() for li in soup.select("section#analysis .cons li")]
+
+        # Table parser helper
+        def parse_sec(sec_id):
+            sec = soup.find("section", id=sec_id)
+            if not sec:
+                return {"columns": [], "rows": []}
+            tbl = sec.find("table")
+            if not tbl:
+                return {"columns": [], "rows": []}
+            ths = [th.text.strip() for th in tbl.find("thead").find_all("th")]
+            cols = [c for c in ths[1:] if c]
+            rows_list = []
+            for tr in tbl.find("tbody").find_all("tr"):
+                tds = tr.find_all("td")
+                if not tds:
+                    continue
+                lbl = tds[0].text.strip().replace("\u200b", "").replace("\xa0+", "").replace("\xa0", " ")
+                vals = [td.text.strip().replace("\u20b9", "").strip() for td in tds[1:]]
+                rows_list.append({"label": lbl, "values": vals})
+            return {"columns": cols, "rows": rows_list}
+
+        # Compounded growth tables
+        cg_tables = {}
+        for tbl in soup.select("section#profit-loss table.ranges-table"):
+            th = tbl.find("th")
+            if th:
+                t_title = th.text.strip()
+                cg_tables[t_title] = {}
+                for tr in tbl.find_all("tr")[1:]:
+                    tds = tr.find_all("td")
+                    if len(tds) == 2:
+                        cg_tables[t_title][tds[0].text.strip()] = tds[1].text.strip()
+
+        about_div = soup.find("div", class_="about")
+        summary = about_div.text.strip() if about_div else ""
 
         def clean_num(val_str):
             if not val_str:
@@ -363,8 +404,6 @@ def fetch_screener_fundamentals(symbol):
                 return None
 
         mcap_val = clean_num(ratios.get("Market Cap"))
-        market_cap = (mcap_val * 10000000) if mcap_val is not None else None
-
         cur_price = clean_num(ratios.get("Current Price"))
         pe = clean_num(ratios.get("Stock P/E"))
         book_val = clean_num(ratios.get("Book Value"))
@@ -381,113 +420,12 @@ def fetch_screener_fundamentals(symbol):
 
         pb = (cur_price / book_val) if (cur_price is not None and book_val) else None
 
-        about_div = soup.find("div", class_="about")
-        summary = about_div.text.strip() if about_div else ""
-
-        def parse_table(table_id):
-            sec = soup.find("section", id=table_id)
-            if not sec:
-                return {"columns": [], "rows": []}
-            tbl = sec.find("table")
-            if not tbl:
-                return {"columns": [], "rows": []}
-            headers_list = [th.text.strip() for th in tbl.find("thead").find_all("th") if th.text.strip()]
-            cols = headers_list[1:] if len(headers_list) > 1 else []
-            rows_list = []
-            for tr in tbl.find("tbody").find_all("tr"):
-                tds = tr.find_all("td")
-                if not tds:
-                    continue
-                lbl = tds[0].text.strip().replace("\u200b", "").replace("\xa0+", "").replace("\xa0", " ")
-                vals = [clean_num(td.text.strip()) for td in tds[1:]]
-                rows_list.append({"label": lbl, "values": vals})
-            return {"columns": cols, "rows": rows_list}
-
-        q_table = parse_table("quarters")
-        pnl_table = parse_table("profit-loss")
-        bs_table = parse_table("balance-sheet")
-        cf_table = parse_table("cash-flow")
-
-        revenue = None
-        net_income = None
-        op_income = None
-        op_margin = None
-        net_margin = None
-        eps = None
-        rev_growth = None
-        earnings_growth = None
-
-        if pnl_table.get("rows"):
-            for row in pnl_table["rows"]:
-                lbl = row["label"].lower()
-                vals = [v for v in row["values"] if v is not None]
-                if not vals:
-                    continue
-                if "sales" in lbl or "revenue" in lbl:
-                    revenue = vals[-1] * 10000000
-                    if len(vals) >= 2 and vals[-2]:
-                        rev_growth = ((vals[-1] - vals[-2]) / vals[-2]) * 100
-                elif "net profit" in lbl:
-                    net_income = vals[-1] * 10000000
-                    if len(vals) >= 2 and vals[-2]:
-                        earnings_growth = ((vals[-1] - vals[-2]) / vals[-2]) * 100
-                elif "operating profit" in lbl and "margin" not in lbl:
-                    op_income = vals[-1] * 10000000
-                elif "opm" in lbl or "operating margin" in lbl:
-                    op_margin = vals[-1]
-                elif "eps" in lbl:
-                    eps = vals[-1]
-
-        if revenue and net_income:
-            net_margin = (net_income / revenue) * 100
-
-        total_assets = None
-        total_debt = None
-        equity = None
-        if bs_table.get("rows"):
-            for row in bs_table["rows"]:
-                lbl = row["label"].lower()
-                vals = [v for v in row["values"] if v is not None]
-                if not vals:
-                    continue
-                if "total assets" in lbl:
-                    total_assets = vals[-1] * 10000000
-                elif "borrowings" in lbl or "debt" in lbl:
-                    total_debt = vals[-1] * 10000000
-                elif "equity capital" in lbl:
-                    equity = vals[-1] * 10000000
-
-        debt_equity = (total_debt / equity) if (total_debt is not None and equity) else None
-
-        ownership = {"insiders_percent": None, "institutions_percent": None}
-        sh_sec = soup.find("section", id="shareholding")
-        if sh_sec:
-            tbl = sh_sec.find("table")
-            if tbl:
-                for tr in tbl.find("tbody").find_all("tr"):
-                    tds = tr.find_all("td")
-                    if tds:
-                        lbl = tds[0].text.strip().lower()
-                        last_v = clean_num(tds[-1].text.strip())
-                        if "promoter" in lbl:
-                            ownership["insiders_percent"] = last_v
-                        elif "fii" in lbl or "dii" in lbl or "institution" in lbl:
-                            prev_inst = ownership.get("institutions_percent") or 0.0
-                            ownership["institutions_percent"] = prev_inst + (last_v or 0.0)
-
-        earnings_rows = []
-        if pnl_table.get("columns") and pnl_table.get("rows"):
-            cols = pnl_table["columns"]
-            rev_vals = next((r["values"] for r in pnl_table["rows"] if "sales" in r["label"].lower() or "revenue" in r["label"].lower()), [])
-            ni_vals = next((r["values"] for r in pnl_table["rows"] if "net profit" in r["label"].lower()), [])
-            eps_vals = next((r["values"] for r in pnl_table["rows"] if "eps" in r["label"].lower()), [])
-            for idx, c_date in enumerate(cols):
-                earnings_rows.append({
-                    "date": c_date,
-                    "revenue": (rev_vals[idx] * 10000000) if idx < len(rev_vals) and rev_vals[idx] else None,
-                    "net_income": (ni_vals[idx] * 10000000) if idx < len(ni_vals) and ni_vals[idx] else None,
-                    "eps": eps_vals[idx] if idx < len(eps_vals) else None,
-                })
+        quarters = parse_sec("quarters")
+        pnl = parse_sec("profit-loss")
+        bs = parse_sec("balance-sheet")
+        cf = parse_sec("cash-flow")
+        fin_ratios = parse_sec("ratios")
+        sh = parse_sec("shareholding")
 
         return {
             "symbol": symbol,
@@ -498,51 +436,36 @@ def fetch_screener_fundamentals(symbol):
                 "country": "India",
                 "summary": summary,
             },
+            "top_ratios": ratios,
+            "pros": pros,
+            "cons": cons,
             "quote": {
                 "current_price": cur_price,
-                "previous_close": None,
-                "change": None,
-                "change_percent": None,
                 "fifty_two_week_high": high,
                 "fifty_two_week_low": low,
             },
             "valuation": {
-                "market_cap": market_cap,
+                "market_cap": (mcap_val * 10000000) if mcap_val is not None else None,
                 "trailing_pe": pe,
                 "price_to_book": pb,
                 "dividend_yield": div_yield,
             },
             "profitability": {
-                "revenue": revenue,
-                "net_income": net_income,
-                "operating_income": op_income,
-                "eps": eps,
                 "roe": roe,
                 "roce": roce,
-                "operating_margin": op_margin,
-                "profit_margin": net_margin,
             },
-            "growth": {
-                "revenue_growth": rev_growth,
-                "earnings_growth": earnings_growth,
-            },
-            "balance_sheet_summary": {
-                "total_assets": total_assets,
-                "total_debt": total_debt,
-                "debt_to_equity": debt_equity,
-            },
-            "cashflow_summary": {},
-            "income_statement": q_table if q_table.get("rows") else pnl_table,
-            "balance_sheet": bs_table,
-            "cashflow": cf_table,
+            "quarters": quarters,
+            "profit_loss": pnl,
+            "compounded_growth": cg_tables,
+            "balance_sheet": bs,
+            "cashflow": cf,
+            "ratios": fin_ratios,
+            "shareholding": sh,
+            "income_statement": quarters if quarters.get("rows") else pnl,
             "charts": {
                 "price": [],
-                "annual": earnings_rows,
+                "annual": [],
             },
-            "actions": [],
-            "ownership": ownership,
-            "analyst": {},
-            "documents": [],
             "links": [{"label": "Screener.in", "url": f"https://www.screener.in/company/{base_sym}/"}],
         }
     except Exception:
