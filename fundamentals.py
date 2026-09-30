@@ -16,7 +16,15 @@ from flask import Blueprint, request, jsonify, render_template
 import datetime as dt
 import math
 import threading
+try:
+    from curl_cffi import requests as yahoo_requests
+    _YAHOO_HTTP = "curl_cffi"
+except ImportError:
+    import requests as yahoo_requests
+    _YAHOO_HTTP = "requests"
+
 import requests
+import time
 
 fundamentals_bp = Blueprint("fundamentals", __name__)
 
@@ -31,7 +39,10 @@ def fundamentals_page():
 
 YAHOO_Q1 = "https://query1.finance.yahoo.com"
 YAHOO_Q2 = "https://query2.finance.yahoo.com"
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153.0.0.0 Safari/537.36"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
+
+_FUNDAMENTALS_CACHE_TTL = 180
+_fundamentals_cache = {}
 
 # Yahoo's crumb is tied to the session cookie. Keep both together.
 _yahoo_lock = threading.RLock()
@@ -40,7 +51,11 @@ _yahoo_crumb = None
 
 
 def _new_session():
-    s = requests.Session()
+    """Create a Yahoo-compatible browser-like HTTP session."""
+    if _YAHOO_HTTP == "curl_cffi":
+        s = yahoo_requests.Session(impersonate="chrome")
+    else:
+        s = yahoo_requests.Session()
     s.headers.update({
         "User-Agent": USER_AGENT,
         "Accept": "application/json,text/plain,*/*",
@@ -68,61 +83,43 @@ def _get_session():
 
 
 def _bootstrap_crumb(force=False):
-    """Obtain a Yahoo crumb while tolerating one query host being rate-limited.
-
-    Yahoo currently requires a cookie-bound crumb for quoteSummary.  In practice
-    query1 and query2 can be throttled independently, so never fail immediately
-    on a 429 from the first host.  Reuse the same cookie/session for both hosts.
-    """
+    """Bootstrap Yahoo cookie + crumb with retries and both query hosts."""
     global _yahoo_crumb
-
     with _yahoo_lock:
         if not force and _yahoo_crumb:
             return _yahoo_crumb
-
         s = _get_session()
-
-        # Seed Yahoo's session cookie. fc.yahoo.com is intentionally allowed to
-        # return a non-200 response; the cookie jar is what we need from it.
         try:
-            s.get("https://fc.yahoo.com", timeout=10, allow_redirects=True)
-        except requests.RequestException:
+            s.get("https://fc.yahoo.com", timeout=15, allow_redirects=True)
+        except Exception:
             pass
-
-        # query1/query2 are separate front doors. If one is rate-limited,
-        # immediately try the other rather than burning another retry cycle.
         last_status = None
         last_body = ""
-        for host in (YAHOO_Q1, YAHOO_Q2):
-            try:
-                resp = s.get(
-                    f"{host}/v1/test/getcrumb",
-                    timeout=10,
-                    allow_redirects=True,
-                )
-                body = (resp.text or "").strip()
-                last_status = resp.status_code
-                last_body = body
-
-                if resp.status_code == 200 and body and "<html" not in body.lower() and "too many requests" not in body.lower():
-                    _yahoo_crumb = body
-                    return body
-            except requests.RequestException as exc:
-                last_body = str(exc)
-                continue
-
-        if last_status == 429 or "too many requests" in last_body.lower():
-            raise RuntimeError(
-                "Yahoo Finance crumb endpoints are temporarily rate-limited. "
-                "Please wait a minute and try Refresh again."
-            )
+        for retry in range(3):
+            for host in (YAHOO_Q1, YAHOO_Q2):
+                try:
+                    resp = s.get(f"{host}/v1/test/getcrumb", timeout=15, allow_redirects=True)
+                    body = (resp.text or "").strip()
+                    last_status, last_body = resp.status_code, body
+                    if (resp.status_code == 200 and body and
+                        "<html" not in body.lower() and
+                        "too many requests" not in body.lower() and
+                        not body.lower().startswith("edge:")):
+                        _yahoo_crumb = body
+                        return body
+                except Exception as exc:
+                    last_body = str(exc)
+            if retry < 2:
+                time.sleep(1.5 * (2 ** retry))
+        if last_status == 429 or "too many requests" in last_body.lower() or last_body.lower().startswith("edge:"):
+            if _YAHOO_HTTP != "curl_cffi":
+                raise RuntimeError("Yahoo is blocking the server HTTP fingerprint. Install curl_cffi: pip install -U curl_cffi")
+            raise RuntimeError("Yahoo Finance is temporarily throttling the server IP for crumb requests. Chrome TLS impersonation is enabled; if this persists, wait a few minutes or use a different outbound IP.")
         raise RuntimeError("Unable to obtain a valid Yahoo Finance crumb from query1/query2")
 
 
-def _yahoo_get(path, params=None, crumb_required=True, retries=1):
-    """GET Yahoo JSON with automatic cookie/crumb recovery."""
+def _yahoo_get(path, params=None, crumb_required=True, retries=2):
     global _yahoo_crumb
-
     last_error = None
     for attempt in range(retries + 1):
         try:
@@ -130,48 +127,26 @@ def _yahoo_get(path, params=None, crumb_required=True, retries=1):
             query = dict(params or {})
             if crumb_required:
                 query["crumb"] = _bootstrap_crumb(force=False)
-
-            response = s.get(
-                path,
-                params=query,
-                timeout=20,
-                allow_redirects=True,
-            )
-
+            response = s.get(path, params=query, timeout=25, allow_redirects=True)
             text = response.text or ""
-            invalid_crumb = (
-                response.status_code in (401, 403)
-                or "Invalid Crumb" in text
-                or '"code":"Unauthorized"' in text
-                or '"code": "Unauthorized"' in text
-            )
-
+            invalid_crumb = (response.status_code in (401, 403) or "Invalid Crumb" in text or '"code":"Unauthorized"' in text or '"code": "Unauthorized"' in text)
             if invalid_crumb and attempt < retries:
                 with _yahoo_lock:
                     _reset_yahoo_session()
-                    _bootstrap_crumb(force=True)
+                time.sleep(1.0 * (2 ** attempt))
                 continue
-
+            if response.status_code == 429 and attempt < retries:
+                time.sleep(1.5 * (2 ** attempt))
+                continue
             response.raise_for_status()
             return response.json()
         except Exception as exc:
             last_error = exc
-            # A crumb 429 is a server-side throttle, not an invalid-session
-            # condition. Rebooting the session and requesting another crumb
-            # only makes the throttle worse.
-            if "rate-limited" in str(exc).lower():
+            if "temporarily throttling" in str(exc).lower() or "install curl_cffi" in str(exc).lower():
                 break
             if attempt < retries:
-                with _yahoo_lock:
-                    _reset_yahoo_session()
-                    try:
-                        _bootstrap_crumb(force=True)
-                    except Exception:
-                        pass
-                continue
-
+                time.sleep(1.0 * (2 ** attempt))
     raise last_error or RuntimeError("Yahoo Finance request failed")
-
 
 def _clean(value):
     if value is None:
@@ -336,6 +311,11 @@ def fundamentals():
     symbol = (request.args.get("symbol") or "").strip().upper()
     if not symbol:
         return jsonify({"error": "symbol is required"}), 400
+
+    now = time.time()
+    cached = _fundamentals_cache.get(symbol)
+    if cached and now - cached[0] < _FUNDAMENTALS_CACHE_TTL:
+        return jsonify(cached[1])
 
     modules = [
         "price",
@@ -564,7 +544,9 @@ def fundamentals():
             "calendar": calendar,
         }
 
-        return jsonify(_clean(result))
+        cleaned = _clean(result)
+        _fundamentals_cache[symbol] = (time.time(), cleaned)
+        return jsonify(cleaned)
 
     except Exception as exc:
         return jsonify({
