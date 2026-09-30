@@ -587,27 +587,44 @@
         }
         .chart-wrapper { position: relative; height: 320px; width: 100%; }
 
-        /* Technical Chart Modal Styles */
+        /* Technical Chart Modal & Popover Menu Styles */
         .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15,23,42,0.85); backdrop-filter: blur(4px); }
         .modal-content { background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #d1d4dc; }
-        .chart-topbar { padding: 12px 20px; background: #1e222d; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2e39; flex-wrap: wrap; gap: 10px; }
-        .chart-topbar .stock-title { font-size: 18px; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 10px; }
-        .chart-controls { display: flex; align-items: center; gap: 15px; }
-        .timeframe-group, .indicator-group { display: flex; gap: 5px; background: #131722; padding: 4px; border-radius: 6px; border: 1px solid #2a2e39; }
-        .tf-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
-        .tf-btn:hover { color: #d1d4dc; background: #2a2e39; }
-        .tf-btn.active { background: #10b981; color: #ffffff; }
-        .int-btn { background: transparent; color: #787b86; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
-        .int-btn:hover { color: #d1d4dc; background: #2a2e39; }
-        .int-btn.active { background: #10b981; color: #ffffff; }
-        .ind-checkbox { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #b2b5be; cursor: pointer; padding: 0 6px; }
-        .legend-bar { padding: 8px 20px; background: #181c27; font-size: 13px; color: #b2b5be; display: flex; gap: 20px; border-bottom: 1px solid #2a2e39; font-family: monospace; flex-wrap: wrap; }
+        .chart-topbar { padding: 10px 16px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: space-between; align-items: center; gap: 12px; position: relative; z-index: 100; flex-wrap: wrap; }
+        .chart-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .chart-symbol-text { font-weight: 800; font-size: 16px; color: #ffffff; letter-spacing: 0.5px; }
+        .chart-name-text { font-size: 13px; color: #787b86; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .chart-header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .chart-popovers-container { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .chart-popover-wrapper { position: relative; display: inline-block; }
+        .chart-popover-btn { background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s ease; white-space: nowrap; }
+        .chart-popover-btn:hover { background: #2a2e39; border-color: #363a45; color: #ffffff; }
+        .popover-arrow { font-size: 10px; color: #787b86; transition: transform 0.2s ease; }
+        .chart-popover-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1e222d; border: 1px solid #363a45; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding: 8px 0; min-width: 190px; z-index: 1000; flex-direction: column; }
+        .chart-popover-menu.show { display: flex !important; }
+        .popover-menu-title { padding: 4px 12px 6px; font-size: 10px; font-weight: 700; color: #787b86; text-transform: uppercase; letter-spacing: 0.8px; }
+        .popover-menu-item { background: transparent; border: none; color: #d1d4dc; padding: 8px 14px; font-size: 12px; font-weight: 500; text-align: left; cursor: pointer; width: 100%; display: flex; align-items: center; gap: 8px; transition: background 0.12s ease; }
+        .popover-menu-item:hover { background: #2a2e39; color: #ffffff; }
+        .popover-menu-item.active { background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; }
+        .popover-item-checkbox { padding: 6px 14px; font-size: 12px; color: #d1d4dc; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; }
+        .popover-item-checkbox:hover { background: #2a2e39; }
+        .popover-item-checkbox input[type="checkbox"] { accent-color: #10b981; cursor: pointer; }
+        .popover-divider { height: 1px; background: #2a2e39; margin: 4px 0; }
+        .item-danger { color: #ef5350 !important; }
+        .item-danger:hover { background: rgba(239, 83, 80, 0.15) !important; }
+        .chart-action-btn { background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
+        .chart-action-btn:hover { background: #2a2e39; color: #ffffff; }
+        .chart-close-btn { background: transparent; border: none; color: #a3a6af; font-size: 24px; font-weight: bold; cursor: pointer; line-height: 1; padding: 2px 8px; border-radius: 6px; transition: all 0.15s ease; margin-left: 4px; }
+        .chart-close-btn:hover { color: #ffffff; background: rgba(239, 83, 80, 0.25); }
+        .tf-btn, .int-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        .tf-btn:hover, .int-btn:hover { color: #d1d4dc; background: #2a2e39; }
+        .tf-btn.active, .int-btn.active { background: #10b981; color: #ffffff; }
+        .legend-bar { padding: 8px 20px; background: #181c27; font-size: 12px; color: #b2b5be; display: flex; gap: 16px; border-bottom: 1px solid #2a2e39; font-family: monospace; flex-wrap: wrap; }
         .legend-item { display: flex; gap: 5px; }
         .legend-val { color: #ffffff; font-weight: bold; }
         .chart-body-container { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; height: 100%; overflow: hidden; }
         #mainChartPane { flex: 3; width: 100%; position: relative; }
         #rsiChartPane { flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; }
-        .close-btn { color: #a3a6af; font-size: 26px; font-weight: bold; cursor: pointer; line-height: 1; }
         .engine-tab-btn { background: transparent; color: #787b86; border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
         .engine-tab-btn:hover { color: #d1d4dc; background: #2a2e39; }
         .engine-tab-btn.active { background: #10b981; color: #ffffff; }
@@ -685,34 +702,55 @@
         }
 
         /* Mobile & Small Device Optimization (Media Queries) */
+        /* Mobile & Small Device Optimization (Media Queries) */
         @media (max-width: 768px) {
             body {
-                padding: 8px 6px;
+                padding: 6px 4px;
+            }
+            .container {
+                padding: 0 4px;
             }
             .app-header {
-                padding: 12px;
+                padding: 10px 12px;
                 flex-direction: column;
                 align-items: stretch;
-                gap: 12px;
+                gap: 10px;
             }
             .brand-logo-group {
                 justify-content: center;
             }
+            .brand-logo-img {
+                height: 38px;
+            }
+            .app-title {
+                font-size: 17px;
+            }
             .nav-tabs {
                 width: 100%;
-                justify-content: space-around;
-                overflow-x: auto;
+                display: flex;
+                overflow-x: auto !important;
+                white-space: nowrap !important;
+                flex-wrap: nowrap !important;
+                justify-content: flex-start !important;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding: 4px;
+                gap: 4px;
+            }
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
             }
             .tab-btn {
-                padding: 8px 10px;
-                font-size: 12px;
-                flex: 1;
+                padding: 8px 12px !important;
+                font-size: 12px !important;
+                flex: 0 0 auto !important;
                 justify-content: center;
                 white-space: nowrap;
             }
-            .controls {
+            .controls, .card-container > div {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 10px;
             }
             .controls input, .controls select, .controls button {
                 width: 100% !important;
@@ -721,17 +759,26 @@
                 width: 100% !important;
             }
             .summary-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
             }
             .metric-card {
-                padding: 12px 14px;
+                padding: 10px 12px !important;
             }
             .metric-card .value {
-                font-size: 17px;
+                font-size: 16px !important;
             }
             .dashboard-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr !important;
+                gap: 14px !important;
+            }
+            .insights-top-cards {
+                grid-template-columns: 1fr !important;
+                gap: 14px !important;
+            }
+            .news-grid {
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
             }
             .filter-sort-bar {
                 flex-direction: column;
@@ -749,7 +796,7 @@
                 margin-bottom: 15px;
             }
             table {
-                min-width: 680px;
+                min-width: 640px;
             }
             .modal-content {
                 width: 100% !important;
@@ -757,21 +804,62 @@
                 margin: 0 !important;
                 border-radius: 0 !important;
             }
-            .chart-topbar {
-                padding: 8px 12px;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
+            .small-modal-content {
+                width: 95vw !important;
+                max-width: 95vw !important;
+                margin: 4% auto !important;
+                padding: 16px 12px !important;
+                max-height: 90vh;
+                overflow-y: auto;
             }
-            .chart-controls {
-                width: 100%;
+            .form-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .chart-topbar {
+                padding: 8px 10px;
                 flex-wrap: wrap;
                 gap: 8px;
             }
-            .timeframe-group, .indicator-group {
+            .chart-header-left {
+                width: calc(100% - 40px);
+            }
+            .chart-header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .chart-popovers-container {
                 overflow-x: auto;
+                padding-bottom: 2px;
                 max-width: 100%;
-                padding: 4px;
+                -webkit-overflow-scrolling: touch;
+            }
+            .chart-popover-menu {
+                position: fixed;
+                top: 70px;
+                left: 5%;
+                right: 5%;
+                width: 90%;
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+            .legend-bar {
+                font-size: 11px;
+                padding: 4px 10px;
+                gap: 8px;
+                overflow-x: auto;
+            }
+        }
+        @media (max-width: 480px) {
+            .summary-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .app-header-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .tab-btn {
+                padding: 7px 10px !important;
+                font-size: 11.5px !important;
             }
         }
     </style>
@@ -1371,77 +1459,114 @@
     <div id="chartModal" class="modal">
         <div class="modal-content" style="background-color: #131722; color: #d1d4dc;">
             <!-- Top Controls Bar -->
-            <div class="chart-topbar" style="padding: 10px 18px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div class="stock-title" style="display: flex; align-items: center; gap: 10px;">
-                    <span id="chartSymbolDisplay" style="font-weight: 800; font-size: 17px; color: #ffffff;">ROLEXRINGS.NS</span>
-                    <span id="chartNameDisplay" style="font-size: 13px; color: #787b86; font-weight: 500;">Rolex Rings Ltd</span>
+            <div class="chart-topbar">
+                <div class="chart-header-left">
+                    <div class="stock-title">
+                        <span id="chartSymbolDisplay" class="chart-symbol-text">ROLEXRINGS.NS</span>
+                        <span id="chartNameDisplay" class="chart-name-text">Rolex Rings Ltd</span>
+                    </div>
                 </div>
                 
-                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                    <!-- Chart Type Selector -->
-                    <div class="timeframe-group" style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39;">
-                        <button class="tf-btn active" id="chart-type-candles" onclick="setChartType('candlestick')" title="Candlestick Chart">🕯️</button>
-                        <button class="tf-btn" id="chart-type-line" onclick="setChartType('line')" title="Line Chart">📈</button>
-                        <button class="tf-btn" id="chart-type-area" onclick="setChartType('area')" title="Area Chart">⛰️</button>
+                <div class="chart-header-right">
+                    <!-- Top Menu Controls Group -->
+                    <div class="chart-popovers-container">
+                        <!-- 1. Indicators Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-indicators', event)">
+                                <span>fx Indicators</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-indicators">
+                                <div class="popover-menu-title">Indicators</div>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> <span>Volume</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkSma50" onchange="toggleIndicators()"> <span style="color:#ff6d00">50 DMA</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkSma200" onchange="toggleIndicators()"> <span style="color:#e11d48">200 DMA</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkEma9" onchange="toggleIndicators()"> <span style="color:#06b6d4">EMA 9</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkGann2Day" onchange="toggleIndicators()"> <span style="color:#ffffff">Gann 2-Day Low</span></label>
+                                <div class="popover-divider"></div>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkRsi" checked onchange="toggleIndicators()"> <span style="color:#e040fb">RSI 14</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkMacd" onchange="toggleIndicators()"> <span style="color:#3b82f6">MACD</span></label>
+                            </div>
+                        </div>
+
+                        <!-- 2. Drawing Tools Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event)">
+                                <span>✏️ Tools</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-tools">
+                                <div class="popover-menu-title">Drawing Tools</div>
+                                <button class="popover-menu-item" id="tool-btn-support" onclick="addHorizontalLine('support'); closeAllChartPopovers();">🟢 Support Line</button>
+                                <button class="popover-menu-item" id="tool-btn-target" onclick="addHorizontalLine('target'); closeAllChartPopovers();">🎯 Target Price</button>
+                                <button class="popover-menu-item" id="tool-btn-stoploss" onclick="addHorizontalLine('stoploss'); closeAllChartPopovers();">🛑 StopLoss Line</button>
+                                <button class="popover-menu-item" id="tool-btn-trendline" onclick="activateDrawingTool('trendline'); closeAllChartPopovers();">📈 Diagonal Trendline</button>
+                                <button class="popover-menu-item" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle'); closeAllChartPopovers();">⬛ Rectangle Zone</button>
+                                <button class="popover-menu-item" id="tool-btn-vertical" onclick="activateDrawingTool('vertical'); closeAllChartPopovers();">🕒 Time Line Marker</button>
+                                <button class="popover-menu-item" id="tool-btn-note" onclick="activateDrawingTool('note'); closeAllChartPopovers();">📍 Text Callout / Note</button>
+                                <div class="popover-divider"></div>
+                                <button class="popover-menu-item item-danger" onclick="clearDrawings(); closeAllChartPopovers();">🧹 Clear All Drawings</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. Time Interval / Candle Frequency Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-interval', event)">
+                                <span id="intervalBtnLabel">⏱️ 1D</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-interval">
+                                <div class="popover-menu-title">Candle Interval</div>
+                                <button class="popover-menu-item int-btn" id="int-5m" onclick="changeInterval('5m'); closeAllChartPopovers();">5 Minutes (5m)</button>
+                                <button class="popover-menu-item int-btn" id="int-15m" onclick="changeInterval('15m'); closeAllChartPopovers();">15 Minutes (15m)</button>
+                                <button class="popover-menu-item int-btn" id="int-1h" onclick="changeInterval('1h'); closeAllChartPopovers();">1 Hour (1H)</button>
+                                <button class="popover-menu-item int-btn active" id="int-1d" onclick="changeInterval('1d'); closeAllChartPopovers();">Daily (1D)</button>
+                                <button class="popover-menu-item int-btn" id="int-1w" onclick="changeInterval('1w'); closeAllChartPopovers();">Weekly (1W)</button>
+                                <button class="popover-menu-item int-btn" id="int-1mo" onclick="changeInterval('1mo'); closeAllChartPopovers();">Monthly (1M)</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. Timeframe Range Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-range', event)">
+                                <span id="rangeBtnLabel">📅 1Y</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-range">
+                                <div class="popover-menu-title">Time Range</div>
+                                <button class="popover-menu-item tf-btn" id="tf-1mo" onclick="changeRange('1mo'); closeAllChartPopovers();">1 Month (1M)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-3mo" onclick="changeRange('3mo'); closeAllChartPopovers();">3 Months (3M)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-6mo" onclick="changeRange('6mo'); closeAllChartPopovers();">6 Months (6M)</button>
+                                <button class="popover-menu-item tf-btn active" id="tf-1y" onclick="changeRange('1y'); closeAllChartPopovers();">1 Year (1Y)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-2y" onclick="changeRange('2y'); closeAllChartPopovers();">2 Years (2Y)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-5y" onclick="changeRange('5y'); closeAllChartPopovers();">5 Years (5Y)</button>
+                                <div class="popover-divider"></div>
+                                <button class="popover-menu-item" onclick="zoomChart(1.25); closeAllChartPopovers();">🔍 Zoom In (+25%)</button>
+                                <button class="popover-menu-item" onclick="zoomChart(0.8); closeAllChartPopovers();">🔍 Zoom Out (-20%)</button>
+                            </div>
+                        </div>
+
+                        <!-- 5. Chart Type Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-type', event)">
+                                <span id="typeBtnLabel">🕯️ Candles</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-type">
+                                <div class="popover-menu-title">Chart Type</div>
+                                <button class="popover-menu-item tf-btn active" id="chart-type-candles" onclick="setChartType('candlestick'); closeAllChartPopovers();">🕯️ Candlestick</button>
+                                <button class="popover-menu-item tf-btn" id="chart-type-line" onclick="setChartType('line'); closeAllChartPopovers();">📈 Line</button>
+                                <button class="popover-menu-item tf-btn" id="chart-type-area" onclick="setChartType('area'); closeAllChartPopovers();">🌊 Area</button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Action Buttons -->
+                        <button class="chart-action-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View">🔄 Center</button>
+                        <button class="chart-action-btn" onclick="openStockNewsModal(currentChartSymbol)">📰 News</button>
                     </div>
 
-                    <!-- Time Interval (Candle Frequency) Group -->
-                    <div class="timeframe-group" style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39;">
-                        <span style="color: #787b86; font-weight: 600; font-size: 11px; align-self: center; padding: 0 4px;">FREQ:</span>
-                        <button class="int-btn" id="int-5m" onclick="changeInterval('5m')" title="5 Minutes Candles">5m</button>
-                        <button class="int-btn" id="int-15m" onclick="changeInterval('15m')" title="15 Minutes Candles">15m</button>
-                        <button class="int-btn" id="int-1h" onclick="changeInterval('1h')" title="1 Hour Candles">1H</button>
-                        <button class="int-btn active" id="int-1d" onclick="changeInterval('1d')" title="Daily Candles">1D</button>
-                        <button class="int-btn" id="int-1w" onclick="changeInterval('1w')" title="Weekly Candles">1W</button>
-                        <button class="int-btn" id="int-1mo" onclick="changeInterval('1mo')" title="Monthly Candles">1M</button>
-                    </div>
-
-                    <!-- Timeframe Group -->
-                    <div class="timeframe-group" style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39;">
-                        <button class="tf-btn" id="tf-1mo" onclick="changeRange('1mo')">1M</button>
-                        <button class="tf-btn" id="tf-3mo" onclick="changeRange('3mo')">3M</button>
-                        <button class="tf-btn" id="tf-6mo" onclick="changeRange('6mo')">6M</button>
-                        <button class="tf-btn active" id="tf-1y" onclick="changeRange('1y')">1Y</button>
-                        <button class="tf-btn" id="tf-2y" onclick="changeRange('2y')">2Y</button>
-                        <button class="tf-btn" id="tf-5y" onclick="changeRange('5y')">5Y</button>
-                        <button class="tf-btn" onclick="zoomChart(1.25)" title="Zoom In Chart">➕</button>
-                        <button class="tf-btn" onclick="zoomChart(0.8)" title="Zoom Out Chart">➖</button>
-                        <button class="tf-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View" style="background: #10b981; color: #ffffff; margin-left: 4px;">🔄 Center View</button>
-                    </div>
-
-                    <!-- Drawing Tools Quick Bar -->
-                    <div style="display: flex; gap: 4px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39; flex-wrap: wrap;">
-                        <button class="tf-btn" id="tool-btn-support" onclick="addHorizontalLine('support')" title="Add Horizontal Support Line">➖ Support</button>
-                        <button class="tf-btn" id="tool-btn-target" onclick="addHorizontalLine('target')" title="Add Target Price Line">🎯 Target</button>
-                        <button class="tf-btn" id="tool-btn-stoploss" onclick="addHorizontalLine('stoploss')" title="Add Stop-Loss Price Line">🛑 StopLoss</button>
-                        <button class="tf-btn" id="tool-btn-trendline" onclick="activateDrawingTool('trendline')" title="Draw Diagonal Trendline (Click 2 points)">📐 Trendline</button>
-                        <button class="tf-btn" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle')" title="Draw Resistance/Support Rectangle Zone">⬜ Rectangle</button>
-                        <button class="tf-btn" id="tool-btn-vertical" onclick="activateDrawingTool('vertical')" title="Draw Vertical Time Marker Line">⏱️ Time Line</button>
-                        <button class="tf-btn" id="tool-btn-note" onclick="activateDrawingTool('note')" title="Add Text Callout / Note on Chart">📍 Note</button>
-                        <button class="tf-btn" onclick="clearDrawings()" title="Clear All Drawn Lines & Shapes" style="color: #ef5350;">🧹 Clear All</button>
-                    </div>
-
-                    <!-- Indicators Toggle Dropdown -->
-                    <div class="indicator-group" style="display: flex; gap: 8px; background: #131722; padding: 4px 10px; border-radius: 6px; border: 1px solid #2a2e39; font-size: 12px; align-items: center; flex-wrap: wrap;">
-                        <span style="color: #787b86; font-weight: 600; font-size: 11px;">INDICATORS:</span>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> Volume</label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkSma20" onchange="toggleIndicators()"> <span style="color:#2962ff">SMA 20</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkSma50" onchange="toggleIndicators()"> <span style="color:#ff6d00">SMA 50</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkSma200" onchange="toggleIndicators()"> <span style="color:#e11d48">SMA 200</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkEma9" onchange="toggleIndicators()"> <span style="color:#06b6d4">EMA 9</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkBollinger" onchange="toggleIndicators()"> <span style="color:#a855f7">Bollinger</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkRsi" checked onchange="toggleIndicators()"> <span style="color:#e040fb">RSI 14</span></label>
-                        <label class="ind-checkbox"><input type="checkbox" id="chkMacd" onchange="toggleIndicators()"> <span style="color:#3b82f6">MACD</span></label>
-                    </div>
-
-                    <button class="btn-secondary" style="font-size: 12px; padding: 5px 12px; background: #2a2e39; border-color: #363a45; color: #ffffff;" onclick="openStockNewsModal(currentChartSymbol)">📰 News</button>
-
-                    <span class="close-btn" onclick="closeChartModal()" style="font-size: 26px; cursor: pointer;">&times;</span>
+                    <!-- Top Right Close Icon -->
+                    <button class="chart-close-btn" onclick="closeChartModal()" title="Close Chart Modal (Esc)">&times;</button>
                 </div>
             </div>
 
             <!-- Legend Bar -->
-            <div class="legend-bar" id="legendBar" style="padding: 6px 18px; background: #181c27; font-size: 12px; color: #b2b5be; display: flex; gap: 16px; border-bottom: 1px solid #2a2e39; font-family: monospace; flex-wrap: wrap;">
+            <div class="legend-bar" id="legendBar">
                 <div class="legend-item">DATE: <span class="legend-val" id="legDate">-</span></div>
                 <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
                 <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
@@ -1449,9 +1574,10 @@
                 <div class="legend-item">C: <span class="legend-val" id="legClose">-</span></div>
                 <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
                 <div class="legend-item" id="legSmaGroup">
-                    SMA20: <span class="legend-val" style="color:#2962ff" id="legSma20">-</span> |
-                    SMA50: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |
-                    SMA200: <span class="legend-val" style="color:#e11d48" id="legSma200">-</span>
+                    50 DMA: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |
+                    200 DMA: <span class="legend-val" style="color:#e11d48" id="legSma200">-</span> |
+                    EMA 9: <span class="legend-val" style="color:#06b6d4" id="legEma9">-</span> |
+                    Gann 2-Day: <span class="legend-val" style="color:#ffffff" id="legGann2Day">-</span>
                 </div>
                 <div class="legend-item" id="legRsiGroup">RSI: <span class="legend-val" style="color:#e040fb" id="legRsi">-</span></div>
                 <div class="legend-item" id="legMacdGroup" style="display: none;">MACD: <span class="legend-val" style="color:#3b82f6" id="legMacd">-</span></div>
@@ -2045,12 +2171,42 @@
         }
 
         async function loadSmallcasesTab() {
+            const grid = document.getElementById('smallcase-summary-grid');
+            if (grid) {
+                grid.innerHTML = Array(8).fill(0).map(() => `
+                    <div class="metric-card" style="padding: 12px 14px;">
+                        <span class="skeleton-box" style="width: 75px; height: 11px;"></span>
+                        <div style="margin-top: 6px;"><span class="skeleton-box" style="width: 90px; height: 18px;"></span></div>
+                    </div>
+                `).join('');
+            }
+
             const mount = document.getElementById('smallcases-list-mount');
             if (mount) {
                 mount.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                        <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
-                        Loading smallcases data...
+                    <div class="table-responsive-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Smallcase</th><th>Category</th><th>Stocks</th><th>Total Value</th><th>Today's Change</th><th>Return</th><th>XIRR</th><th>Status</th><th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Array(4).fill(0).map(() => `
+                                    <tr>
+                                        <td><span class="skeleton-box" style="width: 120px; height: 14px;"></span><br><span class="skeleton-box" style="width: 160px; height: 10px; margin-top: 4px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 60px; height: 12px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 40px; height: 14px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 70px; height: 14px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 65px; height: 14px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 55px; height: 14px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 55px; height: 14px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 60px; height: 12px;"></span></td>
+                                        <td style="text-align:right;"><span class="skeleton-box" style="width: 80px; height: 20px;"></span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 `;
             }
@@ -2936,9 +3092,9 @@
             const diiPos = fd.dii_net >= 0;
             const totPos = fd.total_net >= 0;
 
-            const fiiSign = fiiPos ? '+' : '';
-            const diiSign = diiPos ? '+' : '';
-            const totSign = totPos ? '+' : '';
+            const fiiSign = fiiPos ? '+' : '-';
+            const diiSign = diiPos ? '+' : '-';
+            const totSign = totPos ? '+' : '-';
 
             fiiMount.innerHTML = `
                 <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
@@ -2946,18 +3102,18 @@
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">FII Flow</span>
                         <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${fiiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.fii_action || (fiiPos ? 'BUY' : 'SELL')}</span>
                     </div>
-                    <span style="font-size: 13px; font-weight: 700; color: ${fiiPos ? '#10b981' : '#ef4444'};">${fiiSign}₹${Math.abs(fd.fii_net).toLocaleString('en-IN')} Cr</span>
+                    <span style="font-size: 13px; font-weight: 700; color: ${fiiPos ? '#10b981' : '#ef4444'};">${fiiSign}₹${Math.abs(fd.fii_net).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})} Cr</span>
                 </div>
                 <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">DII Flow</span>
                         <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${diiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.dii_action || (diiPos ? 'BUY' : 'SELL')}</span>
                     </div>
-                    <span style="font-size: 13px; font-weight: 700; color: ${diiPos ? '#10b981' : '#ef4444'};">${diiSign}₹${Math.abs(fd.dii_net).toLocaleString('en-IN')} Cr</span>
+                    <span style="font-size: 13px; font-weight: 700; color: ${diiPos ? '#10b981' : '#ef4444'};">${diiSign}₹${Math.abs(fd.dii_net).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})} Cr</span>
                 </div>
                 <div style="background: ${totPos ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'}; border: 1px solid ${totPos ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; padding: 8px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 11.5px; color: var(--text-primary); font-weight: 700;">Net Institutional:</span>
-                    <span style="font-size: 13px; font-weight: 800; color: ${totPos ? '#10b981' : '#ef4444'};">${totSign}₹${Math.abs(fd.total_net).toLocaleString('en-IN')} Cr</span>
+                    <span style="font-size: 13px; font-weight: 800; color: ${totPos ? '#10b981' : '#ef4444'};">${totSign}₹${Math.abs(fd.total_net).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})} Cr</span>
                 </div>
             `;
         }
@@ -3335,22 +3491,22 @@
                     };
                     
                     const tdSymbol = document.createElement('td');
-                    tdSymbol.innerHTML = `<span class="stock-symbol">${sym}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="name-${sym}">Loading...</div>`;
+                    tdSymbol.innerHTML = `<span class="stock-symbol">${sym}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="name-${sym}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
 
                     const tdPrice = document.createElement('td');
                     tdPrice.style.textAlign = 'right';
                     tdPrice.id = `price-${sym}`;
-                    tdPrice.innerText = '-';
+                    tdPrice.innerHTML = `<span class="skeleton-box" style="width: 60px; height: 14px;"></span>`;
 
                     const tdChangeAmt = document.createElement('td');
                     tdChangeAmt.style.textAlign = 'right';
                     tdChangeAmt.id = `change-amt-${sym}`;
-                    tdChangeAmt.innerText = '-';
+                    tdChangeAmt.innerHTML = `<span class="skeleton-box" style="width: 50px; height: 14px;"></span>`;
 
                     const tdChangePct = document.createElement('td');
                     tdChangePct.style.textAlign = 'right';
                     tdChangePct.id = `change-pct-${sym}`;
-                    tdChangePct.innerText = '-';
+                    tdChangePct.innerHTML = `<span class="skeleton-box" style="width: 45px; height: 14px;"></span>`;
 
                     const tdActions = document.createElement('td');
                     tdActions.style.textAlign = 'center';
@@ -4446,23 +4602,23 @@
             summaryGrid.innerHTML = `
                 <div class="metric-card">
                     <div class="title">Invested Amount</div>
-                    <div class="value" id="pf-summary-invested">₹0.00</div>
+                    <div class="value" id="pf-summary-invested"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
                     <div class="sub-value" style="color:#7f8c8d">${holdings.length} Holdings</div>
                 </div>
                 <div class="metric-card">
                     <div class="title">Current Value</div>
-                    <div class="value" id="pf-summary-value">₹0.00</div>
+                    <div class="value" id="pf-summary-value"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
                     <div class="sub-value" style="color:#7f8c8d">Live Portfolio Value</div>
                 </div>
                 <div class="metric-card">
                     <div class="title">Overall Return (P&L)</div>
-                    <div class="value" id="pf-summary-pnl">₹0.00</div>
-                    <div class="sub-value" id="pf-summary-pnl-pct">0.00%</div>
+                    <div class="value" id="pf-summary-pnl"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                    <div class="sub-value" id="pf-summary-pnl-pct"><span class="skeleton-box" style="width: 45px; height: 12px;"></span></div>
                 </div>
                 <div class="metric-card">
                     <div class="title">Today's Return</div>
-                    <div class="value" id="pf-summary-daypnl">₹0.00</div>
-                    <div class="sub-value" id="pf-summary-daypnl-pct">0.00%</div>
+                    <div class="value" id="pf-summary-daypnl"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                    <div class="sub-value" id="pf-summary-daypnl-pct"><span class="skeleton-box" style="width: 45px; height: 12px;"></span></div>
                 </div>
             `;
 
@@ -4576,7 +4732,7 @@
                     };
 
                     const tdStock = document.createElement('td');
-                    tdStock.innerHTML = `<span class="stock-symbol">${sym}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="pf-name-${sym}">Loading...</div>`;
+                    tdStock.innerHTML = `<span class="stock-symbol">${sym}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="pf-name-${sym}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
 
                     const tdQty = document.createElement('td');
                     tdQty.style.textAlign = 'right';
@@ -4589,7 +4745,7 @@
                     const tdLtp = document.createElement('td');
                     tdLtp.style.textAlign = 'right';
                     tdLtp.id = `pf-ltp-${sym}`;
-                    tdLtp.innerText = '-';
+                    tdLtp.innerHTML = `<span class="skeleton-box" style="width: 60px; height: 14px;"></span>`;
 
                     const tdInv = document.createElement('td');
                     tdInv.style.textAlign = 'right';
@@ -4599,17 +4755,17 @@
                     const tdVal = document.createElement('td');
                     tdVal.style.textAlign = 'right';
                     tdVal.id = `pf-val-${sym}`;
-                    tdVal.innerText = '-';
+                    tdVal.innerHTML = `<span class="skeleton-box" style="width: 70px; height: 14px;"></span>`;
 
                     const tdPnl = document.createElement('td');
                     tdPnl.style.textAlign = 'right';
                     tdPnl.id = `pf-pnl-${sym}`;
-                    tdPnl.innerText = '-';
+                    tdPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
 
                     const tdDayPnl = document.createElement('td');
                     tdDayPnl.style.textAlign = 'right';
                     tdDayPnl.id = `pf-daypnl-${sym}`;
-                    tdDayPnl.innerText = '-';
+                    tdDayPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
 
                     const tdDetails = document.createElement('td');
                     tdDetails.style.textAlign = 'center';
@@ -4697,7 +4853,20 @@
                             </tr>
                         </thead>
                         <tbody id="transactions-tbody">
-                            <tr><td colspan="10" style="text-align:center; padding: 25px; color: var(--text-secondary);">Loading transaction logs...</td></tr>
+                            ${Array(3).fill(0).map(() => `
+                                <tr>
+                                    <td><span class="skeleton-box" style="width: 80px; height: 12px;"></span></td>
+                                    <td><span class="skeleton-box" style="width: 70px; height: 12px;"></span></td>
+                                    <td><span class="skeleton-box" style="width: 85px; height: 14px;"></span></td>
+                                    <td style="text-align:center;"><span class="skeleton-box" style="width: 45px; height: 12px;"></span></td>
+                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 40px; height: 12px;"></span></td>
+                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 60px; height: 12px;"></span></td>
+                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 70px; height: 12px;"></span></td>
+                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 65px; height: 12px;"></span></td>
+                                    <td><span class="skeleton-box" style="width: 110px; height: 12px;"></span></td>
+                                    <td style="text-align:center;"><span class="skeleton-box" style="width: 25px; height: 25px;"></span></td>
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -5130,13 +5299,10 @@
         let volumeSeries = null;
         
         // Indicator Series
-        let sma20Series = null;
         let sma50Series = null;
         let sma200Series = null;
         let ema9Series = null;
-        let bollingerUpperSeries = null;
-        let bollingerMiddleSeries = null;
-        let bollingerLowerSeries = null;
+        let gann2DaySeries = null;
 
         // Sub-pane Charts
         let rsiChart = null;
@@ -5152,12 +5318,34 @@
         let cachedChartData = null;
         let latestCandlePrice = 0;
 
+        function toggleChartPopover(popoverId, event) {
+            if (event) event.stopPropagation();
+            const targetMenu = document.getElementById(popoverId);
+            const isCurrentlyShown = targetMenu && targetMenu.classList.contains('show');
+            closeAllChartPopovers();
+            if (targetMenu && !isCurrentlyShown) {
+                targetMenu.classList.add('show');
+            }
+        }
+
+        function closeAllChartPopovers() {
+            document.querySelectorAll('.chart-popover-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.chart-popover-wrapper')) {
+                closeAllChartPopovers();
+            }
+        });
+
         function loadSavedChartIndicators() {
             try {
                 const saved = localStorage.getItem('capital_desk_chart_indicators');
                 if (saved) {
                     const prefs = JSON.parse(saved);
-                    const keys = ['chkVolume', 'chkSma20', 'chkSma50', 'chkSma200', 'chkEma9', 'chkBollinger', 'chkRsi', 'chkMacd'];
+                    const keys = ['chkVolume', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
                     keys.forEach(k => {
                         const el = document.getElementById(k);
                         if (el && prefs[k] !== undefined) {
@@ -5281,6 +5469,10 @@
                     btn.classList.remove('active');
                 }
             });
+            const labelEl = document.getElementById('intervalBtnLabel');
+            if (labelEl) {
+                labelEl.innerText = `⏱️ ${currentChartInterval.toUpperCase()}`;
+            }
         }
 
         function updateRangeButtonsUI() {
@@ -5291,6 +5483,10 @@
                     btn.classList.remove('active');
                 }
             });
+            const labelEl = document.getElementById('rangeBtnLabel');
+            if (labelEl) {
+                labelEl.innerText = `📅 ${currentChartRange.toUpperCase()}`;
+            }
         }
 
         function setChartType(type) {
@@ -5302,6 +5498,12 @@
             if (btnCandles) btnCandles.classList.toggle('active', type === 'candlestick');
             if (btnLine) btnLine.classList.toggle('active', type === 'line');
             if (btnArea) btnArea.classList.toggle('active', type === 'area');
+
+            const labelEl = document.getElementById('typeBtnLabel');
+            if (labelEl) {
+                const titleMap = { candlestick: '🕯️ Candles', line: '📈 Line', area: '🌊 Area' };
+                labelEl.innerText = titleMap[type] || '🕯️ Type';
+            }
 
             if (cachedChartData) {
                 renderInHouseCharts(cachedChartData);
@@ -5787,13 +5989,10 @@
             }
 
             addSeriesToMap(data.volume, 'vol');
-            addSeriesToMap(data.sma20, 'sma20');
             addSeriesToMap(data.sma50, 'sma50');
             addSeriesToMap(data.sma200, 'sma200');
             addSeriesToMap(data.ema9, 'ema9');
-            addSeriesToMap(data.bollinger_upper, 'bollUpper');
-            addSeriesToMap(data.bollinger_middle, 'bollMid');
-            addSeriesToMap(data.bollinger_lower, 'bollLower');
+            addSeriesToMap(data.gann_2day, 'gann_2day');
             addSeriesToMap(data.rsi, 'rsi');
             addSeriesToMap(data.macd_line, 'macd');
             addSeriesToMap(data.macd_signal, 'macdSignal');
@@ -5978,26 +6177,17 @@
             if (data.volume) volumeSeries.setData(data.volume);
 
             // Indicators
-            sma20Series = mainChart.addLineSeries({ color: '#2962ff', lineWidth: 2, title: 'SMA 20' });
-            if (data.sma20) sma20Series.setData(data.sma20);
-
-            sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: 'SMA 50' });
+            sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: '50 DMA' });
             if (data.sma50) sma50Series.setData(data.sma50);
 
-            sma200Series = mainChart.addLineSeries({ color: '#e11d48', lineWidth: 2, title: 'SMA 200' });
+            sma200Series = mainChart.addLineSeries({ color: '#e11d48', lineWidth: 2, title: '200 DMA' });
             if (data.sma200) sma200Series.setData(data.sma200);
 
             ema9Series = mainChart.addLineSeries({ color: '#06b6d4', lineWidth: 2, title: 'EMA 9' });
             if (data.ema9) ema9Series.setData(data.ema9);
 
-            bollingerUpperSeries = mainChart.addLineSeries({ color: '#a855f7', lineWidth: 1, lineStyle: 2, title: 'BB Upper' });
-            if (data.bollinger_upper) bollingerUpperSeries.setData(data.bollinger_upper);
-
-            bollingerMiddleSeries = mainChart.addLineSeries({ color: '#a855f7', lineWidth: 1, title: 'BB Mid' });
-            if (data.bollinger_middle) bollingerMiddleSeries.setData(data.bollinger_middle);
-
-            bollingerLowerSeries = mainChart.addLineSeries({ color: '#a855f7', lineWidth: 1, lineStyle: 2, title: 'BB Lower' });
-            if (data.bollinger_lower) bollingerLowerSeries.setData(data.bollinger_lower);
+            gann2DaySeries = mainChart.addLineSeries({ color: '#ffffff', lineWidth: 2, title: 'Gann 2-Day Low' });
+            if (data.gann_2day) gann2DaySeries.setData(data.gann_2day);
 
             // RSI Sub-Pane Chart
             rsiChart = LightweightCharts.createChart(rsiContainer, {
@@ -6130,9 +6320,18 @@
             const lookupTime = curTime || time;
             const rec = lookupTime !== null ? indicatorDataMap.get(lookupTime) : null;
 
-            document.getElementById('legSma20').innerText = (rec && rec.sma20 !== undefined) ? '₹' + rec.sma20.toFixed(2) : '-';
-            document.getElementById('legSma50').innerText = (rec && rec.sma50 !== undefined) ? '₹' + rec.sma50.toFixed(2) : '-';
-            document.getElementById('legSma200').innerText = (rec && rec.sma200 !== undefined) ? '₹' + rec.sma200.toFixed(2) : '-';
+            const elSma50 = document.getElementById('legSma50');
+            if (elSma50) elSma50.innerText = (rec && rec.sma50 !== undefined) ? '₹' + rec.sma50.toFixed(2) : '-';
+            
+            const elSma200 = document.getElementById('legSma200');
+            if (elSma200) elSma200.innerText = (rec && rec.sma200 !== undefined) ? '₹' + rec.sma200.toFixed(2) : '-';
+
+            const elEma9 = document.getElementById('legEma9');
+            if (elEma9) elEma9.innerText = (rec && rec.ema9 !== undefined) ? '₹' + rec.ema9.toFixed(2) : '-';
+
+            const elGann = document.getElementById('legGann2Day');
+            if (elGann) elGann.innerText = (rec && rec.gann_2day !== undefined) ? '₹' + rec.gann_2day.toFixed(2) : '-';
+
             document.getElementById('legRsi').innerText = (rec && rec.rsi !== undefined) ? rec.rsi.toFixed(2) : '-';
             document.getElementById('legMacd').innerText = (rec && rec.macd !== undefined) ? rec.macd.toFixed(2) : '-';
         }
@@ -6140,37 +6339,31 @@
         function toggleIndicators() {
             if (!volumeSeries) return;
 
-            const showVol = document.getElementById('chkVolume').checked;
-            const showSma20 = document.getElementById('chkSma20').checked;
-            const showSma50 = document.getElementById('chkSma50').checked;
-            const showSma200 = document.getElementById('chkSma200').checked;
-            const showEma9 = document.getElementById('chkEma9').checked;
-            const showBollinger = document.getElementById('chkBollinger').checked;
-            const showRsi = document.getElementById('chkRsi').checked;
-            const showMacd = document.getElementById('chkMacd').checked;
+            const showVol = document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true;
+            const showSma50 = document.getElementById('chkSma50') ? document.getElementById('chkSma50').checked : false;
+            const showSma200 = document.getElementById('chkSma200') ? document.getElementById('chkSma200').checked : false;
+            const showEma9 = document.getElementById('chkEma9') ? document.getElementById('chkEma9').checked : false;
+            const showGann2Day = document.getElementById('chkGann2Day') ? document.getElementById('chkGann2Day').checked : false;
+            const showRsi = document.getElementById('chkRsi') ? document.getElementById('chkRsi').checked : true;
+            const showMacd = document.getElementById('chkMacd') ? document.getElementById('chkMacd').checked : false;
 
             try {
                 localStorage.setItem('capital_desk_chart_indicators', JSON.stringify({
                     chkVolume: showVol,
-                    chkSma20: showSma20,
                     chkSma50: showSma50,
                     chkSma200: showSma200,
                     chkEma9: showEma9,
-                    chkBollinger: showBollinger,
+                    chkGann2Day: showGann2Day,
                     chkRsi: showRsi,
                     chkMacd: showMacd
                 }));
             } catch(e){}
 
             volumeSeries.applyOptions({ visible: showVol });
-            if (sma20Series) sma20Series.applyOptions({ visible: showSma20 });
             if (sma50Series) sma50Series.applyOptions({ visible: showSma50 });
             if (sma200Series) sma200Series.applyOptions({ visible: showSma200 });
             if (ema9Series) ema9Series.applyOptions({ visible: showEma9 });
-
-            if (bollingerUpperSeries) bollingerUpperSeries.applyOptions({ visible: showBollinger });
-            if (bollingerMiddleSeries) bollingerMiddleSeries.applyOptions({ visible: showBollinger });
-            if (bollingerLowerSeries) bollingerLowerSeries.applyOptions({ visible: showBollinger });
+            if (gann2DaySeries) gann2DaySeries.applyOptions({ visible: showGann2Day });
 
             document.getElementById('rsiChartPane').style.display = showRsi ? 'block' : 'none';
             document.getElementById('legRsiGroup').style.display = showRsi ? 'inline-block' : 'none';
@@ -6178,7 +6371,7 @@
             document.getElementById('macdChartPane').style.display = showMacd ? 'block' : 'none';
             document.getElementById('legMacdGroup').style.display = showMacd ? 'inline-block' : 'none';
 
-            document.getElementById('legSmaGroup').style.display = (showSma20 || showSma50 || showSma200 || showEma9 || showBollinger) ? 'inline-block' : 'none';
+            document.getElementById('legSmaGroup').style.display = (showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
 
             resizeChartPanes();
         }
@@ -6214,7 +6407,10 @@
             document.getElementById('detail-modal-qty').innerText = formatQty(item.quantity);
             document.getElementById('detail-modal-buyprice').innerText = formatMoney(item.buy_price);
             document.getElementById('detail-modal-invested').innerText = formatMoney(invAmt);
-            document.getElementById('detail-modal-curval').innerText = ltp > 0 ? formatMoney(curVal) : '-';
+            const curValEl = document.getElementById('detail-modal-curval');
+            if (curValEl) {
+                curValEl.innerHTML = ltp > 0 ? formatMoney(curVal) : '<span class="skeleton-box" style="width: 70px; height: 14px;"></span>';
+            }
 
             const pnlSign = pnlAmt >= 0 ? '+' : '';
             const pnlEl = document.getElementById('detail-modal-pnl');
