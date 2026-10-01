@@ -6387,6 +6387,60 @@
             }
         }
 
+        function normalizeTime(t) {
+            if (!t) return null;
+            if (typeof t === 'string') return t;
+            if (typeof t === 'number') {
+                const d = new Date(t * 1000);
+                const yyyy = d.getUTCFullYear();
+                const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const dd = String(d.getUTCDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            if (typeof t === 'object' && t.year && t.month && t.day) {
+                const yyyy = t.year;
+                const mm = String(t.month).padStart(2, '0');
+                const dd = String(t.day).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            return t;
+        }
+
+        function findClosestCandleByTime(candles, targetTime) {
+            if (!candles || candles.length === 0) return null;
+            const normTarget = normalizeTime(targetTime);
+            if (!normTarget) return candles[0];
+
+            const directMatch = candles.find(c => normalizeTime(c.time) === normTarget);
+            if (directMatch) return directMatch;
+
+            let targetTs = 0;
+            if (typeof normTarget === 'string') {
+                targetTs = new Date(normTarget).getTime() / 1000;
+            } else if (typeof normTarget === 'number') {
+                targetTs = normTarget;
+            }
+            if (isNaN(targetTs) || targetTs === 0) return candles[0];
+
+            let closest = candles[0];
+            let minDiff = Infinity;
+
+            for (let i = 0; i < candles.length; i++) {
+                const c = candles[i];
+                let cTs = 0;
+                const normC = normalizeTime(c.time);
+                if (typeof normC === 'string') cTs = new Date(normC).getTime() / 1000;
+                else if (typeof normC === 'number') cTs = normC;
+
+                const diff = Math.abs(cTs - targetTs);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closest = c;
+                }
+            }
+            return closest;
+        }
+
         function getChartPointFromEvent(e) {
             if (!mainChart || !mainSeries || !drawingCanvas) return null;
             const rect = drawingCanvas.getBoundingClientRect();
@@ -6394,18 +6448,39 @@
             const y = e.clientY - rect.top;
 
             const price = mainSeries.coordinateToPrice(y);
-            const time = mainChart.timeScale().coordinateToTime(x);
+            let rawTime = mainChart.timeScale().coordinateToTime(x);
             const logical = mainChart.timeScale().coordinateToLogical(x);
+
+            if ((rawTime === null || rawTime === undefined) && cachedChartData && cachedChartData.candles && logical !== null && logical !== undefined) {
+                const roundedLogical = Math.max(0, Math.min(cachedChartData.candles.length - 1, Math.round(logical)));
+                if (cachedChartData.candles[roundedLogical]) {
+                    rawTime = cachedChartData.candles[roundedLogical].time;
+                }
+            }
+
+            const time = normalizeTime(rawTime);
 
             return { x, y, price, time, logical };
         }
 
         function getShapeX(timeScale, time, logical) {
             if (!timeScale) return null;
-            if (time) {
-                const x = timeScale.timeToCoordinate(time);
+
+            const normTime = normalizeTime(time);
+            if (normTime !== null && normTime !== undefined) {
+                let x = timeScale.timeToCoordinate(normTime);
                 if (x !== null && x !== undefined) return x;
+
+                if (cachedChartData && cachedChartData.candles && cachedChartData.candles.length > 0) {
+                    const closest = findClosestCandleByTime(cachedChartData.candles, normTime);
+                    if (closest && closest.time) {
+                        const normClosest = normalizeTime(closest.time);
+                        x = timeScale.timeToCoordinate(normClosest);
+                        if (x !== null && x !== undefined) return x;
+                    }
+                }
             }
+
             if (logical !== null && logical !== undefined) {
                 const x = timeScale.logicalToCoordinate(logical);
                 if (x !== null && x !== undefined) return x;
