@@ -590,7 +590,7 @@
         /* Technical Chart Modal & Popover Menu Styles */
         .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15,23,42,0.85); backdrop-filter: blur(4px); }
         .modal-content { background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #d1d4dc; }
-        .chart-topbar { padding: 10px 16px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: flex-start; align-items: center; gap: 12px; position: relative; z-index: 100; flex-wrap: wrap; text-align: left; }
+        .chart-topbar { padding: 10px 16px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: space-between; align-items: center; gap: 12px; position: relative; z-index: 100; flex-wrap: wrap; text-align: left; }
         .chart-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .chart-symbol-text { font-weight: 800; font-size: 16px; color: #ffffff; letter-spacing: 0.5px; }
         .chart-name-text { font-size: 13px; color: #787b86; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
@@ -1730,6 +1730,7 @@
                                 <button class="popover-menu-item tf-btn active" id="tf-1y" onclick="changeRange('1y'); closeAllChartPopovers();">1 Year (1Y)</button>
                                 <button class="popover-menu-item tf-btn" id="tf-2y" onclick="changeRange('2y'); closeAllChartPopovers();">2 Years (2Y)</button>
                                 <button class="popover-menu-item tf-btn" id="tf-5y" onclick="changeRange('5y'); closeAllChartPopovers();">5 Years (5Y)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-max" onclick="changeRange('max'); closeAllChartPopovers();">All History (ALL)</button>
                                 <div class="popover-divider"></div>
                                 <button class="popover-menu-item" onclick="zoomChart(1.25); closeAllChartPopovers();">🔍 Zoom In (+25%)</button>
                                 <button class="popover-menu-item" onclick="zoomChart(0.8); closeAllChartPopovers();">🔍 Zoom Out (-20%)</button>
@@ -1765,7 +1766,7 @@
                 <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
                 <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
                 <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
-                <div class="legend-item">C: <span class="legend-val" id="legClose">-</span></div>
+                <div class="legend-item">C: <span class="legend-val" id="legClose">-</span> <span class="legend-val" id="legChgPct" style="margin-left: 2px; font-weight: 700;">-</span></div>
                 <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
                 <div class="legend-item" id="legSmaGroup">
                     CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> <span id="legCdRiderGroup">|</span>
@@ -6359,12 +6360,13 @@
                     left: 0;
                     width: 100%;
                     height: 100%;
-                    pointer-events: none;
+                    pointer-events: auto;
                     z-index: 20;
                 `;
                 mainContainer.appendChild(canvas);
 
                 canvas.addEventListener('mousemove', handleCanvasMouseMove);
+                canvas.addEventListener('mousedown', handleCanvasMouseDown);
                 canvas.addEventListener('click', handleCanvasClick);
             }
             drawingCanvas = canvas;
@@ -6382,7 +6384,7 @@
 
         function enableCanvasInteractions(enable) {
             if (drawingCanvas) {
-                drawingCanvas.style.pointerEvents = enable ? 'auto' : 'none';
+                drawingCanvas.style.pointerEvents = 'auto';
                 drawingCanvas.style.cursor = enable ? 'crosshair' : 'default';
             }
         }
@@ -6509,11 +6511,58 @@
         }
 
         function handleCanvasMouseMove(e) {
-            if (!currentDrawingTool) return;
             const pt = getChartPointFromEvent(e);
+            if (currentDrawingTool) {
+                if (pt) {
+                    tempMousePos = pt;
+                    redrawCanvasOverlay();
+                }
+                return;
+            }
             if (pt) {
-                tempMousePos = pt;
-                redrawCanvasOverlay();
+                const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
+                if (drawingCanvas) {
+                    drawingCanvas.style.cursor = clickedObj ? 'pointer' : 'default';
+                }
+            }
+        }
+
+        function handleCanvasMouseDown(e) {
+            if (currentDrawingTool) return;
+            const pt = getChartPointFromEvent(e);
+            if (!pt) return;
+
+            const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
+            if (clickedObj) {
+                showCanvasObjectMenu(clickedObj, pt.x, pt.y);
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            } else {
+                hideCanvasObjectMenu();
+                if (drawingCanvas) {
+                    drawingCanvas.style.pointerEvents = 'none';
+                    const underlyingEl = document.elementFromPoint(e.clientX, e.clientY);
+                    if (underlyingEl) {
+                        const downEvent = new MouseEvent('mousedown', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: e.clientX,
+                            clientY: e.clientY,
+                            screenX: e.screenX,
+                            screenY: e.screenY,
+                            button: e.button,
+                            buttons: e.buttons
+                        });
+                        underlyingEl.dispatchEvent(downEvent);
+                    }
+                    const restorePointerEvents = () => {
+                        if (drawingCanvas) drawingCanvas.style.pointerEvents = 'auto';
+                        window.removeEventListener('mouseup', restorePointerEvents);
+                    };
+                    window.addEventListener('mouseup', restorePointerEvents);
+                }
             }
         }
 
@@ -7168,6 +7217,48 @@
             }
         }
 
+        function formatChartAxisDate(time) {
+            if (time === null || time === undefined) return '';
+            let d = null;
+            if (typeof time === 'number') {
+                d = new Date(time * 1000);
+            } else if (typeof time === 'string') {
+                d = new Date(time);
+            } else if (typeof time === 'object' && time !== null && time.year && time.month && time.day) {
+                d = new Date(Date.UTC(time.year, time.month - 1, time.day));
+            }
+            if (!d || isNaN(d.getTime())) return String(time);
+
+            const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            let weekday = '', day = '', month = '', year = '';
+            try {
+                const options = { timeZone: 'Asia/Kolkata', weekday: 'short', day: '2-digit', month: 'short', year: '2-digit' };
+                const formatter = new Intl.DateTimeFormat('en-IN', options);
+                const parts = formatter.formatToParts(d);
+                for (const p of parts) {
+                    if (p.type === 'weekday') weekday = p.value;
+                    else if (p.type === 'day') day = p.value;
+                    else if (p.type === 'month') month = p.value;
+                    else if (p.type === 'year') year = p.value;
+                }
+            } catch(e){}
+
+            if (!weekday || !day || !month || !year) {
+                weekday = weekdayNames[d.getUTCDay()];
+                day = String(d.getUTCDate()).padStart(2, '0');
+                month = monthNames[d.getUTCMonth()];
+                year = String(d.getUTCFullYear()).slice(-2);
+            }
+
+            weekday = weekday.replace('.', '').trim();
+            month = month.replace('.', '').trim();
+            day = String(day).padStart(2, '0');
+
+            return `${weekday} ${day} ${month} '${year}`;
+        }
+
         function renderInHouseCharts(data) {
             cachedChartData = data;
             buildIndicatorDataMap(data);
@@ -7197,33 +7288,8 @@
                 },
                 localization: {
                     locale: 'en-IN',
-                    timeFormatter: timestamp => {
-                        if (typeof timestamp === 'number') {
-                            const date = new Date(timestamp * 1000);
-                            return date.toLocaleString('en-IN', {
-                                timeZone: 'Asia/Kolkata',
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: true
-                            }) + ' (IST)';
-                        }
-                        return String(timestamp);
-                    },
-                    dateFormatter: timestamp => {
-                        if (typeof timestamp === 'number') {
-                            const date = new Date(timestamp * 1000);
-                            return date.toLocaleDateString('en-IN', {
-                                timeZone: 'Asia/Kolkata',
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric'
-                            });
-                        }
-                        return String(timestamp);
-                    }
+                    timeFormatter: timestamp => formatChartAxisDate(timestamp),
+                    dateFormatter: timestamp => formatChartAxisDate(timestamp)
                 },
                 grid: {
                     vertLines: { color: themeColors.gridColor, style: LightweightCharts.LineStyle.Dotted },
@@ -7270,9 +7336,8 @@
                             if (['5m', '15m', '1h', '60m'].includes(currentChartInterval)) {
                                 return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
                             }
-                            return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
                         }
-                        return String(time);
+                        return formatChartAxisDate(time);
                     }
                 }
             });
@@ -7863,15 +7928,15 @@
 
         function updateLegend(time, o, h, l, c, vol, fullData, curTime = null) {
             let timeStr = '-';
-            if (typeof time === 'number') {
-                const d = new Date(time * 1000);
-                const datePart = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
-                const timePart = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
-                timeStr = `${datePart} ${timePart} (IST)`;
-            } else if (typeof time === 'object' && time !== null && time.year) {
-                timeStr = `${time.day} ${time.month} ${time.year}`;
-            } else if (time) {
-                timeStr = String(time) + ' (IST)';
+            if (time !== null && time !== undefined) {
+                const dateFormatted = formatChartAxisDate(time);
+                if (typeof time === 'number' && ['5m', '15m', '1h', '60m'].includes(currentChartInterval)) {
+                    const d = new Date(time * 1000);
+                    const timePart = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+                    timeStr = `${dateFormatted} ${timePart} (IST)`;
+                } else {
+                    timeStr = `${dateFormatted} (IST)`;
+                }
             }
             document.getElementById('legDate').innerText = timeStr;
             document.getElementById('legOpen').innerText = '₹' + (o ? o.toFixed(2) : '-');
@@ -7879,6 +7944,19 @@
             document.getElementById('legLow').innerText = '₹' + (l ? l.toFixed(2) : '-');
             document.getElementById('legClose').innerText = '₹' + (c ? c.toFixed(2) : '-');
             document.getElementById('legVol').innerText = vol ? vol.toLocaleString('en-IN') : '-';
+
+            const elChgPct = document.getElementById('legChgPct');
+            if (elChgPct) {
+                if (o && c && o > 0) {
+                    const pct = ((c - o) / o) * 100;
+                    const sign = pct >= 0 ? '+' : '';
+                    const color = pct >= 0 ? '#10b981' : '#ef4444';
+                    elChgPct.innerText = `(${sign}${pct.toFixed(2)}%)`;
+                    elChgPct.style.color = color;
+                } else {
+                    elChgPct.innerText = '';
+                }
+            }
 
             const lookupTime = curTime || time;
             const rec = lookupTime !== null ? indicatorDataMap.get(lookupTime) : null;

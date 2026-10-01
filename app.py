@@ -1832,6 +1832,10 @@ def get_chart_history():
     if not symbol:
         return jsonify({"error": "Symbol is required"}), 400
 
+    time_range_clean = time_range.lower()
+    if time_range_clean in ('all', 'max'):
+        time_range = 'max'
+
     url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range={time_range}'
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     try:
