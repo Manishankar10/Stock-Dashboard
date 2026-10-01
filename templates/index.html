@@ -6360,16 +6360,21 @@
                     left: 0;
                     width: 100%;
                     height: 100%;
-                    pointer-events: auto;
+                    pointer-events: none;
                     z-index: 20;
                 `;
                 mainContainer.appendChild(canvas);
-
-                canvas.addEventListener('mousemove', handleCanvasMouseMove);
-                canvas.addEventListener('mousedown', handleCanvasMouseDown);
-                canvas.addEventListener('click', handleCanvasClick);
             }
             drawingCanvas = canvas;
+
+            mainContainer.removeEventListener('mousemove', handleChartPaneMouseMove);
+            mainContainer.removeEventListener('mousedown', handleChartPaneMouseDown);
+            mainContainer.removeEventListener('click', handleChartPaneClick);
+
+            mainContainer.addEventListener('mousemove', handleChartPaneMouseMove);
+            mainContainer.addEventListener('mousedown', handleChartPaneMouseDown);
+            mainContainer.addEventListener('click', handleChartPaneClick);
+
             resizeDrawingCanvas();
         }
 
@@ -6384,7 +6389,7 @@
 
         function enableCanvasInteractions(enable) {
             if (drawingCanvas) {
-                drawingCanvas.style.pointerEvents = 'auto';
+                drawingCanvas.style.pointerEvents = enable ? 'auto' : 'none';
                 drawingCanvas.style.cursor = enable ? 'crosshair' : 'default';
             }
         }
@@ -6510,24 +6515,29 @@
             return null;
         }
 
-        function handleCanvasMouseMove(e) {
+        function handleChartPaneMouseMove(e) {
             const pt = getChartPointFromEvent(e);
+            if (!pt) return;
+
             if (currentDrawingTool) {
-                if (pt) {
-                    tempMousePos = pt;
-                    redrawCanvasOverlay();
-                }
+                tempMousePos = pt;
+                redrawCanvasOverlay();
                 return;
             }
-            if (pt) {
-                const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
-                if (drawingCanvas) {
-                    drawingCanvas.style.cursor = clickedObj ? 'pointer' : 'default';
+
+            const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
+            if (drawingCanvas) {
+                if (clickedObj) {
+                    drawingCanvas.style.pointerEvents = 'auto';
+                    drawingCanvas.style.cursor = 'pointer';
+                } else {
+                    drawingCanvas.style.pointerEvents = 'none';
+                    drawingCanvas.style.cursor = 'default';
                 }
             }
         }
 
-        function handleCanvasMouseDown(e) {
+        function handleChartPaneMouseDown(e) {
             if (currentDrawingTool) return;
             const pt = getChartPointFromEvent(e);
             if (!pt) return;
@@ -6537,33 +6547,14 @@
                 showCanvasObjectMenu(clickedObj, pt.x, pt.y);
                 e.preventDefault();
                 e.stopPropagation();
-                return;
             } else {
                 hideCanvasObjectMenu();
-                if (drawingCanvas) {
-                    drawingCanvas.style.pointerEvents = 'none';
-                    const underlyingEl = document.elementFromPoint(e.clientX, e.clientY);
-                    if (underlyingEl) {
-                        const downEvent = new MouseEvent('mousedown', {
-                            bubbles: true,
-                            cancelable: true,
-                            view: window,
-                            clientX: e.clientX,
-                            clientY: e.clientY,
-                            screenX: e.screenX,
-                            screenY: e.screenY,
-                            button: e.button,
-                            buttons: e.buttons
-                        });
-                        underlyingEl.dispatchEvent(downEvent);
-                    }
-                    const restorePointerEvents = () => {
-                        if (drawingCanvas) drawingCanvas.style.pointerEvents = 'auto';
-                        window.removeEventListener('mouseup', restorePointerEvents);
-                    };
-                    window.addEventListener('mouseup', restorePointerEvents);
-                }
             }
+        }
+
+        function handleChartPaneClick(e) {
+            if (!currentDrawingTool) return;
+            handleCanvasClick(e);
         }
 
         function handleCanvasClick(e) {
