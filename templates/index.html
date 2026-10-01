@@ -2373,187 +2373,212 @@
             </div>
         </div>
     <!-- =========================================================
-         GLOBAL PROFESSIONAL TOAST & CUSTOM SYSTEM MODAL
+         GLOBAL PROFESSIONAL CENTERING SYSTEM MODAL POPUP
     ========================================================= -->
-    <div id="toast-container"></div>
+    <div id="toast-container" style="display: none;"></div>
 
-    <div id="customModalOverlay" class="modal" style="z-index: 100050; background: rgba(15,23,42,0.75); backdrop-filter: blur(6px);">
-        <div id="customModalBox" class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 22px; border-radius: 12px; background: #1e222d; border: 1px solid #363a45; box-shadow: 0 16px 40px rgba(0,0,0,0.6); transform: scale(0.95); transition: transform 0.2s ease; margin: 25vh auto;">
-            <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
-                <div id="customModalIcon" style="font-size: 26px; flex-shrink: 0; line-height: 1;">❓</div>
+    <div id="customModalOverlay" class="modal" style="display: none; position: fixed; inset: 0; z-index: 100050; background: rgba(15,23,42,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+        <div id="customModalBox" class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); transform: scale(0.95); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); margin: auto;">
+            <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px;">
+                <div class="modal-icon-badge" style="font-size: 26px; flex-shrink: 0; line-height: 1; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.06);">
+                    <span id="customModalIcon">❓</span>
+                </div>
                 <div style="flex: 1; min-width: 0;">
-                    <h3 id="customModalTitle" style="margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #ffffff;">Confirm Action</h3>
-                    <div id="customModalMessage" style="font-size: 13px; color: #94a3b8; line-height: 1.5; word-break: break-word;">Are you sure?</div>
+                    <h3 id="customModalTitle" style="margin: 0 0 6px; font-size: 16.5px; font-weight: 700; color: var(--text-primary, #ffffff); font-family: 'Plus Jakarta Sans', sans-serif;">Confirm Action</h3>
+                    <div id="customModalMessage" style="font-size: 13.5px; color: var(--text-secondary, #94a3b8); line-height: 1.5; word-break: break-word;">Are you sure?</div>
                 </div>
             </div>
-            <div id="customModalInputGroup" style="display: none; margin-bottom: 16px;">
-                <input type="text" id="customModalInput" style="width: 100%; padding: 10px 12px; background: #131722; border: 1px solid #363a45; border-radius: 6px; color: #ffffff; font-size: 13px; outline: none; box-sizing: border-box;">
+            <div id="customModalInputGroup" style="display: none; margin-bottom: 18px;">
+                <input type="text" id="customModalInput" style="width: 100%; padding: 11px 14px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13.5px; outline: none; box-sizing: border-box;">
             </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px;">
-                <button id="customModalCancelBtn" class="btn-secondary" style="padding: 7px 16px; font-size: 12.5px;">Cancel</button>
-                <button id="customModalConfirmBtn" class="btn-primary" style="padding: 7px 16px; font-size: 12.5px;">Confirm</button>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px;">
+                <button id="customModalCancelBtn" class="btn-secondary" style="padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;">Cancel</button>
+                <button id="customModalConfirmBtn" class="btn-primary" style="padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;">Confirm</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Professional Toast Notification System
-        function showToast(message, type = 'info', title = null) {
-            let container = document.getElementById('toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'toast-container';
-                document.body.appendChild(container);
-            }
-
-            const toast = document.createElement('div');
-            toast.className = `toast-notification toast-${type}`;
-
-            const icons = {
-                success: '✅',
-                error: '⚠️',
-                warning: '🔔',
-                info: 'ℹ️'
-            };
-            const icon = icons[type] || 'ℹ️';
-
-            toast.innerHTML = `
-                <span class="toast-icon">${icon}</span>
-                <div class="toast-content">
-                    ${title ? `<div class="toast-title">${escapeHtml(title)}</div>` : ''}
-                    <div class="toast-message">${escapeHtml(message)}</div>
-                </div>
-                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
-            `;
-
-            container.appendChild(toast);
-
-            setTimeout(() => {
-                toast.style.animation = 'toastFadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-                setTimeout(() => toast.remove(), 300);
-            }, 3800);
-        }
-
-        // Override window.alert to automatically display modern Toast notifications everywhere
-        window.alert = function(msg) {
-            if (msg === undefined || msg === null) return;
-            const msgStr = String(msg);
-            const lower = msgStr.toLowerCase();
-            if (lower.includes('fail') || lower.includes('error') || lower.includes('invalid') || lower.includes('could not') || lower.includes('required') || lower.includes('cannot')) {
-                showToast(msgStr, 'error');
-            } else if (lower.includes('success') || lower.includes('restored') || lower.includes('created') || lower.includes('set') || lower.includes('added')) {
-                showToast(msgStr, 'success');
-            } else {
-                showToast(msgStr, 'info');
-            }
-        };
-
-        // Custom System Confirmation & Input Modals
-        function showCustomConfirm(options = {}) {
+        // Core System Modal Function for all Alerts, Confirms, Prompts, Warnings, and Success Popups
+        function showSystemModal(options = {}) {
             return new Promise((resolve) => {
                 const overlay = document.getElementById('customModalOverlay');
                 const box = document.getElementById('customModalBox');
                 const titleEl = document.getElementById('customModalTitle');
                 const msgEl = document.getElementById('customModalMessage');
                 const iconEl = document.getElementById('customModalIcon');
+                const iconBadge = overlay ? overlay.querySelector('.modal-icon-badge') : null;
                 const inputGroup = document.getElementById('customModalInputGroup');
+                const inputEl = document.getElementById('customModalInput');
                 const confirmBtn = document.getElementById('customModalConfirmBtn');
                 const cancelBtn = document.getElementById('customModalCancelBtn');
 
                 if (!overlay) return resolve(false);
 
-                titleEl.innerText = options.title || 'Confirm Action';
-                msgEl.innerText = options.message || 'Are you sure you want to proceed?';
-                iconEl.innerText = options.icon || (options.isDanger ? '🗑️' : '❓');
-                inputGroup.style.display = 'none';
+                const type = options.type || 'info';
+                
+                // Icon & Color mapping
+                const icons = {
+                    success: '✅',
+                    error: '⚠️',
+                    warning: '🔔',
+                    info: 'ℹ️',
+                    confirm: options.isDanger ? '🗑️' : '❓',
+                    prompt: '✏️'
+                };
+                const bgColors = {
+                    success: 'rgba(16, 185, 129, 0.15)',
+                    error: 'rgba(239, 68, 68, 0.15)',
+                    warning: 'rgba(245, 158, 11, 0.15)',
+                    info: 'rgba(59, 130, 246, 0.15)',
+                    confirm: options.isDanger ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                    prompt: 'rgba(16, 185, 129, 0.15)'
+                };
 
-                confirmBtn.innerText = options.confirmText || (options.isDanger ? 'Delete' : 'Confirm');
+                iconEl.innerText = options.icon || icons[type] || 'ℹ️';
+                if (iconBadge) {
+                    iconBadge.style.background = bgColors[type] || bgColors.info;
+                }
+
+                // Default titles
+                const defaultTitles = {
+                    success: 'Success',
+                    error: 'Error Notice',
+                    warning: 'Warning Alert',
+                    info: 'System Notice',
+                    confirm: options.title || (options.isDanger ? 'Delete Confirmation' : 'Confirm Action'),
+                    prompt: options.title || 'Input Required'
+                };
+                titleEl.innerText = options.title || defaultTitles[type] || 'Notice';
+                msgEl.innerText = options.message || options.msg || '';
+
+                // Input box handling
+                const isPrompt = (type === 'prompt' || options.isPrompt);
+                if (isPrompt) {
+                    inputGroup.style.display = 'block';
+                    inputEl.value = options.defaultValue !== undefined ? options.defaultValue : '';
+                    inputEl.placeholder = options.placeholder || 'Type details here...';
+                    setTimeout(() => {
+                        inputEl.focus();
+                        inputEl.select();
+                    }, 50);
+                } else {
+                    inputGroup.style.display = 'none';
+                }
+
+                // Buttons visibility & label
+                const isConfirmOrPrompt = (type === 'confirm' || isPrompt || options.showCancel);
+                
+                cancelBtn.style.display = isConfirmOrPrompt ? 'inline-block' : 'none';
                 cancelBtn.innerText = options.cancelText || 'Cancel';
-                cancelBtn.style.display = 'inline-block';
+                
+                confirmBtn.innerText = options.confirmText || (isConfirmOrPrompt ? (options.isDanger ? 'Delete' : (isPrompt ? 'Submit' : 'Confirm')) : 'OK');
 
-                if (options.isDanger) {
+                // Button colors
+                if (options.isDanger || type === 'error') {
                     confirmBtn.style.background = '#ef4444';
+                    confirmBtn.style.color = '#ffffff';
+                } else if (type === 'warning') {
+                    confirmBtn.style.background = '#f59e0b';
                     confirmBtn.style.color = '#ffffff';
                 } else {
                     confirmBtn.style.background = '#10b981';
                     confirmBtn.style.color = '#ffffff';
                 }
 
-                overlay.style.display = 'block';
+                overlay.style.display = 'flex';
                 box.style.transform = 'scale(1)';
-
-                const cleanup = () => {
-                    overlay.style.display = 'none';
-                    confirmBtn.onclick = null;
-                    cancelBtn.onclick = null;
-                };
-
-                confirmBtn.onclick = () => {
-                    cleanup();
-                    resolve(true);
-                };
-
-                cancelBtn.onclick = () => {
-                    cleanup();
-                    resolve(false);
-                };
-            });
-        }
-
-        function showCustomPrompt(options = {}) {
-            return new Promise((resolve) => {
-                const overlay = document.getElementById('customModalOverlay');
-                const box = document.getElementById('customModalBox');
-                const titleEl = document.getElementById('customModalTitle');
-                const msgEl = document.getElementById('customModalMessage');
-                const iconEl = document.getElementById('customModalIcon');
-                const inputGroup = document.getElementById('customModalInputGroup');
-                const inputEl = document.getElementById('customModalInput');
-                const confirmBtn = document.getElementById('customModalConfirmBtn');
-                const cancelBtn = document.getElementById('customModalCancelBtn');
-
-                if (!overlay) return resolve(null);
-
-                titleEl.innerText = options.title || 'Input Required';
-                msgEl.innerText = options.message || 'Please enter details below:';
-                iconEl.innerText = options.icon || '✏️';
-
-                inputGroup.style.display = 'block';
-                inputEl.value = options.defaultValue !== undefined ? options.defaultValue : '';
-                inputEl.placeholder = options.placeholder || '';
-
-                confirmBtn.innerText = options.confirmText || 'Submit';
-                cancelBtn.innerText = options.cancelText || 'Cancel';
-                cancelBtn.style.display = 'inline-block';
-                confirmBtn.style.background = '#10b981';
-                confirmBtn.style.color = '#ffffff';
-
-                overlay.style.display = 'block';
-                box.style.transform = 'scale(1)';
-                setTimeout(() => inputEl.focus(), 50);
 
                 const cleanup = () => {
                     overlay.style.display = 'none';
                     confirmBtn.onclick = null;
                     cancelBtn.onclick = null;
                     inputEl.onkeydown = null;
+                    document.removeEventListener('keydown', handleKey);
                 };
 
-                const submit = () => {
-                    const val = inputEl.value;
+                const handleKey = (e) => {
+                    if (e.key === 'Escape' && isConfirmOrPrompt) {
+                        cleanup();
+                        resolve(isPrompt ? null : false);
+                    } else if (e.key === 'Enter' && !isPrompt) {
+                        cleanup();
+                        resolve(true);
+                    }
+                };
+                document.addEventListener('keydown', handleKey);
+
+                confirmBtn.onclick = () => {
+                    const val = isPrompt ? inputEl.value : true;
                     cleanup();
                     resolve(val);
                 };
 
-                confirmBtn.onclick = submit;
-                inputEl.onkeydown = (e) => {
-                    if (e.key === 'Enter') submit();
-                };
-
                 cancelBtn.onclick = () => {
                     cleanup();
-                    resolve(null);
+                    resolve(isPrompt ? null : false);
                 };
+
+                if (isPrompt) {
+                    inputEl.onkeydown = (e) => {
+                        if (e.key === 'Enter') {
+                            const val = inputEl.value;
+                            cleanup();
+                            resolve(val);
+                        }
+                    };
+                }
+            });
+        }
+
+        // Show Toast now directs to System Modal Popup for clean centered UI
+        function showToast(message, type = 'info', title = null) {
+            return showSystemModal({
+                type: type,
+                title: title,
+                message: message
+            });
+        }
+
+        // Override window.alert globally to force centered System Modal Dialog everywhere
+        window.alert = function(msg) {
+            if (msg === undefined || msg === null) return;
+            const msgStr = String(msg);
+            const lower = msgStr.toLowerCase();
+            let type = 'info';
+            let title = 'Notice';
+
+            if (lower.includes('fail') || lower.includes('error') || lower.includes('invalid') || lower.includes('could not') || lower.includes('required') || lower.includes('cannot') || lower.includes('please enter') || lower.includes('no active')) {
+                type = 'error';
+                title = 'Error Notice';
+            } else if (lower.includes('warning') || lower.includes('alert') || lower.includes('caution') || lower.includes('exceeded') || lower.includes('already')) {
+                type = 'warning';
+                title = 'Warning Alert';
+            } else if (lower.includes('success') || lower.includes('restored') || lower.includes('created') || lower.includes('set') || lower.includes('added') || lower.includes('updated') || lower.includes('saved')) {
+                type = 'success';
+                title = 'Success';
+            }
+
+            return showSystemModal({
+                type: type,
+                title: title,
+                message: msgStr
+            });
+        };
+
+        // Custom Confirmation & Input Modals
+        function showCustomConfirm(options = {}) {
+            return showSystemModal({
+                ...options,
+                type: 'confirm'
+            });
+        }
+
+        function showCustomPrompt(options = {}) {
+            return showSystemModal({
+                ...options,
+                type: 'prompt',
+                isPrompt: true
             });
         }
 
