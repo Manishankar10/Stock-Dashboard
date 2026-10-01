@@ -1471,7 +1471,7 @@
                                 <div id="insights-top-gainer-val" style="font-size: 12px; font-weight: 600; color: #10b981;">-</div>
                             </div>
                             <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Largest Lag</div>
+                                <div id="insights-top-loser-label" style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Largest Lag</div>
                                 <div id="insights-top-loser-sym" style="font-size: 14px; font-weight: 700; color: #ef4444; margin-top: 4px;">-</div>
                                 <div id="insights-top-loser-val" style="font-size: 12px; font-weight: 600; color: #ef4444;">-</div>
                             </div>
@@ -3595,7 +3595,101 @@
                 });
         }
 
+        function updateHighlightsFromLivePrices() {
+            if (!portfoliosData || !stockPricesData) return;
+
+            let allActiveHoldings = [];
+            let seenSymbols = new Set();
+            let totalDayGain = 0;
+            let hasAnyLiveData = false;
+
+            Object.values(portfoliosData).forEach(holdings => {
+                (holdings || []).forEach(h => {
+                    const sym = h.symbol;
+                    const qty = parseFloat(h.quantity || 0);
+                    if (sym && qty > 0) {
+                        const info = stockPricesData[sym];
+                        if (info && info.price !== undefined && !info.error) {
+                            hasAnyLiveData = true;
+                            const ltp = info.price;
+                            const changeAmt = info.change !== undefined ? info.change : 0;
+                            const changePct = info.change_pct !== undefined ? info.change_pct : 0;
+
+                            totalDayGain += (changeAmt * qty);
+
+                            if (!seenSymbols.has(sym)) {
+                                seenSymbols.add(sym);
+                                allActiveHoldings.push({
+                                    symbol: sym,
+                                    name: info.name || sym,
+                                    ltp: ltp,
+                                    change_amt: changeAmt,
+                                    change_pct: changePct,
+                                    qty: qty
+                                });
+                            }
+                        }
+                    }
+                });
+            });
+
+            const gainerSymEl = document.getElementById('insights-top-gainer-sym');
+            const gainerValEl = document.getElementById('insights-top-gainer-val');
+            const loserLabelEl = document.getElementById('insights-top-loser-label');
+            const loserSymEl = document.getElementById('insights-top-loser-sym');
+            const loserValEl = document.getElementById('insights-top-loser-val');
+            const dayGainEl = document.getElementById('insights-day-gain-val');
+
+            if (!hasAnyLiveData) return;
+
+            if (allActiveHoldings.length === 0) {
+                if (gainerSymEl) { gainerSymEl.innerText = 'N/A'; gainerSymEl.style.color = 'var(--text-secondary)'; if (gainerValEl) { gainerValEl.innerText = '-'; gainerValEl.style.color = 'var(--text-secondary)'; } }
+                if (loserSymEl) { loserSymEl.innerText = 'N/A'; loserSymEl.style.color = 'var(--text-secondary)'; if (loserValEl) { loserValEl.innerText = '-'; loserValEl.style.color = 'var(--text-secondary)'; } }
+                if (dayGainEl) { dayGainEl.innerText = '₹0.00'; dayGainEl.style.color = '#10b981'; }
+                return;
+            }
+
+            allActiveHoldings.sort((a, b) => b.change_pct - a.change_pct);
+
+            const topGainer = allActiveHoldings[0];
+            const topLoser = allActiveHoldings.length > 1 ? allActiveHoldings[allActiveHoldings.length - 1] : null;
+
+            if (gainerSymEl && topGainer) {
+                gainerSymEl.innerText = topGainer.symbol;
+                const sign = topGainer.change_pct >= 0 ? '+' : '';
+                gainerValEl.innerText = `${sign}${topGainer.change_pct.toFixed(2)}% (₹${topGainer.ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})})`;
+                const color = topGainer.change_pct >= 0 ? '#10b981' : '#ef4444';
+                gainerSymEl.style.color = color;
+                gainerValEl.style.color = color;
+            }
+
+            if (loserSymEl && topLoser) {
+                loserSymEl.innerText = topLoser.symbol;
+                const sign = topLoser.change_pct >= 0 ? '+' : '';
+                loserValEl.innerText = `${sign}${topLoser.change_pct.toFixed(2)}% (₹${topLoser.ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})})`;
+                const color = topLoser.change_pct >= 0 ? '#10b981' : '#ef4444';
+                loserSymEl.style.color = color;
+                loserValEl.style.color = color;
+
+                if (loserLabelEl) {
+                    loserLabelEl.innerText = topLoser.change_pct < 0 ? 'Largest Lag' : 'Lowest Gain';
+                }
+            } else if (loserSymEl) {
+                loserSymEl.innerText = 'N/A';
+                loserSymEl.style.color = 'var(--text-secondary)';
+                if (loserValEl) { loserValEl.innerText = '-'; loserValEl.style.color = 'var(--text-secondary)'; }
+                if (loserLabelEl) loserLabelEl.innerText = 'Largest Lag';
+            }
+
+            if (dayGainEl) {
+                const sign = totalDayGain >= 0 ? '+' : '';
+                dayGainEl.innerText = isPrivacyMode ? `₹ ••••••` : `${sign}₹${Math.abs(totalDayGain).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                dayGainEl.style.color = totalDayGain >= 0 ? '#10b981' : '#ef4444';
+            }
+        }
+
         function renderInsightsSummaryUI(data) {
+            updateHighlightsFromLivePrices();
             const m = data.metrics || {};
             const gainer = m.top_gainer;
             const loser = m.top_loser;
@@ -3605,9 +3699,10 @@
             if (gainerSymEl && gainer) {
                 gainerSymEl.innerText = gainer.symbol;
                 const sign = gainer.change_pct >= 0 ? '+' : '';
-                gainerValEl.innerText = `${sign}${gainer.change_pct}% (₹${gainer.ltp})`;
-                gainerSymEl.style.color = gainer.change_pct >= 0 ? '#10b981' : '#ef4444';
-                gainerValEl.style.color = gainer.change_pct >= 0 ? '#10b981' : '#ef4444';
+                gainerValEl.innerText = `${sign}${gainer.change_pct.toFixed(2)}% (₹${gainer.ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})})`;
+                const color = gainer.change_pct >= 0 ? '#10b981' : '#ef4444';
+                gainerSymEl.style.color = color;
+                gainerValEl.style.color = color;
             } else if (gainerSymEl) {
                 gainerSymEl.innerText = 'N/A';
                 gainerSymEl.style.color = 'var(--text-secondary)';
@@ -3615,19 +3710,25 @@
                 gainerValEl.style.color = 'var(--text-secondary)';
             }
 
+            const loserLabelEl = document.getElementById('insights-top-loser-label');
             const loserSymEl = document.getElementById('insights-top-loser-sym');
             const loserValEl = document.getElementById('insights-top-loser-val');
             if (loserSymEl && loser) {
                 loserSymEl.innerText = loser.symbol;
                 const sign = loser.change_pct >= 0 ? '+' : '';
-                loserValEl.innerText = `${sign}${loser.change_pct}% (₹${loser.ltp})`;
-                loserSymEl.style.color = loser.change_pct >= 0 ? '#10b981' : '#ef4444';
-                loserValEl.style.color = loser.change_pct >= 0 ? '#10b981' : '#ef4444';
+                loserValEl.innerText = `${sign}${loser.change_pct.toFixed(2)}% (₹${loser.ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})})`;
+                const color = loser.change_pct >= 0 ? '#10b981' : '#ef4444';
+                loserSymEl.style.color = color;
+                loserValEl.style.color = color;
+                if (loserLabelEl) {
+                    loserLabelEl.innerText = loser.change_pct < 0 ? 'Largest Lag' : 'Lowest Gain';
+                }
             } else if (loserSymEl) {
                 loserSymEl.innerText = 'N/A';
                 loserSymEl.style.color = 'var(--text-secondary)';
                 loserValEl.innerText = '-';
                 loserValEl.style.color = 'var(--text-secondary)';
+                if (loserLabelEl) loserLabelEl.innerText = 'Largest Lag';
             }
 
             const dayGainEl = document.getElementById('insights-day-gain-val');
@@ -6054,6 +6155,8 @@
                     }
                 });
             }
+
+            updateHighlightsFromLivePrices();
 
             if (currentTab === 'dashboard') {
                 renderDashboard();

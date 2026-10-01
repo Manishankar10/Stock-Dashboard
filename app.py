@@ -207,7 +207,6 @@ class StockFetcher:
                     if result_list:
                         meta = result_list[0].get('meta', {})
                         price = meta.get('regularMarketPrice')
-                        prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
                         
                         # Fallback for pre-market (9:00-9:15 AM IST) or off-hours when regularMarketPrice is None
                         if price is None:
@@ -215,15 +214,32 @@ class StockFetcher:
                             closes = [c for c in quotes.get('close', []) if c is not None]
                             if closes:
                                 price = closes[-1]
-                        
-                        if price is None:
-                            price = prev_close
 
                         name = meta.get('shortName') or meta.get('longName') or symbol
                         
                         if price is not None:
-                            change = (price - prev_close) if (price is not None and prev_close is not None) else 0.0
-                            change_pct = (change / prev_close * 100) if (prev_close and prev_close != 0) else 0.0
+                            change_pct = meta.get('regularMarketChangePercent')
+                            change = meta.get('regularMarketChange')
+                            prev_close = meta.get('previousClose') or meta.get('chartPreviousClose')
+
+                            if change_pct is not None:
+                                change_pct = float(change_pct)
+                                if change is not None:
+                                    change = float(change)
+                                else:
+                                    prev_calc = price / (1 + (change_pct / 100.0)) if (1 + (change_pct / 100.0)) != 0 else price
+                                    change = price - prev_calc
+                            else:
+                                if prev_close:
+                                    change = price - prev_close
+                                    change_pct = (change / prev_close * 100) if prev_close != 0 else 0.0
+                                else:
+                                    change = 0.0
+                                    change_pct = 0.0
+
+                            if prev_close is None and price is not None:
+                                prev_close = price - change
+
                             item_data = {
                                 'symbol': symbol,
                                 'name': name,
@@ -250,16 +266,38 @@ class StockFetcher:
                     if result_list:
                         meta = result_list[0].get('meta', {})
                         price = meta.get('regularMarketPrice')
-                        prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
                         
                         if price is None:
-                            price = prev_close
+                            quotes = result_list[0].get('indicators', {}).get('quote', [{}])[0]
+                            closes = [c for c in quotes.get('close', []) if c is not None]
+                            if closes:
+                                price = closes[-1]
                             
                         name = meta.get('shortName') or meta.get('longName') or symbol
                         
                         if price is not None:
-                            change = (price - prev_close) if (price is not None and prev_close is not None) else 0.0
-                            change_pct = (change / prev_close * 100) if (prev_close and prev_close != 0) else 0.0
+                            change_pct = meta.get('regularMarketChangePercent')
+                            change = meta.get('regularMarketChange')
+                            prev_close = meta.get('previousClose') or meta.get('chartPreviousClose')
+
+                            if change_pct is not None:
+                                change_pct = float(change_pct)
+                                if change is not None:
+                                    change = float(change)
+                                else:
+                                    prev_calc = price / (1 + (change_pct / 100.0)) if (1 + (change_pct / 100.0)) != 0 else price
+                                    change = price - prev_calc
+                            else:
+                                if prev_close:
+                                    change = price - prev_close
+                                    change_pct = (change / prev_close * 100) if prev_close != 0 else 0.0
+                                else:
+                                    change = 0.0
+                                    change_pct = 0.0
+
+                            if prev_close is None and price is not None:
+                                prev_close = price - change
+
                             item_data = {
                                 'symbol': symbol,
                                 'name': name,
@@ -2431,8 +2469,6 @@ def get_insights_summary_api():
         watchlists = load_data(uname)
         portfolios = load_portfolios(uname)
 
-        req_pf = request.args.get("portfolio", "").strip()
-
         wl_symbols = set()
         for w_name, sym_list in watchlists.items():
             for s in sym_list: wl_symbols.add(s)
@@ -2440,11 +2476,8 @@ def get_insights_summary_api():
         pf_symbols = set()
         pf_items = []
 
-        target_portfolios = portfolios
-        if req_pf and req_pf in portfolios:
-            target_portfolios = {req_pf: portfolios[req_pf]}
-
-        for p_name, holdings in target_portfolios.items():
+        # Compare across ALL user portfolios for active holdings (quantity > 0)
+        for p_name, holdings in portfolios.items():
             for item in holdings:
                 sym = item.get("symbol", "")
                 qty = float(item.get("quantity", 0))
@@ -2459,7 +2492,7 @@ def get_insights_summary_api():
         tot_day_pnl = 0.0
 
         theses = []
-        active_holdings_metrics = []
+        unique_stocks = {}
 
         pf_sym_list = list(pf_symbols)
         prices_map = {}
@@ -2481,27 +2514,29 @@ def get_insights_summary_api():
             buy_reason = item.get("buy_reason") or item.get("notes") or ""
 
             p_info = prices_map.get(sym, {})
-            ltp = float(p_info.get("price", 0) or buy_price)
+            if not p_info or p_info.get("error") or p_info.get("price") is None:
+                continue
+
+            ltp = float(p_info.get("price"))
             change_amt = float(p_info.get("change", 0) or 0)
             day_pct = float(p_info.get("change_pct", 0) or 0)
 
             inv_amt = buy_price * qty
-            cur_val = (ltp * qty) if ltp > 0 else inv_amt
+            cur_val = ltp * qty
             pnl_amt = cur_val - inv_amt
-            pnl_pct = (pnl_amt / inv_amt * 100) if inv_amt > 0 else 0.0
-            day_pnl_amt = (change_amt * qty) if ltp > 0 else 0.0
+            day_pnl_amt = change_amt * qty
 
             tot_invested += inv_amt
             tot_cur_val += cur_val
             tot_day_pnl += day_pnl_amt
 
-            active_holdings_metrics.append({
-                "symbol": sym,
-                "ltp": ltp,
-                "change_pct": round(day_pct, 2),
-                "change_amt": round(change_amt, 2),
-                "qty": qty
-            })
+            if sym not in unique_stocks:
+                unique_stocks[sym] = {
+                    "symbol": sym,
+                    "ltp": round(ltp, 2),
+                    "change_pct": round(day_pct, 2),
+                    "change_amt": round(change_amt, 2)
+                }
 
             if buy_reason:
                 theses.append({
@@ -2509,19 +2544,18 @@ def get_insights_summary_api():
                     "buy_reason": buy_reason,
                     "buy_price": round(buy_price, 2),
                     "ltp": round(ltp, 2),
-                    "pnl_pct": round(pnl_pct, 2)
+                    "pnl_pct": round((pnl_amt / inv_amt * 100) if inv_amt > 0 else 0.0, 2)
                 })
 
+        stock_list = list(unique_stocks.values())
         top_gainer = None
         top_loser = None
 
-        if active_holdings_metrics:
-            active_holdings_metrics.sort(key=lambda x: x["change_pct"], reverse=True)
-            top_gainer = active_holdings_metrics[0]
-            if len(active_holdings_metrics) > 1:
-                top_loser = active_holdings_metrics[-1]
-            else:
-                top_loser = None
+        if stock_list:
+            stock_list.sort(key=lambda x: x["change_pct"], reverse=True)
+            top_gainer = stock_list[0]
+            if len(stock_list) > 1:
+                top_loser = stock_list[-1]
 
         idx_count = sum(1 for s in all_symbols if s.startswith("^"))
         cmd_count = sum(1 for s in all_symbols if "=F" in s or "GOLDBEES" in s or "SILVERBEES" in s)
