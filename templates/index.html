@@ -9160,7 +9160,7 @@
 
         initApp();
         
-        // Auto refresh market prices every 15 seconds
+        // Smart Adaptive Auto-Refresh Market Prices every 30 seconds (pauses when tab is hidden)
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 const modal = document.getElementById('fundamentalsModal');
@@ -9168,7 +9168,11 @@
             }
         });
 
-        setInterval(refreshPrices, 15000);
+        setInterval(function() {
+            if (document.visibilityState !== 'hidden') {
+                refreshPrices();
+            }
+        }, 30000);
     </script>
 </body>
 </html>

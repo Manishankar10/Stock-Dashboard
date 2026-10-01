@@ -127,6 +127,46 @@ except ImportError:
     import requests as stock_http_requests
     _STOCK_CURL_CFFI = False
 
+import threading
+import time
+
+class HighPerformanceCache:
+    def __init__(self, default_ttl=30):
+        self.default_ttl = default_ttl
+        self.cache = {}
+        self.lock = threading.Lock()
+
+    def get(self, key):
+        with self.lock:
+            entry = self.cache.get(key)
+            if entry:
+                timestamp, data, ttl = entry
+                if time.time() - timestamp < ttl:
+                    return data
+                else:
+                    del self.cache[key]
+            return None
+
+    def set(self, key, data, ttl=None):
+        if ttl is None:
+            ttl = self.default_ttl
+        with self.lock:
+            if isinstance(data, dict) and data.get("error"):
+                ttl = min(ttl, 5)
+            self.cache[key] = (time.time(), data, ttl)
+
+    def clear(self):
+        with self.lock:
+            self.cache.clear()
+
+# In-Memory Cache Containers for Live Stock Quotes, News, and Market Metrics
+stock_cache = HighPerformanceCache(default_ttl=30)   # 30-second TTL for live price quotes
+news_cache = HighPerformanceCache(default_ttl=300)   # 5-minute TTL for RSS news articles
+fiidii_cache = HighPerformanceCache(default_ttl=600) # 10-minute TTL for FII/DII data
+
+_USER_WL_CACHE = {}
+_USER_PF_CACHE = {}
+
 class StockFetcher:
     def __init__(self):
         if _STOCK_CURL_CFFI:
@@ -147,8 +187,12 @@ class StockFetcher:
         except Exception:
             self.crumb = None
 
-    def fetch_stock(self, symbol):
-        import time
+    def fetch_stock(self, symbol, use_cache=True):
+        if use_cache:
+            cached = stock_cache.get(symbol)
+            if cached:
+                return cached
+
         t_now = int(time.time())
         hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']
 
@@ -180,7 +224,7 @@ class StockFetcher:
                         if price is not None:
                             change = (price - prev_close) if (price is not None and prev_close is not None) else 0.0
                             change_pct = (change / prev_close * 100) if (prev_close and prev_close != 0) else 0.0
-                            return {
+                            item_data = {
                                 'symbol': symbol,
                                 'name': name,
                                 'price': round(float(price), 2),
@@ -189,6 +233,9 @@ class StockFetcher:
                                 'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
                                 'mcap_cr': 'N/A'
                             }
+                            if use_cache:
+                                stock_cache.set(symbol, item_data)
+                            return item_data
             except Exception:
                 pass
 
@@ -213,7 +260,7 @@ class StockFetcher:
                         if price is not None:
                             change = (price - prev_close) if (price is not None and prev_close is not None) else 0.0
                             change_pct = (change / prev_close * 100) if (prev_close and prev_close != 0) else 0.0
-                            return {
+                            item_data = {
                                 'symbol': symbol,
                                 'name': name,
                                 'price': round(float(price), 2),
@@ -222,10 +269,16 @@ class StockFetcher:
                                 'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
                                 'mcap_cr': 'N/A'
                             }
+                            if use_cache:
+                                stock_cache.set(symbol, item_data)
+                            return item_data
             except Exception:
                 pass
 
-        return {'error': 'No Data Available'}
+        err_data = {'error': 'No Data Available'}
+        if use_cache:
+            stock_cache.set(symbol, err_data, ttl=5)
+        return err_data
 
 fetcher = StockFetcher()
 
@@ -524,7 +577,9 @@ def load_data(username=None):
         username = session.get("username")
     if not username:
         return {}
-        
+    if username in _USER_WL_CACHE:
+        return _USER_WL_CACHE[username]
+
     filepath = get_user_watchlist_file(username)
     if not os.path.exists(filepath):
         default_data = {}
@@ -541,7 +596,9 @@ def load_data(username=None):
         
     try:
         with open(filepath, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            _USER_WL_CACHE[username] = data
+            return data
     except Exception:
         return {}
 
@@ -550,16 +607,22 @@ def save_data(data, username=None):
         username = session.get("username")
     if not username:
         return
+    _USER_WL_CACHE[username] = data
     filepath = get_user_watchlist_file(username)
-    with open(filepath, "w") as f:
-        json.dump(data, f, indent=4)
+    try:
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception:
+        pass
 
 def load_portfolios(username=None):
     if not username:
         username = session.get("username")
     if not username:
         return {}
-        
+    if username in _USER_PF_CACHE:
+        return _USER_PF_CACHE[username]
+
     filepath = get_user_portfolio_file(username)
     if not os.path.exists(filepath):
         default_pfs = {}
@@ -580,7 +643,9 @@ def load_portfolios(username=None):
         
     try:
         with open(filepath, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            _USER_PF_CACHE[username] = data
+            return data
     except Exception:
         return {}
 
@@ -589,9 +654,13 @@ def save_portfolios(data, username=None):
         username = session.get("username")
     if not username:
         return
+    _USER_PF_CACHE[username] = data
     filepath = get_user_portfolio_file(username)
-    with open(filepath, "w") as f:
-        json.dump(data, f, indent=4)
+    try:
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception:
+        pass
 
 def get_user_transactions_file(username):
     safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
@@ -2236,6 +2305,10 @@ def get_stock_keywords(symbol):
     return list(set(keywords))
 
 def fetch_fii_dii_data():
+    cached = fiidii_cache.get("fii_dii")
+    if cached:
+        return cached
+
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     now_ist = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
     today_str = now_ist.strftime('%d %b')
@@ -2553,6 +2626,11 @@ def get_insights_news_api():
         stock_param = request.args.get("stock", "").strip()
         limit = min(int(request.args.get("limit", 60)), 100)
 
+        cache_key = f"news_{category_filter}_{scope_filter}_{stock_param}_{limit}"
+        cached_news = news_cache.get(cache_key)
+        if cached_news:
+            return jsonify(cached_news)
+
         target_symbols = []
         if stock_param and stock_param != "all":
             target_symbols = [stock_param]
@@ -2734,9 +2812,9 @@ def get_insights_news_api():
         elif scope_filter == "watchlist":
             news_articles = [a for a in news_articles if a.get("tag_type") == "WATCHLIST" or a.get("symbol") in wl_symbols]
 
-        return jsonify({"success": True, "articles": news_articles, "total": len(news_articles)})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e), "articles": []})
+        res_payload = {"success": True, "articles": news_articles, "total": len(news_articles)}
+        news_cache.set(cache_key, res_payload, ttl=300)
+        return jsonify(res_payload)
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "articles": []})
 
