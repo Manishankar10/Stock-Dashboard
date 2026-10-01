@@ -6448,24 +6448,43 @@
             const y = e.clientY - rect.top;
 
             const price = mainSeries.coordinateToPrice(y);
-            let rawTime = mainChart.timeScale().coordinateToTime(x);
+            const rawTime = mainChart.timeScale().coordinateToTime(x);
             const logical = mainChart.timeScale().coordinateToLogical(x);
 
-            if ((rawTime === null || rawTime === undefined) && cachedChartData && cachedChartData.candles && logical !== null && logical !== undefined) {
-                const roundedLogical = Math.max(0, Math.min(cachedChartData.candles.length - 1, Math.round(logical)));
-                if (cachedChartData.candles[roundedLogical]) {
-                    rawTime = cachedChartData.candles[roundedLogical].time;
+            let time = normalizeTime(rawTime);
+            let futureOffset = 0;
+
+            const candleCount = (cachedChartData && cachedChartData.candles) ? cachedChartData.candles.length : 0;
+            const lastCandleIndex = candleCount > 0 ? candleCount - 1 : 0;
+
+            if (logical !== null && logical !== undefined && candleCount > 0) {
+                if (logical > lastCandleIndex) {
+                    futureOffset = Math.round(logical - lastCandleIndex);
+                    const lastCandleTime = cachedChartData.candles[lastCandleIndex].time;
+                    time = normalizeTime(lastCandleTime);
+                } else if (!time && logical < 0) {
+                    futureOffset = Math.round(logical);
+                    time = normalizeTime(cachedChartData.candles[0].time);
                 }
             }
 
-            const time = normalizeTime(rawTime);
-
-            return { x, y, price, time, logical };
+            return { x, y, price, time, logical, futureOffset };
         }
 
-        function getShapeX(timeScale, time, logical) {
+        function getShapeX(timeScale, time, logical, futureOffset = 0) {
             if (!timeScale) return null;
 
+            const candleCount = (cachedChartData && cachedChartData.candles) ? cachedChartData.candles.length : 0;
+            const lastCandleIndex = candleCount > 0 ? candleCount - 1 : 0;
+
+            // 1. If point extends into future right offset beyond the last candle
+            if (futureOffset && futureOffset > 0 && candleCount > 0) {
+                const targetLogical = lastCandleIndex + futureOffset;
+                const x = timeScale.logicalToCoordinate(targetLogical);
+                if (x !== null && x !== undefined) return x;
+            }
+
+            // 2. Normal date matching for points within chart history
             const normTime = normalizeTime(time);
             if (normTime !== null && normTime !== undefined) {
                 let x = timeScale.timeToCoordinate(normTime);
@@ -6481,6 +6500,7 @@
                 }
             }
 
+            // 3. Fallback to logical coordinate if available
             if (logical !== null && logical !== undefined) {
                 const x = timeScale.logicalToCoordinate(logical);
                 if (x !== null && x !== undefined) return x;
@@ -6516,6 +6536,7 @@
                         type: 'vertical',
                         time: pt.time,
                         logical: pt.logical,
+                        futureOffset: pt.futureOffset || 0,
                         color: activeToolColor || '#f59e0b'
                     };
                     saveChartShapeForSymbol(currentChartSymbol, shape);
@@ -6530,6 +6551,7 @@
                             type: 'note',
                             time: pt.time,
                             logical: pt.logical,
+                            futureOffset: pt.futureOffset || 0,
                             price: pt.price,
                             text: noteText,
                             color: activeToolColor || '#10b981'
@@ -6557,9 +6579,11 @@
                             type: currentDrawingTool,
                             time1: pt1.time,
                             logical1: pt1.logical,
+                            futureOffset1: pt1.futureOffset || 0,
                             price1: pt1.price,
                             time2: pt2.time,
                             logical2: pt2.logical,
+                            futureOffset2: pt2.futureOffset || 0,
                             price2: pt2.price,
                             color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : currentDrawingTool === 'rectangle' ? '#a855f7' : '#10b981'),
                             fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null
@@ -6598,20 +6622,20 @@
             const shapes = getSavedChartShapes(currentChartSymbol);
             for (let s of shapes) {
                 if (s.type === 'vertical') {
-                    const shapeX = getShapeX(timeScale, s.time, s.logical);
+                    const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                     if (shapeX !== null && Math.abs(x - shapeX) < 8) {
                         return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color };
                     }
                 } else if (s.type === 'note') {
-                    const shapeX = getShapeX(timeScale, s.time, s.logical);
+                    const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                     const shapeY = mainSeries.priceToCoordinate(s.price);
                     if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 30 && Math.abs(y - shapeY) < 20) {
                         return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color };
                     }
                 } else if (s.type === 'trendline') {
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2, s.logical2);
+                    const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         const dist = distanceToSegment(x, y, x1, y1, x2, y2);
@@ -6620,9 +6644,9 @@
                         }
                     }
                 } else if (s.type === 'rectangle' || s.type === 'pricerange') {
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && y2 !== null) {
                         const startX = x1, endX = (x2 !== null) ? x2 : x1;
@@ -6743,9 +6767,9 @@
             const isDark = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
 
             if (s.type === 'pricerange') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && y2 !== null) {
@@ -6833,9 +6857,9 @@
                     ctx.restore();
                 }
             } else if (s.type === 'trendline') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2, s.logical2);
+                const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -6855,9 +6879,9 @@
                     ctx.restore();
                 }
             } else if (s.type === 'rectangle') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2, s.logical2);
+                const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -6877,7 +6901,7 @@
                     ctx.restore();
                 }
             } else if (s.type === 'vertical') {
-                const x = getShapeX(timeScale, s.time, s.logical);
+                const x = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                 if (x !== null) {
                     ctx.save();
                     ctx.beginPath();
@@ -6898,7 +6922,7 @@
                     ctx.restore();
                 }
             } else if (s.type === 'note') {
-                const x = getShapeX(timeScale, s.time, s.logical);
+                const x = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                 const y = mainSeries.priceToCoordinate(s.price);
 
                 if (x !== null && y !== null) {
