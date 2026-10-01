@@ -2358,16 +2358,24 @@ def get_insights_summary_api():
         watchlists = load_data(uname)
         portfolios = load_portfolios(uname)
 
+        req_pf = request.args.get("portfolio", "").strip()
+
         wl_symbols = set()
         for w_name, sym_list in watchlists.items():
             for s in sym_list: wl_symbols.add(s)
 
         pf_symbols = set()
         pf_items = []
-        for p_name, holdings in portfolios.items():
+
+        target_portfolios = portfolios
+        if req_pf and req_pf in portfolios:
+            target_portfolios = {req_pf: portfolios[req_pf]}
+
+        for p_name, holdings in target_portfolios.items():
             for item in holdings:
                 sym = item.get("symbol", "")
-                if sym:
+                qty = float(item.get("quantity", 0))
+                if sym and qty > 0:
                     pf_symbols.add(sym)
                     pf_items.append(item)
 
@@ -2377,11 +2385,8 @@ def get_insights_summary_api():
         tot_cur_val = 0.0
         tot_day_pnl = 0.0
 
-        top_gainer = None
-        top_loser = None
-        max_gain_pct = -999999.0
-        min_gain_pct = 999999.0
         theses = []
+        active_holdings_metrics = []
 
         pf_sym_list = list(pf_symbols)
         prices_map = {}
@@ -2396,30 +2401,34 @@ def get_insights_summary_api():
         for item in pf_items:
             sym = item.get("symbol")
             qty = float(item.get("quantity", 0))
+            if qty <= 0:
+                continue
+
             buy_price = float(item.get("buy_price", 0))
             buy_reason = item.get("buy_reason") or item.get("notes") or ""
 
             p_info = prices_map.get(sym, {})
             ltp = float(p_info.get("price", 0) or buy_price)
             change_amt = float(p_info.get("change", 0) or 0)
+            day_pct = float(p_info.get("change_pct", 0) or 0)
 
             inv_amt = buy_price * qty
             cur_val = (ltp * qty) if ltp > 0 else inv_amt
             pnl_amt = cur_val - inv_amt
             pnl_pct = (pnl_amt / inv_amt * 100) if inv_amt > 0 else 0.0
             day_pnl_amt = (change_amt * qty) if ltp > 0 else 0.0
-            day_pct = float(p_info.get("change_pct", 0) or 0)
 
             tot_invested += inv_amt
             tot_cur_val += cur_val
             tot_day_pnl += day_pnl_amt
 
-            if day_pct > max_gain_pct:
-                max_gain_pct = day_pct
-                top_gainer = {"symbol": sym, "ltp": ltp, "change_pct": round(day_pct, 2), "change_amt": round(change_amt, 2)}
-            if day_pct < min_gain_pct:
-                min_gain_pct = day_pct
-                top_loser = {"symbol": sym, "ltp": ltp, "change_pct": round(day_pct, 2), "change_amt": round(change_amt, 2)}
+            active_holdings_metrics.append({
+                "symbol": sym,
+                "ltp": ltp,
+                "change_pct": round(day_pct, 2),
+                "change_amt": round(change_amt, 2),
+                "qty": qty
+            })
 
             if buy_reason:
                 theses.append({
@@ -2429,6 +2438,17 @@ def get_insights_summary_api():
                     "ltp": round(ltp, 2),
                     "pnl_pct": round(pnl_pct, 2)
                 })
+
+        top_gainer = None
+        top_loser = None
+
+        if active_holdings_metrics:
+            active_holdings_metrics.sort(key=lambda x: x["change_pct"], reverse=True)
+            top_gainer = active_holdings_metrics[0]
+            if len(active_holdings_metrics) > 1:
+                top_loser = active_holdings_metrics[-1]
+            else:
+                top_loser = None
 
         idx_count = sum(1 for s in all_symbols if s.startswith("^"))
         cmd_count = sum(1 for s in all_symbols if "=F" in s or "GOLDBEES" in s or "SILVERBEES" in s)

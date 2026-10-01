@@ -3541,7 +3541,8 @@
             showInsightsSkeletons();
 
             // 1. Parallel Fetch: Highlights, Distribution & Thesis Summary (~100ms)
-            fetch('/api/insights/summary')
+            const pfParam = activePortfolioName ? `?portfolio=${encodeURIComponent(activePortfolioName)}` : '';
+            fetch(`/api/insights/summary${pfParam}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -3603,20 +3604,30 @@
             const gainerValEl = document.getElementById('insights-top-gainer-val');
             if (gainerSymEl && gainer) {
                 gainerSymEl.innerText = gainer.symbol;
-                gainerValEl.innerText = `+${gainer.change_pct}% (₹${gainer.ltp})`;
+                const sign = gainer.change_pct >= 0 ? '+' : '';
+                gainerValEl.innerText = `${sign}${gainer.change_pct}% (₹${gainer.ltp})`;
+                gainerSymEl.style.color = gainer.change_pct >= 0 ? '#10b981' : '#ef4444';
+                gainerValEl.style.color = gainer.change_pct >= 0 ? '#10b981' : '#ef4444';
             } else if (gainerSymEl) {
                 gainerSymEl.innerText = 'N/A';
+                gainerSymEl.style.color = 'var(--text-secondary)';
                 gainerValEl.innerText = '-';
+                gainerValEl.style.color = 'var(--text-secondary)';
             }
 
             const loserSymEl = document.getElementById('insights-top-loser-sym');
             const loserValEl = document.getElementById('insights-top-loser-val');
             if (loserSymEl && loser) {
                 loserSymEl.innerText = loser.symbol;
-                loserValEl.innerText = `${loser.change_pct}% (₹${loser.ltp})`;
+                const sign = loser.change_pct >= 0 ? '+' : '';
+                loserValEl.innerText = `${sign}${loser.change_pct}% (₹${loser.ltp})`;
+                loserSymEl.style.color = loser.change_pct >= 0 ? '#10b981' : '#ef4444';
+                loserValEl.style.color = loser.change_pct >= 0 ? '#10b981' : '#ef4444';
             } else if (loserSymEl) {
                 loserSymEl.innerText = 'N/A';
+                loserSymEl.style.color = 'var(--text-secondary)';
                 loserValEl.innerText = '-';
+                loserValEl.style.color = 'var(--text-secondary)';
             }
 
             const dayGainEl = document.getElementById('insights-day-gain-val');
