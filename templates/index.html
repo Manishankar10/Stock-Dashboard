@@ -1458,30 +1458,6 @@
                 <!-- Right Column: Analytics & Investment Thesis -->
                 <div style="display: flex; flex-direction: column; gap: 20px;">
                     
-                    <!-- Highlights Card -->
-                    <div class="card-container" style="padding: 20px;">
-                        <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">
-                            ⚡ Today's Highlights
-                        </h3>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                            <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Top Performer</div>
-                                <div id="insights-top-gainer-sym" style="font-size: 14px; font-weight: 700; color: #10b981; margin-top: 4px;">-</div>
-                                <div id="insights-top-gainer-val" style="font-size: 12px; font-weight: 600; color: #10b981;">-</div>
-                            </div>
-                            <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <div id="insights-top-loser-label" style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Largest Lag</div>
-                                <div id="insights-top-loser-sym" style="font-size: 14px; font-weight: 700; color: #ef4444; margin-top: 4px;">-</div>
-                                <div id="insights-top-loser-val" style="font-size: 12px; font-weight: 600; color: #ef4444;">-</div>
-                            </div>
-                        </div>
-
-                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 12px; color: var(--text-primary); font-weight: 600;">Portfolio Day Gain:</span>
-                            <span id="insights-day-gain-val" style="font-size: 13px; font-weight: 700; color: #10b981;">₹0.00</span>
-                        </div>
-                    </div>
 
                     <!-- Asset Distribution Card -->
                     <div class="card-container" style="padding: 20px;">
@@ -5788,30 +5764,56 @@
                     tdBuy.style.textAlign = 'right';
                     tdBuy.innerText = formatMoney(item.buy_price);
 
+                    const info = stockPricesData[sym] || {};
+                    const ltp = info.price || 0;
+                    const dayChange = info.change || 0;
+                    const invAmt = item.buy_price * item.quantity;
+                    const curVal = ltp > 0 ? (ltp * item.quantity) : invAmt;
+                    const pnlAmt = curVal - invAmt;
+                    const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
+                    const dayPnLAmt = ltp > 0 ? dayChange * item.quantity : 0;
+                    const dayPnlPct = info.change_pct !== undefined ? info.change_pct : 0;
+
                     const tdLtp = document.createElement('td');
                     tdLtp.style.textAlign = 'right';
                     tdLtp.id = `pf-ltp-${sym}`;
-                    tdLtp.innerHTML = `<span class="skeleton-box" style="width: 60px; height: 14px;"></span>`;
+                    tdLtp.innerText = ltp > 0 ? formatMoney(ltp) : '-';
 
                     const tdInv = document.createElement('td');
                     tdInv.style.textAlign = 'right';
                     tdInv.id = `pf-inv-${sym}`;
-                    tdInv.innerText = formatMoney(item.buy_price * item.quantity);
+                    tdInv.innerText = formatMoney(invAmt);
 
                     const tdVal = document.createElement('td');
                     tdVal.style.textAlign = 'right';
                     tdVal.id = `pf-val-${sym}`;
-                    tdVal.innerHTML = `<span class="skeleton-box" style="width: 70px; height: 14px;"></span>`;
+                    tdVal.innerText = ltp > 0 ? formatMoney(curVal) : formatMoney(invAmt);
 
                     const tdPnl = document.createElement('td');
                     tdPnl.style.textAlign = 'right';
                     tdPnl.id = `pf-pnl-${sym}`;
-                    tdPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                    if (ltp > 0) {
+                        const sign = pnlAmt >= 0 ? '+' : '';
+                        tdPnl.innerText = isPrivacyMode
+                            ? `₹ •••••• (${sign}${pnlPct.toFixed(2)}%)`
+                            : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
+                        tdPnl.className = pnlAmt >= 0 ? 'pos' : 'neg';
+                    } else {
+                        tdPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                    }
 
                     const tdDayPnl = document.createElement('td');
                     tdDayPnl.style.textAlign = 'right';
                     tdDayPnl.id = `pf-daypnl-${sym}`;
-                    tdDayPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                    if (ltp > 0) {
+                        const sign = dayPnLAmt >= 0 ? '+' : '';
+                        tdDayPnl.innerText = isPrivacyMode
+                            ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
+                            : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
+                        tdDayPnl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
+                    } else {
+                        tdDayPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                    }
 
                     const tdDetails = document.createElement('td');
                     tdDetails.style.textAlign = 'center';
@@ -5940,38 +5942,34 @@
             // Refresh alert definitions so every stock_data call contains the current alert symbols.
             try { await fetchAlerts(); } catch(e) {}
 
-            // Request only symbols relevant to the current application context.
+            // Request symbols for all watchlists, all portfolios, and all alerts to ensure data consistency everywhere.
             const allSymbols = new Set();
 
-            if (currentTab === 'watchlists') {
-                const symbols = activeWatchlistName && watchlistsData[activeWatchlistName]
-                    ? watchlistsData[activeWatchlistName] : [];
-                symbols.forEach(s => allSymbols.add(s));
-            } else if (currentTab === 'portfolios') {
-                const holdings = activePortfolioName && portfoliosData[activePortfolioName]
-                    ? portfoliosData[activePortfolioName] : [];
-                holdings.forEach(h => allSymbols.add(h.symbol));
-            } else if (currentTab === 'dashboard') {
-                // Analytics/dashboard: all portfolio holdings.
-                Object.values(portfoliosData).forEach(holdings => {
-                    holdings.forEach(h => allSymbols.add(h.symbol));
+            Object.values(portfoliosData || {}).forEach(holdings => {
+                (holdings || []).forEach(h => {
+                    if (h && h.symbol) allSymbols.add(h.symbol);
                 });
-            } else if (currentTab === 'smallcases') {
-                // Smallcase detail popup: only that Smallcase's holdings.
+            });
+
+            Object.values(watchlistsData || {}).forEach(symbols => {
+                (symbols || []).forEach(s => {
+                    if (s) allSymbols.add(s);
+                });
+            });
+
+            if (currentTab === 'smallcases') {
                 if (selectedSmallcaseDetail && Array.isArray(selectedSmallcaseDetail.holdings)) {
                     selectedSmallcaseDetail.holdings.forEach(h => {
-                        if (h.symbol) allSymbols.add(h.symbol);
+                        if (h && h.symbol) allSymbols.add(h.symbol);
                     });
-                } else {
-                    // Smallcase list: all symbols represented by all Smallcases.
+                } else if (typeof smallcaseListCache !== 'undefined' && Array.isArray(smallcaseListCache)) {
                     smallcaseListCache.forEach(sc => {
-                        (sc.symbols || []).forEach(s => allSymbols.add(s));
+                        (sc.symbols || []).forEach(s => { if (s) allSymbols.add(s); });
                     });
                 }
             }
 
-            // Alert symbols must be checked on every stock_data request.
-            (userAlertsData.alerts || []).forEach(alert => {
+            ((userAlertsData && userAlertsData.alerts) || []).forEach(alert => {
                 if (alert && alert.symbol) allSymbols.add(alert.symbol);
             });
 
@@ -5982,7 +5980,12 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ symbols: Array.from(allSymbols) })
             });
-            stockPricesData = await res.json();
+            const newPrices = await res.json();
+            for (const [sym, info] of Object.entries(newPrices)) {
+                if (info && (!info.error || !stockPricesData[sym])) {
+                    stockPricesData[sym] = info;
+                }
+            }
 
             // 1. Update Watchlist Rows
             for (const [sym, info] of Object.entries(stockPricesData)) {

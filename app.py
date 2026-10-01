@@ -147,6 +147,15 @@ class HighPerformanceCache:
                     del self.cache[key]
             return None
 
+    def get_expired_fallback(self, key):
+        with self.lock:
+            entry = self.cache.get(key)
+            if entry:
+                timestamp, data, ttl = entry
+                if isinstance(data, dict) and not data.get("error"):
+                    return data
+            return None
+
     def set(self, key, data, ttl=None):
         if ttl is None:
             ttl = self.default_ttl
@@ -312,6 +321,11 @@ class StockFetcher:
                             return item_data
             except Exception:
                 pass
+
+        # 3. Fallback to expired cache item if available
+        fallback = stock_cache.get_expired_fallback(symbol)
+        if fallback:
+            return fallback
 
         err_data = {'error': 'No Data Available'}
         if use_cache:
@@ -1854,67 +1868,50 @@ def get_stock_data():
     symbols = request.json.get("symbols", [])
     if not symbols:
         return jsonify({})
-        
+
     result = {}
-    hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']
 
-    # 1. High-Performance Bulk Yahoo Spark API with Multi-Host Failover
-    for host in hosts:
-        if len(result) == len(symbols):
-            break
-        try:
-            sym_str = ','.join(symbols)
-            url = f'https://{host}/v7/finance/spark?symbols={urllib.parse.quote(sym_str, safe=",")}&range=1d&interval=1d'
-            r = fetcher.session.get(url, timeout=4)
-            if r.status_code == 200:
-                res_data = r.json()
-                spark_results = res_data.get('spark', {}).get('result', [])
-                for item in spark_results:
-                    sym = item.get('symbol')
-                    resp = item.get('response', [{}])[0]
-                    meta = resp.get('meta', {})
-                    prev = meta.get('chartPreviousClose') or meta.get('previousClose')
-                    price = meta.get('regularMarketPrice')
-                    
-                    # Pre-market (9:00-9:15 AM IST) or off-hours fallback when regularMarketPrice is None
-                    if price is None:
-                        price = prev
-                        
-                    name = meta.get('shortName') or meta.get('longName') or sym
-                    if price is not None:
-                        chg = (price - prev) if (price is not None and prev is not None) else 0.0
-                        chg_pct = (chg / prev * 100) if (prev and prev != 0) else 0.0
-                        result[sym] = {
-                            'symbol': sym,
-                            'name': name,
-                            'price': round(float(price), 2),
-                            'change': round(float(chg), 2),
-                            'change_pct': round(float(chg_pct), 2),
-                            'previous_close': round(float(prev), 2) if prev is not None else None,
-                            'mcap_cr': 'N/A'
-                        }
-        except Exception:
-            pass
+    # 1. Check warm in-memory cache first
+    missing_symbols = []
+    for s in symbols:
+        cached = stock_cache.get(s)
+        if cached and not cached.get("error"):
+            result[s] = cached
+        else:
+            missing_symbols.append(s)
 
-    # 2. Check for missing symbols and fetch them in parallel with ThreadPoolExecutor
-    missing_symbols = [s for s in symbols if s not in result]
+    # 2. Fetch any missing symbols in parallel using ThreadPoolExecutor
     if missing_symbols:
         def _fetch_single(s):
-            return s, fetcher.fetch_stock(s)
+            return s, fetcher.fetch_stock(s, use_cache=True)
 
-        with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 10)) as executor:
+        with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 12)) as executor:
             futures = [executor.submit(_fetch_single, s) for s in missing_symbols]
             for future in futures:
                 try:
-                    s_sym, s_data = future.result(timeout=5)
-                    result[s_sym] = s_data
+                    s_sym, s_data = future.result(timeout=6)
+                    if s_data and not s_data.get("error"):
+                        result[s_sym] = s_data
+                    else:
+                        # Check expired cache fallback if fresh fetch returned error
+                        fb = stock_cache.get_expired_fallback(s_sym)
+                        if fb:
+                            result[s_sym] = fb
+                        else:
+                            result[s_sym] = s_data
                 except Exception:
-                    pass
+                    fb = stock_cache.get_expired_fallback(s_sym)
+                    if fb:
+                        result[s_sym] = fb
 
     # 3. Ensure all requested symbols have an explicit entry
     for sym in symbols:
         if sym not in result:
-            result[sym] = {'error': 'No Data Available'}
+            fb = stock_cache.get_expired_fallback(sym)
+            if fb:
+                result[sym] = fb
+            else:
+                result[sym] = {'error': 'No Data Available'}
 
     return jsonify(result)
 
