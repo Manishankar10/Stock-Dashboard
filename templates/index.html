@@ -549,6 +549,160 @@
             border-color: var(--btn-primary-bg);
         }
 
+        /* Professional Toast & Custom System Modal Styles */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100060;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+            width: 90vw;
+            pointer-events: none;
+        }
+
+        .toast-notification {
+            pointer-events: auto;
+            background: #1e222d;
+            color: #d1d4dc;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            border-left: 4px solid #3b82f6;
+            animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .toast-notification.toast-success {
+            border-left-color: #10b981;
+            background: #13241d;
+            color: #a7f3d0;
+        }
+
+        .toast-notification.toast-error {
+            border-left-color: #ef4444;
+            background: #2b171a;
+            color: #fca5a5;
+        }
+
+        .toast-notification.toast-warning {
+            border-left-color: #f59e0b;
+            background: #2a2013;
+            color: #fde68a;
+        }
+
+        .toast-notification.toast-info {
+            border-left-color: #3b82f6;
+            background: #152238;
+            color: #bfdbfe;
+        }
+
+        .toast-icon {
+            font-size: 16px;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .toast-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .toast-title {
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+
+        .toast-message {
+            font-size: 12.5px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .toast-close {
+            background: transparent;
+            border: none;
+            color: currentColor;
+            opacity: 0.6;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+            margin-left: 4px;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        @keyframes toastFadeOut {
+            from {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(40px) scale(0.95);
+            }
+        }
+
+        [data-theme="light"] #customModalBox {
+            background: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.2) !important;
+        }
+        [data-theme="light"] #customModalTitle {
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #customModalMessage {
+            color: #475569 !important;
+        }
+        [data-theme="light"] #customModalInput {
+            background: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+        [data-theme="light"] .toast-notification {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        [data-theme="light"] .toast-notification.toast-success {
+            background: #ecfdf5;
+            color: #065f46;
+        }
+        [data-theme="light"] .toast-notification.toast-error {
+            background: #fef2f2;
+            color: #991b1b;
+        }
+        [data-theme="light"] .toast-notification.toast-warning {
+            background: #fffbeb;
+            color: #92400e;
+        }
+        [data-theme="light"] .toast-notification.toast-info {
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
         /* Autocomplete Styles */
         .autocomplete-wrapper { position: relative; display: inline-block; width: 280px; }
         .autocomplete-wrapper input { width: 100%; box-sizing: border-box; }
@@ -2218,9 +2372,191 @@
                 </div>
             </div>
         </div>
+    <!-- =========================================================
+         GLOBAL PROFESSIONAL TOAST & CUSTOM SYSTEM MODAL
+    ========================================================= -->
+    <div id="toast-container"></div>
+
+    <div id="customModalOverlay" class="modal" style="z-index: 100050; background: rgba(15,23,42,0.75); backdrop-filter: blur(6px);">
+        <div id="customModalBox" class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 22px; border-radius: 12px; background: #1e222d; border: 1px solid #363a45; box-shadow: 0 16px 40px rgba(0,0,0,0.6); transform: scale(0.95); transition: transform 0.2s ease; margin: 25vh auto;">
+            <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
+                <div id="customModalIcon" style="font-size: 26px; flex-shrink: 0; line-height: 1;">❓</div>
+                <div style="flex: 1; min-width: 0;">
+                    <h3 id="customModalTitle" style="margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #ffffff;">Confirm Action</h3>
+                    <div id="customModalMessage" style="font-size: 13px; color: #94a3b8; line-height: 1.5; word-break: break-word;">Are you sure?</div>
+                </div>
+            </div>
+            <div id="customModalInputGroup" style="display: none; margin-bottom: 16px;">
+                <input type="text" id="customModalInput" style="width: 100%; padding: 10px 12px; background: #131722; border: 1px solid #363a45; border-radius: 6px; color: #ffffff; font-size: 13px; outline: none; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px;">
+                <button id="customModalCancelBtn" class="btn-secondary" style="padding: 7px 16px; font-size: 12.5px;">Cancel</button>
+                <button id="customModalConfirmBtn" class="btn-primary" style="padding: 7px 16px; font-size: 12.5px;">Confirm</button>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Professional Toast Notification System
+        function showToast(message, type = 'info', title = null) {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+
+            const icons = {
+                success: '✅',
+                error: '⚠️',
+                warning: '🔔',
+                info: 'ℹ️'
+            };
+            const icon = icons[type] || 'ℹ️';
+
+            toast.innerHTML = `
+                <span class="toast-icon">${icon}</span>
+                <div class="toast-content">
+                    ${title ? `<div class="toast-title">${escapeHtml(title)}</div>` : ''}
+                    <div class="toast-message">${escapeHtml(message)}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'toastFadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        // Override window.alert to automatically display modern Toast notifications everywhere
+        window.alert = function(msg) {
+            if (msg === undefined || msg === null) return;
+            const msgStr = String(msg);
+            const lower = msgStr.toLowerCase();
+            if (lower.includes('fail') || lower.includes('error') || lower.includes('invalid') || lower.includes('could not') || lower.includes('required') || lower.includes('cannot')) {
+                showToast(msgStr, 'error');
+            } else if (lower.includes('success') || lower.includes('restored') || lower.includes('created') || lower.includes('set') || lower.includes('added')) {
+                showToast(msgStr, 'success');
+            } else {
+                showToast(msgStr, 'info');
+            }
+        };
+
+        // Custom System Confirmation & Input Modals
+        function showCustomConfirm(options = {}) {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('customModalOverlay');
+                const box = document.getElementById('customModalBox');
+                const titleEl = document.getElementById('customModalTitle');
+                const msgEl = document.getElementById('customModalMessage');
+                const iconEl = document.getElementById('customModalIcon');
+                const inputGroup = document.getElementById('customModalInputGroup');
+                const confirmBtn = document.getElementById('customModalConfirmBtn');
+                const cancelBtn = document.getElementById('customModalCancelBtn');
+
+                if (!overlay) return resolve(false);
+
+                titleEl.innerText = options.title || 'Confirm Action';
+                msgEl.innerText = options.message || 'Are you sure you want to proceed?';
+                iconEl.innerText = options.icon || (options.isDanger ? '🗑️' : '❓');
+                inputGroup.style.display = 'none';
+
+                confirmBtn.innerText = options.confirmText || (options.isDanger ? 'Delete' : 'Confirm');
+                cancelBtn.innerText = options.cancelText || 'Cancel';
+                cancelBtn.style.display = 'inline-block';
+
+                if (options.isDanger) {
+                    confirmBtn.style.background = '#ef4444';
+                    confirmBtn.style.color = '#ffffff';
+                } else {
+                    confirmBtn.style.background = '#10b981';
+                    confirmBtn.style.color = '#ffffff';
+                }
+
+                overlay.style.display = 'block';
+                box.style.transform = 'scale(1)';
+
+                const cleanup = () => {
+                    overlay.style.display = 'none';
+                    confirmBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+
+                confirmBtn.onclick = () => {
+                    cleanup();
+                    resolve(true);
+                };
+
+                cancelBtn.onclick = () => {
+                    cleanup();
+                    resolve(false);
+                };
+            });
+        }
+
+        function showCustomPrompt(options = {}) {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('customModalOverlay');
+                const box = document.getElementById('customModalBox');
+                const titleEl = document.getElementById('customModalTitle');
+                const msgEl = document.getElementById('customModalMessage');
+                const iconEl = document.getElementById('customModalIcon');
+                const inputGroup = document.getElementById('customModalInputGroup');
+                const inputEl = document.getElementById('customModalInput');
+                const confirmBtn = document.getElementById('customModalConfirmBtn');
+                const cancelBtn = document.getElementById('customModalCancelBtn');
+
+                if (!overlay) return resolve(null);
+
+                titleEl.innerText = options.title || 'Input Required';
+                msgEl.innerText = options.message || 'Please enter details below:';
+                iconEl.innerText = options.icon || '✏️';
+
+                inputGroup.style.display = 'block';
+                inputEl.value = options.defaultValue !== undefined ? options.defaultValue : '';
+                inputEl.placeholder = options.placeholder || '';
+
+                confirmBtn.innerText = options.confirmText || 'Submit';
+                cancelBtn.innerText = options.cancelText || 'Cancel';
+                cancelBtn.style.display = 'inline-block';
+                confirmBtn.style.background = '#10b981';
+                confirmBtn.style.color = '#ffffff';
+
+                overlay.style.display = 'block';
+                box.style.transform = 'scale(1)';
+                setTimeout(() => inputEl.focus(), 50);
+
+                const cleanup = () => {
+                    overlay.style.display = 'none';
+                    confirmBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                    inputEl.onkeydown = null;
+                };
+
+                const submit = () => {
+                    const val = inputEl.value;
+                    cleanup();
+                    resolve(val);
+                };
+
+                confirmBtn.onclick = submit;
+                inputEl.onkeydown = (e) => {
+                    if (e.key === 'Enter') submit();
+                };
+
+                cancelBtn.onclick = () => {
+                    cleanup();
+                    resolve(null);
+                };
+            });
+        }
+
         // Global App State
         let currentTab = 'watchlists';
         let watchlistsData = {};
@@ -3736,18 +4072,19 @@
 
         async function deleteActiveWatchlist() {
             if (!activeWatchlistName) return;
-            if (!confirm(`Are you sure you want to delete watchlist "${activeWatchlistName}"?`)) return;
+            if (!await showCustomConfirm({ title: 'Delete Watchlist', message: `Are you sure you want to delete watchlist "${activeWatchlistName}"?`, isDanger: true })) return;
 
             const res = await fetch(`/api/watchlists/${encodeURIComponent(activeWatchlistName)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
+                showToast(`Watchlist "${activeWatchlistName}" deleted`, 'info');
                 watchlistsData = data.watchlists;
                 const names = Object.keys(watchlistsData);
                 activeWatchlistName = names.length > 0 ? names[0] : '';
                 renderWatchlists();
                 refreshPrices();
             } else {
-                alert(data.error || 'Failed to delete watchlist');
+                showToast(data.error || 'Failed to delete watchlist', 'error');
             }
         }
 
@@ -3766,20 +4103,22 @@
             const data = await res.json();
             if (data.success) {
                 if (input) input.value = '';
+                showToast(`Added ${symbol} to ${targetName}`, 'success');
                 watchlistsData = data.watchlists;
                 renderWatchlists();
                 refreshPrices();
             } else {
-                alert(data.error || 'Failed to add stock');
+                showToast(data.error || 'Failed to add stock', 'error');
             }
         }
 
         async function removeWatchlistStock(watchlistName, symbol) {
             const targetName = watchlistName || activeWatchlistName;
-            if (!targetName || !confirm(`Remove ${symbol} from ${targetName}?`)) return;
+            if (!targetName || !await showCustomConfirm({ title: 'Remove Stock', message: `Remove ${symbol} from ${targetName}?`, isDanger: true })) return;
             const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
+                showToast(`Removed ${symbol} from ${targetName}`, 'info');
                 watchlistsData = data.watchlists;
                 renderWatchlists();
                 refreshPrices();
@@ -4629,11 +4968,12 @@
         }
 
         async function deleteTransaction(txId) {
-            if (!confirm('Are you sure you want to delete this transaction record?')) return;
+            if (!await showCustomConfirm({ title: 'Delete Transaction Record', message: 'Are you sure you want to delete this transaction record?', isDanger: true })) return;
             try {
                 const res = await fetch(`/api/transactions/${encodeURIComponent(txId)}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
+                    showToast('Transaction record deleted', 'info');
                     userTransactionsData = data.transactions;
                     renderTransactionsTable();
                 }
@@ -4890,11 +5230,12 @@
 
         async function deleteActivePortfolio() {
             if (!activePortfolioName) return;
-            if (!confirm(`Are you sure you want to delete portfolio "${activePortfolioName}"?`)) return;
+            if (!await showCustomConfirm({ title: 'Delete Portfolio', message: `Are you sure you want to delete portfolio "${activePortfolioName}"?`, isDanger: true })) return;
 
             const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
+                showToast(`Portfolio "${activePortfolioName}" deleted`, 'info');
                 portfoliosData = data.portfolios;
                 const names = Object.keys(portfoliosData);
                 activePortfolioName = names.length > 0 ? names[0] : '';
@@ -4922,7 +5263,7 @@
             const buy_date = dateInput.value || new Date().toISOString().split('T')[0];
 
             if (!symbol || isNaN(buy_price) || isNaN(quantity) || quantity <= 0) {
-                alert('Please enter valid Stock Symbol, Buy Price, and Quantity!');
+                showToast('Please enter valid Stock Symbol, Buy Price, and Quantity!', 'error');
                 return;
             }
 
@@ -4936,20 +5277,22 @@
                 symInput.value = '';
                 priceInput.value = '';
                 qtyInput.value = '';
+                showToast(`Added ${symbol} to ${activePortfolioName}`, 'success');
                 portfoliosData = data.portfolios;
                 if (data.transactions) userTransactionsData = data.transactions;
                 renderPortfolios();
                 refreshPrices();
             } else {
-                alert(data.error);
+                showToast(data.error || 'Failed to add portfolio stock', 'error');
             }
         }
 
         async function removePortfolioStock(symbol) {
-            if (!activePortfolioName || !confirm(`Remove ${symbol} from ${activePortfolioName}? (This will delete it from database without a sell transaction)`)) return;
+            if (!activePortfolioName || !await showCustomConfirm({ title: 'Remove Stock', message: `Remove ${symbol} from ${activePortfolioName}? (This will delete it from database without a sell transaction)`, isDanger: true })) return;
             const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
+                showToast(`Removed ${symbol} from ${activePortfolioName}`, 'info');
                 portfoliosData = data.portfolios;
                 renderPortfolios();
                 refreshPrices();
@@ -6229,9 +6572,9 @@
             mount.innerHTML = html;
         }
 
-        function addHorizontalLinePrompt(type) {
+        async function addHorizontalLinePrompt(type) {
             if (!mainSeries || !latestCandlePrice) {
-                alert('Please wait for chart data to load.');
+                showToast('Please wait for chart data to load.', 'warning');
                 return;
             }
 
@@ -6249,12 +6592,12 @@
                 color = activeToolColor || '#ef5350';
             }
 
-            const inputVal = prompt(`Enter custom price for ${label}:`, defaultPrice);
+            const inputVal = await showCustomPrompt({ title: `Add ${label} Line`, message: `Enter custom price for ${label}:`, defaultValue: defaultPrice, placeholder: 'e.g. 2450.00' });
             if (!inputVal) return;
 
             const price = parseFloat(inputVal);
             if (isNaN(price)) {
-                alert('Invalid price value.');
+                showToast('Invalid price value entered.', 'error');
                 return;
             }
 
@@ -6621,7 +6964,7 @@
             handleCanvasClick(e);
         }
 
-        function handleCanvasClick(e) {
+        async function handleCanvasClick(e) {
             const pt = getChartPointFromEvent(e);
             if (!pt) return;
 
@@ -6648,7 +6991,7 @@
                     return;
                 } else if (currentDrawingTool === 'note') {
                     if (pt.logical === null || pt.logical === undefined) return;
-                    const noteText = prompt('Enter text for note:', 'Key Support / Target');
+                    const noteText = await showCustomPrompt({ title: 'Add Chart Note', message: 'Enter text for chart note:', defaultValue: 'Key Support / Target', placeholder: 'e.g. Breakout level' });
                     if (noteText) {
                         const shape = {
                             id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
@@ -8433,10 +8776,11 @@
         }
 
         async function deleteAlert(alertId) {
-            if (!confirm('Are you sure you want to delete this price alert?')) return;
+            if (!await showCustomConfirm({ title: 'Delete Price Alert', message: 'Are you sure you want to delete this price alert?', isDanger: true })) return;
             const res = await fetch(`/api/alerts/${alertId}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
+                showToast('Price alert deleted', 'info');
                 userAlertsData = data.alerts_data;
                 updateNotificationBadge();
                 renderNotificationsModalContent();
@@ -8556,10 +8900,11 @@
         }
 
         async function clearAllNotifications() {
-            if (!confirm('Clear all notifications?')) return;
+            if (!await showCustomConfirm({ title: 'Clear Notifications', message: 'Are you sure you want to clear all notification history?', isDanger: true })) return;
             const res = await fetch('/api/notifications/clear_all', { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
+                showToast('Notification history cleared', 'info');
                 userAlertsData = data.alerts_data;
                 updateNotificationBadge();
                 renderNotificationsModalContent();
