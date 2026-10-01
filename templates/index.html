@@ -1694,6 +1694,7 @@
                             <div class="chart-popover-menu" id="popover-active-drawings" style="min-width: 280px; width: 300px; padding: 12px;">
                                 <div class="popover-menu-title" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #787b86; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px;">
                                     <span>ACTIVE DRAWINGS (<span id="activeDrawingsCount">0</span>)</span>
+                                    <button id="btnToggleHideAllDrawings" onclick="toggleHideAllDrawings()" style="background: #2a2e39; border: 1px solid #363a45; color: #d1d4dc; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; cursor: pointer;" title="Toggle Hide/Show All Drawings">👁️ Hide All</button>
                                 </div>
                                 <div id="activeDrawingsListMount" style="max-height: 280px; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; gap: 8px;"></div>
                                 <div class="popover-divider" style="margin: 12px 0 8px;"></div>
@@ -6011,6 +6012,44 @@
             } catch(e){}
         }
 
+        let isAllDrawingsHidden = false;
+
+        function togglePriceLineVisibility(id) {
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const item = lines.find(x => x.id === id);
+            if (item) {
+                item.hidden = !item.hidden;
+                localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                restoreSavedPriceLines(currentChartSymbol);
+                redrawCanvasOverlay();
+                renderActiveDrawingsList();
+            }
+        }
+
+        function toggleShapeVisibility(id) {
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            const shape = shapes.find(s => s.id === id);
+            if (shape) {
+                shape.hidden = !shape.hidden;
+                localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                redrawCanvasOverlay();
+                renderActiveDrawingsList();
+            }
+        }
+
+        function toggleHideAllDrawings() {
+            isAllDrawingsHidden = !isAllDrawingsHidden;
+            restoreSavedPriceLines(currentChartSymbol);
+            redrawCanvasOverlay();
+            renderActiveDrawingsList();
+
+            const btn = document.getElementById('btnToggleHideAllDrawings');
+            if (btn) {
+                btn.innerText = isAllDrawingsHidden ? '👁️ Show All' : '🙈 Hide All';
+                btn.style.color = isAllDrawingsHidden ? '#ef4444' : '#d1d4dc';
+            }
+        }
+
         function restoreSavedPriceLines(sym) {
             if (!mainSeries || !sym) return;
             // Remove existing line objects from series first
@@ -6021,19 +6060,26 @@
                 activePriceLines = [];
             }
 
+            if (isAllDrawingsHidden) {
+                renderActiveDrawingsList();
+                return;
+            }
+
             const lines = getSavedPriceLines(sym);
             lines.forEach(item => {
-                try {
-                    const priceLine = mainSeries.createPriceLine({
-                        price: item.price,
-                        color: item.color || '#10b981',
-                        lineWidth: 2,
-                        lineStyle: LightweightCharts.LineStyle.Dashed,
-                        axisLabelVisible: true,
-                        title: `${item.label || 'Line'}: ₹${item.price}`
-                    });
-                    activePriceLines.push({ id: item.id, lineObj: priceLine, data: item });
-                } catch(e){}
+                if (!item.hidden) {
+                    try {
+                        const priceLine = mainSeries.createPriceLine({
+                            price: item.price,
+                            color: item.color || '#10b981',
+                            lineWidth: 2,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: `${item.label || 'Line'}: ₹${item.price}`
+                        });
+                        activePriceLines.push({ id: item.id, lineObj: priceLine, data: item });
+                    } catch(e){}
+                }
             });
             renderActiveDrawingsList();
         }
@@ -6134,16 +6180,20 @@
             lines.forEach(l => {
                 const labelName = l.label || 'Support';
                 const itemColor = l.color || '#10b981';
+                const isHidden = !!l.hidden;
                 html += `
-                    <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc;">
+                    <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc; opacity: ${isHidden ? '0.6' : '1'};">
                         <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
                             <div style="position: relative; display: flex; align-items: center; flex-shrink: 0;">
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${itemColor}; cursor: pointer;" title="Change line color"></span>
                                 <input type="color" value="${itemColor}" onchange="updatePriceLineColorById('${l.id}', this.value)" style="position: absolute; top: 0; left: 0; width: 12px; height: 12px; opacity: 0; cursor: pointer;">
                             </div>
-                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: #e1e3e6;">${labelName}: ₹${l.price}</span>
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${escapeHtml(labelName)}: ₹${l.price}</span>
                         </div>
-                        <button class="active-drawing-delete-btn" onclick="deletePriceLineById('${l.id}')" title="Delete this line">🗑️</button>
+                        <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <button onclick="togglePriceLineVisibility('${l.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isHidden ? '#787b86' : '#10b981'}; padding: 2px 4px;" title="${isHidden ? 'Show this line' : 'Hide this line'}">${isHidden ? '🙈' : '👁️'}</button>
+                            <button class="active-drawing-delete-btn" onclick="deletePriceLineById('${l.id}')" title="Delete this line">🗑️</button>
+                        </div>
                     </div>
                 `;
             });
@@ -6158,16 +6208,20 @@
                 else if (s.type === 'note') { name = `Note: ${s.text || ''}`; icon = '📍'; }
 
                 const itemColor = s.color || '#3b82f6';
+                const isHidden = !!s.hidden;
                 html += `
-                    <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc;">
+                    <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc; opacity: ${isHidden ? '0.6' : '1'};">
                         <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
                             <div style="position: relative; display: flex; align-items: center; flex-shrink: 0;">
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${itemColor}; cursor: pointer;" title="Change shape color"></span>
                                 <input type="color" value="${itemColor}" onchange="updateShapeColorById('${s.id}', this.value)" style="position: absolute; top: 0; left: 0; width: 12px; height: 12px; opacity: 0; cursor: pointer;">
                             </div>
-                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: #e1e3e6;">${icon} ${name}</span>
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${icon} ${escapeHtml(name)}</span>
                         </div>
-                        <button class="active-drawing-delete-btn" onclick="deleteShapeById('${s.id}')" title="Delete this shape">🗑️</button>
+                        <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <button onclick="toggleShapeVisibility('${s.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isHidden ? '#787b86' : '#10b981'}; padding: 2px 4px;" title="${isHidden ? 'Show this shape' : 'Hide this shape'}">${isHidden ? '🙈' : '👁️'}</button>
+                            <button class="active-drawing-delete-btn" onclick="deleteShapeById('${s.id}')" title="Delete this shape">🗑️</button>
+                        </div>
                     </div>
                 `;
             });
@@ -6757,10 +6811,13 @@
 
                 const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
                 const colorFn = obj.kind === 'line' ? `updatePriceLineColorById('${obj.id}', this.value)` : `updateShapeColorById('${obj.id}', this.value)`;
+                const toggleVisFn = obj.kind === 'line' ? `togglePriceLineVisibility('${obj.id}'); hideCanvasObjectMenu();` : `toggleShapeVisibility('${obj.id}'); hideCanvasObjectMenu();`;
+                const visIcon = obj.hidden ? '🙈' : '👁️';
 
                 popup.innerHTML = `
                     <span style="font-weight: 700; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(obj.name)}</span>
                     <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}" style="width: 18px; height: 18px; border: none; padding: 0; background: transparent; cursor: pointer;" title="Change color">
+                    <button onclick="${toggleVisFn}" style="background: rgba(255, 255, 255, 0.08); border: 1px solid #363a45; color: #d1d4dc; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Toggle visibility">${visIcon}</button>
                     <button onclick="${deleteFn}" style="background: rgba(239, 83, 80, 0.2); border: 1px solid #ef5350; color: #ef5350; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Delete Item">🗑️ Delete</button>
                 `;
                 popup.style.display = 'flex';
@@ -6784,8 +6841,14 @@
 
             const shapes = getSavedChartShapes(currentChartSymbol);
 
-            // Draw all saved shapes
-            shapes.forEach(s => drawSingleShape(ctx, s));
+            // Draw all saved shapes if not globally hidden
+            if (!isAllDrawingsHidden) {
+                shapes.forEach(s => {
+                    if (!s.hidden) {
+                        drawSingleShape(ctx, s);
+                    }
+                });
+            }
 
             // Draw active live preview shape if in drawing mode
             if (currentDrawingTool && tempMousePos) {
