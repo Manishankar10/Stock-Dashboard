@@ -134,15 +134,14 @@ class StockFetcher:
         else:
             self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         })
         self.crumb = None
-        self._init_crumb()
 
     def _init_crumb(self):
         try:
-            self.session.get('https://fc.yahoo.com', timeout=5)
-            r = self.session.get('https://query1.finance.yahoo.com/v1/test/getcrumb', timeout=5)
+            self.session.get('https://fc.yahoo.com', timeout=3)
+            r = self.session.get('https://query1.finance.yahoo.com/v1/test/getcrumb', timeout=3)
             if r.status_code == 200 and r.text and 'Too Many' not in r.text and '404' not in r.text:
                 self.crumb = r.text.strip()
         except Exception:
@@ -151,92 +150,78 @@ class StockFetcher:
     def fetch_stock(self, symbol):
         import time
         t_now = int(time.time())
+        hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']
 
-        # 1. Primary: Fast & Highly Reliable 1d Chart API (No crumb required, no rate limit)
-        try:
-            url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d&_={t_now}'
-            r = self.session.get(url, timeout=5)
-            if r.status_code == 200:
-                res = r.json()
-                result_list = res.get('chart', {}).get('result', [])
-                if result_list:
-                    meta = result_list[0].get('meta', {})
-                    price = meta.get('regularMarketPrice')
-                    prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
-                    name = meta.get('shortName') or meta.get('longName') or symbol
-                    
-                    if price is not None:
-                        change = (price - prev_close) if prev_close else 0.0
-                        change_pct = (change / prev_close * 100) if prev_close else 0.0
-                        return {
-                            'symbol': symbol,
-                            'name': name,
-                            'price': round(float(price), 2),
-                            'change': round(float(change), 2),
-                            'change_pct': round(float(change_pct), 2),
-                            'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
-                            'mcap_cr': 'N/A'
-                        }
-        except Exception:
-            pass
-
-        # 2. Secondary: Fast Real-Time 1-minute Tick Chart API
-        try:
-            url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=2d&_={t_now}'
-            r = self.session.get(url, timeout=5)
-            if r.status_code == 200:
-                res = r.json()
-                result_list = res.get('chart', {}).get('result', [])
-                if result_list:
-                    meta = result_list[0].get('meta', {})
-                    price = meta.get('regularMarketPrice')
-                    prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
-                    name = meta.get('shortName') or meta.get('longName') or symbol
-                    
-                    if price is not None:
-                        change = (price - prev_close) if prev_close else 0.0
-                        change_pct = (change / prev_close * 100) if prev_close else 0.0
-                        return {
-                            'symbol': symbol,
-                            'name': name,
-                            'price': round(float(price), 2),
-                            'change': round(float(change), 2),
-                            'change_pct': round(float(change_pct), 2),
-                            'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
-                            'mcap_cr': 'N/A'
-                        }
-        except Exception:
-            pass
-
-        # 2. Backup: Quote Summary API with Crumb
-        if not self.crumb:
-            self._init_crumb()
-
-        if self.crumb:
+        # 1. Primary: Fast & Highly Reliable 1d Chart API with Multi-Host Failover
+        for host in hosts:
             try:
-                url = f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/{symbol}?modules=price,summaryDetail&crumb={self.crumb}&_={t_now}'
+                url = f'https://{host}/v8/finance/chart/{symbol}?interval=1d&range=5d&_={t_now}'
                 r = self.session.get(url, timeout=4)
                 if r.status_code == 200:
-                    price_module = r.json()['quoteSummary']['result'][0]['price']
-                    
-                    price = price_module.get('regularMarketPrice', {}).get('raw')
-                    change = price_module.get('regularMarketChange', {}).get('raw')
-                    change_pct = price_module.get('regularMarketChangePercent', {}).get('raw')
-                    if change_pct is not None:
-                        change_pct = change_pct * 100
-                    mcap = price_module.get('marketCap', {}).get('raw')
-                    name = price_module.get('shortName') or price_module.get('longName') or symbol
-                    
-                    if price is not None:
-                        return {
-                            'symbol': symbol,
-                            'name': name,
-                            'price': round(float(price), 2),
-                            'change': round(float(change), 2) if change else 0,
-                            'change_pct': round(float(change_pct), 2) if change_pct else 0,
-                            'previous_close': round(float(price - change), 2) if price is not None and change is not None else None,
-                            'mcap_cr': round(float(mcap) / 10000000, 2) if mcap else 'N/A'
-                        }
+                    res = r.json()
+                    result_list = res.get('chart', {}).get('result', [])
+                    if result_list:
+                        meta = result_list[0].get('meta', {})
+                        price = meta.get('regularMarketPrice')
+                        prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
+                        
+                        # Fallback for pre-market (9:00-9:15 AM IST) or off-hours when regularMarketPrice is None
+                        if price is None:
+                            quotes = result_list[0].get('indicators', {}).get('quote', [{}])[0]
+                            closes = [c for c in quotes.get('close', []) if c is not None]
+                            if closes:
+                                price = closes[-1]
+                        
+                        if price is None:
+                            price = prev_close
+
+                        name = meta.get('shortName') or meta.get('longName') or symbol
+                        
+                        if price is not None:
+                            change = (price - prev_close) if (price is not None and prev_close is not None) else 0.0
+                            change_pct = (change / prev_close * 100) if (prev_close and prev_close != 0) else 0.0
+                            return {
+                                'symbol': symbol,
+                                'name': name,
+                                'price': round(float(price), 2),
+                                'change': round(float(change), 2),
+                                'change_pct': round(float(change_pct), 2),
+                                'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
+                                'mcap_cr': 'N/A'
+                            }
+            except Exception:
+                pass
+
+        # 2. Secondary: 1-minute Tick Chart API with Multi-Host Failover
+        for host in hosts:
+            try:
+                url = f'https://{host}/v8/finance/chart/{symbol}?interval=1m&range=2d&_={t_now}'
+                r = self.session.get(url, timeout=4)
+                if r.status_code == 200:
+                    res = r.json()
+                    result_list = res.get('chart', {}).get('result', [])
+                    if result_list:
+                        meta = result_list[0].get('meta', {})
+                        price = meta.get('regularMarketPrice')
+                        prev_close = meta.get('chartPreviousClose') or meta.get('previousClose')
+                        
+                        if price is None:
+                            price = prev_close
+                            
+                        name = meta.get('shortName') or meta.get('longName') or symbol
+                        
+                        if price is not None:
+                            change = (price - prev_close) if (price is not None and prev_close is not None) else 0.0
+                            change_pct = (change / prev_close * 100) if (prev_close and prev_close != 0) else 0.0
+                            return {
+                                'symbol': symbol,
+                                'name': name,
+                                'price': round(float(price), 2),
+                                'change': round(float(change), 2),
+                                'change_pct': round(float(change_pct), 2),
+                                'previous_close': round(float(prev_close), 2) if prev_close is not None else None,
+                                'mcap_cr': 'N/A'
+                            }
             except Exception:
                 pass
 
@@ -1764,36 +1749,45 @@ def get_stock_data():
         return jsonify({})
         
     result = {}
+    hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']
 
-    # 1. High-Performance Bulk Yahoo Spark API (1 single HTTP request for all symbols, ~0.3s)
-    try:
-        sym_str = ','.join(symbols)
-        url = f'https://query1.finance.yahoo.com/v7/finance/spark?symbols={urllib.parse.quote(sym_str, safe=",")}&range=1d&interval=1d'
-        r = fetcher.session.get(url, timeout=5)
-        if r.status_code == 200:
-            res_data = r.json()
-            spark_results = res_data.get('spark', {}).get('result', [])
-            for item in spark_results:
-                sym = item.get('symbol')
-                resp = item.get('response', [{}])[0]
-                meta = resp.get('meta', {})
-                price = meta.get('regularMarketPrice')
-                prev = meta.get('chartPreviousClose') or meta.get('previousClose')
-                name = meta.get('shortName') or meta.get('longName') or sym
-                if price is not None:
-                    chg = (price - prev) if prev else 0.0
-                    chg_pct = (chg / prev * 100) if prev else 0.0
-                    result[sym] = {
-                        'symbol': sym,
-                        'name': name,
-                        'price': round(float(price), 2),
-                        'change': round(float(chg), 2),
-                        'change_pct': round(float(chg_pct), 2),
-                        'previous_close': round(float(prev), 2) if prev is not None else None,
-                        'mcap_cr': 'N/A'
-                    }
-    except Exception:
-        pass
+    # 1. High-Performance Bulk Yahoo Spark API with Multi-Host Failover
+    for host in hosts:
+        if len(result) == len(symbols):
+            break
+        try:
+            sym_str = ','.join(symbols)
+            url = f'https://{host}/v7/finance/spark?symbols={urllib.parse.quote(sym_str, safe=",")}&range=1d&interval=1d'
+            r = fetcher.session.get(url, timeout=4)
+            if r.status_code == 200:
+                res_data = r.json()
+                spark_results = res_data.get('spark', {}).get('result', [])
+                for item in spark_results:
+                    sym = item.get('symbol')
+                    resp = item.get('response', [{}])[0]
+                    meta = resp.get('meta', {})
+                    prev = meta.get('chartPreviousClose') or meta.get('previousClose')
+                    price = meta.get('regularMarketPrice')
+                    
+                    # Pre-market (9:00-9:15 AM IST) or off-hours fallback when regularMarketPrice is None
+                    if price is None:
+                        price = prev
+                        
+                    name = meta.get('shortName') or meta.get('longName') or sym
+                    if price is not None:
+                        chg = (price - prev) if (price is not None and prev is not None) else 0.0
+                        chg_pct = (chg / prev * 100) if (prev and prev != 0) else 0.0
+                        result[sym] = {
+                            'symbol': sym,
+                            'name': name,
+                            'price': round(float(price), 2),
+                            'change': round(float(chg), 2),
+                            'change_pct': round(float(chg_pct), 2),
+                            'previous_close': round(float(prev), 2) if prev is not None else None,
+                            'mcap_cr': 'N/A'
+                        }
+        except Exception:
+            pass
 
     # 2. Check for missing symbols and fetch them in parallel with ThreadPoolExecutor
     missing_symbols = [s for s in symbols if s not in result]
