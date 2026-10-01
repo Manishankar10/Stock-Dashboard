@@ -6740,9 +6740,11 @@
                         type: currentDrawingTool,
                         time1: pt1.time,
                         logical1: pt1.logical,
+                        futureOffset1: pt1.futureOffset || 0,
                         price1: pt1.price,
                         time2: pt2.time,
                         logical2: pt2.logical,
+                        futureOffset2: pt2.futureOffset || 0,
                         price2: pt2.price,
                         color: activeToolColor || (currentDrawingTool === 'trendline' ? '#60a5fa' : currentDrawingTool === 'rectangle' ? '#c084fc' : '#10b981'),
                         fillColor: currentDrawingTool === 'rectangle' ? 'rgba(192, 132, 252, 0.25)' : null,
@@ -6754,6 +6756,7 @@
                         type: 'vertical',
                         time: tempMousePos.time,
                         logical: tempMousePos.logical,
+                        futureOffset: tempMousePos.futureOffset || 0,
                         color: '#fbbf24',
                         isPreview: true
                     };
