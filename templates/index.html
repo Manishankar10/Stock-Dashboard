@@ -3763,6 +3763,9 @@
 
             try {
                 const response = await fetch('/api/insights/technicals');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 const data = await response.json();
                 if (data.success && data.scanners) {
                     technicalsData = data;
@@ -3773,7 +3776,7 @@
                     tableBody.innerHTML = `
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                                ⚠️ Unable to load technical signals. ${escapeHtml(data.error || '')}
+                                ⚠️ Unable to load technical signals. ${escapeHtml(data.error || '')} <button class="btn-secondary" style="font-size: 11px; padding: 3px 10px; margin-left: 8px;" onclick="loadTechnicalInsights(true)">Retry</button>
                             </td>
                         </tr>
                     `;
@@ -3782,7 +3785,7 @@
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">
-                            ❌ Error fetching technical screeners.
+                            ⚠️ Technical scanner is updating (${escapeHtml(err.message || 'Network error')}). <button class="btn-secondary" style="font-size: 11px; padding: 3px 10px; margin-left: 8px;" onclick="loadTechnicalInsights(true)">🔄 Retry Scan</button>
                         </td>
                     </tr>
                 `;

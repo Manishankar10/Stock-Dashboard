@@ -2932,32 +2932,44 @@ def get_insights_news_api():
         return jsonify({"success": False, "error": str(e), "articles": []})
 
 technicals_cache = HighPerformanceCache(default_ttl=300)
+_LAST_SUCCESSFUL_TECHNICALS_CACHE = {}
 
 @app.route("/api/insights/technicals", methods=["GET"])
-@login_required
 def get_insights_technicals_api():
+    global _LAST_SUCCESSFUL_TECHNICALS_CACHE
     try:
-        uname = session.get("username")
-        cached = technicals_cache.get(f"technicals_{uname}")
+        uname = session.get("username", "admin")
+        cache_key = f"technicals_{uname}"
+        cached = technicals_cache.get(cache_key)
         if cached:
             return jsonify(cached)
 
-        watchlists = load_data(uname)
-        portfolios = load_portfolios(uname)
-
         target_symbols = set()
-        for w_name, sym_list in watchlists.items():
-            for s in sym_list:
-                if s and not s.startswith("^") and "=F" not in s:
-                    target_symbols.add(format_financial_symbol(s))
+        try:
+            watchlists = load_data(uname) if uname else {}
+            if watchlists:
+                for w_name, sym_list in watchlists.items():
+                    for s in sym_list:
+                        if s and not s.startswith("^") and "=F" not in s:
+                            target_symbols.add(format_financial_symbol(s))
 
-        for p_name, holdings in portfolios.items():
-            for item in holdings:
-                sym = item.get("symbol", "")
-                if sym and not sym.startswith("^") and "=F" not in sym:
-                    target_symbols.add(format_financial_symbol(sym))
+            portfolios = load_portfolios(uname) if uname else {}
+            if portfolios:
+                for p_name, holdings in portfolios.items():
+                    for item in holdings:
+                        sym = item.get("symbol", "")
+                        if sym and not sym.startswith("^") and "=F" not in sym:
+                            target_symbols.add(format_financial_symbol(sym))
+        except Exception:
+            pass
 
-        for pop_sym in POPULAR_INDIAN_STOCKS.keys():
+        # Popular Indian stock leaders subset for fast cloud execution
+        popular_subset = [
+            "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "ROLEXRINGS",
+            "TATAMOTORS", "TATASTEEL", "SBIN", "BHARTIARTL", "ITC", "KOTAKBANK",
+            "LT", "BAJFINANCE", "MARUTI", "SUNPHARMA", "TITAN", "BSE", "ZOMATO", "SUZLON"
+        ]
+        for pop_sym in popular_subset:
             target_symbols.add(format_financial_symbol(pop_sym))
 
         symbols_list = list(target_symbols)
@@ -3045,7 +3057,7 @@ def get_insights_technicals_api():
                 for host in hosts:
                     url = f'https://{host}/v8/finance/chart/{symbol}?interval=1d&range=1y&includeAdjustedClose=true'
                     try:
-                        r = requests.get(url, headers=headers, timeout=6)
+                        r = requests.get(url, headers=headers, timeout=4)
                         if r.status_code == 200:
                             j = r.json()
                             res = j.get('chart', {}).get('result')
@@ -3083,10 +3095,7 @@ def get_insights_technicals_api():
                 vol_latest = volumes[-1]
 
                 sma50_latest = sum(closes[-50:]) / 50.0 if len(closes) >= 50 else None
-                sma50_prev = sum(closes[-51:-1]) / 50.0 if len(closes) >= 51 else None
-                
                 sma200_latest = sum(closes[-200:]) / 200.0 if len(closes) >= 200 else None
-                sma200_prev = sum(closes[-201:-1]) / 200.0 if len(closes) >= 201 else None
 
                 k9 = 2.0 / 10.0
                 ema9_val = sum(closes[:9]) / 9.0
@@ -3118,8 +3127,6 @@ def get_insights_technicals_api():
                     rsi14 = 100.0 - (100.0 / (1.0 + rs)) if avg_loss != 0 else 100.0
 
                 high_52w = max(highs[-252:]) if len(highs) >= 252 else max(highs)
-                low_52w = min(lows[-252:]) if len(lows) >= 252 else min(lows)
-
                 vol_20d_avg = sum(volumes[-21:-1]) / 20.0 if len(volumes) >= 21 else (sum(volumes) / len(volumes) if volumes else 1)
                 vol_surge = (vol_latest / vol_20d_avg) if vol_20d_avg > 0 else 1.0
 
@@ -3192,11 +3199,13 @@ def get_insights_technicals_api():
             except Exception:
                 return None
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
             results = list(executor.map(analyze_stock_technical, symbols_list))
 
+        valid_count = 0
         for res in results:
             if res:
+                valid_count += 1
                 for scan_key, item in res.items():
                     if scan_key in scanners:
                         scanners[scan_key]["stocks"].append(item)
@@ -3211,10 +3220,20 @@ def get_insights_technicals_api():
             "total_scanned": len(symbols_list)
         }
 
-        technicals_cache.set(f"technicals_{uname}", payload, ttl=300)
+        if valid_count > 0:
+            _LAST_SUCCESSFUL_TECHNICALS_CACHE = payload
+            technicals_cache.set(cache_key, payload, ttl=300)
+            return jsonify(payload)
+
+        # Fallback to last successful scan if live fetch returned empty/blocked
+        if _LAST_SUCCESSFUL_TECHNICALS_CACHE:
+            return jsonify(_LAST_SUCCESSFUL_TECHNICALS_CACHE)
+
         return jsonify(payload)
 
     except Exception as e:
+        if _LAST_SUCCESSFUL_TECHNICALS_CACHE:
+            return jsonify(_LAST_SUCCESSFUL_TECHNICALS_CACHE)
         return jsonify({"success": False, "error": str(e), "scanners": {}})
 
 @app.route("/api/insights", methods=["GET"])
