@@ -1,0 +1,651 @@
+<!-- =========================================================
+     CAPITAL DESK - INDEPENDENT COLLAPSIBLE SIDEBAR MODULE
+     Location: templates/components/sidebar.html
+     ========================================================= -->
+
+<!-- Mobile Off-Canvas Backdrop Overlay -->
+<div id="sidebar-backdrop" class="sidebar-backdrop" onclick="toggleMobileSidebar(false)"></div>
+
+<!-- Main Collapsible Sidebar Navigation Shell -->
+<aside id="app-sidebar" class="app-sidebar">
+    <!-- 1. Sidebar Top Header & Brand -->
+    <div class="sidebar-header">
+        <div class="sidebar-brand-group">
+            <img src="/static/logo.png" alt="Capital Desk Logo" class="sidebar-brand-logo">
+            <div class="sidebar-brand-text">
+                <span class="sidebar-brand-title">Capital Desk</span>
+                <span class="sidebar-brand-subtitle">Market Intelligence</span>
+            </div>
+        </div>
+        <!-- Desktop Collapse Toggle Button -->
+        <button type="button" id="sidebar-toggle-btn" class="sidebar-toggle-btn" onclick="toggleSidebarCollapse()" title="Collapse / Expand Navigation (Ctrl+\)">
+            <span id="sidebar-toggle-icon">◀</span>
+        </button>
+        <!-- Mobile Drawer Close Button -->
+        <button type="button" class="sidebar-mobile-close" onclick="toggleMobileSidebar(false)" title="Close Navigation Menu">
+            ✕
+        </button>
+    </div>
+
+    <!-- 2. Main Navigation Links -->
+    <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Navigation</div>
+        
+        <button type="button" class="sidebar-nav-item active" id="sidebar-nav-watchlists" onclick="switchTab('watchlists'); closeMobileSidebarOnSelect();">
+            <span class="sidebar-nav-icon">📋</span>
+            <span class="sidebar-nav-text">Watchlists</span>
+        </button>
+
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-portfolios" onclick="switchTab('portfolios'); closeMobileSidebarOnSelect();">
+            <span class="sidebar-nav-icon">💼</span>
+            <span class="sidebar-nav-text">Portfolios</span>
+        </button>
+
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-dashboard" onclick="switchTab('dashboard'); closeMobileSidebarOnSelect();">
+            <span class="sidebar-nav-icon">📊</span>
+            <span class="sidebar-nav-text">Analytics</span>
+        </button>
+
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-insights" onclick="switchTab('insights'); closeMobileSidebarOnSelect();">
+            <span class="sidebar-nav-icon">💡</span>
+            <span class="sidebar-nav-text">Insights</span>
+        </button>
+
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-smallcases" onclick="switchTab('smallcases'); closeMobileSidebarOnSelect();">
+            <span class="sidebar-nav-icon">📦</span>
+            <span class="sidebar-nav-text">Smallcases</span>
+        </button>
+
+        <a href="/admin" class="sidebar-nav-item admin-only-link" id="sidebar-nav-admin" style="display: none; text-decoration: none; color: #10b981;">
+            <span class="sidebar-nav-icon">🛡️</span>
+            <span class="sidebar-nav-text">Admin Panel</span>
+        </a>
+    </nav>
+
+    <!-- 3. Sidebar Bottom Tools & User Account Dropdown -->
+    <div class="sidebar-footer">
+        <div class="sidebar-tools-row">
+            <button type="button" onclick="openNotificationsModal()" class="sidebar-tool-btn" id="btn-sidebar-notifications" title="Price Alerts & Notifications" style="position: relative;">
+                🔔 <span id="sidebar-notif-badge" class="badge" style="background:#ef4444; color:white; font-size:9px; padding:1px 4px; border-radius:10px; display:none; position:absolute; top:2px; right:2px;">0</span>
+            </button>
+            <button type="button" onclick="togglePrivacyMode()" class="sidebar-tool-btn" id="btn-sidebar-privacy" title="Toggle Privacy Mode (Hide/Show Amounts)">
+                👁️
+            </button>
+            <button type="button" onclick="toggleTheme()" class="sidebar-tool-btn" id="btn-sidebar-theme" title="Toggle Dark / Light Theme">
+                <span id="sidebar-theme-icon">🌙</span>
+            </button>
+            <button type="button" onclick="manualRefreshPrices()" class="sidebar-tool-btn" id="btn-sidebar-refresh" title="Refresh Live Prices">
+                🔄
+            </button>
+        </div>
+
+        <div class="sidebar-update-tag">
+            <span id="sidebar-last-updated-text">🕒 Updated just now</span>
+        </div>
+
+        <!-- User Profile Dropdown Card -->
+        <div class="sidebar-user-wrapper">
+            <div class="sidebar-user-card" onclick="toggleSettingsMenu(event)">
+                <div class="sidebar-user-avatar">👤</div>
+                <div class="sidebar-user-info">
+                    <span id="header-username" class="sidebar-username">User</span>
+                    <span id="sidebar-user-role-badge" class="sidebar-user-role">Member</span>
+                </div>
+                <span class="sidebar-user-arrow">▾</span>
+            </div>
+
+            <!-- Options Menu Dropdown Content Popup -->
+            <div id="settings-menu-dropdown" class="menu-dropdown-content sidebar-user-dropdown">
+                <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
+                    <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
+                    <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
+                </div>
+                <div class="menu-item" onclick="openStockNewsModal(''); closeSettingsMenu();">
+                    📰 Latest Market News
+                </div>
+                <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">
+                    <span id="privacy-menu-icon">👁️</span> <span id="privacy-menu-text">Toggle Privacy Mode</span>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="exportDataBackup(); closeSettingsMenu();">
+                    📥 Backup Data (JSON)
+                </div>
+                <div class="menu-item" onclick="triggerImportBackup(); closeSettingsMenu();">
+                    📤 Restore Data (JSON)
+                </div>
+                <div class="menu-divider"></div>
+                <a href="/admin" id="admin-menu-link" class="menu-item" style="display: none; text-decoration: none; color: #10b981;">
+                    🛡️ Admin Control Panel
+                </a>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">
+                    🚪 Log Out
+                </div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- =========================================================
+     SIDEBAR COMPONENT STYLES
+     ========================================================= -->
+<style>
+/* Layout Shell Integration */
+.app-layout-wrapper {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+    background-color: var(--bg-body);
+}
+
+.main-content-wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Sidebar Component Main Box */
+.app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 240px;
+    height: 100vh;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 1000;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    user-select: none;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-header);
+}
+
+.sidebar-brand-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.sidebar-brand-logo {
+    height: 32px;
+    width: auto;
+    max-width: 120px;
+    border-radius: 6px;
+    object-fit: contain;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+    background-color: var(--bg-card);
+}
+
+.sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.sidebar-brand-title {
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.sidebar-brand-subtitle {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-toggle-btn {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-input);
+    background: var(--table-hover-bg);
+}
+
+.sidebar-mobile-close {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* Sidebar Navigation Items */
+.sidebar-nav {
+    flex: 1 1 auto;
+    padding: 12px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scrollbar-width: thin;
+}
+
+.sidebar-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 10px 4px 10px;
+    white-space: nowrap;
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    width: 100%;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.sidebar-nav-item:hover {
+    background-color: var(--table-hover-bg);
+    color: var(--text-primary);
+}
+
+.sidebar-nav-item.active {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text) !important;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.sidebar-nav-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+}
+
+.sidebar-nav-text {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Sidebar Footer & Utilities */
+.sidebar-footer {
+    padding: 10px 12px 14px 12px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-tools-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.sidebar-tool-btn {
+    flex: 1;
+    height: 32px;
+    padding: 0;
+    font-size: 13px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.sidebar-tool-btn:hover {
+    background: var(--table-hover-bg);
+    border-color: var(--border-input);
+}
+
+.sidebar-update-tag {
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 2px 0;
+}
+
+/* User Card Component */
+.sidebar-user-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.sidebar-user-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sidebar-user-card:hover {
+    border-color: var(--border-input);
+    background-color: var(--table-hover-bg);
+}
+
+.sidebar-user-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.sidebar-user-info {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.sidebar-username {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-user-role {
+    font-size: 9.5px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.sidebar-user-arrow {
+    font-size: 10px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.sidebar-user-dropdown {
+    bottom: calc(100% + 8px) !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    min-width: 200px !important;
+}
+
+/* Mobile Bar Header */
+.mobile-top-bar {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+/* =========================================================
+   COLLAPSED DESKTOP STATE (Icons Only Rail)
+   ========================================================= */
+.app-sidebar.collapsed {
+    width: 66px !important;
+}
+
+.app-sidebar.collapsed .sidebar-header {
+    padding: 10px 4px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.app-sidebar.collapsed .sidebar-brand-group {
+    justify-content: center;
+    width: 100%;
+}
+
+.app-sidebar.collapsed .sidebar-brand-logo {
+    height: 32px;
+    width: 32px;
+    max-width: 32px;
+    object-fit: contain;
+    border-radius: 6px;
+    margin: 0 auto;
+    flex-shrink: 0;
+    display: block;
+}
+
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-section-label,
+.app-sidebar.collapsed .sidebar-nav-text,
+.app-sidebar.collapsed .sidebar-update-tag,
+.app-sidebar.collapsed .sidebar-user-info,
+.app-sidebar.collapsed .sidebar-user-arrow {
+    display: none !important;
+}
+
+.app-sidebar.collapsed .sidebar-toggle-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 8px;
+    border-radius: 4px;
+    margin: 0 auto;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-sidebar.collapsed .sidebar-nav-item {
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.app-sidebar.collapsed .sidebar-tools-row {
+    flex-direction: column;
+    gap: 6px;
+}
+
+.app-sidebar.collapsed .sidebar-user-card {
+    justify-content: center;
+    padding: 7px 0;
+}
+
+/* Desktop Workspace Margins */
+@media (min-width: 769px) {
+    .main-content-wrapper {
+        margin-left: 240px;
+    }
+    body.sidebar-collapsed .main-content-wrapper,
+    .app-sidebar.collapsed + .main-content-wrapper {
+        margin-left: 66px;
+    }
+}
+
+/* Mobile & Tablet Off-Canvas Drawer (< 769px) */
+@media (max-width: 768px) {
+    .mobile-top-bar {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .app-sidebar {
+        width: 260px !important;
+        transform: translateX(-100%);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .app-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    .main-content-wrapper {
+        margin-left: 0 !important;
+    }
+    .sidebar-toggle-btn {
+        display: none !important;
+    }
+    .sidebar-mobile-close {
+        display: flex !important;
+    }
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(4px);
+        z-index: 999;
+    }
+    .sidebar-backdrop.mobile-open {
+        display: block;
+    }
+}
+</style>
+
+<!-- =========================================================
+     SIDEBAR COMPONENT SCRIPT LOGIC
+     ========================================================= -->
+<script>
+    // Collapse / Expand Desktop Sidebar Toggle
+    function toggleSidebarCollapse(forceState) {
+        const sidebar = document.getElementById('app-sidebar');
+        const icon = document.getElementById('sidebar-toggle-icon');
+        if (!sidebar) return;
+
+        let shouldCollapse;
+        if (typeof forceState === 'boolean') {
+            shouldCollapse = forceState;
+        } else {
+            shouldCollapse = !sidebar.classList.contains('collapsed');
+        }
+
+        if (shouldCollapse) {
+            sidebar.classList.add('collapsed');
+            document.body.classList.add('sidebar-collapsed');
+            if (icon) icon.innerText = '▶';
+            localStorage.setItem('sidebarCollapsed', 'true');
+        } else {
+            sidebar.classList.remove('collapsed');
+            document.body.classList.remove('sidebar-collapsed');
+            if (icon) icon.innerText = '◀';
+            localStorage.setItem('sidebarCollapsed', 'false');
+        }
+    }
+
+    // Mobile Off-Canvas Drawer Toggle
+    function toggleMobileSidebar(openState) {
+        const sidebar = document.getElementById('app-sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (!sidebar) return;
+
+        let shouldOpen;
+        if (typeof openState === 'boolean') {
+            shouldOpen = openState;
+        } else {
+            shouldOpen = !sidebar.classList.contains('mobile-open');
+        }
+
+        if (shouldOpen) {
+            sidebar.classList.add('mobile-open');
+            if (backdrop) backdrop.classList.add('mobile-open');
+            document.body.style.overflow = 'hidden';
+        } else {
+            sidebar.classList.remove('mobile-open');
+            if (backdrop) backdrop.classList.remove('mobile-open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function closeMobileSidebarOnSelect() {
+        if (window.innerWidth <= 768) {
+            toggleMobileSidebar(false);
+        }
+    }
+
+    // Restore saved collapse preference on load
+    document.addEventListener('DOMContentLoaded', function() {
+        const saved = localStorage.getItem('sidebarCollapsed');
+        if (saved === 'true' && window.innerWidth > 768) {
+            toggleSidebarCollapse(true);
+        }
+    });
+
+    // Keyboard shortcut (Ctrl + \) to toggle sidebar
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === '\\') {
+            e.preventDefault();
+            toggleSidebarCollapse();
+        }
+    });
+</script>
