@@ -39,24 +39,18 @@ def _file(username=None):
 
 
 def load_user_smallcases(username=None):
+    user = username or session.get('username')
     path = _file(username)
-    if not os.path.exists(path):
-        return {}
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
+    from db_store import load_user_doc_db
+    data = load_user_doc_db("smallcases", user, path, default_factory=dict)
+    return data if isinstance(data, dict) else {}
 
 
 def save_user_smallcases(data, username=None):
+    user = username or session.get('username')
     filepath = _file(username)
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    tmp = filepath + '.tmp'
-    with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    os.replace(tmp, filepath)
+    from db_store import save_user_doc_db
+    save_user_doc_db("smallcases", user, data, filepath)
 
 
 def _load():

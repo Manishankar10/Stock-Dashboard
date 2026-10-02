@@ -18,6 +18,8 @@ app = Flask(__name__)
 
 # Fundamentals module
 from fundamentals import fundamentals_bp
+from db_store import load_users_db, save_users_db, load_user_doc_db, save_user_doc_db
+
 app.register_blueprint(fundamentals_bp)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
 
@@ -596,25 +598,10 @@ def calculate_indicators(candles):
     }
 
 def load_users():
-    if not os.path.exists(USERS_FILE):
-        if os.path.exists(USERS_EXAMPLE_FILE):
-            try:
-                with open(USERS_EXAMPLE_FILE, "r") as f:
-                    seed_users = json.load(f)
-                save_users(seed_users)
-                return seed_users
-            except Exception:
-                pass
-        return {}
-    try:
-        with open(USERS_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    return load_users_db(USERS_FILE, USERS_EXAMPLE_FILE)
 
 def save_users(users):
-    with open(USERS_FILE, "w") as f:
-        json.dump(users, f, indent=4)
+    save_users_db(users, USERS_FILE)
 
 def get_user_watchlist_file(username):
     safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
@@ -633,7 +620,7 @@ def load_data(username=None):
         return _USER_WL_CACHE[username]
 
     filepath = get_user_watchlist_file(username)
-    if not os.path.exists(filepath):
+    def default_wl():
         default_data = {}
         if os.path.exists(DATA_FILE):
             try:
@@ -645,14 +632,10 @@ def load_data(username=None):
             default_data = {"Path Finders": ["RELIANCE.NS", "TCS.NS", "INFY.NS"]}
         save_data(default_data, username)
         return default_data
-        
-    try:
-        with open(filepath, "r") as f:
-            data = json.load(f)
-            _USER_WL_CACHE[username] = data
-            return data
-    except Exception:
-        return {}
+
+    data = load_user_doc_db("watchlists", username, filepath, default_factory=default_wl)
+    _USER_WL_CACHE[username] = data
+    return data
 
 def save_data(data, username=None):
     if not username:
@@ -661,11 +644,7 @@ def save_data(data, username=None):
         return
     _USER_WL_CACHE[username] = data
     filepath = get_user_watchlist_file(username)
-    try:
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=4)
-    except Exception:
-        pass
+    save_user_doc_db("watchlists", username, data, filepath)
 
 def load_portfolios(username=None):
     if not username:
@@ -676,7 +655,7 @@ def load_portfolios(username=None):
         return _USER_PF_CACHE[username]
 
     filepath = get_user_portfolio_file(username)
-    if not os.path.exists(filepath):
+    def default_pf():
         default_pfs = {}
         if os.path.exists(PORTFOLIO_FILE):
             try:
@@ -692,14 +671,10 @@ def load_portfolios(username=None):
             }
         save_portfolios(default_pfs, username)
         return default_pfs
-        
-    try:
-        with open(filepath, "r") as f:
-            data = json.load(f)
-            _USER_PF_CACHE[username] = data
-            return data
-    except Exception:
-        return {}
+
+    data = load_user_doc_db("portfolios", username, filepath, default_factory=default_pf)
+    _USER_PF_CACHE[username] = data
+    return data
 
 def save_portfolios(data, username=None):
     if not username:
@@ -708,11 +683,7 @@ def save_portfolios(data, username=None):
         return
     _USER_PF_CACHE[username] = data
     filepath = get_user_portfolio_file(username)
-    try:
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=4)
-    except Exception:
-        pass
+    save_user_doc_db("portfolios", username, data, filepath)
 
 def get_user_transactions_file(username):
     safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
@@ -723,17 +694,9 @@ def load_user_transactions(username=None):
         username = session.get("username")
     if not username:
         return []
-        
     filepath = get_user_transactions_file(username)
-    if not os.path.exists(filepath):
-        return []
-        
-    try:
-        with open(filepath, "r") as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-    except Exception:
-        return []
+    data = load_user_doc_db("transactions", username, filepath, default_factory=list)
+    return data if isinstance(data, list) else []
 
 def save_user_transactions(data, username=None):
     if not username:
@@ -741,8 +704,7 @@ def save_user_transactions(data, username=None):
     if not username:
         return
     filepath = get_user_transactions_file(username)
-    with open(filepath, "w") as f:
-        json.dump(data, f, indent=4)
+    save_user_doc_db("transactions", username, data, filepath)
 
 def log_login_event(username, status):
     logs = []
@@ -1652,23 +1614,19 @@ def load_user_alerts(username=None):
         username = session.get("username")
     if not username:
         return {"alerts": [], "notifications": []}
-        
     filepath = get_user_alerts_file(username)
-    if not os.path.exists(filepath):
-        default_data = {"alerts": [], "notifications": []}
-        save_user_alerts(default_data, username)
-        return default_data
-        
-    try:
-        with open(filepath, "r") as f:
-            data = json.load(f)
-            if "alerts" not in data or not isinstance(data["alerts"], list):
-                data["alerts"] = []
-            if "notifications" not in data or not isinstance(data["notifications"], list):
-                data["notifications"] = []
-            return data
-    except Exception:
-        return {"alerts": [], "notifications": []}
+    def default_alt():
+        d = {"alerts": [], "notifications": []}
+        save_user_alerts(d, username)
+        return d
+    data = load_user_doc_db("alerts", username, filepath, default_factory=default_alt)
+    if not isinstance(data, dict):
+        data = {"alerts": [], "notifications": []}
+    if "alerts" not in data or not isinstance(data["alerts"], list):
+        data["alerts"] = []
+    if "notifications" not in data or not isinstance(data["notifications"], list):
+        data["notifications"] = []
+    return data
 
 def save_user_alerts(data, username=None):
     if not username:
@@ -1676,8 +1634,7 @@ def save_user_alerts(data, username=None):
     if not username:
         return
     filepath = get_user_alerts_file(username)
-    with open(filepath, "w") as f:
-        json.dump(data, f, indent=4)
+    save_user_doc_db("alerts", username, data, filepath)
 
 @app.route("/api/alerts", methods=["GET"])
 @login_required
