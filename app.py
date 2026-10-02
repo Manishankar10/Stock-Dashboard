@@ -1997,12 +1997,20 @@ def get_chart_history():
     ist_tz = ZoneInfo("Asia/Kolkata")
     candle_map = {}
     
+    reg_price = meta.get('regularMarketPrice')
+    reg_time = meta.get('regularMarketTime')
+
     for i in range(len(timestamps)):
+        ts = int(timestamps[i])
         open_v = opens[i] if i < len(opens) else None
         high_v = highs[i] if i < len(highs) else None
         low_v = lows[i] if i < len(lows) else None
         close_v = closes[i] if i < len(closes) else None
         vol_v = volumes[i] if i < len(volumes) else 0
+
+        # Skip future/holiday placeholder timestamps where quotes are empty
+        if reg_time and ts > (reg_time + 3600) and close_v is None and open_v is None:
+            continue
 
         # Fallback to adjclose if close is None
         if close_v is None and adjclose and i < len(adjclose):
@@ -2015,11 +2023,11 @@ def get_chart_history():
         if close_v is None:
             continue
 
-        if open_v is None: open_v = close_v
+        if open_v is None:
+            open_v = meta.get('regularMarketOpen') or (candles[-1]['close'] if candles else None) or meta.get('chartPreviousClose') or meta.get('previousClose') or close_v
         if high_v is None: high_v = max(open_v, close_v)
         if low_v is None: low_v = min(open_v, close_v)
 
-        ts = int(timestamps[i])
         dt = datetime.datetime.fromtimestamp(ts, tz=ist_tz)
         
         if is_intraday:
@@ -2072,8 +2080,6 @@ def get_chart_history():
             })
 
     # Merge meta regularMarketPrice if market time date is available
-    reg_price = meta.get('regularMarketPrice')
-    reg_time = meta.get('regularMarketTime')
     if reg_price and reg_time:
         reg_dt = datetime.datetime.fromtimestamp(reg_time, tz=ist_tz)
         if is_intraday:
@@ -2103,13 +2109,18 @@ def get_chart_history():
             is_up = existing_c['close'] >= existing_c['open']
             existing_v['color'] = '#26a69a' if is_up else '#ef5350'
         else:
-            is_up = reg_price_val >= (meta.get('previousClose') or reg_price_val)
+            reg_open_val = meta.get('regularMarketOpen') or (candles[-1]['close'] if candles else None) or meta.get('chartPreviousClose') or meta.get('previousClose') or reg_price_val
+            reg_open_val = round(float(reg_open_val), 2)
+            reg_high_val = round(float(meta.get('regularMarketDayHigh') or max(reg_open_val, reg_price_val)), 2)
+            reg_low_val = round(float(meta.get('regularMarketDayLow') or min(reg_open_val, reg_price_val)), 2)
+
+            is_up = reg_price_val >= reg_open_val
             candle_map[reg_key] = len(candles)
             candles.append({
                 'time': reg_time_val,
-                'open': round(float(meta.get('regularMarketDayLow') or reg_price_val), 2),
-                'high': round(float(meta.get('regularMarketDayHigh') or reg_price_val), 2),
-                'low': round(float(meta.get('regularMarketDayLow') or reg_price_val), 2),
+                'open': reg_open_val,
+                'high': max(reg_high_val, reg_open_val, reg_price_val),
+                'low': min(reg_low_val, reg_open_val, reg_price_val),
                 'close': reg_price_val
             })
             volume_data.append({
