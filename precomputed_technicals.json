@@ -1,0 +1,537 @@
+{
+  "success": true,
+  "scanners": {
+    "golden_cross": {
+      "id": "golden_cross",
+      "title": "\ud83c\udf1f Golden Crossover",
+      "description": "50-Day Moving Average crossed or trading above 200-Day Moving Average (Bullish Trend)",
+      "badge": "Bullish",
+      "color": "#10b981",
+      "stocks": [
+        {
+          "symbol": "ROLEXRINGS.NS",
+          "name": "Rolex Rings Ltd",
+          "ltp": 196.36,
+          "change_pct": 3.3,
+          "volume": 5245978,
+          "rsi": 69.3,
+          "metric": "50 DMA (\u20b9170.1) > 200 DMA (\u20b9143.9)"
+        },
+        {
+          "symbol": "KOTAKBANK.NS",
+          "name": "Kotak Mahindra Bank Ltd",
+          "ltp": 418.35,
+          "change_pct": 0.32,
+          "volume": 76637247,
+          "rsi": 57.5,
+          "metric": "50 DMA (\u20b9405.5) > 200 DMA (\u20b9399.3)"
+        },
+        {
+          "symbol": "ICICIBANK.NS",
+          "name": "ICICI Bank Ltd",
+          "ltp": 1310.6,
+          "change_pct": -0.84,
+          "volume": 13163495,
+          "rsi": 33.7,
+          "metric": "50 DMA (\u20b91400.2) > 200 DMA (\u20b91353.2)"
+        },
+        {
+          "symbol": "SUNPHARMA.NS",
+          "name": "Sun Pharmaceutical Industries Ltd",
+          "ltp": 1801.0,
+          "change_pct": -0.86,
+          "volume": 2314700,
+          "rsi": 36.7,
+          "metric": "50 DMA (\u20b91904.0) > 200 DMA (\u20b91809.0)"
+        },
+        {
+          "symbol": "BAJFINANCE.NS",
+          "name": "Bajaj Finance Ltd",
+          "ltp": 948.3,
+          "change_pct": -1.16,
+          "volume": 5698769,
+          "rsi": 32.0,
+          "metric": "50 DMA (\u20b91058.1) > 200 DMA (\u20b9976.3)"
+        },
+        {
+          "symbol": "BSE.NS",
+          "name": "BSE Ltd",
+          "ltp": 3046.0,
+          "change_pct": -1.49,
+          "volume": 6273089,
+          "rsi": 37.0,
+          "metric": "50 DMA (\u20b93358.5) > 200 DMA (\u20b93326.4)"
+        },
+        {
+          "symbol": "TITAN.NS",
+          "name": "Titan Company Ltd",
+          "ltp": 4515.7,
+          "change_pct": -1.55,
+          "volume": 694098,
+          "rsi": 26.5,
+          "metric": "50 DMA (\u20b94954.4) > 200 DMA (\u20b94415.8)"
+        }
+      ],
+      "count": 7
+    },
+    "supertrend_buy": {
+      "id": "supertrend_buy",
+      "title": "\ud83d\udfe2 Supertrend BUY",
+      "description": "Price trading above trailing Supertrend support line with active Buy signal",
+      "badge": "Bullish",
+      "color": "#10b981",
+      "stocks": [
+        {
+          "symbol": "INFY.NS",
+          "name": "Infosys Ltd",
+          "ltp": 1035.0,
+          "change_pct": 4.11,
+          "volume": 15166446,
+          "rsi": 44.9,
+          "metric": "LTP \u20b91035.00 > Supertrend \u20b9941.41"
+        },
+        {
+          "symbol": "ROLEXRINGS.NS",
+          "name": "Rolex Rings Ltd",
+          "ltp": 196.36,
+          "change_pct": 3.3,
+          "volume": 5245978,
+          "rsi": 69.3,
+          "metric": "LTP \u20b9196.36 > Supertrend \u20b9167.53"
+        },
+        {
+          "symbol": "HDFCBANK.NS",
+          "name": "HDFC Bank Ltd",
+          "ltp": 721.2,
+          "change_pct": 1.76,
+          "volume": 37389857,
+          "rsi": 49.3,
+          "metric": "LTP \u20b9721.20 > Supertrend \u20b9670.02"
+        },
+        {
+          "symbol": "TCS.NS",
+          "name": "Tata Consultancy Services Ltd",
+          "ltp": 2075.0,
+          "change_pct": 1.19,
+          "volume": 3428501,
+          "rsi": 36.0,
+          "metric": "LTP \u20b92075.00 > Supertrend \u20b91912.33"
+        },
+        {
+          "symbol": "BAJFINANCE.NS",
+          "name": "Bajaj Finance Ltd",
+          "ltp": 948.3,
+          "change_pct": -1.16,
+          "volume": 5698769,
+          "rsi": 32.0,
+          "metric": "LTP \u20b9948.30 > Supertrend \u20b9861.60"
+        }
+      ],
+      "count": 5
+    },
+    "rsi_momentum": {
+      "id": "rsi_momentum",
+      "title": "\ud83d\ude80 RSI Momentum",
+      "description": "RSI(14) between 55 and 72, indicating strong bullish momentum",
+      "badge": "Momentum",
+      "color": "#6366f1",
+      "stocks": [
+        {
+          "symbol": "ROLEXRINGS.NS",
+          "name": "Rolex Rings Ltd",
+          "ltp": 196.36,
+          "change_pct": 3.3,
+          "volume": 5245978,
+          "rsi": 69.3,
+          "metric": "RSI(14) at 69.3 (Bullish Range)"
+        },
+        {
+          "symbol": "KOTAKBANK.NS",
+          "name": "Kotak Mahindra Bank Ltd",
+          "ltp": 418.35,
+          "change_pct": 0.32,
+          "volume": 76637247,
+          "rsi": 57.5,
+          "metric": "RSI(14) at 57.5 (Bullish Range)"
+        }
+      ],
+      "count": 2
+    },
+    "ema_bull_cross": {
+      "id": "ema_bull_cross",
+      "title": "\u26a1 EMA Bullish Cross",
+      "description": "Short-term 9 EMA trading above 21 EMA (Short-term uptrend setup)",
+      "badge": "Bullish",
+      "color": "#06b6d4",
+      "stocks": [
+        {
+          "symbol": "ROLEXRINGS.NS",
+          "name": "Rolex Rings Ltd",
+          "ltp": 196.36,
+          "change_pct": 3.3,
+          "volume": 5245978,
+          "rsi": 69.3,
+          "metric": "9 EMA (\u20b9187.4) > 21 EMA (\u20b9181.2)"
+        },
+        {
+          "symbol": "HDFCBANK.NS",
+          "name": "HDFC Bank Ltd",
+          "ltp": 721.2,
+          "change_pct": 1.76,
+          "volume": 37389857,
+          "rsi": 49.3,
+          "metric": "9 EMA (\u20b9722.2) > 21 EMA (\u20b9721.7)"
+        },
+        {
+          "symbol": "KOTAKBANK.NS",
+          "name": "Kotak Mahindra Bank Ltd",
+          "ltp": 418.35,
+          "change_pct": 0.32,
+          "volume": 76637247,
+          "rsi": 57.5,
+          "metric": "9 EMA (\u20b9411.8) > 21 EMA (\u20b9411.7)"
+        }
+      ],
+      "count": 3
+    },
+    "high_52w": {
+      "id": "high_52w",
+      "title": "\ud83d\udca5 Near 52W High",
+      "description": "Trading within 3% of its 52-week high price",
+      "badge": "Breakout",
+      "color": "#8b5cf6",
+      "stocks": [
+        {
+          "symbol": "ROLEXRINGS.NS",
+          "name": "Rolex Rings Ltd",
+          "ltp": 196.36,
+          "change_pct": 3.3,
+          "volume": 5245978,
+          "rsi": 69.3,
+          "metric": "52W High \u20b9198.45 (1.1% away)"
+        }
+      ],
+      "count": 1
+    },
+    "volume_surge": {
+      "id": "volume_surge",
+      "title": "\ud83d\udcca Volume Surge",
+      "description": "Today's volume is >1.8x the 20-day average volume (Institutional Buying)",
+      "badge": "High Vol",
+      "color": "#f59e0b",
+      "stocks": [
+        {
+          "symbol": "ROLEXRINGS.NS",
+          "name": "Rolex Rings Ltd",
+          "ltp": 196.36,
+          "change_pct": 3.3,
+          "volume": 5245978,
+          "rsi": 69.3,
+          "metric": "2.9x vs 20d Avg Vol"
+        },
+        {
+          "symbol": "KOTAKBANK.NS",
+          "name": "Kotak Mahindra Bank Ltd",
+          "ltp": 418.35,
+          "change_pct": 0.32,
+          "volume": 76637247,
+          "rsi": 57.5,
+          "metric": "6.1x vs 20d Avg Vol"
+        },
+        {
+          "symbol": "TATASTEEL.NS",
+          "name": "Tata Steel Ltd",
+          "ltp": 178.0,
+          "change_pct": -3.42,
+          "volume": 47659952,
+          "rsi": 37.9,
+          "metric": "1.9x vs 20d Avg Vol"
+        },
+        {
+          "symbol": "MARUTI.NS",
+          "name": "Maruti Suzuki India Ltd",
+          "ltp": 11386.0,
+          "change_pct": -4.86,
+          "volume": 885820,
+          "rsi": 21.6,
+          "metric": "2.5x vs 20d Avg Vol"
+        }
+      ],
+      "count": 4
+    },
+    "rsi_oversold": {
+      "id": "rsi_oversold",
+      "title": "\ud83e\uddca RSI Oversold Rebound",
+      "description": "RSI(14) below 38 (Potential oversold reversal candidate)",
+      "badge": "Rebound",
+      "color": "#ec4899",
+      "stocks": [
+        {
+          "symbol": "TCS.NS",
+          "name": "Tata Consultancy Services Ltd",
+          "ltp": 2075.0,
+          "change_pct": 1.19,
+          "volume": 3428501,
+          "rsi": 36.0,
+          "metric": "RSI(14) at 36.0 (Oversold Area)"
+        },
+        {
+          "symbol": "SBIN.NS",
+          "name": "State Bank of India",
+          "ltp": 954.1,
+          "change_pct": -0.56,
+          "volume": 7390452,
+          "rsi": 32.2,
+          "metric": "RSI(14) at 32.2 (Oversold Area)"
+        },
+        {
+          "symbol": "ICICIBANK.NS",
+          "name": "ICICI Bank Ltd",
+          "ltp": 1310.6,
+          "change_pct": -0.84,
+          "volume": 13163495,
+          "rsi": 33.7,
+          "metric": "RSI(14) at 33.7 (Oversold Area)"
+        },
+        {
+          "symbol": "SUNPHARMA.NS",
+          "name": "Sun Pharmaceutical Industries Ltd",
+          "ltp": 1801.0,
+          "change_pct": -0.86,
+          "volume": 2314700,
+          "rsi": 36.7,
+          "metric": "RSI(14) at 36.7 (Oversold Area)"
+        },
+        {
+          "symbol": "BHARTIARTL.NS",
+          "name": "Bharti Airtel Ltd",
+          "ltp": 1741.1,
+          "change_pct": -0.9,
+          "volume": 5609657,
+          "rsi": 32.3,
+          "metric": "RSI(14) at 32.3 (Oversold Area)"
+        },
+        {
+          "symbol": "BAJFINANCE.NS",
+          "name": "Bajaj Finance Ltd",
+          "ltp": 948.3,
+          "change_pct": -1.16,
+          "volume": 5698769,
+          "rsi": 32.0,
+          "metric": "RSI(14) at 32.0 (Oversold Area)"
+        },
+        {
+          "symbol": "SUZLON.NS",
+          "name": "Suzlon Energy Ltd",
+          "ltp": 38.91,
+          "change_pct": -1.47,
+          "volume": 53247107,
+          "rsi": 18.8,
+          "metric": "RSI(14) at 18.8 (Oversold Area)"
+        },
+        {
+          "symbol": "BSE.NS",
+          "name": "BSE Ltd",
+          "ltp": 3046.0,
+          "change_pct": -1.49,
+          "volume": 6273089,
+          "rsi": 37.0,
+          "metric": "RSI(14) at 37.0 (Oversold Area)"
+        },
+        {
+          "symbol": "TITAN.NS",
+          "name": "Titan Company Ltd",
+          "ltp": 4515.7,
+          "change_pct": -1.55,
+          "volume": 694098,
+          "rsi": 26.5,
+          "metric": "RSI(14) at 26.5 (Oversold Area)"
+        },
+        {
+          "symbol": "RELIANCE.NS",
+          "name": "Reliance Industries Ltd",
+          "ltp": 1167.7,
+          "change_pct": -1.63,
+          "volume": 16771221,
+          "rsi": 27.9,
+          "metric": "RSI(14) at 27.9 (Oversold Area)"
+        },
+        {
+          "symbol": "LT.NS",
+          "name": "Larsen & Toubro Ltd",
+          "ltp": 3693.4,
+          "change_pct": -1.77,
+          "volume": 2220932,
+          "rsi": 31.3,
+          "metric": "RSI(14) at 31.3 (Oversold Area)"
+        },
+        {
+          "symbol": "ITC.NS",
+          "name": "ITC Ltd",
+          "ltp": 255.9,
+          "change_pct": -2.61,
+          "volume": 16447266,
+          "rsi": 36.3,
+          "metric": "RSI(14) at 36.3 (Oversold Area)"
+        },
+        {
+          "symbol": "TATASTEEL.NS",
+          "name": "Tata Steel Ltd",
+          "ltp": 178.0,
+          "change_pct": -3.42,
+          "volume": 47659952,
+          "rsi": 37.9,
+          "metric": "RSI(14) at 37.9 (Oversold Area)"
+        },
+        {
+          "symbol": "MARUTI.NS",
+          "name": "Maruti Suzuki India Ltd",
+          "ltp": 11386.0,
+          "change_pct": -4.86,
+          "volume": 885820,
+          "rsi": 21.6,
+          "metric": "RSI(14) at 21.6 (Oversold Area)"
+        }
+      ],
+      "count": 14
+    },
+    "triple_confluence": {
+      "id": "triple_confluence",
+      "title": "\ud83c\udfc6 Triple Confluence",
+      "description": "EMA 9 > 21 + RSI > 50 + Price > SMA 50 (Multi-indicator confirmation)",
+      "badge": "High Conviction",
+      "color": "#10b981",
+      "stocks": [
+        {
+          "symbol": "ROLEXRINGS.NS",
+          "name": "Rolex Rings Ltd",
+          "ltp": 196.36,
+          "change_pct": 3.3,
+          "volume": 5245978,
+          "rsi": 69.3,
+          "metric": "EMA Cross + RSI 69.3 + Above 50 DMA"
+        },
+        {
+          "symbol": "KOTAKBANK.NS",
+          "name": "Kotak Mahindra Bank Ltd",
+          "ltp": 418.35,
+          "change_pct": 0.32,
+          "volume": 76637247,
+          "rsi": 57.5,
+          "metric": "EMA Cross + RSI 57.5 + Above 50 DMA"
+        }
+      ],
+      "count": 2
+    },
+    "death_cross": {
+      "id": "death_cross",
+      "title": "\ud83d\udc80 Death Crossover",
+      "description": "50-Day Moving Average below 200-Day Moving Average (Bearish Warning)",
+      "badge": "Bearish",
+      "color": "#ef4444",
+      "stocks": [
+        {
+          "symbol": "INFY.NS",
+          "name": "Infosys Ltd",
+          "ltp": 1035.0,
+          "change_pct": 4.11,
+          "volume": 15166446,
+          "rsi": 44.9,
+          "metric": "50 DMA (\u20b91102.0) < 200 DMA (\u20b91255.5)"
+        },
+        {
+          "symbol": "HDFCBANK.NS",
+          "name": "HDFC Bank Ltd",
+          "ltp": 721.2,
+          "change_pct": 1.76,
+          "volume": 37389857,
+          "rsi": 49.3,
+          "metric": "50 DMA (\u20b9724.6) < 200 DMA (\u20b9811.9)"
+        },
+        {
+          "symbol": "TCS.NS",
+          "name": "Tata Consultancy Services Ltd",
+          "ltp": 2075.0,
+          "change_pct": 1.19,
+          "volume": 3428501,
+          "rsi": 36.0,
+          "metric": "50 DMA (\u20b92275.6) < 200 DMA (\u20b92499.2)"
+        },
+        {
+          "symbol": "SBIN.NS",
+          "name": "State Bank of India",
+          "ltp": 954.1,
+          "change_pct": -0.56,
+          "volume": 7390452,
+          "rsi": 32.2,
+          "metric": "50 DMA (\u20b91023.9) < 200 DMA (\u20b91042.3)"
+        },
+        {
+          "symbol": "BHARTIARTL.NS",
+          "name": "Bharti Airtel Ltd",
+          "ltp": 1741.1,
+          "change_pct": -0.9,
+          "volume": 5609657,
+          "rsi": 32.3,
+          "metric": "50 DMA (\u20b91883.5) < 200 DMA (\u20b91906.8)"
+        },
+        {
+          "symbol": "SUZLON.NS",
+          "name": "Suzlon Energy Ltd",
+          "ltp": 38.91,
+          "change_pct": -1.47,
+          "volume": 53247107,
+          "rsi": 18.8,
+          "metric": "50 DMA (\u20b945.7) < 200 DMA (\u20b949.2)"
+        },
+        {
+          "symbol": "RELIANCE.NS",
+          "name": "Reliance Industries Ltd",
+          "ltp": 1167.7,
+          "change_pct": -1.63,
+          "volume": 16771221,
+          "rsi": 27.9,
+          "metric": "50 DMA (\u20b91279.8) < 200 DMA (\u20b91360.0)"
+        },
+        {
+          "symbol": "LT.NS",
+          "name": "Larsen & Toubro Ltd",
+          "ltp": 3693.4,
+          "change_pct": -1.77,
+          "volume": 2220932,
+          "rsi": 31.3,
+          "metric": "50 DMA (\u20b93955.7) < 200 DMA (\u20b93968.5)"
+        },
+        {
+          "symbol": "ITC.NS",
+          "name": "ITC Ltd",
+          "ltp": 255.9,
+          "change_pct": -2.61,
+          "volume": 16447266,
+          "rsi": 36.3,
+          "metric": "50 DMA (\u20b9271.1) < 200 DMA (\u20b9301.6)"
+        },
+        {
+          "symbol": "TATASTEEL.NS",
+          "name": "Tata Steel Ltd",
+          "ltp": 178.0,
+          "change_pct": -3.42,
+          "volume": 47659952,
+          "rsi": 37.9,
+          "metric": "50 DMA (\u20b9186.1) < 200 DMA (\u20b9194.5)"
+        },
+        {
+          "symbol": "MARUTI.NS",
+          "name": "Maruti Suzuki India Ltd",
+          "ltp": 11386.0,
+          "change_pct": -4.86,
+          "volume": 885820,
+          "rsi": 21.6,
+          "metric": "50 DMA (\u20b913136.6) < 200 DMA (\u20b913915.2)"
+        }
+      ],
+      "count": 11
+    }
+  },
+  "total_scanned": 20
+}
