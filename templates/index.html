@@ -2625,6 +2625,13 @@
             });
         }
 
+        function cleanDisplaySymbol(sym) {
+            if (!sym) return '';
+            const s = String(sym).trim();
+            if (s.startsWith('^') || s.includes('=F')) return s;
+            return s.replace(/\.(NS|BO)$/i, '');
+        }
+
         // Global App State
         let currentTab = 'watchlists';
         let watchlistsData = {};
@@ -4111,7 +4118,7 @@
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
                         <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                            <span class="stock-symbol" style="font-size: 12.5px;">${escapeHtml(art.symbol)}</span>
+                            <span class="stock-symbol" style="font-size: 12.5px;">${escapeHtml(cleanDisplaySymbol(art.symbol))}</span>
                             <span class="badge ${tagBadgeClass}" style="font-size: 10px;">${art.tag_type}</span>
                             ${catBadge}
                         </div>
@@ -4517,7 +4524,7 @@
                     };
                     
                     const tdSymbol = document.createElement('td');
-                    tdSymbol.innerHTML = `<span class="stock-symbol">${sym}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="name-${sym}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
+                    tdSymbol.innerHTML = `<span class="stock-symbol">${cleanDisplaySymbol(sym)}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="name-${sym}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
 
                     const tdPrice = document.createElement('td');
                     tdPrice.style.textAlign = 'right';
@@ -4662,7 +4669,7 @@
                         const bInfo = getSymbolBadge(item.symbol, item.exchange);
                         div.innerHTML = `
                             <div>
-                                <span class="autocomplete-symbol">${item.symbol}</span>
+                                <span class="autocomplete-symbol">${cleanDisplaySymbol(item.symbol)}</span>
                                 <span class="badge ${bInfo.class}">${bInfo.label}</span>
                                 <div class="autocomplete-name">${escapeHtml(item.name)}</div>
                             </div>
@@ -5209,7 +5216,7 @@
             const ltp = info.price || item.buy_price;
 
             document.getElementById('modal-sell-symbol').value = symbol;
-            document.getElementById('sellModalTitle').innerText = `🔴 Sell ${symbol}`;
+            document.getElementById('sellModalTitle').innerText = `🔴 Sell ${cleanDisplaySymbol(symbol)}`;
             document.getElementById('sell-info-qty').innerText = formatQty(item.quantity);
             document.getElementById('sell-info-avgprice').innerText = formatMoney(item.buy_price);
             document.getElementById('sell-info-ltp').innerText = ltp > 0 ? formatMoney(ltp) : '-';
@@ -5296,7 +5303,7 @@
             const ltp = info.price || (item ? item.buy_price : 0);
 
             document.getElementById('modal-buymore-symbol').value = symbol;
-            document.getElementById('buyMoreModalTitle').innerText = `🟢 Buy More ${symbol}`;
+            document.getElementById('buyMoreModalTitle').innerText = `🟢 Buy More ${cleanDisplaySymbol(symbol)}`;
             document.getElementById('buymore-info-qty').innerText = formatQty(currentBuyMoreHolding.quantity);
             document.getElementById('buymore-info-avgprice').innerText = formatMoney(currentBuyMoreHolding.buy_price);
             document.getElementById('buymore-info-ltp').innerText = ltp > 0 ? formatMoney(ltp) : '-';
@@ -5528,7 +5535,7 @@
 
         function openEditModal(symbol, curPrice, curQty, curDate, curReason) {
             document.getElementById('editHoldingSymbol').value = symbol;
-            document.getElementById('editHoldingTitle').innerText = `Edit ${symbol} (${activePortfolioName})`;
+            document.getElementById('editHoldingTitle').innerText = `Edit ${cleanDisplaySymbol(symbol)} (${activePortfolioName})`;
             document.getElementById('editBuyPrice').value = curPrice;
             document.getElementById('editQuantity').value = curQty;
             document.getElementById('editBuyDate').value = curDate || new Date().toISOString().split('T')[0];
@@ -5666,7 +5673,7 @@
                     <td><span style="font-size: 12px; font-weight: 600; color: var(--text-primary);">${dateStr}</span></td>
                     <td><span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(t.portfolio || 'Portfolio')}</span></td>
                     <td>
-                        <span class="stock-symbol" style="font-size: 13px;">${escapeHtml(t.symbol)}</span> 
+                        <span class="stock-symbol" style="font-size: 13px;">${escapeHtml(cleanDisplaySymbol(t.symbol))}</span> 
                         <span class="badge ${bInfo.class}">${bInfo.label}</span>
                     </td>
                     <td style="text-align:center;">
@@ -5868,7 +5875,7 @@
                     };
 
                     const tdStock = document.createElement('td');
-                    tdStock.innerHTML = `<span class="stock-symbol">${sym}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="pf-name-${sym}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
+                    tdStock.innerHTML = `<span class="stock-symbol">${cleanDisplaySymbol(sym)}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span><div class="company-name" id="pf-name-${sym}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
 
                     const tdQty = document.createElement('td');
                     tdQty.style.textAlign = 'right';
@@ -8749,7 +8756,7 @@
 
             const bInfo = getSymbolBadge(sym);
 
-            document.getElementById('detail-modal-sym').innerHTML = `<span class="stock-symbol-title">${sym}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
+            document.getElementById('detail-modal-sym').innerHTML = `<span class="stock-symbol-title">${cleanDisplaySymbol(sym)}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
             document.getElementById('detail-modal-name').innerText = info.name || sym;
 
             document.getElementById('detail-modal-duration').innerText = `⏱️ ${durationText}`;
