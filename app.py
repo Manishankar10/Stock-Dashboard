@@ -2931,6 +2931,292 @@ def get_insights_news_api():
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "articles": []})
 
+technicals_cache = HighPerformanceCache(default_ttl=300)
+
+@app.route("/api/insights/technicals", methods=["GET"])
+@login_required
+def get_insights_technicals_api():
+    try:
+        uname = session.get("username")
+        cached = technicals_cache.get(f"technicals_{uname}")
+        if cached:
+            return jsonify(cached)
+
+        watchlists = load_data(uname)
+        portfolios = load_portfolios(uname)
+
+        target_symbols = set()
+        for w_name, sym_list in watchlists.items():
+            for s in sym_list:
+                if s and not s.startswith("^") and "=F" not in s:
+                    target_symbols.add(format_financial_symbol(s))
+
+        for p_name, holdings in portfolios.items():
+            for item in holdings:
+                sym = item.get("symbol", "")
+                if sym and not sym.startswith("^") and "=F" not in sym:
+                    target_symbols.add(format_financial_symbol(sym))
+
+        for pop_sym in POPULAR_INDIAN_STOCKS.keys():
+            target_symbols.add(format_financial_symbol(pop_sym))
+
+        symbols_list = list(target_symbols)
+
+        scanners = {
+            "golden_cross": {
+                "id": "golden_cross",
+                "title": "🌟 Golden Crossover",
+                "description": "50-Day Moving Average crossed or trading above 200-Day Moving Average (Bullish Trend)",
+                "badge": "Bullish",
+                "color": "#10b981",
+                "stocks": []
+            },
+            "supertrend_buy": {
+                "id": "supertrend_buy",
+                "title": "🟢 Supertrend BUY",
+                "description": "Price trading above trailing Supertrend support line with active Buy signal",
+                "badge": "Bullish",
+                "color": "#10b981",
+                "stocks": []
+            },
+            "rsi_momentum": {
+                "id": "rsi_momentum",
+                "title": "🚀 RSI Momentum",
+                "description": "RSI(14) between 55 and 72, indicating strong bullish momentum",
+                "badge": "Momentum",
+                "color": "#6366f1",
+                "stocks": []
+            },
+            "ema_bull_cross": {
+                "id": "ema_bull_cross",
+                "title": "⚡ EMA Bullish Cross",
+                "description": "Short-term 9 EMA trading above 21 EMA (Short-term uptrend setup)",
+                "badge": "Bullish",
+                "color": "#06b6d4",
+                "stocks": []
+            },
+            "high_52w": {
+                "id": "high_52w",
+                "title": "💥 Near 52W High",
+                "description": "Trading within 3% of its 52-week high price",
+                "badge": "Breakout",
+                "color": "#8b5cf6",
+                "stocks": []
+            },
+            "volume_surge": {
+                "id": "volume_surge",
+                "title": "📊 Volume Surge",
+                "description": "Today's volume is >1.8x the 20-day average volume (Institutional Buying)",
+                "badge": "High Vol",
+                "color": "#f59e0b",
+                "stocks": []
+            },
+            "rsi_oversold": {
+                "id": "rsi_oversold",
+                "title": "🧊 RSI Oversold Rebound",
+                "description": "RSI(14) below 38 (Potential oversold reversal candidate)",
+                "badge": "Rebound",
+                "color": "#ec4899",
+                "stocks": []
+            },
+            "triple_confluence": {
+                "id": "triple_confluence",
+                "title": "🏆 Triple Confluence",
+                "description": "EMA 9 > 21 + RSI > 50 + Price > SMA 50 (Multi-indicator confirmation)",
+                "badge": "High Conviction",
+                "color": "#10b981",
+                "stocks": []
+            },
+            "death_cross": {
+                "id": "death_cross",
+                "title": "💀 Death Crossover",
+                "description": "50-Day Moving Average below 200-Day Moving Average (Bearish Warning)",
+                "badge": "Bearish",
+                "color": "#ef4444",
+                "stocks": []
+            }
+        }
+
+        def analyze_stock_technical(symbol):
+            try:
+                hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                data = None
+                for host in hosts:
+                    url = f'https://{host}/v8/finance/chart/{symbol}?interval=1d&range=1y&includeAdjustedClose=true'
+                    try:
+                        r = requests.get(url, headers=headers, timeout=6)
+                        if r.status_code == 200:
+                            j = r.json()
+                            res = j.get('chart', {}).get('result')
+                            if res and len(res) > 0:
+                                data = res[0]
+                                break
+                    except Exception:
+                        pass
+                
+                if not data:
+                    return None
+
+                meta = data.get('meta', {})
+                clean_sym_key = symbol.replace('.NS', '').replace('.BO', '')
+                name = POPULAR_INDIAN_STOCKS.get(clean_sym_key, meta.get('shortName') or meta.get('longName') or symbol)
+
+                quote = data.get('indicators', {}).get('quote', [{}])[0]
+                raw_closes = quote.get('close', []) or []
+                raw_highs = quote.get('high', []) or []
+                raw_lows = quote.get('low', []) or []
+                raw_vols = quote.get('volume', []) or []
+
+                valid_idx = [i for i, c in enumerate(raw_closes) if c is not None and i < len(raw_highs) and raw_highs[i] is not None and i < len(raw_lows) and raw_lows[i] is not None]
+                if len(valid_idx) < 30:
+                    return None
+
+                closes = [raw_closes[i] for i in valid_idx]
+                highs = [raw_highs[i] for i in valid_idx]
+                lows = [raw_lows[i] for i in valid_idx]
+                volumes = [raw_vols[i] if (i < len(raw_vols) and raw_vols[i] is not None) else 0 for i in valid_idx]
+
+                ltp = closes[-1]
+                prev_close = closes[-2] if len(closes) >= 2 else ltp
+                change_pct = round(((ltp - prev_close) / prev_close) * 100.0, 2)
+                vol_latest = volumes[-1]
+
+                sma50_latest = sum(closes[-50:]) / 50.0 if len(closes) >= 50 else None
+                sma50_prev = sum(closes[-51:-1]) / 50.0 if len(closes) >= 51 else None
+                
+                sma200_latest = sum(closes[-200:]) / 200.0 if len(closes) >= 200 else None
+                sma200_prev = sum(closes[-201:-1]) / 200.0 if len(closes) >= 201 else None
+
+                k9 = 2.0 / 10.0
+                ema9_val = sum(closes[:9]) / 9.0
+                ema9_series = [ema9_val]
+                for c in closes[9:]:
+                    ema9_val = (c * k9) + (ema9_val * (1.0 - k9))
+                    ema9_series.append(ema9_val)
+
+                k21 = 2.0 / 22.0
+                ema21_val = sum(closes[:21]) / 21.0
+                ema21_series = [ema21_val]
+                for c in closes[21:]:
+                    ema21_val = (c * k21) + (ema21_val * (1.0 - k21))
+                    ema21_series.append(ema21_val)
+
+                ema9_latest = ema9_series[-1]
+                ema21_latest = ema21_series[-1]
+
+                gains = [max(closes[i] - closes[i-1], 0) for i in range(1, len(closes))]
+                losses = [max(closes[i-1] - closes[i], 0) for i in range(1, len(closes))]
+                rsi14 = None
+                if len(gains) >= 14:
+                    avg_gain = sum(gains[:14]) / 14.0
+                    avg_loss = sum(losses[:14]) / 14.0
+                    for i in range(14, len(gains)):
+                        avg_gain = (avg_gain * 13 + gains[i]) / 14.0
+                        avg_loss = (avg_loss * 13 + losses[i]) / 14.0
+                    rs = avg_gain / avg_loss if avg_loss != 0 else 100.0
+                    rsi14 = 100.0 - (100.0 / (1.0 + rs)) if avg_loss != 0 else 100.0
+
+                high_52w = max(highs[-252:]) if len(highs) >= 252 else max(highs)
+                low_52w = min(lows[-252:]) if len(lows) >= 252 else min(lows)
+
+                vol_20d_avg = sum(volumes[-21:-1]) / 20.0 if len(volumes) >= 21 else (sum(volumes) / len(volumes) if volumes else 1)
+                vol_surge = (vol_latest / vol_20d_avg) if vol_20d_avg > 0 else 1.0
+
+                tr = [highs[0] - lows[0]]
+                for i in range(1, len(closes)):
+                    tr.append(max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])))
+                atr10 = sum(tr[-10:]) / 10.0 if len(tr) >= 10 else sum(tr) / len(tr)
+                st_lower = ((highs[-1] + lows[-1]) / 2.0) - (3.0 * atr10)
+
+                base_item = {
+                    "symbol": symbol,
+                    "name": name,
+                    "ltp": round(ltp, 2),
+                    "change_pct": change_pct,
+                    "volume": vol_latest,
+                    "rsi": round(rsi14, 1) if rsi14 is not None else None
+                }
+
+                res_dict = {}
+
+                if sma50_latest and sma200_latest:
+                    if sma50_latest > sma200_latest:
+                        item = dict(base_item)
+                        item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) > 200 DMA (₹{sma200_latest:.1f})"
+                        res_dict["golden_cross"] = item
+
+                if ltp > st_lower and ltp > (highs[-1] + lows[-1]) / 2.0:
+                    item = dict(base_item)
+                    item["metric"] = f"LTP ₹{ltp:.2f} > Supertrend ₹{st_lower:.2f}"
+                    res_dict["supertrend_buy"] = item
+
+                if rsi14 is not None and 55 <= rsi14 <= 72:
+                    item = dict(base_item)
+                    item["metric"] = f"RSI(14) at {rsi14:.1f} (Bullish Range)"
+                    res_dict["rsi_momentum"] = item
+
+                if ema9_latest > ema21_latest:
+                    item = dict(base_item)
+                    item["metric"] = f"9 EMA (₹{ema9_latest:.1f}) > 21 EMA (₹{ema21_latest:.1f})"
+                    res_dict["ema_bull_cross"] = item
+
+                if ltp >= high_52w * 0.97:
+                    away_pct = round(((high_52w - ltp) / high_52w) * 100.0, 1)
+                    item = dict(base_item)
+                    item["metric"] = f"52W High ₹{high_52w:.2f} ({away_pct}% away)"
+                    res_dict["high_52w"] = item
+
+                if vol_surge >= 1.8 and vol_latest > 5000:
+                    item = dict(base_item)
+                    item["metric"] = f"{vol_surge:.1f}x vs 20d Avg Vol"
+                    res_dict["volume_surge"] = item
+
+                if rsi14 is not None and rsi14 <= 38:
+                    item = dict(base_item)
+                    item["metric"] = f"RSI(14) at {rsi14:.1f} (Oversold Area)"
+                    res_dict["rsi_oversold"] = item
+
+                if ema9_latest > ema21_latest and (rsi14 is not None and rsi14 >= 50) and (sma50_latest and ltp > sma50_latest):
+                    item = dict(base_item)
+                    item["metric"] = f"EMA Cross + RSI {rsi14:.1f} + Above 50 DMA"
+                    res_dict["triple_confluence"] = item
+
+                if sma50_latest and sma200_latest:
+                    if sma50_latest < sma200_latest:
+                        item = dict(base_item)
+                        item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) < 200 DMA (₹{sma200_latest:.1f})"
+                        res_dict["death_cross"] = item
+
+                return res_dict
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = list(executor.map(analyze_stock_technical, symbols_list))
+
+        for res in results:
+            if res:
+                for scan_key, item in res.items():
+                    if scan_key in scanners:
+                        scanners[scan_key]["stocks"].append(item)
+
+        for scan_key in scanners:
+            scanners[scan_key]["stocks"].sort(key=lambda x: x.get("change_pct", 0), reverse=True)
+            scanners[scan_key]["count"] = len(scanners[scan_key]["stocks"])
+
+        payload = {
+            "success": True,
+            "scanners": scanners,
+            "total_scanned": len(symbols_list)
+        }
+
+        technicals_cache.set(f"technicals_{uname}", payload, ttl=300)
+        return jsonify(payload)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "scanners": {}})
+
 @app.route("/api/insights", methods=["GET"])
 @login_required
 def get_insights_api():
@@ -2963,3 +3249,4 @@ def get_insights_api():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+

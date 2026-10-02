@@ -1458,6 +1458,68 @@
                 </div>
             </div>
 
+            <!-- Technical Signals & Stock Screeners Section (Accordion) -->
+            <div class="card-container" style="padding: 20px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; cursor: pointer;" onclick="toggleTechnicalScreenerAccordion()">
+                    <div>
+                        <h3 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                            ⚡ Technical Signals & Stock Screeners <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: none;" id="technicals-scanned-count">(Scanning...)</span>
+                        </h3>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+                            Live technical screeners across watchlists, portfolios, and market leader stocks.
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; display: flex; align-items: center; gap: 5px;" onclick="event.stopPropagation(); loadTechnicalInsights(true)">
+                            🔄 Refresh Signals
+                        </button>
+                        <button class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; display: flex; align-items: center; gap: 5px;" onclick="event.stopPropagation(); toggleTechnicalScreenerAccordion()">
+                            <span id="technicals-accordion-icon">▲</span> <span id="technicals-accordion-label">Collapse</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Accordion Collapsible Body Container -->
+                <div id="technicals-accordion-body" style="margin-top: 14px;">
+                    <!-- Screener Filter Pills -->
+                    <div id="technical-screener-pills" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; background: var(--bg-subtle); padding: 10px; border-radius: 10px; border: 1px solid var(--border-color);">
+                        <!-- Dynamically rendered filter pills -->
+                    </div>
+
+                    <!-- Active Screener Meta Banner -->
+                    <div id="technical-screener-meta" style="display: flex; justify-content: space-between; align-items: center; background: rgba(99, 102, 241, 0.08); border-left: 4px solid #6366f1; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px;">
+                        <div>
+                            <span id="screener-meta-title" style="font-weight: 700; font-size: 13px; color: var(--text-primary);">🌟 Golden Crossover</span>
+                            <span id="screener-meta-desc" style="font-size: 12px; color: var(--text-secondary); margin-left: 8px;">50-Day Moving Average crossed above 200-Day Moving Average</span>
+                        </div>
+                        <span id="screener-meta-count" class="badge badge-nse" style="font-size: 11px;">0 Stocks</span>
+                    </div>
+
+                    <!-- Screener Stock Table -->
+                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                        <table class="stock-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-subtle);">
+                                    <th style="text-align: left; padding: 10px 12px; font-size: 12px;">Stock Name</th>
+                                    <th style="text-align: right; padding: 10px 12px; font-size: 12px;">LTP</th>
+                                    <th style="text-align: right; padding: 10px 12px; font-size: 12px;">Day Change</th>
+                                    <th style="text-align: left; padding: 10px 12px; font-size: 12px;">Technical Signal Detail</th>
+                                    <th style="text-align: center; padding: 10px 12px; font-size: 12px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="technical-screener-table-body">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                                        <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
+                                        Scanning technical indicators for tracked stocks...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Insights Two-Column Layout -->
             <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px;" class="insights-grid">
                 
@@ -3653,11 +3715,187 @@
                         feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${data.error}</div>`;
                     }
                 })
-                .catch(err => {
-                    if (feedEl) {
-                        feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${err.message}</div>`;
-                    }
-                });
+            // 5. Parallel Fetch: Technical Intelligence Screeners (~400ms)
+            loadTechnicalInsights();
+        }
+
+        // =========================================================
+        // TECHNICAL SIGNALS & STOCK SCREENERS JS
+        // =========================================================
+        let activeScreenerId = 'golden_cross';
+        let technicalsData = null;
+
+        function toggleTechnicalScreenerAccordion() {
+            const body = document.getElementById('technicals-accordion-body');
+            const icon = document.getElementById('technicals-accordion-icon');
+            const label = document.getElementById('technicals-accordion-label');
+
+            if (!body) return;
+
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                if (icon) icon.textContent = '▲';
+                if (label) label.textContent = 'Collapse';
+            } else {
+                body.style.display = 'none';
+                if (icon) icon.textContent = '▼';
+                if (label) label.textContent = 'Expand';
+            }
+        }
+
+        async function loadTechnicalInsights(forceRefresh = false) {
+            const pillsContainer = document.getElementById('technical-screener-pills');
+            const tableBody = document.getElementById('technical-screener-table-body');
+            const scannedCountEl = document.getElementById('technicals-scanned-count');
+
+            if (!pillsContainer || !tableBody) return;
+
+            if (forceRefresh) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                            <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
+                            Rescanning live technical signals...
+                        </td>
+                    </tr>
+                `;
+            }
+
+            try {
+                const response = await fetch('/api/insights/technicals');
+                const data = await response.json();
+                if (data.success && data.scanners) {
+                    technicalsData = data;
+                    if (scannedCountEl) scannedCountEl.textContent = `(Scanned ${data.total_scanned || 0} stocks)`;
+                    renderTechnicalScreenerPills();
+                    renderTechnicalScreenerTable();
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                                ⚠️ Unable to load technical signals. ${escapeHtml(data.error || '')}
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (err) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">
+                            ❌ Error fetching technical screeners.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function selectTechnicalScreener(screenerId) {
+            activeScreenerId = screenerId;
+            renderTechnicalScreenerPills();
+            renderTechnicalScreenerTable();
+        }
+
+        function renderTechnicalScreenerPills() {
+            const container = document.getElementById('technical-screener-pills');
+            if (!container || !technicalsData || !technicalsData.scanners) return;
+
+            const keys = ['golden_cross', 'supertrend_buy', 'rsi_momentum', 'ema_bull_cross', 'high_52w', 'volume_surge', 'rsi_oversold', 'triple_confluence', 'death_cross'];
+            let html = '';
+
+            keys.forEach(key => {
+                const scanner = technicalsData.scanners[key];
+                if (!scanner) return;
+                const isActive = key === activeScreenerId;
+                const btnClass = isActive ? 'btn-primary' : 'btn-secondary';
+                const activeStyle = isActive ? 'background: var(--accent-color); color: #fff; border-color: var(--accent-color);' : '';
+
+                html += `
+                    <button type="button" class="${btnClass}" onclick="selectTechnicalScreener('${key}')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px; display: flex; align-items: center; gap: 6px; ${activeStyle}">
+                        ${scanner.title}
+                        <span style="font-size: 10px; font-weight: 700; background: ${isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg-card)'}; color: ${isActive ? '#fff' : 'var(--text-primary)'}; padding: 1px 6px; border-radius: 8px;">
+                            ${scanner.count || 0}
+                        </span>
+                    </button>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderTechnicalScreenerTable() {
+            const tableBody = document.getElementById('technical-screener-table-body');
+            const titleEl = document.getElementById('screener-meta-title');
+            const descEl = document.getElementById('screener-meta-desc');
+            const countEl = document.getElementById('screener-meta-count');
+
+            if (!tableBody || !technicalsData || !technicalsData.scanners) return;
+
+            const scanner = technicalsData.scanners[activeScreenerId];
+            if (!scanner) return;
+
+            if (titleEl) titleEl.textContent = scanner.title;
+            if (descEl) descEl.textContent = scanner.description;
+            if (countEl) countEl.textContent = `${scanner.count || 0} Stocks`;
+
+            const stocks = scanner.stocks || [];
+            if (stocks.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 35px; color: var(--text-secondary);">
+                            🔍 No stocks currently meet the criteria for <strong>${escapeHtml(scanner.title)}</strong> in tracked symbols.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let rowsHtml = '';
+            stocks.forEach(stock => {
+                const displaySym = cleanDisplaySymbol(stock.symbol);
+                const exchangeClass = stock.symbol.endsWith('.BO') ? 'badge-bse' : 'badge-nse';
+                const exchangeLabel = stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE';
+                
+                const isPos = stock.change_pct >= 0;
+                const changeClass = isPos ? 'profit' : 'loss';
+                const changeSign = isPos ? '+' : '';
+
+                rowsHtml += `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 10px 12px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="stock-symbol" style="font-weight: 700; font-size: 13px;">${escapeHtml(displaySym)}</span>
+                                <span class="badge ${exchangeClass}" style="font-size: 9.5px; padding: 1px 4px;">${exchangeLabel}</span>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-secondary); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${escapeHtml(stock.name)}
+                            </div>
+                        </td>
+                        <td style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 13px;">
+                            ₹${stock.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 12.5px;" class="${changeClass}">
+                            ${changeSign}${stock.change_pct}%
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--text-primary);">
+                            <span style="background: var(--bg-subtle); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border-color); display: inline-block;">
+                                ${escapeHtml(stock.metric)}
+                            </span>
+                        </td>
+                        <td style="text-align: center; padding: 10px 12px;">
+                            <div style="display: flex; gap: 6px; justify-content: center;">
+                                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; border-radius: 4px;" onclick="openChart('${escapeHtml(stock.symbol)}')" title="View Chart">
+                                    📊 Chart
+                                </button>
+                                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; border-radius: 4px;" onclick="openFundamentalsModal('${escapeHtml(stock.symbol)}')" title="View Fundamentals">
+                                    📈 Fundamentals
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = rowsHtml;
         }
 
         function updateHighlightsFromLivePrices() {
