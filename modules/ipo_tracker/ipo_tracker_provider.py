@@ -2,12 +2,15 @@
 
 import copy
 import datetime as dt
+import logging
 import os
 import re
 import threading
 import time
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from db_store import db as _mongo_db
 
 
@@ -18,8 +21,25 @@ try:
     FEED_TTL_SECONDS = max(60, int(os.environ.get("IPO_TRACKER_CACHE_SECONDS", "600")))
 except (TypeError, ValueError):
     FEED_TTL_SECONDS = 600
-REQUEST_TIMEOUT = (5, 15)
-USER_AGENT = "CapitalDesk IPO Tracker/1.0 (+https://gmptoday.in/)"
+REQUEST_TIMEOUT = (8, 30)
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+_HTTP_SESSION = requests.Session()
+_HTTP_SESSION.headers.update({
+    "User-Agent": USER_AGENT,
+    "Accept": "application/json, text/plain, */*",
+    "Referer": PROVIDER_PAGE_URL,
+})
+_RETRY_POLICY = Retry(
+    total=1,
+    connect=1,
+    read=1,
+    status=1,
+    backoff_factor=0.25,
+    status_forcelist=(429, 500, 502, 503, 504),
+    allowed_methods=frozenset({"GET"}),
+    respect_retry_after_header=True,
+)
+_HTTP_SESSION.mount("https://", HTTPAdapter(max_retries=_RETRY_POLICY))
 
 _cache_lock = threading.RLock()
 _cached_payload = None
@@ -153,15 +173,18 @@ def normalize_ipo(item):
 
 def _fetch_payload():
     try:
-        response = requests.get(
+        response = _HTTP_SESSION.get(
             FEED_URL,
-            headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
             timeout=REQUEST_TIMEOUT,
         )
         response.raise_for_status()
         data = response.json()
-    except (requests.RequestException, ValueError) as exc:
-        raise IPOFeedError("Could not refresh IPO data from the configured provider.") from exc
+    except requests.RequestException as exc:
+        logging.getLogger(__name__).warning("IPO feed request failed (%s).", type(exc).__name__)
+        raise IPOFeedError("Could not reach the live IPO data feed. Please retry in a moment.") from exc
+    except ValueError as exc:
+        logging.getLogger(__name__).warning("IPO feed returned invalid JSON.")
+        raise IPOFeedError("The live IPO data feed returned an invalid response. Please retry in a moment.") from exc
 
     if not isinstance(data, dict) or not isinstance(data.get("ipos"), list):
         raise IPOFeedError("The configured IPO provider returned an unexpected response.")
