@@ -1229,6 +1229,21 @@ def import_backup():
 def get_watchlists():
     return jsonify(load_data())
 
+@app.route("/api/watchlists/order", methods=["PUT"])
+@login_required
+def reorder_watchlists():
+    data = load_data()
+    payload = request.get_json(silent=True) or {}
+    names = payload.get("names")
+    if not isinstance(names, list) or any(not isinstance(name, str) for name in names):
+        return jsonify({"success": False, "error": "A watchlist name order is required."}), 400
+    if len(names) != len(data) or len(set(names)) != len(names) or set(names) != set(data):
+        return jsonify({"success": False, "error": "The supplied watchlist order does not match this account's watchlists."}), 400
+
+    reordered = {name: data[name] for name in names}
+    save_data(reordered)
+    return jsonify({"success": True, "watchlists": reordered})
+
 @app.route("/api/watchlists", methods=["POST"])
 @login_required
 def create_watchlist():

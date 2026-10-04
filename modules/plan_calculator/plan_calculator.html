@@ -12,20 +12,10 @@
     <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
 </head>
 <body>
+    {% set standalone_module = true %}{% set active_workspace_module = 'plan-calculator' %}{% include 'components/sidebar.html' %}
     <main class="pc-shell">
-        <header class="pc-header">
-            <a class="pc-brand" href="/" aria-label="Back to Capital Desk">
-                <img src="/static/logo.png" alt="Capital Desk">
-                <span><strong>Capital Desk</strong><small>Portfolio &amp; Market Intelligence</small></span>
-            </a>
-            <nav class="pc-header-actions">
-                <span class="pc-page-label">Plan Calculator</span>
-                <button class="pc-icon-button" id="pc-theme-toggle" type="button" aria-label="Toggle theme">◐</button>
-                <a class="pc-back-link" href="/">← Back to workspace</a>
-            </nav>
-        </header>
-
         <section class="pc-intro">
+            <button class="cd-module-menu-toggle" type="button" onclick="toggleMobileSidebar(true)" aria-label="Open navigation">☰</button>
             <div><p class="pc-eyebrow">TOOLS</p><h1>Plan Calculator</h1><p>Estimate investment growth, withdrawals, borrowing costs, and retirement needs.</p></div>
         </section>
 

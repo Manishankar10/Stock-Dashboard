@@ -96,9 +96,6 @@
         const upperPrice = ipo.upper_price == null
             ? '<span class="value-muted">Not reported</span>'
             : '<span class="value-main">' + escapeHtml(formatCurrency(ipo.upper_price)) + '</span><span class="secondary-line">upper band</span>';
-        const impliedPrice = ipo.implied_listing_price == null
-            ? '<span class="value-muted">—</span>'
-            : '<span class="value-main">' + escapeHtml(formatCurrency(ipo.implied_listing_price)) + '</span><span class="secondary-line">estimate</span>';
         const subscription = ipo.subscription == null
             ? '<span class="value-muted">—</span>'
             : '<span class="value-main">' + escapeHtml(formatNumber(ipo.subscription, 2)) + '×</span>';
@@ -117,7 +114,6 @@
             '<td>' + subscription + '</td>' +
             '<td>' + gmpHtml + '</td>' +
             '<td>' + percentage + '</td>' +
-            '<td>' + impliedPrice + '</td>' +
             '<td>' + sourceDetails(ipo) + '</td>' +
             '</tr>';
     }
@@ -146,7 +142,7 @@
 
         rowsElement.innerHTML = visible.length
             ? visible.map(renderRow).join('')
-            : '<tr><td class="table-message" colspan="9">No IPOs match these filters.</td></tr>';
+            : '<tr><td class="table-message" colspan="8">No IPOs match these filters.</td></tr>';
         emptyElement.hidden = true;
     }
 
@@ -167,7 +163,7 @@
     async function load(forceRefresh) {
         refreshButton.disabled = true;
         refreshButton.textContent = forceRefresh ? 'Refreshing…' : '↻ Refresh';
-        if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="9">Loading IPOs and GMP data…</td></tr>';
+        if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="8">Loading IPOs and GMP data…</td></tr>';
         noticeElement.hidden = true;
         try {
             const response = await fetch('/api/ipos' + (forceRefresh ? '?refresh=1' : ''), { cache: 'no-store' });
@@ -178,7 +174,7 @@
             setFreshness(data);
             render();
         } catch (error) {
-            if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="9">' + escapeHtml(error.message || 'IPO data could not be loaded.') + '</td></tr>';
+            if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="8">' + escapeHtml(error.message || 'IPO data could not be loaded.') + '</td></tr>';
             updatedLabel.textContent = 'IPO data unavailable';
             fetchedLabel.textContent = 'Check your connection and refresh';
             noticeElement.hidden = false;
@@ -201,11 +197,5 @@
     searchInput.addEventListener('input', render);
     segmentSelect.addEventListener('change', render);
     refreshButton.addEventListener('click', function () { load(true); });
-    document.getElementById('theme-toggle').addEventListener('click', function () {
-        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        try { localStorage.setItem('capital_desk_theme', next); } catch (error) {}
-    });
-
     load(false);
 }());

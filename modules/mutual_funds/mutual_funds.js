@@ -161,11 +161,5 @@
         const row = event.target.closest('tr[data-detail-url]');
         if (row) location.href = row.dataset.detailUrl;
     });
-    document.getElementById('mf-theme-toggle').addEventListener('click', function () {
-        const root = document.documentElement;
-        const theme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', theme);
-        try { localStorage.setItem('capital_desk_theme', theme); } catch (error) {}
-    });
     loadCatalog();
 })();

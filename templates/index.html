@@ -558,6 +558,32 @@
             padding-bottom: 5px;
             margin-bottom: 20px;
         }
+        #watchlist-selector-mount {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 0;
+            scrollbar-width: none;
+            overscroll-behavior-x: contain;
+        }
+        #watchlist-selector-mount::-webkit-scrollbar { display: none; }
+        .watchlist-selector-row { display:flex; align-items:center; gap:14px; width:100%; min-width:0; }
+        .watchlist-selector-row > span { flex:0 0 auto; }
+        .watchlist-create-action { flex:0 0 auto; display:flex; align-items:center; }
+        .watchlist-create-action button { white-space:nowrap; }
+        .selector-dragging { opacity:.45; }
+        .selector-drop-target { box-shadow:inset 0 0 0 2px var(--btn-primary-bg); }
+        .wl-overflow { position:relative; display:inline-flex; }
+        .wl-overflow-trigger { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; padding:0; border:1px solid var(--border-color); border-radius:7px; background:var(--bg-card); color:var(--text-primary); font-size:20px; line-height:1; cursor:pointer; }
+        .wl-overflow-trigger:hover { background:var(--table-hover-bg); }
+        .wl-overflow-menu { display:none; position:absolute; top:calc(100% + 5px); right:0; min-width:165px; padding:5px; z-index:1002; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-card); box-shadow:var(--shadow-md); }
+        .wl-overflow.open .wl-overflow-menu { display:block; }
+        .wl-overflow-menu button { display:flex; width:100%; align-items:center; gap:8px; padding:8px 10px; border:0; border-radius:5px; background:transparent; color:var(--text-primary); text-align:left; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+        .wl-overflow-menu button:hover { background:var(--table-hover-bg); }
+        .wl-overflow-menu button.danger { color:#ef4444; }
+        .wl-overflow-divider { height:1px; margin:4px 2px; background:var(--border-color); }
         .pf-select-btn {
             padding: 7px 16px;
             border-radius: 6px;
@@ -1001,35 +1027,6 @@
         .form-group input, .form-group select { width: 100%; box-sizing: border-box; }
 
         /* Dropdown Options Menu Styles */
-        .menu-dropdown-wrapper { position: relative; display: inline-block; }
-        .menu-dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 110%;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: var(--shadow-md);
-            min-width: 210px;
-            z-index: 1000;
-            padding: 6px 0;
-        }
-        .menu-dropdown-content.show { display: block; }
-        .menu-item {
-            padding: 10px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.15s ease, color 0.15s ease;
-        }
-        .menu-item:hover { background-color: var(--table-hover-bg); color: var(--btn-primary-bg); }
-        .menu-divider { height: 1px; background-color: var(--border-color); margin: 4px 0; }
-
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spinning { animation: spin 0.8s linear infinite; }
 
@@ -1296,12 +1293,11 @@
                     <button type="button" onclick="togglePrivacyMode()" class="btn-header-action" title="Privacy Mode" style="padding: 4px 8px; font-size: 12px;">
                         👁️
                     </button>
-                    <button type="button" onclick="toggleSettingsMenu(event)" class="btn-header-action" title="User Menu" style="padding: 4px 8px; font-size: 12px;">
-                        👤 ▾
-                    </button>
-<<<<<<< HEAD
-=======
-                    <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                    <div class="menu-dropdown-wrapper">
+                        <button type="button" onclick="toggleSettingsMenu(event)" class="btn-header-action" title="User Menu" style="padding: 4px 8px; font-size: 12px;">
+                            👤 ▾
+                        </button>
+                        <div id="mobile-settings-menu-dropdown" class="menu-dropdown-content">
                         <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
                             <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
                         </div>
@@ -1312,15 +1308,6 @@
                         <div class="menu-item" onclick="openStockNewsModal(''); closeSettingsMenu();">
                             📰 Latest Market News
                         </div>
-                        <a href="/ipos" class="menu-item" style="text-decoration: none;">
-                            📈 IPOs &amp; GMP Tracker
-                        </a>
-                        <a href="/mutual-funds" class="menu-item" style="text-decoration: none;">
-                            📊 Mutual Funds
-                        </a>
-                        <a href="/plan-calculator" class="menu-item" style="text-decoration: none;">
-                            🧮 Plan Calculator
-                        </a>
                         <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">
                             👁️ Toggle Privacy Mode
                         </div>
@@ -1340,7 +1327,7 @@
                             🚪 Log Out
                         </div>
                     </div>
->>>>>>> Sampath_Oct_26
+                    </div>
                 </div>
             </div>
 
@@ -1355,13 +1342,10 @@
             <!-- Selector & Watchlist Creation Bar -->
             <div class="card-container" style="padding: 16px 24px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div class="watchlist-selector-row">
                         <span style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">WATCHLISTS:</span>
                         <div class="portfolio-selector-bar" id="watchlist-selector-mount" style="margin-bottom: 0;"></div>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <button onclick="openCreateWatchlistModal()">+ Create Watchlist</button>
-                        <button class="danger" onclick="deleteActiveWatchlist()">Delete Watchlist</button>
+                        <div class="watchlist-create-action"><button onclick="openCreateWatchlistModal()">+ Create Watchlist</button></div>
                     </div>
                 </div>
             </div>
@@ -1385,7 +1369,6 @@
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         <button class="btn-primary" onclick="openCreatePortfolioModal()">+ Create Portfolio</button>
-                        <button class="danger" onclick="deleteActivePortfolio()">Delete Portfolio</button>
                     </div>
                 </div>
             </div>
@@ -4528,6 +4511,48 @@
             refreshPrices();
         }
 
+        async function saveWatchlistOrder(orderedNames) {
+            try {
+                const response = await fetch('/api/watchlists/order', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ names: orderedNames })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Could not save watchlist order');
+                watchlistsData = data.watchlists;
+                renderWatchlists();
+            } catch (error) {
+                showToast(error.message || 'Could not save watchlist order', 'error');
+                await fetchWatchlists();
+            }
+        }
+
+        function moveWatchlist(sourceName, targetName) {
+            const names = Object.keys(watchlistsData || {});
+            const sourceIndex = names.indexOf(sourceName);
+            const targetIndex = names.indexOf(targetName);
+            if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
+            names.splice(sourceIndex, 1);
+            names.splice(sourceIndex < targetIndex ? targetIndex - 1 : targetIndex, 0, sourceName);
+            watchlistsData = Object.fromEntries(names.map(name => [name, watchlistsData[name]]));
+            renderWatchlists();
+            saveWatchlistOrder(names);
+        }
+
+        function toggleActionOverflow(event, menuId) {
+            if (event) event.stopPropagation();
+            const target = document.getElementById(menuId);
+            if (!target) return;
+            document.querySelectorAll('.wl-overflow.open').forEach(menu => { if (menu !== target) menu.classList.remove('open'); });
+            target.classList.toggle('open');
+        }
+
+        function closeActionOverflow(event) {
+            if (event) event.stopPropagation();
+            document.querySelectorAll('.wl-overflow.open').forEach(menu => menu.classList.remove('open'));
+        }
+
         function selectWatchlist(name) {
             activeWatchlistName = name;
             renderWatchlists();
@@ -4646,6 +4671,15 @@
             const selectorMount = document.getElementById('watchlist-selector-mount');
             if (selectorMount) {
                 selectorMount.innerHTML = '';
+                if (!selectorMount.dataset.wheelBound) {
+                    selectorMount.addEventListener('wheel', event => {
+                        if (selectorMount.scrollWidth > selectorMount.clientWidth && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+                            selectorMount.scrollLeft += event.deltaY;
+                            event.preventDefault();
+                        }
+                    }, { passive: false });
+                    selectorMount.dataset.wheelBound = 'true';
+                }
                 const wlNames = Object.keys(watchlistsData);
                 if (wlNames.length === 0) {
                     selectorMount.innerHTML = '<span style="color:var(--text-secondary); font-size:13px;">No watchlists created yet.</span>';
@@ -4654,7 +4688,25 @@
                         const btn = document.createElement('button');
                         btn.className = `pf-select-btn ${name === activeWatchlistName ? 'active' : ''}`;
                         btn.innerText = name;
+                        btn.draggable = true;
+                        btn.dataset.watchlistName = name;
                         btn.onclick = () => selectWatchlist(name);
+                        btn.ondragstart = event => {
+                            event.dataTransfer.setData('text/plain', name);
+                            event.dataTransfer.effectAllowed = 'move';
+                            btn.classList.add('selector-dragging');
+                        };
+                        btn.ondragend = () => {
+                            btn.classList.remove('selector-dragging');
+                            selectorMount.querySelectorAll('.selector-drop-target').forEach(item => item.classList.remove('selector-drop-target'));
+                        };
+                        btn.ondragover = event => { event.preventDefault(); btn.classList.add('selector-drop-target'); };
+                        btn.ondragleave = () => btn.classList.remove('selector-drop-target');
+                        btn.ondrop = event => {
+                            event.preventDefault();
+                            btn.classList.remove('selector-drop-target');
+                            moveWatchlist(event.dataTransfer.getData('text/plain'), name);
+                        };
                         selectorMount.appendChild(btn);
                     });
                 }
@@ -4749,24 +4801,18 @@
             officialFeedsBtn.innerHTML = '◉ Official Feeds';
             officialFeedsBtn.onclick = () => openWatchlistOfficialFeeds(activeWatchlistName);
             watchlistFileControls.appendChild(officialFeedsBtn);
-
-            const exportWlBtn = document.createElement('button');
-            exportWlBtn.className = 'btn-secondary';
-            exportWlBtn.style.padding = '8px 14px';
-            exportWlBtn.style.fontSize = '12px';
-            exportWlBtn.title = 'Download all stocks in the current watchlist as comma-separated TXT';
-            exportWlBtn.innerHTML = '⇩ Export';
-            exportWlBtn.onclick = () => exportActiveWatchlistToTxt();
-            watchlistFileControls.appendChild(exportWlBtn);
-
-            const importWlBtn = document.createElement('button');
-            importWlBtn.className = 'btn-secondary';
-            importWlBtn.style.padding = '8px 14px';
-            importWlBtn.style.fontSize = '12px';
-            importWlBtn.title = 'Import comma-separated stock symbols from TXT';
-            importWlBtn.innerHTML = '⇧ Import';
-            importWlBtn.onclick = () => openWatchlistTxtImportModal();
-            watchlistFileControls.appendChild(importWlBtn);
+            const watchlistOverflow = document.createElement('div');
+            watchlistOverflow.className = 'wl-overflow';
+            watchlistOverflow.id = 'watchlist-overflow-menu';
+            watchlistOverflow.innerHTML = `
+                <button type="button" class="wl-overflow-trigger" aria-label="More watchlist actions" title="More actions" onclick="toggleActionOverflow(event, 'watchlist-overflow-menu')">⋮</button>
+                <div class="wl-overflow-menu" role="menu">
+                    <button type="button" role="menuitem" onclick="exportActiveWatchlistToTxt(); closeActionOverflow(event)">⇩ Export</button>
+                    <button type="button" role="menuitem" onclick="openWatchlistTxtImportModal(); closeActionOverflow(event)">⇧ Import</button>
+                    <div class="wl-overflow-divider"></div>
+                    <button type="button" class="danger" role="menuitem" onclick="deleteActiveWatchlist(); closeActionOverflow(event)">Delete Watchlist</button>
+                </div>`;
+            watchlistFileControls.appendChild(watchlistOverflow);
 
             controlsDiv.appendChild(watchlistFileControls);
 
@@ -6030,7 +6076,15 @@
             headerBar.className = 'header-bar';
             headerBar.innerHTML = `
                 <h2>${escapeHtml(activePortfolioName)}</h2>
-                <button onclick="openAddHoldingModal()">+ Add Holding</button>
+                <div class="actions">
+                    <button onclick="openAddHoldingModal()">+ Add Holding</button>
+                    <div class="wl-overflow" id="portfolio-overflow-menu">
+                        <button type="button" class="wl-overflow-trigger" aria-label="More portfolio actions" title="More actions" onclick="toggleActionOverflow(event, 'portfolio-overflow-menu')">⋮</button>
+                        <div class="wl-overflow-menu" role="menu">
+                            <button type="button" class="danger" role="menuitem" onclick="deleteActivePortfolio(); closeActionOverflow(event)">Delete Portfolio</button>
+                        </div>
+                    </div>
+                </div>
             `;
 
             const summaryGrid = document.createElement('div');
@@ -9269,17 +9323,6 @@
             hideDrawingBanner();
         }
 
-        function toggleSettingsMenu(event) {
-            if (event) event.stopPropagation();
-            const dropdown = document.getElementById('settings-menu-dropdown');
-            if (dropdown) dropdown.classList.toggle('show');
-        }
-
-        function closeSettingsMenu() {
-            const dropdown = document.getElementById('settings-menu-dropdown');
-            if (dropdown) dropdown.classList.remove('show');
-        }
-
         // =========================================================
         // PRICE ALERTS & NOTIFICATIONS LOGIC
         // =========================================================
@@ -9513,9 +9556,11 @@
             if (event.target == createAlertModal) closeCreateAlertModal();
             if (event.target == notifModal) closeNotificationsModal();
 
-            const menuDropdown = document.getElementById('settings-menu-dropdown');
-            if (menuDropdown && !event.target.closest('.menu-dropdown-wrapper')) {
-                menuDropdown.classList.remove('show');
+            if (!event.target.closest('.wl-overflow')) closeActionOverflow();
+
+            const menuDropdown = document.querySelector('.menu-dropdown-content.show');
+            if (menuDropdown && !event.target.closest('.menu-dropdown-wrapper, .sidebar-user-wrapper')) {
+                closeSettingsMenu();
             }
 
             const plusMenu = document.getElementById('plusActionMenu');

@@ -16,24 +16,11 @@
     </script>
 </head>
 <body>
+    {% set standalone_module = true %}{% set active_workspace_module = 'ipos' %}{% include 'components/sidebar.html' %}
     <main class="page-shell">
-        <header class="app-header">
-            <a class="brand" href="/" aria-label="Back to Capital Desk">
-                <img src="/static/logo.png" alt="Capital Desk">
-                <span>
-                    <strong>Capital Desk</strong>
-                    <small>Portfolio &amp; Market Intelligence</small>
-                </span>
-            </a>
-            <div class="header-actions">
-                <span class="page-label">IPO Tracker</span>
-                <button type="button" id="theme-toggle" class="icon-button" title="Toggle theme" aria-label="Toggle theme">◐</button>
-                <a class="back-link" href="/">← Back to workspace</a>
-            </div>
-        </header>
-
         <section class="intro-row">
             <div>
+                <button type="button" class="cd-module-menu-toggle" onclick="toggleMobileSidebar(true)" aria-label="Open navigation">☰</button>
                 <p class="eyebrow">PRIMARY MARKET</p>
                 <h1>IPOs &amp; GMP</h1>
                 <p class="intro-copy">Track upcoming, open, and recently closed public issues in one place.</p>
@@ -87,12 +74,11 @@
                             <th>Subscription</th>
                             <th>GMP median / range</th>
                             <th>GMP %</th>
-                            <th>Implied price</th>
                             <th>Sources</th>
                         </tr>
                     </thead>
                     <tbody id="ipo-rows">
-                        <tr><td class="table-message" colspan="9">Loading IPOs and GMP data…</td></tr>
+                        <tr><td class="table-message" colspan="8">Loading IPOs and GMP data…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -101,7 +87,7 @@
 
         <aside class="source-note">
             <strong>About these figures</strong>
-            <p>IPO and GMP fields are provided by an external aggregator. GMP is an unofficial, unregulated market indication; it is not published by SEBI or the exchanges and does not predict listing performance. “Implied price” is only upper price band + reported GMP.</p>
+            <p>IPO and GMP fields are provided by an external aggregator. GMP is an unofficial, unregulated market indication; it is not published by SEBI or the exchanges and does not predict listing performance.</p>
             <div class="source-links">
                 <a id="provider-link" href="https://gmptoday.in/" target="_blank" rel="noopener noreferrer">GMP data source</a>
                 <a id="official-link" href="https://www.nseindia.com/market-data/all-upcoming-issues-ipo" target="_blank" rel="noopener noreferrer">Verify issues on NSE</a>

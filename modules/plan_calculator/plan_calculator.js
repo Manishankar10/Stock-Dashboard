@@ -567,11 +567,5 @@
             renderInputs(); updateResults();
         }
     });
-    document.getElementById('pc-theme-toggle').addEventListener('click', () => {
-        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        try { localStorage.setItem('capital_desk_theme', next); } catch (error) { /* Theme can still change for this page. */ }
-    });
-
     renderCalculator();
 }());

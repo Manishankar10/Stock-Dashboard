@@ -88,7 +88,6 @@ def normalize_ipo(item):
     gmp = _number(item.get("median_gmp", item.get("gmp")))
     upper_price = _upper_price(item.get("price_band"))
     gmp_pct = (gmp / upper_price * 100.0) if gmp is not None and upper_price and upper_price > 0 else None
-    implied_listing_price = upper_price + gmp if upper_price is not None and gmp is not None else None
     slug = str(item.get("slug") or "").strip(" /")
 
     return {
@@ -107,7 +106,6 @@ def normalize_ipo(item):
         "gmp_min": _number(item.get("min_gmp")),
         "gmp_max": _number(item.get("max_gmp")),
         "gmp_pct": gmp_pct,
-        "implied_listing_price": implied_listing_price,
         "source_count": int(_number(item.get("n_sources")) or 0),
         "confidence": str(item.get("confidence") or "")[:30],
         "source_rows": _safe_source_rows(item.get("source_rows")),

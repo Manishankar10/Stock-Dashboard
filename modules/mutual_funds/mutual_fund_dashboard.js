@@ -538,13 +538,6 @@
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModals(); });
     bindPicker('investment');
     bindPicker('sip');
-    document.getElementById('mf-theme-toggle').addEventListener('click', function () {
-        const root = document.documentElement;
-        const theme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', theme);
-        try { localStorage.setItem('capital_desk_theme', theme); } catch (error) {}
-    });
-
     document.getElementById('portfolio-value').setAttribute('title', 'Latest AMFI NAV valuation');
     renderPlans([]);
     loadPortfolio();

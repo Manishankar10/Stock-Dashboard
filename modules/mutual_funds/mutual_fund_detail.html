@@ -12,10 +12,11 @@
     <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
 </head>
 <body>
+    {% set standalone_module = true %}{% set active_workspace_module = 'mutual-funds' %}{% include 'components/sidebar.html' %}
     <main class="mf-shell mf-detail-shell" data-scheme-code="{{ scheme_code }}">
         <header class="mf-header">
-            <a class="mf-brand" href="/" aria-label="Back to Capital Desk"><img src="/static/logo.png" alt="Capital Desk"><span><strong>Capital Desk</strong><small>Portfolio &amp; Market Intelligence</small></span></a>
-            <nav class="mf-header-actions"><button class="mf-icon-button" id="mf-theme-toggle" type="button" aria-label="Toggle theme">◐</button><a class="mf-back-link" href="/mutual-funds/dashboard">My Dashboard →</a><a class="mf-back-link" href="/mutual-funds">← Explore funds</a></nav>
+            <strong class="cd-module-page-title">Fund Details</strong>
+            <nav class="mf-header-actions"><button class="cd-module-menu-toggle" type="button" onclick="toggleMobileSidebar(true)" aria-label="Open navigation">☰</button><button class="mf-icon-button" id="mf-theme-toggle" type="button" aria-label="Toggle theme">◐</button><a class="mf-back-link" href="/mutual-funds/dashboard">My Dashboard →</a><a class="mf-back-link" href="/mutual-funds">← Explore funds</a></nav>
         </header>
 
         <div id="detail-error" class="mf-notice" hidden></div>

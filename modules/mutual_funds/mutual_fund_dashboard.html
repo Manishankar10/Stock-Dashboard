@@ -12,14 +12,10 @@
     <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
 </head>
 <body>
+    {% set standalone_module = true %}{% set active_workspace_module = 'mutual-funds' %}{% include 'components/sidebar.html' %}
     <main class="mf-shell">
-        <header class="mf-header">
-            <a class="mf-brand" href="/" aria-label="Back to Capital Desk"><img src="/static/logo.png" alt="Capital Desk"><span><strong>Capital Desk</strong><small>Portfolio &amp; Market Intelligence</small></span></a>
-            <nav class="mf-header-actions"><span class="mf-page-label">My Mutual Fund Portfolio</span><button class="mf-icon-button" id="mf-theme-toggle" type="button" aria-label="Toggle theme">◐</button><a class="mf-back-link" href="/mutual-funds">← Explore schemes</a></nav>
-        </header>
-
         <section class="mf-intro-row">
-            <div><p class="mf-eyebrow">YOUR INVESTMENT TRACKER</p><h1>My Mutual Fund Portfolio</h1><p class="mf-intro-copy">Track SIPs, lump-sum investments, units, and portfolio performance in one place.</p></div>
+            <div><button class="cd-module-menu-toggle" type="button" onclick="toggleMobileSidebar(true)" aria-label="Open navigation">☰</button><p class="mf-eyebrow">YOUR INVESTMENT TRACKER</p><h1>My Mutual Fund Portfolio</h1><p class="mf-intro-copy">Track SIPs, lump-sum investments, units, and portfolio performance in one place.</p></div>
             <div class="mf-dashboard-actions"><select class="mf-dashboard-fund-filter" id="dashboard-scheme" aria-label="Filter dashboard by fund"><option value="">All funds</option></select><button class="mf-secondary-button" id="portfolio-refresh" type="button">↻ Refresh NAVs</button><button class="mf-primary-button" id="open-sip" type="button">＋ Start SIP</button></div>
         </section>
 
