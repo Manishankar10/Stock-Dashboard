@@ -2,6 +2,7 @@ import os
 
 from flask import Blueprint, jsonify, request, send_from_directory
 
+from .official_feeds_ai import OfficialFeedSummaryError, summarize_official_filing
 from .official_feeds_provider import OfficialFeedsProvider
 
 
@@ -28,6 +29,29 @@ def get_watchlist_official_feeds():
         return jsonify({"error": "Official feeds module is not initialized."}), 500
 
     return _login_required(_get_feed_response)()
+
+
+@official_feeds_bp.post("/summarize")
+def summarize_watchlist_filing():
+    if not _login_required:
+        return jsonify({"error": "Official feeds module is not initialized."}), 500
+    return _login_required(_summarize_filing_response)()
+
+
+def _summarize_filing_response():
+    data = request.get_json(silent=True) or {}
+    try:
+        summary = summarize_official_filing(
+            url=data.get("url"),
+            company=data.get("company"),
+            subject=data.get("subject"),
+            details=data.get("details"),
+        )
+        return jsonify({"summary": summary})
+    except OfficialFeedSummaryError as exc:
+        message = str(exc)
+        status = 503 if "GEMINI_API_KEY" in message else (429 if "rate limit" in message else 502)
+        return jsonify({"error": message}), status
 
 
 def _get_feed_response():

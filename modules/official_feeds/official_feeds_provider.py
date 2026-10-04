@@ -65,30 +65,33 @@ class OfficialFeedsProvider:
         records = self._fetch_symbol(key, page)
         with self._lock:
             previous = self._cache.get((key, max(1, int(page)) - 1)) if int(page) > 1 else None
-            if previous and {record.get("id") for record in records} == {record.get("id") for record in previous[1]}:
+            if previous and {record.get("id") for record in records[0]} == {record.get("id") for record in previous[1][0]}:
                 # Some exchange endpoints ignore page parameters. Stop safely
                 # if the next request simply repeats the preceding batch.
-                records = []
+                records = ([], False)
             self._cache[cache_key] = (now, records)
         return records
 
     def _fetch_symbol(self, symbol, page=1):
         if not symbol or symbol.startswith("^") or "=F" in symbol:
-            return []
+            return [], False
 
         jobs = []
         with ThreadPoolExecutor(max_workers=2) as executor:
             jobs.append(executor.submit(self._fetch_nse, symbol, page))
             bse_code = self._resolve_bse_scrip_code(symbol)
             if bse_code:
-                jobs.append(executor.submit(self._fetch_bse, bse_code, page))
+                jobs.append(executor.submit(self._fetch_bse, bse_code, page, symbol))
             records = []
+            has_more = False
             for job in as_completed(jobs):
                 try:
-                    records.extend(job.result())
+                    source_records, source_has_more = job.result()
+                    records.extend(source_records)
+                    has_more = has_more or source_has_more
                 except Exception:
                     continue
-        return records
+        return records, has_more
 
     def _resolve_bse_scrip_code(self, symbol):
         if symbol.isdigit():
@@ -153,13 +156,14 @@ class OfficialFeedsProvider:
             response.raise_for_status()
             payload = response.json()
         except (requests.RequestException, ValueError):
-            return []
+            return [], False
 
         if isinstance(payload, dict):
             payload = payload.get("data", payload.get("records", []))
         if not isinstance(payload, list):
-            return []
+            return [], False
 
+        has_more = len(payload) >= PAGE_SIZE
         output = []
         for item in payload[:PAGE_SIZE]:
             subject = str(item.get("desc") or item.get("subject") or item.get("SUBJECT") or "").strip()
@@ -178,9 +182,9 @@ class OfficialFeedsProvider:
                 "source_page": NSE_ANNOUNCEMENTS.format(symbol=symbol),
                 "id": str(item.get("seq_id") or item.get("id") or f"NSE-{symbol}-{subject}-{item.get('an_dt', '')}"),
             })
-        return output
+        return output, has_more
 
-    def _fetch_bse(self, scrip_code, page=1):
+    def _fetch_bse(self, scrip_code, page=1, watchlist_symbol=None):
         today = date.today()
         params = {
             "pageno": max(1, int(page)),
@@ -202,9 +206,10 @@ class OfficialFeedsProvider:
             response.raise_for_status()
             payload = response.json()
         except (requests.RequestException, ValueError):
-            return []
+            return [], False
 
         rows = payload.get("Table", []) if isinstance(payload, dict) else []
+        has_more = len(rows) >= PAGE_SIZE
         output = []
         for item in rows[:PAGE_SIZE]:
             subject = str(item.get("SUBCATNAME") or item.get("CATEGORYNAME") or item.get("HEADLINE") or "").strip()
@@ -212,7 +217,7 @@ class OfficialFeedsProvider:
                 continue
             attachment = str(item.get("ATTACHMENTNAME") or "").strip()
             output.append({
-                "symbol": scrip_code,
+                "symbol": _clean_symbol(watchlist_symbol or scrip_code),
                 "company": item.get("SLONGNAME") or item.get("LONG_NAME") or scrip_code,
                 "subject": subject,
                 "subcategory": subject,
@@ -223,17 +228,25 @@ class OfficialFeedsProvider:
                 "source_page": BSE_ANNOUNCEMENTS,
                 "id": str(item.get("NEWSID") or item.get("NEWS_ID") or f"BSE-{scrip_code}-{subject}-{item.get('DT_TM', '')}"),
             })
-        return output
+        return output, has_more
 
     def get_feed(self, symbols, page=1, subcategory="", refresh=False):
-        unique_symbols = list(dict.fromkeys(_clean_symbol(symbol) for symbol in (symbols or []) if _clean_symbol(symbol)))
+        symbol_by_base = {}
+        for raw_symbol in symbols or []:
+            cleaned = _clean_symbol(raw_symbol)
+            if cleaned:
+                symbol_by_base.setdefault(cleaned, str(raw_symbol).strip().upper())
+        unique_symbols = list(symbol_by_base)
         records = []
         failures = 0
+        has_more = False
         with ThreadPoolExecutor(max_workers=min(8, max(1, len(unique_symbols)))) as executor:
             futures = {executor.submit(self._get_cached_symbol_feed, symbol, page, refresh): symbol for symbol in unique_symbols}
             for future in as_completed(futures):
                 try:
-                    records.extend(future.result())
+                    symbol_records, symbol_has_more = future.result()
+                    records.extend(symbol_records)
+                    has_more = has_more or symbol_has_more
                 except Exception:
                     failures += 1
 
@@ -241,6 +254,8 @@ class OfficialFeedsProvider:
         for record in records:
             deduped[record["id"]] = record
         all_records = list(deduped.values())
+        for record in all_records:
+            record["chart_symbol"] = symbol_by_base.get(_clean_symbol(record.get("symbol")), record.get("symbol", ""))
         all_records.sort(key=lambda item: item.get("date", ""), reverse=True)
         subcategories = sorted({item["subcategory"] for item in all_records if item.get("subcategory")}, key=str.casefold)
         selected = [item for item in all_records if not subcategory or item.get("subcategory") == subcategory]
@@ -248,7 +263,7 @@ class OfficialFeedsProvider:
             "items": selected[:PAGE_SIZE],
             "page": max(1, page),
             "page_size": PAGE_SIZE,
-            "has_more": bool(all_records),
+            "has_more": has_more,
             "total": None,
             "subcategories": subcategories,
             "symbols_count": len(unique_symbols),

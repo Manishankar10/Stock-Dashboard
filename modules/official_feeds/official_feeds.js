@@ -43,10 +43,7 @@
                     <span id="of-count" class="of-count"></span>
                 </div>
                 <main id="of-feed" class="of-feed" aria-live="polite"></main>
-                <footer class="of-footer">
-                    <span id="of-page-summary"></span>
-                </footer>
-                <div class="of-source-note">Filings are linked directly to official exchange pages. Recent announcements cover the last 90 days.</div>
+                <div class="of-source-note">Filings link to official exchange pages. AI summaries send the linked public filing to Google Gemini when requested.</div>
             </section>`;
         document.body.appendChild(overlay);
         overlay.addEventListener('click', event => {
@@ -125,7 +122,9 @@
         if (!raw) return 'Date unavailable';
         const date = new Date(raw);
         if (Number.isNaN(date.getTime())) return raw;
-        return date.toLocaleString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const datePart = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+        const timePart = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+        return `${datePart} at ${timePart}`;
     }
 
     function dateGroup(raw) {
@@ -151,17 +150,55 @@
             previousGroup = group;
             const link = item.url || item.source_page || '#';
             return `${heading}<article class="of-item">
-                <div class="of-item-top"><strong>${esc(item.company || item.symbol || 'Company')}</strong><span>${esc(item.source || 'Official')}</span></div>
+                <div class="of-item-top">
+                    <div class="of-company-line"><a class="of-company-link" href="#" data-of-fundamental="${esc(item.chart_symbol || item.symbol || '')}">${esc(item.company || 'Company')}</a><span class="of-name-separator"> - </span><a class="of-symbol-link" href="#" data-of-chart="${esc(item.chart_symbol || item.symbol || '')}">${esc(item.symbol || '')}</a></div>
+                    <span class="of-item-date">${esc(formatDate(item.date))}</span>
+                </div>
                 <a class="of-subject" href="${esc(link)}" target="_blank" rel="noopener noreferrer">${esc(item.subject || 'Company announcement')} ↗</a>
                 ${item.details ? `<p>${esc(item.details)}</p>` : ''}
-                <div class="of-item-meta"><span>${esc(item.symbol || '')}</span><span>${esc(formatDate(item.date))}</span></div>
+                <div class="of-ai-summary">
+                    ${item.ai_summary ? `<div class="of-ai-summary-text"><strong>Short description</strong><div>${esc(item.ai_summary)}</div></div>` : ''}
+                    ${item.summary_error ? `<div class="of-ai-summary-error">${esc(item.summary_error)}</div>` : ''}
+                    <button type="button" class="btn-secondary of-summary-button" data-of-summary-id="${esc(item.id || '')}" ${item.summarizing || item.ai_summary ? 'disabled' : ''}>${item.summarizing ? '<span class="of-spinner"></span> Summarizing…' : (item.ai_summary ? 'Summary ready' : '✨ Short description')}</button>
+                </div>
             </article>`;
         }).join('');
         const empty = !loadedItems.length && !errorText ? '<div class="of-empty">No official company updates match this filter.</div>' : '';
         const loadButton = hasMore && !loading ? '<div class="of-load-more-wrap"><button type="button" class="btn-secondary of-load-more" id="of-load-more">Load more</button></div>' : '';
         const loader = loading && loadedItems.length ? '<div class="of-more-loading"><span class="of-spinner"></span>Loading more updates…</div>' : '';
+        const endMessage = !hasMore && !loading && !errorText && loadedItems.length ? '<div class="of-end-message">that\'s it folks..</div>' : '';
         const error = errorText ? `<div class="of-error">${esc(errorText)}</div>` : '';
-        feed.innerHTML = cards + empty + loader + error + loadButton;
+        feed.innerHTML = cards + empty + loader + error + loadButton + endMessage;
+        feed.querySelectorAll('[data-of-fundamental]').forEach(link => link.addEventListener('click', event => {
+            event.preventDefault();
+            if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(link.dataset.ofFundamental);
+        }));
+        feed.querySelectorAll('[data-of-chart]').forEach(link => link.addEventListener('click', event => {
+            event.preventDefault();
+            if (typeof window.openInHouseChart === 'function') window.openInHouseChart(link.dataset.ofChart);
+        }));
+        feed.querySelectorAll('.of-summary-button:not(:disabled)').forEach(button => button.addEventListener('click', async () => {
+            const item = loadedItems.find(candidate => String(candidate.id || '') === button.dataset.ofSummaryId && !candidate.ai_summary && !candidate.summarizing);
+            if (!item) return;
+            item.summarizing = true;
+            item.summary_error = '';
+            renderItems([]);
+            try {
+                const response = await fetch(`${API_URL}/summarize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: item.url || item.source_page, company: item.company, subject: item.subject, details: item.details })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Could not summarize this filing.');
+                item.ai_summary = result.summary;
+            } catch (error) {
+                item.summary_error = error.message || 'Could not summarize this filing.';
+            } finally {
+                item.summarizing = false;
+                renderItems([]);
+            }
+        }));
         const moreButton = feed.querySelector('#of-load-more');
         if (moreButton) moreButton.addEventListener('click', () => {
             if (!loading && hasMore) { currentPage++; loadPage(); }
@@ -176,7 +213,7 @@
         if (loadedItems.length) renderItems([]);
         else feed.innerHTML = '<div class="of-loading"><span class="of-spinner"></span>Loading official exchange announcements for this watchlist…</div>';
         const refreshButton = modal.querySelector('#of-refresh');
-        refreshButton.disabled = true;
+        refreshButton.style.display = 'none';
         let loadError = '';
         try {
             const params = new URLSearchParams({ watchlist: currentWatchlist, page: String(currentPage) });
@@ -200,14 +237,13 @@
             select.value = selected;
             hasMore = Boolean(data.has_more);
             renderItems(data.items);
-            modal.querySelector('#of-count').textContent = `${loadedItems.length} loaded · ${currentSymbol || `${data.symbols_count || 0} watchlist stocks`}`;
-            modal.querySelector('#of-page-summary').textContent = 'Each exchange request is limited to 20 records.';
+            modal.querySelector('#of-count').textContent = `${loadedItems.length} loaded\n${currentSymbol || `${data.symbols_count || 0} watchlist stocks`}`;
             if (data.failed_symbols) modal.querySelector('#of-count').title = `${data.failed_symbols} exchange queries did not return data.`;
         } catch (error) {
             loadError = error.message || 'Could not load official feeds.';
         } finally {
             loading = false;
-            refreshButton.disabled = false;
+            refreshButton.style.display = '';
             renderItems([], loadError);
         }
     }

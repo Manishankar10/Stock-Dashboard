@@ -23,6 +23,9 @@
       pip install -r requirements.txt
 
   Step 3: Launch the Server
+    - Optional Gemini summaries: copy '.env.example' to '.env' in the project
+      root and set GEMINI_API_KEY there. The same app-wide key is used by all
+      AI summary features. The local '.env' file is excluded from Git.
     - Windows: Double-click 'run.bat' OR run in PowerShell/CMD:
         python app.py
     - Mac / Linux:

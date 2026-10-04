@@ -13,12 +13,17 @@ from functools import wraps
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
+from modules.app_config import load_local_environment
+
+load_local_environment()
 
 app = Flask(__name__)
 
 # Fundamentals module
 from fundamentals import fundamentals_bp
 app.register_blueprint(fundamentals_bp)
+from modules.fundamentals_concalls import fundamentals_concalls_bp
+app.register_blueprint(fundamentals_concalls_bp)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
 
 BASE_DATA_DIR = os.environ.get("PERSISTENT_DATA_DIR", ".")
