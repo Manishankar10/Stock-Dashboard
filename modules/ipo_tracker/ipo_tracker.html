@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPO Tracker | Capital Desk</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('ipo_tracker.ipo_tracker_stylesheet') }}">
+    <script>
+        try {
+            document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light');
+        } catch (error) {}
+    </script>
+</head>
+<body>
+    <main class="page-shell">
+        <header class="app-header">
+            <a class="brand" href="/" aria-label="Back to Capital Desk">
+                <img src="/static/logo.png" alt="Capital Desk">
+                <span>
+                    <strong>Capital Desk</strong>
+                    <small>Portfolio &amp; Market Intelligence</small>
+                </span>
+            </a>
+            <div class="header-actions">
+                <span class="page-label">IPO Tracker</span>
+                <button type="button" id="theme-toggle" class="icon-button" title="Toggle theme" aria-label="Toggle theme">◐</button>
+                <a class="back-link" href="/">← Back to workspace</a>
+            </div>
+        </header>
+
+        <section class="intro-row">
+            <div>
+                <p class="eyebrow">PRIMARY MARKET</p>
+                <h1>IPOs &amp; GMP</h1>
+                <p class="intro-copy">Track upcoming, open, and recently closed public issues in one place.</p>
+            </div>
+            <div class="updated-card" aria-live="polite">
+                <span class="live-dot"></span>
+                <div>
+                    <strong id="updated-label">Loading IPO data…</strong>
+                    <small id="fetched-label">Connecting to the data provider</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="summary-grid" aria-label="IPO counts">
+            <article class="summary-card"><span>Open now</span><strong id="count-open">—</strong></article>
+            <article class="summary-card"><span>Upcoming</span><strong id="count-upcoming">—</strong></article>
+            <article class="summary-card"><span>Recently closed</span><strong id="count-closed">—</strong></article>
+        </section>
+
+        <section class="table-card">
+            <div class="table-toolbar">
+                <div class="filter-tabs" role="tablist" aria-label="Filter IPO status">
+                    <button type="button" class="filter-tab active" data-status-filter="all">All <span id="count-all">—</span></button>
+                    <button type="button" class="filter-tab" data-status-filter="open">Open</button>
+                    <button type="button" class="filter-tab" data-status-filter="upcoming">Upcoming</button>
+                    <button type="button" class="filter-tab" data-status-filter="closed">Recently closed</button>
+                </div>
+                <div class="table-tools">
+                    <label class="search-box">
+                        <span aria-hidden="true">⌕</span>
+                        <input id="ipo-search" type="search" placeholder="Search companies" autocomplete="off">
+                    </label>
+                    <select id="segment-filter" aria-label="Filter by IPO board">
+                        <option value="all">All boards</option>
+                        <option value="mainboard">Mainboard</option>
+                        <option value="sme">SME</option>
+                    </select>
+                    <button type="button" id="refresh-button" class="refresh-button">↻ Refresh</button>
+                </div>
+            </div>
+
+            <div id="feed-notice" class="feed-notice" hidden></div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IPO / Board</th>
+                            <th>Dates / Status</th>
+                            <th>Upper price</th>
+                            <th>Issue / Lot size</th>
+                            <th>Subscription</th>
+                            <th>GMP median / range</th>
+                            <th>GMP %</th>
+                            <th>Implied price</th>
+                            <th>Sources</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ipo-rows">
+                        <tr><td class="table-message" colspan="9">Loading IPOs and GMP data…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="empty-state" class="empty-state" hidden>No IPOs match these filters.</div>
+        </section>
+
+        <aside class="source-note">
+            <strong>About these figures</strong>
+            <p>IPO and GMP fields are provided by an external aggregator. GMP is an unofficial, unregulated market indication; it is not published by SEBI or the exchanges and does not predict listing performance. “Implied price” is only upper price band + reported GMP.</p>
+            <div class="source-links">
+                <a id="provider-link" href="https://gmptoday.in/" target="_blank" rel="noopener noreferrer">GMP data source</a>
+                <a id="official-link" href="https://www.nseindia.com/market-data/all-upcoming-issues-ipo" target="_blank" rel="noopener noreferrer">Verify issues on NSE</a>
+                <span>Provider data attributed under CC BY 4.0</span>
+            </div>
+        </aside>
+        <footer class="page-footer">Market data can be delayed or revised. Verify issue details against official exchange and offer documents.</footer>
+    </main>
+    <script src="{{ url_for('ipo_tracker.ipo_tracker_javascript') }}" defer></script>
+</body>
+</html>

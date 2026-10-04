@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Mutual Fund Portfolio | Capital Desk</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('mutual_funds.mutual_funds_stylesheet') }}">
+    <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
+</head>
+<body>
+    <main class="mf-shell">
+        <header class="mf-header">
+            <a class="mf-brand" href="/" aria-label="Back to Capital Desk"><img src="/static/logo.png" alt="Capital Desk"><span><strong>Capital Desk</strong><small>Portfolio &amp; Market Intelligence</small></span></a>
+            <nav class="mf-header-actions"><span class="mf-page-label">My Mutual Fund Portfolio</span><button class="mf-icon-button" id="mf-theme-toggle" type="button" aria-label="Toggle theme">◐</button><a class="mf-back-link" href="/mutual-funds">← Explore schemes</a></nav>
+        </header>
+
+        <section class="mf-intro-row">
+            <div><p class="mf-eyebrow">YOUR INVESTMENT TRACKER</p><h1>My Mutual Fund Portfolio</h1><p class="mf-intro-copy">Track SIPs, lump-sum investments, units, and portfolio performance in one place.</p></div>
+            <div class="mf-dashboard-actions"><select class="mf-dashboard-fund-filter" id="dashboard-scheme" aria-label="Filter dashboard by fund"><option value="">All funds</option></select><button class="mf-secondary-button" id="portfolio-refresh" type="button">↻ Refresh NAVs</button><button class="mf-primary-button" id="open-sip" type="button">＋ Start SIP</button></div>
+        </section>
+
+        <div id="portfolio-feed-notice" class="mf-notice" hidden></div>
+
+        <section class="mf-summary-grid mf-portfolio-summary" aria-label="Portfolio summary">
+            <article class="mf-summary-card"><span>Total invested</span><strong id="portfolio-invested">—</strong><small>Recorded purchases</small></article>
+            <article class="mf-summary-card"><span>Current value</span><strong id="portfolio-value">—</strong><small id="portfolio-nav-date">Latest published NAV</small></article>
+            <article class="mf-summary-card"><span>Unrealized gain / loss</span><strong id="portfolio-pnl">—</strong><small id="portfolio-return">—</small></article>
+            <article class="mf-summary-card"><span>Annualized return</span><strong id="portfolio-xirr">—</strong><small>Portfolio XIRR estimate</small></article>
+        </section>
+
+        <section class="mf-panel mf-performance-panel">
+            <div class="mf-panel-heading"><div><h2>Portfolio performance</h2><p id="performance-subtitle">NAV history for your portfolio or a selected scheme.</p></div><div class="mf-panel-tools"><select id="performance-range" aria-label="Performance period"><option value="all">All history</option><option value="1y">1 year</option><option value="6m">6 months</option><option value="1m">1 month</option></select><button class="mf-secondary-button mf-small-button" id="load-performance" type="button">Load history</button></div></div>
+            <div id="performance-message" class="mf-chart-message">Start a SIP or One-Time investment to build your performance history.</div>
+            <div id="performance-chart" class="mf-chart" hidden><div class="mf-chart-legend"><span><i class="mf-legend-value"></i> Portfolio value</span><span><i class="mf-legend-invested"></i> Invested</span></div><svg id="performance-svg" viewBox="0 0 960 300" role="img" aria-label="Mutual fund portfolio value and invested amount over time" preserveAspectRatio="none"></svg><div class="mf-chart-dates"><span id="chart-start-date"></span><span id="chart-end-date"></span></div></div>
+        </section>
+
+        <section class="mf-panel">
+            <div class="mf-panel-heading"><div><h2>Holdings</h2><p>Units are valued using the latest published NAV available from AMFI.</p></div><span id="holding-count" class="mf-count-pill">0 schemes</span></div>
+            <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Units</th><th class="mf-right">Invested</th><th class="mf-right">Latest NAV</th><th>NAV date</th><th class="mf-right">Current value</th><th class="mf-right">Gain / loss</th></tr></thead><tbody id="holding-rows"><tr><td colspan="7" class="mf-table-message">Loading portfolio…</td></tr></tbody></table></div>
+        </section>
+
+        <section class="mf-panel mf-missed-panel">
+            <div class="mf-panel-heading"><div><h2>Missed SIP installments</h2><p>Record an installment at the first available AMFI NAV on or after its scheduled date.</p></div><div class="mf-panel-tools"><span id="missed-count" class="mf-count-pill">0 due</span><button class="mf-secondary-button mf-small-button" id="clear-due" type="button" disabled>Clear Due</button></div></div>
+            <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Scheduled date</th><th class="mf-right">Amount</th><th>AMFI NAV date</th><th></th></tr></thead><tbody id="missed-rows"><tr><td colspan="5" class="mf-table-message">Loading SIP schedule…</td></tr></tbody></table></div>
+        </section>
+
+        <section class="mf-panel">
+            <div class="mf-panel-heading"><div><h2>Monthly investment plans</h2><p>Your recurring investment schedule and status.</p></div><button class="mf-secondary-button mf-small-button" id="plan-start-button" type="button">＋ Start SIP</button></div>
+            <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Installment day</th><th>Starts</th><th class="mf-right">Monthly amount</th><th>Status</th><th></th></tr></thead><tbody id="sip-rows"><tr><td colspan="6" class="mf-table-message">Loading monthly plans…</td></tr></tbody></table></div>
+        </section>
+
+        <section class="mf-panel">
+            <div class="mf-panel-heading"><div><h2>Investment history</h2><p>Your recorded lump sums and SIP installments.</p></div></div>
+            <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Investment date</th><th>Scheme</th><th>Type</th><th class="mf-right">Amount</th><th class="mf-right">NAV</th><th>NAV date</th><th class="mf-right">Units</th></tr></thead><tbody id="transaction-rows"><tr><td colspan="7" class="mf-table-message">Loading investment history…</td></tr></tbody></table></div>
+        </section>
+
+        <aside class="mf-source-note"><strong>Data and performance</strong><p>Current valuations use the latest NAV available in the AMFI report. Portfolio history uses saved investment records and AMFI history, with scheme-specific MFapi.in history when AMFI does not provide usable rows.</p><div class="mf-source-links"><a href="https://www.amfiindia.com/net-asset-value/nav-download" target="_blank" rel="noopener noreferrer">AMFI NAV and history ↗</a><a href="https://www.amfiindia.com/uploads/Uniformityin_NA_Vapplicability_b8ade2a39e.html" target="_blank" rel="noopener noreferrer">Applicable NAV rules ↗</a><a href="/mutual-funds">Explore schemes →</a></div></aside>
+        <footer class="mf-page-footer">This tracker stores your records in your Capital Desk account. Historical chart availability depends on AMFI's published NAV history.</footer>
+    </main>
+
+    {% include '_mf_investment_modal.html' %}
+
+    <script src="{{ url_for('mutual_funds.mutual_fund_dashboard_javascript') }}" defer></script>
+</body>
+</html>
