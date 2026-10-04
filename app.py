@@ -2055,6 +2055,26 @@ def get_chart_history():
 from smallcases import smallcases_bp, init_smallcases, load_user_smallcases, save_user_smallcases
 init_smallcases(fetcher, login_required, BASE_DATA_DIR)
 app.register_blueprint(smallcases_bp)
+
+# IPO tracker module
+from modules.ipo_tracker import ipo_tracker_bp, init_ipo_tracker
+init_ipo_tracker(login_required)
+app.register_blueprint(ipo_tracker_bp)
+
+# Mutual Funds module
+from modules.mutual_funds import mutual_funds_bp, init_mutual_funds
+init_mutual_funds(login_required, BASE_DATA_DIR)
+app.register_blueprint(mutual_funds_bp)
+
+# Plan calculator module
+from modules.plan_calculator import plan_calculator_bp, init_plan_calculator
+init_plan_calculator(login_required)
+app.register_blueprint(plan_calculator_bp)
+
+# Watchlist official company filings
+from modules.official_feeds import official_feeds_bp, init_official_feeds
+init_official_feeds(login_required, load_data)
+app.register_blueprint(official_feeds_bp)
 API_SETTINGS_FILE = os.path.join(BASE_DATA_DIR, "api_settings.json")
 
 def load_api_settings():
