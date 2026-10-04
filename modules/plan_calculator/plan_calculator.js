@@ -13,6 +13,7 @@
         { id: 'xirr', label: 'XIRR', title: 'XIRR Calculator', description: 'Calculate annualized return from dated cash flows.' },
         { id: 'cagr', label: 'CAGR', title: 'CAGR Calculator', description: 'Calculate the compound annual growth rate over a period.' },
         { id: 'retirement', label: 'Retirement', title: 'Retirement Calculator', description: 'Compare your projected savings with an estimated retirement corpus.' },
+        { id: 'averager', label: 'Averager', title: 'Averager', description: 'Calculate your weighted average share price after an additional buy.' },
     ];
     const configs = {
         sip: [
@@ -70,6 +71,12 @@
             numberField('preReturn', 'Return before retirement (p.a.)', 10, 0, 100, 0.1, '%'),
             numberField('postReturn', 'Return after retirement (p.a.)', 7, 0, 100, 0.1, '%'),
         ],
+        averager: [
+            numberField('existingPrice', 'Existing price per share', 10, 0, null, 0.01, '₹'),
+            numberField('existingQuantity', 'Existing quantity', 10, 0, null, 1, 'shares'),
+            numberField('buyPrice', 'Current buy price', 8, 0, null, 0.01, '₹'),
+            numberField('buyQuantity', 'Current buy quantity', 10, 0, null, 1, 'shares'),
+        ],
     };
     const defaults = {
         sip: { monthly: 25000, returnRate: 12, years: 10, stepEnabled: true, stepRate: 10, inflationEnabled: true, inflationRate: 6 },
@@ -80,6 +87,7 @@
         xirr: { cashflows: [{ date: today, amount: -100000 }, { date: toISODate(addYears(new Date(), 1)), amount: 120000 }] },
         cagr: { startValue: 100000, endValue: 180000, startDate: toISODate(addYears(new Date(), -5)), endDate: today },
         retirement: { age: 30, retireAge: 60, lifeAge: 85, monthlyExpenses: 60000, currentSavings: 500000, monthlySaving: 25000, inflation: 6, preReturn: 10, postReturn: 7 },
+        averager: { existingPrice: 10, existingQuantity: 10, buyPrice: 8, buyQuantity: 10 },
     };
     const state = JSON.parse(JSON.stringify(defaults));
     let active = 'sip';
@@ -149,6 +157,8 @@
             ? 'Contributions are assumed at each month end. Step-up increases the monthly contribution once per year.'
             : active === 'lumpsum'
                 ? 'Optional annual top-ups start after year one. When enabled, each top-up increases by the selected step-up rate.'
+                : active === 'averager'
+                    ? 'Average price = (existing cost + current buy cost) ÷ total shares.'
                 : 'Change the values to update the estimated result and projection.';
         elements.inputs.innerHTML = '<div class="pc-input-grid">' + configs[active].map(renderField).join('') + '</div><p class="pc-input-note">' + note + '</p>';
     }
@@ -161,7 +171,36 @@
         if (active === 'emi') return calculateEmi(input);
         if (active === 'xirr') return calculateXirr(input);
         if (active === 'cagr') return calculateCagr(input);
+        if (active === 'averager') return calculateAverager(input);
         return calculateRetirement(input);
+    }
+
+    function calculateAverager(input) {
+        const existingPrice = Math.max(0, numeric(input.existingPrice, 0));
+        const existingQuantity = Math.max(0, numeric(input.existingQuantity, 0));
+        const buyPrice = Math.max(0, numeric(input.buyPrice, 0));
+        const buyQuantity = Math.max(0, numeric(input.buyQuantity, 0));
+        const existingCost = existingPrice * existingQuantity;
+        const buyCost = buyPrice * buyQuantity;
+        const totalShares = existingQuantity + buyQuantity;
+        const totalAmount = existingCost + buyCost;
+        if (totalShares <= 0) return { error: 'Enter a quantity greater than zero for the existing holding or current buy.' };
+        const averagePrice = totalAmount / totalShares;
+        return {
+            headline: money(averagePrice, 2),
+            resultLabel: 'Average price',
+            caption: 'Weighted average cost per share',
+            metrics: [
+                ['Total shares', totalShares.toLocaleString('en-IN', { maximumFractionDigits: 2 })],
+                ['Total amount', money(totalAmount, 2)],
+                ['Existing holding cost', money(existingCost, 2)],
+                ['Current buy cost', money(buyCost, 2)],
+            ],
+            pie: [
+                { name: 'Existing holding', value: existingCost, color: palette.invested },
+                { name: 'Current buy', value: buyCost, color: palette.pale },
+            ],
+        };
     }
 
     function calculateSip(input) {
@@ -386,7 +425,7 @@
         const extraNotice = result.depletionYears != null
             ? '<div class="pc-summary-extra pc-summary-extra-danger">Corpus depleted after <strong>' + escapeHtml(result.depletionYears.toFixed(1)) + ' years</strong> from now.</div>'
             : result.notice ? '<div class="pc-summary-extra">' + escapeHtml(result.notice) + '</div>' : '';
-        elements.summary.innerHTML = '<div class="pc-result-label">' + escapeHtml(active === 'xirr' || active === 'cagr' ? 'Result' : 'Estimated value') + '</div><div class="pc-result-value">' + escapeHtml(result.headline) + '</div><p class="pc-result-caption">' + escapeHtml(result.caption) + '</p><div class="pc-pie-wrap"><svg class="pc-pie" viewBox="0 0 120 120" aria-label="Breakdown of estimated values"><circle cx="60" cy="60" r="43" fill="none" stroke="var(--pc-hover)" stroke-width="17"></circle>' + circles + '<circle cx="60" cy="60" r="29" fill="var(--pc-card)"></circle></svg><div class="pc-pie-tooltip" hidden></div></div><div class="pc-pie-legend">' + pieValues.map(item => '<span class="pc-legend-item"><i class="pc-legend-swatch" style="background:' + item.color + '"></i>' + escapeHtml(item.name) + '</span>').join('') + '</div><div class="pc-summary-metrics">' + rows + '</div>' + extraNotice;
+        elements.summary.innerHTML = '<div class="pc-result-label">' + escapeHtml(result.resultLabel || (active === 'xirr' || active === 'cagr' ? 'Result' : 'Estimated value')) + '</div><div class="pc-result-value">' + escapeHtml(result.headline) + '</div><p class="pc-result-caption">' + escapeHtml(result.caption) + '</p><div class="pc-pie-wrap"><svg class="pc-pie" viewBox="0 0 120 120" aria-label="Breakdown of estimated values"><circle cx="60" cy="60" r="43" fill="none" stroke="var(--pc-hover)" stroke-width="17"></circle>' + circles + '<circle cx="60" cy="60" r="29" fill="var(--pc-card)"></circle></svg><div class="pc-pie-tooltip" hidden></div></div><div class="pc-pie-legend">' + pieValues.map(item => '<span class="pc-legend-item"><i class="pc-legend-swatch" style="background:' + item.color + '"></i>' + escapeHtml(item.name) + '</span>').join('') + '</div><div class="pc-summary-metrics">' + rows + '</div>' + extraNotice;
         const wrap = elements.summary.querySelector('.pc-pie-wrap');
         const tooltip = wrap.querySelector('.pc-pie-tooltip');
         function showPieTooltip(target, event) {
@@ -412,6 +451,9 @@
     }
 
     function renderChart(result) {
+        const chartCard = elements.chart.closest('.pc-chart-card');
+        if (chartCard) chartCard.hidden = active === 'averager';
+        if (active === 'averager') return;
         elements.chartTitle.textContent = active === 'sip' || active === 'lumpsum' ? 'Investment growth' : active === 'swp' ? 'Withdrawals and remaining corpus' : active === 'fd' ? 'Deposit growth' : active === 'emi' ? 'Repayment breakdown' : active === 'retirement' ? 'Retirement projection' : active === 'cagr' ? 'Value growth' : 'Cash flow projection';
         elements.chartDescription.textContent = result.error ? 'Enter valid values to see a projection.' : active === 'sip' ? 'Invested amount and estimated returns from ' + currentYear + ' through ' + (currentYear + Math.ceil(result.years)) + '.' : 'Projection from ' + currentYear + ' through ' + (currentYear + Math.ceil(result.years || 1)) + '.';
         const legends = result.graph || [];
