@@ -2170,7 +2170,7 @@ app.register_blueprint(mutual_funds_bp)
 
 # Plan calculator module
 from modules.plan_calculator import plan_calculator_bp, init_plan_calculator
-init_plan_calculator(login_required)
+init_plan_calculator(login_required, BASE_DATA_DIR)
 app.register_blueprint(plan_calculator_bp)
 
 # Watchlist official company filings

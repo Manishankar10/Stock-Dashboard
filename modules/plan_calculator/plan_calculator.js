@@ -92,6 +92,8 @@
     const state = JSON.parse(JSON.stringify(defaults));
     let active = 'sip';
     let lastResult = null;
+    let saveTimer = null;
+    let saveQueue = Promise.resolve();
 
     const elements = {
         tabs: document.getElementById('calculator-tabs'),
@@ -128,6 +130,37 @@
     }
     function percent(value, decimals) { return Number.isFinite(value) ? value.toFixed(decimals == null ? 2 : decimals) + '%' : '—'; }
     function safeYears(value, fallback) { return Math.max(1, numeric(value, fallback)); }
+
+    function scheduleStateSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+            const body = JSON.stringify({ active, calculators: state });
+            saveQueue = saveQueue.catch(() => {}).then(() => fetch('/api/plan-calculator/state', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body,
+            })).catch(() => {});
+        }, 350);
+    }
+
+    async function loadSavedState() {
+        try {
+            const response = await fetch('/api/plan-calculator/state', { cache: 'no-store', credentials: 'same-origin' });
+            if (!response.ok) return;
+            const saved = await response.json();
+            if (saved.calculators && typeof saved.calculators === 'object') {
+                Object.keys(defaults).forEach(id => {
+                    const values = saved.calculators[id];
+                    if (values && typeof values === 'object' && !Array.isArray(values)) state[id] = { ...state[id], ...values };
+                });
+                if (!Array.isArray(state.xirr.cashflows)) state.xirr.cashflows = defaults.xirr.cashflows;
+            }
+            if (calculators.some(item => item.id === saved.active)) active = saved.active;
+        } catch (error) {
+            // Keep calculator defaults available when saved settings cannot be reached.
+        }
+    }
 
     function renderTabs() {
         elements.tabs.innerHTML = calculators.map(item => '<button class="pc-tab' + (item.id === active ? ' active' : '') + '" type="button" role="tab" aria-selected="' + (item.id === active) + '" data-calculator="' + item.id + '">' + item.label + '</button>').join('');
@@ -532,6 +565,7 @@
         const button = event.target.closest('[data-calculator]');
         if (!button) return;
         active = button.getAttribute('data-calculator');
+        scheduleStateSave();
         renderCalculator();
     });
     elements.inputs.addEventListener('input', event => {
@@ -540,6 +574,7 @@
             state[active][field] = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
             if (event.target.type === 'checkbox') renderInputs();
             updateResults();
+            scheduleStateSave();
             return;
         }
         const dateIndex = event.target.getAttribute('data-cashflow-date');
@@ -547,6 +582,7 @@
         if (dateIndex != null) state.xirr.cashflows[Number(dateIndex)].date = event.target.value;
         if (amountIndex != null) state.xirr.cashflows[Number(amountIndex)].amount = event.target.value;
         updateResults();
+        scheduleStateSave();
     });
     elements.inputs.addEventListener('change', event => {
         const field = event.target.getAttribute('data-field');
@@ -554,18 +590,21 @@
             state[active][field] = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
             if (event.target.type === 'checkbox') renderInputs();
             updateResults();
+            scheduleStateSave();
         }
     });
     elements.inputs.addEventListener('click', event => {
         if (event.target.closest('[data-add-cashflow]')) {
             state.xirr.cashflows.push({ date: today, amount: 0 });
             renderInputs(); updateResults();
+            scheduleStateSave();
         }
         const remove = event.target.closest('[data-remove-cashflow]');
         if (remove) {
             state.xirr.cashflows.splice(Number(remove.getAttribute('data-remove-cashflow')), 1);
             renderInputs(); updateResults();
+            scheduleStateSave();
         }
     });
-    renderCalculator();
+    loadSavedState().then(renderCalculator);
 }());

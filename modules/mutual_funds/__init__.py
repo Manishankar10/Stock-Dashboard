@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import datetime as dt
-import json
 import math
 import os
-import tempfile
 import threading
 import uuid
 from functools import wraps
 from pathlib import Path
 
 from flask import Blueprint, jsonify, render_template, request, send_from_directory, session
+from db_store import load_user_doc_db, save_user_doc_db
 
 from .mutual_funds_provider import AMFIError, AMFI_NAV_SOURCE, MFAPI_NAV_SOURCE, fetch_history, fetch_latest_navs, fetch_official_fund_facts, fetch_scheme_history
 
@@ -71,36 +70,24 @@ def _empty_data():
 
 
 def _load_data():
-    path = _data_path()
-    try:
-        with open(path, "r", encoding="utf-8") as file:
-            saved = json.load(file)
-        data = _empty_data()
-        if isinstance(saved, dict):
-            data.update(saved)
-        for key in ("transactions", "sip_plans", "snapshots"):
-            if not isinstance(data.get(key), list):
-                data[key] = []
-        for key in ("last_navs", "nav_history", "nav_history_ranges", "nav_history_sources"):
-            if not isinstance(data.get(key), dict):
-                data[key] = {}
-        return data
-    except (OSError, ValueError, TypeError):
-        return _empty_data()
+    username = str(session.get("username", ""))
+    saved = load_user_doc_db("mutual_funds", username, _data_path(), default_factory=dict)
+    data = _empty_data()
+    if isinstance(saved, dict):
+        data.update(saved)
+    for key in ("transactions", "sip_plans", "snapshots"):
+        if not isinstance(data.get(key), list):
+            data[key] = []
+    for key in ("last_navs", "nav_history", "nav_history_ranges", "nav_history_sources"):
+        if not isinstance(data.get(key), dict):
+            data[key] = {}
+    return data
 
 
 def _save_data(data):
     filepath = _data_path()
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
     data["updated_at"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-    handle, temporary = tempfile.mkstemp(prefix=".mf-", suffix=".tmp", dir=os.path.dirname(filepath))
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8") as file:
-            json.dump(data, file, indent=2, ensure_ascii=False)
-        os.replace(temporary, filepath)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+    save_user_doc_db("mutual_funds", str(session.get("username", "")), data, filepath)
 
 
 def _as_date(value, field_name):

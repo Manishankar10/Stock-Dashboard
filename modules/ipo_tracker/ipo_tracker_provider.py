@@ -8,6 +8,7 @@ import threading
 import time
 
 import requests
+from db_store import db as _mongo_db
 
 
 FEED_URL = os.environ.get("IPO_TRACKER_FEED_URL", "https://gmptoday.in/api/gmp.json")
@@ -23,6 +24,43 @@ USER_AGENT = "CapitalDesk IPO Tracker/1.0 (+https://gmptoday.in/)"
 _cache_lock = threading.RLock()
 _cached_payload = None
 _cached_monotonic = 0.0
+
+
+def _restore_cache_from_mongo():
+    """Restore the last shared feed snapshot so an app restart can serve stale data."""
+    global _cached_payload, _cached_monotonic
+    if _mongo_db is None:
+        return
+    try:
+        document = _mongo_db["ipo_tracker_cache"].find_one({"_id": "latest"})
+        payload = document.get("payload") if document else None
+        if not isinstance(payload, dict) or not isinstance(payload.get("ipos"), list):
+            return
+        stored_at = document.get("stored_at")
+        if not isinstance(stored_at, dt.datetime):
+            stored_at = dt.datetime.now(dt.timezone.utc)
+        elif stored_at.tzinfo is None:
+            stored_at = stored_at.replace(tzinfo=dt.timezone.utc)
+        age = max(0.0, (dt.datetime.now(dt.timezone.utc) - stored_at).total_seconds())
+        _cached_payload = payload
+        _cached_monotonic = time.monotonic() - age
+    except Exception:
+        # Live refresh remains available when MongoDB is unavailable.
+        return
+
+
+def _persist_cache_to_mongo(payload):
+    if _mongo_db is None:
+        return
+    try:
+        _mongo_db["ipo_tracker_cache"].replace_one(
+            {"_id": "latest"},
+            {"_id": "latest", "payload": payload, "stored_at": dt.datetime.now(dt.timezone.utc)},
+            upsert=True,
+        )
+    except Exception:
+        # The in-process feed cache still works if the database is temporarily unavailable.
+        return
 
 
 class IPOFeedError(RuntimeError):
@@ -150,6 +188,8 @@ def get_ipo_data(force_refresh=False):
 
     with _cache_lock:
         now = time.monotonic()
+        if _cached_payload is None:
+            _restore_cache_from_mongo()
         if not force_refresh and _cached_payload is not None and now - _cached_monotonic < FEED_TTL_SECONDS:
             result = copy.deepcopy(_cached_payload)
             result["cache_status"] = "cached"
@@ -159,6 +199,7 @@ def get_ipo_data(force_refresh=False):
             payload = _fetch_payload()
             _cached_payload = payload
             _cached_monotonic = time.monotonic()
+            _persist_cache_to_mongo(payload)
             result = copy.deepcopy(payload)
             result["cache_status"] = "refreshed"
             return result
