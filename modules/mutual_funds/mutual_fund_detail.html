@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fund Details | Capital Desk</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('mutual_funds.mutual_funds_stylesheet') }}">
+    <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
+</head>
+<body>
+    <main class="mf-shell mf-detail-shell" data-scheme-code="{{ scheme_code }}">
+        <header class="mf-header">
+            <a class="mf-brand" href="/" aria-label="Back to Capital Desk"><img src="/static/logo.png" alt="Capital Desk"><span><strong>Capital Desk</strong><small>Portfolio &amp; Market Intelligence</small></span></a>
+            <nav class="mf-header-actions"><button class="mf-icon-button" id="mf-theme-toggle" type="button" aria-label="Toggle theme">◐</button><a class="mf-back-link" href="/mutual-funds/dashboard">My Dashboard →</a><a class="mf-back-link" href="/mutual-funds">← Explore funds</a></nav>
+        </header>
+
+        <div id="detail-error" class="mf-notice" hidden></div>
+        <section class="mf-detail-hero">
+            <div class="mf-detail-mark" id="fund-mark">MF</div>
+            <div class="mf-detail-title"><div class="mf-detail-tags"><span id="fund-plan">Loading</span><i>•</i><span id="fund-option">AMFI NAV</span></div><h1 id="fund-name">Loading fund details…</h1><div class="mf-detail-tags"><span id="fund-category">—</span><span id="fund-type">—</span></div><div class="mf-detail-latest"><span>NAV</span><strong id="fund-nav">—</strong><small id="fund-nav-date">—</small><span class="mf-cell-muted" id="fund-source">Loading latest published NAV from AMFI…</span></div></div>
+            <button class="mf-primary-button mf-detail-invest" id="track-fund" type="button">＋ Start SIP</button>
+        </section>
+
+        <section class="mf-panel mf-detail-chart-panel">
+            <div class="mf-detail-performance"><strong id="fund-return">—</strong><span id="return-caption">Annualized NAV return</span><small id="fund-daily-return">—</small></div>
+            <div class="mf-detail-chart-wrap"><div class="mf-detail-chart-axis"><span id="chart-max">—</span><span id="chart-middle">—</span><span id="chart-min">—</span></div><svg id="fund-chart" viewBox="0 0 960 300" role="img" aria-label="Mutual fund NAV history" tabindex="0"></svg><div class="mf-chart-tooltip" id="chart-tooltip" role="status" aria-live="polite" hidden><strong id="chart-tooltip-nav"></strong><span id="chart-tooltip-date"></span></div></div>
+            <div class="mf-chart-dates"><span id="chart-start">—</span><span id="chart-end">—</span></div>
+            <div class="mf-period-tabs" id="period-tabs" role="group" aria-label="Chart period"><button data-period="1m">1M</button><button data-period="3m">3M</button><button data-period="6m">6M</button><button data-period="1y">1Y</button><button class="active" data-period="3y">3Y</button><button data-period="5y">5Y</button><button data-period="all">ALL</button></div>
+            <p class="mf-period-note">Choose a period available for this scheme.</p>
+        </section>
+
+        <section class="mf-detail-two-col mf-calc-compare-row">
+        <section class="mf-panel mf-calc-panel">
+            <div class="mf-panel-heading"><div><h2>Calculate Your Returns</h2><p>Illustration based on this fund’s historical annualized NAV return.</p></div></div>
+            <div class="mf-calc-top"><div><span id="calc-total-label">Estimated value</span><strong id="calc-total">—</strong><small id="calc-summary">—</small></div><div class="mf-donut" id="calc-donut" role="img" aria-label="Invested amount and estimated gains" tabindex="0"><span></span><div class="mf-donut-tooltip" id="calc-pie-tooltip" hidden></div></div></div>
+            <div class="mf-calc-legend"><span><i></i> Invested</span><span><i></i> <span id="calc-gains-label">Estimated gains</span></span></div>
+            <div class="mf-calc-mode"><label><input type="radio" name="calc-mode" value="sip" checked> Invest Monthly (SIP)</label><label><input type="radio" name="calc-mode" value="lumpsum"> Invest One-Time</label></div>
+            <div class="mf-calc-input"><label for="calc-amount" id="calc-amount-label">Monthly Investment</label><div><span>₹</span><input id="calc-amount" type="number" min="500" step="500" value="500"></div></div>
+            <input class="mf-calc-range" id="calc-slider" type="range" min="500" max="100000" step="500" value="500" aria-label="Investment amount">
+            <div class="mf-calc-duration"><span>Select Duration</span><div class="mf-duration-control-row"><div id="duration-options"></div><label class="mf-duration-custom">Custom years<input id="custom-duration" type="number" min="0.08" max="40" step="0.1" value="3"></label></div></div>
+            <p class="mf-calc-rate">Returns % <strong id="calc-rate">—</strong></p>
+        </section>
+        <section class="mf-panel mf-similar-panel"><div class="mf-panel-heading"><div><h2>Similar funds</h2><p>Top 5 in this scheme category, sorted by return</p></div><select id="similar-period" class="mf-common-select" aria-label="Similar fund return period"><option value="1m">1 month</option><option value="6m">6 months</option><option value="1y">1 year</option><option value="3y" selected>3 years</option><option value="5y">5 years</option><option value="10y">10 years</option><option value="all">Since inception</option></select></div><div id="similar-funds" class="mf-similar-list"><p class="mf-unavailable">Loading comparable schemes…</p></div></section>
+        </section>
+
+        <section class="mf-panel mf-facts-panel">
+            <div class="mf-panel-heading"><div><h2>Other Information</h2><p>Scheme disclosures from the fund house, where available</p></div></div>
+            <div class="mf-facts-grid" id="fund-facts"></div>
+            <p class="mf-data-limitation" id="facts-notice"></p>
+            <p class="mf-data-limitation"><a id="official-fund-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open selected fund source ↗</a></p>
+        </section>
+
+        <section class="mf-detail-two-col">
+            <article class="mf-panel mf-facts-panel"><div class="mf-panel-heading"><div><h2>Fund Managed by</h2><p>Latest fund house disclosure</p></div></div><div id="fund-managers" class="mf-fund-manager-list"><p class="mf-unavailable">Loading fund manager disclosure…</p></div></article>
+            <article class="mf-panel mf-facts-panel"><div class="mf-panel-heading"><div><h2>Risk &amp; Rating</h2><p>Latest disclosed scheme risk and ratings</p></div></div><div id="fund-risk" class="mf-risk-details"><p class="mf-unavailable">Loading risk and rating information…</p></div></article>
+        </section>
+
+        <section class="mf-panel mf-facts-panel"><div class="mf-panel-heading"><div><h2>Fund Holdings</h2><p id="holdings-asof">Latest available fund house portfolio disclosure</p></div></div><div class="mf-holdings-tabs"><button class="active" data-holding-tab="sectors">Holdings by sector</button><button data-holding-tab="stocks">Top holdings</button></div><div id="fund-holdings" class="mf-fund-holdings"><p class="mf-unavailable">Loading portfolio disclosure…</p></div></section>
+        <footer class="mf-page-footer">NAV history is sourced from AMFI. Past returns are not a guarantee of future performance.</footer>
+    </main>
+    {% include '_mf_investment_modal.html' %}
+    <script src="{{ url_for('mutual_funds.mutual_fund_investment_javascript') }}" defer></script>
+    <script src="{{ url_for('mutual_funds.mutual_fund_detail_javascript') }}" defer></script>
+</body>
+</html>

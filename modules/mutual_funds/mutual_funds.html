@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutual Funds | Capital Desk</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('mutual_funds.mutual_funds_stylesheet') }}">
+    <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
+</head>
+<body>
+    <main class="mf-shell">
+        <header class="mf-header">
+            <a class="mf-brand" href="/" aria-label="Back to Capital Desk">
+                <img src="/static/logo.png" alt="Capital Desk">
+                <span><strong>Capital Desk</strong><small>Portfolio &amp; Market Intelligence</small></span>
+            </a>
+            <nav class="mf-header-actions">
+                <span class="mf-page-label">Mutual Funds</span>
+                <button class="mf-icon-button" id="mf-theme-toggle" type="button" aria-label="Toggle theme">◐</button>
+                <a class="mf-back-link" href="/mutual-funds/dashboard">My Dashboard →</a>
+                <a class="mf-back-link" href="/">← Back to workspace</a>
+            </nav>
+        </header>
+
+        <section class="mf-intro-row">
+            <div>
+                <p class="mf-eyebrow">MUTUAL FUND RESEARCH</p>
+                <h1>Explore Mutual Funds</h1>
+                <p class="mf-intro-copy">Browse AMFI scheme listings and the latest published NAVs. Refreshed from AMFI when this page opens.</p>
+            </div>
+            <div class="mf-feed-status" aria-live="polite"><span class="mf-live-dot"></span><div><strong id="catalog-updated">Loading AMFI data…</strong><small id="catalog-asof">Connecting to the official NAV report</small></div></div>
+        </section>
+
+        <section class="mf-summary-grid" aria-label="Mutual fund catalogue summary">
+            <article class="mf-summary-card"><span>Listed schemes</span><strong id="catalog-count">—</strong></article>
+            <article class="mf-summary-card"><span>Fund houses</span><strong id="amc-count">—</strong></article>
+            <article class="mf-summary-card"><span>Latest NAV date</span><strong id="nav-date">—</strong></article>
+        </section>
+
+        <section class="mf-table-card">
+            <div class="mf-table-toolbar">
+                <div class="mf-section-title"><div><h2>Scheme directory</h2><p>Search by scheme, AMC, ISIN, or AMFI scheme code.</p></div></div>
+                <div class="mf-table-tools">
+                    <label class="mf-search-box"><span aria-hidden="true">⌕</span><input id="scheme-search" type="search" placeholder="Search schemes" autocomplete="off"></label>
+                    <select id="amc-filter" aria-label="Filter by fund house"><option value="">All fund houses</option></select>
+                    <select id="category-filter" aria-label="Filter by category"><option value="">All categories</option></select>
+                    <select id="type-filter" aria-label="Filter by scheme type"><option value="">All scheme types</option></select>
+                    <select id="plan-filter" aria-label="Filter by plan"><option value="">All plans</option><option>Direct</option><option>Regular</option><option>Not stated</option></select>
+                    <select id="option-filter" aria-label="Filter by option"><option value="">All options</option><option>Growth</option><option>IDCW</option><option>Not stated</option></select>
+                    <button class="mf-secondary-button" id="reset-filters" type="button">Reset filters</button>
+                    <button class="mf-refresh-button" id="catalog-refresh" type="button">↻ Refresh NAVs</button>
+                </div>
+            </div>
+            <div id="catalog-notice" class="mf-notice" hidden></div>
+            <div class="mf-table-scroll">
+                <table class="mf-table">
+                    <thead><tr><th>Scheme</th><th>Fund house</th><th>Category</th><th>Plan / Option</th><th class="mf-right">Latest NAV</th><th>NAV date</th><th></th></tr></thead>
+                    <tbody id="scheme-rows"><tr><td colspan="7" class="mf-table-message">Loading AMFI schemes…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="mf-table-footer"><span id="scheme-result-count">Loading schemes…</span><div class="mf-pagination"><button id="page-prev" type="button" aria-label="Previous page">←</button><span id="page-label">Page 1</span><button id="page-next" type="button" aria-label="Next page">→</button></div></div>
+        </section>
+
+        <aside class="mf-source-note"><strong>About the NAV values</strong><p>AMFI publishes mutual fund NAVs once per business day after the market closes. Refresh checks AMFI again; the value can still be from the latest published NAV date rather than today. Fund category and plan details are shown as supplied in the AMFI report.</p><div class="mf-source-links"><a href="https://www.amfiindia.com/net-asset-value/nav-download" target="_blank" rel="noopener noreferrer">AMFI NAV download ↗</a><a href="https://www.amfiindia.com/investor/knowledge-center-info?zoneName=NetAssetValueNAV" target="_blank" rel="noopener noreferrer">How NAVs are published ↗</a><a href="/mutual-funds/dashboard">My Mutual Fund Portfolio →</a></div></aside>
+        <footer class="mf-page-footer">NAV data is provided by AMFI and may be revised by the fund house. Review scheme documents before making investment decisions.</footer>
+    </main>
+    {% include '_mf_investment_modal.html' %}
+    <script src="{{ url_for('mutual_funds.mutual_fund_investment_javascript') }}" defer></script>
+    <script src="{{ url_for('mutual_funds.mutual_funds_javascript') }}" defer></script>
+</body>
+</html>

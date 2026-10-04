@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Calculator | Capital Desk</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('plan_calculator.plan_calculator_stylesheet') }}">
+    <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
+</head>
+<body>
+    <main class="pc-shell">
+        <header class="pc-header">
+            <a class="pc-brand" href="/" aria-label="Back to Capital Desk">
+                <img src="/static/logo.png" alt="Capital Desk">
+                <span><strong>Capital Desk</strong><small>Portfolio &amp; Market Intelligence</small></span>
+            </a>
+            <nav class="pc-header-actions">
+                <span class="pc-page-label">Plan Calculator</span>
+                <button class="pc-icon-button" id="pc-theme-toggle" type="button" aria-label="Toggle theme">◐</button>
+                <a class="pc-back-link" href="/">← Back to workspace</a>
+            </nav>
+        </header>
+
+        <section class="pc-intro">
+            <div><p class="pc-eyebrow">TOOLS</p><h1>Plan Calculator</h1><p>Estimate investment growth, withdrawals, borrowing costs, and retirement needs.</p></div>
+        </section>
+
+        <nav id="calculator-tabs" class="pc-tabs" aria-label="Choose a calculator"></nav>
+        <section class="pc-calculator-card" aria-live="polite">
+            <div class="pc-card-heading"><div><h2 id="calculator-title">SIP Calculator</h2><p id="calculator-description"></p></div></div>
+            <div class="pc-primary-layout">
+                <div id="calculator-inputs" class="pc-input-panel"></div>
+                <div id="calculator-summary" class="pc-summary-panel"></div>
+            </div>
+        </section>
+        <section class="pc-chart-card">
+            <div class="pc-chart-heading"><div><h2 id="chart-title">Investment growth</h2><p id="chart-description"></p></div><div id="chart-legend" class="pc-chart-legend"></div></div>
+            <div id="calculator-chart" class="pc-chart" role="img" aria-label="Calculator value projection chart"></div>
+        </section>
+        <p class="pc-disclaimer">Calculator results are estimates based on the values entered. Actual returns, interest, taxes, and fees may differ.</p>
+        <footer class="pc-footer">Capital Desk · Plan Calculator</footer>
+    </main>
+    <script src="{{ url_for('plan_calculator.plan_calculator_javascript') }}" defer></script>
+</body>
+</html>

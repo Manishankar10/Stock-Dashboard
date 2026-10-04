@@ -1,0 +1,20 @@
+<div class="mf-modal-backdrop" id="investment-modal" hidden>
+    <section class="mf-modal" role="dialog" aria-modal="true" aria-labelledby="investment-modal-title">
+        <div class="mf-modal-heading"><div><p class="mf-eyebrow">MUTUAL FUND INVESTMENT</p><h2 id="investment-modal-title">Start SIP</h2></div><button class="mf-modal-close" type="button" data-close-modal aria-label="Close">×</button></div>
+        <div class="mf-investment-tabs" role="tablist"><button type="button" class="active" data-investment-mode="sip" role="tab">SIP</button><button type="button" data-investment-mode="lumpsum" role="tab">One-Time</button></div>
+        <p class="mf-modal-copy">Choose a scheme and amount, then set the SIP schedule or one-time investment date.</p>
+        <form id="investment-form" class="mf-form" hidden>
+            <label>Mutual fund scheme<input id="investment-scheme-search" type="search" placeholder="Search scheme or fund house" autocomplete="off" required><input id="investment-scheme-code" type="hidden"><div id="investment-scheme-results" class="mf-scheme-results" hidden></div><small id="investment-scheme-selected" class="mf-field-hint">Select a scheme from the search results.</small></label>
+            <div class="mf-form-row"><label>Amount (₹)<input id="investment-amount" type="number" min="1" step="0.01" value="500" required></label><label>Investment date<input id="investment-date" type="date" required></label></div>
+            <div id="investment-nav-preview" class="mf-modal-preview" hidden></div>
+            <div class="mf-modal-actions"><button class="mf-secondary-button" type="button" data-close-modal>Cancel</button><button class="mf-primary-button" id="investment-submit" type="submit">Save investment</button></div>
+        </form>
+        <form id="sip-form" class="mf-form">
+            <label>Mutual fund scheme<input id="sip-scheme-search" type="search" placeholder="Search scheme or fund house" autocomplete="off" required><input id="sip-scheme-code" type="hidden"><div id="sip-scheme-results" class="mf-scheme-results" hidden></div><small id="sip-scheme-selected" class="mf-field-hint">Select a scheme from the search results.</small></label>
+            <div class="mf-form-row"><label>Monthly SIP amount (₹)<input id="sip-amount" type="number" min="1" step="0.01" value="500" required></label><label>Start date<input id="sip-start-date" type="date" required></label></div>
+            <label>Installment day of month<input id="sip-installment-day" type="number" min="1" max="28" placeholder="1–28"><small class="mf-field-hint">Choose a day from 1 to 28.</small></label>
+            <div class="mf-modal-actions"><button class="mf-secondary-button" type="button" data-close-modal>Cancel</button><button class="mf-primary-button" id="sip-submit" type="submit">Save SIP</button></div>
+        </form>
+    </section>
+</div>
+<div class="mf-toast" id="mf-toast" role="status" aria-live="polite"></div>

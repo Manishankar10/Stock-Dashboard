@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/api/fundamentals/concalls/assets/fundamentals_concalls.css">
 <style>
 :root {
   --bg-body: #0f172a;
@@ -268,11 +269,46 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
       <div id="companySummary" style="font-size: 13px; line-height: 1.6; color: var(--text-primary);"></div>
     </div>
 
+    <!-- Official quarterly concall presentations and transcripts -->
+    <section class="card concalls-card" aria-labelledby="concallsTitle">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title" id="concallsTitle">📞 Concalls</div>
+          <div class="sec-sub">Quarter-wise official NSE filings · AI summaries send the public transcript to Gemini</div>
+        </div>
+        <a class="concalls-source" id="concallsSource" href="#" target="_blank" rel="noopener noreferrer">NSE filings ↗</a>
+      </div>
+      <div id="concallsContent" aria-live="polite"><div class="empty-state">Loading official concall documents…</div></div>
+      <div class="concalls-more-wrap" id="concallsMoreWrap" hidden>
+        <button class="btn" id="concallsMore" type="button">Load older filings</button>
+      </div>
+    </section>
+
   </div>
+</div>
+
+<div class="concall-summary-modal" id="concallSummaryModal" hidden>
+  <button class="concall-summary-backdrop" type="button" data-summary-close aria-label="Close transcript summary"></button>
+  <section class="concall-summary-dialog" role="dialog" aria-modal="true" aria-labelledby="concallSummaryHeading">
+    <header class="concall-summary-header">
+      <div class="concall-summary-heading-wrap">
+        <div class="concall-summary-eyebrow">TRANSCRIPT BRIEF</div>
+        <h2 id="concallSummaryHeading">AI Concalls Summary</h2>
+        <div id="concallSummaryMeta" class="concall-summary-meta"></div>
+      </div>
+      <button class="concall-summary-close" type="button" data-summary-close aria-label="Close">×</button>
+    </header>
+    <div class="concall-summary-body" id="concallSummaryBody" aria-live="polite"></div>
+    <footer class="concall-summary-footer">
+      <span>AI-generated from the official transcript. Check the source for full context.</span>
+      <a id="concallSummarySource" href="#" target="_blank" rel="noopener noreferrer">Open transcript ↗</a>
+    </footer>
+  </section>
 </div>
 
 <script>
 const symbol = {{ symbol|tojson }};
+window.fundamentalsSymbol = symbol;
 
 function esc(v) {
   const d = document.createElement('div');
@@ -400,5 +436,6 @@ function setTheme() {
 setTheme();
 loadFundamentals();
 </script>
+<script src="/api/fundamentals/concalls/assets/fundamentals_concalls.js" defer></script>
 </body>
 </html>

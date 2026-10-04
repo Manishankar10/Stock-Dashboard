@@ -9,6 +9,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
     <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="stylesheet" href="/api/watchlist-official-feeds/assets/official_feeds.css">
     <!-- Institutional Financial Typography (Inter & Plus Jakarta Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1298,6 +1299,48 @@
                     <button type="button" onclick="toggleSettingsMenu(event)" class="btn-header-action" title="User Menu" style="padding: 4px 8px; font-size: 12px;">
                         👤 ▾
                     </button>
+<<<<<<< HEAD
+=======
+                    <div id="settings-menu-dropdown" class="menu-dropdown-content">
+                        <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
+                            <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
+                        </div>
+                        <div class="menu-item" onclick="openStockNewsModal(''); closeSettingsMenu();">
+                            📰 Latest Market News
+                        </div>
+                        <a href="/ipos" class="menu-item" style="text-decoration: none;">
+                            📈 IPOs &amp; GMP Tracker
+                        </a>
+                        <a href="/mutual-funds" class="menu-item" style="text-decoration: none;">
+                            📊 Mutual Funds
+                        </a>
+                        <a href="/plan-calculator" class="menu-item" style="text-decoration: none;">
+                            🧮 Plan Calculator
+                        </a>
+                        <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">
+                            👁️ Toggle Privacy Mode
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="exportDataBackup(); closeSettingsMenu();">
+                            📥 Backup Data (JSON)
+                        </div>
+                        <div class="menu-item" onclick="triggerImportBackup(); closeSettingsMenu();">
+                            📤 Restore Data (JSON)
+                        </div>
+                        <div class="menu-divider"></div>
+                        <a href="/admin" id="admin-menu-link" class="menu-item" style="display: none; text-decoration: none; color: #10b981;">
+                            🛡️ Admin Control Panel
+                        </a>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">
+                            🚪 Log Out
+                        </div>
+                    </div>
+>>>>>>> Sampath_Oct_26
                 </div>
             </div>
 
@@ -4697,6 +4740,15 @@
             watchlistFileControls.style.gap = '8px';
             watchlistFileControls.style.alignItems = 'center';
             watchlistFileControls.style.flexWrap = 'wrap';
+
+            const officialFeedsBtn = document.createElement('button');
+            officialFeedsBtn.className = 'btn-secondary';
+            officialFeedsBtn.style.padding = '8px 14px';
+            officialFeedsBtn.style.fontSize = '12px';
+            officialFeedsBtn.title = 'View official exchange company announcements for this watchlist';
+            officialFeedsBtn.innerHTML = '◉ Official Feeds';
+            officialFeedsBtn.onclick = () => openWatchlistOfficialFeeds(activeWatchlistName);
+            watchlistFileControls.appendChild(officialFeedsBtn);
 
             const exportWlBtn = document.createElement('button');
             exportWlBtn.className = 'btn-secondary';
@@ -9681,5 +9733,6 @@
             }
         }, 30000);
     </script>
+    <script src="/api/watchlist-official-feeds/assets/official_feeds.js"></script>
 </body>
 </html>

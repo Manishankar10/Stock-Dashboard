@@ -13,6 +13,9 @@ from functools import wraps
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
+from modules.app_config import load_local_environment
+
+load_local_environment()
 
 app = Flask(__name__)
 
@@ -21,6 +24,8 @@ from fundamentals import fundamentals_bp
 from db_store import load_users_db, save_users_db, load_user_doc_db, save_user_doc_db
 
 app.register_blueprint(fundamentals_bp)
+from modules.fundamentals_concalls import fundamentals_concalls_bp
+app.register_blueprint(fundamentals_concalls_bp)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
 
 BASE_DATA_DIR = os.environ.get("PERSISTENT_DATA_DIR", ".")
@@ -2137,6 +2142,26 @@ def get_chart_history():
 from smallcases import smallcases_bp, init_smallcases, load_user_smallcases, save_user_smallcases
 init_smallcases(fetcher, login_required, BASE_DATA_DIR)
 app.register_blueprint(smallcases_bp)
+
+# IPO tracker module
+from modules.ipo_tracker import ipo_tracker_bp, init_ipo_tracker
+init_ipo_tracker(login_required)
+app.register_blueprint(ipo_tracker_bp)
+
+# Mutual Funds module
+from modules.mutual_funds import mutual_funds_bp, init_mutual_funds
+init_mutual_funds(login_required, BASE_DATA_DIR)
+app.register_blueprint(mutual_funds_bp)
+
+# Plan calculator module
+from modules.plan_calculator import plan_calculator_bp, init_plan_calculator
+init_plan_calculator(login_required)
+app.register_blueprint(plan_calculator_bp)
+
+# Watchlist official company filings
+from modules.official_feeds import official_feeds_bp, init_official_feeds
+init_official_feeds(login_required, load_data)
+app.register_blueprint(official_feeds_bp)
 API_SETTINGS_FILE = os.path.join(BASE_DATA_DIR, "api_settings.json")
 
 def load_api_settings():
