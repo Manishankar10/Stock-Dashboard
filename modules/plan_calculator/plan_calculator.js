@@ -183,7 +183,14 @@
     }
     function renderCashflows() {
         const rows = state.xirr.cashflows;
-        return '<div class="pc-field pc-cashflow-field"><span class="pc-field-label">Cash flows</span><table class="pc-cashflow-table"><thead><tr><th>Date</th><th>Amount</th><th aria-label="Remove row"></th></tr></thead><tbody>' + rows.map((row, index) => '<tr><td><input class="pc-control" type="date" data-cashflow-date="' + index + '" value="' + escapeHtml(row.date) + '"></td><td><input class="pc-control" type="number" step="100" data-cashflow-amount="' + index + '" value="' + escapeHtml(row.amount) + '"></td><td><button class="pc-remove-row" type="button" data-remove-cashflow="' + index + '" aria-label="Remove cash flow">×</button></td></tr>').join('') + '</tbody></table><button class="pc-add-row" type="button" data-add-cashflow>+ Add cash flow</button></div>';
+        return '<div class="pc-field pc-cashflow-field">' +
+            '<span class="pc-field-label">Cash flows</span>' +
+            '<table class="pc-cashflow-table"><thead><tr><th>Date</th><th>Amount</th><th aria-label="Remove row"></th></tr></thead><tbody>' +
+            rows.map((row, index) => '<tr><td><input class="pc-control" type="date" data-cashflow-date="' + index + '" value="' + escapeHtml(row.date) + '"></td><td><input class="pc-control" type="number" step="100" data-cashflow-amount="' + index + '" value="' + escapeHtml(row.amount) + '"></td><td><button class="pc-remove-row" type="button" data-remove-cashflow="' + index + '" aria-label="Remove cash flow">×</button></td></tr>').join('') +
+            '</tbody></table>' +
+            '<button class="pc-add-row" type="button" data-add-cashflow>+ Add cash flow</button>' +
+            '<p class="pc-cashflow-hint" style="font-size: 11.5px; color: #94a3b8; margin-top: 10px; line-height: 1.4;">💡 <strong>Chit Fund / Interim Payout Tip:</strong> If you received an interim payout (e.g., +₹2,54,000) and earned separate returns/interest by reinvesting it, add the extra returns earned as a positive cash flow on your final date.</p>' +
+            '</div>';
     }
     function renderInputs() {
         const note = active === 'sip'
@@ -371,29 +378,116 @@
         return { headline: money(firstEmi), caption: 'Starting monthly EMI', metrics: [['Total interest', money(totalInterest)], ['Total repayment', money(total)], ['Final EMI', money(firstEmi * Math.pow(1 + step, Math.floor((months - 1) / 12)))]], pie: [{ name: 'Loan principal', value: principal, color: palette.invested }, { name: 'Total interest', value: totalInterest, color: palette.pale }], series, graph: ['principalPaid', 'interestPaid'], years };
     }
     function calculateXirr(input) {
-        const cashflows = input.cashflows.map(row => ({ date: row.date, amount: numeric(row.amount, 0) })).filter(row => row.date && row.amount !== 0);
-        const negative = cashflows.some(row => row.amount < 0), positive = cashflows.some(row => row.amount > 0);
-        if (!negative || !positive || cashflows.length < 2) return { error: 'Enter at least one negative investment and one positive cash flow on valid dates.' };
-        const dated = cashflows.map(row => ({ ...row, time: Date.parse(row.date + 'T00:00:00Z') })).sort((a, b) => a.time - b.time);
-        const origin = dated[0].time;
-        const npv = rate => dated.reduce((sum, row) => sum + row.amount / Math.pow(1 + rate, (row.time - origin) / 31557600000), 0);
-        let low = -0.9999, high = 10, fLow = npv(low), fHigh = npv(high);
-        if (!Number.isFinite(fLow) || !Number.isFinite(fHigh) || fLow * fHigh > 0) return { error: 'These cash flows do not have a single XIRR result within the supported range.' };
-        for (let i = 0; i < 120; i++) {
-            const middle = (low + high) / 2, fMiddle = npv(middle);
-            if (Math.abs(fMiddle) < 1e-7) { low = high = middle; break; }
-            if (fLow * fMiddle <= 0) { high = middle; fHigh = fMiddle; } else { low = middle; fLow = fMiddle; }
+        const cashflows = (input.cashflows || [])
+            .map(row => ({ date: row.date, amount: numeric(row.amount, 0) }))
+            .filter(row => row.date && row.amount !== 0);
+
+        const negative = cashflows.some(row => row.amount < 0);
+        const positive = cashflows.some(row => row.amount > 0);
+        if (!negative || !positive || cashflows.length < 2) {
+            return { error: 'Enter at least one negative investment (-ve) and one positive redemption/value (+ve) on valid dates.' };
         }
-        const value = (low + high) / 2;
-        const start = Math.min(...dated.map(row => row.time)), end = Math.max(...dated.map(row => row.time));
+
+        const dated = cashflows
+            .map(row => ({ ...row, time: Date.parse(row.date + 'T00:00:00Z') }))
+            .filter(row => Number.isFinite(row.time))
+            .sort((a, b) => a.time - b.time);
+
+        if (dated.length < 2) {
+            return { error: 'Enter valid dates for your cash flows.' };
+        }
+
+        const msPerYear = 31557600000; // 365.25 days * 86400 * 1000
+
+        function solveXirr(items) {
+            if (!items || items.length < 2) return null;
+            const origin = items[0].time;
+
+            const npv = rate => {
+                if (rate <= -0.9999) return Infinity;
+                return items.reduce((sum, row) => {
+                    const years = (row.time - origin) / msPerYear;
+                    return sum + row.amount / Math.pow(1 + rate, years);
+                }, 0);
+            };
+
+            const npvDeriv = rate => {
+                if (rate <= -0.9999) return Infinity;
+                return items.reduce((sum, row) => {
+                    const years = (row.time - origin) / msPerYear;
+                    return sum - (years * row.amount) / Math.pow(1 + rate, years + 1);
+                }, 0);
+            };
+
+            let guess = 0.1;
+            for (let i = 0; i < 100; i++) {
+                const f = npv(guess);
+                if (Math.abs(f) < 1e-6) return guess;
+                const df = npvDeriv(guess);
+                if (Math.abs(df) < 1e-12) break;
+                const next = guess - f / df;
+                if (next <= -0.99 || next > 100) break;
+                if (Math.abs(next - guess) < 1e-7) return next;
+                guess = next;
+            }
+
+            const brackets = [-0.99, -0.95, -0.9, -0.7, -0.5, -0.3, -0.1, 0.0, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0];
+            for (let i = 0; i < brackets.length - 1; i++) {
+                const r1 = brackets[i], r2 = brackets[i + 1];
+                const f1 = npv(r1), f2 = npv(r2);
+                if (Number.isFinite(f1) && Number.isFinite(f2) && f1 * f2 <= 0) {
+                    let low = r1, high = r2;
+                    for (let step = 0; step < 100; step++) {
+                        const mid = (low + high) / 2;
+                        const fMid = npv(mid);
+                        if (Math.abs(fMid) < 1e-6 || Math.abs(high - low) < 1e-7) return mid;
+                        if (fMid < 0) high = mid; else low = mid;
+                    }
+                }
+            }
+            return null;
+        }
+
+        const baseRate = solveXirr(dated);
+        if (baseRate === null || !Number.isFinite(baseRate)) {
+            return { error: 'These cash flows do not have a single XIRR result within the supported range.' };
+        }
+
+        const value = baseRate;
+        const start = dated[0].time;
+        const end = dated[dated.length - 1].time;
         const invested = -dated.filter(row => row.amount < 0).reduce((sum, row) => sum + row.amount, 0);
         const received = dated.filter(row => row.amount > 0).reduce((sum, row) => sum + row.amount, 0);
-        const years = Math.max(1, (end - start) / 31557600000);
-        const series = [{ year: new Date(start).getFullYear(), invested: 0, returns: 0 }];
+        const years = Math.max(1, (end - start) / msPerYear);
+
         const totalYears = Math.max(1, Math.ceil(years));
-        for (let i = 1; i <= totalYears; i++) series.push({ year: new Date(start).getFullYear() + Math.min(i, years), invested: invested * Math.min(1, i / years), returns: received * Math.min(1, i / years) });
+        const series = [{ year: new Date(start).getFullYear(), invested: 0, returns: 0 }];
+
+        for (let i = 1; i <= totalYears; i++) {
+            series.push({
+                year: new Date(start).getFullYear() + Math.min(i, years),
+                invested: invested * Math.min(1, i / years),
+                returns: received * Math.min(1, i / years)
+            });
+        }
         const pieBase = Math.min(invested, received);
-        return { headline: percent(value * 100), caption: 'Annualized return from entered cash flows', metrics: [['Total invested', money(invested)], ['Total received', money(received)], ['Net gain / loss', money(received - invested)]], pie: [{ name: received >= invested ? 'Total invested' : 'Total received', value: pieBase, color: palette.invested }, { name: received >= invested ? 'Net gain' : 'Net loss', value: Math.abs(received - invested), color: palette.pale }], series, graph: ['invested', 'returns'], years: totalYears };
+
+        return {
+            headline: percent(value * 100),
+            caption: 'Annualized return from entered cash flows',
+            metrics: [
+                ['Total invested', money(invested)],
+                ['Total received', money(received)],
+                ['Net gain / loss', money(received - invested)]
+            ],
+            pie: [
+                { name: received >= invested ? 'Total invested' : 'Total received', value: pieBase, color: palette.invested },
+                { name: received >= invested ? 'Net gain' : 'Net loss', value: Math.abs(received - invested), color: palette.pale }
+            ],
+            series,
+            graph: ['invested', 'returns'],
+            years: totalYears
+        };
     }
     function calculateCagr(input) {
         const startValue = Math.max(0, numeric(input.startValue, 0)), endValue = Math.max(0, numeric(input.endValue, 0));
