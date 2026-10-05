@@ -300,13 +300,78 @@ def _store_snapshot(data, response):
     data["snapshots"] = data["snapshots"][-4000:]
 
 
-def _select_nav(code, requested_date, latest_feed):
-    current = _nav_map(latest_feed["schemes"]).get(str(code))
-    if current and current["nav_date"] == requested_date.isoformat():
+def _select_nav(code, requested_date, latest_feed=None, cached_data=None, fast=False, scheme_hint=None):
+    current = _nav_map(latest_feed["schemes"]).get(str(code)) if latest_feed else None
+    if current is None and cached_data:
+        current = cached_data.get("last_navs", {}).get(str(code))
+    if current is None:
+        current = scheme_hint
+    if current and current.get("nav_date") == requested_date.isoformat():
         return current
     end = min(requested_date + dt.timedelta(days=14), _today())
     if end < requested_date:
         raise ValueError("Investment date cannot be in the future.")
+
+    if cached_data:
+        ranges = cached_data.get("nav_history_ranges", {}).get(str(code), [])
+        is_covered = any(
+            isinstance(item, list) and len(item) == 2
+            and item[0] <= requested_date.isoformat() and item[1] >= end.isoformat()
+            for item in ranges
+        )
+        if is_covered:
+            history = cached_data.get("nav_history", {}).get(str(code), {})
+            eligible = [
+                {"date": day, "nav": float(nav)} for day, nav in history.items()
+                if requested_date.isoformat() <= day <= end.isoformat() and float(nav) > 0
+            ]
+            if eligible:
+                eligible.sort(key=lambda row: row["date"])
+                nav_source = cached_data.get("nav_history_sources", {}).get(str(code))
+                source = MFAPI_NAV_SOURCE if nav_source == MFAPI_NAV_SOURCE else AMFI_NAV_SOURCE
+                picked = eligible[0]
+                return {"scheme_code": str(code), "nav": picked["nav"], "nav_date": picked["date"], "source": source}
+
+    if fast:
+        # This endpoint is scheme-specific and accepts the required date range;
+        # keep its timeouts bounded so a failed provider cannot stall the action.
+        try:
+            rows = fetch_scheme_history(code, requested_date, end, timeout=(3, 6))
+            fallback_used = True
+        except AMFIError:
+            try:
+                rows = fetch_history(
+                    requested_date, end,
+                    amc_name=current.get("amc") if current else None,
+                    scheme_type=current.get("scheme_type") if current else None,
+                    form_only=True, timeout=(2, 4), fast_form=True,
+                )
+                fallback_used = False
+            except AMFIError as fallback_error:
+                raise AMFIError("Historical NAV lookup is temporarily unavailable. Please retry shortly.") from fallback_error
+        eligible = [
+            row for row in rows.get(str(code), [])
+            if requested_date.isoformat() <= row["date"] <= end.isoformat() and float(row["nav"]) > 0
+        ]
+        if not eligible:
+            raise ValueError("No published NAV was found for this scheme on or after that date. Choose another investment date.")
+        eligible.sort(key=lambda row: row["date"])
+        picked = eligible[0]
+        source = MFAPI_NAV_SOURCE if fallback_used else AMFI_NAV_SOURCE
+        if cached_data:
+            code_key = str(code)
+            history = cached_data.setdefault("nav_history", {}).setdefault(code_key, {})
+            for row in rows.get(code_key, []):
+                if requested_date.isoformat() <= row["date"] <= end.isoformat() and float(row["nav"]) > 0:
+                    history[row["date"]] = float(row["nav"])
+            ranges = cached_data.setdefault("nav_history_ranges", {}).setdefault(code_key, [])
+            covered_range = [requested_date.isoformat(), end.isoformat()]
+            if covered_range not in ranges:
+                ranges.append(covered_range)
+            sources = cached_data.setdefault("nav_history_sources", {})
+            sources[code_key] = _merge_nav_source(sources.get(code_key), source)
+        return {"scheme_code": str(code), "nav": float(picked["nav"]), "nav_date": picked["date"], "source": source}
+
     rows = {}
     fallback_used = False
     if current:
@@ -538,11 +603,13 @@ def mutual_fund_details(scheme_code):
 def mutual_funds_portfolio():
     try:
         refresh_error = None
-        try:
-            feed = fetch_latest_navs()
-        except AMFIError as exc:
-            refresh_error = str(exc)
-            feed = None
+        force_refresh = str(request.args.get("refresh", "1")).lower() in ("1", "true", "yes")
+        feed = None
+        if force_refresh:
+            try:
+                feed = fetch_latest_navs()
+            except AMFIError as exc:
+                refresh_error = str(exc)
         with _lock_for_user():
             data = _load_data()
             if feed is None:
@@ -685,7 +752,6 @@ def mutual_funds_catch_up_sip(sip_id):
     payload = request.get_json(silent=True) or {}
     try:
         scheduled = _as_date(payload.get("scheduled_date"), "Missed installment date")
-        feed = fetch_latest_navs()
         with _lock_for_user():
             data = _load_data()
             plan = next((item for item in data["sip_plans"] if item.get("id") == sip_id and item.get("status", "ACTIVE") == "ACTIVE"), None)
@@ -695,33 +761,61 @@ def mutual_funds_catch_up_sip(sip_id):
             recorded = any(tx.get("sip_id") == sip_id and tx.get("scheduled_date") == scheduled.isoformat() for tx in data["transactions"])
             if scheduled.isoformat() not in due_dates or recorded:
                 return jsonify({"error": "This installment is not currently due, or it has already been recorded."}), 409
-            current = _nav_map(feed["schemes"]).get(str(plan["scheme_code"]))
-            if not current:
-                return jsonify({"error": "This scheme is not present in the current AMFI NAV report."}), 400
-            nav_record = _select_nav(plan["scheme_code"], scheduled, feed)
-            amount = float(plan["amount"])
-            if float(nav_record["nav"]) <= 0:
-                return jsonify({"error": "AMFI has no positive NAV for this installment date."}), 400
-            transaction = {
-                "id": "mf_" + uuid.uuid4().hex[:16],
-                "scheme_code": str(plan["scheme_code"]),
-                "scheme_name": plan["scheme_name"],
-                "amc": plan.get("amc"),
-                "scheme_type": plan.get("scheme_type"),
-                "kind": "SIP",
-                "amount": amount,
-                "nav": float(nav_record["nav"]),
-                "nav_date": nav_record["nav_date"],
-                "investment_date": scheduled.isoformat(),
-                "scheduled_date": scheduled.isoformat(),
-                "units": amount / float(nav_record["nav"]),
-                "sip_id": sip_id,
-                "created_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
-                "source": "MFapi.in" if nav_record.get("source") == MFAPI_NAV_SOURCE else "AMFI",
-            }
+            plan = dict(plan)
+
+        # Avoid the all-schemes daily NAV download. A catch-up needs only this
+        # scheme's NAVs around the scheduled date, which can already be cached.
+        nav_cache_data = data
+        nav_record = _select_nav(plan["scheme_code"], scheduled, cached_data=nav_cache_data, fast=True, scheme_hint=plan)
+        amount = float(plan["amount"])
+        if float(nav_record["nav"]) <= 0:
+            return jsonify({"error": "No positive published NAV is available for this installment."}), 400
+        transaction = {
+            "id": "mf_" + uuid.uuid4().hex[:16],
+            "scheme_code": str(plan["scheme_code"]),
+            "scheme_name": plan["scheme_name"],
+            "amc": plan.get("amc"),
+            "scheme_type": plan.get("scheme_type"),
+            "kind": "SIP",
+            "amount": amount,
+            "nav": float(nav_record["nav"]),
+            "nav_date": nav_record["nav_date"],
+            "investment_date": scheduled.isoformat(),
+            "scheduled_date": scheduled.isoformat(),
+            "units": amount / float(nav_record["nav"]),
+            "sip_id": sip_id,
+            "created_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+            "source": "MFapi.in" if nav_record.get("source") == MFAPI_NAV_SOURCE else "AMFI",
+        }
+        with _lock_for_user():
+            # Recheck after the network lookup to make double clicks/idempotent
+            # retries safe without holding the user lock during HTTP requests.
+            data = _load_data()
+            plan_now = next((item for item in data["sip_plans"] if item.get("id") == sip_id and item.get("status", "ACTIVE") == "ACTIVE"), None)
+            if not plan_now:
+                return jsonify({"error": "Monthly investment plan not found or inactive."}), 404
+            due_dates = set(_installment_dates(plan_now, _today() - dt.timedelta(days=1)))
+            if scheduled.isoformat() not in due_dates or any(
+                tx.get("sip_id") == sip_id and tx.get("scheduled_date") == scheduled.isoformat()
+                for tx in data["transactions"]
+            ):
+                return jsonify({"error": "This installment is not currently due, or it has already been recorded."}), 409
+            code_key = str(plan["scheme_code"])
+            cached_rows = nav_cache_data.get("nav_history", {}).get(code_key, {})
+            if cached_rows:
+                data.setdefault("nav_history", {}).setdefault(code_key, {}).update(cached_rows)
+                cached_ranges = nav_cache_data.get("nav_history_ranges", {}).get(code_key, [])
+                target_ranges = data.setdefault("nav_history_ranges", {}).setdefault(code_key, [])
+                for date_range in cached_ranges:
+                    if date_range not in target_ranges:
+                        target_ranges.append(date_range)
+                cached_source = nav_cache_data.get("nav_history_sources", {}).get(code_key)
+                if cached_source:
+                    sources = data.setdefault("nav_history_sources", {})
+                    sources[code_key] = _merge_nav_source(sources.get(code_key), cached_source)
             data["transactions"].append(transaction)
             _save_data(data)
-        source_label = "MFapi.in fallback" if nav_record.get("source") == MFAPI_NAV_SOURCE else "AMFI"
+        source_label = "MFapi.in" if nav_record.get("source") == MFAPI_NAV_SOURCE else "AMFI"
         return _no_store(jsonify({"transaction": transaction, "message": f"Installment recorded using the {source_label} NAV dated {nav_record['nav_date']}."})), 201
     except (ValueError, AMFIError) as exc:
         status = 503 if isinstance(exc, AMFIError) else 400
