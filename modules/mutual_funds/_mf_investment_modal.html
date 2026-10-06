@@ -30,4 +30,17 @@
         </form>
     </section>
 </div>
+<div class="mf-modal-backdrop" id="edit-investment-modal" hidden>
+    <section class="mf-modal" role="dialog" aria-modal="true" aria-labelledby="edit-investment-modal-title">
+        <div class="mf-modal-heading"><div><p class="mf-eyebrow">MUTUAL FUND INVESTMENT</p><h2 id="edit-investment-modal-title">Edit Investment Record</h2></div><button class="mf-modal-close" type="button" data-close-modal aria-label="Close">×</button></div>
+        <p class="mf-modal-copy">Update the amount, investment date, or type for this recorded purchase.</p>
+        <form id="edit-investment-form" class="mf-form">
+            <input id="edit-investment-id" type="hidden">
+            <label>Mutual fund scheme<input id="edit-investment-scheme-name" type="text" readonly disabled style="opacity:0.85; background:var(--mf-subtle);"></label>
+            <div class="mf-form-row"><label>Amount (₹)<input id="edit-investment-amount" type="number" min="1" step="0.01" required></label><label>Investment date<input id="edit-investment-date" type="date" required></label></div>
+            <div class="mf-form-row"><label>Investment type<select id="edit-investment-kind" class="mf-common-select" style="width:100%; height:37px; border-radius:7px;"><option value="LUMPSUM">LUMPSUM (One-Time)</option><option value="SIP">SIP</option><option value="CATCH_UP">CATCH UP</option></select></label></div>
+            <div class="mf-modal-actions"><button class="mf-secondary-button" type="button" data-close-modal>Cancel</button><button class="mf-primary-button" id="edit-investment-submit" type="submit">Update Investment</button></div>
+        </form>
+    </section>
+</div>
 <div class="mf-toast" id="mf-toast" role="status" aria-live="polite"></div>

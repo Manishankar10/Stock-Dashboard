@@ -210,21 +210,22 @@ def fetch_latest_navs(force_refresh=False):
                 return _LATEST_NAVS_CACHE[1]
 
     errors = []
-    urls = []
+    urls = list(LEGACY_NAV_URLS)
     try:
-        urls.append(_discover_report_url())
+        discovered = _discover_report_url()
+        if discovered not in urls:
+            urls.append(discovered)
     except AMFIError as exc:
         errors.append(str(exc))
-    urls.extend(url for url in LEGACY_NAV_URLS if url not in urls)
 
     for url in urls:
         try:
-            response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+            response = requests.get(url, headers=HEADERS, timeout=(3, 6))
             response.raise_for_status()
             content = _decode(response)
             schemes = parse_nav_report(content)
             nav_as_of = max((row["nav_date"] for row in schemes), default=None)
-            if nav_as_of and (dt.datetime.now().date() - dt.date.fromisoformat(nav_as_of)).days > 10:
+            if nav_as_of and (dt.datetime.now().date() - dt.date.fromisoformat(nav_as_of)).days > 30:
                 raise AMFIError(f"AMFI's latest published NAV date is {nav_as_of}; the report appears out of date.")
             feed = {
                 "schemes": schemes,
@@ -238,7 +239,6 @@ def fetch_latest_navs(force_refresh=False):
             return feed
         except (requests.RequestException, AMFIError) as exc:
             errors.append(str(exc))
-
 
     with _LATEST_NAVS_LOCK:
         if _LATEST_NAVS_CACHE:

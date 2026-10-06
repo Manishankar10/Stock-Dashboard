@@ -126,15 +126,17 @@
         const body = document.getElementById('holding-rows');
         document.getElementById('holding-count').textContent = rows.length + (rows.length === 1 ? ' scheme' : ' schemes');
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="7" class="mf-table-message">No investments yet. Select “Start SIP” to add a fund to your portfolio.</td></tr>';
+            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">No investments yet. Select “Start SIP” to add a fund to your portfolio.</td></tr>';
             return;
         }
         body.innerHTML = rows.map(row => {
             const pnlClass = Number(row.pnl) >= 0 ? 'mf-pnl-positive' : 'mf-pnl-negative';
             return '<tr><td><div class="mf-scheme-name"><a class="mf-detail-link" href="/mutual-funds/fund/' + encodeURIComponent(row.scheme_code) + '">' + escapeHtml(row.scheme_name) + '</a><small>' + escapeHtml(row.amc || 'AMFI') + ' · Code ' + escapeHtml(row.scheme_code) + '</small></div></td>' +
                 '<td>' + fmtNumber(row.units, 4) + '</td><td class="mf-right">' + fmtMoney(row.invested) + '</td><td class="mf-right mf-nav-value">₹' + fmtNumber(row.current_nav, 4) + '</td>' +
-                '<td>' + fmtDate(row.nav_date) + (row.nav_updated ? '' : ' <span class="mf-cell-muted">(saved NAV)</span>') + '</td><td class="mf-right">' + fmtMoney(row.current_value) + '</td><td class="mf-right ' + pnlClass + '">' + fmtMoney(row.pnl) + '<br><small>' + (row.return_pct == null ? '—' : fmtNumber(row.return_pct, 2) + '%') + '</small></td></tr>';
+                '<td>' + fmtDate(row.nav_date) + (row.nav_updated ? '' : ' <span class="mf-cell-muted">(saved NAV)</span>') + '</td><td class="mf-right">' + fmtMoney(row.current_value) + '</td><td class="mf-right ' + pnlClass + '">' + fmtMoney(row.pnl) + '<br><small>' + (row.return_pct == null ? '—' : fmtNumber(row.return_pct, 2) + '%') + '</small></td>' +
+                '<td><button type="button" class="mf-row-action mf-edit-holding-tx" data-code="' + escapeHtml(row.scheme_code) + '">Edit</button></td></tr>';
         }).join('');
+        body.querySelectorAll('.mf-edit-holding-tx').forEach(button => button.addEventListener('click', () => openEditInvestmentForScheme(button.dataset.code)));
     }
 
     function renderMissed(rows) {
@@ -167,10 +169,12 @@
     function renderTransactions(rows) {
         const body = document.getElementById('transaction-rows');
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="7" class="mf-table-message">Your saved investment history will appear here.</td></tr>';
+            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">Your saved investment history will appear here.</td></tr>';
             return;
         }
-        body.innerHTML = rows.map(row => '<tr><td>' + fmtDate(row.investment_date) + '</td><td><div class="mf-scheme-name"><a class="mf-detail-link" href="/mutual-funds/fund/' + encodeURIComponent(row.scheme_code) + '">' + escapeHtml(row.scheme_name) + '</a><small>Code ' + escapeHtml(row.scheme_code) + '</small></div></td><td><span class="mf-tag">' + escapeHtml((row.kind || 'LUMPSUM').replace('_', ' ')) + '</span></td><td class="mf-right">' + fmtMoney(row.amount) + '</td><td class="mf-right">₹' + fmtNumber(row.nav, 4) + '</td><td>' + fmtDate(row.nav_date) + '</td><td class="mf-right">' + fmtNumber(row.units, 4) + '</td></tr>').join('');
+        body.innerHTML = rows.map(row => '<tr><td>' + fmtDate(row.investment_date) + '</td><td><div class="mf-scheme-name"><a class="mf-detail-link" href="/mutual-funds/fund/' + encodeURIComponent(row.scheme_code) + '">' + escapeHtml(row.scheme_name) + '</a><small>Code ' + escapeHtml(row.scheme_code) + '</small></div></td><td><span class="mf-tag">' + escapeHtml((row.kind || 'LUMPSUM').replace('_', ' ')) + '</span></td><td class="mf-right">' + fmtMoney(row.amount) + '</td><td class="mf-right">₹' + fmtNumber(row.nav, 4) + '</td><td>' + fmtDate(row.nav_date) + '</td><td class="mf-right">' + fmtNumber(row.units, 4) + '</td><td><div style="display:inline-flex;gap:6px;"><button type="button" class="mf-row-action mf-edit-tx" data-tx="' + escapeHtml(row.id) + '">Edit</button><button type="button" class="mf-row-action mf-delete-action mf-delete-tx" data-tx="' + escapeHtml(row.id) + '">Delete</button></div></td></tr>').join('');
+        body.querySelectorAll('.mf-edit-tx').forEach(button => button.addEventListener('click', () => openEditInvestmentModal(button.dataset.tx)));
+        body.querySelectorAll('.mf-delete-tx').forEach(button => button.addEventListener('click', () => deleteInvestment(button)));
     }
 
     async function loadPortfolio(button, refresh = true) {
@@ -441,11 +445,11 @@
         try {
             const data = await api('/api/mutual-funds/investments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             closeModals();
+            setBusy(button, false);
             toast('Investment saved at AMFI NAV dated ' + fmtDate(data.transaction.nav_date) + '.');
             performance = [];
-            await loadPortfolio();
-        } catch (error) { toast(error.message, true); }
-        finally { setBusy(button, false); }
+            loadPortfolio(null, false);
+        } catch (error) { toast(error.message, true); setBusy(button, false); }
     }
 
     async function submitSip(event) {
@@ -462,10 +466,10 @@
         try {
             await api('/api/mutual-funds/sips', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             closeModals();
+            setBusy(button, false);
             toast('Monthly investment plan saved.');
-            await loadPortfolio();
-        } catch (error) { toast(error.message, true); }
-        finally { setBusy(button, false); }
+            loadPortfolio(null, false);
+        } catch (error) { toast(error.message, true); setBusy(button, false); }
     }
 
     function setAllActionsDisabled(disabled) {
@@ -482,7 +486,7 @@
             const data = await api('/api/mutual-funds/sips/' + encodeURIComponent(button.dataset.sip) + '/catch-up', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scheduled_date: button.dataset.date }) });
             toast(data.message);
             performance = [];
-            await loadPortfolio(null, false);
+            loadPortfolio(null, false);
         } catch (error) { toast(error.message, true); button.disabled = false; button.textContent = oldText; }
     }
 
@@ -508,7 +512,7 @@
             }
             if (completed) {
                 performance = [];
-                await loadPortfolio(null, false);
+                loadPortfolio(null, false);
             }
             if (failures.length) {
                 toast(completed + ' installment' + (completed === 1 ? '' : 's') + ' completed; ' + failures.length + ' could not be recorded. ' + failures[0], true);
@@ -526,7 +530,7 @@
         button.disabled = true;
         try {
             await api('/api/mutual-funds/sips/' + encodeURIComponent(button.dataset.sip) + '/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-            await loadPortfolio();
+            loadPortfolio(null, false);
             toast(status === 'PAUSED' ? 'Monthly plan paused.' : 'Monthly plan resumed.');
         } catch (error) { toast(error.message, true); button.disabled = false; }
     }
@@ -563,10 +567,10 @@
                 body: JSON.stringify(payload),
             });
             closeModals();
+            setBusy(button, false);
             toast(data.message || 'Monthly investment plan updated.');
-            await loadPortfolio();
-        } catch (error) { toast(error.message, true); }
-        finally { setBusy(button, false); }
+            loadPortfolio(null, false);
+        } catch (error) { toast(error.message, true); setBusy(button, false); }
     }
 
     async function deleteSip(button) {
@@ -578,7 +582,83 @@
                 method: 'DELETE',
             });
             toast(data.message || 'Monthly investment plan deleted.');
-            await loadPortfolio();
+            loadPortfolio(null, false);
+        } catch (error) { toast(error.message, true); button.disabled = false; }
+    }
+
+    async function openSipModalForScheme(code, name) {
+        await openSipModal();
+        if (code) {
+            document.getElementById('sip-scheme-search').value = name || code;
+            document.getElementById('sip-scheme-code').value = code;
+            document.getElementById('sip-scheme-selected').textContent = 'Selected fund code: ' + code;
+            if (catalog.length) {
+                const row = catalog.find(item => String(item.scheme_code) === String(code));
+                if (row) {
+                    document.getElementById('sip-scheme-search').value = row.name;
+                    document.getElementById('sip-scheme-selected').textContent = row.amc + ' · AMFI code ' + row.scheme_code;
+                }
+            }
+        }
+    }
+
+    function openEditInvestmentForScheme(schemeCode) {
+        if (!portfolio || !portfolio.transactions) return;
+        const txs = portfolio.transactions.filter(item => String(item.scheme_code) === String(schemeCode));
+        if (!txs.length) return;
+        const tx = txs.find(item => item.kind === 'LUMPSUM') || txs[0];
+        openEditInvestmentModal(tx.id);
+    }
+
+    function openEditInvestmentModal(txId) {
+        if (!portfolio || !portfolio.transactions) return;
+        const tx = portfolio.transactions.find(item => item.id === txId);
+        if (!tx) return;
+        document.getElementById('edit-investment-id').value = tx.id;
+        document.getElementById('edit-investment-scheme-name').value = tx.scheme_name;
+        document.getElementById('edit-investment-amount').value = tx.amount;
+        document.getElementById('edit-investment-date').value = tx.investment_date;
+        document.getElementById('edit-investment-date').max = localToday();
+        document.getElementById('edit-investment-kind').value = tx.kind || 'LUMPSUM';
+        document.getElementById('edit-investment-modal').hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+
+    async function submitEditInvestment(event) {
+        event.preventDefault();
+        const button = document.getElementById('edit-investment-submit');
+        const txId = document.getElementById('edit-investment-id').value;
+        const payload = {
+            amount: document.getElementById('edit-investment-amount').value,
+            investment_date: document.getElementById('edit-investment-date').value,
+            kind: document.getElementById('edit-investment-kind').value,
+        };
+        setBusy(button, true, 'Updating…');
+        try {
+            const data = await api('/api/mutual-funds/investments/' + encodeURIComponent(txId), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            closeModals();
+            setBusy(button, false);
+            toast(data.message || 'Investment record updated.');
+            performance = [];
+            loadPortfolio(null, false);
+        } catch (error) { toast(error.message, true); setBusy(button, false); }
+    }
+
+    async function deleteInvestment(button) {
+        const txId = button.dataset.tx;
+        if (!confirm('Are you sure you want to delete this investment record?')) return;
+        button.disabled = true;
+        try {
+            const data = await api('/api/mutual-funds/investments/' + encodeURIComponent(txId), {
+                method: 'DELETE',
+            });
+            toast(data.message || 'Investment record deleted.');
+            performance = [];
+            loadPortfolio(null, false);
         } catch (error) { toast(error.message, true); button.disabled = false; }
     }
 
@@ -589,6 +669,8 @@
     document.getElementById('sip-form').addEventListener('submit', submitSip);
     const editForm = document.getElementById('edit-sip-form');
     if (editForm) editForm.addEventListener('submit', submitEditSip);
+    const editTxForm = document.getElementById('edit-investment-form');
+    if (editTxForm) editTxForm.addEventListener('submit', submitEditInvestment);
     document.getElementById('investment-date').addEventListener('change', updateInvestmentPreview);
     document.getElementById('load-performance').addEventListener('click', loadPerformance);
     document.getElementById('performance-range').addEventListener('change', drawChart);
@@ -605,7 +687,7 @@
     bindPicker('sip');
     document.getElementById('portfolio-value').setAttribute('title', 'Latest AMFI NAV valuation');
     renderPlans([]);
-    loadPortfolio();
+    loadPortfolio(null, false);
     document.querySelectorAll('[data-investment-mode]').forEach(button => button.addEventListener('click', () => setInvestmentMode(button.dataset.investmentMode)));
     if (new URLSearchParams(location.search).has('scheme_code')) setTimeout(openSipModal, 350);
     setInvestmentMode('sip');

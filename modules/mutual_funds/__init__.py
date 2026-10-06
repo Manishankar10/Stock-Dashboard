@@ -441,31 +441,32 @@ def mutual_fund_detail_page(scheme_code):
 @mutual_funds_bp.get("/mutual-funds.css")
 @_guard
 def mutual_funds_stylesheet():
-    return send_from_directory(_MODULE_DIR, "mutual_funds.css", mimetype="text/css")
+    return _no_store(send_from_directory(_MODULE_DIR, "mutual_funds.css", mimetype="text/css"))
 
 
 @mutual_funds_bp.get("/mutual-funds.js")
 @_guard
 def mutual_funds_javascript():
-    return send_from_directory(_MODULE_DIR, "mutual_funds.js", mimetype="application/javascript")
+    return _no_store(send_from_directory(_MODULE_DIR, "mutual_funds.js", mimetype="application/javascript"))
 
 
 @mutual_funds_bp.get("/mutual-fund-dashboard.js")
 @_guard
 def mutual_fund_dashboard_javascript():
-    return send_from_directory(_MODULE_DIR, "mutual_fund_dashboard.js", mimetype="application/javascript")
+    return _no_store(send_from_directory(_MODULE_DIR, "mutual_fund_dashboard.js", mimetype="application/javascript"))
 
 
 @mutual_funds_bp.get("/mutual-fund-detail.js")
 @_guard
 def mutual_fund_detail_javascript():
-    return send_from_directory(_MODULE_DIR, "mutual_fund_detail.js", mimetype="application/javascript")
+    return _no_store(send_from_directory(_MODULE_DIR, "mutual_fund_detail.js", mimetype="application/javascript"))
 
 
 @mutual_funds_bp.get("/mutual-fund-investment.js")
 @_guard
 def mutual_fund_investment_javascript():
-    return send_from_directory(_MODULE_DIR, "mutual_fund_investment.js", mimetype="application/javascript")
+    return _no_store(send_from_directory(_MODULE_DIR, "mutual_fund_investment.js", mimetype="application/javascript"))
+
 
 
 @mutual_funds_bp.get("/api/mutual-funds/catalog")
@@ -707,6 +708,76 @@ def mutual_funds_record_investment():
         return jsonify({"error": str(exc)}), 400 if isinstance(exc, ValueError) else 503
 
 
+@mutual_funds_bp.route("/api/mutual-funds/investments/<tx_id>", methods=["PUT", "POST"])
+@_guard
+def mutual_funds_update_investment(tx_id):
+    payload = request.get_json(silent=True) or {}
+    try:
+        with _lock_for_user():
+            data = _load_data()
+            tx = next((item for item in data["transactions"] if item.get("id") == tx_id), None)
+            if not tx:
+                return jsonify({"error": "Investment record not found."}), 404
+
+            code = str(tx.get("scheme_code", ""))
+            amount = _positive_amount(payload.get("amount", tx.get("amount")))
+            today = _today()
+            investment_date_str = payload.get("investment_date") or tx.get("investment_date") or today.isoformat()
+            effective_date = _as_date(investment_date_str, "Investment date")
+            if effective_date > today:
+                raise ValueError("Investment date cannot be in the future.")
+
+            kind = str(payload.get("kind") or tx.get("kind") or "LUMPSUM").upper()
+            if kind not in ("LUMPSUM", "SIP", "CATCH_UP"):
+                raise ValueError("Choose a valid investment type.")
+
+            if effective_date.isoformat() != tx.get("investment_date"):
+                if effective_date == today:
+                    current = data.get("last_navs", {}).get(code)
+                    nav_record = current or {"nav": tx.get("nav", 0), "nav_date": tx.get("nav_date"), "source": tx.get("source")}
+                else:
+                    nav_record = _select_nav(code, effective_date, cached_data=data, fast=True)
+                nav = float(nav_record["nav"])
+                nav_date = nav_record["nav_date"]
+                source = "MFapi.in" if nav_record.get("source") == MFAPI_NAV_SOURCE else "AMFI"
+            else:
+                nav = float(tx.get("nav", 0))
+                nav_date = tx.get("nav_date")
+                source = tx.get("source")
+
+            if nav <= 0:
+                raise ValueError("This scheme has no positive published NAV for the selected date.")
+
+            tx["amount"] = amount
+            tx["investment_date"] = effective_date.isoformat()
+            tx["nav"] = nav
+            tx["nav_date"] = nav_date
+            tx["units"] = amount / nav
+            tx["kind"] = kind
+            if source:
+                tx["source"] = source
+
+            _save_data(data)
+        return _no_store(jsonify({"transaction": tx, "message": "Investment record updated."}))
+    except (ValueError, AMFIError) as exc:
+        return jsonify({"error": str(exc)}), 400 if isinstance(exc, ValueError) else 503
+
+
+@mutual_funds_bp.route("/api/mutual-funds/investments/<tx_id>", methods=["DELETE"])
+@mutual_funds_bp.route("/api/mutual-funds/investments/<tx_id>/delete", methods=["POST", "DELETE"])
+@_guard
+def mutual_funds_delete_investment(tx_id):
+    with _lock_for_user():
+        data = _load_data()
+        original_count = len(data["transactions"])
+        data["transactions"] = [item for item in data["transactions"] if item.get("id") != tx_id]
+        if len(data["transactions"]) == original_count:
+            return jsonify({"error": "Investment record not found."}), 404
+        _save_data(data)
+    return _no_store(jsonify({"message": "Investment record deleted."}))
+
+
+
 @mutual_funds_bp.post("/api/mutual-funds/sips")
 @_guard
 def mutual_funds_create_sip():
@@ -945,64 +1016,29 @@ def mutual_funds_performance():
                 metadata = latest_metadata.get(code) or transaction_metadata.get(code, {})
                 group_key = (metadata.get("amc") or "", metadata.get("scheme_type") or "")
                 groups.setdefault(group_key, []).append(code)
-            history = data["nav_history"]
-            ranges = data["nav_history_ranges"]
-            chunk_start = start
-            while chunk_start <= end:
-                chunk_end = min(chunk_start + dt.timedelta(days=89), end)
-                chunk_key = (chunk_start.isoformat(), chunk_end.isoformat())
-                missing_groups = {}
-                for group_key, group_codes in groups.items():
-                    missing = [code for code in group_codes if not any(
-                        isinstance(item, list) and len(item) == 2 and item[0] <= chunk_key[0] and item[1] >= chunk_key[1]
-                        for item in ranges.get(code, [])
-                    ) or not any(chunk_key[0] <= day <= chunk_key[1] for day in history.get(code, {}))]
-                    if missing:
-                        missing_groups[group_key] = missing
-                if missing_groups:
+            history = data.setdefault("nav_history", {})
+            sources = data.setdefault("nav_history_sources", {})
+            for code in codes:
+                history.setdefault(code, {})
+                code_history = history[code]
+                has_start = any(day <= start.isoformat() for day in code_history)
+                has_end = any(day >= (end - dt.timedelta(days=7)).isoformat() for day in code_history)
+                if not (has_start and has_end) or len(code_history) < 2:
                     try:
-                        response_rows = fetch_history(chunk_start, chunk_end)
-                        response_groups = [(None, None, codes, response_rows)]
+                        rows = fetch_scheme_history(code, start, end)
+                        scheme_rows = rows.get(code, [])
+                        for row in scheme_rows:
+                            code_history[row["date"]] = float(row["nav"])
+                        if scheme_rows:
+                            sources[code] = MFAPI_NAV_SOURCE
                     except AMFIError:
-                        response_groups = []
-                        for (amc_name, scheme_type), group_codes in missing_groups.items():
-                            try:
-                                response_rows = fetch_history(
-                                    chunk_start,
-                                    chunk_end,
-                                    amc_name=amc_name or None,
-                                    scheme_type=scheme_type or None,
-                                    form_only=True,
-                                )
-                            except AMFIError:
-                                response_rows = {}
-                            for code in group_codes:
-                                if code not in response_rows:
-                                    try:
-                                        fallback_rows = fetch_scheme_history(code, chunk_start, chunk_end)
-                                    except AMFIError:
-                                        fallback_rows = {}
-                                    response_rows[code] = fallback_rows.get(code, [])
-                                    if response_rows[code]:
-                                        data["nav_history_sources"][code] = MFAPI_NAV_SOURCE
-                            response_groups.append((amc_name, scheme_type, group_codes, response_rows))
-                    for amc_name, scheme_type, group_codes, response_rows in response_groups:
-                        for code in group_codes:
-                            history.setdefault(code, {})
-                            rows = response_rows.get(code, [])
-                            if not rows:
-                                try:
-                                    fallback_rows = fetch_scheme_history(code, chunk_start, chunk_end)
-                                    rows = fallback_rows.get(code, [])
-                                    if rows:
-                                        data["nav_history_sources"][code] = MFAPI_NAV_SOURCE
-                                except AMFIError:
-                                    rows = []
-                            for row in rows:
-                                history[code][row["date"]] = float(row["nav"])
-                            if rows:
-                                ranges.setdefault(code, []).append(list(chunk_key))
-                chunk_start = chunk_end + dt.timedelta(days=1)
+                        try:
+                            rows = fetch_history(start, end, form_only=True)
+                            scheme_rows = rows.get(code, [])
+                            for row in scheme_rows:
+                                code_history[row["date"]] = float(row["nav"])
+                        except AMFIError:
+                            pass
             _save_data(data)
 
             all_dates = sorted({day for code in codes for day in history.get(code, {}) if start.isoformat() <= day <= end.isoformat()})
