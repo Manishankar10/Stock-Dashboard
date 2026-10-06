@@ -160,11 +160,13 @@ def summarize_official_filing(url, company="", subject="", details=""):
         if cached and now - cached[0] < SUMMARY_CACHE_SECONDS:
             return cached[1]
 
-    body, mime_type, final_url = _read_source(url)
-    if mime_type not in ("application/pdf", "text/html", "application/xhtml+xml") and not body.startswith(b"%PDF"):
-        raise OfficialFeedSummaryError("The official source did not return a PDF or readable page.")
-    if body.startswith(b"%PDF"):
-        mime_type = "application/pdf"
+    try:
+        body, mime_type, final_url = _read_source(url)
+        if body and body.startswith(b"%PDF"):
+            mime_type = "application/pdf"
+    except OfficialFeedSummaryError:
+        body, mime_type, final_url = None, "", url
+
     summary = _gemini_summary(company, subject, details, body, mime_type, final_url)
     with _cache_lock:
         _cache[cache_key] = (now, summary)
@@ -187,11 +189,12 @@ def summarize_official_concall(url, company="", subject="", details=""):
         if cached and now - cached[0] < SUMMARY_CACHE_SECONDS:
             return cached[1]
 
-    body, mime_type, final_url = _read_source(url)
-    if mime_type not in ("application/pdf", "text/html", "application/xhtml+xml") and not body.startswith(b"%PDF"):
-        raise OfficialFeedSummaryError("The official source did not return a PDF or readable page.")
-    if body.startswith(b"%PDF"):
-        mime_type = "application/pdf"
+    try:
+        body, mime_type, final_url = _read_source(url)
+        if body and body.startswith(b"%PDF"):
+            mime_type = "application/pdf"
+    except OfficialFeedSummaryError:
+        body, mime_type, final_url = None, "", url
 
     api_key = get_app_setting("GEMINI_API_KEY", "").strip()
     if not api_key:
@@ -212,9 +215,9 @@ def summarize_official_concall(url, company="", subject="", details=""):
         f"Official transcript URL: {final_url}"
     )
     parts = [{"text": instructions}]
-    if mime_type == "application/pdf":
+    if mime_type == "application/pdf" and body:
         parts.append({"inline_data": {"mime_type": "application/pdf", "data": base64.b64encode(body).decode("ascii")}})
-    else:
+    elif body:
         extracted = _extract_html_text(body)
         if extracted:
             parts.append({"text": "\nOfficial transcript text:\n" + extracted})
