@@ -1394,6 +1394,7 @@ def import_watchlist_txt(name):
     })
 
 @app.route("/api/watchlists/<name>/stocks/<symbol>", methods=["DELETE"])
+@app.route("/api/watchlists/<name>/stocks/<path:symbol>", methods=["DELETE"])
 @login_required
 def remove_stock(name, symbol):
     data = load_data()

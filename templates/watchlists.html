@@ -646,7 +646,7 @@
                         <td style="text-align:center;">
                             <button class="btn-secondary" style="padding:4px 8px;" onclick="openInHouseChart('${sym}')">📊</button>
                             <button class="btn-secondary" style="padding:4px 8px;" onclick="openStockNewsModal('${sym}')">📰</button>
-                            <button class="btn-danger" style="padding:4px 8px;" onclick="removeWatchlistStock('${activeWatchlistName}', '${sym}')">🗑️</button>
+                            <button class="btn-danger" style="padding:4px 8px;" onclick="removeWatchlistStock(null, '${sym}')">🗑️</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -701,8 +701,9 @@
         }
 
         async function removeWatchlistStock(name, sym) {
-            if (!confirm(`Remove ${sym} from ${name}?`)) return;
-            const res = await fetch(`/api/watchlists/${encodeURIComponent(name)}/stocks/${encodeURIComponent(sym)}`, { method: 'DELETE' });
+            const targetName = name || activeWatchlistName;
+            if (!targetName || !confirm(`Remove ${sym} from ${targetName}?`)) return;
+            const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks/${encodeURIComponent(sym)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 watchlistsData = data.watchlists;

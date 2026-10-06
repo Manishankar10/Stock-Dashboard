@@ -4640,14 +4640,22 @@
 
         async function removeWatchlistStock(watchlistName, symbol) {
             const targetName = watchlistName || activeWatchlistName;
-            if (!targetName || !await showCustomConfirm({ title: 'Remove Stock', message: `Remove ${symbol} from ${targetName}?`, isDanger: true })) return;
-            const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                showToast(`Removed ${symbol} from ${targetName}`, 'info');
-                watchlistsData = data.watchlists;
-                renderWatchlists();
-                refreshPrices();
+            if (!targetName) return;
+            const confirmFn = window.nativeConfirm || window.confirm;
+            if (!confirmFn(`Are you sure you want to remove ${cleanDisplaySymbol(symbol)} (${symbol}) from "${targetName}"?`)) return;
+            try {
+                const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    watchlistsData = data.watchlists;
+                    renderWatchlists();
+                    refreshPrices();
+                } else {
+                    alert(data.error || 'Failed to remove stock');
+                }
+            } catch (err) {
+                console.error('Remove stock error:', err);
+                alert('Failed to remove stock. Please check network connection.');
             }
         }
 
@@ -4933,7 +4941,7 @@
                             🔔 Set Price Alert
                         </div>
                         <div class="menu-divider" style="height: 1px; background: var(--border-color); margin: 4px 0;"></div>
-                        <div class="menu-item" onclick="event.stopPropagation(); removeWatchlistStock(activeWatchlistName, '${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #ef4444;">
+                        <div class="menu-item" onclick="event.stopPropagation(); removeWatchlistStock(null, '${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #ef4444;">
                             🗑️ Remove Stock
                         </div>
                     `;
@@ -5862,13 +5870,20 @@
 
         async function removePortfolioStock(symbol) {
             if (!activePortfolioName || !await showCustomConfirm({ title: 'Remove Stock', message: `Remove ${symbol} from ${activePortfolioName}? (This will delete it from database without a sell transaction)`, isDanger: true })) return;
-            const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                showToast(`Removed ${symbol} from ${activePortfolioName}`, 'info');
-                portfoliosData = data.portfolios;
-                renderPortfolios();
-                refreshPrices();
+            try {
+                const res = await fetch(`/api/portfolios/${encodeURIComponent(activePortfolioName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    portfoliosData = data.portfolios;
+                    renderPortfolios();
+                    refreshPrices();
+                    showToast(`Removed ${symbol} from ${activePortfolioName}`, 'info');
+                } else {
+                    showToast(data.error || 'Failed to remove stock', 'error');
+                }
+            } catch (err) {
+                console.error('Remove portfolio stock error:', err);
+                showToast('Failed to remove stock. Please check network connection.', 'error');
             }
         }
 
