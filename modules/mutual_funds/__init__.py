@@ -856,6 +856,66 @@ def mutual_funds_update_sip_status(sip_id):
     return _no_store(jsonify({"sip": plan}))
 
 
+@mutual_funds_bp.route("/api/mutual-funds/sips/<sip_id>", methods=["PUT", "POST"])
+@_guard
+def mutual_funds_update_sip(sip_id):
+    payload = request.get_json(silent=True) or {}
+    with _lock_for_user():
+        data = _load_data()
+        plan = next((item for item in data["sip_plans"] if item.get("id") == sip_id), None)
+        if not plan:
+            return jsonify({"error": "Monthly investment plan not found."}), 404
+
+        if "amount" in payload:
+            try:
+                amount = _positive_amount(payload.get("amount"))
+                plan["amount"] = amount
+            except ValueError as exc:
+                return jsonify({"error": str(exc)}), 400
+
+        if "start_date" in payload and payload.get("start_date"):
+            try:
+                start = _as_date(payload.get("start_date"), "SIP start date")
+                if start > _today() + dt.timedelta(days=3650):
+                    return jsonify({"error": "SIP start date is too far in the future."}), 400
+                plan["start_date"] = start.isoformat()
+            except ValueError as exc:
+                return jsonify({"error": str(exc)}), 400
+
+        if "installment_day" in payload and payload.get("installment_day") is not None and str(payload.get("installment_day")).strip() != "":
+            try:
+                day = int(payload.get("installment_day"))
+                if day < 1 or day > 28:
+                    return jsonify({"error": "Installment day must be between 1 and 28."}), 400
+                plan["installment_day"] = day
+            except (ValueError, TypeError):
+                return jsonify({"error": "Installment day must be a valid number between 1 and 28."}), 400
+
+        if "status" in payload:
+            status = str(payload.get("status", "")).upper()
+            if status not in ("ACTIVE", "PAUSED"):
+                return jsonify({"error": "SIP status must be ACTIVE or PAUSED."}), 400
+            plan["status"] = status
+
+        _save_data(data)
+    return _no_store(jsonify({"sip": plan, "message": "Monthly investment plan updated."}))
+
+
+@mutual_funds_bp.route("/api/mutual-funds/sips/<sip_id>", methods=["DELETE"])
+@mutual_funds_bp.route("/api/mutual-funds/sips/<sip_id>/delete", methods=["POST", "DELETE"])
+@_guard
+def mutual_funds_delete_sip(sip_id):
+    with _lock_for_user():
+        data = _load_data()
+        original_count = len(data["sip_plans"])
+        data["sip_plans"] = [item for item in data["sip_plans"] if item.get("id") != sip_id]
+        if len(data["sip_plans"]) == original_count:
+            return jsonify({"error": "Monthly investment plan not found."}), 404
+        _save_data(data)
+    return _no_store(jsonify({"message": "Monthly investment plan deleted."}))
+
+
+
 @mutual_funds_bp.get("/api/mutual-funds/performance")
 @_guard
 def mutual_funds_performance():

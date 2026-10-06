@@ -608,7 +608,21 @@ def load_users():
 def save_users(users):
     save_users_db(users, USERS_FILE)
 
+def find_watchlist_key(data, raw_name):
+    if not isinstance(data, dict) or not raw_name:
+        return None
+    name_str = urllib.parse.unquote(str(raw_name))
+    norm_target = re.sub(r"\s+", " ", name_str).strip().lower()
+    for k in data.keys():
+        if k == raw_name or k == name_str:
+            return k
+        if re.sub(r"\s+", " ", str(k)).strip().lower() == norm_target:
+            return k
+    return None
+
+
 def get_user_watchlist_file(username):
+
     safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower()
     return os.path.join(USER_DATA_DIR, f"{safe_user}_watchlists.json")
 
@@ -1250,12 +1264,14 @@ def create_watchlist():
     name = request.json.get("name")
     if not name:
         return jsonify({"error": "Name is required"}), 400
-    
+
     data = load_data()
-    if name in data:
+    target_key = find_watchlist_key(data, name)
+    if target_key:
         return jsonify({"error": "Watchlist already exists"}), 400
-    
-    data[name] = []
+
+    clean_name = re.sub(r"\s+", " ", str(name)).strip()
+    data[clean_name] = []
     save_data(data)
     return jsonify({"success": True, "watchlists": data})
 
@@ -1263,10 +1279,12 @@ def create_watchlist():
 @login_required
 def delete_watchlist(name):
     data = load_data()
-    if name in data:
-        del data[name]
+    target_key = find_watchlist_key(data, name)
+    if target_key and target_key in data:
+        del data[target_key]
         save_data(data)
     return jsonify({"success": True, "watchlists": data})
+
 
 @app.route("/api/watchlists/<name>/stocks", methods=["POST"])
 @login_required
@@ -1291,11 +1309,12 @@ def add_stock(name):
         }), 400
 
     data = load_data()
-    if name not in data:
+    target_key = find_watchlist_key(data, name)
+    if not target_key:
         return jsonify({"error": "Watchlist not found"}), 404
 
-    if resolved_symbol not in data[name]:
-        data[name].append(resolved_symbol)
+    if resolved_symbol not in data[target_key]:
+        data[target_key].append(resolved_symbol)
         save_data(data)
 
     return jsonify({"success": True, "symbol": resolved_symbol, "exchange": exchange, "watchlists": data})
@@ -1306,7 +1325,8 @@ def add_stock(name):
 def import_watchlist_txt(name):
     """Import comma-separated watchlist symbols after Yahoo validation."""
     data = load_data()
-    if name not in data:
+    target_key = find_watchlist_key(data, name)
+    if not target_key:
         return jsonify({"error": "Watchlist not found"}), 404
 
     file = request.files.get("file")
@@ -1347,11 +1367,11 @@ def import_watchlist_txt(name):
             not_added_symbols.append(raw_symbol)
             continue
 
-        if resolved_symbol in data[name]:
+        if resolved_symbol in data[target_key]:
             already_present_symbols.append(raw_symbol)
             continue
 
-        data[name].append(resolved_symbol)
+        data[target_key].append(resolved_symbol)
         added_symbols.append(resolved_symbol)
         if exchange == "BSE":
             bse_symbols.append(resolved_symbol)
@@ -1377,10 +1397,32 @@ def import_watchlist_txt(name):
 @login_required
 def remove_stock(name, symbol):
     data = load_data()
-    if name in data and symbol in data[name]:
-        data[name].remove(symbol)
-        save_data(data)
+    target_key = find_watchlist_key(data, name)
+
+    if target_key and target_key in data:
+        sym_unquoted = urllib.parse.unquote(str(symbol)).strip()
+        sym_clean = re.sub(r"\.(NS|BO)$", "", sym_unquoted, flags=re.IGNORECASE)
+
+        to_remove = []
+        for s in data[target_key]:
+            s_str = str(s).strip()
+            s_clean = re.sub(r"\.(NS|BO)$", "", s_str, flags=re.IGNORECASE)
+            if (
+                s == symbol
+                or s_str.upper() == sym_unquoted.upper()
+                or s_clean.upper() == sym_clean.upper()
+            ):
+                to_remove.append(s)
+
+        if to_remove:
+            for item in to_remove:
+                while item in data[target_key]:
+                    data[target_key].remove(item)
+            save_data(data)
+
     return jsonify({"success": True, "watchlists": data})
+
+
 
 # Portfolio Endpoints
 @app.route("/api/portfolios", methods=["GET"])

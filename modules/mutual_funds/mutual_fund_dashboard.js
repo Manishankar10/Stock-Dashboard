@@ -157,9 +157,11 @@
         }
         body.innerHTML = rows.map(row => {
             const active = row.status === 'ACTIVE';
-            return '<tr><td><div class="mf-scheme-name"><a class="mf-detail-link" href="/mutual-funds/fund/' + encodeURIComponent(row.scheme_code) + '">' + escapeHtml(row.scheme_name) + '</a><small>' + escapeHtml(row.amc || '') + '</small></div></td><td>Day ' + escapeHtml(row.installment_day) + ' · Monthly</td><td>' + fmtDate(row.start_date) + '</td><td class="mf-right">' + fmtMoney(row.amount) + '</td><td><span class="mf-status-pill ' + (active ? '' : 'paused') + '">' + escapeHtml(row.status || 'ACTIVE') + '</span></td><td><button type="button" class="mf-row-action mf-toggle-sip" data-sip="' + escapeHtml(row.id) + '" data-status="' + (active ? 'PAUSED' : 'ACTIVE') + '">' + (active ? 'Pause' : 'Resume') + '</button></td></tr>';
+            return '<tr><td><div class="mf-scheme-name"><a class="mf-detail-link" href="/mutual-funds/fund/' + encodeURIComponent(row.scheme_code) + '">' + escapeHtml(row.scheme_name) + '</a><small>' + escapeHtml(row.amc || '') + '</small></div></td><td>Day ' + escapeHtml(row.installment_day) + ' · Monthly</td><td>' + fmtDate(row.start_date) + '</td><td class="mf-right">' + fmtMoney(row.amount) + '</td><td><span class="mf-status-pill ' + (active ? '' : 'paused') + '">' + escapeHtml(row.status || 'ACTIVE') + '</span></td><td><div style="display:inline-flex;gap:6px;"><button type="button" class="mf-row-action mf-edit-sip" data-sip="' + escapeHtml(row.id) + '">Edit</button><button type="button" class="mf-row-action mf-toggle-sip" data-sip="' + escapeHtml(row.id) + '" data-status="' + (active ? 'PAUSED' : 'ACTIVE') + '">' + (active ? 'Pause' : 'Resume') + '</button><button type="button" class="mf-row-action mf-delete-action mf-delete-sip" data-sip="' + escapeHtml(row.id) + '">Delete</button></div></td></tr>';
         }).join('');
+        body.querySelectorAll('.mf-edit-sip').forEach(button => button.addEventListener('click', () => openEditSipModal(button.dataset.sip)));
         body.querySelectorAll('.mf-toggle-sip').forEach(button => button.addEventListener('click', () => toggleSip(button)));
+        body.querySelectorAll('.mf-delete-sip').forEach(button => button.addEventListener('click', () => deleteSip(button)));
     }
 
     function renderTransactions(rows) {
@@ -529,11 +531,64 @@
         } catch (error) { toast(error.message, true); button.disabled = false; }
     }
 
+    function openEditSipModal(sipId) {
+        if (!portfolio || !portfolio.sip_plans) return;
+        const plan = portfolio.sip_plans.find(item => item.id === sipId);
+        if (!plan) return;
+        document.getElementById('edit-sip-id').value = plan.id;
+        document.getElementById('edit-sip-scheme-name').value = plan.scheme_name;
+        document.getElementById('edit-sip-amount').value = plan.amount;
+        document.getElementById('edit-sip-start-date').value = plan.start_date;
+        document.getElementById('edit-sip-installment-day').value = plan.installment_day || 1;
+        document.getElementById('edit-sip-status').value = plan.status || 'ACTIVE';
+        document.getElementById('edit-sip-modal').hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+
+    async function submitEditSip(event) {
+        event.preventDefault();
+        const button = document.getElementById('edit-sip-submit');
+        const sipId = document.getElementById('edit-sip-id').value;
+        const payload = {
+            amount: document.getElementById('edit-sip-amount').value,
+            start_date: document.getElementById('edit-sip-start-date').value,
+            installment_day: document.getElementById('edit-sip-installment-day').value,
+            status: document.getElementById('edit-sip-status').value,
+        };
+        setBusy(button, true, 'Updating…');
+        try {
+            const data = await api('/api/mutual-funds/sips/' + encodeURIComponent(sipId), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            closeModals();
+            toast(data.message || 'Monthly investment plan updated.');
+            await loadPortfolio();
+        } catch (error) { toast(error.message, true); }
+        finally { setBusy(button, false); }
+    }
+
+    async function deleteSip(button) {
+        const sipId = button.dataset.sip;
+        if (!confirm('Are you sure you want to delete this monthly investment plan?')) return;
+        button.disabled = true;
+        try {
+            const data = await api('/api/mutual-funds/sips/' + encodeURIComponent(sipId), {
+                method: 'DELETE',
+            });
+            toast(data.message || 'Monthly investment plan deleted.');
+            await loadPortfolio();
+        } catch (error) { toast(error.message, true); button.disabled = false; }
+    }
+
     document.getElementById('portfolio-refresh').addEventListener('click', function () { performance = []; loadPortfolio(this); });
     document.getElementById('open-sip').addEventListener('click', openSipModal);
     document.getElementById('plan-start-button').addEventListener('click', openSipModal);
     document.getElementById('investment-form').addEventListener('submit', submitInvestment);
     document.getElementById('sip-form').addEventListener('submit', submitSip);
+    const editForm = document.getElementById('edit-sip-form');
+    if (editForm) editForm.addEventListener('submit', submitEditSip);
     document.getElementById('investment-date').addEventListener('change', updateInvestmentPreview);
     document.getElementById('load-performance').addEventListener('click', loadPerformance);
     document.getElementById('performance-range').addEventListener('change', drawChart);
