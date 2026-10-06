@@ -171,14 +171,18 @@
         body.innerHTML = rows.map(row => '<tr><td>' + fmtDate(row.investment_date) + '</td><td><div class="mf-scheme-name"><a class="mf-detail-link" href="/mutual-funds/fund/' + encodeURIComponent(row.scheme_code) + '">' + escapeHtml(row.scheme_name) + '</a><small>Code ' + escapeHtml(row.scheme_code) + '</small></div></td><td><span class="mf-tag">' + escapeHtml((row.kind || 'LUMPSUM').replace('_', ' ')) + '</span></td><td class="mf-right">' + fmtMoney(row.amount) + '</td><td class="mf-right">₹' + fmtNumber(row.nav, 4) + '</td><td>' + fmtDate(row.nav_date) + '</td><td class="mf-right">' + fmtNumber(row.units, 4) + '</td></tr>').join('');
     }
 
-    async function loadPortfolio(button) {
+    async function loadPortfolio(button, refresh = true) {
         if (button) setBusy(button, true, '↻ Refreshing…');
         const body = document.getElementById('holding-rows');
-        if (!portfolio) body.innerHTML = '<tr><td colspan="7" class="mf-table-message">Refreshing official AMFI NAVs and loading your saved records…</td></tr>';
+        if (!portfolio) body.innerHTML = '<tr><td colspan="7" class="mf-table-message">' + (refresh ? 'Refreshing official AMFI NAVs and loading your saved records…' : 'Loading saved portfolio records…') + '</td></tr>';
         try {
-            const data = await api('/api/mutual-funds/portfolio?refresh=1');
+            const data = await api('/api/mutual-funds/portfolio?refresh=' + (refresh ? '1' : '0'));
             renderPortfolio(data);
             const notice = document.getElementById('portfolio-feed-notice');
+            if (!refresh && data.is_stale) {
+                notice.hidden = false;
+                notice.textContent = 'Installment recorded. Holdings use saved NAVs until you refresh NAVs.';
+            }
         } catch (error) {
             const notice = document.getElementById('portfolio-feed-notice');
             notice.hidden = false;
@@ -476,12 +480,8 @@
             const data = await api('/api/mutual-funds/sips/' + encodeURIComponent(button.dataset.sip) + '/catch-up', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scheduled_date: button.dataset.date }) });
             toast(data.message);
             performance = [];
-            await loadPortfolio();
-        } catch (error) {
-            toast(error.message, true);
-            setAllActionsDisabled(false);
-            button.textContent = oldText;
-        }
+            await loadPortfolio(null, false);
+        } catch (error) { toast(error.message, true); button.disabled = false; button.textContent = oldText; }
     }
 
     async function clearDue(button) {
@@ -506,7 +506,7 @@
             }
             if (completed) {
                 performance = [];
-                await loadPortfolio();
+                await loadPortfolio(null, false);
             }
             if (failures.length) {
                 toast(completed + ' installment' + (completed === 1 ? '' : 's') + ' completed; ' + failures.length + ' could not be recorded. ' + failures[0], true);

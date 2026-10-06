@@ -277,11 +277,22 @@ def _parse_history_rows(text):
     return result
 
 
-def fetch_scheme_history(scheme_code, start_date, end_date):
-    """Fetch scheme-specific historical NAVs from MFapi.in with in-memory caching."""
+def fetch_scheme_history(scheme_code, start_date, end_date, timeout=None):
+    """Fetch scheme-specific historical NAVs from MFapi.in as an AMFI fallback."""
     code = str(scheme_code).strip()
     if not re.fullmatch(r"\d{3,8}", code):
         raise AMFIError("A valid scheme code is required for historical NAV fallback.")
+    try:
+        response = requests.get(
+            f"{MFAPI_NAV_SOURCE}mf/{code}",
+            params={"startDate": start_date.isoformat(), "endDate": end_date.isoformat()},
+            headers={"User-Agent": HEADERS["User-Agent"], "Accept": "application/json"},
+            timeout=timeout or TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise AMFIError("MFapi.in could not provide fallback NAV history.") from exc
 
     now = time.monotonic()
     cached_records = None
@@ -692,7 +703,7 @@ def _motilal_official_portfolio(raw, page_url):
     return holdings, sectors, date_match.group(1) if date_match else None
 
 
-def _follow_history_frames(client, response, headers, depth=0):
+def _follow_history_frames(client, response, headers, depth=0, timeout=None):
     """Follow AMFI's legacy frameset wrapper to its actual history report."""
     if depth >= 3:
         return {}
@@ -708,14 +719,14 @@ def _follow_history_frames(client, response, headers, depth=0):
         frame_headers = dict(headers)
         frame_headers["Referer"] = response.url
         try:
-            child = client.get(target, headers=frame_headers, timeout=TIMEOUT)
+            child = client.get(target, headers=frame_headers, timeout=timeout or TIMEOUT)
             child.raise_for_status()
         except requests.RequestException:
             continue
         rows = _parse_history_rows(_decode(child))
         if rows:
             return rows
-        rows = _follow_history_frames(client, child, frame_headers, depth + 1)
+        rows = _follow_history_frames(client, child, frame_headers, depth + 1, timeout)
         if rows:
             return rows
     return {}
@@ -725,11 +736,11 @@ def _history_label(value):
     return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
 
 
-def _fetch_history_from_amfi_form(start_date, end_date, headers, amc_name=None, scheme_type=None):
+def _fetch_history_from_amfi_form(start_date, end_date, headers, amc_name=None, scheme_type=None, timeout=None, fast=False):
     """Use the current AMFI NAV History form if its download route has changed."""
     try:
         client = requests.Session()
-        page = client.get(AMFI_NAV_PAGE, headers=headers, timeout=TIMEOUT)
+        page = client.get(AMFI_NAV_PAGE, headers=headers, timeout=timeout or TIMEOUT)
         page.raise_for_status()
     except requests.RequestException:
         return None
@@ -811,7 +822,8 @@ def _fetch_history_from_amfi_form(start_date, end_date, headers, amc_name=None, 
 
         action = urljoin(page.url, form.get("action") or page.url)
         method = str(form.get("method") or "get").lower()
-        for date_format in ("%d-%b-%Y", "%Y-%m-%d"):
+        date_formats = ("%d-%b-%Y",) if fast else ("%d-%b-%Y", "%Y-%m-%d")
+        for date_format in date_formats:
             values = dict(base_values)
             values[from_name] = start_date.strftime(date_format)
             values[to_name] = end_date.strftime(date_format)
@@ -820,13 +832,13 @@ def _fetch_history_from_amfi_form(start_date, end_date, headers, amc_name=None, 
                 values[submit["name"]] = submit.get("value") or submit.get_text(" ", strip=True)
             try:
                 if method == "post":
-                    response = client.post(action, data=values, headers=headers, timeout=TIMEOUT)
+                    response = client.post(action, data=values, headers=headers, timeout=timeout or TIMEOUT)
                 else:
-                    response = client.get(action, params=values, headers=headers, timeout=TIMEOUT)
+                    response = client.get(action, params=values, headers=headers, timeout=timeout or TIMEOUT)
                 response.raise_for_status()
                 rows = _parse_history_rows(_decode(response))
                 if not rows:
-                    rows = _follow_history_frames(client, response, headers)
+                    rows = _follow_history_frames(client, response, headers, timeout=timeout)
                 if rows:
                     return rows
             except requests.RequestException:
@@ -834,7 +846,7 @@ def _fetch_history_from_amfi_form(start_date, end_date, headers, amc_name=None, 
     return None
 
 
-def fetch_history(start_date, end_date, amc_name=None, scheme_type=None, form_only=False):
+def fetch_history(start_date, end_date, amc_name=None, scheme_type=None, form_only=False, timeout=None, fast_form=False):
     """Fetch up to 90 days of AMFI history for all schemes; caller filters codes."""
     if (end_date - start_date).days > 89:
         raise AMFIError("AMFI history requests are limited to 90 days.")
@@ -855,6 +867,7 @@ def fetch_history(start_date, end_date, amc_name=None, scheme_type=None, form_on
         f"frmdate={start_text}&rpt=dn",
     ]
     errors = []
+    request_timeout = timeout or TIMEOUT
     request_headers = dict(HEADERS)
     request_headers.update({
         "Referer": AMFI_NAV_PAGE,
@@ -864,12 +877,12 @@ def fetch_history(start_date, end_date, amc_name=None, scheme_type=None, form_on
         client = requests.Session()
         for url in urls:
             try:
-                response = client.get(url, headers=request_headers, timeout=TIMEOUT)
+                response = client.get(url, headers=request_headers, timeout=request_timeout)
                 response.raise_for_status()
                 text = _decode(response)
                 rows = _parse_history_rows(text)
                 if not rows:
-                    rows = _follow_history_frames(client, response, request_headers)
+                    rows = _follow_history_frames(client, response, request_headers, timeout=request_timeout)
                 if rows:
                     return rows
                 content_type = response.headers.get("Content-Type", "unknown content type")
@@ -877,7 +890,10 @@ def fetch_history(start_date, end_date, amc_name=None, scheme_type=None, form_on
                 errors.append(f"AMFI returned {response.status_code} ({content_type}) without NAV rows: {sample}")
             except requests.RequestException as exc:
                 errors.append(str(exc))
-    form_rows = _fetch_history_from_amfi_form(start_date, end_date, request_headers, amc_name, scheme_type)
+    form_rows = _fetch_history_from_amfi_form(
+        start_date, end_date, request_headers, amc_name, scheme_type,
+        timeout=request_timeout, fast=fast_form,
+    )
     if form_rows:
         return form_rows
     raise AMFIError("Could not retrieve historical NAVs from AMFI. " + " ".join(errors[-2:]))
