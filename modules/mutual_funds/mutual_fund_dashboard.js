@@ -462,22 +462,32 @@
         finally { setBusy(button, false); }
     }
 
+    function setAllActionsDisabled(disabled) {
+        document.querySelectorAll('.mf-catch-up, #clear-due-btn').forEach(btn => {
+            btn.disabled = disabled;
+        });
+    }
+
     async function catchUp(button) {
         const oldText = button.textContent;
-        button.disabled = true;
+        setAllActionsDisabled(true);
         button.textContent = 'Looking up NAV…';
         try {
             const data = await api('/api/mutual-funds/sips/' + encodeURIComponent(button.dataset.sip) + '/catch-up', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scheduled_date: button.dataset.date }) });
             toast(data.message);
             performance = [];
             await loadPortfolio();
-        } catch (error) { toast(error.message, true); button.disabled = false; button.textContent = oldText; }
+        } catch (error) {
+            toast(error.message, true);
+            setAllActionsDisabled(false);
+            button.textContent = oldText;
+        }
     }
 
     async function clearDue(button) {
         if (!filteredMissed.length || !portfolio) return;
         const dueRows = filteredMissed.slice();
-        button.disabled = true;
+        setAllActionsDisabled(true);
         let completed = 0;
         const failures = [];
         try {
@@ -505,7 +515,7 @@
             }
         } finally {
             button.textContent = 'Clear Due';
-            button.disabled = !filteredMissed.length;
+            setAllActionsDisabled(false);
         }
     }
 

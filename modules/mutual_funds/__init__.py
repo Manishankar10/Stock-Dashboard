@@ -154,16 +154,19 @@ def _installment_dates(plan, through_date):
 def _missed_sips(data, as_of=None):
     today = as_of or _today()
     recorded = {
-        (str(tx.get("sip_id")), str(tx.get("scheduled_date")))
-        for tx in data["transactions"] if tx.get("sip_id") and tx.get("scheduled_date")
+        (str(tx.get("scheme_code")), str(tx.get("scheduled_date")))
+        for tx in data["transactions"] if tx.get("scheduled_date")
     }
     result = []
+    seen_schedule_keys = set()
     for plan in data["sip_plans"]:
         if plan.get("status", "ACTIVE") != "ACTIVE":
             continue
         # A schedule due today becomes a missed installment tomorrow.
         for scheduled_date in _installment_dates(plan, today - dt.timedelta(days=1)):
-            if (str(plan.get("id")), scheduled_date) not in recorded:
+            key = (str(plan.get("scheme_code")), scheduled_date)
+            if key not in recorded and key not in seen_schedule_keys:
+                seen_schedule_keys.add(key)
                 result.append({
                     "sip_id": plan["id"],
                     "scheme_code": str(plan["scheme_code"]),
@@ -173,6 +176,7 @@ def _missed_sips(data, as_of=None):
                 })
     result.sort(key=lambda row: (row["scheduled_date"], row["scheme_name"].casefold()))
     return result
+
 
 
 def _xirr(transactions, current_value, as_of):
@@ -309,39 +313,37 @@ def _select_nav(code, requested_date, latest_feed):
         raise ValueError("Investment date cannot be in the future.")
     rows = {}
     fallback_used = False
-    if current:
-        # Query the official history form for this scheme's AMC and type first;
-        # this avoids downloading a large all-AMC report for a single SIP.
-        try:
-            rows = fetch_history(
-                requested_date,
-                end,
-                amc_name=current.get("amc"),
-                scheme_type=current.get("scheme_type"),
-                form_only=True,
-            )
-        except AMFIError:
-            pass
+
+    # Try fast cached scheme history lookup first
+    try:
+        rows = fetch_scheme_history(code, requested_date, end)
+        fallback_used = True
+    except AMFIError:
+        pass
+
     if str(code) not in rows:
-        try:
-            rows = fetch_history(
-                requested_date,
-                end,
-                amc_name=current.get("amc") if current else None,
-                scheme_type=current.get("scheme_type") if current else None,
-            )
-        except AMFIError as amfi_error:
+        if current:
             try:
-                rows = fetch_scheme_history(code, requested_date, end)
-                fallback_used = True
-            except AMFIError as fallback_error:
-                raise AMFIError(f"AMFI history failed ({amfi_error}); MFapi.in fallback failed ({fallback_error}).") from fallback_error
-    if str(code) not in rows:
-        try:
-            rows = fetch_scheme_history(code, requested_date, end)
-            fallback_used = True
-        except AMFIError as fallback_error:
-            raise AMFIError(f"AMFI returned no rows for scheme {code}; MFapi.in fallback failed ({fallback_error}).") from fallback_error
+                rows = fetch_history(
+                    requested_date,
+                    end,
+                    amc_name=current.get("amc"),
+                    scheme_type=current.get("scheme_type"),
+                    form_only=True,
+                )
+            except AMFIError:
+                pass
+        if str(code) not in rows:
+            try:
+                rows = fetch_history(
+                    requested_date,
+                    end,
+                    amc_name=current.get("amc") if current else None,
+                    scheme_type=current.get("scheme_type") if current else None,
+                )
+            except AMFIError as amfi_error:
+                raise AMFIError(f"Historical NAV lookup failed for scheme {code}: {amfi_error}") from amfi_error
+
     eligible = rows.get(str(code), [])
     eligible = [row for row in eligible if requested_date.isoformat() <= row["date"] <= end.isoformat()]
     eligible.sort(key=lambda row: row["date"])
@@ -350,6 +352,7 @@ def _select_nav(code, requested_date, latest_feed):
     picked = eligible[0]
     source = MFAPI_NAV_SOURCE if fallback_used else AMFI_NAV_SOURCE
     return {"scheme_code": str(code), "nav": picked["nav"], "nav_date": picked["date"], "source": source}
+
 
 
 @mutual_funds_bp.get("/mutual-funds")
@@ -656,21 +659,32 @@ def mutual_funds_create_sip():
         if float(scheme["nav"]) <= 0:
             raise ValueError("This scheme has no positive published NAV and cannot be tracked as a new SIP.")
         day = max(1, min(28, int(payload.get("installment_day") or start.day)))
-        plan = {
-            "id": "sip_" + uuid.uuid4().hex[:14],
-            "scheme_code": code,
-            "scheme_name": scheme["name"],
-            "amc": scheme.get("amc"),
-            "scheme_type": scheme.get("scheme_type"),
-            "amount": amount,
-            "start_date": start.isoformat(),
-            "installment_day": day,
-            "frequency": "Monthly",
-            "status": "ACTIVE",
-            "created_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
-        }
         with _lock_for_user():
             data = _load_data()
+            existing = next((
+                p for p in data["sip_plans"]
+                if str(p.get("scheme_code")) == code
+                and p.get("status", "ACTIVE") == "ACTIVE"
+                and p.get("start_date") == start.isoformat()
+                and abs(float(p.get("amount", 0)) - amount) < 0.01
+                and int(p.get("installment_day") or start.day) == day
+            ), None)
+            if existing:
+                return _no_store(jsonify({"sip": existing, "message": "This monthly investment plan is already active."})), 200
+
+            plan = {
+                "id": "sip_" + uuid.uuid4().hex[:14],
+                "scheme_code": code,
+                "scheme_name": scheme["name"],
+                "amc": scheme.get("amc"),
+                "scheme_type": scheme.get("scheme_type"),
+                "amount": amount,
+                "start_date": start.isoformat(),
+                "installment_day": day,
+                "frequency": "Monthly",
+                "status": "ACTIVE",
+                "created_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+            }
             data["sip_plans"].append(plan)
             _save_data(data)
         return _no_store(jsonify({"sip": plan, "message": "Monthly investment plan saved."})), 201
@@ -692,7 +706,10 @@ def mutual_funds_catch_up_sip(sip_id):
             if not plan:
                 return jsonify({"error": "Monthly investment plan not found or inactive."}), 404
             due_dates = set(_installment_dates(plan, _today() - dt.timedelta(days=1)))
-            recorded = any(tx.get("sip_id") == sip_id and tx.get("scheduled_date") == scheduled.isoformat() for tx in data["transactions"])
+            recorded = any(
+                str(tx.get("scheme_code")) == str(plan["scheme_code"]) and tx.get("scheduled_date") == scheduled.isoformat()
+                for tx in data["transactions"]
+            )
             if scheduled.isoformat() not in due_dates or recorded:
                 return jsonify({"error": "This installment is not currently due, or it has already been recorded."}), 409
             current = _nav_map(feed["schemes"]).get(str(plan["scheme_code"]))

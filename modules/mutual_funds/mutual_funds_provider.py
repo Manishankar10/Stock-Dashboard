@@ -191,8 +191,24 @@ def parse_nav_report(text):
     return schemes
 
 
-def fetch_latest_navs():
-    """Fetch the complete NAV report on every call; no NAV response is cached."""
+_LATEST_NAVS_CACHE = None
+_LATEST_NAVS_LOCK = threading.Lock()
+_LATEST_NAVS_TTL = 300  # Cache for 5 minutes
+
+_SCHEME_NAV_CACHE = {}
+_SCHEME_NAV_LOCK = threading.Lock()
+_SCHEME_NAV_TTL = 21600  # Cache scheme history for 6 hours
+
+
+def fetch_latest_navs(force_refresh=False):
+    """Fetch the complete NAV report; cached for 5 minutes to avoid redundant downloads."""
+    global _LATEST_NAVS_CACHE
+    now = time.monotonic()
+    if not force_refresh:
+        with _LATEST_NAVS_LOCK:
+            if _LATEST_NAVS_CACHE and _LATEST_NAVS_CACHE[0] > now:
+                return _LATEST_NAVS_CACHE[1]
+
     errors = []
     urls = []
     try:
@@ -210,15 +226,24 @@ def fetch_latest_navs():
             nav_as_of = max((row["nav_date"] for row in schemes), default=None)
             if nav_as_of and (dt.datetime.now().date() - dt.date.fromisoformat(nav_as_of)).days > 10:
                 raise AMFIError(f"AMFI's latest published NAV date is {nav_as_of}; the report appears out of date.")
-            return {
+            feed = {
                 "schemes": schemes,
                 "source": url,
                 "source_label": "AMFI latest NAV report",
                 "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                 "nav_as_of": nav_as_of,
             }
+            with _LATEST_NAVS_LOCK:
+                _LATEST_NAVS_CACHE = (now + _LATEST_NAVS_TTL, feed)
+            return feed
         except (requests.RequestException, AMFIError) as exc:
             errors.append(str(exc))
+
+
+    with _LATEST_NAVS_LOCK:
+        if _LATEST_NAVS_CACHE:
+            return _LATEST_NAVS_CACHE[1]
+
     raise AMFIError("AMFI's latest NAV report is unavailable or unreadable. " + " ".join(errors[-2:]))
 
 
@@ -253,43 +278,62 @@ def _parse_history_rows(text):
 
 
 def fetch_scheme_history(scheme_code, start_date, end_date):
-    """Fetch scheme-specific historical NAVs from MFapi.in as an AMFI fallback."""
+    """Fetch scheme-specific historical NAVs from MFapi.in with in-memory caching."""
     code = str(scheme_code).strip()
     if not re.fullmatch(r"\d{3,8}", code):
         raise AMFIError("A valid scheme code is required for historical NAV fallback.")
-    try:
-        response = requests.get(
-            f"{MFAPI_NAV_SOURCE}mf/{code}",
-            params={"startDate": start_date.isoformat(), "endDate": end_date.isoformat()},
-            headers={"User-Agent": HEADERS["User-Agent"], "Accept": "application/json"},
-            timeout=TIMEOUT,
-        )
-        response.raise_for_status()
-        payload = response.json()
-    except (requests.RequestException, ValueError) as exc:
-        raise AMFIError("MFapi.in could not provide fallback NAV history.") from exc
 
-    metadata = payload.get("meta") if isinstance(payload, dict) else None
-    if not isinstance(payload, dict) or payload.get("status") != "SUCCESS" or not isinstance(metadata, dict) or str(metadata.get("scheme_code", "")) != code:
-        raise AMFIError("MFapi.in returned a failed response or a different scheme.")
-    records = payload.get("data")
-    if not isinstance(records, list):
-        raise AMFIError("MFapi.in returned an invalid NAV history response.")
-    navs = []
-    for record in records:
-        if not isinstance(record, dict):
-            continue
-        nav_date = _parse_date(record.get("date"))
+    now = time.monotonic()
+    cached_records = None
+    with _SCHEME_NAV_LOCK:
+        cached = _SCHEME_NAV_CACHE.get(code)
+        if cached and cached[0] > now:
+            cached_records = cached[1]
+
+    if cached_records is None:
         try:
-            nav = float(str(record.get("nav", "")).replace(",", ""))
-        except (TypeError, ValueError):
-            continue
-        if nav_date and start_date <= nav_date <= end_date and nav > 0:
-            navs.append({"date": nav_date.isoformat(), "nav": nav})
-    navs.sort(key=lambda row: row["date"])
+            response = requests.get(
+                f"{MFAPI_NAV_SOURCE}mf/{code}",
+                headers={"User-Agent": HEADERS["User-Agent"], "Accept": "application/json"},
+                timeout=TIMEOUT,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise AMFIError("MFapi.in could not provide fallback NAV history.") from exc
+
+        metadata = payload.get("meta") if isinstance(payload, dict) else None
+        if not isinstance(payload, dict) or payload.get("status") != "SUCCESS" or not isinstance(metadata, dict) or str(metadata.get("scheme_code", "")) != code:
+            raise AMFIError("MFapi.in returned a failed response or a different scheme.")
+        records = payload.get("data")
+        if not isinstance(records, list):
+            raise AMFIError("MFapi.in returned an invalid NAV history response.")
+
+        all_navs = []
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            nav_date = _parse_date(record.get("date"))
+            try:
+                nav = float(str(record.get("nav", "")).replace(",", ""))
+            except (TypeError, ValueError):
+                continue
+            if nav_date and nav > 0:
+                all_navs.append({"date": nav_date.isoformat(), "nav": nav, "date_obj": nav_date})
+        all_navs.sort(key=lambda row: row["date"])
+        cached_records = all_navs
+        with _SCHEME_NAV_LOCK:
+            _SCHEME_NAV_CACHE[code] = (now + _SCHEME_NAV_TTL, cached_records)
+
+    navs = [
+        {"date": row["date"], "nav": row["nav"]}
+        for row in cached_records
+        if start_date <= row["date_obj"] <= end_date
+    ]
     if not navs:
         raise AMFIError("MFapi.in returned no NAV rows for this scheme and date range.")
     return {code: navs}
+
 
 
 _OFFICIAL_FACTS_CACHE = {}
