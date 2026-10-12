@@ -1,0 +1,11 @@
+/* =========================================================
+   PORTFOLIO MODULE STYLES
+   Location: modules/portfolio/portfolio.css
+   ========================================================= */
+.portfolio-tabs-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}

@@ -1,0 +1,10 @@
+/* =========================================================
+   INSIGHTS & MARKET INTELLIGENCE MODULE STYLES
+   Location: modules/insights/insights.css
+   ========================================================= */
+.insights-top-cards {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}

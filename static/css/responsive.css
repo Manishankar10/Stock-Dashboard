@@ -1,0 +1,1925 @@
+/* ==========================================================================
+   CAPITAL DESK - INSTITUTIONAL RESPONSIVE DESIGN SYSTEM
+   File: static/css/responsive.css
+   Author: Senior UI/UX Engineering
+   Devices: Android & iOS Mobile, Tablets, Laptops & Desktops
+   Orientations: Portrait & Landscape
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. CROSS-PLATFORM & NATIVE MOBILE SYSTEM NORMALIZATION
+   -------------------------------------------------------------------------- */
+:root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    
+    /* Dedicated Fintech Mobile Color Accents */
+    --trade-green: #10b981;
+    --trade-green-soft: #34d399;
+    --trade-green-glow: rgba(16, 185, 129, 0.15);
+    --trade-red: #ef4444;
+    --trade-red-soft: #f87171;
+    --trade-red-glow: rgba(239, 68, 68, 0.15);
+    --tab-active-blue: #3b82f6;
+    --tab-active-blue-glow: rgba(59, 130, 246, 0.2);
+}
+
+/* iOS & Android Touch Normalization */
+html, body {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+button, input, select, textarea, a {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Fast responsive touch feedback */
+.btn-primary:active,
+.btn-secondary:active,
+.pf-select-btn:active,
+.sidebar-nav-item:active,
+.wl-table tr.pf-row:active {
+    transform: scale(0.985);
+    transition: transform 0.08s ease;
+}
+
+/* --------------------------------------------------------------------------
+   1. MOBILE WATCHLIST VIEW - REFINED FINTECH EXPERIENCE
+   Matching Kite / Groww / Dhan institutional mobile standard
+   -------------------------------------------------------------------------- */
+
+/* Watchlist Top Header Strip */
+@media (max-width: 768px) {
+    /* Container & Viewport Spacing */
+    body {
+        padding: 0 !important;
+        background-color: var(--bg-body);
+    }
+
+    .container {
+        padding: 10px 12px calc(20px + var(--safe-area-bottom)) 12px !important;
+    }
+
+    /* Watchlist Header Card Reset */
+    .watchlist-top-card {
+        padding: 0 !important;
+        margin-bottom: 12px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .watchlist-selector-row {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0;
+        position: relative;
+    }
+
+    .watchlist-label-title {
+        display: none !important;
+    }
+
+    .watchlist-create-action {
+        display: none !important;
+    }
+
+    /* Horizontal Scrollable Tabs Nav */
+    .watchlist-tabs-nav,
+    #watchlist-selector-mount {
+        display: flex !important;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0px;
+        margin-bottom: 0 !important;
+    }
+
+    .watchlist-tabs-nav::-webkit-scrollbar,
+    #watchlist-selector-mount::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Watchlist Tab Buttons (Kite style with blue indicator) */
+    .watchlist-tabs-nav .pf-select-btn,
+    #watchlist-selector-mount .pf-select-btn {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 10px 14px 10px 14px !important;
+        font-size: 14.5px !important;
+        font-weight: 500 !important;
+        color: var(--text-secondary) !important;
+        position: relative;
+        cursor: pointer;
+        transition: color 0.15s ease;
+        flex-shrink: 0;
+        border-bottom: 2.5px solid transparent !important;
+        box-shadow: none !important;
+    }
+
+    .watchlist-tabs-nav .pf-select-btn:hover,
+    #watchlist-selector-mount .pf-select-btn:hover {
+        color: var(--text-primary) !important;
+    }
+
+    /* Active Tab: Highlighting active watchlist name in Green */
+    .watchlist-tabs-nav .pf-select-btn.active,
+    #watchlist-selector-mount .pf-select-btn.active {
+        color: var(--trade-green, #10b981) !important;
+        font-weight: 600 !important;
+        border-bottom-color: var(--trade-green, #10b981) !important;
+    }
+
+    /* Circled (+) Add Tab Button */
+    .wl-add-tab-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        border-radius: 50% !important;
+        border: 1.5px solid rgba(148, 163, 184, 0.4) !important;
+        background: transparent !important;
+        color: var(--text-secondary) !important;
+        cursor: pointer;
+        margin-left: 8px;
+        margin-right: 12px;
+        padding: 0 !important;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        align-self: center;
+    }
+
+    .wl-add-tab-btn svg {
+        display: block;
+        transition: transform 0.2s ease;
+    }
+
+    .wl-add-tab-btn:hover,
+    .wl-add-tab-btn:active {
+        color: var(--tab-active-blue) !important;
+        border-color: var(--tab-active-blue) !important;
+        background: var(--tab-active-blue-glow) !important;
+        transform: scale(1.06);
+    }
+
+    /* Active Watchlist Card Reset on Mobile */
+    #watchlist-view-mount .card-container {
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Hide desktop controls on mobile */
+    .watchlist-file-controls {
+        display: none !important;
+    }
+
+    /* Search Box & Controls for Mobile Watchlist */
+    #watchlist-view-mount .controls {
+        padding: 0 4px 10px 4px !important;
+        margin-bottom: 6px !important;
+        gap: 6px !important;
+        flex-direction: column !important;
+    }
+
+    /* Responsive Search Row: Search Bar resized to 90% and Menu Button at right end */
+    /* Responsive Search Row: Search Bar occupies 90% space and Menu occupies 10% space */
+    .wl-search-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        gap: 6px !important;
+    }
+
+    .wl-search-row .autocomplete-wrapper {
+        flex: 0 0 calc(90% - 6px) !important;
+        width: calc(90% - 6px) !important;
+        max-width: calc(90% - 6px) !important;
+    }
+
+    .wl-search-row .wl-input {
+        width: 100% !important;
+        height: 42px !important;
+        font-size: 13.5px !important;
+        border-radius: 10px !important;
+        padding: 8px 14px !important;
+    }
+
+    /* Menu Icon Button at Right End: 10% Space */
+    .wl-mobile-menu-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 10% !important;
+        width: 10% !important;
+        max-width: 10% !important;
+        min-width: 34px !important;
+        height: 42px !important;
+        border-radius: 10px !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-primary) !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        padding: 0 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .wl-mobile-menu-btn:hover,
+    .wl-mobile-menu-btn.active {
+        border-color: var(--trade-green, #10b981) !important;
+        color: var(--trade-green, #10b981) !important;
+        background: var(--trade-green-glow, rgba(16, 185, 129, 0.15)) !important;
+    }
+
+    /* Mobile Menu Drawer (Dropdown Card) */
+    .wl-mobile-menu-drawer {
+        display: none;
+        width: 100% !important;
+        margin-top: 4px !important;
+        margin-bottom: 8px !important;
+        animation: menuFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .wl-mobile-menu-drawer.open {
+        display: block !important;
+    }
+
+    @keyframes menuFadeIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .wl-mob-menu-container {
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 14px !important;
+        padding: 8px !important;
+        box-shadow: var(--shadow-md) !important;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .wl-mob-menu-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        padding: 11px 12px !important;
+        border-radius: 9px !important;
+        border: none !important;
+        background: transparent !important;
+        color: var(--text-primary) !important;
+        font-size: 13.5px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        text-align: left !important;
+        transition: background-color 0.15s ease !important;
+    }
+
+    .wl-mob-menu-row:hover,
+    .wl-mob-menu-row:active {
+        background-color: var(--table-hover-bg) !important;
+    }
+
+    .wl-mob-menu-row-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .wl-mob-menu-icon {
+        font-size: 15px;
+        width: 18px;
+        text-align: center;
+        color: var(--tab-active-blue);
+    }
+
+    .wl-mob-menu-label {
+        font-size: 13.5px;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .wl-mob-menu-tag {
+        font-size: 11.5px;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .wl-mob-menu-divider {
+        height: 1px;
+        background: var(--border-color);
+        margin: 4px 6px;
+    }
+
+    /* Accordion styles for Watchlist Actions */
+    .wl-mob-accordion {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .wl-mob-accordion-btn {
+        font-weight: 600 !important;
+    }
+
+    .wl-mob-accordion-caret {
+        font-size: 14px;
+        color: var(--text-muted);
+        transition: transform 0.2s ease;
+    }
+
+    .wl-mob-accordion-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 0 4px 24px;
+        border-left: 2px solid var(--border-color);
+        margin: 3px 0 5px 16px;
+    }
+
+    .wl-mob-sub-btn {
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+        padding: 8px 10px !important;
+        border-radius: 7px !important;
+        border: none !important;
+        background: transparent !important;
+        color: var(--text-secondary) !important;
+        font-size: 12.5px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        text-align: left !important;
+        transition: all 0.15s ease !important;
+    }
+
+    .wl-mob-sub-btn:hover,
+    .wl-mob-sub-btn:active {
+        background-color: var(--table-hover-bg) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .wl-mob-sub-btn.danger {
+        color: var(--trade-red) !important;
+    }
+
+    .wl-mob-sub-btn.danger:hover,
+    .wl-mob-sub-btn.danger:active {
+        background-color: var(--trade-red-glow) !important;
+    }
+
+    /* Mobile Stock List Transformation (Table to Sleek Native 2-Column Cards) */
+    .wl-table-container {
+        overflow-x: hidden !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        margin-bottom: 24px;
+    }
+
+    .wl-table {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        border-collapse: separate;
+    }
+
+    .wl-table thead,
+    .wl-table colgroup {
+        display: none !important;
+    }
+
+    .wl-table tbody {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    /* Individual Stock Row as Clean Native Fintech List Item */
+    .wl-table tr.pf-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 13px 6px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        background: transparent !important;
+        cursor: pointer;
+        position: relative;
+        transition: background-color 0.15s ease;
+    }
+
+    [data-theme="dark"] .wl-table tr.pf-row {
+        border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+    }
+
+    [data-theme="light"] .wl-table tr.pf-row {
+        border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+    }
+
+    .wl-table tr.pf-row:hover,
+    .wl-table tr.pf-row:active {
+        background-color: var(--table-hover-bg) !important;
+    }
+
+    /* Left Side: Stock Symbol & Exchange Info */
+    .wl-table .wl-col-symbol {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .wl-table .stock-symbol-row {
+        display: inline-flex !important;
+        align-items: baseline !important;
+        line-height: 1.2 !important;
+    }
+
+    .wl-table .stock-symbol {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
+        letter-spacing: 0.3px !important;
+        line-height: 1.25 !important;
+        text-transform: uppercase;
+        display: inline !important;
+    }
+
+    /* NSE/BSE badge on same line of symbol with little space, decreased size, and superscript */
+    .wl-table .badge {
+        display: inline-block !important;
+        vertical-align: super !important;
+        font-size: 8px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        margin-left: 3px !important;
+        margin-top: 0 !important;
+        transform: translateY(-4px) !important;
+        padding: 0 !important;
+        background: transparent !important;
+        color: var(--text-muted) !important;
+        border: none !important;
+        letter-spacing: 0.4px !important;
+    }
+
+    .wl-table .company-name {
+        font-size: 11px !important;
+        color: var(--text-secondary) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 180px !important;
+        margin-top: 1px !important;
+        font-weight: 400 !important;
+    }
+
+    /* Right Side: Price (LTP) & Combined Day Change */
+    .wl-table .wl-col-price {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;
+        justify-content: center !important;
+        text-align: right !important;
+        padding: 0 !important;
+        border: none !important;
+        flex: 0 0 auto !important;
+        min-width: 90px !important;
+    }
+
+    /* LTP Price: Large, Crisp, Trend-Colored */
+    .wl-price-val {
+        font-family: 'Inter', -apple-system, sans-serif !important;
+        font-size: 15.5px !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.2px !important;
+        line-height: 1.25 !important;
+        color: var(--text-primary);
+    }
+
+    .wl-price-val.pos {
+        color: var(--trade-green-soft) !important;
+    }
+
+    .wl-price-val.neg {
+        color: var(--trade-red-soft) !important;
+    }
+
+    /* Combined Day Change Subline: -₹0.92 (-0.83%) */
+    .wl-sub-change {
+        display: block !important;
+        font-family: 'Inter', -apple-system, sans-serif !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        margin-top: 2px !important;
+        letter-spacing: -0.1px !important;
+        color: var(--text-secondary);
+    }
+
+    .wl-sub-change.pos {
+        color: var(--trade-green-soft) !important;
+    }
+
+    .wl-sub-change.neg {
+        color: var(--trade-red-soft) !important;
+    }
+
+    /* Hide individual desktop change columns on mobile */
+    .wl-table .wl-col-change-amt,
+    .wl-table .wl-col-change-pct {
+        display: none !important;
+    }
+
+    /* Mobile Row Actions Menu (Discreet 3-Dots) */
+    .wl-table .wl-col-actions {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 0 0 8px !important;
+        border: none !important;
+        flex: 0 0 auto !important;
+    }
+
+    .wl-table .wl-col-actions .btn-secondary {
+        background: transparent !important;
+        border: none !important;
+        color: var(--text-muted) !important;
+        padding: 6px 4px !important;
+        font-size: 16px !important;
+        cursor: pointer;
+        opacity: 0.6;
+    }
+
+    .wl-table .wl-col-actions .btn-secondary:hover,
+    .wl-table .wl-col-actions .btn-secondary:active {
+        opacity: 1;
+        color: var(--text-primary) !important;
+    }
+}
+
+/* Desktop Defaults for Mobile-Only Watchlist & Portfolio Elements (Web version untouched) */
+@media (min-width: 769px) {
+    .wl-add-tab-btn {
+        display: none !important;
+    }
+    .wl-mobile-toolbar {
+        display: none !important;
+    }
+    .wl-sub-change {
+        display: none !important;
+    }
+    .wl-mobile-menu-btn {
+        display: none !important;
+    }
+    .wl-mobile-menu-drawer {
+        display: none !important;
+    }
+    .watchlist-file-controls {
+        display: flex !important;
+    }
+    .wl-search-row {
+        display: flex;
+        width: 100%;
+        max-width: 420px;
+    }
+    .wl-search-row .autocomplete-wrapper {
+        width: 100% !important;
+        max-width: 420px !important;
+    }
+    /* Portfolio Desktop Reset */
+    .portfolio-mobile-menu-wrapper {
+        display: none !important;
+    }
+    .portfolio-label-title {
+        display: inline-block !important;
+    }
+    .portfolio-desktop-actions {
+        display: flex !important;
+    }
+    .portfolio-top-card {
+        position: static !important;
+        top: auto !important;
+        z-index: auto !important;
+        box-shadow: none !important;
+    }
+    .pf-table th.pf-col-stock,
+    .pf-table td.pf-col-stock {
+        position: static !important;
+        width: auto !important;
+        min-width: auto !important;
+        max-width: none !important;
+        box-shadow: none !important;
+    }
+    /* Analytics & Smallcases Desktop Reset */
+    #tab-dashboard .summary-grid,
+    #overall-summary-mount {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+    #smallcase-summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+    }
+    /* Insights Desktop Reset */
+    .insights-scope-bar {
+        overflow-x: visible !important;
+        flex-wrap: wrap !important;
+    }
+    #insights-category-pills {
+        overflow-x: visible !important;
+        flex-wrap: wrap !important;
+    }
+    #technical-screener-pills {
+        overflow-x: visible !important;
+        flex-wrap: wrap !important;
+    }
+    #insights-indexes-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)) !important;
+        overflow-x: visible !important;
+    }
+    .insights-top-cards {
+        display: grid !important;
+        grid-template-columns: 2fr 1fr !important;
+    }
+    .insights-grid {
+        display: grid !important;
+        grid-template-columns: 1.4fr 1fr !important;
+    }
+    #mobile-active-name-badge {
+        display: none !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   2. MOBILE SORT & FILTER BOTTOM SHEET MODAL
+   -------------------------------------------------------------------------- */
+.wl-mobile-sort-sheet {
+    align-items: flex-end !important;
+    padding: 0 !important;
+}
+
+.wl-sort-sheet-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    padding: 16px 20px calc(24px + var(--safe-area-bottom)) 20px !important;
+    max-height: 80vh !important;
+    animation: sheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+@keyframes sheetSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.wl-sort-sheet-handle {
+    width: 38px;
+    height: 4px;
+    background: var(--text-muted);
+    opacity: 0.4;
+    border-radius: 3px;
+    margin: 0 auto 14px auto;
+}
+
+.wl-sort-option-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background-color 0.15s ease;
+}
+
+.wl-sort-option-item:hover,
+.wl-sort-option-item:active {
+    background-color: var(--table-hover-bg);
+}
+
+.wl-sort-option-item.selected {
+    color: var(--tab-active-blue);
+    font-weight: 600;
+    background-color: var(--tab-active-blue-glow);
+}
+
+.wl-sort-option-item .check-icon {
+    font-size: 15px;
+    color: var(--tab-active-blue);
+    display: none;
+}
+
+.wl-sort-option-item.selected .check-icon {
+    display: inline-block;
+}
+
+/* --------------------------------------------------------------------------
+   3. PORTFOLIO RESPONSIVE DESIGN (MOBILE & TABLET)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    /* Portfolio Header Card (Static / Sticky on Mobile) */
+    .portfolio-top-card {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 100 !important;
+        padding: 8px 10px !important;
+        margin-bottom: 12px !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .portfolio-header-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    /* 80% Space Dedicated to Portfolio Names with Smooth Horizontal Scroll */
+    .portfolio-selector-wrapper {
+        width: 80% !important;
+        flex: 0 0 80% !important;
+        max-width: 80% !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .portfolio-label-title {
+        display: none !important;
+    }
+
+    .portfolio-desktop-actions {
+        display: none !important;
+    }
+
+    #portfolio-selector-mount {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding-bottom: 2px !important;
+        border: none !important;
+    }
+
+    #portfolio-selector-mount::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #portfolio-selector-mount .pf-select-btn {
+        flex: 0 0 auto !important;
+        background: var(--bg-subtle) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 20px !important;
+        padding: 6px 14px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        color: var(--text-secondary) !important;
+        box-shadow: none !important;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    #portfolio-selector-mount .pf-select-btn.active {
+        background: rgba(16, 185, 129, 0.15) !important;
+        border-color: var(--trade-green, #10b981) !important;
+        color: var(--trade-green, #10b981) !important;
+        font-weight: 600 !important;
+    }
+
+    /* 20% Space Dedicated to Mobile Right Menu */
+    .portfolio-mobile-menu-wrapper {
+        width: 20% !important;
+        flex: 0 0 20% !important;
+        max-width: 20% !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        position: relative !important;
+    }
+
+    .pf-mobile-menu-btn {
+        width: 36px !important;
+        height: 36px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 9px !important;
+        background: var(--bg-subtle) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-primary) !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .pf-mobile-menu-btn:hover,
+    .pf-mobile-menu-btn:active,
+    .pf-mobile-menu-btn.active {
+        background: rgba(59, 130, 246, 0.15) !important;
+        border-color: #3b82f6 !important;
+        color: #3b82f6 !important;
+    }
+
+    .pf-mobile-menu-dropdown {
+        display: none !important;
+        position: absolute !important;
+        top: calc(100% + 8px) !important;
+        right: 0 !important;
+        min-width: 205px !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+        padding: 6px !important;
+        z-index: 1000 !important;
+        flex-direction: column !important;
+        gap: 3px !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+    }
+
+    .pf-mobile-menu-dropdown.show {
+        display: flex !important;
+    }
+
+    .pf-mob-menu-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        width: 100% !important;
+        padding: 10px 14px !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 8px !important;
+        color: var(--text-primary) !important;
+        font-size: 13.5px !important;
+        font-weight: 500 !important;
+        text-align: left !important;
+        cursor: pointer !important;
+        transition: background 0.15s ease, color 0.15s ease !important;
+    }
+
+    .pf-mob-menu-item:hover,
+    .pf-mob-menu-item:active {
+        background: var(--bg-subtle) !important;
+    }
+
+    .pf-mob-menu-item.danger {
+        color: #ef4444 !important;
+    }
+
+    .pf-mob-menu-item.danger:hover,
+    .pf-mob-menu-item.danger:active {
+        background: rgba(239, 68, 68, 0.12) !important;
+    }
+
+    .pf-mob-menu-divider {
+        height: 1px !important;
+        background: var(--border-color) !important;
+        margin: 4px 6px !important;
+    }
+
+    /* Active Portfolio View Header & Desktop Action Hide */
+    #portfolio-view-mount .header-bar .actions {
+        display: none !important;
+    }
+
+    #portfolio-view-mount .header-bar {
+        margin-bottom: 12px !important;
+        padding: 0 !important;
+    }
+
+    #portfolio-view-mount .header-bar h2 {
+        font-size: 17px !important;
+        margin: 0 !important;
+    }
+
+    /* Portfolio KPI Summary Grid (Sleek 2x2 Grid) */
+    .pf-summary-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 16px !important;
+    }
+
+    .pf-summary-grid .metric-card {
+        padding: 12px 14px !important;
+        border-radius: 12px !important;
+    }
+
+    .pf-summary-grid .metric-card .title {
+        font-size: 11px !important;
+        letter-spacing: 0.2px;
+    }
+
+    .pf-summary-grid .metric-card .value {
+        font-size: 16.5px !important;
+        font-weight: 700 !important;
+        margin: 4px 0 2px 0 !important;
+    }
+
+    .pf-summary-grid .metric-card .sub-value {
+        font-size: 11.5px !important;
+    }
+
+    /* Portfolio Filter & Sort Toolbar */
+    .filter-sort-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 10px 12px !important;
+        border-radius: 12px !important;
+    }
+
+    .filter-sort-bar > div:first-child {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .filter-group, .sort-group {
+        width: 100% !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .filter-group select, .sort-group select {
+        flex: 1 1 auto;
+        max-width: 65%;
+        padding: 7px 10px !important;
+        font-size: 12.5px !important;
+        border-radius: 8px !important;
+    }
+
+    /* Portfolio Holdings Table Container */
+    .table-responsive-container,
+    .pf-table-responsive-container {
+        border-radius: 12px !important;
+        overflow-x: auto !important;
+        max-height: calc(100vh - 210px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 20px;
+    }
+
+    /* Mobile Portfolio Table Styling & Static Frozen Stock Column */
+    table.pf-table {
+        display: table !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        width: 100% !important;
+        min-width: 820px !important;
+    }
+
+    table.pf-table thead {
+        display: table-header-group !important;
+    }
+
+    table.pf-table tbody {
+        display: table-row-group !important;
+        width: auto !important;
+    }
+
+    table.pf-table tfoot {
+        display: table-footer-group !important;
+    }
+
+    table.pf-table tr,
+    table.pf-table tr.pf-row {
+        display: table-row !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        transform: none !important;
+    }
+
+    table.pf-table th,
+    table.pf-table td {
+        display: table-cell !important;
+        white-space: nowrap !important;
+        padding: 9px 10px !important;
+        font-size: 12.5px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        vertical-align: middle !important;
+    }
+
+    /* Fixed / Static Table Headings on Scroll */
+    table.pf-table thead th {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 15 !important;
+        background-color: var(--table-header-bg) !important;
+        color: var(--text-secondary) !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+        box-shadow: 0 1px 0 var(--border-color) !important;
+    }
+
+    /* Pinned Static Stock Name Column on Mobile (60% Width Allocated) */
+    table.pf-table th.pf-col-stock,
+    table.pf-table td.pf-col-stock {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 6 !important;
+        background-color: var(--bg-card) !important;
+        width: 58vw !important;
+        min-width: 58vw !important;
+        max-width: 60vw !important;
+        box-sizing: border-box !important;
+        box-shadow: 3px 0 6px rgba(0, 0, 0, 0.14) !important;
+        padding-left: 10px !important;
+        padding-right: 8px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    table.pf-table thead th.pf-col-stock {
+        position: sticky !important;
+        top: 0 !important;
+        left: 0 !important;
+        z-index: 30 !important;
+        background-color: var(--table-header-bg) !important;
+        width: 58vw !important;
+        min-width: 58vw !important;
+        max-width: 60vw !important;
+        box-sizing: border-box !important;
+        box-shadow: 3px 1px 6px rgba(0, 0, 0, 0.14) !important;
+    }
+
+    table.pf-table tfoot td.pf-col-stock {
+        position: sticky !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        z-index: 20 !important;
+        background-color: var(--table-header-bg) !important;
+        width: 58vw !important;
+        min-width: 58vw !important;
+        max-width: 60vw !important;
+        box-sizing: border-box !important;
+        box-shadow: 3px -1px 6px rgba(0, 0, 0, 0.14) !important;
+    }
+
+    table.pf-table tfoot td {
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 10 !important;
+        background-color: var(--table-header-bg) !important;
+        border-top: 2px solid var(--border-color) !important;
+        font-weight: 700 !important;
+    }
+
+    table.pf-table tr.pf-row:hover td.pf-col-stock,
+    table.pf-table tr.pf-row:active td.pf-col-stock {
+        background-color: var(--bg-subtle) !important;
+    }
+
+    /* Proper Column Alignments for Portfolio Table (Header, Body, Footer) */
+    table.pf-table thead th.pf-col-stock,
+    table.pf-table td.pf-col-stock,
+    table.pf-table tfoot td.pf-col-stock {
+        text-align: left !important;
+    }
+
+    table.pf-table thead th.pf-col-daypnl,
+    table.pf-table td.pf-col-daypnl,
+    table.pf-table tfoot td.pf-col-daypnl {
+        text-align: right !important;
+    }
+
+    table.pf-table thead th.pf-col-qty,
+    table.pf-table td.pf-col-qty,
+    table.pf-table tfoot td.pf-col-qty {
+        text-align: right !important;
+    }
+
+    table.pf-table thead th.pf-col-pnl,
+    table.pf-table td.pf-col-pnl,
+    table.pf-table tfoot td.pf-col-pnl {
+        text-align: right !important;
+    }
+
+    table.pf-table thead th.pf-col-buy,
+    table.pf-table td.pf-col-buy,
+    table.pf-table tfoot td.pf-col-buy {
+        text-align: right !important;
+    }
+
+    table.pf-table thead th.pf-col-ltp,
+    table.pf-table td.pf-col-ltp,
+    table.pf-table tfoot td.pf-col-ltp {
+        text-align: right !important;
+    }
+
+    table.pf-table thead th.pf-col-inv,
+    table.pf-table td.pf-col-inv,
+    table.pf-table tfoot td.pf-col-inv {
+        text-align: right !important;
+    }
+
+    table.pf-table thead th.pf-col-val,
+    table.pf-table td.pf-col-val,
+    table.pf-table tfoot td.pf-col-val {
+        text-align: right !important;
+    }
+
+    table.pf-table thead th.pf-col-details,
+    table.pf-table td.pf-col-details,
+    table.pf-table tfoot td.pf-col-details {
+        text-align: center !important;
+    }
+
+    /* Column 1 Details: Stock Symbol & Sub-labels */
+    table.pf-table .pf-col-stock .stock-symbol {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        color: var(--text-primary) !important;
+        letter-spacing: 0.2px !important;
+        display: inline !important;
+    }
+
+    table.pf-table .pf-col-stock .badge:not(.pf-badge) {
+        display: inline-block !important;
+        font-size: 8px !important;
+        font-weight: 700 !important;
+        vertical-align: super !important;
+        transform: translateY(-4px) !important;
+        margin-left: 2px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        color: var(--text-muted) !important;
+    }
+
+    table.pf-table .pf-col-stock .pf-badge {
+        display: inline-block !important;
+        font-size: 9px !important;
+        font-weight: 600 !important;
+        padding: 1px 5px !important;
+        border-radius: 4px !important;
+        max-width: 75px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        vertical-align: middle !important;
+        margin-left: 3px !important;
+    }
+
+    table.pf-table .pf-col-stock .company-name {
+        font-size: 11px !important;
+        color: var(--text-secondary) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: calc(58vw - 20px) !important;
+        margin-top: 1px !important;
+        display: block !important;
+    }
+
+    /* Column 2: Day P&L */
+    table.pf-table .pf-col-daypnl {
+        min-width: 95px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Column 3: Qty */
+    table.pf-table .pf-col-qty {
+        min-width: 60px !important;
+    }
+
+    /* Column 4: Overall P&L */
+    table.pf-table .pf-col-pnl {
+        min-width: 105px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Column 5: Avg Buy Price */
+    table.pf-table .pf-col-buy {
+        min-width: 85px !important;
+    }
+
+    /* Column 6: LTP */
+    table.pf-table .pf-col-ltp {
+        min-width: 80px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Column 7: Invested */
+    table.pf-table .pf-col-inv {
+        min-width: 95px !important;
+    }
+
+    /* Column 8: Current Value */
+    table.pf-table .pf-col-val {
+        min-width: 95px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Column 9: Details Button */
+    table.pf-table .pf-col-details {
+        min-width: 75px !important;
+    }
+
+    .pf-table th.pf-col-details,
+    .pf-table td.pf-col-details {
+        min-width: 75px !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   4. NAVIGATION BAR & SIDEBAR DRAWER RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    /* Static Header on Mobile (Refer Image 1) */
+    .mobile-top-bar {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: max(10px, var(--safe-area-top)) 14px 10px 14px !important;
+        background: rgba(15, 23, 42, 0.92) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border-bottom: 1px solid var(--border-color);
+        position: static !important;
+        top: auto !important;
+        z-index: auto !important;
+    }
+
+    [data-theme="light"] .mobile-top-bar {
+        background: rgba(248, 250, 252, 0.92) !important;
+    }
+
+    /* Mobile Sidebar Off-Canvas Drawer with iOS Safe Padding */
+    .app-sidebar {
+        width: 275px !important;
+        max-width: 82vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        padding-bottom: var(--safe-area-bottom) !important;
+        border-right: 1px solid var(--border-color) !important;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    .sidebar-backdrop {
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        background: rgba(15, 23, 42, 0.72) !important;
+    }
+
+    .sidebar-nav-item {
+        padding: 10px 14px !important;
+        font-size: 13.5px !important;
+        border-radius: 10px !important;
+    }
+
+    .sidebar-nav-icon {
+        font-size: 17px !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   5. MOBILE LANDSCAPE OPTIMIZATION (Android & iOS Phones)
+   -------------------------------------------------------------------------- */
+@media (max-height: 520px) and (orientation: landscape) {
+    .mobile-top-bar {
+        padding: 6px 12px !important;
+    }
+
+    .container {
+        padding: 6px 10px !important;
+    }
+
+    /* High density list rows for landscape */
+    .wl-table tr.pf-row {
+        padding: 8px 6px !important;
+    }
+
+    .wl-price-val {
+        font-size: 14.5px !important;
+    }
+
+    .wl-sub-change {
+        font-size: 11px !important;
+        margin-top: 1px !important;
+    }
+
+    /* Multi-column grid for metrics in landscape */
+    .pf-summary-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .metric-card {
+        padding: 8px 10px !important;
+    }
+
+    .metric-card .value {
+        font-size: 14.5px !important;
+    }
+
+    /* Modal dialogs scroll nicely */
+    .small-modal-content {
+        max-height: 92vh !important;
+        overflow-y: auto !important;
+        padding: 14px !important;
+    }
+
+    /* Technical Charts in Landscape */
+    .chart-fullscreen-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 10050 !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   6. TABLET SCREENS (769px - 1024px, Portrait & Landscape)
+   iPads, Android Galaxy Tabs, Foldables
+   -------------------------------------------------------------------------- */
+@media (min-width: 769px) and (max-width: 1024px) {
+    body {
+        padding: 10px !important;
+    }
+
+    .container {
+        padding: 8px 10px !important;
+    }
+
+    /* Compact Sidebar Rail on Tablets */
+    .main-content-wrapper {
+        margin-left: 240px;
+    }
+
+    .app-sidebar.collapsed + .main-content-wrapper {
+        margin-left: 66px;
+    }
+
+    /* 3-Column Summary Grid */
+    .pf-summary-grid,
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    /* Watchlist on Tablets: Full Table with Generous Touch Targets */
+    .wl-table th, .wl-table td {
+        padding: 11px 12px !important;
+        font-size: 13px !important;
+    }
+
+    .wl-table .stock-symbol {
+        font-size: 14.5px !important;
+    }
+
+    /* Modals Centered on Tablet */
+    .small-modal-content {
+        width: 85vw !important;
+        max-width: 650px !important;
+        border-radius: 16px !important;
+    }
+
+    /* Analytics & Insights Grids */
+    .dashboard-grid,
+    .insights-top-cards {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   7. LAPTOP & DESKTOP SCREENS (1025px - 1440px and > 1440px)
+   -------------------------------------------------------------------------- */
+@media (min-width: 1025px) {
+    .container {
+        max-width: 1680px;
+        margin: 0 auto;
+        padding: 12px 24px;
+    }
+
+    .pf-summary-grid,
+    .summary-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 16px !important;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 20px !important;
+    }
+
+    .insights-top-cards {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 16px !important;
+    }
+
+    .news-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 16px !important;
+    }
+
+    .wl-table th, .wl-table td {
+        padding: 12px 16px !important;
+        font-size: 13.5px !important;
+    }
+}
+
+/* Ultra-Wide Institutional Screens (> 1600px) */
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1840px;
+        padding: 16px 32px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   8. INTEGRATED MODULES RESPONSIVE POLISH
+   (Mutual Funds, IPOs, Plan Calculator, Smallcases, News)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    /* ==========================================================================
+       TOOLS MODULES RESPONSIVE POLISH (Mutual Funds, IPOs, Plan Calculator)
+       Removes edge-to-edge overflow, standardizes gutters, padding, rounded cards
+       ========================================================================== */
+    #tab-mutual-funds,
+    #tab-mutual-fund-detail,
+    #tab-ipos,
+    #tab-plan-calculator {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        padding-bottom: calc(20px + var(--safe-area-bottom)) !important;
+    }
+
+    #tab-mutual-funds .mf-shell,
+    #tab-mutual-fund-detail .mf-shell,
+    #tab-ipos .page-shell,
+    #tab-plan-calculator .pc-shell {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Tools Selector Cards (Standardized to Watchlist / Portfolio card style) */
+    #tab-mutual-funds > .mf-shell > .card-container,
+    #tab-ipos > .page-shell > .card-container,
+    #tab-plan-calculator > .pc-shell > .card-container {
+        padding: 8px 10px !important;
+        margin-bottom: 12px !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Hide redundant static labels on mobile to maximize button space */
+    .tools-label-title {
+        display: none !important;
+    }
+
+    /* Smooth Single-Row Horizontal Scroll for Tools Subtabs */
+    #tab-mutual-funds .portfolio-selector-bar,
+    #tab-ipos .portfolio-selector-bar,
+    #tab-plan-calculator .portfolio-selector-bar,
+    #calculator-tabs {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        width: 100% !important;
+        padding-bottom: 2px !important;
+    }
+
+    #tab-mutual-funds .portfolio-selector-bar::-webkit-scrollbar,
+    #tab-ipos .portfolio-selector-bar::-webkit-scrollbar,
+    #tab-plan-calculator .portfolio-selector-bar::-webkit-scrollbar,
+    #calculator-tabs::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #tab-mutual-funds .pf-select-btn,
+    #tab-ipos .pf-select-btn,
+    #tab-plan-calculator .pc-tab {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        padding: 6px 13px !important;
+        font-size: 12px !important;
+        border-radius: 8px !important;
+        min-height: 32px !important;
+    }
+
+    /* Mutual Funds Header Actions on Mobile */
+    #mf-header-actions {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        margin-top: 6px !important;
+    }
+
+    #mf-header-portfolio-controls {
+        width: 100% !important;
+        display: flex !important;
+        gap: 8px !important;
+    }
+
+    #dashboard-scheme {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        height: 34px !important;
+        font-size: 11.5px !important;
+    }
+
+    #open-sip {
+        width: 100% !important;
+        height: 34px !important;
+        font-size: 12px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    /* Mutual Funds Summary Cards Grid (2 per row on Mobile, neat spacing) */
+    .mf-summary-grid,
+    .mf-portfolio-summary {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .mf-summary-card {
+        padding: 11px 12px !important;
+        border-radius: 12px !important;
+        min-height: 80px !important;
+        border: 1px solid var(--border-color) !important;
+        background: var(--bg-card) !important;
+        box-shadow: none !important;
+    }
+
+    /* Mutual Funds Table Card & Panels */
+    .mf-table-card,
+    .mf-panel,
+    .mf-calc-card,
+    .mf-detail-hero,
+    .mf-detail-chart-panel {
+        border-radius: 12px !important;
+        border: 1px solid var(--border-color) !important;
+        background: var(--bg-card) !important;
+        margin-bottom: 14px !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+    }
+
+    .mf-table-toolbar,
+    .mf-panel-heading {
+        padding: 10px 12px !important;
+        gap: 8px !important;
+    }
+
+    .mf-table-scroll,
+    .mf-table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    /* IPO Tracker Mobile Polishing */
+    #tab-ipos .card-container > div > div:last-child {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin-top: 6px !important;
+    }
+
+    .table-card {
+        border-radius: 12px !important;
+        border: 1px solid var(--border-color) !important;
+        background: var(--bg-card) !important;
+        margin-bottom: 14px !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+    }
+
+    .table-toolbar {
+        padding: 10px 12px !important;
+        gap: 8px !important;
+    }
+
+    .table-scroll,
+    .table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Smallcases Grid */
+    .smallcases-grid {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+
+    /* Plan Calculator Mobile Polishing */
+    .pc-calculator-card,
+    .pc-chart-card {
+        border-radius: 12px !important;
+        border: 1px solid var(--border-color) !important;
+        background: var(--bg-card) !important;
+        padding: 14px 12px !important;
+        margin-bottom: 14px !important;
+        box-shadow: none !important;
+    }
+
+    .pc-primary-layout {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+    }
+
+    .pc-input-panel,
+    .pc-summary-panel {
+        width: 100% !important;
+        padding: 0 !important;
+    }
+
+    .pc-summary-panel {
+        padding-top: 14px !important;
+        border-top: 1px solid var(--border-color) !important;
+        border-left: none !important;
+    }
+
+    /* Modal Responsive Standard */
+    .modal-content {
+        width: 100% !important;
+        max-height: 92vh !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
+
+    /* Analytics KPI Grid: Two per row on Mobile */
+    #tab-dashboard .summary-grid,
+    #overall-summary-mount,
+    #tab-dashboard #overall-summary-mount {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        margin-bottom: 14px !important;
+        width: 100% !important;
+    }
+
+    #tab-dashboard .summary-grid .metric-card,
+    #overall-summary-mount .metric-card,
+    #tab-dashboard #overall-summary-mount .metric-card {
+        padding: 10px 12px !important;
+        border-radius: 12px !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #tab-dashboard .summary-grid .metric-card .title,
+    #overall-summary-mount .metric-card .title {
+        font-size: 11px !important;
+        letter-spacing: 0.2px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    #tab-dashboard .summary-grid .metric-card .value,
+    #overall-summary-mount .metric-card .value {
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        margin: 4px 0 2px 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    #tab-dashboard .summary-grid .metric-card .sub-value,
+    #overall-summary-mount .metric-card .sub-value {
+        font-size: 10.5px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* Smallcases KPI Grid: Two per row on Mobile */
+    #tab-smallcases .summary-grid,
+    #smallcase-summary-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 16px !important;
+    }
+
+    #smallcase-summary-grid .metric-card {
+        padding: 12px 14px !important;
+        border-radius: 12px !important;
+    }
+
+    #smallcase-summary-grid .metric-card .title {
+        font-size: 11px !important;
+        letter-spacing: 0.2px !important;
+    }
+
+    #smallcase-summary-grid .metric-card .value {
+        font-size: 16.5px !important;
+        font-weight: 700 !important;
+        margin: 4px 0 2px 0 !important;
+    }
+
+    #smallcase-summary-grid .metric-card .sub-value {
+        font-size: 11px !important;
+    }
+
+    /* Insights Module Responsive Polish (Image 2 style: horizontal scroll in one single row each) */
+    .insights-sticky-header {
+        position: static !important;
+        padding: 12px 14px !important;
+        margin-bottom: 14px !important;
+    }
+
+    /* Insights Scope Filter Buttons: Single Row with Horizontal Scroll (Image 2 Pill Standard) */
+    .insights-scope-bar {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        width: 100% !important;
+        padding-bottom: 2px !important;
+        align-items: center !important;
+    }
+
+    .insights-scope-bar::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .insights-scope-bar span {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+    }
+
+    .insights-scope-bar button {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        border-radius: 20px !important;
+        padding: 6px 14px !important;
+        font-size: 12.5px !important;
+    }
+
+    /* Insights News Header Bar: Single Row with Horizontal Scroll (Image 2 standard) */
+    .insights-news-header-bar {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        white-space: nowrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    .insights-news-header-bar::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .insights-news-header-bar > div {
+        flex: 0 0 auto !important;
+    }
+
+    /* Insights Category Filter Pills: Single Row with Horizontal Scroll (Image 2 Pill Standard) */
+    #insights-category-pills {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        width: 100% !important;
+        padding: 8px 10px !important;
+    }
+
+    #insights-category-pills::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #insights-category-pills button {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        border-radius: 20px !important;
+        padding: 6px 14px !important;
+        font-size: 12px !important;
+    }
+
+    /* Technical Screener Pills: Single Row with Horizontal Scroll (Image 2 Pill Standard) */
+    #technical-screener-pills {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        width: 100% !important;
+        padding: 8px 10px !important;
+    }
+
+    #technical-screener-pills::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #technical-screener-pills button,
+    #technical-screener-pills .screener-pill {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        border-radius: 20px !important;
+        padding: 6px 14px !important;
+        font-size: 12px !important;
+    }
+
+    /* Key Market Indexes: Show Two Index in One Row */
+    .insights-top-cards {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    #insights-indexes-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+        overflow-x: visible !important;
+        padding-bottom: 0 !important;
+    }
+
+    #insights-indexes-grid::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #insights-indexes-grid > div {
+        flex: none !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .insights-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+}

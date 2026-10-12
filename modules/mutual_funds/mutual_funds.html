@@ -1,64 +1,170 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mutual Funds | Capital Desk</title>
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('mutual_funds.mutual_funds_stylesheet') }}">
-    <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
-</head>
-<body>
-    {% set standalone_module = true %}{% set active_workspace_module = 'mutual-funds' %}{% include 'components/sidebar.html' %}
-    <main class="mf-shell">
-        <section class="mf-intro-row">
-            <div>
-                <button class="cd-module-menu-toggle" type="button" onclick="toggleMobileSidebar(true)" aria-label="Open navigation">☰</button>
-                <p class="mf-eyebrow">MUTUAL FUND RESEARCH</p>
-                <h1>Explore Mutual Funds</h1>
-                <p class="mf-intro-copy">Browse AMFI scheme listings and the latest published NAVs. Refreshed from AMFI when this page opens.</p>
-            </div>
-            <div class="mf-intro-actions"><a class="mf-back-link" href="/mutual-funds/dashboard">My Dashboard →</a><div class="mf-feed-status" aria-live="polite"><span class="mf-live-dot"></span><div><strong id="catalog-updated">Loading AMFI data…</strong><small id="catalog-asof">Connecting to the official NAV report</small></div></div></div>
-        </section>
+<!-- =========================================================
+     CAPITAL DESK - MUTUAL FUNDS MODULE VIEW
+     Location: modules/mutual_funds/mutual_funds.html
+     Integrated into App Shell SPA
+     ========================================================= -->
 
-        <section class="mf-summary-grid" aria-label="Mutual fund catalogue summary">
-            <article class="mf-summary-card"><span>Listed schemes</span><strong id="catalog-count">—</strong></article>
-            <article class="mf-summary-card"><span>Fund houses</span><strong id="amc-count">—</strong></article>
-            <article class="mf-summary-card"><span>Latest NAV date</span><strong id="nav-date">—</strong></article>
-        </section>
+<div id="tab-mutual-funds" class="tab-content" style="display: none;">
+    <main class="mf-shell" style="width: 100%; margin: 0; padding: 0;">
+        <!-- Selector Bar (Common Header Style as Watchlist & Portfolio) -->
+        <div class="card-container" style="padding: 14px 20px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span class="tools-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">MUTUAL FUNDS:</span>
+                    <div class="portfolio-selector-bar" style="margin-bottom: 0;">
+                        <button type="button" class="pf-select-btn active" id="mf-subtab-portfolio-btn" onclick="switchMfSubView('portfolio')">💼 My Portfolio &amp; SIPs</button>
+                        <button type="button" class="pf-select-btn" id="mf-subtab-explore-btn" onclick="switchMfSubView('explore')">📊 Explore Schemes</button>
+                    </div>
+                </div>
 
-        <section class="mf-table-card">
-            <div class="mf-table-toolbar">
-                <div class="mf-section-title"><div><h2>Scheme directory</h2><p>Search by scheme, AMC, ISIN, or AMFI scheme code.</p></div></div>
-                <div class="mf-table-tools">
-                    <label class="mf-search-box"><span aria-hidden="true">⌕</span><input id="scheme-search" type="search" placeholder="Search schemes" autocomplete="off"></label>
-                    <select id="amc-filter" aria-label="Filter by fund house"><option value="">All fund houses</option></select>
-                    <select id="category-filter" aria-label="Filter by category"><option value="">All categories</option></select>
-                    <select id="type-filter" aria-label="Filter by scheme type"><option value="">All scheme types</option></select>
-                    <select id="plan-filter" aria-label="Filter by plan"><option value="">All plans</option><option>Direct</option><option>Regular</option><option>Not stated</option></select>
-                    <select id="option-filter" aria-label="Filter by option"><option value="">All options</option><option>Growth</option><option>IDCW</option><option>Not stated</option></select>
-                    <button class="mf-secondary-button" id="reset-filters" type="button">Reset filters</button>
-                    <button class="mf-refresh-button" id="catalog-refresh" type="button">↻ Refresh NAVs</button>
+                <div id="mf-header-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <!-- 1. Portfolio Controls (Visible only in My Portfolio & SIPs view) -->
+                    <div id="mf-header-portfolio-controls" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <select class="mf-dashboard-fund-filter" id="dashboard-scheme" aria-label="Filter dashboard by fund" style="min-width: 170px; height: 34px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary); cursor: pointer;">
+                            <option value="">All funds</option>
+                        </select>
+                        <button class="mf-secondary-button" id="portfolio-refresh" type="button" style="height: 34px; font-size: 12px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap;">
+                            ↻ Refresh NAVs
+                        </button>
+                    </div>
+
+                    <!-- 2. Primary Action Button (Always visible on far right; in Explore view this is the only button in header) -->
+                    <button class="btn-primary" id="open-sip" type="button" onclick="openStartSipModal()" style="font-size: 12.5px; padding: 6px 14px; border-radius: 7px; font-weight: 600; cursor: pointer; white-space: nowrap;">＋ Start SIP</button>
                 </div>
             </div>
-            <div id="catalog-notice" class="mf-notice" hidden></div>
-            <div class="mf-table-scroll">
-                <table class="mf-table">
-                    <thead><tr><th>Scheme</th><th>Fund house</th><th>Category</th><th>Plan / Option</th><th class="mf-right">Latest NAV</th><th>NAV date</th><th></th></tr></thead>
-                    <tbody id="scheme-rows"><tr><td colspan="7" class="mf-table-message">Loading AMFI schemes…</td></tr></tbody>
-                </table>
-            </div>
-            <div class="mf-table-footer"><span id="scheme-result-count">Loading schemes…</span><div class="mf-pagination"><button id="page-prev" type="button" aria-label="Previous page">←</button><span id="page-label">Page 1</span><button id="page-next" type="button" aria-label="Next page">→</button></div></div>
-        </section>
+        </div>
 
-        <aside class="mf-source-note"><strong>About the NAV values</strong><p>AMFI publishes mutual fund NAVs once per business day after the market closes. Refresh checks AMFI again; the value can still be from the latest published NAV date rather than today. Fund category and plan details are shown as supplied in the AMFI report.</p><div class="mf-source-links"><a href="https://www.amfiindia.com/net-asset-value/nav-download" target="_blank" rel="noopener noreferrer">AMFI NAV download ↗</a><a href="https://www.amfiindia.com/investor/knowledge-center-info?zoneName=NetAssetValueNAV" target="_blank" rel="noopener noreferrer">How NAVs are published ↗</a><a href="/mutual-funds/dashboard">My Mutual Fund Portfolio →</a></div></aside>
-        <footer class="mf-page-footer">NAV data is provided by AMFI and may be revised by the fund house. Review scheme documents before making investment decisions.</footer>
+        <!-- =========================================================
+             1. MY PORTFOLIO & SIPS SUB-VIEW (DEFAULT)
+             ========================================================= -->
+        <div id="mf-subview-portfolio">
+            <div id="portfolio-feed-notice" class="mf-notice" hidden></div>
+
+            <section class="mf-summary-grid mf-portfolio-summary" aria-label="Portfolio summary">
+                <article class="mf-summary-card"><span>Total invested</span><strong id="portfolio-invested">—</strong><small>Recorded purchases</small></article>
+                <article class="mf-summary-card"><span>Current value</span><strong id="portfolio-value">—</strong><small id="portfolio-nav-date">Latest published NAV</small></article>
+                <article class="mf-summary-card"><span>Unrealized gain / loss</span><strong id="portfolio-pnl">—</strong><small id="portfolio-return">—</small></article>
+                <article class="mf-summary-card"><span>Annualized return</span><strong id="portfolio-xirr">—</strong><small>Portfolio XIRR estimate</small></article>
+            </section>
+
+            <section class="mf-panel mf-performance-panel">
+                <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Portfolio performance</h2><p id="performance-subtitle" style="color: var(--text-secondary); font-size: 12px; margin: 0;">NAV history for your portfolio or a selected scheme.</p></div><div class="mf-panel-tools"><select id="performance-range" aria-label="Performance period"><option value="all">All history</option><option value="1y">1 year</option><option value="6m">6 months</option><option value="1m">1 month</option></select><button class="mf-secondary-button mf-small-button" id="load-performance" type="button">Load history</button></div></div>
+                <div id="performance-message" class="mf-chart-message">Start a SIP or One-Time investment to build your performance history.</div>
+                <div id="performance-chart" class="mf-chart" hidden><div class="mf-chart-legend"><span><i class="mf-legend-value"></i> Portfolio value</span><span><i class="mf-legend-invested"></i> Invested</span></div><svg id="performance-svg" viewBox="0 0 960 300" role="img" aria-label="Mutual fund portfolio value and invested amount over time" preserveAspectRatio="none"></svg><div class="mf-chart-dates"><span id="chart-start-date"></span><span id="chart-end-date"></span></div></div>
+            </section>
+
+            <section class="mf-panel">
+                <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Holdings</h2><p style="color: var(--text-secondary); font-size: 12px; margin: 0;">Units are valued using the latest published NAV available from AMFI.</p></div><span id="holding-count" class="mf-count-pill">0 schemes</span></div>
+                <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Units</th><th class="mf-right">Invested</th><th class="mf-right">Latest NAV</th><th>NAV date</th><th class="mf-right">Current value</th><th class="mf-right">Gain / loss</th><th></th></tr></thead><tbody id="holding-rows"><tr><td colspan="8" class="mf-table-message">Loading portfolio…</td></tr></tbody></table></div>
+            </section>
+
+            <section class="mf-panel mf-missed-panel">
+                <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Missed SIP installments</h2><p style="color: var(--text-secondary); font-size: 12px; margin: 0;">Record an installment at the first available AMFI NAV on or after its scheduled date.</p></div><div class="mf-panel-tools"><span id="missed-count" class="mf-count-pill">0 due</span><button class="mf-secondary-button mf-small-button" id="clear-due" type="button" disabled>Clear Due</button></div></div>
+                <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Scheduled date</th><th class="mf-right">Amount</th><th>AMFI NAV date</th><th></th></tr></thead><tbody id="missed-rows"><tr><td colspan="5" class="mf-table-message">Loading SIP schedule…</td></tr></tbody></table></div>
+            </section>
+
+            <section class="mf-panel">
+                <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Monthly investment plans</h2><p style="color: var(--text-secondary); font-size: 12px; margin: 0;">Your recurring investment schedule and status.</p></div><button class="mf-secondary-button mf-small-button" id="plan-start-button" type="button" onclick="openStartSipModal()">＋ Start SIP</button></div>
+                <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Installment day</th><th>Starts</th><th class="mf-right">Monthly amount</th><th>Status</th><th></th></tr></thead><tbody id="sip-rows"><tr><td colspan="6" class="mf-table-message">Loading monthly plans…</td></tr></tbody></table></div>
+            </section>
+
+            <section class="mf-panel">
+                <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Investment history</h2><p style="color: var(--text-secondary); font-size: 12px; margin: 0;">Your recorded lump sums and SIP installments.</p></div></div>
+                <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Investment date</th><th>Scheme</th><th>Type</th><th class="mf-right">Amount</th><th class="mf-right">NAV</th><th>NAV date</th><th class="mf-right">Units</th><th></th></tr></thead><tbody id="transaction-rows"><tr><td colspan="8" class="mf-table-message">Loading investment history…</td></tr></tbody></table></div>
+            </section>
+        </div>
+
+        <!-- =========================================================
+             2. EXPLORE SCHEMES CATALOGUE SUB-VIEW
+             ========================================================= -->
+        <div id="mf-subview-explore" style="display: none;">
+            <section class="mf-table-card">
+                <div class="mf-table-toolbar">
+                    <div class="mf-section-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <h2 style="font-size: 18px; margin: 0 0 4px 0;">Scheme directory</h2>
+                            <p style="color: var(--text-secondary); font-size: 12px; margin: 0;">Search by scheme, AMC, ISIN, or AMFI scheme code.</p>
+                        </div>
+                        <div class="mf-explore-kpi-bar" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <!-- KPI 1: Fund Houses -->
+                            <div class="mf-header-kpi-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; font-size: 11.5px;">
+                                <span style="color: var(--text-secondary); font-size: 11px;">Fund Houses:</span>
+                                <strong id="amc-count" style="color: var(--text-primary); font-weight: 700; font-size: 12px;">—</strong>
+                            </div>
+
+                            <!-- KPI 2: Schemes Loaded with Live Dot -->
+                            <div class="mf-feed-status" style="padding: 5px 12px; margin: 0; min-width: auto; border-radius: 8px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 8px;" aria-live="polite">
+                                <span class="mf-live-dot"></span>
+                                <strong id="catalog-updated" style="font-size: 11.5px; color: var(--text-primary);">Loading schemes…</strong>
+                                <span id="catalog-count" style="display: none;">—</span>
+                                <small id="catalog-asof" style="display: none;">Connecting</small>
+                            </div>
+
+                            <!-- KPI 3: Latest NAV Date -->
+                            <div class="mf-header-kpi-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; font-size: 11.5px;">
+                                <span style="color: var(--text-secondary); font-size: 11px;">Latest NAV:</span>
+                                <strong id="nav-date" style="color: var(--text-primary); font-weight: 700; font-size: 12px;">—</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mf-table-tools">
+                        <label class="mf-search-box"><span aria-hidden="true">⌕</span><input id="scheme-search" type="search" placeholder="Search schemes" autocomplete="off"></label>
+                        <select id="amc-filter" aria-label="Filter by fund house"><option value="">All fund houses</option></select>
+                        <select id="category-filter" aria-label="Filter by category"><option value="">All categories</option></select>
+                        <select id="type-filter" aria-label="Filter by scheme type"><option value="">All scheme types</option></select>
+                        <select id="plan-filter" aria-label="Filter by plan"><option value="">All plans</option><option>Direct</option><option>Regular</option><option>Not stated</option></select>
+                        <select id="option-filter" aria-label="Filter by option"><option value="">All options</option><option>Growth</option><option>IDCW</option><option>Not stated</option></select>
+                        <button class="mf-secondary-button" id="reset-filters" type="button">Reset filters</button>
+                        <button class="mf-refresh-button" id="catalog-refresh" type="button">↻ Refresh NAVs</button>
+                    </div>
+                </div>
+                <div id="catalog-notice" class="mf-notice" hidden></div>
+                <div class="mf-table-scroll">
+                    <table class="mf-table">
+                        <thead><tr><th>Scheme</th><th>Fund house</th><th>Category</th><th>Plan / Option</th><th class="mf-right">Latest NAV</th><th>NAV date</th><th></th></tr></thead>
+                        <tbody id="scheme-rows"><tr><td colspan="7" class="mf-table-message">Loading AMFI schemes…</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="mf-table-footer"><span id="scheme-result-count">Loading schemes…</span><div class="mf-pagination"><button id="page-prev" type="button" aria-label="Previous page">←</button><span id="page-label">Page 1</span><button id="page-next" type="button" aria-label="Next page">→</button></div></div>
+            </section>
+
+            <aside class="mf-source-note"><strong>About the NAV values</strong><p>AMFI publishes mutual fund NAVs once per business day after the market closes. Refresh checks AMFI again; the value can still be from the latest published NAV date rather than today.</p></aside>
+        </div>
     </main>
-    {% include '_mf_investment_modal.html' %}
-    <script src="{{ url_for('mutual_funds.mutual_fund_investment_javascript') }}" defer></script>
-    <script src="{{ url_for('mutual_funds.mutual_funds_javascript') }}" defer></script>
-</body>
-</html>
+
+    <!-- Mutual Fund Modals -->
+    {% include 'components/mf_modal.html' %}
+</div>
+
+<script>
+    function switchMfSubView(view) {
+        const exploreView = document.getElementById('mf-subview-explore');
+        const portfolioView = document.getElementById('mf-subview-portfolio');
+        const exploreBtn = document.getElementById('mf-subtab-explore-btn');
+        const portfolioBtn = document.getElementById('mf-subtab-portfolio-btn');
+        const portfolioControls = document.getElementById('mf-header-portfolio-controls');
+
+        if (view === 'explore') {
+            if (portfolioView) portfolioView.style.display = 'none';
+            if (exploreView) exploreView.style.display = 'block';
+            if (portfolioBtn) portfolioBtn.classList.remove('active');
+            if (exploreBtn) exploreBtn.classList.add('active');
+            if (portfolioControls) portfolioControls.style.display = 'none';
+            if (typeof window.loadMfCatalog === 'function') window.loadMfCatalog();
+        } else {
+            if (exploreView) exploreView.style.display = 'none';
+            if (portfolioView) portfolioView.style.display = 'block';
+            if (exploreBtn) exploreBtn.classList.remove('active');
+            if (portfolioBtn) portfolioBtn.classList.add('active');
+            if (portfolioControls) portfolioControls.style.display = 'inline-flex';
+            if (typeof window.refreshMfDashboard === 'function') window.refreshMfDashboard();
+        }
+    }
+    window.switchMfSubView = switchMfSubView;
+
+    function openStartSipModal() {
+        const modal = document.getElementById('investment-modal');
+        if (modal) modal.hidden = false;
+    }
+    window.openStartSipModal = openStartSipModal;
+</script>

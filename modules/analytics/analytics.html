@@ -1,0 +1,47 @@
+        <div id="tab-dashboard" class="tab-content">
+            <!-- Combined Stats Overview Header -->
+            <div class="summary-grid" id="overall-summary-mount">
+                <div class="metric-card">
+                    <div class="title">Total Net Worth</div>
+                    <div class="value" id="dash-net-worth">₹0.00</div>
+                    <div class="sub-value" style="color:#7f8c8d">Across all portfolios</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Total Invested</div>
+                    <div class="value" id="dash-invested">₹0.00</div>
+                    <div class="sub-value" style="color:#7f8c8d">Capital Deployed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Overall Return (P&L)</div>
+                    <div class="value" id="dash-pnl">₹0.00</div>
+                    <div class="sub-value" id="dash-pnl-pct">0.00%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Today's Return</div>
+                    <div class="value" id="dash-day-pnl">₹0.00</div>
+                    <div class="sub-value" id="dash-day-pnl-pct">0.00%</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Charts Grid -->
+            <div class="dashboard-grid">
+                <div class="chart-card">
+                    <h3>Portfolio Allocation Breakdown</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartPortfolioAllocation"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Invested Amount vs Current Value per Portfolio</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartInvestedVsCurrent"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <h3>Top Performing Holdings Across Portfolios</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartTopHoldings"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>

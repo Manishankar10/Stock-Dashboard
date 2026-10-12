@@ -1,25 +1,20 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plan Calculator | Capital Desk</title>
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('plan_calculator.plan_calculator_stylesheet') }}">
-    <script>try { document.documentElement.setAttribute('data-theme', localStorage.getItem('capital_desk_theme') || 'light'); } catch (error) {}</script>
-</head>
-<body>
-    {% set standalone_module = true %}{% set active_workspace_module = 'plan-calculator' %}{% include 'components/sidebar.html' %}
-    <main class="pc-shell">
-        <section class="pc-intro">
-            <button class="cd-module-menu-toggle" type="button" onclick="toggleMobileSidebar(true)" aria-label="Open navigation">☰</button>
-            <div><p class="pc-eyebrow">TOOLS</p><h1>Plan Calculator</h1><p>Estimate investment growth, withdrawals, borrowing costs, and retirement needs.</p></div>
-        </section>
+<!-- =========================================================
+     CAPITAL DESK - PLAN CALCULATOR MODULE VIEW
+     Location: modules/plan_calculator/plan_calculator.html
+     Integrated into App Shell SPA
+     ========================================================= -->
 
-        <nav id="calculator-tabs" class="pc-tabs" aria-label="Choose a calculator"></nav>
+<div id="tab-plan-calculator" class="tab-content" style="display: none;">
+    <main class="pc-shell" style="width: 100%; margin: 0; padding: 0;">
+        <!-- Selector Bar (Common Header Style as Watchlist & Portfolio) -->
+        <div class="card-container" style="padding: 14px 20px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%;">
+                    <span class="tools-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">CALCULATORS:</span>
+                    <nav id="calculator-tabs" class="portfolio-selector-bar" style="margin-bottom: 0; display: flex; gap: 6px; overflow-x: auto; flex-wrap: wrap;" aria-label="Choose a calculator"></nav>
+                </div>
+            </div>
+        </div>
         <section class="pc-calculator-card" aria-live="polite">
             <div class="pc-card-heading"><div><h2 id="calculator-title">SIP Calculator</h2><p id="calculator-description"></p></div></div>
             <div class="pc-primary-layout">
@@ -34,6 +29,4 @@
         <p class="pc-disclaimer">Calculator results are estimates based on the values entered. Actual returns, interest, taxes, and fees may differ.</p>
         <footer class="pc-footer">Capital Desk · Plan Calculator</footer>
     </main>
-    <script src="{{ url_for('plan_calculator.plan_calculator_javascript') }}" defer></script>
-</body>
-</html>
+</div>

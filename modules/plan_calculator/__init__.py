@@ -46,7 +46,7 @@ def _guard(view):
 @plan_calculator_bp.get("/plan-calculator")
 @_guard
 def plan_calculator_page():
-    return render_template("plan_calculator.html")
+    return render_template("index.html", initial_tab="plan-calculator")
 
 
 @plan_calculator_bp.get("/plan-calculator.css")

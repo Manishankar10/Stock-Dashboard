@@ -49,10 +49,10 @@ body.sidebar-collapsed .pc-shell { width:min(calc(100% - 82px), 1384px); margin-
 .pc-eyebrow { margin: 0 0 9px; color: var(--pc-green-dark); font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }
 .pc-intro h1 { margin: 0 0 8px; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 27px; letter-spacing: -.04em; }
 .pc-intro p:last-child { margin: 0; color: var(--pc-muted); font-size: 13px; }
-.pc-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 8px; margin-bottom: 18px; border: 1px solid var(--pc-border); border-radius: 10px; background: var(--pc-card); scrollbar-width: thin; }
-.pc-tab { flex: 0 0 auto; min-height: 42px; padding: 0 22px; border: 0; border-radius: 7px; background: transparent; color: var(--pc-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.pc-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 0; }
+.pc-tab { flex: 0 0 auto; min-height: 36px; padding: 7px 16px; border: 1px solid var(--border-input, var(--pc-border)); border-radius: 6px; background: var(--bg-card, var(--pc-card)); color: var(--text-secondary, var(--pc-muted)); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
 .pc-tab:hover { background: var(--pc-hover); color: var(--pc-text); }
-.pc-tab.active { background: var(--pc-green); color: #fff; }
+.pc-tab.active { background: var(--pc-green); color: #fff; border-color: var(--pc-green); }
 .pc-calculator-card, .pc-chart-card { padding: 24px 28px; border: 1px solid var(--pc-border); border-radius: 12px; background: var(--pc-card); box-shadow: var(--pc-shadow); }
 .pc-card-heading { margin-bottom: 20px; }
 .pc-card-heading h2, .pc-chart-heading h2 { margin: 0; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 19px; letter-spacing: -.02em; }

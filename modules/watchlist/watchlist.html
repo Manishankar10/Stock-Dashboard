@@ -1,0 +1,17 @@
+        <div id="tab-watchlists" class="tab-content active">
+            <!-- Selector & Watchlist Creation Bar -->
+            <div class="card-container watchlist-top-card" style="padding: 16px 24px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div class="watchlist-selector-row">
+                        <span class="watchlist-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">WATCHLISTS:</span>
+                        <div class="portfolio-selector-bar watchlist-tabs-nav" id="watchlist-selector-mount" style="margin-bottom: 0;"></div>
+                        <div class="watchlist-create-action"><button onclick="openCreateWatchlistModal()">+ Create Watchlist</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Watchlist View -->
+            <div id="watchlist-view-mount">
+                <div class="loading">Loading watchlist details...</div>
+            </div>
+        </div>

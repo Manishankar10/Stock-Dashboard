@@ -120,6 +120,7 @@
 
     function formatDate(raw) {
         if (!raw) return 'Date unavailable';
+        if (window.formatAppDateTime) return window.formatAppDateTime(raw);
         const date = new Date(raw);
         if (Number.isNaN(date.getTime())) return raw;
         const datePart = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -129,6 +130,7 @@
 
     function dateGroup(raw) {
         if (!raw) return 'Date unavailable';
+        if (window.formatAppDate) return window.formatAppDate(raw);
         const date = new Date(raw);
         if (Number.isNaN(date.getTime())) return raw;
         return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });

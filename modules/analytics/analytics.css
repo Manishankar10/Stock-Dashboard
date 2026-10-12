@@ -1,0 +1,10 @@
+/* =========================================================
+   ANALYTICS & DASHBOARD MODULE STYLES
+   Location: modules/analytics/analytics.css
+   ========================================================= */
+.dashboard-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}

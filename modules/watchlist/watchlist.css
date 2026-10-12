@@ -1,0 +1,10 @@
+/* =========================================================
+   WATCHLIST MODULE STYLES
+   Location: modules/watchlist/watchlist.css
+   ========================================================= */
+.watchlist-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}

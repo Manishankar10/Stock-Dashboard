@@ -31,47 +31,47 @@
     <nav class="sidebar-nav">
         <div class="sidebar-section-label">Navigation</div>
         
-        {% if standalone_module %}<a href="/" class="sidebar-nav-item" onclick="closeMobileSidebarOnSelect();">{% else %}<button type="button" class="sidebar-nav-item active" id="sidebar-nav-watchlists" onclick="switchTab('watchlists'); closeMobileSidebarOnSelect();">{% endif %}
+        <button type="button" class="sidebar-nav-item active" id="sidebar-nav-watchlists" onclick="switchTab('watchlists'); closeMobileSidebarOnSelect();">
             <span class="sidebar-nav-icon">📋</span>
             <span class="sidebar-nav-text">Watchlists</span>
-        {% if standalone_module %}</a>{% else %}</button>{% endif %}
+        </button>
 
-        {% if standalone_module %}<a href="/portfolios" class="sidebar-nav-item" onclick="closeMobileSidebarOnSelect();">{% else %}<button type="button" class="sidebar-nav-item" id="sidebar-nav-portfolios" onclick="switchTab('portfolios'); closeMobileSidebarOnSelect();">{% endif %}
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-portfolios" onclick="switchTab('portfolios'); closeMobileSidebarOnSelect();">
             <span class="sidebar-nav-icon">💼</span>
             <span class="sidebar-nav-text">Portfolios</span>
-        {% if standalone_module %}</a>{% else %}</button>{% endif %}
+        </button>
 
-        {% if standalone_module %}<a href="/analytics" class="sidebar-nav-item" onclick="closeMobileSidebarOnSelect();">{% else %}<button type="button" class="sidebar-nav-item" id="sidebar-nav-dashboard" onclick="switchTab('dashboard'); closeMobileSidebarOnSelect();">{% endif %}
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-dashboard" onclick="switchTab('dashboard'); closeMobileSidebarOnSelect();">
             <span class="sidebar-nav-icon">📊</span>
             <span class="sidebar-nav-text">Analytics</span>
-        {% if standalone_module %}</a>{% else %}</button>{% endif %}
+        </button>
 
-        {% if standalone_module %}<a href="/insights" class="sidebar-nav-item" onclick="closeMobileSidebarOnSelect();">{% else %}<button type="button" class="sidebar-nav-item" id="sidebar-nav-insights" onclick="switchTab('insights'); closeMobileSidebarOnSelect();">{% endif %}
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-insights" onclick="switchTab('insights'); closeMobileSidebarOnSelect();">
             <span class="sidebar-nav-icon">💡</span>
             <span class="sidebar-nav-text">Insights</span>
-        {% if standalone_module %}</a>{% else %}</button>{% endif %}
+        </button>
 
-        {% if standalone_module %}<a href="/smallcases" class="sidebar-nav-item" onclick="closeMobileSidebarOnSelect();">{% else %}<button type="button" class="sidebar-nav-item" id="sidebar-nav-smallcases" onclick="switchTab('smallcases'); closeMobileSidebarOnSelect();">{% endif %}
+        <button type="button" class="sidebar-nav-item" id="sidebar-nav-smallcases" onclick="switchTab('smallcases'); closeMobileSidebarOnSelect();">
             <span class="sidebar-nav-icon">📦</span>
             <span class="sidebar-nav-text">Smallcases</span>
-        {% if standalone_module %}</a>{% else %}</button>{% endif %}
+        </button>
 
-        <div class="tools-menu-item sidebar-tools-nav" onmouseenter="positionToolsSubmenu(this)" onfocusin="positionToolsSubmenu(this)">
-            <button type="button" class="sidebar-nav-item tools-menu-trigger" aria-expanded="false" aria-haspopup="true" onclick="toggleToolsSubmenu(event)">
+        <div class="tools-menu-item sidebar-tools-nav">
+            <button type="button" class="sidebar-nav-item tools-menu-trigger" id="sidebar-nav-tools" aria-expanded="false" aria-haspopup="true" onclick="toggleToolsSubmenu(event)">
                 <span class="sidebar-nav-icon">🧰</span>
                 <span class="sidebar-nav-text">Tools</span>
                 <span class="sidebar-nav-arrow" aria-hidden="true">›</span>
             </button>
             <div class="tools-submenu sidebar-tools-submenu" aria-label="Tools">
-                <a href="/mutual-funds" class="sidebar-nav-item tools-submenu-link {% if active_workspace_module == 'mutual-funds' %}active{% endif %}" onclick="closeToolsSubmenu(); closeMobileSidebarOnSelect();">
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-mutual-funds" onclick="switchTab('mutual-funds'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
                     <span class="sidebar-nav-icon">📊</span><span class="sidebar-nav-text">Mutual Funds</span>
-                </a>
-                <a href="/ipos" class="sidebar-nav-item tools-submenu-link {% if active_workspace_module == 'ipos' %}active{% endif %}" onclick="closeToolsSubmenu(); closeMobileSidebarOnSelect();">
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-ipos" onclick="switchTab('ipos'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
                     <span class="sidebar-nav-icon">📈</span><span class="sidebar-nav-text">IPO GMP</span>
-                </a>
-                <a href="/plan-calculator" class="sidebar-nav-item tools-submenu-link {% if active_workspace_module == 'plan-calculator' %}active{% endif %}" onclick="closeToolsSubmenu(); closeMobileSidebarOnSelect();">
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-plan-calculator" onclick="switchTab('plan-calculator'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
                     <span class="sidebar-nav-icon">🧮</span><span class="sidebar-nav-text">Plan Calculator</span>
-                </a>
+                </button>
             </div>
         </div>
 
@@ -84,16 +84,16 @@
     <!-- 3. Sidebar Bottom Tools & User Account Dropdown -->
     <div class="sidebar-footer">
         <div class="sidebar-tools-row">
-            <button type="button" onclick="{% if standalone_module %}window.location.href='/'{% else %}openNotificationsModal(){% endif %}" class="sidebar-tool-btn" id="btn-sidebar-notifications" title="Price Alerts & Notifications" style="position: relative;">
+            <button type="button" onclick="openNotificationsModal()" class="sidebar-tool-btn" id="btn-sidebar-notifications" title="Price Alerts & Notifications" style="position: relative;">
                 🔔 <span id="sidebar-notif-badge" class="badge" style="background:#ef4444; color:white; font-size:9px; padding:1px 4px; border-radius:10px; display:none; position:absolute; top:2px; right:2px;">0</span>
             </button>
-            <button type="button" onclick="{% if standalone_module %}toggleModulePrivacy(){% else %}togglePrivacyMode(){% endif %}" class="sidebar-tool-btn" id="btn-sidebar-privacy" title="Toggle Privacy Mode (Hide/Show Amounts)">
+            <button type="button" onclick="togglePrivacyMode()" class="sidebar-tool-btn" id="btn-sidebar-privacy" title="Toggle Privacy Mode (Hide/Show Amounts)">
                 👁️
             </button>
-            <button type="button" onclick="{% if standalone_module %}toggleModuleTheme(){% else %}toggleTheme(){% endif %}" class="sidebar-tool-btn" id="btn-sidebar-theme" title="Toggle Dark / Light Theme">
+            <button type="button" onclick="toggleTheme()" class="sidebar-tool-btn" id="btn-sidebar-theme" title="Toggle Dark / Light Theme">
                 <span id="sidebar-theme-icon">🌙</span>
             </button>
-            <button type="button" onclick="{% if standalone_module %}window.location.reload(){% else %}manualRefreshPrices(){% endif %}" class="sidebar-tool-btn" id="btn-sidebar-refresh" title="Refresh Live Prices">
+            <button type="button" onclick="manualRefreshPrices()" class="sidebar-tool-btn" id="btn-sidebar-refresh" title="Refresh Live Prices">
                 🔄
             </button>
         </div>
@@ -115,24 +115,24 @@
 
             <!-- Options Menu Dropdown Content Popup -->
             <div id="settings-menu-dropdown" class="menu-dropdown-content sidebar-user-dropdown">
-                <div class="menu-item" onclick="{% if standalone_module %}toggleModuleTheme(); closeSettingsMenu();{% else %}toggleTheme(); closeSettingsMenu();{% endif %}">
+                <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
                     <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
                 </div>
                 <div class="menu-divider"></div>
-                <div class="menu-item" onclick="{% if standalone_module %}window.location.reload(); closeSettingsMenu();{% else %}manualRefreshPrices(); closeSettingsMenu();{% endif %}">
+                <div class="menu-item" onclick="manualRefreshPrices(); closeSettingsMenu();">
                     <span id="refresh-icon" style="display: inline-block;">🔄</span> Refresh Live Prices
                 </div>
-                <div class="menu-item" onclick="{% if standalone_module %}window.location.href='/';{% else %}openStockNewsModal(''); closeSettingsMenu();{% endif %}">
+                <div class="menu-item" onclick="openStockNewsModal(''); closeSettingsMenu();">
                     📰 Latest Market News
                 </div>
-                <div class="menu-item" onclick="{% if standalone_module %}toggleModulePrivacy(); closeSettingsMenu();{% else %}togglePrivacyMode(); closeSettingsMenu();{% endif %}">
+                <div class="menu-item" onclick="togglePrivacyMode(); closeSettingsMenu();">
                     <span id="privacy-menu-icon">👁️</span> <span id="privacy-menu-text">Toggle Privacy Mode</span>
                 </div>
                 <div class="menu-divider"></div>
-                <div class="menu-item" onclick="{% if standalone_module %}window.location.href='/';{% else %}exportDataBackup(); closeSettingsMenu();{% endif %}">
+                <div class="menu-item" onclick="exportDataBackup(); closeSettingsMenu();">
                     📥 Backup Data (JSON)
                 </div>
-                <div class="menu-item" onclick="{% if standalone_module %}window.location.href='/';{% else %}triggerImportBackup(); closeSettingsMenu();{% endif %}">
+                <div class="menu-item" onclick="triggerImportBackup(); closeSettingsMenu();">
                     📤 Restore Data (JSON)
                 </div>
                 <div class="menu-divider"></div>
@@ -140,7 +140,7 @@
                     🛡️ Admin Control Panel
                 </a>
                 <div class="menu-divider"></div>
-                <div class="menu-item" onclick="{% if standalone_module %}moduleLogout();{% else %}logoutUser(); closeSettingsMenu();{% endif %}" style="color: #ef4444;">
+                <div class="menu-item" onclick="logoutUser(); closeSettingsMenu();" style="color: #ef4444;">
                     🚪 Log Out
                 </div>
             </div>
@@ -152,19 +152,184 @@
      SIDEBAR COMPONENT STYLES
      ========================================================= -->
 <style>
-/* Shared dropdowns used by the sidebar and workspace row menus. */
-.menu-dropdown-wrapper { position:relative; display:inline-block; }
-.menu-dropdown-content { display:none; position:absolute; right:0; top:110%; min-width:210px; z-index:1000; padding:6px 0; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-card); box-shadow:var(--shadow-md); }
-.menu-dropdown-content.show { display:block; }
-.menu-item { display:flex; align-items:center; gap:8px; padding:10px 16px; color:var(--text-primary); font-size:13px; font-weight:600; cursor:pointer; transition:background .15s ease,color .15s ease; }
-.menu-item:hover { background:var(--table-hover-bg); color:var(--btn-primary-bg); }
-.menu-divider { height:1px; margin:4px 0; background:var(--border-color); }
-.tools-menu-item { position:relative; }
-.tools-menu-trigger { width:100%; justify-content:space-between; border:0; background:transparent; color:inherit; font:inherit; text-align:left; }
-.tools-menu-trigger:hover { background:transparent; color:var(--btn-primary-bg); }
-.tools-menu-arrow { margin-left:auto; color:var(--text-secondary); font-size:16px; line-height:1; }
-.tools-submenu { display:none; position:fixed; top:0; left:0; min-width:210px; padding:6px 0; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-card); box-shadow:var(--shadow-md); z-index:1001; }
-.tools-menu-item:hover > .tools-submenu, .tools-menu-item:focus-within > .tools-submenu, .tools-menu-item.open > .tools-submenu { display:block; }
+/* Backdrop Overlay */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+}
+.sidebar-backdrop.mobile-open {
+    display: block !important;
+}
+
+/* Shared dropdowns used by the sidebar, header and workspace row menus. */
+.menu-dropdown-wrapper { position: relative; display: inline-block; }
+.menu-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 110%;
+    min-width: 220px;
+    z-index: 10005;
+    padding: 6px 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-md);
+}
+.menu-dropdown-content.show { display: block !important; }
+.menu-item { display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s ease, color .15s ease; text-decoration: none; }
+.menu-item:hover { background: var(--table-hover-bg); color: var(--btn-primary-bg); }
+.menu-divider { height: 1px; margin: 4px 0; background: var(--border-color); }
+
+/* Tools Menu Item & Submenu Accordion */
+.tools-menu-item { position: relative; width: 100%; }
+.tools-menu-trigger {
+    width: 100%;
+    justify-content: space-between;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.tools-menu-trigger:hover {
+    background-color: var(--table-hover-bg);
+    color: var(--text-primary);
+}
+.sidebar-nav-arrow {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+.tools-menu-item.open .sidebar-nav-arrow {
+    transform: rotate(90deg);
+}
+
+/* =========================================================
+   TOOLS SUBMENU FLYOUT (Desktop: Hover right; Mobile: Accordion)
+   ========================================================= */
+@media (min-width: 769px) {
+    .tools-submenu {
+        display: none;
+        position: fixed;
+        left: 240px;
+        min-width: 210px;
+        padding: 6px;
+        border: 1px solid var(--border-color);
+        border-radius: 9px;
+        background: var(--bg-card);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+        z-index: 10005;
+        flex-direction: column;
+        gap: 3px;
+        margin: 0;
+    }
+
+    .app-sidebar.collapsed .tools-submenu {
+        left: 66px;
+    }
+
+    /* Invisible hover bridge to eliminate gap jitter when moving mouse into flyout */
+    .tools-submenu::before {
+        content: "";
+        position: absolute;
+        top: -8px;
+        bottom: -8px;
+        left: -16px;
+        width: 18px;
+        background: transparent;
+    }
+
+    /* Open submenu to the right on hover or when open class is active */
+    .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
+    .tools-menu-item.open > .tools-submenu:not(.force-hidden) {
+        display: flex !important;
+    }
+
+    /* Instantly disappear when clicked even if cursor is still hovering */
+    .tools-submenu.force-hidden {
+        display: none !important;
+    }
+
+    .tools-submenu .sidebar-nav-item {
+        padding: 8px 12px;
+        font-size: 13px;
+        border-radius: 6px;
+        border: 0;
+        text-decoration: none;
+        width: 100%;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: flex-start !important;
+    }
+
+    .tools-submenu .sidebar-nav-text,
+    .app-sidebar.collapsed .tools-submenu .sidebar-nav-text {
+        display: inline !important;
+    }
+
+    .app-sidebar.collapsed .tools-submenu .sidebar-nav-item {
+        justify-content: flex-start !important;
+        padding: 8px 12px !important;
+    }
+
+    .tools-submenu .sidebar-nav-item:hover {
+        background-color: var(--table-hover-bg);
+        color: var(--text-primary);
+    }
+}
+
+@media (max-width: 768px) {
+    .tools-submenu {
+        display: none;
+        position: static;
+        min-width: 0;
+        margin: 3px 0 3px 14px;
+        padding: 3px 0 3px 10px;
+        border: 0;
+        border-left: 2px solid var(--border-color);
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .tools-menu-item.open > .tools-submenu:not(.force-hidden) {
+        display: flex !important;
+    }
+
+    .tools-submenu.force-hidden {
+        display: none !important;
+    }
+
+    .tools-submenu .sidebar-nav-item {
+        padding: 7px 10px;
+        font-size: 12.5px;
+        border-radius: 6px;
+        border: 0;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: flex-start;
+    }
+
+    .tools-submenu .sidebar-nav-item:hover {
+        background-color: var(--table-hover-bg);
+        color: var(--text-primary);
+    }
+}
+
 
 /* Layout Shell Integration */
 .app-layout-wrapper {
@@ -199,7 +364,7 @@
     justify-content: space-between;
     z-index: 1000;
     transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
+    overflow: visible;
     user-select: none;
 }
 
@@ -352,20 +517,9 @@
     color: var(--text-secondary);
     font-size: 16px;
     line-height: 1;
-    transition: transform 0.15s ease;
+    transition: transform 0.2s ease;
 }
 .sidebar-tools-nav.open .sidebar-nav-arrow { transform: rotate(90deg); }
-.sidebar-tools-submenu { min-width: 210px; }
-.sidebar-tools-submenu .sidebar-nav-item {
-    border: 0;
-    border-radius: 0;
-    text-decoration: none;
-}
-.sidebar-tools-submenu .sidebar-nav-item:hover {
-    background-color: var(--table-hover-bg);
-    color: var(--text-primary);
-}
-.app-sidebar.collapsed .sidebar-tools-submenu .sidebar-nav-text { display: block !important; }
 
 .sidebar-nav-icon {
     font-size: 15px;
@@ -502,12 +656,17 @@
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
-    min-width: 200px !important;
+    min-width: 210px !important;
+    z-index: 10005 !important;
 }
 
-@media (max-width: 768px) {
-    .tools-submenu { position:static; min-width:0; margin:0 8px 6px 14px; padding:3px 0; border:0; border-left:1px solid var(--border-color); border-radius:0; box-shadow:none; }
+.app-sidebar.collapsed .sidebar-user-dropdown {
+    left: 68px !important;
+    bottom: 8px !important;
+    right: auto !important;
+    width: 220px !important;
 }
+
 
 /* Mobile Bar Header */
 .mobile-top-bar {
@@ -634,16 +793,6 @@
     .sidebar-backdrop.mobile-open {
         display: block;
     }
-    .sidebar-tools-submenu {
-        position: static;
-        min-width: 0;
-        margin: 0 8px 6px 14px;
-        padding: 3px 0;
-        border: 0;
-        border-left: 1px solid var(--border-color);
-        border-radius: 0;
-        box-shadow: none;
-    }
 }
 </style>
 
@@ -675,6 +824,7 @@
             if (icon) icon.innerText = '◀';
             localStorage.setItem('sidebarCollapsed', 'false');
         }
+        positionToolsSubmenu();
     }
 
     // Mobile Off-Canvas Drawer Toggle
@@ -708,45 +858,66 @@
     }
 
     function toggleSettingsMenu(event) {
-        if (event) event.stopPropagation();
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
         const wrapper = event && event.currentTarget ? event.currentTarget.closest('.sidebar-user-wrapper, .menu-dropdown-wrapper') : null;
-        const dropdown = wrapper && wrapper.querySelector('.menu-dropdown-content');
+        const dropdown = wrapper ? wrapper.querySelector('.menu-dropdown-content') : document.getElementById('settings-menu-dropdown');
         if (!dropdown) return;
         const shouldOpen = !dropdown.classList.contains('show');
-        document.querySelectorAll('.menu-dropdown-content.show').forEach(menu => menu.classList.remove('show'));
-        closeToolsSubmenu();
+        closeSettingsMenu();
         if (shouldOpen) dropdown.classList.add('show');
     }
 
     function toggleToolsSubmenu(event) {
-        if (event) event.stopPropagation();
-        const trigger = event && event.currentTarget;
-        const item = trigger && trigger.closest('.tools-menu-item');
-        if (!item || !trigger) return;
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        const item = document.querySelector('.tools-menu-item');
+        const trigger = document.getElementById('sidebar-nav-tools');
+        if (!item) return;
+        const submenu = item.querySelector('.tools-submenu');
+        if (submenu) submenu.classList.remove('force-hidden');
         const open = item.classList.toggle('open');
-        trigger.setAttribute('aria-expanded', String(open));
-        if (open) positionToolsSubmenu(item);
+        if (trigger) trigger.setAttribute('aria-expanded', String(open));
+        if (open && window.innerWidth > 768) {
+            positionToolsSubmenu();
+        }
     }
 
-    function positionToolsSubmenu(item) {
-        if (!item || window.innerWidth <= 768) return;
+    function positionToolsSubmenu() {
+        if (window.innerWidth <= 768) return;
+        const item = document.querySelector('.tools-menu-item');
+        if (!item) return;
         const submenu = item.querySelector('.tools-submenu');
         if (!submenu) return;
         const bounds = item.getBoundingClientRect();
-        const width = submenu.offsetWidth || 210;
-        const height = submenu.offsetHeight || 150;
-        submenu.style.left = Math.max(8, Math.min(bounds.right - 1, window.innerWidth - width - 8)) + 'px';
-        submenu.style.top = Math.max(8, Math.min(bounds.top, window.innerHeight - height - 8)) + 'px';
+        const sidebar = document.getElementById('app-sidebar');
+        const isCollapsed = sidebar && sidebar.classList.contains('collapsed');
+        
+        const submenuHeight = submenu.offsetHeight || 135;
+        const maxTop = window.innerHeight - submenuHeight - 10;
+        submenu.style.top = Math.max(10, Math.min(bounds.top, maxTop)) + 'px';
+        submenu.style.left = (isCollapsed ? 66 : 240) + 'px';
     }
 
     function closeToolsSubmenu() {
-        document.querySelectorAll('.tools-menu-item').forEach(item => item.classList.remove('open'));
-        document.querySelectorAll('.tools-menu-trigger').forEach(trigger => trigger.setAttribute('aria-expanded', 'false'));
+        const item = document.querySelector('.tools-menu-item');
+        if (item) {
+            item.classList.remove('open');
+            const submenu = item.querySelector('.tools-submenu');
+            if (submenu) {
+                submenu.classList.add('force-hidden');
+            }
+        }
+        const trigger = document.getElementById('sidebar-nav-tools');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
     }
 
     function closeSettingsMenu() {
         document.querySelectorAll('.menu-dropdown-content.show').forEach(menu => menu.classList.remove('show'));
-        closeToolsSubmenu();
     }
 
     function toggleModuleTheme() {
@@ -772,38 +943,43 @@
     }
 
     document.addEventListener('click', function(event) {
-        if (!event.target.closest('.sidebar-user-wrapper, .menu-dropdown-wrapper')) closeSettingsMenu();
-        if (!event.target.closest('.tools-menu-item')) closeToolsSubmenu();
+        if (!event.target.closest('.sidebar-user-wrapper, .menu-dropdown-wrapper')) {
+            closeSettingsMenu();
+        }
+        if (!event.target.closest('.tools-menu-item')) {
+            closeToolsSubmenu();
+        }
     });
 
-    {% if standalone_module %}document.addEventListener('DOMContentLoaded', async function() {
-        try {
-            if (localStorage.getItem('capital_desk_privacy_mode') === 'true') document.body.classList.add('module-privacy-mode');
-            const themeIcon = document.getElementById('sidebar-theme-icon');
-            if (themeIcon) themeIcon.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
-        } catch (error) {}
-        try {
-            const response = await fetch('/api/user_info');
-            const data = await response.json();
-            if (data.logged_in) {
-                const username = document.getElementById('header-username');
-                if (username) username.textContent = data.username || 'User';
-                const role = document.getElementById('sidebar-user-role-badge');
-                if (role) role.textContent = data.is_admin ? 'Admin' : 'Member';
-                if (data.is_admin) {
-                    document.querySelectorAll('.admin-only-link').forEach(link => link.style.display = 'flex');
-                    const adminMenu = document.getElementById('admin-menu-link');
-                    if (adminMenu) adminMenu.style.display = 'flex';
-                }
-            }
-        } catch (error) {}
-    });{% endif %}
-
-    // Restore saved collapse preference on load
+    // Restore saved collapse preference on load & bind tools submenu hover
     document.addEventListener('DOMContentLoaded', function() {
         const saved = localStorage.getItem('sidebarCollapsed');
         if (saved === 'true' && window.innerWidth > 768) {
             toggleSidebarCollapse(true);
+        }
+
+        const toolsItem = document.querySelector('.tools-menu-item');
+        if (toolsItem) {
+            toolsItem.addEventListener('mouseenter', function() {
+                if (window.innerWidth > 768) {
+                    positionToolsSubmenu();
+                    const submenu = toolsItem.querySelector('.tools-submenu');
+                    if (submenu) submenu.classList.remove('force-hidden');
+                }
+            });
+            toolsItem.addEventListener('mouseleave', function() {
+                const submenu = toolsItem.querySelector('.tools-submenu');
+                if (submenu) submenu.classList.remove('force-hidden');
+            });
+        }
+
+        const sidebarNav = document.querySelector('.sidebar-nav');
+        if (sidebarNav) {
+            sidebarNav.addEventListener('scroll', function() {
+                if (window.innerWidth > 768) {
+                    positionToolsSubmenu();
+                }
+            }, { passive: true });
         }
     });
 
@@ -814,4 +990,20 @@
             toggleSidebarCollapse();
         }
     });
+
+    // Instant Hover Prefetching for Zero-Latency Page Transitions
+    (function() {
+        function prefetchTarget(href) {
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('/api') || href.startsWith('/logout')) return;
+            if (document.querySelector('link[rel="prefetch"][href="' + href + '"]')) return;
+            var link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = href;
+            document.head.appendChild(link);
+        }
+        document.addEventListener('mouseover', function(e) {
+            var a = e.target.closest('aside.app-sidebar a[href^="/"]');
+            if (a) prefetchTarget(a.getAttribute('href'));
+        }, { passive: true });
+    })();
 </script>

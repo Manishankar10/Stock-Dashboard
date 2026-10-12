@@ -4,6 +4,7 @@
     const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
     const fmtDate = value => {
         if (!value) return '—';
+        if (window.formatAppDate) return window.formatAppDate(value);
         const date = new Date(value + 'T00:00:00');
         return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
@@ -77,7 +78,7 @@
         pnl.classList.toggle('mf-pnl-negative', Number(summary.pnl) < 0);
         document.getElementById('portfolio-return').textContent = summary.return_pct == null ? 'No recorded investments' : fmtNumber(summary.return_pct, 2) + '% total return';
         document.getElementById('portfolio-xirr').textContent = summary.xirr == null ? '—' : fmtNumber(summary.xirr, 2) + '%';
-        document.getElementById('portfolio-nav-date').textContent = 'NAVs as of ' + fmtDate(portfolio.nav_as_of) + (portfolio.refreshed_at ? ' · checked ' + new Date(portfolio.refreshed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : ' · refresh unavailable');
+        document.getElementById('portfolio-nav-date').textContent = 'NAVs as of ' + fmtDate(portfolio.nav_as_of) + (portfolio.refreshed_at ? ' · checked ' + (window.formatAppDateTime ? window.formatAppDateTime(portfolio.refreshed_at) : new Date(portfolio.refreshed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })) : ' · refresh unavailable');
         renderHoldings(holdings);
         renderMissed(missed);
         renderPlans(plans);
@@ -126,7 +127,7 @@
         const body = document.getElementById('holding-rows');
         document.getElementById('holding-count').textContent = rows.length + (rows.length === 1 ? ' scheme' : ' schemes');
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">No investments yet. Select “Start SIP” to add a fund to your portfolio.</td></tr>';
+            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">No investments yet. Select “Start SIP” or <button type="button" onclick="switchMfSubView(\'explore\')" style="background:none;border:none;color:var(--btn-primary-bg,#10b981);font-weight:600;cursor:pointer;text-decoration:underline;padding:0;font-size:inherit;">Explore Schemes</button> to add a fund to your portfolio.</td></tr>';
             return;
         }
         body.innerHTML = rows.map(row => {
@@ -177,12 +178,25 @@
         body.querySelectorAll('.mf-delete-tx').forEach(button => button.addEventListener('click', () => deleteInvestment(button)));
     }
 
+    let mfPortfolioLoaded = false;
     async function loadPortfolio(button, refresh = true) {
+        if (!refresh && mfPortfolioLoaded && portfolio) {
+            renderPortfolio(portfolio);
+            return;
+        }
         if (button) setBusy(button, true, '↻ Refreshing…');
         const body = document.getElementById('holding-rows');
-        if (!portfolio) body.innerHTML = '<tr><td colspan="7" class="mf-table-message">' + (refresh ? 'Refreshing official AMFI NAVs and loading your saved records…' : 'Loading saved portfolio records…') + '</td></tr>';
+        if (!portfolio) {
+            body.innerHTML = '<tr><td colspan="8">' + (typeof window.createBrandLoaderHTML === 'function' ? window.createBrandLoaderHTML({
+                title: refresh ? 'Refreshing Official AMFI NAVs...' : 'Loading Saved Portfolio Records...',
+                badge: 'My Portfolio & SIPs',
+                subtitle: 'Fetching latest valuations and recorded purchases...',
+                minHeight: '160px'
+            }) : '<div class="mf-table-message">' + (refresh ? 'Refreshing official AMFI NAVs and loading your saved records…' : 'Loading saved portfolio records…') + '</div>') + '</td></tr>';
+        }
         try {
             const data = await api('/api/mutual-funds/portfolio?refresh=' + (refresh ? '1' : '0'));
+            mfPortfolioLoaded = true;
             renderPortfolio(data);
             const notice = document.getElementById('portfolio-feed-notice');
             if (!refresh && data.is_stale) {
@@ -264,7 +278,12 @@
         const button = document.getElementById('load-performance');
         const schemeCode = document.getElementById('dashboard-scheme').value;
         message.hidden = false;
-        message.textContent = schemeCode ? 'Loading NAV history for the selected fund…' : 'Loading saved NAV history for your portfolio. This can take a moment.';
+        message.innerHTML = (typeof window.createBrandLoaderHTML === 'function') ? window.createBrandLoaderHTML({
+            title: schemeCode ? 'Loading Fund Performance History...' : 'Loading Portfolio Performance History...',
+            badge: schemeCode ? 'Selected Fund Analysis' : 'Aggregated Portfolio Analysis',
+            subtitle: 'Calculating NAV growth and contributions over time...',
+            minHeight: '180px'
+        }) : (schemeCode ? 'Loading NAV history for the selected fund…' : 'Loading saved NAV history for your portfolio. This can take a moment.');
         document.getElementById('performance-chart').hidden = true;
         setBusy(button, true, 'Loading…');
         try {
@@ -687,8 +706,8 @@
     bindPicker('sip');
     document.getElementById('portfolio-value').setAttribute('title', 'Latest AMFI NAV valuation');
     renderPlans([]);
-    loadPortfolio(null, false);
     document.querySelectorAll('[data-investment-mode]').forEach(button => button.addEventListener('click', () => setInvestmentMode(button.dataset.investmentMode)));
     if (new URLSearchParams(location.search).has('scheme_code')) setTimeout(openSipModal, 350);
+    window.refreshMfDashboard = function() { loadPortfolio(null, false); };
     setInvestmentMode('sip');
 })();

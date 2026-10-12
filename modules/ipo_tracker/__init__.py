@@ -37,7 +37,7 @@ def _guard(view):
 @ipo_tracker_bp.get("/ipos")
 @_guard
 def ipo_tracker_page():
-    return render_template("ipo_tracker.html")
+    return render_template("index.html", initial_tab="ipos")
 
 
 @ipo_tracker_bp.get("/ipo-tracker.css")

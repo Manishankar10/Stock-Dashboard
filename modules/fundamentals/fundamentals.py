@@ -28,16 +28,19 @@ import time
 import re
 from bs4 import BeautifulSoup
 
-fundamentals_bp = Blueprint("fundamentals", __name__)
+fundamentals_bp = Blueprint("fundamentals", __name__, template_folder=".")
 
 
 @fundamentals_bp.get("/fundamentals")
 def fundamentals_page():
-    """Serve the Fundamentals HTML page from Flask templates/."""
+    """Serve the Fundamentals HTML page."""
     symbol = (request.args.get("symbol") or "").strip().upper()
     if not symbol:
         return "Symbol is required", 400
-    return render_template("fundamental-analysis.html", symbol=symbol)
+    try:
+        return render_template("fundamental-analysis.html", symbol=symbol)
+    except Exception:
+        return render_template("fundamentals/fundamental-analysis.html", symbol=symbol)
 
 YAHOO_Q1 = "https://query1.finance.yahoo.com"
 YAHOO_Q2 = "https://query2.finance.yahoo.com"

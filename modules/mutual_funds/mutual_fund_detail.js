@@ -1,21 +1,20 @@
 (function () {
     const root = document.querySelector('.mf-detail-shell');
-    const code = root.dataset.schemeCode;
+    let currentCode = (root && root.dataset ? root.dataset.schemeCode : '') || window.INITIAL_SCHEME_CODE || '';
     let annualizedReturn = 0;
-    let toastTimer;
     let chartPoints = [];
     let chartCoords = [];
     let selectedChartIndex = 0;
     let maxDurationYears = 3;
     let detailFacts = {};
     let currentDetailsData = null;
-    let inceptionLoaded = false;
     let calcAmounts = { invested: 0, gains: 0, share: 0 };
 
     const money = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }) : '—';
     const number = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—';
     const date = value => {
         if (!value) return '—';
+        if (window.formatAppDate) return window.formatAppDate(value);
         const parsed = new Date(value + 'T00:00:00');
         return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
@@ -31,7 +30,12 @@
         const pad = (max - min) * 0.08;
         min = Math.max(0, min - pad); max += pad;
         chartCoords = values.map((value, index) => [index * 960 / Math.max(1, values.length - 1), 270 - ((value - min) / (max - min)) * 250 + 10]);
-        const path = chartCoords.map((point, index) => (index ? 'L' : 'M') + point[0].toFixed(1) + ' ' + point[1].toFixed(1)).join(' ');
+        let pathPoints = chartCoords;
+        if (chartCoords.length > 250) {
+            const step = Math.ceil(chartCoords.length / 250);
+            pathPoints = chartCoords.filter((_, i) => i === 0 || i === chartCoords.length - 1 || i % step === 0);
+        }
+        const path = pathPoints.map((point, index) => (index ? 'L' : 'M') + point[0].toFixed(1) + ' ' + point[1].toFixed(1)).join(' ');
         svg.innerHTML = '<line class="mf-grid-line" x1="0" y1="10" x2="960" y2="10"></line><line class="mf-grid-line" x1="0" y1="135" x2="960" y2="135"></line><line class="mf-grid-line" x1="0" y1="270" x2="960" y2="270"></line><path class="mf-detail-nav-line" d="' + path + '"></path><line class="mf-chart-crosshair" id="chart-crosshair" x1="0" y1="10" x2="0" y2="270" visibility="hidden"></line><circle class="mf-chart-hover-point" id="chart-hover-point" cx="0" cy="0" r="5" visibility="hidden"></circle>';
         selectedChartIndex = chartPoints.length - 1;
         document.getElementById('chart-max').textContent = '₹' + number(max, 2);
@@ -164,23 +168,33 @@
         list.innerHTML = rows.length ? '<div class="mf-holdings-head"><span>' + (tab === 'sectors' ? 'Sector' : 'Holding') + '</span><span>Allocation</span></div>' + rows.map(row => '<div class="mf-holding-row"><span>' + escapeHtml(row.name || '—') + '</span><strong>' + escapeHtml(row.allocation || '—') + '</strong></div>').join('') : '<p class="mf-unavailable">' + escapeHtml(detailFacts.holdings_notice || 'This breakdown could not be read from the selected source. Open the source link above to check its current portfolio details.') + '</p>';
     }
 
+    const similarCache = new Map();
+
+    function renderSimilar(ranked, period) {
+        const target = document.getElementById('similar-funds');
+        target.innerHTML = ranked.length ? ranked.map((item, index) => {
+            const ret = Number(item.return_pct);
+            const retSign = Number.isFinite(ret) && ret >= 0 ? '+' : '';
+            return '<a class="mf-similar-row" href="/mutual-funds/fund/' + encodeURIComponent(item.scheme_code) + '"><span class="mf-similar-rank">' + (index + 1) + '</span><strong class="mf-similar-name">' + escapeHtml(item.name) + '</strong><b class="mf-similar-return ' + (ret < 0 ? 'mf-pnl-negative' : 'mf-pnl-positive') + '">' + retSign + number(item.return_pct, 2) + '%' + (period === 'all' && item.age_years != null ? ' <small>(' + item.age_years + 'y)</small>' : '') + '</b></a>';
+        }).join('') : '<p class="mf-unavailable">Comparable return history is not available for this period.</p>';
+    }
+
     async function loadSimilar(period) {
         const target = document.getElementById('similar-funds');
-        target.innerHTML = '<p class="mf-unavailable">Loading category return data…</p>';
+        if (similarCache.has(period)) {
+            renderSimilar(similarCache.get(period), period);
+            return;
+        }
+        target.innerHTML = (typeof window.createBrandLoaderHTML === 'function')
+            ? window.createBrandLoaderHTML({ title: 'Comparing Similar Funds...', badge: 'Top 5 in Category', subtitle: 'Analyzing category returns over ' + String(period).toUpperCase() + '...', minHeight: '140px' })
+            : '<p class="mf-unavailable">Loading category return data…</p>';
         try {
-            const catalogResponse = await fetch('/api/mutual-funds/catalog', { cache: 'no-store' });
-            const catalog = await catalogResponse.json();
-            const current = (catalog.schemes || []).find(row => String(row.scheme_code) === String(code));
-            if (!current) throw new Error('Scheme category is not available.');
-            const candidates = (catalog.schemes || []).filter(row => String(row.scheme_code) !== String(code) && row.category === current.category && row.plan === current.plan && row.option === current.option).slice(0, 12);
-            const results = await Promise.allSettled(candidates.map(async row => {
-                const response = await fetch('/api/mutual-funds/schemes/' + encodeURIComponent(row.scheme_code) + '/details?period=' + encodeURIComponent(period), { cache: 'no-store' });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Unavailable');
-                return { name: row.name, code: row.scheme_code, returnPct: Number(data.annualized_return_pct), age: data.available_start_date ? Math.floor((Date.now() - new Date(data.available_start_date).getTime()) / 31557600000) : null };
-            }));
-            const ranked = results.filter(item => item.status === 'fulfilled' && Number.isFinite(item.value.returnPct)).map(item => item.value).sort((a, b) => b.returnPct - a.returnPct).slice(0, 5);
-            target.innerHTML = ranked.length ? ranked.map((item, index) => '<a class="mf-similar-row" href="/mutual-funds/fund/' + encodeURIComponent(item.code) + '"><span class="mf-similar-rank">' + (index + 1) + '</span><strong class="mf-similar-name">' + escapeHtml(item.name) + '</strong><b class="mf-similar-return">' + number(item.returnPct, 2) + '%' + (period === 'all' && item.age != null ? ' <small>(' + item.age + 'y)</small>' : '') + '</b></a>').join('') : '<p class="mf-unavailable">Comparable return history is not available for this period.</p>';
+            const response = await fetch('/api/mutual-funds/schemes/' + encodeURIComponent(currentCode) + '/similar?period=' + encodeURIComponent(period));
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Comparable return history is not available.');
+            const list = data.similar || [];
+            similarCache.set(period, list);
+            renderSimilar(list, period);
         } catch (error) { target.innerHTML = '<p class="mf-unavailable">' + escapeHtml(error.message) + '</p>'; }
     }
 
@@ -244,95 +258,209 @@
         options.querySelectorAll('button').forEach(button => button.classList.toggle('active', Math.abs(Number(button.dataset.years) - Number(custom.value)) < .01));
     }
 
-    async function loadDetails(period) {
-        const message = document.getElementById('detail-error');
-        message.hidden = true;
-        document.getElementById('fund-source').textContent = 'Loading official AMFI NAV history…';
-        try {
-            const response = await fetch('/api/mutual-funds/schemes/' + encodeURIComponent(code) + '/details?period=' + encodeURIComponent(period), { cache: 'no-store' });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Could not load fund details.');
-            currentDetailsData = data;
-            detailFacts = data.fund_facts || {};
-            populateScheme(data);
-            annualizedReturn = Number(data.annualized_return_pct) || 0;
-            const value = document.getElementById('fund-return');
-            value.textContent = number(annualizedReturn, 2) + '%';
-            value.classList.toggle('mf-pnl-negative', annualizedReturn < 0);
-            value.classList.toggle('mf-pnl-positive', annualizedReturn >= 0);
-            document.getElementById('return-caption').textContent = 'Annualized NAV returns in selected period';
-            document.getElementById('fund-daily-return').textContent = data.daily_return_pct == null ? '— 1D return unavailable' : (data.daily_return_pct < 0 ? '↓ ' : '↑ ') + number(Math.abs(data.daily_return_pct), 2) + '% 1D return';
-            drawChart(data.points || []);
-            const inception = data.available_start_date || (data.points || [])[0]?.date;
-            if (inception) renderDurationOptions(inception);
-            updateCalculator();
-            loadSimilar(document.getElementById('similar-period').value);
-            if (!inceptionLoaded && period !== 'all') {
-                inceptionLoaded = true;
-                fetch('/api/mutual-funds/schemes/' + encodeURIComponent(code) + '/details?period=all', { cache: 'no-store' }).then(response => response.json()).then(history => {
-                    if (!history.available_start_date) return;
-                    renderDurationOptions(history.available_start_date);
-                }).catch(() => {});
-            }
-        } catch (error) {
-            message.hidden = false;
-            message.textContent = error.message;
-            document.getElementById('fund-source').textContent = 'AMFI history unavailable';
+    const detailsCache = new Map();
+
+    function renderDetailsData(data) {
+        currentDetailsData = data;
+        detailFacts = data.fund_facts || {};
+        populateScheme(data);
+        const isSubYear = ['1m', '3m', '6m'].includes(String(data.period).toLowerCase()) || data.is_sub_year;
+        const displayReturn = isSubYear ? (data.return_pct ?? data.display_return_pct) : (data.annualized_return_pct ?? data.display_return_pct);
+        const numReturn = Number(displayReturn) || 0;
+        const value = document.getElementById('fund-return');
+        value.textContent = (numReturn >= 0 ? '+' : '') + number(numReturn, 2) + '%';
+        value.classList.toggle('mf-pnl-negative', numReturn < 0);
+        value.classList.toggle('mf-pnl-positive', numReturn >= 0);
+        document.getElementById('return-caption').textContent = data.display_return_label || (isSubYear
+            ? ('Absolute NAV return in ' + String(data.period).toUpperCase())
+            : 'Annualized NAV returns in selected period');
+        document.getElementById('fund-daily-return').textContent = data.daily_return_pct == null ? '— 1D return unavailable' : (data.daily_return_pct < 0 ? '↓ ' : '↑ ') + number(Math.abs(data.daily_return_pct), 2) + '% 1D return';
+        drawChart(data.points || []);
+        const inception = data.available_start_date || (data.points || [])[0]?.date;
+        if (inception) renderDurationOptions(inception);
+        if (!isSubYear && Number.isFinite(Number(data.annualized_return_pct)) && Number(data.annualized_return_pct) > 0) {
+            annualizedReturn = Number(data.annualized_return_pct);
+        } else if (annualizedReturn === 0 && Number.isFinite(Number(data.annualized_return_pct))) {
+            annualizedReturn = Number(data.annualized_return_pct);
+        }
+        updateCalculator();
+    }
+
+    function showChartLoader(period) {
+        const overlay = document.getElementById('mf-chart-loader');
+        if (overlay) {
+            const titleEl = document.getElementById('mf-chart-loader-title');
+            const badgeEl = document.getElementById('mf-chart-loader-badge');
+            if (titleEl) titleEl.textContent = `Loading NAV History (${String(period).toUpperCase()})...`;
+            if (badgeEl) badgeEl.textContent = (currentDetailsData && currentDetailsData.scheme && currentDetailsData.scheme.name) ? currentDetailsData.scheme.name : 'Official AMFI NAVs';
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
         }
     }
 
-    document.getElementById('period-tabs').addEventListener('click', event => {
-        const button = event.target.closest('button[data-period]');
-        if (!button) return;
-        document.querySelectorAll('#period-tabs button').forEach(item => item.classList.toggle('active', item === button));
-        loadDetails(button.dataset.period);
-    });
+    function hideChartLoader() {
+        const overlay = document.getElementById('mf-chart-loader');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                if (overlay.style.opacity === '0') overlay.style.display = 'none';
+            }, 200);
+        }
+    }
+
+    async function loadDetails(period) {
+        if (!currentCode) return;
+        const message = document.getElementById('detail-error');
+        if (message) message.hidden = true;
+        showChartLoader(period);
+        if (detailsCache.has(period)) {
+            renderDetailsData(detailsCache.get(period));
+            hideChartLoader();
+            const similarPeriodEl = document.getElementById('similar-period');
+            if (similarPeriodEl) loadSimilar(similarPeriodEl.value);
+            return;
+        }
+        const fundSourceEl = document.getElementById('fund-source');
+        if (fundSourceEl) fundSourceEl.textContent = 'Loading official AMFI NAV history…';
+        try {
+            const response = await fetch('/api/mutual-funds/schemes/' + encodeURIComponent(currentCode) + '/details?period=' + encodeURIComponent(period));
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not load fund details.');
+            detailsCache.set(period, data);
+            renderDetailsData(data);
+            hideChartLoader();
+            const similarPeriodEl = document.getElementById('similar-period');
+            if (similarPeriodEl) loadSimilar(similarPeriodEl.value);
+        } catch (error) {
+            hideChartLoader();
+            if (message) {
+                message.hidden = false;
+                message.textContent = error.message;
+            }
+            if (fundSourceEl) fundSourceEl.textContent = 'AMFI history unavailable';
+        }
+    }
+
+    const periodTabs = document.getElementById('period-tabs');
+    if (periodTabs) {
+        periodTabs.addEventListener('click', event => {
+            const button = event.target.closest('button[data-period]');
+            if (!button) return;
+            document.querySelectorAll('#period-tabs button').forEach(item => item.classList.toggle('active', item === button));
+            loadDetails(button.dataset.period);
+        });
+    }
     bindChartHover();
-    document.getElementById('custom-duration').addEventListener('input', event => {
-        if (!event.target.value) return;
-        let value = Number(event.target.value);
-        if (!Number.isFinite(value)) return;
-        if (value > maxDurationYears) { value = maxDurationYears; event.target.value = value.toFixed(1); }
-        value = Math.max(1 / 12, value);
-        document.querySelectorAll('#duration-options button').forEach(item => item.classList.toggle('active', Math.abs(Number(item.dataset.years) - value) < .01));
-        updateCalculator();
-    });
-    document.getElementById('custom-duration').addEventListener('change', event => {
-        const value = Math.min(maxDurationYears, Math.max(1 / 12, Number(event.target.value) || Math.min(1, maxDurationYears)));
-        event.target.value = value.toFixed(1);
-        updateCalculator();
-    });
-    document.getElementById('calc-donut').addEventListener('pointermove', showPieAmount);
-    document.getElementById('calc-donut').addEventListener('pointerleave', hidePieAmount);
-    document.getElementById('calc-donut').addEventListener('focus', () => showPieAmount());
-    document.getElementById('calc-donut').addEventListener('blur', hidePieAmount);
-    document.getElementById('similar-period').addEventListener('change', event => loadSimilar(event.target.value));
+    const customDuration = document.getElementById('custom-duration');
+    if (customDuration) {
+        customDuration.addEventListener('input', event => {
+            if (!event.target.value) return;
+            let value = Number(event.target.value);
+            if (!Number.isFinite(value)) return;
+            if (value > maxDurationYears) { value = maxDurationYears; event.target.value = value.toFixed(1); }
+            value = Math.max(1 / 12, value);
+            document.querySelectorAll('#duration-options button').forEach(item => item.classList.toggle('active', Math.abs(Number(item.dataset.years) - value) < .01));
+            updateCalculator();
+        });
+        customDuration.addEventListener('change', event => {
+            const value = Math.min(maxDurationYears, Math.max(1 / 12, Number(event.target.value) || Math.min(1, maxDurationYears)));
+            event.target.value = value.toFixed(1);
+            updateCalculator();
+        });
+    }
+    const calcDonut = document.getElementById('calc-donut');
+    if (calcDonut) {
+        calcDonut.addEventListener('pointermove', showPieAmount);
+        calcDonut.addEventListener('pointerleave', hidePieAmount);
+        calcDonut.addEventListener('focus', () => showPieAmount());
+        calcDonut.addEventListener('blur', hidePieAmount);
+    }
+    const similarPeriod = document.getElementById('similar-period');
+    if (similarPeriod) {
+        similarPeriod.addEventListener('change', event => loadSimilar(event.target.value));
+    }
     document.querySelectorAll('[data-holding-tab]').forEach(button => button.addEventListener('click', () => {
         document.querySelectorAll('[data-holding-tab]').forEach(item => item.classList.toggle('active', item === button));
         renderHoldings(button.dataset.holdingTab);
     }));
-    document.getElementById('track-fund').addEventListener('click', () => window.openMFInvestmentModal(code));
-    document.getElementById('calc-amount').addEventListener('input', event => {
-        const slider = document.getElementById('calc-slider');
-        const value = Math.min(Number(slider.max), Math.max(Number(slider.min), Number(event.target.value) || Number(slider.min)));
-        slider.value = value;
-        updateCalculator();
-    });
-    document.getElementById('calc-slider').addEventListener('input', event => {
-        document.getElementById('calc-amount').value = event.target.value;
-        updateCalculator();
-    });
+    const trackFund = document.getElementById('track-fund');
+    if (trackFund) {
+        trackFund.addEventListener('click', () => {
+            if (typeof window.openMFInvestmentModal === 'function') {
+                window.openMFInvestmentModal(currentCode);
+            }
+        });
+    }
+    const calcAmount = document.getElementById('calc-amount');
+    const calcSlider = document.getElementById('calc-slider');
+    if (calcAmount && calcSlider) {
+        calcAmount.addEventListener('input', event => {
+            const value = Math.min(Number(calcSlider.max), Math.max(Number(calcSlider.min), Number(event.target.value) || Number(calcSlider.min)));
+            calcSlider.value = value;
+            updateCalculator();
+        });
+        calcSlider.addEventListener('input', event => {
+            calcAmount.value = event.target.value;
+            updateCalculator();
+        });
+    }
     document.querySelectorAll('input[name="calc-mode"]').forEach(input => input.addEventListener('change', () => {
         const monthly = input.value === 'sip' && input.checked;
-        document.getElementById('calc-amount').value = monthly ? 500 : 10000;
-        document.getElementById('calc-slider').value = monthly ? 500 : 10000;
+        if (calcAmount) calcAmount.value = monthly ? 500 : 10000;
+        if (calcSlider) calcSlider.value = monthly ? 500 : 10000;
         updateCalculator();
     }));
-    document.getElementById('mf-theme-toggle').addEventListener('click', () => {
-        const rootEl = document.documentElement;
-        const theme = rootEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        rootEl.setAttribute('data-theme', theme);
-        try { localStorage.setItem('capital_desk_theme', theme); } catch (error) {}
-    });
-    loadDetails('3y');
+
+    function scrollToTop() {
+        try {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        } catch (e) {
+            window.scrollTo(0, 0);
+        }
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+        const main = document.querySelector('.main-content-wrapper');
+        if (main) main.scrollTop = 0;
+        const container = document.querySelector('.container');
+        if (container) container.scrollTop = 0;
+        const tabEl = document.getElementById('tab-mutual-fund-detail');
+        if (tabEl) tabEl.scrollTop = 0;
+    }
+
+    const similarContainer = document.getElementById('similar-funds');
+    if (similarContainer) {
+        similarContainer.addEventListener('click', function (e) {
+            const row = e.target.closest('.mf-similar-row');
+            if (!row) return;
+            const href = row.getAttribute('href');
+            if (href && href.startsWith('/mutual-funds/fund/')) {
+                const code = href.split('/mutual-funds/fund/')[1]?.split('/')[0];
+                if (code) {
+                    e.preventDefault();
+                    window.loadFundDetail(code);
+                    if (typeof switchTab === 'function') {
+                        switchTab('mutual-fund-detail');
+                    }
+                    scrollToTop();
+                }
+            }
+        });
+    }
+
+    window.loadFundDetail = function (schemeCode) {
+        if (schemeCode) {
+            currentCode = schemeCode;
+            if (root) root.dataset.schemeCode = schemeCode;
+            window.INITIAL_SCHEME_CODE = schemeCode;
+        }
+        if (!currentCode) return;
+        detailsCache.clear();
+        similarCache.clear();
+        scrollToTop();
+        loadDetails('3y');
+    };
+
+    if (currentCode) {
+        loadDetails('3y');
+    }
 })();

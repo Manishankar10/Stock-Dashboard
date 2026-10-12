@@ -25,12 +25,14 @@
 
     function formatDate(value) {
         if (!value) return '—';
+        if (window.formatAppDate) return window.formatAppDate(value);
         const date = new Date(value + 'T00:00:00');
         return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
     function formatTime(value) {
         if (!value) return 'AMFI update time unavailable';
+        if (window.formatAppDateTime) return 'Checked ' + window.formatAppDateTime(value);
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? value : 'Checked ' + date.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
     }
@@ -118,16 +120,26 @@
         document.getElementById('page-next').disabled = page + 1 >= totalPages;
     }
 
-    async function loadCatalog() {
+    let mfCatalogLoaded = false;
+    async function loadCatalog(forceRefresh = false) {
+        if (!forceRefresh && mfCatalogLoaded && schemes.length > 0) {
+            return;
+        }
         elements.refresh.disabled = true;
         elements.refresh.textContent = '↻ Refreshing…';
         setStatus('Refreshing official NAV feed…', false);
-        elements.rows.innerHTML = '<tr><td colspan="7" class="mf-table-message">Fetching the latest AMFI NAV report…</td></tr>';
+        elements.rows.innerHTML = '<tr><td colspan="7">' + (typeof window.createBrandLoaderHTML === 'function' ? window.createBrandLoaderHTML({
+            title: 'Loading Mutual Fund Schemes...',
+            badge: 'AMFI Daily NAV Report',
+            subtitle: 'Downloading and indexing 14,000+ mutual fund schemes...',
+            minHeight: '200px'
+        }) : '<div class="mf-table-message">Fetching the latest AMFI NAV report…</div>') + '</td></tr>';
         try {
-            const response = await fetch('/api/mutual-funds/catalog?refresh=1', { cache: 'no-store' });
+            const response = await fetch('/api/mutual-funds/catalog?refresh=' + (forceRefresh ? '1' : '0'), { cache: 'no-store' });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'AMFI data is unavailable.');
             schemes = Array.isArray(data.schemes) ? data.schemes : [];
+            mfCatalogLoaded = true;
             loadFilters(data);
             applyFilters();
             setStatus(formatNumber(schemes.length, 0) + ' schemes loaded', false);
@@ -147,7 +159,7 @@
     });
     document.getElementById('page-prev').addEventListener('click', function () { page = Math.max(0, page - 1); renderRows(); });
     document.getElementById('page-next').addEventListener('click', function () { page += 1; renderRows(); });
-    elements.refresh.addEventListener('click', loadCatalog);
+    elements.refresh.addEventListener('click', function () { loadCatalog(true); });
     document.getElementById('reset-filters').addEventListener('click', function () {
         elements.search.value = '';
         [elements.amc, elements.category, elements.type, elements.plan, elements.option].forEach(select => { select.value = ''; });
@@ -159,7 +171,18 @@
         if (investButton) { window.openMFInvestmentModal(investButton.dataset.schemeCode); return; }
         if (event.target.closest('a, button, input, select')) return;
         const row = event.target.closest('tr[data-detail-url]');
-        if (row) location.href = row.dataset.detailUrl;
+        if (row) {
+            const url = row.dataset.detailUrl;
+            if (typeof switchTab === 'function' && typeof window.loadFundDetail === 'function' && url && url.includes('/mutual-funds/fund/')) {
+                const code = url.split('/mutual-funds/fund/')[1]?.split('/')[0];
+                if (code) {
+                    window.loadFundDetail(code);
+                    switchTab('mutual-fund-detail');
+                    return;
+                }
+            }
+            location.href = url;
+        }
     });
-    loadCatalog();
+    window.loadMfCatalog = loadCatalog;
 })();

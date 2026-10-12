@@ -10,6 +10,7 @@
     const liveDot = document.querySelector('.live-dot');
     let ipos = [];
     let statusFilter = 'all';
+    let boardFilter = 'all';
 
     function escapeHtml(value) {
         return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
@@ -59,11 +60,13 @@
 
     function sourceDetails(ipo) {
         const sources = Array.isArray(ipo.source_rows) ? ipo.source_rows : [];
+        const count = Number(ipo.source_count) || sources.length;
         if (!sources.length) {
             const detailUrl = externalUrl(ipo.detail_url);
+            const countText = count > 0 ? count + ' source' + (count === 1 ? '' : 's') + ' · ' : '';
             return detailUrl
-                ? '<a class="source-link" href="' + detailUrl + '" target="_blank" rel="noopener noreferrer">Provider ↗</a>'
-                : '<span class="value-muted">Provider</span>';
+                ? '<a class="source-link" href="' + detailUrl + '" target="_blank" rel="noopener noreferrer">' + countText + 'Provider ↗</a>'
+                : '<span class="value-muted">' + (count > 0 ? count + ' sources' : '—') + '</span>';
         }
         const list = sources.map(function (source) {
             const url = externalUrl(source.url);
@@ -71,7 +74,6 @@
             const amount = source.gmp == null ? '' : ' · ' + escapeHtml(formatCurrency(source.gmp));
             return '<li>' + (url ? '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + amount + ' ↗</a>' : label + amount) + '</li>';
         }).join('');
-        const count = Number(ipo.source_count) || sources.length;
         return '<details class="source-details"><summary>' + count + ' source' + (count === 1 ? '' : 's') + '</summary><ul>' + list + '</ul></details>';
     }
 
@@ -106,9 +108,24 @@
             ? '<a class="company-name" href="' + detailUrl + '" target="_blank" rel="noopener noreferrer">' + name + ' ↗</a>'
             : '<span class="company-name">' + name + '</span>';
 
+        let datesText = escapeHtml(ipo.dates || 'Dates not reported');
+        if (ipo.open_date && ipo.close_date && window.formatAppDate) {
+            datesText = escapeHtml(window.formatAppDate(ipo.open_date) + ' to ' + window.formatAppDate(ipo.close_date));
+        } else if (ipo.dates && /^\d{4}-\d{2}-\d{2}\s+to\s+\d{4}-\d{2}-\d{2}$/.test(ipo.dates)) {
+            const parts = ipo.dates.split(' to ');
+            datesText = escapeHtml((window.formatAppDate ? window.formatAppDate(parts[0]) : parts[0]) + ' to ' + (window.formatAppDate ? window.formatAppDate(parts[1]) : parts[1]));
+        }
+
+        let secondaryDate = '';
+        if (ipo.listing_date) {
+            secondaryDate = '<span class="secondary-line">Lists ' + escapeHtml(window.formatAppDate ? window.formatAppDate(ipo.listing_date) : ipo.listing_date) + '</span>';
+        } else if (ipo.allotment_date) {
+            secondaryDate = '<span class="secondary-line">Allotment ' + escapeHtml(window.formatAppDate ? window.formatAppDate(ipo.allotment_date) : ipo.allotment_date) + '</span>';
+        }
+
         return '<tr data-status="' + group + '" data-segment="' + escapeHtml(classifySegment(segment)) + '" data-name="' + name.toLowerCase() + '">' +
             '<td>' + company + '<span class="secondary-line">' + escapeHtml(segment) + '</span></td>' +
-            '<td><span class="value-main">' + escapeHtml(ipo.dates || 'Dates not reported') + '</span>' + statusBadge(ipo.status) + (ipo.listing_date ? '<span class="secondary-line">Lists ' + escapeHtml(ipo.listing_date) + '</span>' : '') + '</td>' +
+            '<td><span class="value-main">' + datesText + '</span>' + statusBadge(ipo.status) + secondaryDate + '</td>' +
             '<td>' + upperPrice + '</td>' +
             '<td><span class="value-main">' + escapeHtml(ipo.issue_size || 'Not reported') + '</span>' + lotSize + '</td>' +
             '<td>' + subscription + '</td>' +
@@ -120,19 +137,37 @@
 
     function updateCounts() {
         const counts = { open: 0, upcoming: 0, closed: 0 };
+        const boardCounts = { all: ipos.length, mainboard: 0, sme: 0 };
+
         ipos.forEach(function (ipo) {
             const group = classifyStatus(ipo.status);
             if (Object.prototype.hasOwnProperty.call(counts, group)) counts[group] += 1;
+
+            const segment = classifySegment(ipo.segment);
+            if (segment === 'mainboard') boardCounts.mainboard += 1;
+            else if (segment === 'sme') boardCounts.sme += 1;
         });
-        document.getElementById('count-open').textContent = counts.open;
-        document.getElementById('count-upcoming').textContent = counts.upcoming;
-        document.getElementById('count-closed').textContent = counts.closed;
-        document.getElementById('count-all').textContent = ipos.length;
+
+        const openEl = document.getElementById('count-open');
+        if (openEl) openEl.textContent = counts.open;
+        const upcomingEl = document.getElementById('count-upcoming');
+        if (upcomingEl) upcomingEl.textContent = counts.upcoming;
+        const closedEl = document.getElementById('count-closed');
+        if (closedEl) closedEl.textContent = counts.closed;
+        const allEl = document.getElementById('count-all');
+        if (allEl) allEl.textContent = ipos.length;
+
+        const boardAllEl = document.getElementById('count-board-all');
+        if (boardAllEl) boardAllEl.textContent = boardCounts.all;
+        const boardMainEl = document.getElementById('count-board-mainboard');
+        if (boardMainEl) boardMainEl.textContent = boardCounts.mainboard;
+        const boardSmeEl = document.getElementById('count-board-sme');
+        if (boardSmeEl) boardSmeEl.textContent = boardCounts.sme;
     }
 
     function render() {
-        const query = searchInput.value.trim().toLowerCase();
-        const segment = segmentSelect.value;
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const segment = boardFilter;
         const visible = ipos.filter(function (ipo) {
             const statusMatches = statusFilter === 'all' || classifyStatus(ipo.status) === statusFilter;
             const segmentMatches = segment === 'all' || classifySegment(ipo.segment) === segment;
@@ -147,7 +182,9 @@
     }
 
     function setFreshness(data) {
-        updatedLabel.textContent = 'Provider updated: ' + (data.generated_display || data.generated_at || 'time unavailable');
+        const rawTime = data.generated_at || data.generated_display;
+        const formattedTime = rawTime ? (window.formatAppDateTime ? window.formatAppDateTime(rawTime) : rawTime) : 'time unavailable';
+        updatedLabel.textContent = 'Provider updated: ' + formattedTime;
         fetchedLabel.textContent = data.is_stale
             ? 'Showing the last successful refresh'
             : (data.cache_status === 'cached' ? 'Using cached data' : 'Data refreshed from provider');
@@ -160,7 +197,12 @@
         if (data.official_ipo_url) document.getElementById('official-link').href = externalUrl(data.official_ipo_url) || 'https://www.nseindia.com/market-data/all-upcoming-issues-ipo';
     }
 
+    let iposLoaded = false;
     async function load(forceRefresh) {
+        if (!forceRefresh && iposLoaded && ipos.length > 0) {
+            render();
+            return;
+        }
         refreshButton.disabled = true;
         refreshButton.textContent = forceRefresh ? 'Refreshing…' : '↻ Refresh';
         if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="8">Loading IPOs and GMP data…</td></tr>';
@@ -170,6 +212,7 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'IPO data could not be loaded.');
             ipos = Array.isArray(data.ipos) ? data.ipos : [];
+            iposLoaded = true;
             updateCounts();
             setFreshness(data);
             render();
@@ -194,8 +237,27 @@
             render();
         });
     });
-    searchInput.addEventListener('input', render);
-    segmentSelect.addEventListener('change', render);
-    refreshButton.addEventListener('click', function () { load(true); });
-    load(false);
+
+    document.querySelectorAll('[data-board-filter]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            document.querySelectorAll('[data-board-filter]').forEach(function (item) { item.classList.remove('active'); });
+            button.classList.add('active');
+            boardFilter = button.dataset.boardFilter;
+            if (segmentSelect) segmentSelect.value = boardFilter;
+            render();
+        });
+    });
+
+    if (searchInput) searchInput.addEventListener('input', render);
+    if (segmentSelect) {
+        segmentSelect.addEventListener('change', function () {
+            boardFilter = segmentSelect.value;
+            document.querySelectorAll('[data-board-filter]').forEach(function (btn) {
+                btn.classList.toggle('active', btn.dataset.boardFilter === boardFilter);
+            });
+            render();
+        });
+    }
+    if (refreshButton) refreshButton.addEventListener('click', function () { load(true); });
+    window.loadIpos = load;
 }());

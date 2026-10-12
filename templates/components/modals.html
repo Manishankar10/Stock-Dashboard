@@ -1,0 +1,852 @@
+<input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="handleBackupFileSelect(event)">
+
+    <!-- =========================================================
+         SMALLCASES POPUP MODALS
+    ========================================================= -->
+    <!-- Create Smallcase Modal -->
+    <div id="createSmallcaseModal" class="small-modal">
+        <div class="small-modal-content" style="width: 700px; max-width: 95vw;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px;">Create Smallcase</h3>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('createSmallcaseModal')">&times;</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div class="form-group">
+                    <label>Smallcase Name *</label>
+                    <input type="text" id="scCreateName" placeholder="e.g. Growth 2026">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <input type="text" id="scCreateCategory" placeholder="Growth / Value / Momentum">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Description</label>
+                    <input type="text" id="scCreateDescription" placeholder="Short description of investment strategy">
+                </div>
+                <div class="form-group">
+                    <label>Investment Date *</label>
+                    <input type="date" id="scCreateDate">
+                </div>
+                <div class="form-group">
+                    <label>Benchmark / Index</label>
+                    <input type="text" id="scCreateBenchmark" placeholder="e.g. NIFTY 50">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Notes</label>
+                    <input type="text" id="scCreateNotes" placeholder="Optional notes">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <span style="font-size: 12px; color: var(--text-secondary);">You can add stocks later via <strong>Buy/Sell Holding</strong> or <strong>Import Excel</strong>.</span>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-secondary" onclick="closeSmallcaseModal('createSmallcaseModal')">Cancel</button>
+                    <button class="btn-primary" onclick="submitCreateSmallcase()">Create Smallcase</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Excel Modal -->
+    <div id="importSmallcaseModal" class="small-modal" style="z-index: 10010;">
+        <div class="small-modal-content" style="width: 700px; max-width: 95vw;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 18px;">Import Smallcase Transactions</h3>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Add new BUY/SELL rows from Excel. Existing transactions are skipped.</div>
+                </div>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('importSmallcaseModal')">&times;</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group">
+                    <label>Smallcase</label>
+                    <input type="text" id="scImportSmallcaseName" readonly style="background: var(--bg-subtle);">
+                    <input type="hidden" id="scImportSmallcaseId">
+                </div>
+                <div class="form-group">
+                    <label>Excel File *</label>
+                    <input type="file" id="scImportFile" accept=".xlsx,.xlsm">
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                    <span>Required columns: <strong>Symbol, Date, Buy/Sell, Quantity, Buy Price, Sell Price</strong></span>
+                    <a href="/static/Smallcase%20template.xlsx" download style="color: #10b981; font-weight: 700; text-decoration: none;">⬇ Download Sample Excel</a>
+                </div>
+            </div>
+            <div id="scImportStatus" style="margin-top: 14px;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button class="btn-secondary" onclick="closeSmallcaseModal('importSmallcaseModal')">Close</button>
+                <button class="btn-primary" id="scImportBtn" onclick="submitImportSmallcaseExcel()">Import Excel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smallcase Detail Modal -->
+    <div id="detailSmallcaseModal" class="small-modal" style="z-index: 10005;">
+        <div class="small-modal-content" style="width: 1000px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px; flex-shrink: 0;">
+                <div>
+                    <h3 id="scDetailTitle" style="margin: 0; font-size: 19px;">Smallcase Details</h3>
+                    <div id="scDetailSub" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;"></div>
+                </div>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('detailSmallcaseModal')">&times;</span>
+            </div>
+            <div id="scDetailBody" style="flex: 1; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
+    </div>
+
+    <!-- Edit Smallcase Modal -->
+    <div id="editSmallcaseModal" class="small-modal">
+        <div class="small-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px;">Edit Smallcase</h3>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('editSmallcaseModal')">&times;</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Name *</label>
+                    <input type="text" id="scEditName">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Description</label>
+                    <input type="text" id="scEditDescription">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <input type="text" id="scEditCategory">
+                </div>
+                <div class="form-group">
+                    <label>Investment Date</label>
+                    <input type="date" id="scEditDate">
+                </div>
+                <div class="form-group">
+                    <label>Benchmark</label>
+                    <input type="text" id="scEditBenchmark">
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <input type="text" id="scEditNotes">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button class="btn-secondary" onclick="closeSmallcaseModal('editSmallcaseModal')">Cancel</button>
+                <button class="btn-primary" onclick="submitSaveEditSmallcase()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Transaction Modal -->
+    <div id="txSmallcaseModal" class="small-modal" style="z-index: 10012;">
+        <div class="small-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="scTxTitle" style="margin: 0; font-size: 18px;">Add Transaction</h3>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('txSmallcaseModal')">&times;</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div class="form-group" style="grid-column: 1 / -1; position: relative;">
+                    <label>Stock Symbol / Company</label>
+                    <div class="autocomplete-wrapper" style="width: 100%;">
+                        <input type="text" id="scTxSymbol" placeholder="Search stock (e.g. RELIANCE, TCS)..." autocomplete="off" onkeyup="handleSearchInput('scTx', this, event)">
+                        <div class="autocomplete-dropdown" id="dropdown-scTx"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Transaction Type</label>
+                    <select id="scTxType" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
+                        <option value="BUY">BUY</option>
+                        <option value="SELL">SELL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity *</label>
+                    <input type="number" min="0.000001" step="0.000001" id="scTxQty">
+                </div>
+                <div class="form-group">
+                    <label>Price (₹) *</label>
+                    <input type="number" min="0.01" step="0.01" id="scTxPrice">
+                </div>
+                <div class="form-group">
+                    <label>Date *</label>
+                    <input type="date" id="scTxDate">
+                </div>
+                <div class="form-group">
+                    <label>Charges (₹)</label>
+                    <input type="number" min="0" step="0.01" value="0" id="scTxCharges">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Notes</label>
+                    <input type="text" id="scTxNotes">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button class="btn-secondary" onclick="closeSmallcaseModal('txSmallcaseModal')">Cancel</button>
+                <button class="btn-primary" onclick="submitSaveSmallcaseTransaction()">Confirm Transaction</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exit Stock Modal -->
+    <div id="exitSmallcaseModal" class="small-modal" style="z-index: 10012;">
+        <div class="small-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px;">Exit Stock</h3>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('exitSmallcaseModal')">&times;</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Stock</label>
+                    <input type="text" id="scExitSymbol" readonly style="background: var(--bg-subtle);">
+                </div>
+                <div class="form-group">
+                    <label>Quantity to Exit *</label>
+                    <input type="number" min="0.000001" step="0.000001" id="scExitQty">
+                </div>
+                <div class="form-group">
+                    <label>Exit Price (₹) *</label>
+                    <input type="number" min="0.01" step="0.01" id="scExitPrice">
+                </div>
+                <div class="form-group">
+                    <label>Exit Date *</label>
+                    <input type="date" id="scExitDate">
+                </div>
+                <div class="form-group">
+                    <label>Charges (₹)</label>
+                    <input type="number" min="0" step="0.01" value="0" id="scExitCharges">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Notes</label>
+                    <input type="text" id="scExitNotes">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button class="btn-secondary" onclick="closeSmallcaseModal('exitSmallcaseModal')">Cancel</button>
+                <button class="btn-primary" onclick="submitConfirmExitSmallcase()">Confirm Exit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         IN-HOUSE TECHNICAL CHART MODAL (LIGHTWEIGHT CHARTS PRO)
+    ========================================================= -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content" id="chartModalContent">
+            <!-- Top Controls Bar -->
+            <div class="chart-topbar">
+                <div class="chart-header-left">
+                    <div class="stock-title">
+                        <span id="chartSymbolDisplay" class="chart-symbol-text">ROLEXRINGS.NS</span>
+                        <span id="chartNameDisplay" class="chart-name-text">Rolex Rings Ltd</span>
+                    </div>
+                </div>
+                
+                <div class="chart-header-right">
+                    <!-- Top Menu Controls Group -->
+                    <div class="chart-popovers-container">
+                        <!-- 1. Indicators Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-indicators', event)">
+                                <span>fx Indicators</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-indicators">
+                                <div class="popover-menu-title">Indicators</div>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkCdRider" onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 600;">CDRider (Supertrend)</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> <span>Volume</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkSma50" onchange="toggleIndicators()"> <span style="color:#ff6d00">50 DMA</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkSma200" onchange="toggleIndicators()"> <span style="color:#e11d48">200 DMA</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkEma9" onchange="toggleIndicators()"> <span style="color:#06b6d4">EMA 9</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkGann2Day" onchange="toggleIndicators()"> <span style="color:#ffffff">Gann 2-Day Low</span></label>
+                                <div class="popover-divider"></div>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkRsi" checked onchange="toggleIndicators()"> <span style="color:#e040fb">RSI 14</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkMacd" onchange="toggleIndicators()"> <span style="color:#3b82f6">MACD</span></label>
+                            </div>
+                        </div>
+
+                        <!-- 2. Drawing Tools Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event);">
+                                <span>✏️ Tools</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-tools" style="min-width: 260px; max-height: 480px; overflow-y: auto;">
+                                <div class="popover-menu-title">Tool Color</div>
+                                <div class="tool-color-selector" style="display: flex; gap: 6px; padding: 4px 12px 8px; align-items: center; flex-wrap: wrap;">
+                                    <div class="color-dot active" style="background: #10b981;" onclick="setActiveToolColor('#10b981', this)" title="Emerald Green"></div>
+                                    <div class="color-dot" style="background: #ef5350;" onclick="setActiveToolColor('#ef5350', this)" title="Red"></div>
+                                    <div class="color-dot" style="background: #3b82f6;" onclick="setActiveToolColor('#3b82f6', this)" title="Blue"></div>
+                                    <div class="color-dot" style="background: #f59e0b;" onclick="setActiveToolColor('#f59e0b', this)" title="Yellow"></div>
+                                    <div class="color-dot" style="background: #a855f7;" onclick="setActiveToolColor('#a855f7', this)" title="Purple"></div>
+                                    <div class="color-dot" style="background: #ffffff; border: 1px solid #787b86;" onclick="setActiveToolColor('#ffffff', this)" title="White"></div>
+                                    <div class="color-dot" style="background: #f97316;" onclick="setActiveToolColor('#f97316', this)" title="Orange"></div>
+                                    <input type="color" id="toolCustomColorPicker" value="#10b981" onchange="setActiveToolColor(this.value, null)" style="width: 20px; height: 20px; padding: 0; border: none; background: transparent; cursor: pointer;" title="Custom Color">
+                                </div>
+
+                                <div class="popover-divider"></div>
+                                <div class="popover-menu-title">Drawing Tools</div>
+                                <button class="popover-menu-item" id="tool-btn-support-click" onclick="activateDrawingTool('support_click'); closeAllChartPopovers();">📍 Support Line (Click Chart / Y-Axis)</button>
+                                <button class="popover-menu-item" id="tool-btn-support" onclick="addHorizontalLinePrompt('support'); closeAllChartPopovers();">🟢 Support Line (Enter Price)</button>
+                                <button class="popover-menu-item" id="tool-btn-target" onclick="addHorizontalLinePrompt('target'); closeAllChartPopovers();">🎯 Target Price Line</button>
+                                <button class="popover-menu-item" id="tool-btn-stoploss" onclick="addHorizontalLinePrompt('stoploss'); closeAllChartPopovers();">🛑 StopLoss Line</button>
+                                <button class="popover-menu-item" id="tool-btn-trendline" onclick="activateDrawingTool('trendline'); closeAllChartPopovers();">📈 Diagonal Trendline</button>
+                                <button class="popover-menu-item" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle'); closeAllChartPopovers();">⬛ Rectangle Zone</button>
+                                <button class="popover-menu-item" id="tool-btn-pricerange" onclick="activateDrawingTool('pricerange'); closeAllChartPopovers();">📏 Price Range & % Calculator</button>
+                                <button class="popover-menu-item" id="tool-btn-vertical" onclick="activateDrawingTool('vertical'); closeAllChartPopovers();">🕒 Time Line Marker</button>
+                                <button class="popover-menu-item" id="tool-btn-note" onclick="activateDrawingTool('note'); closeAllChartPopovers();">📍 Text Callout / Note</button>
+
+                                <div class="popover-divider"></div>
+                                <button class="popover-menu-item item-danger" onclick="clearDrawings(); closeAllChartPopovers();">🧹 Clear All Drawings</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. Standalone Active Drawings Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" id="btnActiveDrawingsPopover" onclick="toggleChartPopover('popover-active-drawings', event); renderActiveDrawingsList();" title="View & Manage Active Drawings">
+                                <span>📐 Active Drawings (<span id="activeDrawingsCountNav">0</span>)</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-active-drawings" style="min-width: 280px; width: 300px; padding: 12px;">
+                                <div class="popover-menu-title" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #787b86; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px;">
+                                    <span>ACTIVE DRAWINGS (<span id="activeDrawingsCount">0</span>)</span>
+                                    <button id="btnToggleHideAllDrawings" onclick="toggleHideAllDrawings()" style="background: #2a2e39; border: 1px solid #363a45; color: #d1d4dc; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; cursor: pointer;" title="Toggle Hide/Show All Drawings">👁️ Hide All</button>
+                                </div>
+                                <div id="activeDrawingsListMount" style="max-height: 280px; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; gap: 8px;"></div>
+                                <div class="popover-divider" style="margin: 12px 0 8px;"></div>
+                                <button class="popover-menu-item item-danger" style="width: 100%; justify-content: center; padding: 8px; font-weight: 600;" onclick="clearDrawings(); closeAllChartPopovers();">🧹 Clear All Drawings</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. Time Interval / Candle Frequency Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-interval', event)">
+                                <span id="intervalBtnLabel">⏱️ 1D</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-interval">
+                                <div class="popover-menu-title">Candle Interval</div>
+                                <button class="popover-menu-item int-btn" id="int-5m" onclick="changeInterval('5m'); closeAllChartPopovers();">5 Minutes (5m)</button>
+                                <button class="popover-menu-item int-btn" id="int-15m" onclick="changeInterval('15m'); closeAllChartPopovers();">15 Minutes (15m)</button>
+                                <button class="popover-menu-item int-btn" id="int-1h" onclick="changeInterval('1h'); closeAllChartPopovers();">1 Hour (1H)</button>
+                                <button class="popover-menu-item int-btn active" id="int-1d" onclick="changeInterval('1d'); closeAllChartPopovers();">Daily (1D)</button>
+                                <button class="popover-menu-item int-btn" id="int-1w" onclick="changeInterval('1w'); closeAllChartPopovers();">Weekly (1W)</button>
+                                <button class="popover-menu-item int-btn" id="int-1mo" onclick="changeInterval('1mo'); closeAllChartPopovers();">Monthly (1M)</button>
+                            </div>
+                        </div>
+
+                        <!-- 5. Timeframe Range Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-range', event)">
+                                <span id="rangeBtnLabel">📅 1Y</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-range">
+                                <div class="popover-menu-title">Time Range</div>
+                                <button class="popover-menu-item tf-btn" id="tf-1mo" onclick="changeRange('1mo'); closeAllChartPopovers();">1 Month (1M)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-3mo" onclick="changeRange('3mo'); closeAllChartPopovers();">3 Months (3M)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-6mo" onclick="changeRange('6mo'); closeAllChartPopovers();">6 Months (6M)</button>
+                                <button class="popover-menu-item tf-btn active" id="tf-1y" onclick="changeRange('1y'); closeAllChartPopovers();">1 Year (1Y)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-2y" onclick="changeRange('2y'); closeAllChartPopovers();">2 Years (2Y)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-5y" onclick="changeRange('5y'); closeAllChartPopovers();">5 Years (5Y)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-max" onclick="changeRange('max'); closeAllChartPopovers();">All History (ALL)</button>
+                                <div class="popover-divider"></div>
+                                <button class="popover-menu-item" onclick="zoomChart(1.25); closeAllChartPopovers();">🔍 Zoom In (+25%)</button>
+                                <button class="popover-menu-item" onclick="zoomChart(0.8); closeAllChartPopovers();">🔍 Zoom Out (-20%)</button>
+                            </div>
+                        </div>
+
+                        <!-- 6. Chart Type Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-type', event)">
+                                <span id="typeBtnLabel">🕯️ Candles</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-type">
+                                <div class="popover-menu-title">Chart Type</div>
+                                <button class="popover-menu-item tf-btn active" id="chart-type-candles" onclick="setChartType('candlestick'); closeAllChartPopovers();">🕯️ Candlestick</button>
+                                <button class="popover-menu-item tf-btn" id="chart-type-line" onclick="setChartType('line'); closeAllChartPopovers();">📈 Line</button>
+                                <button class="popover-menu-item tf-btn" id="chart-type-area" onclick="setChartType('area'); closeAllChartPopovers();">🌊 Area</button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Action Buttons -->
+                        <button class="chart-action-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View">🔄 Center</button>
+                        <button class="chart-action-btn" onclick="openStockNewsModal(currentChartSymbol)">📰 News</button>
+                    </div>
+
+                    <!-- Top Right Close Icon -->
+                    <button type="button" class="chart-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
+                </div>
+            </div>
+
+            <!-- Legend Bar -->
+            <div class="legend-bar" id="legendBar">
+                <div class="legend-item">DATE: <span class="legend-val" id="legDate">-</span></div>
+                <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
+                <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
+                <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
+                <div class="legend-item">C: <span class="legend-val" id="legClose">-</span> <span class="legend-val" id="legChgPct" style="margin-left: 2px; font-weight: 700;">-</span></div>
+                <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
+                <div class="legend-item" id="legSmaGroup">
+                    CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> <span id="legCdRiderGroup">|</span>
+                    50 DMA: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |
+                    200 DMA: <span class="legend-val" style="color:#e11d48" id="legSma200">-</span> |
+                    EMA 9: <span class="legend-val" style="color:#06b6d4" id="legEma9">-</span> |
+                    Gann 2-Day: <span class="legend-val" style="color:#ffffff" id="legGann2Day">-</span>
+                </div>
+                <div class="legend-item" id="legRsiGroup">RSI: <span class="legend-val" style="color:#e040fb" id="legRsi">-</span></div>
+                <div class="legend-item" id="legMacdGroup" style="display: none;">MACD: <span class="legend-val" style="color:#3b82f6" id="legMacd">-</span></div>
+            </div>
+
+            <!-- Main Chart & Sub-Pane Container -->
+            <div class="chart-body-container" style="flex: 1; display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; position: relative;">
+                <!-- Brand Animated Chart Loading Overlay -->
+                <div id="chartLoaderOverlay" style="display: none;">
+                    <div class="chart-loader-brand-box">
+                        <div class="chart-loader-spinner-ring"></div>
+                        <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px;">Loading Technical Chart...</div>
+                        <div id="chartLoaderSymbol" style="font-size: 12px; font-weight: 600; color: #10b981; margin-top: 4px; background: rgba(16, 185, 129, 0.12); padding: 3px 10px; border-radius: 12px; display: inline-block;"></div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">Fetching historical candlestick data & technical indicators...</div>
+                    </div>
+                </div>
+
+                <div id="mainChartPane" style="flex: 3; width: 100%; position: relative;"></div>
+                <div id="rsiChartPane" style="flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39;"></div>
+                <div id="macdChartPane" style="flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         EDIT HOLDING MODAL
+    ========================================================= -->
+    <div id="editHoldingModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3 id="editHoldingTitle">Edit Holding</h3>
+            <input type="hidden" id="editHoldingSymbol">
+            <div class="form-group">
+                <label>Avg Buy Price (₹)</label>
+                <input type="number" step="0.01" id="editBuyPrice">
+            </div>
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" step="0.01" id="editQuantity">
+            </div>
+            <div class="form-group">
+                <label>Buy Date</label>
+                <input type="date" id="editBuyDate">
+            </div>
+            <div class="form-group">
+                <label>Buy Reason / Investment Thesis</label>
+                <input type="text" id="editBuyReason" placeholder="e.g. Strong Q3 earnings, breakout retest, high growth...">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveEditHolding()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         CREATE WATCHLIST POPUP MODAL
+    ========================================================= -->
+    <div id="createWatchlistModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3>Create New Watchlist</h3>
+            <div class="form-group">
+                <label>Watchlist Name</label>
+                <input type="text" id="modal-new-watchlist-name" placeholder="e.g. IT Sector, Dividend Picks..." onkeydown="if(event.key==='Enter') submitCreateWatchlist()">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeCreateWatchlistModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitCreateWatchlist()">Create Watchlist</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         IMPORT WATCHLIST TXT POPUP MODAL
+    ========================================================= -->
+    <div id="importWatchlistTxtModal" class="small-modal" style="z-index: 10020;">
+        <div class="small-modal-content" style="width: 620px; max-width: 95vw;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <h3 style="margin-bottom:0;">Import Watchlist Stocks</h3>
+                <span style="font-size:24px; cursor:pointer; color:var(--text-secondary);" onclick="closeWatchlistTxtImportModal()">&times;</span>
+            </div>
+            <div style="margin-top:16px; color:var(--text-secondary); font-size:13px; line-height:1.6;">
+                Import comma-separated stock symbols into the current watchlist. Spaces are cleaned automatically. Yahoo Finance is checked on <strong>NSE first</strong>, then <strong>BSE</strong> if the NSE symbol is unavailable.
+            </div>
+
+            <div class="form-group" style="margin-top:18px;">
+                <label>Select TXT File</label>
+                <input type="file" id="watchlist-txt-import-input" accept=".txt,text/plain" onchange="handleWatchlistTxtImport(event)">
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <button type="button" class="btn-secondary" onclick="downloadWatchlistSampleTxt()">📄 Download Sample TXT</button>
+            </div>
+
+            <div id="watchlist-import-report" style="display:none; margin-top:18px;"></div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                <button type="button" class="btn-secondary" onclick="closeWatchlistTxtImportModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         CREATE PORTFOLIO POPUP MODAL
+    ========================================================= -->
+    <div id="createPortfolioModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3>Create New Portfolio</h3>
+            <div class="form-group">
+                <label>Portfolio Name</label>
+                <input type="text" id="modal-new-portfolio-name" placeholder="e.g. Core Wealth, Trading, High Growth..." onkeydown="if(event.key==='Enter') submitCreatePortfolio()">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeCreatePortfolioModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitCreatePortfolio()">Create Portfolio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         ADD HOLDING POPUP MODAL
+    ========================================================= -->
+    <div id="addHoldingModal" class="small-modal">
+        <div class="small-modal-content">
+            <h3 id="addHoldingModalTitle">Add Holding to Portfolio</h3>
+            <div class="form-group" id="modal-pf-add-portfolio-group" style="display: none;">
+                <label>Target Portfolio</label>
+                <select id="modal-pf-add-portfolio" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); font-size: 13px;"></select>
+            </div>
+            <div class="form-group" style="position: relative;">
+                <label>Stock Symbol / Company Name</label>
+                <div class="autocomplete-wrapper" style="width: 100%;">
+                    <input type="text" id="modal-pf-add-symbol" placeholder="Search stock (e.g. Reliance, TCS, Polymed)..." autocomplete="off" onkeyup="handleSearchInput('modal-pf', this, event)">
+                    <div class="autocomplete-dropdown" id="dropdown-modal-pf"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Buy Price (₹)</label>
+                <input type="number" step="0.01" id="modal-pf-add-price" placeholder="e.g. 2450.50">
+            </div>
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" step="1" id="modal-pf-add-qty" placeholder="e.g. 50">
+            </div>
+            <div class="form-group">
+                <label>Buy Date</label>
+                <input type="date" id="modal-pf-add-date">
+            </div>
+            <div class="form-group">
+                <label>Buy Reason / Investment Thesis (Optional)</label>
+                <input type="text" id="modal-pf-add-reason" placeholder="e.g. Breakout retest, Strong Q3 earnings, Dividend compounding..." onkeydown="if(event.key==='Enter') submitAddHolding()">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeAddHoldingModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitAddHolding()">Add Holding</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         SELL HOLDING POPUP MODAL
+    ========================================================= -->
+    <div id="sellHoldingModal" class="small-modal">
+        <div class="small-modal-content" style="width: 480px; max-width: 94vw; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="sellModalTitle" style="margin:0; font-size: 18px; color: #ef4444; display: flex; align-items: center; gap: 8px;">
+                    🔴 Sell Stock Holding
+                </h3>
+                <span class="close-btn" onclick="closeSellHoldingModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            </div>
+            
+            <input type="hidden" id="modal-sell-symbol">
+            <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                <div><span style="color: var(--text-secondary);">Current Holding:</span> <strong id="sell-info-qty" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Avg Cost Basis:</span> <strong id="sell-info-avgprice" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Live LTP:</span> <strong id="sell-info-ltp" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Portfolio:</span> <strong id="sell-info-portfolio" style="color: var(--text-primary);">-</strong></div>
+            </div>
+
+            <div class="form-group">
+                <label>Quantity to Sell</label>
+                <input type="number" step="any" id="modal-sell-qty" placeholder="e.g. 10" oninput="calculateSellPreview()">
+            </div>
+            <div class="form-group">
+                <label>Selling Price per Share (₹)</label>
+                <input type="number" step="0.01" id="modal-sell-price" placeholder="e.g. 2800.00" oninput="calculateSellPreview()">
+            </div>
+            <div class="form-group">
+                <label>Sale Date</label>
+                <input type="date" id="modal-sell-date">
+            </div>
+            <div class="form-group">
+                <label>Notes / Reason for Selling (Optional)</label>
+                <input type="text" id="modal-sell-notes" placeholder="e.g. Profit booking, Stop-loss hit, Rebalancing..." onkeydown="if(event.key==='Enter') submitSellHolding()">
+            </div>
+
+            <div id="sell-preview-box" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px 14px; border-radius: 8px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12.5px;">
+                <span style="color: var(--text-primary); font-weight: 600;">Expected Realized Return:</span>
+                <span id="sell-preview-pnl" style="font-weight: 800; font-size: 14px; color: #10b981;">₹0.00 (+0.00%)</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeSellHoldingModal()">Cancel</button>
+                <button type="button" class="btn-danger" style="background: #ef4444; color: white;" onclick="submitSellHolding()">Submit Sell Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         BUY MORE HOLDING POPUP MODAL
+    ========================================================= -->
+    <div id="buyMoreModal" class="small-modal">
+        <div class="small-modal-content" style="width: 480px; max-width: 94vw; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="buyMoreModalTitle" style="margin:0; font-size: 18px; color: #10b981; display: flex; align-items: center; gap: 8px;">
+                    🟢 Buy Additional Shares
+                </h3>
+                <span class="close-btn" onclick="closeBuyMoreModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            </div>
+            
+            <input type="hidden" id="modal-buymore-symbol">
+            <div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                <div><span style="color: var(--text-secondary);">Existing Holding:</span> <strong id="buymore-info-qty" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Current Avg Price:</span> <strong id="buymore-info-avgprice" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Live LTP:</span> <strong id="buymore-info-ltp" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">Portfolio:</span> <strong id="buymore-info-portfolio" style="color: var(--text-primary);">-</strong></div>
+            </div>
+
+            <div class="form-group">
+                <label>Additional Quantity to Buy</label>
+                <input type="number" step="any" id="modal-buymore-qty" placeholder="e.g. 20" oninput="calculateBuyMorePreview()">
+            </div>
+            <div class="form-group">
+                <label>New Buy Price per Share (₹)</label>
+                <input type="number" step="0.01" id="modal-buymore-price" placeholder="e.g. 2400.00" oninput="calculateBuyMorePreview()">
+            </div>
+            <div class="form-group">
+                <label>Buy Date</label>
+                <input type="date" id="modal-buymore-date">
+            </div>
+            <div class="form-group">
+                <label>Buy Reason / Notes (Optional)</label>
+                <input type="text" id="modal-buymore-reason" placeholder="e.g. Average down, dip buying, quarterly accumulation..." onkeydown="if(event.key==='Enter') submitBuyMoreHolding()">
+            </div>
+
+            <div id="buymore-preview-box" style="background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: 8px; margin-top: 14px; display: flex; flex-direction: column; gap: 4px; font-size: 12px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">New Total Shares:</span>
+                    <strong id="buymore-preview-qty" style="color: var(--text-primary);">-</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">New Weighted Avg Price:</span>
+                    <strong id="buymore-preview-avgprice" style="color: #10b981; font-size: 13px;">-</strong>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeBuyMoreModal()">Cancel</button>
+                <button type="button" class="btn-primary" style="background: #10b981; color: white;" onclick="submitBuyMoreHolding()">Submit Buy Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         HOLDING DETAILS & ACTIONS POPUP MODAL
+    ========================================================= -->
+    <!-- =========================================================
+         HOLDING DETAILS & ACTIONS POPUP MODAL
+    ========================================================= -->
+    <div id="holdingDetailsModal" class="small-modal">
+        <div class="small-modal-content" style="width: 540px; max-width: 95vw; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <div>
+                    <h2 id="detail-modal-sym" style="margin: 0; font-size: 20px; color: var(--text-primary); font-weight: 700; display: flex; align-items: center; gap: 8px;">RELIANCE.NS</h2>
+                    <div id="detail-modal-name" style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">Reliance Industries Ltd</div>
+                </div>
+                <span class="close-btn" onclick="closeHoldingDetailsModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; margin-bottom: 20px;">
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Holding Duration</div>
+                    <div id="detail-modal-duration" style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">-</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Buy Date</div>
+                    <div id="detail-modal-buydate" style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">-</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Quantity</div>
+                    <div id="detail-modal-qty" style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">-</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Avg Buy Price</div>
+                    <div id="detail-modal-buyprice" style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">-</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Invested Amount</div>
+                    <div id="detail-modal-invested" style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">-</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Current Value</div>
+                    <div id="detail-modal-curval" style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">-</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Total Return (P&L)</div>
+                    <div id="detail-modal-pnl" style="font-size: 13px; font-weight: 700; margin-top: 4px;">-</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Day P&L</div>
+                    <div id="detail-modal-daypnl" style="font-size: 13px; font-weight: 700; margin-top: 4px;">-</div>
+                </div>
+                <div style="grid-column: 1 / -1; background: var(--bg-subtle, rgba(248, 250, 252, 0.05)); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Buy Reason / Investment Thesis</div>
+                    <div id="detail-modal-reason" style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 4px; font-style: italic;">-</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <button id="btn-detail-buymore" class="btn-primary" style="font-size: 12px; background: #10b981;">🟢 Buy More</button>
+                <button id="btn-detail-sell" class="btn-danger" style="font-size: 12px; background: #ef4444;">🔴 Sell</button>
+                <button id="btn-detail-chart" class="btn-primary" style="font-size: 12px;">📊 Chart</button>
+                <button id="btn-detail-news" class="btn-secondary" style="font-size: 12px;">📰 News</button>
+                <button id="btn-detail-alert" class="btn-secondary" style="font-size: 12px;">🔔 Alert</button>
+                <button id="btn-detail-edit" class="btn-secondary" style="font-size: 12px;">✏️ Edit</button>
+                <button id="btn-detail-delete" class="btn-danger" style="font-size: 12px;">🗑️ Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         FUNDAMENTAL ANALYSIS POPUP MODAL
+    ========================================================= -->
+    <div id="fundamentalsModal" class="small-modal" style="z-index: 10030;">
+        <div class="small-modal-content" style="width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh; margin: 2.5vh auto; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border-color); background:var(--bg-card); flex:0 0 auto;">
+                <div>
+                    <h3 style="margin:0; font-size:16px;">📈 Fundamental Analysis</h3>
+                    <div id="fundamentals-modal-subtitle" style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Loading stock fundamentals...</div>
+                </div>
+                <span class="close-btn" onclick="closeFundamentalsModal()" style="font-size:24px; cursor:pointer; color:var(--text-secondary); line-height:1;">&times;</span>
+            </div>
+            <iframe id="fundamentalsFrame" title="Fundamental Analysis" style="width:100%; height:100%; border:0; background:var(--bg-primary); flex:1 1 auto;"></iframe>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         STOCK NEWS POPUP MODAL
+    ========================================================= -->
+    <div id="stockNewsModal" class="small-modal">
+        <div class="small-modal-content" style="width: 620px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 id="news-modal-title" style="margin: 0; font-size: 18px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        📰 Latest Market News
+                    </h3>
+                    <div id="news-modal-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Fetching real-time updates...</div>
+                </div>
+                <span class="close-btn" onclick="closeStockNewsModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            </div>
+
+            <div id="news-articles-container" style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
+                    Loading latest news coverage...
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 16px;">
+                <button type="button" class="btn-secondary" onclick="closeStockNewsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         CREATE PRICE ALERT MODAL
+    ========================================================= -->
+    <div id="createAlertModal" class="small-modal">
+        <div class="small-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 18px; color: var(--text-primary);">🎯 Set Price Alert</h2>
+                <span class="close-btn" onclick="closeCreateAlertModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>Stock Symbol</label>
+                <input type="text" id="modal-alert-symbol" readonly style="background: var(--bg-subtle); font-weight:700;">
+            </div>
+            <div class="form-group">
+                <label>Alert Condition</label>
+                <select id="modal-alert-condition" style="width: 100%;">
+                    <option value="above">Crosses Above (≥ Target Price)</option>
+                    <option value="below">Crosses Below (≤ Target Price)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Target Price (₹)</label>
+                <input type="number" id="modal-alert-price" step="0.05" placeholder="e.g. 2500.00">
+            </div>
+            <div class="form-group">
+                <label>Note / Thesis (Optional)</label>
+                <input type="text" id="modal-alert-note" placeholder="e.g. Target breakout level, Stop-loss trigger...">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="closeCreateAlertModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitCreateAlert()">Set Alert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         NOTIFICATIONS & PRICE ALERTS MANAGER MODAL
+    ========================================================= -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content" style="width: 650px; max-width: 95vw; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h2 style="margin: 0; font-size: 18px; color: var(--text-primary);">🔔 Alerts & Notifications</h2>
+                </div>
+                <span class="close-btn" onclick="closeNotificationsModal()">&times;</span>
+            </div>
+
+            <!-- Modal Sub-Tabs -->
+            <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;">
+                <button class="pf-select-btn active" id="notif-tab-btn-notifs" onclick="switchNotifTab('notifs')">
+                    🔔 Triggered (<span id="notif-count-label">0</span>)
+                </button>
+                <button class="pf-select-btn" id="notif-tab-btn-alerts" onclick="switchNotifTab('alerts')">
+                    🎯 Active Alerts (<span id="alerts-count-label">0</span>)
+                </button>
+            </div>
+
+            <!-- Tab Content: Triggered Notifications -->
+            <div id="notif-tab-content-notifs">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+                    <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="clearAllNotifications()">Clear All Notifications</button>
+                </div>
+                <div id="notifications-list-mount" style="max-height: 380px; overflow-y: auto;">
+                    <div class="loading">Loading notifications...</div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Active Alerts -->
+            <div id="notif-tab-content-alerts" style="display: none;">
+                <div id="alerts-list-mount" style="max-height: 400px; overflow-y: auto;">
+
+    <div id="customModalOverlay" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; inset: 0; z-index: 100050; background: rgba(15,23,42,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+        <div id="customModalBox" class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); transform: scale(0.95); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); margin: auto;">
+            <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px;">
+                <div class="modal-icon-badge" style="font-size: 26px; flex-shrink: 0; line-height: 1; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.06);">
+                    <span id="customModalIcon">❓</span>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <h3 id="customModalTitle" style="margin: 0 0 6px; font-size: 16.5px; font-weight: 700; color: var(--text-primary, #ffffff); font-family: 'Plus Jakarta Sans', sans-serif;">Confirm Action</h3>
+                    <div id="customModalMessage" style="font-size: 13.5px; color: var(--text-secondary, #94a3b8); line-height: 1.5; word-break: break-word;">Are you sure?</div>
+                </div>
+            </div>
+            <div id="customModalInputGroup" style="display: none; margin-bottom: 18px;">
+                <input type="text" id="customModalInput" style="width: 100%; padding: 11px 14px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13.5px; outline: none; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px;">
+                <button id="customModalCancelBtn" class="btn-secondary" style="padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;">Cancel</button>
+                <button id="customModalConfirmBtn" class="btn-primary" style="padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;">Confirm</button>
+            </div>
+        </div>
+    </div>

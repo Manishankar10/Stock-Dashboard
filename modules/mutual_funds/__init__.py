@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import datetime as dt
 import math
 import os
 import threading
+import time
 import uuid
 from functools import wraps
 from pathlib import Path
@@ -13,7 +15,16 @@ from pathlib import Path
 from flask import Blueprint, jsonify, render_template, request, send_from_directory, session
 from db_store import load_user_doc_db, save_user_doc_db
 
-from .mutual_funds_provider import AMFIError, AMFI_NAV_SOURCE, MFAPI_NAV_SOURCE, fetch_history, fetch_latest_navs, fetch_official_fund_facts, fetch_scheme_history
+from .mutual_funds_provider import (
+    AMFIError,
+    AMFI_NAV_SOURCE,
+    MFAPI_NAV_SOURCE,
+    fetch_history,
+    fetch_latest_navs,
+    fetch_official_fund_facts,
+    fetch_scheme_history,
+    get_scheme_inception_date,
+)
 
 
 mutual_funds_bp = Blueprint("mutual_funds", __name__, template_folder=".")
@@ -423,19 +434,19 @@ def _select_nav(code, requested_date, latest_feed=None, cached_data=None, fast=F
 @mutual_funds_bp.get("/mutual-funds")
 @_guard
 def mutual_funds_page():
-    return render_template("mutual_funds.html")
+    return render_template("index.html", initial_tab="mutual-funds")
 
 
 @mutual_funds_bp.get("/mutual-funds/dashboard")
 @_guard
 def mutual_funds_dashboard_page():
-    return render_template("mutual_fund_dashboard.html")
+    return render_template("index.html", initial_tab="mutual-funds")
 
 
 @mutual_funds_bp.get("/mutual-funds/fund/<scheme_code>")
 @_guard
 def mutual_fund_detail_page(scheme_code):
-    return render_template("mutual_fund_detail.html", scheme_code=scheme_code)
+    return render_template("index.html", initial_tab="mutual-fund-detail", scheme_code=scheme_code)
 
 
 @mutual_funds_bp.get("/mutual-funds.css")
@@ -491,6 +502,11 @@ def mutual_funds_catalog():
         return jsonify({"error": str(exc)}), 503
 
 
+_SIMILAR_CACHE = {}
+_SIMILAR_CACHE_LOCK = threading.Lock()
+_SIMILAR_CACHE_TTL = 3600  # 1 hour
+
+
 @mutual_funds_bp.get("/api/mutual-funds/schemes/<scheme_code>/details")
 @_guard
 def mutual_fund_details(scheme_code):
@@ -507,90 +523,55 @@ def mutual_fund_details(scheme_code):
             return jsonify({"error": "This scheme is not present in the current AMFI NAV report."}), 404
         end = dt.date.fromisoformat(feed["nav_as_of"])
         start = end - dt.timedelta(days=period_days[period])
-        with _lock_for_user():
-            data = _load_data()
-            history = data["nav_history"].setdefault(str(scheme_code), {})
-            ranges = data["nav_history_ranges"].setdefault(str(scheme_code), [])
-            if not isinstance(history, dict):
-                history = data["nav_history"][str(scheme_code)] = {}
-            if not isinstance(ranges, list):
-                ranges = data["nav_history_ranges"][str(scheme_code)] = []
-            history_source = data["nav_history_sources"].get(str(scheme_code))
-            if not history_source and history:
+
+        try:
+            history_dict = fetch_scheme_history(scheme_code, start, end)
+            history_rows = history_dict.get(str(scheme_code), [])
+            history_source = MFAPI_NAV_SOURCE
+        except AMFIError as exc:
+            try:
+                history_dict = fetch_history(
+                    start, end,
+                    amc_name=scheme.get("amc"),
+                    scheme_type=scheme.get("scheme_type"),
+                    form_only=True,
+                )
+                history_rows = history_dict.get(str(scheme_code), [])
                 history_source = AMFI_NAV_SOURCE
-            if period == "all":
-                # MFapi.in supports one scheme/date-range response; use it for
-                # full inception history so AMFI's 90-day limit doesn't cause
-                # hundreds of requests.
-                covered = any(isinstance(item, list) and len(item) == 2 and item[0] <= start.isoformat() and item[1] >= end.isoformat() for item in ranges)
-                if not covered:
-                    rows = fetch_scheme_history(scheme_code, start, end)
-                    for row in rows.get(str(scheme_code), []):
-                        history[row["date"]] = float(row["nav"])
-                    ranges.append([start.isoformat(), end.isoformat()])
-                    history_source = _merge_nav_source(history_source, MFAPI_NAV_SOURCE)
-                    data["nav_history_sources"][str(scheme_code)] = history_source
-            chunk_start = start if period != "all" else end + dt.timedelta(days=1)
-            while chunk_start <= end:
-                chunk_end = min(chunk_start + dt.timedelta(days=89), end)
-                key = [chunk_start.isoformat(), chunk_end.isoformat()]
-                covered = any(isinstance(item, list) and len(item) == 2 and item[0] <= key[0] and item[1] >= key[1] for item in ranges)
-                if not covered:
-                    amfi_error = None
-                    try:
-                        rows = fetch_history(
-                            chunk_start, chunk_end,
-                            amc_name=scheme.get("amc"),
-                            scheme_type=scheme.get("scheme_type"),
-                            form_only=True,
-                        )
-                    except AMFIError as exc:
-                        amfi_error = exc
-                        rows = {}
-                    used_fallback = str(scheme_code) not in rows
-                    if used_fallback:
-                        try:
-                            # MFapi.in accepts date-range requests beyond AMFI's 90-day limit.
-                            # Fetch this selected period once instead of one fallback call per chunk.
-                            rows = fetch_scheme_history(scheme_code, start, end)
-                        except AMFIError as fallback_error:
-                            reason = f"AMFI history failed ({amfi_error}); " if amfi_error else "AMFI returned no rows; "
-                            raise AMFIError(reason + f"MFapi.in fallback failed ({fallback_error}).") from fallback_error
-                    current_source = MFAPI_NAV_SOURCE if used_fallback else AMFI_NAV_SOURCE
-                    history_source = _merge_nav_source(history_source, current_source)
-                    data["nav_history_sources"][str(scheme_code)] = history_source
-                    for row in rows.get(str(scheme_code), []):
-                        history[row["date"]] = float(row["nav"])
-                    if used_fallback:
-                        ranges.append([start.isoformat(), end.isoformat()])
-                        break
-                    ranges.append(key)
-                chunk_start = chunk_end + dt.timedelta(days=1)
-            _save_data(data)
-            points = [
-                {"date": day, "nav": float(nav)}
-                for day, nav in sorted(history.items())
-                if start.isoformat() <= day <= end.isoformat()
-            ]
+            except Exception:
+                raise exc
+
+        points = [
+            {"date": row["date"], "nav": float(row["nav"])}
+            for row in history_rows
+        ]
         if not points:
             return jsonify({"error": "AMFI and MFapi.in returned no NAV history for this scheme and period."}), 503
+
         previous_nav = points[-2]["nav"] if len(points) > 1 else None
         first, last = points[0], points[-1]
         official_facts = fetch_official_fund_facts(scheme)
         elapsed_days = max(1, (dt.date.fromisoformat(last["date"]) - dt.date.fromisoformat(first["date"])).days)
+        is_sub_year = period in ("1m", "3m", "6m") or elapsed_days < 365
+        abs_return = ((last["nav"] / first["nav"]) - 1) * 100 if first["nav"] > 0 else None
         annualized = ((last["nav"] / first["nav"]) ** (365.25 / elapsed_days) - 1) * 100 if first["nav"] > 0 else None
+        inception_date = get_scheme_inception_date(scheme_code) or first["date"]
+
         return _no_store(jsonify({
             "scheme": scheme,
             "official_scheme_url": official_facts.get("source_url") or _official_scheme_url(scheme),
             "fund_facts": official_facts,
             "points": points,
-            "available_start_date": min(history) if history else first["date"],
+            "available_start_date": inception_date,
             "period": period,
-            "return_pct": ((last["nav"] / first["nav"]) - 1) * 100 if first["nav"] else None,
+            "is_sub_year": is_sub_year,
+            "return_pct": abs_return,
             "annualized_return_pct": annualized,
+            "display_return_pct": abs_return if is_sub_year else annualized,
+            "display_return_label": f"Absolute return in {period.upper()}" if is_sub_year else "Annualized NAV return (CAGR)",
             "daily_return_pct": ((last["nav"] / previous_nav) - 1) * 100 if previous_nav else None,
-            "source": history_source or AMFI_NAV_SOURCE,
-            "source_label": "Mixed AMFI and MFapi.in history" if history_source == "mixed" else ("MFapi.in historical NAV fallback" if history_source == MFAPI_NAV_SOURCE else "AMFI historical NAV"),
+            "source": history_source,
+            "source_label": "Official AMFI Historical NAV (via MFapi index)" if history_source == MFAPI_NAV_SOURCE else "AMFI historical NAV",
             "refreshed_at": feed["fetched_at"],
             "nav_as_of": feed["nav_as_of"],
             "facts_notice": (
@@ -598,6 +579,117 @@ def mutual_fund_details(scheme_code):
                 if official_facts.get("source_name") else "Fund facts are shown only when available from a mapped source. Missing details are marked."
             ),
         }))
+    except (ValueError, AMFIError) as exc:
+        return jsonify({"error": str(exc)}), 503 if isinstance(exc, AMFIError) else 400
+
+
+@mutual_funds_bp.get("/api/mutual-funds/schemes/<scheme_code>/similar")
+@_guard
+def mutual_funds_similar(scheme_code):
+    if not str(scheme_code).isdigit():
+        return jsonify({"error": "Select a valid AMFI scheme code."}), 400
+    period_days = {"1m": 31, "3m": 92, "6m": 184, "1y": 366, "3y": 1096, "5y": 1827, "10y": 3653, "all": 36525}
+    period = request.args.get("period", "3y")
+    if period not in period_days:
+        period = "3y"
+
+    cache_key = (str(scheme_code), period)
+    now = time.monotonic()
+    with _SIMILAR_CACHE_LOCK:
+        cached = _SIMILAR_CACHE.get(cache_key)
+        if cached and cached[0] > now:
+            return _no_store(jsonify(cached[1]))
+
+    try:
+        feed = fetch_latest_navs()
+        schemes = feed.get("schemes", [])
+        current = _nav_map(schemes).get(str(scheme_code))
+        if not current:
+            return jsonify({"error": "This scheme is not present in the current AMFI NAV report."}), 404
+
+        target_category = current.get("category")
+        target_plan = current.get("plan")
+        target_option = current.get("option")
+        end = dt.date.fromisoformat(feed["nav_as_of"])
+        start = end - dt.timedelta(days=period_days[period])
+
+        peers = [
+            s for s in schemes
+            if str(s.get("scheme_code")) != str(scheme_code)
+            and s.get("category") == target_category
+            and (not target_plan or s.get("plan") == target_plan)
+            and (not target_option or s.get("option") == target_option)
+        ]
+        if len(peers) < 3:
+            peers = [
+                s for s in schemes
+                if str(s.get("scheme_code")) != str(scheme_code)
+                and s.get("category") == target_category
+            ]
+
+        amc_seen = set()
+        candidate_peers = []
+        current_amc = current.get("amc")
+        for peer in peers:
+            peer_amc = peer.get("amc")
+            if peer_amc and peer_amc != current_amc and peer_amc not in amc_seen:
+                amc_seen.add(peer_amc)
+                candidate_peers.append(peer)
+            if len(candidate_peers) >= 8:
+                break
+        if len(candidate_peers) < 5:
+            for peer in peers:
+                if peer not in candidate_peers:
+                    candidate_peers.append(peer)
+                if len(candidate_peers) >= 8:
+                    break
+
+        def _calc_peer(peer):
+            try:
+                h_dict = fetch_scheme_history(peer["scheme_code"], start, end, timeout=(2, 4))
+                rows = h_dict.get(str(peer["scheme_code"]), [])
+                if len(rows) >= 2:
+                    f, l = rows[0], rows[-1]
+                    f_nav, l_nav = float(f["nav"]), float(l["nav"])
+                    days = max(1, (dt.date.fromisoformat(l["date"]) - dt.date.fromisoformat(f["date"])).days)
+                    is_sub_year_peer = period in ("1m", "3m", "6m") or days < 365
+                    if is_sub_year_peer:
+                        calc_ret = ((l_nav / f_nav) - 1) * 100 if f_nav > 0 else None
+                    else:
+                        calc_ret = ((l_nav / f_nav) ** (365.25 / days) - 1) * 100 if f_nav > 0 else None
+                    incept = get_scheme_inception_date(peer["scheme_code"]) or f["date"]
+                    age_years = max(0, (end - dt.date.fromisoformat(incept)).days // 365) if incept else None
+                    return {
+                        "scheme_code": peer["scheme_code"],
+                        "name": peer["name"],
+                        "amc": peer.get("amc"),
+                        "nav": peer.get("nav"),
+                        "return_pct": round(calc_ret, 2) if calc_ret is not None else None,
+                        "age_years": age_years,
+                    }
+            except Exception:
+                return None
+
+        results = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(candidate_peers) or 1)) as executor:
+            future_map = {executor.submit(_calc_peer, p): p for p in candidate_peers}
+            for future in concurrent.futures.as_completed(future_map):
+                res = future.result()
+                if res and res.get("return_pct") is not None:
+                    results.append(res)
+
+        results.sort(key=lambda x: x["return_pct"], reverse=True)
+        top_similar = results[:5]
+
+        payload = {
+            "similar": top_similar,
+            "period": period,
+            "category": target_category,
+        }
+        with _SIMILAR_CACHE_LOCK:
+            _SIMILAR_CACHE[cache_key] = (now + _SIMILAR_CACHE_TTL, payload)
+
+        return _no_store(jsonify(payload))
     except (ValueError, AMFIError) as exc:
         return jsonify({"error": str(exc)}), 503 if isinstance(exc, AMFIError) else 400
 

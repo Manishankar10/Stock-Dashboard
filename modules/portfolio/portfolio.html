@@ -1,0 +1,41 @@
+        <div id="tab-portfolios" class="tab-content">
+            <!-- Selector, Add Holding & Portfolio Creation Bar -->
+            <div class="card-container portfolio-top-card" style="padding: 16px 24px; margin-bottom: 20px;">
+                <div class="portfolio-header-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div class="portfolio-selector-wrapper" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span class="portfolio-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">PORTFOLIOS:</span>
+                        <div class="portfolio-selector-bar" id="portfolio-selector-mount" style="margin-bottom: 0;"></div>
+                    </div>
+                    <div class="portfolio-desktop-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="openCreatePortfolioModal()">+ Create Portfolio</button>
+                    </div>
+                    <!-- Mobile Right-Side Menu Trigger & Dropdown -->
+                    <div class="portfolio-mobile-menu-wrapper">
+                        <button type="button" class="pf-mobile-menu-btn" id="pf-mobile-menu-btn" onclick="togglePfMobileMenu(event)" title="Portfolio Menu" aria-label="Portfolio Menu">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="4" y1="7" x2="20" y2="7"></line>
+                                <line x1="4" y1="12" x2="20" y2="12"></line>
+                                <line x1="4" y1="17" x2="20" y2="17"></line>
+                            </svg>
+                        </button>
+                        <div class="pf-mobile-menu-dropdown" id="pf-mobile-menu-dropdown" style="display: none;">
+                            <button type="button" class="pf-mob-menu-item" onclick="openAddHoldingModal(); togglePfMobileMenu(false);">
+                                <span>➕ Add Holding</span>
+                            </button>
+                            <button type="button" class="pf-mob-menu-item" onclick="openCreatePortfolioModal(); togglePfMobileMenu(false);">
+                                <span>📁 Add Portfolio</span>
+                            </button>
+                            <div class="pf-mob-menu-divider" id="pf-mob-delete-divider" style="display: none;"></div>
+                            <button type="button" class="pf-mob-menu-item danger" id="pf-mob-delete-btn" style="display: none;" onclick="deleteActivePortfolio(); togglePfMobileMenu(false);">
+                                <span>🗑️ Delete Portfolio</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Portfolio View -->
+            <div id="portfolio-view-mount">
+                <div class="loading">Loading portfolio details...</div>
+            </div>
+        </div>

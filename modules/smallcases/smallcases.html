@@ -1,0 +1,32 @@
+        <div id="tab-smallcases" class="tab-content">
+            <!-- Smallcase Overview Metrics Cards Grid -->
+            <div class="summary-grid" id="smallcase-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                <!-- Dynamically populated metrics -->
+            </div>
+
+            <!-- Smallcases Table Card -->
+            <div class="card-container" style="padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 18px;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            📦 Smallcases Intelligence
+                        </h2>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+                            Create, customize, and track transaction-level investment smallcases and baskets.
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-secondary" title="Refresh Smallcases" onclick="loadSmallcasesTab()" style="font-size: 12px; padding: 6px 14px;">↻ Refresh</button>
+                        <button class="btn-primary" onclick="openCreateSmallcaseModal()" style="font-size: 12px; padding: 6px 14px;">+ Add New Smallcase</button>
+                    </div>
+                </div>
+
+                <div id="smallcases-list-mount">
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
+                        Loading smallcases...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

@@ -163,7 +163,7 @@
     }
 
     function renderTabs() {
-        elements.tabs.innerHTML = calculators.map(item => '<button class="pc-tab' + (item.id === active ? ' active' : '') + '" type="button" role="tab" aria-selected="' + (item.id === active) + '" data-calculator="' + item.id + '">' + item.label + '</button>').join('');
+        elements.tabs.innerHTML = calculators.map(item => '<button class="pf-select-btn pc-tab' + (item.id === active ? ' active' : '') + '" type="button" role="tab" aria-selected="' + (item.id === active) + '" data-calculator="' + item.id + '">' + item.label + '</button>').join('');
     }
     function renderField(field) {
         if (field.type === 'cashflows') return renderCashflows();
@@ -700,5 +700,15 @@
             scheduleStateSave();
         }
     });
-    loadSavedState().then(renderCalculator);
+
+    let planCalcLoaded = false;
+    async function loadPlanCalculatorState() {
+        if (!planCalcLoaded) {
+            await loadSavedState();
+            planCalcLoaded = true;
+        }
+        renderCalculator();
+    }
+    window.loadPlanCalculatorState = loadPlanCalculatorState;
+    window.renderCalculator = renderCalculator;
 }());

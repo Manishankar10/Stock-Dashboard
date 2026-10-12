@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import datetime as dt
 from io import BytesIO
+import json
 import re
 import threading
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -278,21 +279,10 @@ def _parse_history_rows(text):
 
 
 def fetch_scheme_history(scheme_code, start_date, end_date, timeout=None):
-    """Fetch scheme-specific historical NAVs from MFapi.in as an AMFI fallback."""
+    """Fetch scheme-specific historical NAVs from MFapi.in as official AMFI historical time series."""
     code = str(scheme_code).strip()
     if not re.fullmatch(r"\d{3,8}", code):
-        raise AMFIError("A valid scheme code is required for historical NAV fallback.")
-    try:
-        response = requests.get(
-            f"{MFAPI_NAV_SOURCE}mf/{code}",
-            params={"startDate": start_date.isoformat(), "endDate": end_date.isoformat()},
-            headers={"User-Agent": HEADERS["User-Agent"], "Accept": "application/json"},
-            timeout=timeout or TIMEOUT,
-        )
-        response.raise_for_status()
-        payload = response.json()
-    except (requests.RequestException, ValueError) as exc:
-        raise AMFIError("MFapi.in could not provide fallback NAV history.") from exc
+        raise AMFIError("A valid scheme code is required for historical NAV.")
 
     now = time.monotonic()
     cached_records = None
@@ -306,12 +296,12 @@ def fetch_scheme_history(scheme_code, start_date, end_date, timeout=None):
             response = requests.get(
                 f"{MFAPI_NAV_SOURCE}mf/{code}",
                 headers={"User-Agent": HEADERS["User-Agent"], "Accept": "application/json"},
-                timeout=TIMEOUT,
+                timeout=timeout or TIMEOUT,
             )
             response.raise_for_status()
             payload = response.json()
         except (requests.RequestException, ValueError) as exc:
-            raise AMFIError("MFapi.in could not provide fallback NAV history.") from exc
+            raise AMFIError("MFapi.in could not provide NAV history.") from exc
 
         metadata = payload.get("meta") if isinstance(payload, dict) else None
         if not isinstance(payload, dict) or payload.get("status") != "SUCCESS" or not isinstance(metadata, dict) or str(metadata.get("scheme_code", "")) != code:
@@ -341,9 +331,26 @@ def fetch_scheme_history(scheme_code, start_date, end_date, timeout=None):
         for row in cached_records
         if start_date <= row["date_obj"] <= end_date
     ]
+    if not navs and cached_records:
+        navs = [
+            {"date": row["date"], "nav": row["nav"]}
+            for row in cached_records
+            if row["date_obj"] <= end_date
+        ]
     if not navs:
         raise AMFIError("MFapi.in returned no NAV rows for this scheme and date range.")
     return {code: navs}
+
+
+def get_scheme_inception_date(scheme_code):
+    """Return the earliest available historical NAV date for a scheme if cached or available."""
+    code = str(scheme_code).strip()
+    with _SCHEME_NAV_LOCK:
+        cached = _SCHEME_NAV_CACHE.get(code)
+        if cached and cached[1]:
+            return cached[1][0]["date"]
+    return None
+
 
 
 
@@ -356,7 +363,7 @@ def fetch_official_fund_facts(scheme):
     now = time.monotonic()
     with _OFFICIAL_FACTS_LOCK:
         cached = _OFFICIAL_FACTS_CACHE.get(code)
-        if cached and cached[0] > now:
+        if cached and cached[0] > now and (cached[1].get("holdings") or cached[1].get("sectors")):
             return cached[1]
     facts = _fetch_official_fund_facts_uncached(scheme)
     with _OFFICIAL_FACTS_LOCK:
@@ -364,31 +371,166 @@ def fetch_official_fund_facts(scheme):
     return facts
 
 
+GROWW_BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+
+
+def _fetch_groww_portfolio(scheme_name):
+    """Fetch monthly portfolio holdings and sector allocation from SEBI disclosures via Groww."""
+    clean = re.sub(r"\s*-\s*(?:direct|regular).*$", "", scheme_name, flags=re.I).strip()
+    clean = re.sub(r"\s*\((?:direct|regular).*?\)\s*$", "", clean, flags=re.I).strip()
+    clean = re.sub(r"\s*-\s*(?:growth|idcw|dividend|bonus).*$", "", clean, flags=re.I).strip()
+    clean = re.sub(r"\b(?:plan|option)\b", "", clean, flags=re.I).strip()
+    q = quote(clean)
+    search_url = f"https://groww.in/v1/api/search/v1/entity?app=false&entity_type=scheme&page=0&q={q}&size=6"
+    try:
+        r = requests.get(search_url, headers=GROWW_BROWSER_HEADERS, timeout=(2, 4))
+        if r.status_code != 200:
+            return [], [], None
+        items = r.json().get("content", [])
+        if not items:
+            return [], [], None
+
+        def token_set(text):
+            return set(re.findall(r"[a-z0-9]+", text.lower())) - {"fund", "plan", "growth", "direct", "regular", "opportunities"}
+
+        q_tokens = token_set(clean)
+        best_item = None
+        best_score = -1
+        for it in items:
+            cand_tokens = token_set(it.get("title", ""))
+            overlap = len(q_tokens & cand_tokens)
+            if cand_tokens.issubset(q_tokens):
+                overlap += 2
+            if overlap > best_score:
+                best_score = overlap
+                best_item = it
+
+        selected = best_item or items[0]
+        slug = selected.get("search_id") or selected.get("id")
+        if not slug:
+            return [], [], None
+
+        page_url = f"https://groww.in/mutual-funds/{slug}"
+        page = requests.get(page_url, headers=GROWW_BROWSER_HEADERS, timeout=(3, 5))
+        if page.status_code != 200:
+            return [], [], None
+
+        holdings = []
+        sector_sums = {}
+        portfolio_date_label = None
+
+        match = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', page.text, re.S)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+                server_data = data.get("props", {}).get("pageProps", {}).get("mfServerSideData", {})
+                raw_holdings = server_data.get("holdings", [])
+                for h in raw_holdings:
+                    cname = (h.get("company_name") or "").strip()
+                    if not cname or cname.lower() in ("repo", "cash", "treps"):
+                        continue
+                    corpus = h.get("corpus_per")
+                    if corpus is None:
+                        continue
+                    alloc_str = f"{corpus:.2f}%"
+                    sec = (h.get("sector_name") or "Unspecified").strip()
+                    holdings.append({"name": cname, "allocation": alloc_str, "sector": sec})
+                    if sec and sec.lower() not in ("unspecified", "others", "—", "-"):
+                        sector_sums[sec] = sector_sums.get(sec, 0.0) + float(corpus)
+                if raw_holdings and raw_holdings[0].get("portfolio_date"):
+                    raw_dt = raw_holdings[0]["portfolio_date"][:10]
+                    try:
+                        parsed_dt = dt.date.fromisoformat(raw_dt)
+                        portfolio_date_label = parsed_dt.strftime("%d %b %Y")
+                    except Exception:
+                        portfolio_date_label = raw_dt
+            except Exception:
+                pass
+
+        if not holdings:
+            soup = BeautifulSoup(page.text, "html.parser")
+            holdings_table = None
+            for t in soup.find_all("table"):
+                rows = t.find_all("tr")
+                if rows:
+                    header_cells = [c.get_text(" ", strip=True).lower() for c in rows[0].find_all(["th", "td"])]
+                    if "sector" in header_cells and ("assets" in header_cells or "asset" in header_cells):
+                        holdings_table = t
+                        break
+            if holdings_table:
+                for row in holdings_table.find_all("tr")[1:]:
+                    cells = [c.get_text(" ", strip=True) for c in row.find_all(["td", "th"])]
+                    if len(cells) >= 4 and cells[0] and cells[0].lower() not in ("repo", "cash", "treps"):
+                        name, sector, inst, alloc_str = cells[0], cells[1], cells[2], cells[3]
+                        holdings.append({"name": name, "allocation": alloc_str, "sector": sector})
+                        try:
+                            val = float(alloc_str.replace("%", "").strip())
+                            if sector and sector.lower() not in ("unspecified", "others", "—", "-"):
+                                sector_sums[sector] = sector_sums.get(sector, 0.0) + val
+                        except (ValueError, TypeError):
+                            pass
+
+        sorted_sectors = sorted(sector_sums.items(), key=lambda x: x[1], reverse=True)
+        sectors = [{"name": s, "allocation": f"{round(v, 2)}%"} for s, v in sorted_sectors]
+        return holdings, sectors, portfolio_date_label
+    except Exception:
+        return [], [], None
+
+
 def _fetch_official_fund_facts_uncached(scheme):
     """Fetch scheme facts from configured fund sources; never infer missing values."""
     amc = str(scheme.get("amc") or "").lower()
-    scheme_name = str(scheme.get("name") or "")
-    name = scheme_name.lower()
-    is_sbi = "sbi" in amc and "mutual" in amc
     is_motilal = "motilal oswal" in amc
     is_hdfc = "hdfc" in amc
-    if is_sbi:
-        return _fetch_angel_one_fund_facts(scheme)
-    if not is_motilal and not is_hdfc:
-        return {}
-    if is_motilal:
-        slug_name = re.sub(r"^motilal oswal\s*", "", scheme_name.split(" - ")[0], flags=re.I).strip().lower()
-        url = "https://www.motilaloswalmf.com/mutual-funds/motilal-oswal-" + re.sub(r"[^a-z0-9]+", "-", slug_name).strip("-")
-    else:
-        base_name = re.sub(r"\s*-\s*(direct|regular).*?$", "", scheme_name, flags=re.I).strip()
-        slug = re.sub(r"[^a-z0-9]+", "-", base_name.lower()).strip("-")
-        plan = "regular" if "regular" in str(scheme.get("plan") or "").lower() else "direct"
-        url = f"https://www.hdfcfund.com/explore/mutual-funds/{slug}/{plan}"
+
+    facts = None
+    if is_hdfc:
+        facts = _fetch_hdfc_fund_facts(scheme)
+        if facts and facts.get("unavailable"):
+            facts = None
+
+    if not facts and is_motilal:
+        facts = _fetch_motilal_fund_facts(scheme)
+        if facts and facts.get("unavailable"):
+            facts = None
+
+    if not facts:
+        facts = _fetch_angel_one_fund_facts(scheme)
+
+    # Universal monthly SEBI portfolio enrichment for all mutual funds
+    if facts and (not facts.get("holdings") or not facts.get("sectors")):
+        scheme_name = str(scheme.get("name") or "")
+        holdings, sectors, port_date = _fetch_groww_portfolio(scheme_name)
+        if holdings:
+            facts["holdings"] = holdings
+            facts["holdings_notice"] = None
+        if sectors:
+            facts["sectors"] = sectors
+            facts["holdings_notice"] = None
+        if holdings or sectors:
+            facts["as_of"] = port_date or facts.get("as_of") or "SEBI monthly portfolio disclosure"
+            if facts.get("source_name") in ("Angel One", None):
+                facts["source_name"] = "Angel One & SEBI portfolio disclosure"
+
+    return facts
+
+
+def _fetch_hdfc_fund_facts(scheme):
+    """Fetch official facts and portfolio disclosures from HDFC Mutual Fund portal."""
+    scheme_name = str(scheme.get("name") or "")
+    base_name = re.sub(r"\s*-\s*(direct|regular).*?$", "", scheme_name, flags=re.I).strip()
+    slug = re.sub(r"[^a-z0-9]+", "-", base_name.lower()).strip("-")
+    plan = "regular" if "regular" in str(scheme.get("plan") or "").lower() else "direct"
+    url = f"https://www.hdfcfund.com/explore/mutual-funds/{slug}/{plan}"
     try:
         response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
         response.raise_for_status()
     except requests.RequestException:
-        return {"source_url": url, "source_name": "HDFC Mutual Fund" if is_hdfc else "Motilal Oswal AMC", "unavailable": True}
+        return {"source_url": url, "source_name": "HDFC Mutual Fund", "unavailable": True}
+
     raw = response.text
     soup = BeautifulSoup(raw, "html.parser")
     text = soup.get_text(" ", strip=True)
@@ -397,41 +539,59 @@ def _fetch_official_fund_facts_uncached(scheme):
         found = re.search(pattern, source, re.I | re.S)
         return found.group(1).strip() if found else None
 
-    if is_hdfc:
-        # HDFC publishes scheme facts in the public scheme page and its embedded
-        # portfolio data. Verify the page belongs to this scheme before parsing.
-        expected = re.sub(r"[^a-z0-9]", "", base_name.lower())
-        page_text = re.sub(r"[^a-z0-9]", "", text.lower())
-        if expected not in page_text:
-            return {"source_url": url, "source_name": "HDFC Mutual Fund", "unavailable": True}
-        inception_raw = value(r"Inception Date\s+(\d{2}/\d{2}/\d{4})", text)
-        try:
-            inception = dt.datetime.strptime(inception_raw, "%d/%m/%Y").date().isoformat() if inception_raw else None
-        except ValueError:
-            inception = None
-        ter = value(r"TER\s+TER\s+.*?Disclaimer.*?\s([\d.]+)\s+Lock in", text)
-        aum_match = re.search(r"AUM\s*\((\d{2}/\d{2}/\d{4})\).*?₹\s*([\d,.]+)\s*Cr", text, re.I | re.S)
-        lock_in = value(r"Lock in\s+(NA|[\w\s-]{1,35}?)\s+(?:NAV|Benchmark)", text)
-        risk = value(r"The Risk of the s(?:c)?heme is\s+([A-Za-z -]{2,40})", text)
-        manager_block = value(r"Fund Managers(.*?)Portfolio Allocation & Top Holdings", text)
-        managers = []
-        for manager in re.findall(r"(?:Mr\.?|Ms\.?|Mrs\.?)\s+(.+?)(?=\s+(?:Fund Manager|Dealer|Chief Investment|Equity Analyst|OVERSEAS|Mr\.?\s|Ms\.?\s|Mrs\.?\s|$))", manager_block or ""):
-            clean = manager.strip(" .")
-            if clean and not any(item["name"] == clean for item in managers):
-                managers.append({"name": clean, "role": "Fund Manager"})
-        exit_load = value(r"Exit Load\s+(.*?)(?:Product Labelling)", text)
-        date_on = value(r"Portfolio Allocation & Top Holdings\s+As on\s+(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})", text)
-        holdings, sectors, portfolio_date = _hdfc_official_portfolio(base_name)
-        date_on = portfolio_date or date_on
-        return {
-            "source_url": url, "source_name": "HDFC Mutual Fund", "as_of": date_on,
-            "fund_age_start": inception, "aum_crore": aum_match.group(2) if aum_match else None,
-            "aum_date": aum_match.group(1) if aum_match else None,
-            "expense_ratio": (ter + "%") if ter and "%" not in ter else ter,
-            "exit_load": " ".join((exit_load or "").split())[:500] or None,
-            "lock_in": lock_in, "managers": managers, "holdings": holdings, "sectors": sectors,
-            "riskometer": risk, "tax_implications": None,
-        }
+    expected = re.sub(r"[^a-z0-9]", "", base_name.lower())
+    page_text = re.sub(r"[^a-z0-9]", "", text.lower())
+    if expected not in page_text:
+        return {"source_url": url, "source_name": "HDFC Mutual Fund", "unavailable": True}
+
+    inception_raw = value(r"Inception Date\s+(\d{2}/\d{2}/\d{4})", text)
+    try:
+        inception = dt.datetime.strptime(inception_raw, "%d/%m/%Y").date().isoformat() if inception_raw else None
+    except ValueError:
+        inception = None
+    ter = value(r"TER\s+TER\s+.*?Disclaimer.*?\s([\d.]+)\s+Lock in", text)
+    aum_match = re.search(r"AUM\s*\((\d{2}/\d{2}/\d{4})\).*?₹\s*([\d,.]+)\s*Cr", text, re.I | re.S)
+    lock_in = value(r"Lock in\s+(NA|[\w\s-]{1,35}?)\s+(?:NAV|Benchmark)", text)
+    risk = value(r"The Risk of the s(?:c)?heme is\s+([A-Za-z -]{2,40})", text)
+    manager_block = value(r"Fund Managers(.*?)Portfolio Allocation & Top Holdings", text)
+    managers = []
+    for manager in re.findall(r"(?:Mr\.?|Ms\.?|Mrs\.?)\s+(.+?)(?=\s+(?:Fund Manager|Dealer|Chief Investment|Equity Analyst|OVERSEAS|Mr\.?\s|Ms\.?\s|Mrs\.?\s|$))", manager_block or ""):
+        clean = manager.strip(" .")
+        if clean and not any(item["name"] == clean for item in managers):
+            managers.append({"name": clean, "role": "Fund Manager"})
+    exit_load = value(r"Exit Load\s+(.*?)(?:Product Labelling)", text)
+    date_on = value(r"Portfolio Allocation & Top Holdings\s+As on\s+(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})", text)
+    holdings, sectors, portfolio_date = _hdfc_official_portfolio(base_name)
+    date_on = portfolio_date or date_on
+    return {
+        "source_url": url, "source_name": "HDFC Mutual Fund", "as_of": date_on,
+        "fund_age_start": inception, "aum_crore": aum_match.group(2) if aum_match else None,
+        "aum_date": aum_match.group(1) if aum_match else None,
+        "expense_ratio": (ter + "%") if ter and "%" not in ter else ter,
+        "exit_load": " ".join((exit_load or "").split())[:500] or None,
+        "lock_in": lock_in, "managers": managers, "holdings": holdings, "sectors": sectors,
+        "riskometer": risk, "tax_implications": None,
+    }
+
+
+def _fetch_motilal_fund_facts(scheme):
+    """Fetch official facts and portfolio disclosures from Motilal Oswal AMC portal."""
+    scheme_name = str(scheme.get("name") or "")
+    slug_name = re.sub(r"^motilal oswal\s*", "", scheme_name.split(" - ")[0], flags=re.I).strip().lower()
+    url = "https://www.motilaloswalmf.com/mutual-funds/motilal-oswal-" + re.sub(r"[^a-z0-9]+", "-", slug_name).strip("-")
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        response.raise_for_status()
+    except requests.RequestException:
+        return {"source_url": url, "source_name": "Motilal Oswal AMC", "unavailable": True}
+
+    raw = response.text
+    soup = BeautifulSoup(raw, "html.parser")
+    text = soup.get_text(" ", strip=True)
+
+    def value(pattern, source=raw):
+        found = re.search(pattern, source, re.I | re.S)
+        return found.group(1).strip() if found else None
 
     def disclosure_rows(key, pairs):
         match = re.search(r"(?:[\"']" + key + r"[\"']|\b" + key + r")\s*:\s*\[(.*?)\]", raw, re.I | re.S)
@@ -451,32 +611,29 @@ def _fetch_official_fund_facts_uncached(scheme):
     managers = disclosure_rows("fundManager", [("fundManagerName", "name"), ("designation", "role")])
     holdings = disclosure_rows("holdings", [("nameOfSecurity", "name"), ("percentToNAV", "allocation")])
     sectors = disclosure_rows("sector", [("sector", "name"), ("percentage", "allocation")])
-    if is_motilal:
-        # The AMC page exposes the same official disclosure both as embedded
-        # component data and as rendered label/value text. Keep a text fallback
-        # because its website has changed the embedded JSON formatting before.
-        if not managers:
-            manager_names = re.findall(r"fundManagerName\s*:\s*(.+?)\s+(?=type\s*:|dropdownField\s*:|cfReferencePath\s*:)", text, re.I)
-            managers = [{"name": re.sub(r"^Mr\.\s*", "", item).strip(), "role": "Fund Manager"} for item in manager_names if item.strip()]
-        if not holdings:
-            holdings = [
-                {"name": name.strip(), "allocation": allocation.strip()}
-                for name, allocation in re.findall(r"nameOfSecurity\s*:\s*(.+?)\s+percentToNAV\s*:\s*([\d,.]+%?)", text, re.I)
-                if name.strip() and allocation.strip()
-            ]
-        if not sectors:
-            sectors = [
-                {"name": name.strip(), "allocation": allocation.strip()}
-                for name, allocation in re.findall(r"sector\s*:\s*(.+?)\s+percentage\s*:\s*([\d,.]+%?)", text, re.I)
-                if name.strip() and allocation.strip()
-            ]
+
+    if not managers:
+        manager_names = re.findall(r"fundManagerName\s*:\s*(.+?)\s+(?=type\s*:|dropdownField\s*:|cfReferencePath\s*:)", text, re.I)
+        managers = [{"name": re.sub(r"^Mr\.\s*", "", item).strip(), "role": "Fund Manager"} for item in manager_names if item.strip()]
+    if not holdings:
+        holdings = [
+            {"name": name.strip(), "allocation": allocation.strip()}
+            for name, allocation in re.findall(r"nameOfSecurity\s*:\s*(.+?)\s+percentToNAV\s*:\s*([\d,.]+%?)", text, re.I)
+            if name.strip() and allocation.strip()
+        ]
+    if not sectors:
+        sectors = [
+            {"name": name.strip(), "allocation": allocation.strip()}
+            for name, allocation in re.findall(r"sector\s*:\s*(.+?)\s+percentage\s*:\s*([\d,.]+%?)", text, re.I)
+            if name.strip() and allocation.strip()
+        ]
     portfolio_date = value(r"Date As On\s*: ?\s*([0-9]{1,2}\s+[A-Za-z]{3}\s+20[0-9]{2})", text)
-    if is_motilal and not holdings:
+    if not holdings:
         workbook_holdings, workbook_sectors, workbook_date = _motilal_official_portfolio(raw, url)
         holdings = workbook_holdings
         sectors = sectors or workbook_sectors
         portfolio_date = portfolio_date or workbook_date
-    facts = {
+    return {
         "source_url": url, "source_name": "Motilal Oswal AMC",
         "as_of": portfolio_date,
         "fund_age_start": value(r"[\"']?dateOfAllotment[\"']?\s*:\s*[\"']([^\"']+)") or value(r"[\"']?nfoStartDate[\"']?\s*:\s*[\"']([^\"']+)") or value(r"Date of inception\s*:?\s*(\d{1,2}-[A-Za-z]{3}-\d{4})", text),
@@ -491,17 +648,16 @@ def _fetch_official_fund_facts_uncached(scheme):
         "managers": managers, "holdings": holdings,
         "sectors": sectors,
         "riskometer": value(r"[\"']?riskType[\"']?\s*:\s*[\"']([^\"']+)") or value(r"Scheme Risk.?O.?Meter\s+([A-Za-z ]{3,30})", text),
-        # Tax treatment changes with regulations and investor circumstances; do not
-        # display an unsourced generic tax statement as if it were scheme-specific.
         "tax_implications": None,
     }
 
 
-def _fetch_angel_one_fund_facts(scheme):
-    """Read SBI scheme facts from the matching Angel One fund detail page."""
+def _angel_one_url_candidates(scheme):
+    """Generate potential Angel One scheme detail URLs for a fund."""
     scheme_name = str(scheme.get("name") or "").strip()
     page_name = re.sub(r"\s*-\s*(?:direct|regular)\s+plan\b.*$", "", scheme_name, flags=re.I).strip()
     page_name = re.sub(r"\s*\((?:direct|regular).*?\)\s*$", "", page_name, flags=re.I).strip()
+    page_name = re.sub(r"\s*-\s*(?:growth|idcw|dividend|bonus).*?$", "", page_name, flags=re.I).strip()
     plan = str(scheme.get("plan") or "").lower()
     if plan not in ("direct", "regular"):
         plan_match = re.search(r"\b(direct|regular)\s+plan\b", scheme_name, re.I)
@@ -515,21 +671,43 @@ def _fetch_angel_one_fund_facts(scheme):
         option_slug = "idcw-payout"
     else:
         option_slug = "growth"
-    base_slug = re.sub(r"[^a-z0-9]+", "-", page_name.replace("&", " and ").lower()).strip("-")
-    slug = base_slug + "-" + plan + "-plan-" + option_slug
-    url = "https://www.angelone.in/mutual-funds/mf-schemes/" + slug
-    try:
-        response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-        response.raise_for_status()
-    except requests.RequestException:
-        return {"source_url": url, "source_name": "Angel One", "unavailable": True}
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    text = soup.get_text(" ", strip=True)
+    base_slug = re.sub(r"[^a-z0-9]+", "-", page_name.replace("&", " and ").lower()).strip("-")
+    return [
+        f"https://www.angelone.in/mutual-funds/mf-schemes/{base_slug}-{plan}-plan-{option_slug}",
+        f"https://www.angelone.in/mutual-funds/mf-schemes/{base_slug}-{option_slug}-{plan}-plan",
+        f"https://www.angelone.in/mutual-funds/mf-schemes/{base_slug}-{plan}-{option_slug}",
+    ]
+
+
+def _fetch_angel_one_fund_facts(scheme):
+    """Read scheme facts from the matching Angel One fund detail page."""
+    candidate_urls = _angel_one_url_candidates(scheme)
+    scheme_name = str(scheme.get("name") or "").strip()
+    page_name = re.sub(r"\s*-\s*(?:direct|regular)\s+plan\b.*$", "", scheme_name, flags=re.I).strip()
+    page_name = re.sub(r"\s*\((?:direct|regular).*?\)\s*$", "", page_name, flags=re.I).strip()
+    page_name = re.sub(r"\s*-\s*(?:growth|idcw|dividend|bonus).*?$", "", page_name, flags=re.I).strip()
     expected = re.sub(r"[^a-z0-9]", "", page_name.lower())
-    normalized = re.sub(r"[^a-z0-9]", "", text.lower())
-    if not expected or expected not in normalized:
-        return {"source_url": url, "source_name": "Angel One", "unavailable": True}
+
+    matched_response = None
+    matched_url = candidate_urls[0]
+    for url in candidate_urls:
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=(3, 5))
+            if resp.status_code == 200:
+                normalized = re.sub(r"[^a-z0-9]", "", resp.text.lower())
+                if expected and expected in normalized:
+                    matched_response = resp
+                    matched_url = url
+                    break
+        except requests.RequestException:
+            continue
+
+    if not matched_response:
+        return {"source_url": candidate_urls[0], "source_name": "Angel One", "unavailable": True}
+
+    soup = BeautifulSoup(matched_response.text, "html.parser")
+    text = soup.get_text(" ", strip=True)
 
     def find(pattern, source=text):
         match = re.search(pattern, source, re.I | re.S)
@@ -538,24 +716,24 @@ def _fetch_angel_one_fund_facts(scheme):
     age_match = re.search(r"Launched on\s+([A-Za-z]+\s+20\d{2})\s*\((\d+)\s*years?\)", text, re.I)
     aum = find(r"Asset Under Management\s+₹\s*([\d,.]+)\s*Cr")
     expense = find(r"Expense Ratio\s+([\d.]+%)\s*\(inclusive of GST\)") or find(r"Expense Ratio\s+([\d.]+%)")
-    exit_load = find(r"Exit Load\s+(.+?)(?=Ratings|Tax Implications|SBI Mutual Fund Manager)")
+    exit_load = find(r"Exit Load\s+(.+?)(?=Ratings|Tax Implications|(?:[A-Za-z0-9&., -]+?\s+)?Mutual Fund Manager|Fund House Details)")
     lock_in = find(r"Fund has\s+(.+?)\s+lock-in period")
     if lock_in:
         lock_in = "No lock-in period" if lock_in.strip().lower() == "no" else lock_in + " lock-in period"
     tax = None
     tax_match = re.search(
-        r"Tax Implications\s+Withdrawal within 1 year:\s*(.+?)\s+Withdrawal after 1 year:\s*(.+?)\s+(?:SBI Mutual Fund Manager|Fund House Details)",
+        r"Tax Implications\s+Withdrawal within 1 year:\s*(.+?)\s+Withdrawal after 1 year:\s*(.+?)\s+(?:(?:[A-Za-z0-9&., -]+?\s+)?Mutual Fund Manager|Fund House Details)",
         text, re.I | re.S,
     )
     if tax_match:
         tax = "Withdrawal within 1 year: " + " ".join(tax_match.group(1).split()) + "; Withdrawal after 1 year: " + " ".join(tax_match.group(2).split())
 
-    manager_block = find(r"SBI Mutual Fund Manager\s+(.+?)\s+Fund House Details") or ""
+    manager_block = find(r"(?:[A-Za-z0-9&., -]+?\s+Mutual Fund Manager|Mutual Fund Manager)\s+(.+?)\s+Fund House Details") or ""
     managers = []
-    manager_matches = re.findall(r"([A-Z][A-Za-z. ]{1,50}?)\s+Fund Manager since\s+([A-Za-z]+\s+20\d{2})", manager_block)
+    manager_matches = re.findall(r"(?:VIEW DETAILS\s+)?(?:[A-Z]{2}\s+)?([A-Z][A-Za-z. ]{1,50}?)\s+Fund Manager since\s+([A-Za-z]+\s+20\d{2})", manager_block)
     for person, since in manager_matches:
-        clean = re.sub(r"^(?:[A-Z]{1,3}\s+)+", "", person).strip()
-        if clean:
+        clean = re.sub(r"^[A-Z]{2}\s+", "", person).strip()
+        if clean and not any(m["name"] == clean for m in managers):
             managers.append({"name": clean, "role": "Fund Manager since " + since})
 
     ratings = []
@@ -569,10 +747,8 @@ def _fetch_angel_one_fund_facts(scheme):
             ratings.append({"name": label, "rating": rating})
 
     return {
-        "source_url": url,
+        "source_url": matched_url,
         "source_name": "Angel One",
-        # The scheme page has a NAV date, but it is not a holdings disclosure
-        # date. Do not reuse it as one in the portfolio section.
         "as_of": None,
         "fund_age_start": None,
         "fund_age_years": int(age_match.group(2)) if age_match else None,
@@ -587,9 +763,10 @@ def _fetch_angel_one_fund_facts(scheme):
         "holdings": [],
         "sectors": [],
         "holdings_notice": "Angel One’s scheme page does not publish stock or sector allocations.",
-        "riskometer": find(r"Your principal will be at\s+([A-Za-z ]+Risk)"),
+        "riskometer": find(r"Your principal will be at\s+([A-Za-z ]+Risk)") or find(r"Your principal will be at\s+([A-Za-z ]+)"),
         "ratings": ratings,
     }
+
 
 
 def _hdfc_official_portfolio(base_name):
