@@ -511,7 +511,7 @@
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         max-width: 180px !important;
-        margin-top: 1px !important;
+        margin-top: 3.5px !important;
         font-weight: 400 !important;
     }
 
@@ -546,23 +546,17 @@
         color: var(--trade-red-soft) !important;
     }
 
-    /* Combined Day Change Subline: Sized slightly smaller than LTP */
-    .wl-sub-change {
+    /* Combined Day Change Subline: In same stock name color (var(--text-secondary)) */
+    .wl-sub-change,
+    .wl-sub-change.pos,
+    .wl-sub-change.neg {
         display: block !important;
         font-family: 'Inter', -apple-system, sans-serif !important;
         font-size: 10.5px !important;
-        font-weight: 500 !important;
-        margin-top: 1px !important;
+        font-weight: 400 !important;
+        margin-top: 3.5px !important;
         letter-spacing: -0.1px !important;
-        color: var(--text-secondary);
-    }
-
-    .wl-sub-change.pos {
-        color: var(--trade-green-soft) !important;
-    }
-
-    .wl-sub-change.neg {
-        color: var(--trade-red-soft) !important;
+        color: var(--text-secondary) !important;
     }
 
     /* Hide individual desktop change columns on mobile */
