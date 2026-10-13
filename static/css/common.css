@@ -577,8 +577,8 @@
             box-sizing: border-box;
             vertical-align: middle;
         }
-        .wl-table:not(.pf-table) th:nth-child(1), .wl-table:not(.pf-table) td:nth-child(1),
-        .wl-table:not(.pf-table) .wl-col-symbol, .wl-table:not(.pf-table) .wl-cg-symbol {
+        .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(1), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(1),
+        .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-symbol, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-symbol {
             width: 38% !important;
             text-align: left;
             overflow: hidden;
@@ -587,32 +587,32 @@
             display: inline-flex;
             align-items: baseline;
         }
-        .wl-table:not(.pf-table) th:nth-child(2), .wl-table:not(.pf-table) td:nth-child(2),
-        .wl-table:not(.pf-table) .wl-col-price, .wl-table:not(.pf-table) .wl-cg-price {
+        .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(2), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(2),
+        .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-price, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-price {
             width: 18% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.01em;
         }
-        .wl-table:not(.pf-table) th:nth-child(3), .wl-table:not(.pf-table) td:nth-child(3),
-        .wl-table:not(.pf-table) .wl-col-change-amt, .wl-table:not(.pf-table) .wl-cg-change-amt {
+        .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(3), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(3),
+        .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-change-amt, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-change-amt {
             width: 17% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.01em;
         }
-        .wl-table:not(.pf-table) th:nth-child(4), .wl-table:not(.pf-table) td:nth-child(4),
-        .wl-table:not(.pf-table) .wl-col-change-pct, .wl-table:not(.pf-table) .wl-cg-change-pct {
+        .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(4), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(4),
+        .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-change-pct, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-change-pct {
             width: 16% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.01em;
         }
-        .wl-table:not(.pf-table) th:nth-child(5), .wl-table:not(.pf-table) td:nth-child(5),
-        .wl-table:not(.pf-table) .wl-col-actions, .wl-table:not(.pf-table) .wl-cg-actions {
+        .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(5), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(5),
+        .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-actions, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-actions {
             width: 11% !important;
             text-align: center;
             overflow: visible !important;
@@ -737,9 +737,70 @@
             text-overflow: ellipsis;
             max-width: 100%;
         }
-        .col-lbl-compact {
-            display: none;
+        /* =========================================================
+           PORTFOLIO TRANSACTION LEDGER TABLE (.tx-ledger-table)
+           Complete 10-column desktop styling & smooth layout
+           ========================================================= */
+        .tx-table-container {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            box-sizing: border-box;
         }
+
+        #transactions-table.tx-ledger-table,
+        .tx-ledger-table {
+            width: 100% !important;
+            min-width: 960px;
+            table-layout: auto !important;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .tx-ledger-table thead th {
+            background-color: var(--table-header-bg);
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 14px !important;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        .tx-ledger-table tbody td {
+            padding: 10px 14px !important;
+            font-size: 12.5px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            white-space: nowrap;
+            box-sizing: border-box;
+            color: var(--text-primary);
+        }
+
+        .tx-ledger-table tbody tr {
+            transition: background-color 0.15s ease;
+        }
+
+        .tx-ledger-table tbody tr:hover {
+            background-color: var(--table-hover-bg);
+        }
+
+        .tx-ledger-table th:nth-child(4), .tx-ledger-table td:nth-child(4) { text-align: center; }
+        .tx-ledger-table th:nth-child(5), .tx-ledger-table td:nth-child(5) { text-align: right; font-variant-numeric: tabular-nums; }
+        .tx-ledger-table th:nth-child(6), .tx-ledger-table td:nth-child(6) { text-align: right; font-variant-numeric: tabular-nums; }
+        .tx-ledger-table th:nth-child(7), .tx-ledger-table td:nth-child(7) { text-align: right; font-variant-numeric: tabular-nums; }
+        .tx-ledger-table th:nth-child(8), .tx-ledger-table td:nth-child(8) { text-align: right; font-variant-numeric: tabular-nums; }
+        .tx-ledger-table th:nth-child(10), .tx-ledger-table td:nth-child(10) { text-align: center; width: 60px; }
+
         /* Note: Mobile and Tablet responsive rules for .wl-table are managed in static/css/responsive.css */
 
         th {

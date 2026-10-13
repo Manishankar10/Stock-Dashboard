@@ -2,9 +2,25 @@
         // TECHNICAL CHARTS (PRO CANVAS ENGINE)
         // =========================================================
         var currentChartSymbol = window.currentChartSymbol || '';
-        var currentChartInterval = window.currentChartInterval || '1d';
+        var savedChartInterval = '1d';
+        try {
+            savedChartInterval = localStorage.getItem('capital_desk_chart_interval') || window.currentChartInterval || '1d';
+        } catch(e) {}
+        var currentChartInterval = savedChartInterval;
         var currentChartRange = window.currentChartRange || '1y';
         var chartType = window.chartType || 'candlestick';
+
+        function getIntervalDisplayLabel(intVal) {
+            if (!intVal) return '1D';
+            const s = String(intVal).toLowerCase();
+            if (s === '1mo') return '1M';
+            if (s === '1w') return '1W';
+            if (s === '1d') return '1D';
+            if (s === '1h' || s === '60m') return '1H';
+            if (s === '15m') return '15M';
+            if (s === '5m') return '5M';
+            return s.toUpperCase();
+        }
         
         var mainChart = window.mainChart || null;
         var mainSeries = window.mainSeries || null;
@@ -533,10 +549,12 @@
             mainContainer.removeEventListener('mousemove', handleChartPaneMouseMove);
             mainContainer.removeEventListener('mousedown', handleChartPaneMouseDown);
             mainContainer.removeEventListener('click', handleChartPaneClick);
+            mainContainer.removeEventListener('touchend', handleChartPaneTouchEnd);
 
             mainContainer.addEventListener('mousemove', handleChartPaneMouseMove);
             mainContainer.addEventListener('mousedown', handleChartPaneMouseDown);
             mainContainer.addEventListener('click', handleChartPaneClick);
+            mainContainer.addEventListener('touchend', handleChartPaneTouchEnd);
 
             // Listen for user scaling/dragging the price scale or panning the chart
             let isUserDraggingChart = false;
@@ -684,9 +702,12 @@
 
         function getChartPointFromEvent(e) {
             if (!mainChart || !mainSeries || !drawingCanvas) return null;
+            const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+            const clientX = touch.clientX !== undefined ? touch.clientX : (touch.pageX || 0);
+            const clientY = touch.clientY !== undefined ? touch.clientY : (touch.pageY || 0);
             const rect = drawingCanvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
 
             const price = mainSeries.coordinateToPrice(y);
             const rawTime = mainChart.timeScale().coordinateToTime(x);
@@ -798,6 +819,12 @@
 
         function handleChartPaneClick(e) {
             if (!currentDrawingTool) return;
+            handleCanvasClick(e);
+        }
+
+        function handleChartPaneTouchEnd(e) {
+            if (!currentDrawingTool) return;
+            e.preventDefault();
             handleCanvasClick(e);
         }
 
@@ -1375,7 +1402,13 @@
             if (!sym) return;
             currentChartSymbol = sym;
             currentChartRange = '1y';
-            currentChartInterval = '1d';
+            try {
+                const saved = localStorage.getItem('capital_desk_chart_interval');
+                if (saved) {
+                    currentChartInterval = saved;
+                }
+            } catch(e) {}
+            if (!currentChartInterval) currentChartInterval = '1d';
             
             const modal = document.getElementById('chartModal');
             if (modal) {
@@ -1389,7 +1422,11 @@
             if (nameDisplay) nameDisplay.innerText = info.name || sym;
 
             const intervalLabel = document.getElementById('intervalBtnLabel');
-            if (intervalLabel) intervalLabel.innerHTML = '<span class="btn-icon">⏱️</span><span class="btn-text"> 1D</span>';
+            if (intervalLabel) intervalLabel.innerHTML = '<span class="btn-icon">⏱️</span><span class="btn-text"> ' + getIntervalDisplayLabel(currentChartInterval) + '</span>';
+
+            document.querySelectorAll('#popover-interval .int-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === `int-${currentChartInterval}`);
+            });
 
             const rangeLabel = document.getElementById('rangeBtnLabel');
             if (rangeLabel) rangeLabel.innerHTML = '<span class="btn-icon">📅</span><span class="btn-text"> 1Y</span>';
@@ -1414,13 +1451,20 @@
 
         function changeInterval(intervalStr) {
             currentChartInterval = intervalStr;
+            try {
+                localStorage.setItem('capital_desk_chart_interval', intervalStr);
+            } catch(e) {}
             const btnLabel = document.getElementById('intervalBtnLabel');
-            if (btnLabel) btnLabel.innerHTML = '<span class="btn-icon">⏱️</span><span class="btn-text"> ' + intervalStr.toUpperCase() + '</span>';
+            if (btnLabel) btnLabel.innerHTML = '<span class="btn-icon">⏱️</span><span class="btn-text"> ' + getIntervalDisplayLabel(intervalStr) + '</span>';
 
             document.querySelectorAll('#popover-interval .int-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.id === `int-${intervalStr}`);
             });
             loadChartData();
+        }
+
+        function setChartInterval(intervalStr) {
+            changeInterval(intervalStr);
         }
 
         function setChartType(type) {

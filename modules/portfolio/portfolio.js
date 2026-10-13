@@ -1658,7 +1658,7 @@
                 </div>
 
                 <div class="tx-table-container" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
-                    <table class="wl-table tx-ledger-table" id="transactions-table">
+                    <table class="tx-ledger-table" id="transactions-table">
                         <thead>
                             <tr>
                                 <th>Execution Date</th>
