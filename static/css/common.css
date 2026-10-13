@@ -577,8 +577,8 @@
             box-sizing: border-box;
             vertical-align: middle;
         }
-        .wl-table th:nth-child(1), .wl-table td:nth-child(1),
-        .wl-table .wl-col-symbol, .wl-table .wl-cg-symbol {
+        .wl-table:not(.pf-table) th:nth-child(1), .wl-table:not(.pf-table) td:nth-child(1),
+        .wl-table:not(.pf-table) .wl-col-symbol, .wl-table:not(.pf-table) .wl-cg-symbol {
             width: 38% !important;
             text-align: left;
             overflow: hidden;
@@ -587,35 +587,121 @@
             display: inline-flex;
             align-items: baseline;
         }
-        .wl-table th:nth-child(2), .wl-table td:nth-child(2),
-        .wl-table .wl-col-price, .wl-table .wl-cg-price {
+        .wl-table:not(.pf-table) th:nth-child(2), .wl-table:not(.pf-table) td:nth-child(2),
+        .wl-table:not(.pf-table) .wl-col-price, .wl-table:not(.pf-table) .wl-cg-price {
             width: 18% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.01em;
         }
-        .wl-table th:nth-child(3), .wl-table td:nth-child(3),
-        .wl-table .wl-col-change-amt, .wl-table .wl-cg-change-amt {
+        .wl-table:not(.pf-table) th:nth-child(3), .wl-table:not(.pf-table) td:nth-child(3),
+        .wl-table:not(.pf-table) .wl-col-change-amt, .wl-table:not(.pf-table) .wl-cg-change-amt {
             width: 17% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.01em;
         }
-        .wl-table th:nth-child(4), .wl-table td:nth-child(4),
-        .wl-table .wl-col-change-pct, .wl-table .wl-cg-change-pct {
+        .wl-table:not(.pf-table) th:nth-child(4), .wl-table:not(.pf-table) td:nth-child(4),
+        .wl-table:not(.pf-table) .wl-col-change-pct, .wl-table:not(.pf-table) .wl-cg-change-pct {
             width: 16% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.01em;
         }
-        .wl-table th:nth-child(5), .wl-table td:nth-child(5),
-        .wl-table .wl-col-actions, .wl-table .wl-cg-actions {
+        .wl-table:not(.pf-table) th:nth-child(5), .wl-table:not(.pf-table) td:nth-child(5),
+        .wl-table:not(.pf-table) .wl-col-actions, .wl-table:not(.pf-table) .wl-cg-actions {
             width: 11% !important;
             text-align: center;
             overflow: visible !important;
+        }
+
+        /* =========================================================
+           PORTFOLIO INSTITUTIONAL TABLE (.pf-table)
+           Proper 9-column width allocation & perfectly aligned footer
+           ========================================================= */
+        .pf-table {
+            width: 100% !important;
+            min-width: 960px;
+            table-layout: auto !important;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .pf-table th, .pf-table td {
+            padding: 9px 12px !important;
+            box-sizing: border-box;
+            vertical-align: middle;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .pf-table thead th {
+            background-color: var(--table-header-bg);
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .pf-table th.pf-col-stock, .pf-table td.pf-col-stock {
+            width: 20% !important;
+            text-align: left !important;
+            white-space: normal;
+        }
+        .pf-table th.pf-col-qty, .pf-table td.pf-col-qty {
+            width: 7% !important;
+            text-align: right !important;
+            font-variant-numeric: tabular-nums;
+        }
+        .pf-table th.pf-col-buy, .pf-table td.pf-col-buy {
+            width: 10% !important;
+            text-align: right !important;
+            font-variant-numeric: tabular-nums;
+        }
+        .pf-table th.pf-col-ltp, .pf-table td.pf-col-ltp {
+            width: 10% !important;
+            text-align: right !important;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+        }
+        .pf-table th.pf-col-inv, .pf-table td.pf-col-inv {
+            width: 13% !important;
+            text-align: right !important;
+            font-variant-numeric: tabular-nums;
+        }
+        .pf-table th.pf-col-val, .pf-table td.pf-col-val {
+            width: 13% !important;
+            text-align: right !important;
+            font-variant-numeric: tabular-nums;
+        }
+        .pf-table th.pf-col-pnl, .pf-table td.pf-col-pnl {
+            width: 13% !important;
+            text-align: right !important;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+        }
+        .pf-table th.pf-col-daypnl, .pf-table td.pf-col-daypnl {
+            width: 13% !important;
+            text-align: right !important;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+        }
+        .pf-table th.pf-col-details, .pf-table td.pf-col-details {
+            width: 8% !important;
+            text-align: center !important;
+            overflow: visible !important;
+        }
+        .pf-table tfoot tr td {
+            font-weight: 700 !important;
+            font-size: 13px !important;
+            border-top: 2px solid var(--border-color);
+            background-color: var(--table-header-bg);
+            padding: 11px 12px !important;
         }
         .stock-symbol {
             font-weight: 600;

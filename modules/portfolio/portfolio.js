@@ -1151,20 +1151,10 @@
             const isMobile = window.innerWidth <= 768;
 
             if (isMobile) {
-                // Mobile Native 2-Column Fintech Model (Refer Image: Symbol/Qty/Avg. Price & Total P&L/LTP)
+                // Mobile Native Fintech Holding Card Layout (Refer Image 2)
                 const mobContainer = document.createElement('div');
                 mobContainer.className = 'pf-mobile-list-container';
 
-                // 1. Mobile Sub-Header
-                const mobHeader = document.createElement('div');
-                mobHeader.className = 'pf-mob-header-row';
-                mobHeader.innerHTML = `
-                    <div class="pf-mob-hdr-left">Symbol / Qty / Avg. Price</div>
-                    <div class="pf-mob-hdr-right">Total P&L / LTP</div>
-                `;
-                mobContainer.appendChild(mobHeader);
-
-                // 2. Mobile Holdings List
                 const mobList = document.createElement('div');
                 mobList.className = 'pf-mob-list';
 
@@ -1197,63 +1187,97 @@
 
                         const pnlSign = pnlAmt >= 0 ? '+' : '';
                         const pnlClass = pnlAmt >= 0 ? 'pos' : 'neg';
-                        const daySign = dayChange >= 0 ? '+' : '';
-                        const dayClass = dayChange >= 0 ? 'pos' : 'neg';
+                        const daySign = dayPnLAmt >= 0 ? '+' : '';
+                        const dayClass = dayPnLAmt >= 0 ? 'pos' : 'neg';
 
                         const itemEl = document.createElement('div');
-                        itemEl.className = 'pf-mob-item pf-row';
-                        itemEl.id = `pf-mob-row-${rowKey}`;
+                        itemEl.className = 'pf-mob-card';
+                        itemEl.id = `pf-mob-card-${rowKey}`;
                         itemEl.title = 'Tap to view technical chart';
                         itemEl.onclick = (e) => {
-                            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
                             openInHouseChart(sym);
                         };
 
-                        const avgPriceStr = formatMoney(item.buy_price);
-                        const ltpStr = ltp > 0 ? formatMoney(ltp) : '-';
+                        const atpStr = isPrivacyMode ? '••••••' : `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                        const ltpStr = ltp > 0 ? (isPrivacyMode ? '••••••' : `₹${ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})}`) : '-';
+                        const invStr = isPrivacyMode ? '₹ ••••••' : `₹${Math.round(invAmt).toLocaleString('en-IN')}`;
+                        const valStr = isPrivacyMode ? '₹ ••••••' : `₹${Math.round(curVal).toLocaleString('en-IN')}`;
 
                         itemEl.innerHTML = `
-                            <div class="pf-mob-item-left">
-                                <div class="pf-mob-sym-line">
-                                    <span class="stock-symbol">${cleanDisplaySymbol(sym)}</span>
-                                    <span class="badge ${bInfo.class}">${bInfo.label}</span>
-                                    ${isAll ? `<span class="badge pf-badge">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}
+                            <!-- Row 1: Symbol & Badges (Left) | Total P&L & Overall % (Right) -->
+                            <div class="pf-mob-card-header">
+                                <div class="pf-mob-sym-group" title="Tap to view holding details">
+                                    <div class="pf-mob-sym-row">
+                                        <span class="pf-mob-sym">${cleanDisplaySymbol(sym)}</span>
+                                        <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                                        ${isAll ? `<span class="badge pf-badge">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}
+                                    </div>
+                                    <div class="pf-mob-company-name" id="pf-name-${rowKey}">${escapeHtml(info.name || '')}</div>
                                 </div>
-                                <div class="company-name" id="pf-name-${rowKey}">${escapeHtml(info.name || '')}</div>
-                                <div class="pf-mob-sub-info">
-                                    <span class="pf-mob-qty-price">${formatQty(item.quantity)} @ ${avgPriceStr}</span>
-                                    <span class="pf-mob-inv-tag">Inv: ${formatMoney(invAmt)}</span>
-                                </div>
-                            </div>
-                            <div class="pf-mob-item-right">
-                                <div class="pf-mob-pnl-line ${pnlClass}" id="pf-pnl-${rowKey}">
-                                    ${ltp > 0
-                                        ? (isPrivacyMode
-                                            ? `₹ •••••• (${pnlSign}${pnlPct.toFixed(2)}%)`
-                                            : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`)
-                                        : '<span class="skeleton-box" style="width: 75px; height: 14px;"></span>'
-                                    }
-                                </div>
-                                <div class="pf-mob-ltp-line">
-                                    <span class="pf-mob-ltp" id="pf-ltp-${rowKey}">${ltpStr}</span>
-                                    <span class="pf-mob-daychange ${dayClass}" id="pf-daypnl-${rowKey}">
-                                        ${ltp > 0 ? `${daySign}${dayPnlPct.toFixed(2)}%` : ''}
+                                <div class="pf-mob-pnl-group">
+                                    <span class="pf-mob-pnl-line ${pnlClass}" id="pf-pnl-${rowKey}">
+                                        ${ltp > 0
+                                            ? (isPrivacyMode
+                                                ? `₹ •••••• (${pnlSign}${pnlPct.toFixed(2)}%)`
+                                                : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`)
+                                            : '<span class="skeleton-box" style="width: 80px; height: 14px;"></span>'
+                                        }
                                     </span>
                                 </div>
-                                <div class="pf-mob-actions-row">
-                                    <button type="button" class="pf-mob-detail-btn" title="Holding Details">
-                                        🔍 Details
-                                    </button>
+                            </div>
+
+                            <!-- Row 2 & 3: ATP & Shares (Left) | LTP & Today Gain/Loss (Right) -->
+                            <div class="pf-mob-card-body">
+                                <div class="pf-mob-body-col">
+                                    <div class="pf-mob-stat-row">
+                                        <span class="pf-mob-stat-label">ATP</span>
+                                        <span class="pf-mob-stat-value">${atpStr}</span>
+                                    </div>
+                                    <div class="pf-mob-stat-row">
+                                        <span class="pf-mob-stat-label">Shares</span>
+                                        <span class="pf-mob-stat-value">${formatQty(item.quantity)}</span>
+                                    </div>
+                                </div>
+                                <div class="pf-mob-body-col pf-mob-body-right">
+                                    <div class="pf-mob-stat-row pf-mob-stat-row-right">
+                                        <span class="pf-mob-stat-label">LTP</span>
+                                        <span class="pf-mob-stat-value pf-mob-ltp-val" id="pf-ltp-${rowKey}">${ltpStr}</span>
+                                        <span class="pf-mob-stat-change ${dayClass}" id="pf-day-pct-${rowKey}">(${ltp > 0 ? `${daySign}${dayPnlPct.toFixed(2)}%` : '0.00%'})</span>
+                                    </div>
+                                    <div class="pf-mob-stat-row pf-mob-stat-row-right">
+                                        <span class="pf-mob-stat-label" id="pf-day-lbl-${rowKey}">${dayPnLAmt >= 0 ? "Today's Gain" : "Today's Loss"}</span>
+                                        <span class="pf-mob-stat-change ${dayClass}" id="pf-daypnl-${rowKey}">
+                                            ${ltp > 0
+                                                ? (isPrivacyMode
+                                                    ? `₹ •••••• (${daySign}${dayPnlPct.toFixed(2)}%)`
+                                                    : `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${daySign}${dayPnlPct.toFixed(2)}%)`)
+                                                : ''
+                                            }
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                            <!-- Hidden hook elements for real-time calculations -->
-                            <span id="pf-inv-${rowKey}" style="display:none;">${formatMoney(invAmt)}</span>
-                            <span id="pf-val-${rowKey}" style="display:none;">${formatMoney(curVal)}</span>
+
+                            <!-- Divider Line -->
+                            <div class="pf-mob-divider"></div>
+
+                            <!-- Row 4: Invested (Left) | Current (Right) -->
+                            <div class="pf-mob-card-footer">
+                                <div class="pf-mob-footer-col">
+                                    <span class="pf-mob-stat-label">Invested</span>
+                                    <span class="pf-mob-footer-value" id="pf-inv-${rowKey}">${invStr}</span>
+                                </div>
+                                <div class="pf-mob-footer-col pf-mob-footer-right">
+                                    <span class="pf-mob-stat-label">Current</span>
+                                    <span class="pf-mob-footer-value" id="pf-val-${rowKey}">${valStr}</span>
+                                </div>
+                            </div>
                         `;
 
-                        const detailBtn = itemEl.querySelector('.pf-mob-detail-btn');
-                        if (detailBtn) {
-                            detailBtn.onclick = (e) => {
+                        // Details modal trigger specifically on symbol / company name group
+                        const symGroup = itemEl.querySelector('.pf-mob-sym-group');
+                        if (symGroup) {
+                            symGroup.onclick = (e) => {
                                 e.stopPropagation();
                                 openHoldingDetailsModal(item);
                             };
@@ -1294,7 +1318,7 @@
             } else {
                 // Desktop 9-Column Table View
                 const table = document.createElement('table');
-                table.className = 'wl-table pf-table';
+                table.className = 'pf-table';
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
@@ -1432,12 +1456,12 @@
                 const tfoot = document.createElement('tfoot');
                 tfoot.innerHTML = `
                     <tr>
-                        <td colspan="4">PORTFOLIO TOTAL:</td>
-                        <td id="pf-foot-inv" style="text-align:right;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
-                        <td id="pf-foot-val" style="text-align:right;">${initialTotInvested > 0 ? initValStr : '₹0.00'}</td>
-                        <td id="pf-foot-pnl" style="text-align:right;" class="${initialTotPnL >= 0 ? 'pos' : 'neg'}">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
-                        <td id="pf-foot-daypnl" style="text-align:right;" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'}">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
-                        <td></td>
+                        <td colspan="4" class="pf-col-total" style="text-align:left;">PORTFOLIO TOTAL:</td>
+                        <td id="pf-foot-inv" class="pf-col-inv" style="text-align:right;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
+                        <td id="pf-foot-val" class="pf-col-val" style="text-align:right;">${initialTotInvested > 0 ? initValStr : '₹0.00'}</td>
+                        <td id="pf-foot-pnl" class="${initialTotPnL >= 0 ? 'pos' : 'neg'} pf-col-pnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
+                        <td id="pf-foot-daypnl" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'} pf-col-daypnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
+                        <td class="pf-col-details" style="text-align:center;"></td>
                     </tr>
                 `;
 

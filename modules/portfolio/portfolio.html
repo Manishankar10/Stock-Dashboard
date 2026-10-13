@@ -25,6 +25,9 @@
                             <button type="button" class="pf-mob-menu-item" onclick="openCreatePortfolioModal(); togglePfMobileMenu(false);">
                                 <span>📁 Add Portfolio</span>
                             </button>
+                            <button type="button" class="pf-mob-menu-item" onclick="exportActivePortfolioToExcel(); togglePfMobileMenu(false);">
+                                <span>📥 Export Excel</span>
+                            </button>
                             <div class="pf-mob-menu-divider" id="pf-mob-delete-divider" style="display: none;"></div>
                             <button type="button" class="pf-mob-menu-item danger" id="pf-mob-delete-btn" style="display: none;" onclick="deleteActivePortfolio(); togglePfMobileMenu(false);">
                                 <span>🗑️ Delete Portfolio</span>

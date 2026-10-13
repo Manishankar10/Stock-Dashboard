@@ -421,7 +421,7 @@
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 13px 6px !important;
+        padding: 8px 5px !important;
         border-bottom: 1px solid var(--border-color) !important;
         background: transparent !important;
         cursor: pointer;
@@ -462,10 +462,10 @@
 
     .wl-table .stock-symbol {
         font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
-        font-size: 15px !important;
+        font-size: 13.5px !important;
         font-weight: 600 !important;
         color: var(--text-primary) !important;
-        letter-spacing: 0.3px !important;
+        letter-spacing: 0.2px !important;
         line-height: 1.25 !important;
         text-transform: uppercase;
         display: inline !important;
@@ -475,21 +475,21 @@
     .wl-table .badge {
         display: inline-block !important;
         vertical-align: super !important;
-        font-size: 8px !important;
+        font-size: 7.5px !important;
         font-weight: 700 !important;
         line-height: 1 !important;
         margin-left: 3px !important;
         margin-top: 0 !important;
-        transform: translateY(-4px) !important;
+        transform: translateY(-3px) !important;
         padding: 0 !important;
         background: transparent !important;
         color: var(--text-muted) !important;
         border: none !important;
-        letter-spacing: 0.4px !important;
+        letter-spacing: 0.3px !important;
     }
 
     .wl-table .company-name {
-        font-size: 11px !important;
+        font-size: 10px !important;
         color: var(--text-secondary) !important;
         white-space: nowrap !important;
         overflow: hidden !important;
@@ -509,16 +509,16 @@
         padding: 0 !important;
         border: none !important;
         flex: 0 0 auto !important;
-        min-width: 90px !important;
+        min-width: 85px !important;
     }
 
-    /* LTP Price: Large, Crisp, Trend-Colored */
+    /* LTP Price: Crisp, Trend-Colored, Sized slightly smaller than stock symbol */
     .wl-price-val {
         font-family: 'Inter', -apple-system, sans-serif !important;
-        font-size: 15.5px !important;
+        font-size: 12.5px !important;
         font-weight: 600 !important;
-        letter-spacing: -0.2px !important;
-        line-height: 1.25 !important;
+        letter-spacing: -0.1px !important;
+        line-height: 1.2 !important;
         color: var(--text-primary);
     }
 
@@ -530,13 +530,13 @@
         color: var(--trade-red-soft) !important;
     }
 
-    /* Combined Day Change Subline: -₹0.92 (-0.83%) */
+    /* Combined Day Change Subline: Sized slightly smaller than LTP */
     .wl-sub-change {
         display: block !important;
         font-family: 'Inter', -apple-system, sans-serif !important;
-        font-size: 12px !important;
+        font-size: 10.5px !important;
         font-weight: 500 !important;
-        margin-top: 2px !important;
+        margin-top: 1px !important;
         letter-spacing: -0.1px !important;
         color: var(--text-secondary);
     }
@@ -854,19 +854,15 @@
         margin: 4px 6px !important;
     }
 
-    /* Active Portfolio View Header & Desktop Action Hide */
-    #portfolio-view-mount .header-bar .actions {
+    /* Active Portfolio View Header (Remove portfolio name on mobile - refer Image 1) */
+    #portfolio-view-mount .header-bar {
         display: none !important;
     }
 
-    #portfolio-view-mount .header-bar {
-        margin-bottom: 12px !important;
-        padding: 0 !important;
-    }
-
-    #portfolio-view-mount .header-bar h2 {
-        font-size: 17px !important;
-        margin: 0 !important;
+    /* Decrease padding on card-container in portfolio-view-mount */
+    #portfolio-view-mount .card-container {
+        padding: 8px 10px !important;
+        border-radius: 12px !important;
     }
 
     /* Portfolio KPI Summary Grid (Sleek 2x2 Grid) */
@@ -874,7 +870,7 @@
         display: grid !important;
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 10px !important;
-        margin-bottom: 16px !important;
+        margin-bottom: 14px !important;
     }
 
     .pf-summary-grid .metric-card {
@@ -897,13 +893,14 @@
         font-size: 11.5px !important;
     }
 
-    /* Portfolio Filter & Sort Toolbar */
+    /* Portfolio Filter & Sort Toolbar (Excel Export moved to top menu) */
     .filter-sort-bar {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 10px !important;
         padding: 10px 12px !important;
         border-radius: 12px !important;
+        margin-bottom: 12px !important;
     }
 
     .filter-sort-bar > div:first-child {
@@ -928,6 +925,11 @@
         border-radius: 8px !important;
     }
 
+    /* Move excel export to menu -> hide standalone button in filter bar on mobile */
+    .filter-sort-bar > button.btn-secondary {
+        display: none !important;
+    }
+
     /* Portfolio Holdings Container on Mobile */
     .table-responsive-container,
     .pf-table-responsive-container {
@@ -940,115 +942,91 @@
         margin-bottom: 75px !important; /* Spacing for sticky bottom gain bar */
     }
 
-    /* Native Mobile Fintech Card/List Container (Refer User Reference Image) */
+    /* Native Mobile Fintech Holdings Cards (Refer Image 2) */
     .pf-mobile-list-container {
         display: flex !important;
         flex-direction: column !important;
         width: 100% !important;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 14px !important;
-        overflow: hidden !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        box-shadow: none !important;
     }
 
-    /* 1. Mobile Sub-Header: Symbol / Qty / Avg. Price vs Total P&L / LTP */
-    .pf-mob-header-row {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 9px 14px !important;
-        background: var(--bg-subtle) !important;
-        border-bottom: 1px solid var(--border-color) !important;
-        font-size: 11px !important;
-        font-weight: 700 !important;
-        color: var(--text-secondary) !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-    }
-
-    .pf-mob-hdr-left {
-        text-align: left !important;
-    }
-
-    .pf-mob-hdr-right {
-        text-align: right !important;
-    }
-
-    /* 2. Holdings List */
     .pf-mob-list {
         display: flex !important;
         flex-direction: column !important;
+        gap: 10px !important;
         width: 100% !important;
     }
 
-    /* 3. Each Holding Item */
-    .pf-mob-item {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 12px 14px !important;
-        border-bottom: 1px solid var(--border-color) !important;
+    .pf-mob-card {
         background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        padding: 12px 14px !important;
+        display: flex !important;
+        flex-direction: column !important;
         cursor: pointer !important;
-        transition: background-color 0.15s ease !important;
+        transition: background-color 0.15s ease, border-color 0.15s ease !important;
         -webkit-tap-highlight-color: transparent !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
     }
 
-    [data-theme="dark"] .pf-mob-item {
-        border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+    [data-theme="dark"] .pf-mob-card {
+        border-color: rgba(255, 255, 255, 0.08) !important;
     }
 
-    [data-theme="light"] .pf-mob-item {
-        border-bottom-color: rgba(0, 0, 0, 0.06) !important;
-    }
-
-    .pf-mob-item:last-child {
-        border-bottom: none !important;
-    }
-
-    .pf-mob-item:hover,
-    .pf-mob-item:active {
+    .pf-mob-card:active {
         background: var(--table-hover-bg) !important;
     }
 
-    /* Left Side: Symbol, Exchange, Company, Qty @ Avg */
-    .pf-mob-item-left {
+    /* Row 1: Header (Symbol & Company Name vs Total P&L) */
+    .pf-mob-card-header {
         display: flex !important;
-        flex-direction: column !important;
+        justify-content: space-between !important;
         align-items: flex-start !important;
-        min-width: 0 !important;
-        flex: 1 1 54% !important;
-        padding-right: 8px !important;
+        margin-bottom: 8px !important;
+        gap: 8px !important;
     }
 
-    .pf-mob-sym-line {
+    .pf-mob-sym-group {
+        display: flex !important;
+        flex-direction: column !important;
+        cursor: pointer !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+    }
+
+    .pf-mob-sym-row {
         display: flex !important;
         align-items: baseline !important;
         gap: 4px !important;
         line-height: 1.2 !important;
     }
 
-    .pf-mob-sym-line .stock-symbol {
+    .pf-mob-sym {
         font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
-        font-size: 14.5px !important;
+        font-size: 15px !important;
         font-weight: 700 !important;
         color: var(--text-primary) !important;
         letter-spacing: 0.3px !important;
+        text-transform: uppercase !important;
     }
 
-    .pf-mob-sym-line .badge:not(.pf-badge) {
-        font-size: 8px !important;
+    .pf-mob-sym-group .badge:not(.pf-badge) {
+        font-size: 7.5px !important;
         font-weight: 700 !important;
         vertical-align: super !important;
-        transform: translateY(-4px) !important;
+        transform: translateY(-3px) !important;
         padding: 0 !important;
         background: transparent !important;
         border: none !important;
         color: var(--text-muted) !important;
     }
 
-    .pf-mob-sym-line .pf-badge {
+    .pf-mob-sym-group .pf-badge {
         font-size: 9.5px !important;
         font-weight: 600 !important;
         padding: 1px 5px !important;
@@ -1063,99 +1041,115 @@
         margin-left: 2px !important;
     }
 
-    .pf-mob-item-left .company-name {
+    .pf-mob-company-name {
         font-size: 11px !important;
         color: var(--text-secondary) !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        max-width: 100% !important;
-        margin: 2px 0 3px 0 !important;
+        max-width: 170px !important;
+        margin-top: 1px !important;
     }
 
-    .pf-mob-sub-info {
-        display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        font-size: 11.5px !important;
-        color: var(--text-secondary) !important;
-        font-weight: 500 !important;
-        flex-wrap: wrap !important;
-    }
-
-    .pf-mob-qty-price {
-        color: var(--text-secondary) !important;
-        font-weight: 600 !important;
-    }
-
-    .pf-mob-inv-tag {
-        font-size: 10.5px !important;
-        background: var(--bg-subtle) !important;
-        border: 1px solid var(--border-color) !important;
-        padding: 1px 5px !important;
-        border-radius: 4px !important;
-        color: var(--text-muted) !important;
-    }
-
-    /* Right Side: Total P&L & Overall %, LTP & Day Change % */
-    .pf-mob-item-right {
+    .pf-mob-pnl-group {
         display: flex !important;
         flex-direction: column !important;
         align-items: flex-end !important;
-        flex: 1 1 46% !important;
-        min-width: 0 !important;
         text-align: right !important;
+        flex: 0 0 auto !important;
     }
 
     .pf-mob-pnl-line {
-        font-size: 13.5px !important;
+        font-size: 14.5px !important;
         font-weight: 700 !important;
-        letter-spacing: 0.2px !important;
+        letter-spacing: 0.1px !important;
         white-space: nowrap !important;
-        margin-bottom: 2px !important;
     }
 
-    .pf-mob-ltp-line {
+    /* Rows 2 & 3: Body (ATP, Shares | LTP, Today's Gain/Loss) */
+    .pf-mob-card-body {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 12px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .pf-mob-body-col {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 4px !important;
+    }
+
+    .pf-mob-body-right {
+        align-items: flex-end !important;
+        text-align: right !important;
+    }
+
+    .pf-mob-stat-row {
         display: flex !important;
         align-items: baseline !important;
         gap: 6px !important;
-        font-size: 12px !important;
+        font-size: 12.5px !important;
         white-space: nowrap !important;
     }
 
-    .pf-mob-ltp {
-        font-weight: 700 !important;
-        color: var(--text-primary) !important;
+    .pf-mob-stat-row-right {
+        justify-content: flex-end !important;
     }
 
-    .pf-mob-daychange {
-        font-size: 11px !important;
-        font-weight: 600 !important;
-    }
-
-    .pf-mob-actions-row {
-        margin-top: 4px !important;
-    }
-
-    .pf-mob-detail-btn {
-        background: transparent !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 6px !important;
-        font-size: 10.5px !important;
+    .pf-mob-stat-label {
         color: var(--text-secondary) !important;
-        padding: 2px 8px !important;
-        cursor: pointer !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 3px !important;
-        transition: all 0.15s ease !important;
+        font-size: 11.5px !important;
+        font-weight: 500 !important;
     }
 
-    .pf-mob-detail-btn:hover,
-    .pf-mob-detail-btn:active {
-        background: var(--bg-subtle) !important;
+    .pf-mob-stat-value {
         color: var(--text-primary) !important;
-        border-color: #3b82f6 !important;
+        font-weight: 600 !important;
+        font-variant-numeric: tabular-nums !important;
+    }
+
+    .pf-mob-ltp-val {
+        font-weight: 700 !important;
+    }
+
+    .pf-mob-stat-change {
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        font-variant-numeric: tabular-nums !important;
+    }
+
+    /* Card Divider */
+    .pf-mob-divider {
+        height: 1px !important;
+        background: var(--border-color) !important;
+        margin-bottom: 8px !important;
+        opacity: 0.6 !important;
+    }
+
+    /* Row 4: Footer (Invested | Current) */
+    .pf-mob-card-footer {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    .pf-mob-footer-col {
+        display: flex !important;
+        align-items: baseline !important;
+        gap: 6px !important;
+    }
+
+    .pf-mob-footer-right {
+        justify-content: flex-end !important;
+    }
+
+    .pf-mob-footer-value {
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
+        font-variant-numeric: tabular-nums !important;
     }
 
     /* 4. Sticky Bottom Summary Bar (Today's Gain / Total P&L) */

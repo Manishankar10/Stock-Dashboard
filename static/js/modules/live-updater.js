@@ -152,10 +152,12 @@
                     const pfValEl = document.getElementById(`pf-val-${rowKey}`) || document.getElementById(`pf-val-${sym}`);
                     const pfPnlEl = document.getElementById(`pf-pnl-${rowKey}`) || document.getElementById(`pf-pnl-${sym}`);
                     const pfDayPnlEl = document.getElementById(`pf-daypnl-${rowKey}`) || document.getElementById(`pf-daypnl-${sym}`);
+                    const pfDayPctEl = document.getElementById(`pf-day-pct-${rowKey}`);
+                    const pfDayLblEl = document.getElementById(`pf-day-lbl-${rowKey}`);
 
                     if (pfNameEl && info.name) pfNameEl.innerText = info.name;
-                    if (pfLtpEl) pfLtpEl.innerText = ltp > 0 ? formatMoney(ltp) : '-';
-                    if (pfValEl) pfValEl.innerText = formatMoney(curVal);
+                    if (pfLtpEl) pfLtpEl.innerText = ltp > 0 ? (isPrivacyMode ? '••••••' : `₹${ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})}`) : '-';
+                    if (pfValEl) pfValEl.innerText = isPrivacyMode ? '₹ ••••••' : `₹${Math.round(curVal).toLocaleString('en-IN')}`;
 
                     if (pfPnlEl) {
                         const sign = pnlAmt >= 0 ? '+' : '';
@@ -166,16 +168,24 @@
                         pfPnlEl.classList.add(pnlAmt >= 0 ? 'pos' : 'neg');
                     }
 
+                    if (pfDayPctEl) {
+                        const daySign = dayChange >= 0 ? '+' : '';
+                        pfDayPctEl.innerText = ltp > 0 ? `(${daySign}${dayPnlPct.toFixed(2)}%)` : '(0.00%)';
+                        pfDayPctEl.classList.remove('pos', 'neg');
+                        pfDayPctEl.classList.add(dayPnLAmt >= 0 ? 'pos' : 'neg');
+                    }
+
+                    if (pfDayLblEl) {
+                        pfDayLblEl.innerText = dayPnLAmt >= 0 ? "Today's Gain" : "Today's Loss";
+                    }
+
                     if (pfDayPnlEl) {
                         const sign = dayPnLAmt >= 0 ? '+' : '';
-                        const isMob = window.innerWidth <= 768;
-                        if (isMob) {
-                            pfDayPnlEl.innerText = ltp > 0 ? `${sign}${dayPnlPct.toFixed(2)}%` : '';
-                        } else {
-                            pfDayPnlEl.innerText = isPrivacyMode
+                        pfDayPnlEl.innerText = ltp > 0
+                            ? (isPrivacyMode
                                 ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
-                                : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
-                        }
+                                : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`)
+                            : '';
                         pfDayPnlEl.classList.remove('pos', 'neg');
                         pfDayPnlEl.classList.add(dayPnLAmt >= 0 ? 'pos' : 'neg');
                     }
