@@ -48,6 +48,8 @@
         function closeCreateAlertModal() {
             document.getElementById('createAlertModal').style.display = 'none';
         }
+        window.openCreateAlertModal = openCreateAlertModal;
+        window.closeCreateAlertModal = closeCreateAlertModal;
 
         async function submitCreateAlert() {
             const symbol = document.getElementById('modal-alert-symbol').value;

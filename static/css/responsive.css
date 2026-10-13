@@ -511,7 +511,7 @@
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         max-width: 180px !important;
-        margin-top: 3.5px !important;
+        margin-top: 8.5px !important;
         font-weight: 400 !important;
     }
 
@@ -554,7 +554,7 @@
         font-family: 'Inter', -apple-system, sans-serif !important;
         font-size: 10.5px !important;
         font-weight: 400 !important;
-        margin-top: 3.5px !important;
+        margin-top: 8.5px !important;
         letter-spacing: -0.1px !important;
         color: var(--text-secondary) !important;
     }
@@ -588,15 +588,13 @@
         align-items: center !important;
         justify-content: center !important;
         white-space: nowrap !important;
-        font-size: 0 !important; /* Strips any arrow icon or text completely */
+        font-size: 14px !important;
     }
 
     .wl-table .wl-col-actions .btn-secondary::before,
     .wl-table .wl-col-actions .wl-row-menu-btn::before {
-        content: "⚙️" !important;
-        font-size: 14px !important;
-        line-height: 1 !important;
-        display: inline-block !important;
+        display: none !important;
+        content: none !important;
     }
 
     .wl-table .wl-col-actions .btn-secondary:hover,
@@ -607,8 +605,13 @@
         color: var(--text-primary) !important;
     }
 
+    .wl-table .wl-col-actions .wl-setting-icon {
+        display: inline-block !important;
+        font-size: 14px !important;
+        line-height: 1 !important;
+    }
+
     /* Do not show arrow icon below/beside setting icon on mobile */
-    .wl-table .wl-col-actions .wl-setting-icon,
     .wl-table .wl-col-actions .wl-setting-arrow,
     .wl-mob-accordion-caret {
         display: none !important;
@@ -1366,10 +1369,32 @@
     }
 
     /* Modal dialogs scroll nicely */
+    .small-modal {
+        z-index: 10050 !important;
+    }
+
     .small-modal-content {
         max-height: 92vh !important;
         overflow-y: auto !important;
         padding: 14px !important;
+    }
+
+    #fundamentalsModal .small-modal-content {
+        width: 98vw !important;
+        max-width: 98vw !important;
+        height: 94vh !important;
+        max-height: 94vh !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        margin: auto !important;
+    }
+
+    #stockNewsModal .small-modal-content,
+    #createAlertModal .small-modal-content {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh !important;
     }
 
     /* Technical Charts in Landscape */

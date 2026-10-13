@@ -114,46 +114,8 @@
             document.getElementById('stockNewsModal').style.display = 'none';
         }
 
-        function closeChartModal() {
-            const modal = document.getElementById('chartModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-
-            if (candleTimerIntervalId) {
-                clearInterval(candleTimerIntervalId);
-                candleTimerIntervalId = null;
-            }
-
-            if (chartResizeObserver) {
-                try { chartResizeObserver.disconnect(); } catch(e){}
-                chartResizeObserver = null;
-            }
-
-            if (mainChart) {
-                try { mainChart.remove(); } catch(e){}
-                mainChart = null;
-            }
-            if (rsiChart) {
-                try { rsiChart.remove(); } catch(e){}
-                rsiChart = null;
-            }
-            if (macdChart) {
-                try { macdChart.remove(); } catch(e){}
-                macdChart = null;
-            }
-
-            const mainContainer = document.getElementById('mainChartPane');
-            const rsiContainer = document.getElementById('rsiChartPane');
-            const macdContainer = document.getElementById('macdChartPane');
-            if (mainContainer) mainContainer.innerHTML = '';
-            if (rsiContainer) rsiContainer.innerHTML = '';
-            if (macdContainer) macdContainer.innerHTML = '';
-
-            activePriceLines = [];
-            drawingCanvas = null;
-            currentDrawingTool = null;
-            hideCanvasObjectMenu();
-            hideDrawingBanner();
-        }
+        window.openFundamentalsModal = openFundamentalsModal;
+        window.closeFundamentalsModal = closeFundamentalsModal;
+        window.openStockNewsModal = openStockNewsModal;
+        window.closeStockNewsModal = closeStockNewsModal;
 

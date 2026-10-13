@@ -482,7 +482,9 @@
                     tr.title = 'Click row to view interactive technical chart';
                     tr.onclick = (e) => {
                         if (e.target.closest('.wl-col-actions') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
-                        openInHouseChart(sym);
+                        if (window._wlMenuJustClosed) return;
+                        if (typeof openInHouseChart === 'function') openInHouseChart(sym);
+                        else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
                     };
                     
                     const tdSymbol = document.createElement('td');
@@ -553,12 +555,27 @@
                     `;
 
                     const menuItems = [
-                        { label: '📊 Technical Chart', action: () => openInHouseChart(sym) },
-                        { label: '📈 Fundamentals', action: () => openFundamentalsModal(sym) },
-                        { label: '📰 Latest News', action: () => openStockNewsModal(sym) },
-                        { label: '🔔 Set Price Alert', action: () => openCreateAlertModal(sym) },
+                        { label: '📊 Technical Chart', action: () => {
+                            if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
+                            else if (typeof openInHouseChart === 'function') openInHouseChart(sym);
+                        }},
+                        { label: '📈 Fundamentals', action: () => {
+                            if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
+                            else if (typeof openFundamentalsModal === 'function') openFundamentalsModal(sym);
+                        }},
+                        { label: '📰 Latest News', action: () => {
+                            if (typeof window.openStockNewsModal === 'function') window.openStockNewsModal(sym);
+                            else if (typeof openStockNewsModal === 'function') openStockNewsModal(sym);
+                        }},
+                        { label: '🔔 Set Price Alert', action: () => {
+                            if (typeof window.openCreateAlertModal === 'function') window.openCreateAlertModal(sym);
+                            else if (typeof openCreateAlertModal === 'function') openCreateAlertModal(sym);
+                        }},
                         { divider: true },
-                        { label: '🗑️ Remove Stock', danger: true, action: () => removeWatchlistStock(null, sym) }
+                        { label: '🗑️ Remove Stock', danger: true, action: () => {
+                            if (typeof window.removeWatchlistStock === 'function') window.removeWatchlistStock(null, sym);
+                            else if (typeof removeWatchlistStock === 'function') removeWatchlistStock(null, sym);
+                        }}
                     ];
 
                     menuItems.forEach(item => {
@@ -572,13 +589,31 @@
                         mBtn.className = 'menu-item';
                         mBtn.style.cssText = `padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: ${item.danger ? '#ef4444' : 'var(--text-primary)'};`;
                         mBtn.innerText = item.label;
-                        mBtn.addEventListener('click', (ev) => {
-                            ev.preventDefault();
-                            ev.stopPropagation();
-                            ev.stopImmediatePropagation();
+
+                        let lastTriggerTime = 0;
+                        const handleAction = (ev) => {
+                            const now = Date.now();
+                            if (now - lastTriggerTime < 350) return;
+                            lastTriggerTime = now;
+                            if (ev) {
+                                ev.preventDefault();
+                                ev.stopPropagation();
+                                ev.stopImmediatePropagation();
+                            }
+                            window._wlMenuJustClosed = true;
+                            setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
                             closeAllWlMenus();
-                            item.action();
-                        });
+                            try {
+                                if (typeof item.action === 'function') {
+                                    item.action();
+                                }
+                            } catch (err) {
+                                console.error('Watchlist menu action error:', err);
+                            }
+                        };
+
+                        mBtn.addEventListener('touchend', handleAction);
+                        mBtn.addEventListener('click', handleAction);
                         menuDropdown.appendChild(mBtn);
                     });
 
@@ -708,6 +743,8 @@
         }
 
         function closeAllWlMenus() {
+            window._wlMenuJustClosed = true;
+            setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
             document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => el.style.display = 'none');
         }
 
