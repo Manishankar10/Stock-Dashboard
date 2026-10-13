@@ -734,19 +734,12 @@
                     let shouldOpenUp = false;
                     if (btnRect) {
                         const spaceBelow = viewportHeight - btnRect.bottom;
-                        const spaceAbove = btnRect.top;
-                        
-                        // Check container boundaries if enclosed
-                        const container = dropdown.closest('.wl-table-container') || dropdown.closest('#watchlist-view-mount');
-                        const contSpaceBelow = container ? (container.getBoundingClientRect().bottom - btnRect.bottom) : Infinity;
-                        
-                        // Check if row is last row in the watchlist
-                        const isLastRow = parentTr && !parentTr.nextElementSibling;
-                        const isSecondToLastRow = parentTr && parentTr.nextElementSibling && !parentTr.nextElementSibling.nextElementSibling;
+                        const spaceAbove = btnRect.top - 60; // 60px reserved for sticky mobile header
+                        const MENU_CLEARANCE = 190; // Dropdown height is ~180px
 
-                        if (spaceBelow < 230 || contSpaceBelow < 200 || isLastRow || (isSecondToLastRow && spaceBelow < 280)) {
-                            // If there is enough space above, or more space above than below, open upwards!
-                            if (spaceAbove > 180 || spaceAbove > spaceBelow) {
+                        // Only flip upwards if it CANNOT fit below AND has more room above
+                        if (spaceBelow < MENU_CLEARANCE) {
+                            if (spaceAbove >= MENU_CLEARANCE || spaceAbove > spaceBelow) {
                                 shouldOpenUp = true;
                             }
                         }
