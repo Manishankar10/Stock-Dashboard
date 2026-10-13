@@ -1697,7 +1697,7 @@
                 priceFormat: { type: 'volume' },
                 priceLineVisible: false,
                 lastValueVisible: false,
-                title: 'Vol MA (20)',
+                title: '',
             });
             if (volMaData && volMaData.length > 0) {
                 volumeMaSeries.setData(volMaData);
@@ -2379,7 +2379,7 @@
                 document.getElementById('legVolGroup').style.display = showVol ? 'inline-block' : 'none';
             }
             if (document.getElementById('legVolMaGroup')) {
-                document.getElementById('legVolMaGroup').style.display = (showVol && showVolMa) ? 'inline-block' : 'none';
+                document.getElementById('legVolMaGroup').style.display = 'none';
             }
 
             document.getElementById('rsiChartPane').style.display = showRsi ? 'block' : 'none';
