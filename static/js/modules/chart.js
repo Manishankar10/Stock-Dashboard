@@ -538,7 +538,78 @@
             mainContainer.addEventListener('mousedown', handleChartPaneMouseDown);
             mainContainer.addEventListener('click', handleChartPaneClick);
 
+            // Listen for user scaling/dragging the price scale or panning the chart
+            let isUserDraggingChart = false;
+            let chartDragRafId = null;
+
+            const onWindowPointerMove = () => {
+                if (!isUserDraggingChart) return;
+                if (!chartDragRafId) {
+                    chartDragRafId = requestAnimationFrame(() => {
+                        chartDragRafId = null;
+                        redrawCanvasOverlay();
+                    });
+                }
+            };
+
+            const onWindowPointerUp = () => {
+                isUserDraggingChart = false;
+                window.removeEventListener('pointermove', onWindowPointerMove);
+                window.removeEventListener('pointerup', onWindowPointerUp);
+                window.removeEventListener('touchmove', onWindowPointerMove);
+                window.removeEventListener('touchend', onWindowPointerUp);
+                if (chartDragRafId) {
+                    cancelAnimationFrame(chartDragRafId);
+                    chartDragRafId = null;
+                }
+                redrawCanvasOverlay();
+            };
+
+            mainContainer.addEventListener('pointerdown', (e) => {
+                if (currentDrawingTool) return;
+                if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) return;
+                isUserDraggingChart = true;
+                window.addEventListener('pointermove', onWindowPointerMove);
+                window.addEventListener('pointerup', onWindowPointerUp);
+                window.addEventListener('touchmove', onWindowPointerMove, { passive: true });
+                window.addEventListener('touchend', onWindowPointerUp);
+            });
+
+            mainContainer.addEventListener('wheel', () => {
+                requestAnimationFrame(() => redrawCanvasOverlay());
+            }, { passive: true });
+
+            mainContainer.addEventListener('dblclick', () => {
+                setTimeout(() => redrawCanvasOverlay(), 50);
+            });
+
             resizeDrawingCanvas();
+        }
+
+        function attachDrawingSyncPrimitive(series) {
+            if (!series || typeof series.attachPrimitive !== 'function') return;
+            try {
+                const syncPrimitive = {
+                    updateAllViews: function() {
+                        redrawCanvasOverlay();
+                    },
+                    paneViews: function() {
+                        return [{
+                            zOrder: function() { return 'top'; },
+                            renderer: function() {
+                                return {
+                                    draw: function() {
+                                        redrawCanvasOverlay();
+                                    }
+                                };
+                            }
+                        }];
+                    }
+                };
+                series.attachPrimitive(syncPrimitive);
+            } catch (err) {
+                console.warn('Could not attach drawing sync primitive:', err);
+            }
         }
 
         function resizeDrawingCanvas() {
@@ -1591,6 +1662,8 @@
                 });
                 mainSeries.setData(data.candles.map(c => ({ time: c.time, value: c.close })));
             }
+
+            attachDrawingSyncPrimitive(mainSeries);
 
             volumeSeries = mainChart.addHistogramSeries({
                 color: '#26a69a',
