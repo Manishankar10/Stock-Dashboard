@@ -10,8 +10,8 @@
                 activeSymbols.forEach(s => {
                     if (s) allSymbols.add(s);
                 });
-            } else if (currentTab === 'portfolios') {
-                if (activePortfolioName === 'All') {
+            } else if (currentTab === 'portfolios' || !window.portfoliosLoaded) {
+                if (activePortfolioName === 'All' || !activePortfolioName) {
                     Object.values(portfoliosData || {}).forEach(holdings => {
                         (holdings || []).forEach(h => {
                             if (h && h.symbol) allSymbols.add(h.symbol);
@@ -245,6 +245,11 @@
                     footDayPnl.classList.remove('pos', 'neg');
                     footDayPnl.classList.add(totDayPnL >= 0 ? 'pos' : 'neg');
                 }
+
+                // Reorder portfolio rows in DOM according to active pfSortOption (e.g. Day P&L High to Low)
+                if (typeof reorderPortfolioTableRows === 'function') {
+                    reorderPortfolioTableRows();
+                }
             }
 
             // Check Active Price Alerts
@@ -340,6 +345,10 @@
 
             if (targetTab === 'watchlists') {
                 await fetchWatchlists();
+            } else if (targetTab === 'portfolios') {
+                if (typeof fetchPortfolios === 'function') {
+                    await fetchPortfolios();
+                }
             }
 
             switchTab(targetTab, false);

@@ -245,8 +245,148 @@
         }
 
         // =========================================================
-        // PORTFOLIO FUNCTIONS
+        // PORTFOLIO FUNCTIONS & SORTING HELPERS
         // =========================================================
+        function compareDayPnl(symA, symB, qtyA, qtyB, desc = true) {
+            const infoA = stockPricesData[symA] || {};
+            const infoB = stockPricesData[symB] || {};
+            const hasA = infoA && !infoA.error && infoA.change_pct !== undefined && infoA.change_pct !== null && !isNaN(infoA.change_pct);
+            const hasB = infoB && !infoB.error && infoB.change_pct !== undefined && infoB.change_pct !== null && !isNaN(infoB.change_pct);
+
+            if (hasA && !hasB) return -1;
+            if (!hasA && hasB) return 1;
+            if (!hasA && !hasB) return (symA || '').localeCompare(symB || '');
+
+            const pctA = Number(infoA.change_pct);
+            const pctB = Number(infoB.change_pct);
+            const diff = desc ? (pctB - pctA) : (pctA - pctB);
+            if (diff !== 0) return diff;
+
+            const ltpA = infoA.price || 0;
+            const ltpB = infoB.price || 0;
+            const amtA = ltpA > 0 ? ((infoA.change || 0) * (qtyA || 0)) : 0;
+            const amtB = ltpB > 0 ? ((infoB.change || 0) * (qtyB || 0)) : 0;
+            const amtDiff = desc ? (amtB - amtA) : (amtA - amtB);
+            if (amtDiff !== 0) return amtDiff;
+
+            return (symA || '').localeCompare(symB || '');
+        }
+
+        function getPfHeaderSortIcon(descOption, ascOption) {
+            if (pfSortOption === descOption) return '<span style="color:#10b981; margin-left:4px;">▼</span>';
+            if (ascOption && pfSortOption === ascOption) return '<span style="color:#10b981; margin-left:4px;">▲</span>';
+            return '<span style="opacity:0.3; margin-left:4px;">↕</span>';
+        }
+
+        function togglePfSortHeader(descOption, ascOption) {
+            if (pfSortOption === descOption && ascOption) {
+                pfSortOption = ascOption;
+            } else {
+                pfSortOption = descOption;
+            }
+            const select = document.getElementById('pf-sort-select');
+            if (select) select.value = pfSortOption;
+            renderPortfolios();
+        }
+        window.togglePfSortHeader = togglePfSortHeader;
+
+        function reorderPortfolioTableRows() {
+            // 1. Desktop table
+            const tbody = document.querySelector('.pf-table tbody');
+            if (tbody) {
+                const rows = Array.from(tbody.querySelectorAll('tr.pf-row'));
+                if (rows.length > 1) {
+                    rows.sort((rowA, rowB) => {
+                        const symA = rowA.getAttribute('data-symbol') || '';
+                        const symB = rowB.getAttribute('data-symbol') || '';
+                        const qtyA = parseFloat(rowA.getAttribute('data-qty') || '0');
+                        const qtyB = parseFloat(rowB.getAttribute('data-qty') || '0');
+                        const buyPriceA = parseFloat(rowA.getAttribute('data-buy-price') || '0');
+                        const buyPriceB = parseFloat(rowB.getAttribute('data-buy-price') || '0');
+                        const buyDateA = rowA.getAttribute('data-buy-date') || '';
+                        const buyDateB = rowB.getAttribute('data-buy-date') || '';
+
+                        const infoA = stockPricesData[symA] || {};
+                        const infoB = stockPricesData[symB] || {};
+                        const ltpA = infoA.price || buyPriceA;
+                        const ltpB = infoB.price || buyPriceB;
+
+                        const invA = buyPriceA * qtyA;
+                        const invB = buyPriceB * qtyB;
+                        const valA = ltpA * qtyA;
+                        const valB = ltpB * qtyB;
+
+                        const pnlPctA = invA > 0 ? ((valA - invA) / invA) * 100 : 0;
+                        const pnlPctB = invB > 0 ? ((valB - invB) / invB) * 100 : 0;
+
+                        const daysA = getHoldingDays(buyDateA);
+                        const daysB = getHoldingDays(buyDateB);
+
+                        if (pfSortOption === 'day_pnl_desc') return compareDayPnl(symA, symB, qtyA, qtyB, true);
+                        if (pfSortOption === 'day_pnl_asc') return compareDayPnl(symA, symB, qtyA, qtyB, false);
+                        if (pfSortOption === 'duration_desc') return daysB - daysA;
+                        if (pfSortOption === 'duration_asc') return daysA - daysB;
+                        if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
+                        if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
+                        if (pfSortOption === 'val_desc') return valB - valA;
+                        if (pfSortOption === 'date_desc') return (buyDateB || '').localeCompare(buyDateA || '');
+                        if (pfSortOption === 'date_asc') return (buyDateA || '').localeCompare(buyDateB || '');
+                        if (pfSortOption === 'name_asc') return symA.localeCompare(symB);
+                        return 0;
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                }
+            }
+
+            // 2. Mobile cards
+            const mobList = document.querySelector('.pf-mob-list');
+            if (mobList) {
+                const cards = Array.from(mobList.querySelectorAll('.pf-mob-card'));
+                if (cards.length > 1) {
+                    cards.sort((cardA, cardB) => {
+                        const symA = cardA.getAttribute('data-symbol') || '';
+                        const symB = cardB.getAttribute('data-symbol') || '';
+                        const qtyA = parseFloat(cardA.getAttribute('data-qty') || '0');
+                        const qtyB = parseFloat(cardB.getAttribute('data-qty') || '0');
+                        const buyPriceA = parseFloat(cardA.getAttribute('data-buy-price') || '0');
+                        const buyPriceB = parseFloat(cardB.getAttribute('data-buy-price') || '0');
+                        const buyDateA = cardA.getAttribute('data-buy-date') || '';
+                        const buyDateB = cardB.getAttribute('data-buy-date') || '';
+
+                        const infoA = stockPricesData[symA] || {};
+                        const infoB = stockPricesData[symB] || {};
+                        const ltpA = infoA.price || buyPriceA;
+                        const ltpB = infoB.price || buyPriceB;
+
+                        const invA = buyPriceA * qtyA;
+                        const invB = buyPriceB * qtyB;
+                        const valA = ltpA * qtyA;
+                        const valB = ltpB * qtyB;
+
+                        const pnlPctA = invA > 0 ? ((valA - invA) / invA) * 100 : 0;
+                        const pnlPctB = invB > 0 ? ((valB - invB) / invB) * 100 : 0;
+
+                        const daysA = getHoldingDays(buyDateA);
+                        const daysB = getHoldingDays(buyDateB);
+
+                        if (pfSortOption === 'day_pnl_desc') return compareDayPnl(symA, symB, qtyA, qtyB, true);
+                        if (pfSortOption === 'day_pnl_asc') return compareDayPnl(symA, symB, qtyA, qtyB, false);
+                        if (pfSortOption === 'duration_desc') return daysB - daysA;
+                        if (pfSortOption === 'duration_asc') return daysA - daysB;
+                        if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
+                        if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
+                        if (pfSortOption === 'val_desc') return valB - valA;
+                        if (pfSortOption === 'date_desc') return (buyDateB || '').localeCompare(buyDateA || '');
+                        if (pfSortOption === 'date_asc') return (buyDateA || '').localeCompare(buyDateB || '');
+                        if (pfSortOption === 'name_asc') return symA.localeCompare(symB);
+                        return 0;
+                    });
+                    cards.forEach(c => mobList.appendChild(c));
+                }
+            }
+        }
+        window.reorderPortfolioTableRows = reorderPortfolioTableRows;
+
         async function fetchPortfolios() {
             const res = await fetch('/api/portfolios');
             portfoliosData = await res.json();
@@ -266,8 +406,15 @@
             } else {
                 activePortfolioName = '';
             }
+
+            // Initial render with placeholders / cached state
             renderPortfolios();
-            refreshPrices();
+
+            // Fetch live prices and re-render so Day P&L High to Low sort is fully applied initially
+            if (typeof refreshPrices === 'function') {
+                await refreshPrices();
+            }
+            renderPortfolios();
         }
         window.fetchPortfolios = fetchPortfolios;
 
@@ -470,13 +617,10 @@
                 const daysA = getHoldingDays(a.buy_date);
                 const daysB = getHoldingDays(b.buy_date);
 
-                const dayPnlPctA = infoA.change_pct !== undefined ? infoA.change_pct : 0;
-                const dayPnlPctB = infoB.change_pct !== undefined ? infoB.change_pct : 0;
-
+                if (pfSortOption === 'day_pnl_desc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, true);
+                if (pfSortOption === 'day_pnl_asc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, false);
                 if (pfSortOption === 'duration_desc') return daysB - daysA;
                 if (pfSortOption === 'duration_asc') return daysA - daysB;
-                if (pfSortOption === 'day_pnl_desc') return dayPnlPctB - dayPnlPctA;
-                if (pfSortOption === 'day_pnl_asc') return dayPnlPctA - dayPnlPctB;
                 if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
                 if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
                 if (pfSortOption === 'val_desc') return valB - valA;
@@ -1128,13 +1272,10 @@
                 const daysA = getHoldingDays(a.buy_date);
                 const daysB = getHoldingDays(b.buy_date);
 
-                const dayPnlPctA = infoA.change_pct !== undefined ? infoA.change_pct : 0;
-                const dayPnlPctB = infoB.change_pct !== undefined ? infoB.change_pct : 0;
-
+                if (pfSortOption === 'day_pnl_desc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, true);
+                if (pfSortOption === 'day_pnl_asc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, false);
                 if (pfSortOption === 'duration_desc') return daysB - daysA;
                 if (pfSortOption === 'duration_asc') return daysA - daysB;
-                if (pfSortOption === 'day_pnl_desc') return dayPnlPctB - dayPnlPctA;
-                if (pfSortOption === 'day_pnl_asc') return dayPnlPctA - dayPnlPctB;
                 if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
                 if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
                 if (pfSortOption === 'val_desc') return valB - valA;
@@ -1193,6 +1334,10 @@
                         const itemEl = document.createElement('div');
                         itemEl.className = 'pf-mob-card';
                         itemEl.id = `pf-mob-card-${rowKey}`;
+                        itemEl.setAttribute('data-symbol', sym);
+                        itemEl.setAttribute('data-qty', item.quantity);
+                        itemEl.setAttribute('data-buy-price', item.buy_price);
+                        itemEl.setAttribute('data-buy-date', item.buy_date || '');
                         itemEl.title = 'Tap to view technical chart';
                         itemEl.onclick = (e) => {
                             openInHouseChart(sym);
@@ -1322,14 +1467,14 @@
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
-                        <th class="pf-col-stock">Stock</th>
+                        <th class="pf-col-stock" style="cursor: pointer;" onclick="togglePfSortHeader('name_asc')" title="Sort by Stock Symbol">Stock ${getPfHeaderSortIcon('name_asc')}</th>
                         <th class="pf-col-qty" style="text-align:right;">Qty</th>
                         <th class="pf-col-buy" style="text-align:right;">Avg Buy Price</th>
                         <th class="pf-col-ltp" style="text-align:right;">LTP (₹)</th>
                         <th class="pf-col-inv" style="text-align:right;">Invested (₹)</th>
-                        <th class="pf-col-val" style="text-align:right;">Current Val (₹)</th>
-                        <th class="pf-col-daypnl" style="text-align:right;">Day P&L</th>
-                        <th class="pf-col-pnl" style="text-align:right;">Overall P&L</th>
+                        <th class="pf-col-val" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('val_desc')" title="Sort by Current Value">Current Val (₹) ${getPfHeaderSortIcon('val_desc')}</th>
+                        <th class="pf-col-daypnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('day_pnl_desc', 'day_pnl_asc')" title="Sort by Day P&L">Day P&L ${getPfHeaderSortIcon('day_pnl_desc', 'day_pnl_asc')}</th>
+                        <th class="pf-col-pnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('pnl_desc', 'pnl_asc')" title="Sort by Overall P&L">Overall P&L ${getPfHeaderSortIcon('pnl_desc', 'pnl_asc')}</th>
                         <th class="pf-col-details" style="text-align:center;">Details</th>
                     </tr>
                 `;
@@ -1349,6 +1494,10 @@
                         const tr = document.createElement('tr');
                         tr.className = 'pf-row';
                         tr.id = `pf-row-${rowKey}`;
+                        tr.setAttribute('data-symbol', sym);
+                        tr.setAttribute('data-qty', item.quantity);
+                        tr.setAttribute('data-buy-price', item.buy_price);
+                        tr.setAttribute('data-buy-date', item.buy_date || '');
                         tr.title = 'Click row to view interactive technical chart';
                         tr.onclick = (e) => {
                             if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;

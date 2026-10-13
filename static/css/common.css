@@ -648,6 +648,14 @@
             top: 0;
             z-index: 10;
         }
+        .pf-table thead th[onclick] {
+            cursor: pointer !important;
+            user-select: none;
+            transition: color 0.15s ease;
+        }
+        .pf-table thead th[onclick]:hover {
+            color: var(--text-primary) !important;
+        }
         .pf-table th.pf-col-stock, .pf-table td.pf-col-stock {
             width: 20% !important;
             text-align: left !important;
