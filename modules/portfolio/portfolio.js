@@ -996,19 +996,19 @@
                 const pnlColor = pnlPos ? '#10b981' : '#ef4444';
 
                 summaryMount.innerHTML = `
-                    <div style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div class="tx-kpi-card tx-kpi-pnl" style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">TOTAL REALIZED P&L</div>
                         <div style="font-size: 15px; font-weight: 800; color: ${pnlColor}; margin-top: 2px;">
                             ${isPrivacyMode ? '₹ ••••••' : `${pnlSign}₹${Math.abs(totalRealizedPnl).toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
                         </div>
                     </div>
-                    <div style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div class="tx-kpi-card tx-kpi-sell" style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">SELL EXECUTIONS</div>
                         <div style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
                             ${sellCount} Trades Closed
                         </div>
                     </div>
-                    <div style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div class="tx-kpi-card tx-kpi-buy" style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">BUY EXECUTIONS</div>
                         <div style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
                             ${buyCount} Purchases
@@ -1357,7 +1357,6 @@
                                         <span class="badge ${bInfo.class}">${bInfo.label}</span>
                                         ${isAll ? `<span class="badge pf-badge">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}
                                     </div>
-                                    <div class="pf-mob-company-name" id="pf-name-${rowKey}">${escapeHtml(info.name || '')}</div>
                                 </div>
                                 <div class="pf-mob-pnl-group">
                                     <span class="pf-mob-pnl-line ${pnlClass}" id="pf-pnl-${rowKey}">
@@ -1628,8 +1627,9 @@
             // 3. Render Realized P&L & Transactions Ledger
             const txContainer = document.createElement('div');
             txContainer.style.cssText = 'margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);';
+            txContainer.className = 'tx-ledger-section';
             txContainer.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <div class="tx-header-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
                     <div>
                         <h3 style="margin:0; font-size: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
                             📜 Realized P&L & Transaction Log
@@ -1638,26 +1638,28 @@
                             Complete ledger of past Buy & Sell executions for accountability & tracking
                         </div>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="tx-search-input" placeholder="Search transactions..." style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); min-width: 180px;" onkeyup="renderTransactionsTable()">
-                        <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); font-weight: 600;">
-                            <span>Show Rows:</span>
-                            <select id="tx-rows-select" onchange="renderTransactionsTable()" style="padding: 5px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); cursor: pointer;">
-                                <option value="all" selected>Show All</option>
-                                <option value="20">20 Rows</option>
-                                <option value="50">50 Rows</option>
-                                <option value="100">100 Rows</option>
-                            </select>
+                    <div class="tx-controls-wrapper" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="tx-search-input" class="tx-search-input" placeholder="Search transactions..." style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); min-width: 180px;" onkeyup="renderTransactionsTable()">
+                        <div class="tx-filter-row" style="display: flex; align-items: center; gap: 10px;">
+                            <div class="tx-rows-group" style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); font-weight: 600;">
+                                <span>Show Rows:</span>
+                                <select id="tx-rows-select" onchange="renderTransactionsTable()" style="padding: 5px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); cursor: pointer;">
+                                    <option value="all" selected>Show All</option>
+                                    <option value="20">20 Rows</option>
+                                    <option value="50">50 Rows</option>
+                                    <option value="100">100 Rows</option>
+                                </select>
+                            </div>
+                            <button class="btn-secondary tx-export-btn" style="font-size: 12px; padding: 6px 14px;" onclick="exportTransactionsToCSV()" title="Export transaction ledger to CSV/Excel">📊 Export Ledger</button>
                         </div>
-                        <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="exportTransactionsToCSV()" title="Export transaction ledger to CSV/Excel">📊 Export Ledger</button>
                     </div>
                 </div>
                 
-                <div id="tx-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div id="tx-summary-cards" class="tx-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
                 </div>
 
-                <div class="table-responsive-container" style="max-height: 520px; overflow-y: auto;">
-                    <table class="wl-table" id="transactions-table">
+                <div class="table-responsive-container tx-table-container" style="max-height: 520px; overflow-y: auto;">
+                    <table class="wl-table tx-ledger-table" id="transactions-table">
                         <thead>
                             <tr>
                                 <th>Execution Date</th>

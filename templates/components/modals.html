@@ -251,6 +251,7 @@
                                 <div class="popover-menu-title">Indicators</div>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkCdRider" onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 600;">CDRider (Supertrend)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> <span>Volume</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkVolumeMa" checked onchange="toggleIndicators()"> <span style="color:#2962ff">Volume MA (20)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkSma50" onchange="toggleIndicators()"> <span style="color:#ff6d00">50 DMA</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkSma200" onchange="toggleIndicators()"> <span style="color:#e11d48">200 DMA</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkEma9" onchange="toggleIndicators()"> <span style="color:#06b6d4">EMA 9</span></label>
@@ -378,7 +379,8 @@
                 <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
                 <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
                 <div class="legend-item">C: <span class="legend-val" id="legClose">-</span> <span class="legend-val" id="legChgPct" style="margin-left: 2px; font-weight: 700;">-</span></div>
-                <div class="legend-item">VOL: <span class="legend-val" id="legVol">-</span></div>
+                <div class="legend-item" id="legVolGroup">VOL: <span class="legend-val" id="legVol">-</span></div>
+                <div class="legend-item" id="legVolMaGroup">VOL MA: <span class="legend-val" style="color:#2962ff" id="legVolMa">-</span></div>
                 <div class="legend-item" id="legSmaGroup">
                     CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> <span id="legCdRiderGroup">|</span>
                     50 DMA: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |

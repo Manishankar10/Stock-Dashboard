@@ -378,6 +378,21 @@ def get_chart_history():
 
     volume_data = [volume_dict[t] for t in sorted_times if t in volume_dict]
 
+    # Calculate Volume MA (20-period Moving Average)
+    volume_ma = []
+    if volume_data:
+        vol_vals = [float(v.get('value') or 0) for v in volume_data]
+        vol_times = [v['time'] for v in volume_data]
+        period = 20
+        v_sum = 0.0
+        for i in range(len(volume_data)):
+            v_sum += vol_vals[i]
+            if i >= period:
+                v_sum -= vol_vals[i - period]
+                volume_ma.append({'time': vol_times[i], 'value': round(v_sum / period)})
+            else:
+                volume_ma.append({'time': vol_times[i], 'value': round(v_sum / (i + 1))})
+
     ind = calculate_indicators(candles)
     
     return jsonify({
@@ -385,6 +400,7 @@ def get_chart_history():
         'name': name,
         'candles': candles,
         'volume': volume_data,
+        'volume_ma': volume_ma,
         'sma20': ind['sma20'],
         'sma50': ind['sma50'],
         'sma200': ind['sma200'],

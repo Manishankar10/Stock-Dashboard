@@ -9,6 +9,7 @@
         var mainChart = window.mainChart || null;
         var mainSeries = window.mainSeries || null;
         var volumeSeries = window.volumeSeries || null;
+        var volumeMaSeries = window.volumeMaSeries || null;
         
         // Indicator Series
         var cdRiderSeries = null;
@@ -59,7 +60,7 @@
                 const saved = localStorage.getItem('capital_desk_chart_indicators');
                 if (saved) {
                     const prefs = JSON.parse(saved);
-                    const keys = ['chkVolume', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
+                    const keys = ['chkCdRider', 'chkVolume', 'chkVolumeMa', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
                     keys.forEach(k => {
                         const el = document.getElementById(k);
                         if (el && prefs[k] !== undefined) {
@@ -1214,6 +1215,7 @@
             }
 
             addSeriesToMap(data.volume, 'vol');
+            addSeriesToMap(data.volume_ma, 'vol_ma');
             addSeriesToMap(data.cdrider, 'cdrider');
             addSeriesToMap(data.sma50, 'sma50');
             addSeriesToMap(data.sma200, 'sma200');
@@ -1223,6 +1225,28 @@
             addSeriesToMap(data.macd_line, 'macd');
             addSeriesToMap(data.macd_signal, 'macdSignal');
             addSeriesToMap(data.macd_hist, 'macdHist');
+        }
+
+        function calculateVolumeMa(volumeData, period = 20) {
+            if (!volumeData || !Array.isArray(volumeData) || volumeData.length === 0) return [];
+            const result = [];
+            let sum = 0;
+            for (let i = 0; i < volumeData.length; i++) {
+                sum += (volumeData[i].value || 0);
+                if (i >= period) {
+                    sum -= (volumeData[i - period].value || 0);
+                    result.push({
+                        time: volumeData[i].time,
+                        value: Math.round(sum / period)
+                    });
+                } else {
+                    result.push({
+                        time: volumeData[i].time,
+                        value: Math.round(sum / (i + 1))
+                    });
+                }
+            }
+            return result;
         }
 
         function zoomChart(factor) {
@@ -1242,6 +1266,12 @@
             if (mainChart) {
                 mainChart.timeScale().fitContent();
                 mainChart.priceScale('right').applyOptions({ autoScale: true });
+                try {
+                    mainChart.priceScale('').applyOptions({
+                        autoScale: true,
+                        scaleMargins: { top: 0.8, bottom: 0 }
+                    });
+                } catch(e){}
             }
             if (rsiChart) {
                 rsiChart.timeScale().fitContent();
@@ -1493,8 +1523,8 @@
                     alignLabels: true,
                     entireTextOnly: false,
                     scaleMargins: {
-                        top: 0.25,
-                        bottom: 0.15
+                        top: 0.08,
+                        bottom: 0.25
                     }
                 },
                 timeScale: {
@@ -1563,9 +1593,42 @@
             }
 
             volumeSeries = mainChart.addHistogramSeries({
-                color: '#26a69a', priceFormat: { type: 'volume' }, priceScaleId: '', scaleMargins: { top: 0.75, bottom: 0 }
+                color: '#26a69a',
+                priceFormat: { type: 'volume' },
+                priceScaleId: '',
+                priceLineVisible: false,
+                lastValueVisible: false,
             });
             if (data.volume) volumeSeries.setData(data.volume);
+
+            // Strictly restrict volume overlay to the bottom 20% of the chart (TradingView standard)
+            try {
+                mainChart.priceScale('').applyOptions({
+                    scaleMargins: {
+                        top: 0.8,
+                        bottom: 0,
+                    },
+                });
+            } catch(e){}
+
+            // Volume MA (20-period Moving Average)
+            const volMaData = (data.volume_ma && data.volume_ma.length > 0)
+                ? data.volume_ma
+                : calculateVolumeMa(data.volume, 20);
+            data.volume_ma = volMaData;
+
+            volumeMaSeries = mainChart.addLineSeries({
+                color: '#2962ff',
+                lineWidth: 1.5,
+                priceScaleId: '',
+                priceFormat: { type: 'volume' },
+                priceLineVisible: false,
+                lastValueVisible: false,
+                title: 'Vol MA (20)',
+            });
+            if (volMaData && volMaData.length > 0) {
+                volumeMaSeries.setData(volMaData);
+            }
 
             // Indicators
             cdRiderSeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'CDRider', visible: false });
@@ -1642,7 +1705,8 @@
                     if (data.candles && data.candles.length > 0) {
                         const last = data.candles[data.candles.length - 1];
                         const lastVol = data.volume && data.volume.length > 0 ? data.volume[data.volume.length - 1].value : 0;
-                        updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol, data);
+                        const lastVolMa = data.volume_ma && data.volume_ma.length > 0 ? data.volume_ma[data.volume_ma.length - 1].value : null;
+                        updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol, data, null, lastVolMa);
                     }
                     updateRightAxisTimePriceBadge(null);
                     return;
@@ -1658,15 +1722,18 @@
                 }
                 const volData = param.seriesData.get(volumeSeries);
                 const volVal = volData ? volData.value : 0;
+                const volMaData = volumeMaSeries ? param.seriesData.get(volumeMaSeries) : null;
+                const volMaVal = volMaData ? volMaData.value : null;
 
-                updateLegend(param.time, o, h, l, c, volVal, data, param.time);
+                updateLegend(param.time, o, h, l, c, volVal, data, param.time, volMaVal);
                 updateRightAxisTimePriceBadge(null);
             });
 
             if (data.candles && data.candles.length > 0) {
                 const last = data.candles[data.candles.length - 1];
                 const lastVol = data.volume && data.volume.length > 0 ? data.volume[data.volume.length - 1].value : 0;
-                updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol, data);
+                const lastVolMa = data.volume_ma && data.volume_ma.length > 0 ? data.volume_ma[data.volume_ma.length - 1].value : null;
+                updateLegend(last.time, last.open, last.high, last.low, last.close, lastVol, data, null, lastVolMa);
             }
 
             setupRightPriceAxisHoverZone();
@@ -2131,7 +2198,7 @@
             badge.style.display = 'flex';
         }
 
-        function updateLegend(time, o, h, l, c, vol, fullData, curTime = null) {
+        function updateLegend(time, o, h, l, c, vol, fullData, curTime = null, volMaVal = null) {
             let timeStr = '-';
             if (time !== null && time !== undefined) {
                 const dateFormatted = formatChartAxisDate(time);
@@ -2150,6 +2217,17 @@
             document.getElementById('legClose').innerText = '₹' + (c ? c.toFixed(2) : '-');
             document.getElementById('legVol').innerText = vol ? vol.toLocaleString('en-IN') : '-';
 
+            const lookupTime = curTime || time;
+            const rec = lookupTime !== null ? indicatorDataMap.get(lookupTime) : null;
+            const finalVolMa = (volMaVal !== null && volMaVal !== undefined)
+                ? volMaVal
+                : ((rec && rec.vol_ma !== undefined) ? rec.vol_ma : null);
+
+            const elVolMa = document.getElementById('legVolMa');
+            if (elVolMa) {
+                elVolMa.innerText = (finalVolMa !== null && finalVolMa !== undefined) ? finalVolMa.toLocaleString('en-IN') : '-';
+            }
+
             const elChgPct = document.getElementById('legChgPct');
             if (elChgPct) {
                 if (o && c && o > 0) {
@@ -2162,9 +2240,6 @@
                     elChgPct.innerText = '';
                 }
             }
-
-            const lookupTime = curTime || time;
-            const rec = lookupTime !== null ? indicatorDataMap.get(lookupTime) : null;
 
             const elCdRider = document.getElementById('legCdRider');
             if (elCdRider) elCdRider.innerText = (rec && rec.cdrider !== undefined) ? '₹' + rec.cdrider.toFixed(2) : '-';
@@ -2190,6 +2265,7 @@
 
             const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false;
             const showVol = document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true;
+            const showVolMa = document.getElementById('chkVolumeMa') ? document.getElementById('chkVolumeMa').checked : true;
             const showSma50 = document.getElementById('chkSma50') ? document.getElementById('chkSma50').checked : false;
             const showSma200 = document.getElementById('chkSma200') ? document.getElementById('chkSma200').checked : false;
             const showEma9 = document.getElementById('chkEma9') ? document.getElementById('chkEma9').checked : false;
@@ -2201,6 +2277,7 @@
                 localStorage.setItem('capital_desk_chart_indicators', JSON.stringify({
                     chkCdRider: showCdRider,
                     chkVolume: showVol,
+                    chkVolumeMa: showVolMa,
                     chkSma50: showSma50,
                     chkSma200: showSma200,
                     chkEma9: showEma9,
@@ -2215,6 +2292,7 @@
                 mainSeries.setMarkers(showCdRider ? cachedCdRiderMarkers : []);
             }
             volumeSeries.applyOptions({ visible: showVol });
+            if (volumeMaSeries) volumeMaSeries.applyOptions({ visible: showVol && showVolMa });
             if (sma50Series) sma50Series.applyOptions({ visible: showSma50 });
             if (sma200Series) sma200Series.applyOptions({ visible: showSma200 });
             if (ema9Series) ema9Series.applyOptions({ visible: showEma9 });
@@ -2222,6 +2300,13 @@
 
             if (document.getElementById('legCdRiderGroup')) {
                 document.getElementById('legCdRiderGroup').style.display = showCdRider ? 'inline' : 'none';
+            }
+
+            if (document.getElementById('legVolGroup')) {
+                document.getElementById('legVolGroup').style.display = showVol ? 'inline-block' : 'none';
+            }
+            if (document.getElementById('legVolMaGroup')) {
+                document.getElementById('legVolMaGroup').style.display = (showVol && showVolMa) ? 'inline-block' : 'none';
             }
 
             document.getElementById('rsiChartPane').style.display = showRsi ? 'block' : 'none';
