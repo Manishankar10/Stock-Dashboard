@@ -193,10 +193,13 @@
 
     /* Search Box & Controls for Mobile Watchlist */
     #watchlist-view-mount .controls {
+        position: relative !important;
+        width: 100% !important;
         padding: 0 4px 10px 4px !important;
         margin-bottom: 6px !important;
         gap: 6px !important;
         flex-direction: column !important;
+        box-sizing: border-box !important;
     }
 
     /* Responsive Search Row: Search Bar resized to 90% and Menu Button at right end */
@@ -250,12 +253,17 @@
         background: var(--trade-green-glow, rgba(16, 185, 129, 0.15)) !important;
     }
 
-    /* Mobile Menu Drawer (Dropdown Card) */
+    /* Mobile Menu Drawer (Overlay Card above watchlist content) */
     .wl-mobile-menu-drawer {
         display: none;
-        width: 100% !important;
-        margin-top: 4px !important;
-        margin-bottom: 8px !important;
+        position: absolute !important;
+        top: 100% !important;
+        left: 4px !important;
+        right: 4px !important;
+        width: calc(100% - 8px) !important;
+        margin-top: 2px !important;
+        margin-bottom: 0 !important;
+        z-index: 1050 !important;
         animation: menuFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -273,7 +281,7 @@
         border: 1px solid var(--border-color) !important;
         border-radius: 14px !important;
         padding: 8px !important;
-        box-shadow: var(--shadow-md) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12) !important;
         display: flex;
         flex-direction: column;
         gap: 3px;

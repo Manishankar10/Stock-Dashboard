@@ -1328,8 +1328,8 @@
                         <th class="pf-col-ltp" style="text-align:right;">LTP (₹)</th>
                         <th class="pf-col-inv" style="text-align:right;">Invested (₹)</th>
                         <th class="pf-col-val" style="text-align:right;">Current Val (₹)</th>
-                        <th class="pf-col-pnl" style="text-align:right;">Overall P&L</th>
                         <th class="pf-col-daypnl" style="text-align:right;">Day P&L</th>
+                        <th class="pf-col-pnl" style="text-align:right;">Overall P&L</th>
                         <th class="pf-col-details" style="text-align:center;">Details</th>
                     </tr>
                 `;
@@ -1445,8 +1445,8 @@
                         tr.appendChild(tdLtp);
                         tr.appendChild(tdInv);
                         tr.appendChild(tdVal);
-                        tr.appendChild(tdPnl);
                         tr.appendChild(tdDayPnl);
+                        tr.appendChild(tdPnl);
                         tr.appendChild(tdDetails);
 
                         tbody.appendChild(tr);
@@ -1459,8 +1459,8 @@
                         <td colspan="4" class="pf-col-total" style="text-align:left;">PORTFOLIO TOTAL:</td>
                         <td id="pf-foot-inv" class="pf-col-inv" style="text-align:right;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
                         <td id="pf-foot-val" class="pf-col-val" style="text-align:right;">${initialTotInvested > 0 ? initValStr : '₹0.00'}</td>
-                        <td id="pf-foot-pnl" class="${initialTotPnL >= 0 ? 'pos' : 'neg'} pf-col-pnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
                         <td id="pf-foot-daypnl" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'} pf-col-daypnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
+                        <td id="pf-foot-pnl" class="${initialTotPnL >= 0 ? 'pos' : 'neg'} pf-col-pnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
                         <td class="pf-col-details" style="text-align:center;"></td>
                     </tr>
                 `;
