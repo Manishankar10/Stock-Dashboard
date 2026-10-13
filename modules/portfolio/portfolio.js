@@ -1042,7 +1042,6 @@
             displayTxs.forEach(t => {
                 const tr = document.createElement('tr');
                 const isSell = t.type === 'SELL';
-                const bInfo = getSymbolBadge(t.symbol);
 
                 const dateStr = formatDateFormatted(t.date || t.timestamp);
                 const pnlAmt = t.realized_pnl || 0;
@@ -1054,8 +1053,7 @@
                     <td><span style="font-size: 12px; font-weight: 600; color: var(--text-primary);">${dateStr}</span></td>
                     <td><span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(t.portfolio || 'Portfolio')}</span></td>
                     <td>
-                        <span class="stock-symbol" style="font-size: 13px;">${escapeHtml(cleanDisplaySymbol(t.symbol))}</span> 
-                        <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                        <span class="stock-symbol" style="font-size: 13px;">${escapeHtml(cleanDisplaySymbol(t.symbol))}</span>
                     </td>
                     <td style="text-align:center;">
                         <span style="font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; ${isSell ? 'background: rgba(239,68,68,0.15); color: #ef4444;' : 'background: rgba(16,185,129,0.15); color: #10b981;'}">
