@@ -524,7 +524,10 @@
                     menuBtn.style.fontSize = '12px';
                     menuBtn.style.fontWeight = '600';
                     menuBtn.title = `Actions for ${sym}`;
-                    menuBtn.innerHTML = '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
+                    const isMob = window.innerWidth <= 768;
+                    menuBtn.innerHTML = isMob
+                        ? '<span class="wl-setting-icon">⚙️</span>'
+                        : '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
                     menuBtn.onclick = (e) => {
                         e.stopPropagation();
                         toggleWlRowMenu(e, sym);

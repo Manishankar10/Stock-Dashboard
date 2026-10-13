@@ -421,7 +421,7 @@
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 0px 5px !important;
+        padding: 7px 5px !important;
         border-bottom: 1px solid var(--border-color) !important;
         background: transparent !important;
         cursor: pointer;
@@ -571,7 +571,6 @@
         border: none !important;
         color: var(--text-muted) !important;
         padding: 0 3px !important;
-        font-size: 14px !important;
         cursor: pointer;
         opacity: 0.65;
         line-height: 1 !important;
@@ -579,6 +578,15 @@
         align-items: center !important;
         justify-content: center !important;
         white-space: nowrap !important;
+        font-size: 0 !important; /* Strips any arrow icon or text completely */
+    }
+
+    .wl-table .wl-col-actions .btn-secondary::before,
+    .wl-table .wl-col-actions .wl-row-menu-btn::before {
+        content: "⚙️" !important;
+        font-size: 14px !important;
+        line-height: 1 !important;
+        display: inline-block !important;
     }
 
     .wl-table .wl-col-actions .btn-secondary:hover,
@@ -590,13 +598,28 @@
     }
 
     /* Do not show arrow icon below/beside setting icon on mobile */
-    .wl-table .wl-col-actions .wl-setting-arrow {
+    .wl-table .wl-col-actions .wl-setting-icon,
+    .wl-table .wl-col-actions .wl-setting-arrow,
+    .wl-mob-accordion-caret {
         display: none !important;
     }
 }
 
 /* Desktop Defaults for Mobile-Only Watchlist & Portfolio Elements (Web version untouched) */
 @media (min-width: 769px) {
+    .wl-table .wl-col-actions .btn-secondary,
+    .wl-table .wl-col-actions .wl-row-menu-btn {
+        font-size: 12px !important;
+    }
+    .wl-table .wl-col-actions .btn-secondary::before,
+    .wl-table .wl-col-actions .wl-row-menu-btn::before {
+        content: none !important;
+    }
+    .wl-table .wl-col-actions .wl-setting-icon,
+    .wl-table .wl-col-actions .wl-setting-arrow {
+        display: inline !important;
+    }
+
     .mobile-top-bar,
     .mobile-bottom-nav,
     .wl-add-tab-btn,
@@ -693,17 +716,15 @@
    3. PORTFOLIO RESPONSIVE DESIGN (MOBILE & TABLET)
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
-    /* Portfolio Header Card (Static / Sticky on Mobile) */
+    /* Portfolio Header Card (Flow with page on Mobile) */
     .portfolio-top-card {
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 100 !important;
+        position: static !important;
         padding: 8px 10px !important;
         margin-bottom: 12px !important;
         background: var(--bg-card) !important;
         border: 1px solid var(--border-color) !important;
         border-radius: 12px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
     }
 
     .portfolio-header-row {
@@ -1220,23 +1241,47 @@
    4. NAVIGATION BAR & SIDEBAR DRAWER RESPONSIVENESS
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
-    /* Static Header on Mobile (Refer Image 1) */
+    /* Static (Sticky at Top) App Header on Mobile across All Pages (Attached Image) */
     .mobile-top-bar {
         display: flex !important;
-        align-items: center;
-        justify-content: space-between;
-        padding: max(10px, var(--safe-area-top)) 14px 10px 14px !important;
-        background: rgba(15, 23, 42, 0.92) !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: max(8px, var(--safe-area-top)) 14px 8px 14px !important;
+        background: rgba(15, 23, 42, 0.96) !important;
         backdrop-filter: blur(16px) !important;
         -webkit-backdrop-filter: blur(16px) !important;
-        border-bottom: 1px solid var(--border-color);
-        position: static !important;
-        top: auto !important;
-        z-index: auto !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        position: -webkit-sticky !important;
+        position: sticky !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        z-index: 1000 !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
     }
 
     [data-theme="light"] .mobile-top-bar {
-        background: rgba(248, 250, 252, 0.92) !important;
+        background: rgba(248, 250, 252, 0.96) !important;
+        border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .mobile-top-bar .btn-header-action {
+        background: rgba(30, 41, 59, 0.75) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 7px !important;
+        color: var(--text-primary) !important;
+        padding: 5px 9px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    [data-theme="light"] .mobile-top-bar .btn-header-action {
+        background: rgba(241, 245, 249, 0.9) !important;
+        border-color: rgba(0, 0, 0, 0.1) !important;
     }
 
     /* Mobile Sidebar Off-Canvas Drawer with iOS Safe Padding */
@@ -1282,7 +1327,7 @@
 
     /* High density list rows for landscape */
     .wl-table tr.pf-row {
-        padding: 0px 5px !important;
+        padding: 7px 5px !important;
     }
 
     .wl-price-val {
