@@ -420,6 +420,192 @@
         }
 
         // =========================================================
+        // FAVORITE DRAWING TOOLS SHORTCUTS (Mobile & Web)
+        // =========================================================
+        const CHART_TOOL_META = {
+            'support_click': { id: 'support_click', icon: '📍', title: 'Support Line (Click)', action: () => activateDrawingTool('support_click') },
+            'support': { id: 'support', icon: '🟢', title: 'Support Line (Price)', action: () => addHorizontalLinePrompt('support') },
+            'target': { id: 'target', icon: '🎯', title: 'Target Price Line', action: () => addHorizontalLinePrompt('target') },
+            'stoploss': { id: 'stoploss', icon: '🛑', title: 'StopLoss Line', action: () => addHorizontalLinePrompt('stoploss') },
+            'trendline': { id: 'trendline', icon: '📈', title: 'Diagonal Trendline', action: () => activateDrawingTool('trendline') },
+            'rectangle': { id: 'rectangle', icon: '⬛', title: 'Rectangle Zone', action: () => activateDrawingTool('rectangle') },
+            'pricerange': { id: 'pricerange', icon: '📏', title: 'Price Range %', action: () => activateDrawingTool('pricerange') },
+            'vertical': { id: 'vertical', icon: '🕒', title: 'Time Line Marker', action: () => activateDrawingTool('vertical') },
+            'note': { id: 'note', icon: '📝', title: 'Text Note / Callout', action: () => activateDrawingTool('note') }
+        };
+
+        function getFavoriteTools() {
+            try {
+                const saved = localStorage.getItem('capital_desk_favorite_tools');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) return parsed;
+                }
+            } catch(e) {}
+            return ['trendline', 'support', 'target', 'rectangle', 'pricerange'];
+        }
+
+        function setFavoriteTools(toolsList) {
+            try {
+                localStorage.setItem('capital_desk_favorite_tools', JSON.stringify(toolsList));
+            } catch(e) {}
+            renderFavoriteToolsShortcuts();
+            updatePopoverToolStars();
+
+            fetch('/api/user/favorite_tools', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ favorite_tools: toolsList })
+            }).catch(e => console.warn('Could not save favorite tools:', e));
+        }
+
+        function toggleFavoriteTool(toolId, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            let favs = getFavoriteTools().slice();
+            const idx = favs.indexOf(toolId);
+            if (idx >= 0) {
+                favs.splice(idx, 1);
+            } else {
+                favs.push(toolId);
+            }
+            setFavoriteTools(favs);
+        }
+
+        function executeToolById(toolId) {
+            const meta = CHART_TOOL_META[toolId];
+            if (meta && typeof meta.action === 'function') {
+                meta.action();
+            }
+        }
+
+        function updatePopoverToolStars() {
+            const favs = getFavoriteTools();
+            Object.keys(CHART_TOOL_META).forEach(id => {
+                const btn = document.getElementById(`tool-btn-${id}`);
+                if (!btn) return;
+                const star = btn.querySelector('.tool-fav-star');
+                if (!star) return;
+                const isFav = favs.includes(id);
+                star.innerHTML = isFav ? '★' : '☆';
+                star.classList.toggle('active', isFav);
+                star.title = isFav ? 'Remove from favorites' : 'Add to favorites';
+            });
+        }
+
+        function renderFavoriteToolsShortcuts() {
+            const favs = getFavoriteTools();
+            const webBar = document.getElementById('chartWebFavBar');
+            const mobileBar = document.getElementById('chartMobileFavBar');
+            const mobileIcons = document.getElementById('mobileFavBarIcons');
+
+            // Render Web Toolbar (Image 2 - at end of legend row)
+            if (webBar) {
+                webBar.innerHTML = '';
+                favs.forEach(id => {
+                    const meta = CHART_TOOL_META[id];
+                    if (!meta) return;
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = `chart-web-fav-btn ${currentDrawingTool === id ? 'active' : ''}`;
+                    btn.setAttribute('data-tool-id', id);
+                    btn.title = meta.title;
+                    btn.innerHTML = meta.icon;
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        executeToolById(id);
+                    };
+                    webBar.appendChild(btn);
+                });
+            }
+
+            // Render Mobile Floating Toolbar (Image 1)
+            if (mobileBar && mobileIcons) {
+                mobileIcons.innerHTML = '';
+                if (favs.length === 0) {
+                    mobileBar.style.display = 'none';
+                } else {
+                    mobileBar.style.display = 'flex';
+                    favs.forEach(id => {
+                        const meta = CHART_TOOL_META[id];
+                        if (!meta) return;
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = `chart-mobile-fav-btn ${currentDrawingTool === id ? 'active' : ''}`;
+                        btn.setAttribute('data-tool-id', id);
+                        btn.title = meta.title;
+                        btn.innerHTML = meta.icon;
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            executeToolById(id);
+                        };
+                        mobileIcons.appendChild(btn);
+                    });
+                }
+            }
+
+            updatePopoverToolStars();
+        }
+
+        let isMobileFavBarDragInitialized = false;
+        function initMobileFavBarDrag() {
+            if (isMobileFavBarDragInitialized) return;
+            const bar = document.getElementById('chartMobileFavBar');
+            if (!bar) return;
+            isMobileFavBarDragInitialized = true;
+            const handle = bar.querySelector('.fav-bar-handle') || bar;
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let initialLeft = 0, initialTop = 0;
+
+            const onPointerDown = (e) => {
+                isDragging = true;
+                const rect = bar.getBoundingClientRect();
+                const parentRect = (bar.parentElement || document.body).getBoundingClientRect();
+                initialLeft = rect.left - parentRect.left;
+                initialTop = rect.top - parentRect.top;
+                const pt = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+                startX = pt.clientX;
+                startY = pt.clientY;
+                bar.style.right = 'auto';
+                bar.style.left = initialLeft + 'px';
+                bar.style.top = initialTop + 'px';
+                window.addEventListener('pointermove', onPointerMove, { passive: false });
+                window.addEventListener('pointerup', onPointerUp);
+                window.addEventListener('touchmove', onPointerMove, { passive: false });
+                window.addEventListener('touchend', onPointerUp);
+            };
+
+            const onPointerMove = (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const pt = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+                const dx = pt.clientX - startX;
+                const dy = pt.clientY - startY;
+                const parentRect = (bar.parentElement || document.body).getBoundingClientRect();
+                const maxLeft = parentRect.width - bar.offsetWidth - 4;
+                const maxTop = parentRect.height - bar.offsetHeight - 4;
+                const newLeft = Math.max(4, Math.min(maxLeft, initialLeft + dx));
+                const newTop = Math.max(4, Math.min(maxTop, initialTop + dy));
+                bar.style.left = newLeft + 'px';
+                bar.style.top = newTop + 'px';
+            };
+
+            const onPointerUp = () => {
+                isDragging = false;
+                window.removeEventListener('pointermove', onPointerMove);
+                window.removeEventListener('pointerup', onPointerUp);
+                window.removeEventListener('touchmove', onPointerMove);
+                window.removeEventListener('touchend', onPointerUp);
+            };
+
+            handle.addEventListener('pointerdown', onPointerDown);
+            handle.addEventListener('touchstart', onPointerDown, { passive: false });
+        }
+
+        // =========================================================
         // ADVANCED CHART DRAWING TOOLS (Trendline, Rectangle, Time Line, Note, Support Click)
         // =========================================================
         let currentDrawingTool = null; // 'support_click' | 'trendline' | 'rectangle' | 'vertical' | 'note'
@@ -444,7 +630,7 @@
         }
 
         function updateDrawingToolButtonsUI() {
-            const tools = ['support_click', 'support', 'target', 'stoploss', 'trendline', 'rectangle', 'vertical', 'note'];
+            const tools = ['support_click', 'support', 'target', 'stoploss', 'trendline', 'rectangle', 'pricerange', 'vertical', 'note'];
             tools.forEach(t => {
                 const btn = document.getElementById(`tool-btn-${t}`);
                 if (btn) {
@@ -458,6 +644,10 @@
                         btn.style.color = '#787b86';
                     }
                 }
+            });
+            document.querySelectorAll('.chart-mobile-fav-btn, .chart-web-fav-btn').forEach(btn => {
+                const tid = btn.getAttribute('data-tool-id');
+                btn.classList.toggle('active', tid === currentDrawingTool);
             });
         }
 
@@ -1430,6 +1620,9 @@
 
             const rangeLabel = document.getElementById('rangeBtnLabel');
             if (rangeLabel) rangeLabel.innerHTML = '<span class="btn-icon">📅</span><span class="btn-text"> 1Y</span>';
+
+            renderFavoriteToolsShortcuts();
+            initMobileFavBarDrag();
 
             loadChartData();
         }
@@ -2495,5 +2688,8 @@
         window.deleteSelectedDrawing = deleteSelectedDrawing;
         window.clearAllChartDrawings = clearAllChartDrawings;
         window.resetChartZoom = resetChartZoom;
+        window.renderFavoriteToolsShortcuts = renderFavoriteToolsShortcuts;
+        window.toggleFavoriteTool = toggleFavoriteTool;
+        window.executeToolById = executeToolById;
 
 

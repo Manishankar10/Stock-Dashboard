@@ -1157,9 +1157,117 @@
         .tf-btn, .int-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
         .tf-btn:hover, .int-btn:hover { color: #d1d4dc; background: #2a2e39; }
         .tf-btn.active, .int-btn.active { background: #10b981; color: #ffffff; }
-        .legend-bar { padding: 8px 20px; background: #181c27; font-size: 12px; color: #b2b5be; display: flex; gap: 16px; border-bottom: 1px solid #2a2e39; font-family: monospace; flex-wrap: wrap; }
+        .legend-bar {
+            padding: 6px 16px;
+            background: #181c27;
+            font-size: 12px;
+            color: #b2b5be;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid #2a2e39;
+            font-family: monospace;
+            flex-wrap: nowrap;
+        }
+        .legend-items-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            flex: 1;
+            min-width: 0;
+        }
         .legend-item { display: flex; gap: 5px; }
         .legend-val { color: #ffffff; font-weight: bold; }
+
+        /* Popover Tool Star Icons */
+        .popover-tool-item {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .popover-tool-item .tool-item-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+        .popover-tool-item .tool-fav-star {
+            font-size: 16px;
+            line-height: 1;
+            color: #64748b;
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-left: 8px;
+            flex-shrink: 0;
+            user-select: none;
+        }
+        .popover-tool-item .tool-fav-star:hover {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.15);
+        }
+        .popover-tool-item .tool-fav-star.active {
+            color: #f59e0b;
+        }
+
+        /* Web Favorite Tools Bar at End of Legend Row (Refer Image 2) */
+        .chart-web-fav-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+            flex-shrink: 0;
+            padding-left: 8px;
+        }
+        .chart-web-fav-btn {
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1;
+            color: #d1d4dc;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            padding: 0;
+        }
+        .chart-web-fav-btn:hover {
+            background: #2a2e39;
+            border-color: #363a45;
+        }
+        .chart-web-fav-btn.active {
+            background: rgba(16, 185, 129, 0.25);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        [data-theme="light"] #chartModal .chart-web-fav-btn {
+            color: #334155;
+        }
+        [data-theme="light"] #chartModal .chart-web-fav-btn:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+        [data-theme="light"] #chartModal .chart-web-fav-btn.active {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: #10b981;
+            color: #059669;
+        }
+
+        /* Default mobile shortcut bar hidden on desktop/web */
+        .chart-mobile-fav-bar {
+            display: none;
+        }
         .chart-body-container { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; height: 100%; overflow: hidden; }
         #mainChartPane { flex: 3; width: 100%; position: relative; }
         #rsiChartPane { flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; }

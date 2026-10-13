@@ -578,6 +578,15 @@
                         if (adminLink) adminLink.style.display = 'flex';
                         if (sidebarAdminLink) sidebarAdminLink.style.display = 'flex';
                     }
+
+                    if (data.favorite_tools && Array.isArray(data.favorite_tools)) {
+                        try {
+                            localStorage.setItem('capital_desk_favorite_tools', JSON.stringify(data.favorite_tools));
+                        } catch(e) {}
+                        if (typeof window.renderFavoriteToolsShortcuts === 'function') {
+                            window.renderFavoriteToolsShortcuts();
+                        }
+                    }
                 } else {
                     window.location.href = '/login';
                 }

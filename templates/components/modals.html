@@ -282,15 +282,42 @@
 
                                 <div class="popover-divider"></div>
                                 <div class="popover-menu-title">Drawing Tools</div>
-                                <button class="popover-menu-item" id="tool-btn-support-click" onclick="activateDrawingTool('support_click'); closeAllChartPopovers();">📍 Support Line (Click Chart / Y-Axis)</button>
-                                <button class="popover-menu-item" id="tool-btn-support" onclick="addHorizontalLinePrompt('support'); closeAllChartPopovers();">🟢 Support Line (Enter Price)</button>
-                                <button class="popover-menu-item" id="tool-btn-target" onclick="addHorizontalLinePrompt('target'); closeAllChartPopovers();">🎯 Target Price Line</button>
-                                <button class="popover-menu-item" id="tool-btn-stoploss" onclick="addHorizontalLinePrompt('stoploss'); closeAllChartPopovers();">🛑 StopLoss Line</button>
-                                <button class="popover-menu-item" id="tool-btn-trendline" onclick="activateDrawingTool('trendline'); closeAllChartPopovers();">📈 Diagonal Trendline</button>
-                                <button class="popover-menu-item" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle'); closeAllChartPopovers();">⬛ Rectangle Zone</button>
-                                <button class="popover-menu-item" id="tool-btn-pricerange" onclick="activateDrawingTool('pricerange'); closeAllChartPopovers();">📏 Price Range & % Calculator</button>
-                                <button class="popover-menu-item" id="tool-btn-vertical" onclick="activateDrawingTool('vertical'); closeAllChartPopovers();">🕒 Time Line Marker</button>
-                                <button class="popover-menu-item" id="tool-btn-note" onclick="activateDrawingTool('note'); closeAllChartPopovers();">📍 Text Callout / Note</button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-support-click" onclick="activateDrawingTool('support_click'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>📍</span> <span>Support Line (Click Chart)</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('support_click', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-support" onclick="addHorizontalLinePrompt('support'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>🟢</span> <span>Support Line (Enter Price)</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('support', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-target" onclick="addHorizontalLinePrompt('target'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>🎯</span> <span>Target Price Line</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('target', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-stoploss" onclick="addHorizontalLinePrompt('stoploss'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>🛑</span> <span>StopLoss Line</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('stoploss', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-trendline" onclick="activateDrawingTool('trendline'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>📈</span> <span>Diagonal Trendline</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('trendline', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-rectangle" onclick="activateDrawingTool('rectangle'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>⬛</span> <span>Rectangle Zone</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('rectangle', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-pricerange" onclick="activateDrawingTool('pricerange'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>📏</span> <span>Price Range & % Calculator</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('pricerange', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-vertical" onclick="activateDrawingTool('vertical'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>🕒</span> <span>Time Line Marker</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('vertical', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-note" onclick="activateDrawingTool('note'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>📝</span> <span>Text Callout / Note</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('note', event)" title="Toggle Favorite">☆</span>
+                                </button>
 
                                 <div class="popover-divider"></div>
                                 <button class="popover-menu-item item-danger" onclick="clearDrawings(); closeAllChartPopovers();">🧹 Clear All Drawings</button>
@@ -374,22 +401,26 @@
 
             <!-- Legend Bar -->
             <div class="legend-bar" id="legendBar">
-                <div class="legend-item">DATE: <span class="legend-val" id="legDate">-</span></div>
-                <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
-                <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
-                <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
-                <div class="legend-item">C: <span class="legend-val" id="legClose">-</span> <span class="legend-val" id="legChgPct" style="margin-left: 2px; font-weight: 700;">-</span></div>
-                <div class="legend-item" id="legVolGroup">VOL: <span class="legend-val" id="legVol">-</span></div>
-                <div class="legend-item" id="legVolMaGroup" style="display: none;">VOL MA: <span class="legend-val" style="color:#2962ff" id="legVolMa">-</span></div>
-                <div class="legend-item" id="legSmaGroup">
-                    CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> <span id="legCdRiderGroup">|</span>
-                    50 DMA: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |
-                    200 DMA: <span class="legend-val" style="color:#e11d48" id="legSma200">-</span> |
-                    EMA 9: <span class="legend-val" style="color:#06b6d4" id="legEma9">-</span> |
-                    Gann 2-Day: <span class="legend-val" style="color:#ffffff" id="legGann2Day">-</span>
+                <div class="legend-items-wrapper">
+                    <div class="legend-item">DATE: <span class="legend-val" id="legDate">-</span></div>
+                    <div class="legend-item">O: <span class="legend-val" id="legOpen">-</span></div>
+                    <div class="legend-item">H: <span class="legend-val" id="legHigh">-</span></div>
+                    <div class="legend-item">L: <span class="legend-val" id="legLow">-</span></div>
+                    <div class="legend-item">C: <span class="legend-val" id="legClose">-</span> <span class="legend-val" id="legChgPct" style="margin-left: 2px; font-weight: 700;">-</span></div>
+                    <div class="legend-item" id="legVolGroup">VOL: <span class="legend-val" id="legVol">-</span></div>
+                    <div class="legend-item" id="legVolMaGroup" style="display: none;">VOL MA: <span class="legend-val" style="color:#2962ff" id="legVolMa">-</span></div>
+                    <div class="legend-item" id="legSmaGroup">
+                        CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> <span id="legCdRiderGroup">|</span>
+                        50 DMA: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |
+                        200 DMA: <span class="legend-val" style="color:#e11d48" id="legSma200">-</span> |
+                        EMA 9: <span class="legend-val" style="color:#06b6d4" id="legEma9">-</span> |
+                        Gann 2-Day: <span class="legend-val" style="color:#ffffff" id="legGann2Day">-</span>
+                    </div>
+                    <div class="legend-item" id="legRsiGroup">RSI: <span class="legend-val" style="color:#e040fb" id="legRsi">-</span></div>
+                    <div class="legend-item" id="legMacdGroup" style="display: none;">MACD: <span class="legend-val" style="color:#3b82f6" id="legMacd">-</span></div>
                 </div>
-                <div class="legend-item" id="legRsiGroup">RSI: <span class="legend-val" style="color:#e040fb" id="legRsi">-</span></div>
-                <div class="legend-item" id="legMacdGroup" style="display: none;">MACD: <span class="legend-val" style="color:#3b82f6" id="legMacd">-</span></div>
+                <!-- Web Favorite Tools Shortcuts at the end of this row (Refer Image 2) -->
+                <div class="chart-web-fav-bar" id="chartWebFavBar"></div>
             </div>
 
             <!-- Main Chart & Sub-Pane Container -->
@@ -405,6 +436,12 @@
                         <div id="chartLoaderSymbol" style="font-size: 12px; font-weight: 600; color: #10b981; margin-top: 4px; background: rgba(16, 185, 129, 0.12); padding: 3px 10px; border-radius: 12px; display: inline-block;"></div>
                         <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">Fetching historical candlestick data & technical indicators...</div>
                     </div>
+                </div>
+
+                <!-- Mobile Floating Favorite Tools Shortcuts (Refer Image 1) -->
+                <div id="chartMobileFavBar" class="chart-mobile-fav-bar" style="display: none;">
+                    <div class="fav-bar-handle" title="Drag to Reposition Toolbar">⋮⋮</div>
+                    <div class="fav-bar-icons" id="mobileFavBarIcons"></div>
                 </div>
 
                 <div id="mainChartPane" style="flex: 3; width: 100%; position: relative;"></div>

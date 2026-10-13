@@ -374,4 +374,27 @@ def get_user_info():
         user_record = users.get(uname, {})
         display_name = user_record.get("username", session.get("username", ""))
         is_admin = bool(user_record.get("is_admin", False) or user_record.get("role") == "admin")
-        return jsonify({"logged_in": True, "username": display_name, "is_admin": is_admin})
+        favorite_tools = user_record.get("favorite_tools", ["trendline", "support", "rectangle", "pricerange"])
+        return jsonify({
+            "logged_in": True,
+            "username": display_name,
+            "is_admin": is_admin,
+            "favorite_tools": favorite_tools
+        })
+    return jsonify({"logged_in": False}), 401
+
+
+@auth_admin_bp.route("/api/user/favorite_tools", methods=["POST"])
+@login_required
+def save_favorite_tools():
+    uname = str(session.get("username", "")).lower()
+    users = load_users()
+    if uname not in users:
+        return jsonify({"error": "User not found"}), 404
+    data = request.json or {}
+    favorite_tools = data.get("favorite_tools", [])
+    if not isinstance(favorite_tools, list):
+        return jsonify({"error": "Invalid format"}), 400
+    users[uname]["favorite_tools"] = favorite_tools
+    save_users(users)
+    return jsonify({"success": True, "favorite_tools": favorite_tools})

@@ -2187,11 +2187,80 @@
         margin: auto !important;
         box-sizing: border-box !important;
     }
+
+    /* Legend Bar on Mobile: Hide web favorite bar */
+    .chart-web-fav-bar {
+        display: none !important;
+    }
+
+    /* Mobile Floating Shortcut Toolbar (Refer Image 1) */
+    .chart-mobile-fav-bar {
+        display: flex !important;
+        position: absolute !important;
+        right: 10px !important;
+        top: 90px !important;
+        z-index: 35 !important;
+        background: rgba(24, 28, 39, 0.94) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid #363a45 !important;
+        border-radius: 8px !important;
+        padding: 4px 3px 6px !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 4px !important;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65) !important;
+        user-select: none !important;
+        touch-action: none !important;
+    }
+    .chart-mobile-fav-bar .fav-bar-handle {
+        font-size: 11px !important;
+        color: #64748b !important;
+        cursor: grab !important;
+        padding: 2px 4px 4px !important;
+        line-height: 1 !important;
+        letter-spacing: -1px !important;
+    }
+    .chart-mobile-fav-bar .fav-bar-icons {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 4px !important;
+    }
+    .chart-mobile-fav-btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-radius: 6px !important;
+        font-size: 16px !important;
+        line-height: 1 !important;
+        color: #d1d4dc !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+        padding: 0 !important;
+    }
+    .chart-mobile-fav-btn:active,
+    .chart-mobile-fav-btn:hover {
+        background: #2a2e39 !important;
+    }
+    .chart-mobile-fav-btn.active {
+        background: rgba(16, 185, 129, 0.25) !important;
+        border-color: #10b981 !important;
+        color: #10b981 !important;
+    }
 }
 
-/* Web / Desktop: Ensure Mobile Close Button is hidden */
+/* Web / Desktop: Ensure Mobile Close Button and Mobile Fav Bar are hidden */
 @media (min-width: 769px) {
     .chart-mobile-close-btn {
+        display: none !important;
+    }
+    .chart-mobile-fav-bar {
         display: none !important;
     }
 }
