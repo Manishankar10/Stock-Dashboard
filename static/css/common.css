@@ -1506,7 +1506,9 @@
                 min-width: 0 !important;
             }
             .wl-table-container {
-                overflow-x: hidden !important;
+                overflow-x: visible !important;
+                overflow-y: visible !important;
+                overflow: visible !important;
             }
             .modal-content {
                 width: 100% !important;

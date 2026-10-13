@@ -712,22 +712,47 @@
             window._wlMobileMenuBound = true;
         }
 
-        function toggleWlRowMenu(e, sym) {
-            if (e) e.stopPropagation();
-            const dropdown = document.getElementById(`wl-row-menu-${sym}`);
-            const isAlreadyOpen = dropdown && dropdown.style.display === 'block';
-            closeAllWlMenus();
-            if (dropdown && !isAlreadyOpen) {
-                // Temporarily display to measure dimensions accurately
-                dropdown.style.display = 'block';
-                dropdown.style.top = '100%';
-                dropdown.style.bottom = 'auto';
+        let _wlMenuOpenScrollY = 0;
 
+        function toggleWlRowMenu(e, sym) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const dropdown = document.getElementById(`wl-row-menu-${sym}`);
+            const btn = e ? (e.currentTarget || (e.target && e.target.closest ? e.target.closest('button') : null)) : null;
+            const parentTr = dropdown ? dropdown.closest('tr') : null;
+            const isAlreadyOpen = dropdown && dropdown.style.display === 'block';
+
+            closeAllWlMenus();
+
+            if (dropdown && !isAlreadyOpen) {
                 if (window.innerWidth <= 768) {
-                    const rect = dropdown.getBoundingClientRect();
+                    const btnRect = btn ? btn.getBoundingClientRect() : (dropdown.parentElement ? dropdown.parentElement.getBoundingClientRect() : null);
                     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-                    // If dropdown extends beyond bottom of screen or within 20px of bottom, flip upwards
-                    if (rect.bottom > viewportHeight - 20) {
+                    
+                    let shouldOpenUp = false;
+                    if (btnRect) {
+                        const spaceBelow = viewportHeight - btnRect.bottom;
+                        const spaceAbove = btnRect.top;
+                        
+                        // Check container boundaries if enclosed
+                        const container = dropdown.closest('.wl-table-container') || dropdown.closest('#watchlist-view-mount');
+                        const contSpaceBelow = container ? (container.getBoundingClientRect().bottom - btnRect.bottom) : Infinity;
+                        
+                        // Check if row is last row in the watchlist
+                        const isLastRow = parentTr && !parentTr.nextElementSibling;
+                        const isSecondToLastRow = parentTr && parentTr.nextElementSibling && !parentTr.nextElementSibling.nextElementSibling;
+
+                        if (spaceBelow < 230 || contSpaceBelow < 200 || isLastRow || (isSecondToLastRow && spaceBelow < 280)) {
+                            // If there is enough space above, or more space above than below, open upwards!
+                            if (spaceAbove > 180 || spaceAbove > spaceBelow) {
+                                shouldOpenUp = true;
+                            }
+                        }
+                    }
+
+                    if (shouldOpenUp) {
                         dropdown.style.top = 'auto';
                         dropdown.style.bottom = '100%';
                         dropdown.style.marginTop = '0';
@@ -738,7 +763,16 @@
                         dropdown.style.marginTop = '4px';
                         dropdown.style.marginBottom = '0';
                     }
+                } else {
+                    dropdown.style.top = '100%';
+                    dropdown.style.bottom = 'auto';
+                    dropdown.style.marginTop = '4px';
+                    dropdown.style.marginBottom = '0';
                 }
+
+                dropdown.style.display = 'block';
+                if (parentTr) parentTr.classList.add('wl-row-menu-open');
+                _wlMenuOpenScrollY = window.scrollY || window.pageYOffset || 0;
             }
         }
 
@@ -746,24 +780,30 @@
             window._wlMenuJustClosed = true;
             setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
             document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.wl-row-menu-open').forEach(el => el.classList.remove('wl-row-menu-open'));
         }
 
         if (!window._wlRowMenuOutsideBound) {
-            document.addEventListener('click', (e) => {
+            const handleOutside = (e) => {
                 if (!e.target.closest('.menu-dropdown-content') && !e.target.closest('.wl-row-menu-btn')) {
                     closeAllWlMenus();
                 }
-            });
+            };
+            document.addEventListener('click', handleOutside);
+            document.addEventListener('touchstart', handleOutside, { passive: true });
             window.addEventListener('scroll', () => {
                 if (window.innerWidth <= 768) {
+                    const currentY = window.scrollY || window.pageYOffset || 0;
+                    if (Math.abs(currentY - _wlMenuOpenScrollY) > 8) {
+                        closeAllWlMenus();
+                    }
+                }
+            }, { passive: true });
+            document.addEventListener('touchmove', (e) => {
+                if (window.innerWidth <= 768 && !e.target.closest('.menu-dropdown-content')) {
                     closeAllWlMenus();
                 }
             }, { passive: true });
-            document.addEventListener('scroll', (e) => {
-                if (window.innerWidth <= 768 && e.target && e.target !== document) {
-                    closeAllWlMenus();
-                }
-            }, { passive: true, capture: true });
             window._wlRowMenuOutsideBound = true;
         }
 

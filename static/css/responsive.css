@@ -406,13 +406,23 @@
     }
 
     /* Mobile Stock List Transformation (Table to Sleek Native 2-Column Cards) */
+    #tab-watchlists,
+    #watchlist-view-mount,
+    #watchlist-view-mount .card-container,
+    #watchlist-view-mount .table-responsive-container,
+    .table-responsive-container.wl-table-container,
     .wl-table-container {
-        overflow-x: hidden !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        max-height: none !important;
+        min-height: 0 !important;
         border: none !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         background: transparent !important;
         margin-bottom: 24px;
+        position: relative !important;
     }
 
     .wl-table {
@@ -420,6 +430,7 @@
         width: 100% !important;
         min-width: 0 !important;
         border-collapse: separate;
+        overflow: visible !important;
     }
 
     .wl-table thead,
@@ -430,6 +441,7 @@
     .wl-table tbody {
         display: block !important;
         width: 100% !important;
+        overflow: visible !important;
     }
 
     /* Individual Stock Row as Clean Native Fintech List Item */
@@ -443,6 +455,24 @@
         cursor: pointer;
         position: relative;
         transition: background-color 0.15s ease;
+    }
+
+    .wl-table tr.pf-row.wl-row-menu-open {
+        z-index: 10000 !important;
+        position: relative !important;
+    }
+
+    .wl-table tr.pf-row.wl-row-menu-open .wl-col-actions {
+        z-index: 10004 !important;
+        position: relative !important;
+    }
+
+    .wl-table tr.pf-row.wl-row-menu-open .menu-dropdown-content,
+    .wl-table .menu-dropdown-content {
+        z-index: 10005 !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
     }
 
     [data-theme="dark"] .wl-table tr.pf-row {
@@ -582,7 +612,8 @@
         color: var(--text-muted) !important;
         padding: 0 3px !important;
         cursor: pointer;
-        opacity: 0.65;
+        opacity: 1 !important;
+        transition: none !important;
         line-height: 1 !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -601,7 +632,8 @@
     .wl-table .wl-col-actions .btn-secondary:active,
     .wl-table .wl-col-actions .wl-row-menu-btn:hover,
     .wl-table .wl-col-actions .wl-row-menu-btn:active {
-        opacity: 1;
+        opacity: 1 !important;
+        transition: none !important;
         color: var(--text-primary) !important;
     }
 
@@ -978,7 +1010,7 @@
     }
 
     /* Portfolio Holdings Container on Mobile */
-    .table-responsive-container,
+    #portfolio-view-mount .table-responsive-container,
     .pf-table-responsive-container {
         border-radius: 12px !important;
         overflow-x: hidden !important;
