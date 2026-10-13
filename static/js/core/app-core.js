@@ -213,9 +213,11 @@
         let pfFilterOption = 'all'; // 'all', 'st', 'lt'
         let pfSortOption = 'day_pnl_desc'; // 'day_pnl_desc', 'day_pnl_asc', 'duration_desc', 'duration_asc', 'pnl_desc', 'pnl_asc', 'val_desc', 'date_desc', 'date_asc', 'name_asc'
 
-        // Watchlist Sort State
-        let wlSortColumn = 'change_pct'; // 'symbol', 'price', 'change', 'change_pct' (default Day H&L % high to low)
-        let wlSortDirection = 'desc';  // 'asc', 'desc'
+        // Watchlist Sort State (Default: Day P&L % High to Low)
+        var wlSortColumn = 'change_pct'; // 'symbol', 'price', 'change', 'change_pct'
+        var wlSortDirection = 'desc';  // 'asc', 'desc'
+        window.wlSortColumn = wlSortColumn;
+        window.wlSortDirection = wlSortDirection;
 
 
         let isPrivacyMode = localStorage.getItem('capital_desk_privacy_mode') === 'true';

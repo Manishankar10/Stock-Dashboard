@@ -11,7 +11,10 @@
                 activeWatchlistName = names[0];
             }
             renderWatchlists();
-            refreshPrices();
+            if (typeof refreshPrices === 'function') {
+                await refreshPrices();
+            }
+            renderWatchlists();
         }
         window.fetchWatchlists = fetchWatchlists;
 
@@ -57,10 +60,13 @@
             document.querySelectorAll('.wl-overflow.open').forEach(menu => menu.classList.remove('open'));
         }
 
-        function selectWatchlist(name) {
+        async function selectWatchlist(name) {
             activeWatchlistName = name;
             renderWatchlists();
-            refreshPrices();
+            if (typeof refreshPrices === 'function') {
+                await refreshPrices();
+            }
+            renderWatchlists();
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
         }
 
@@ -274,9 +280,12 @@
                     valA = infoA.change !== undefined ? infoA.change : -Infinity;
                     valB = infoB.change !== undefined ? infoB.change : -Infinity;
                 } else if (wlSortColumn === 'change_pct') {
-                    valA = infoA.change_pct !== undefined ? infoA.change_pct : -Infinity;
-                    valB = infoB.change_pct !== undefined ? infoB.change_pct : -Infinity;
+                    valA = (infoA && infoA.change_pct !== undefined && infoA.change_pct !== null) ? Number(infoA.change_pct) : -Infinity;
+                    valB = (infoB && infoB.change_pct !== undefined && infoB.change_pct !== null) ? Number(infoB.change_pct) : -Infinity;
                 }
+                if (valA === -Infinity && valB === -Infinity) return 0;
+                if (valA === -Infinity) return 1;
+                if (valB === -Infinity) return -1;
                 return wlSortDirection === 'asc' ? valA - valB : valB - valA;
             });
 

@@ -61,6 +61,12 @@
                 }
             }
 
+            // On initial load, re-render watchlist so default sort (Day P&L % High to Low) uses fresh live prices
+            if (!window._wlInitialSorted && currentTab === 'watchlists') {
+                window._wlInitialSorted = true;
+                if (typeof renderWatchlists === 'function') renderWatchlists();
+            }
+
             // 1. Update Watchlist Rows
             for (const [sym, info] of Object.entries(stockPricesData)) {
                 const nameEl = document.getElementById(`name-${sym}`);
