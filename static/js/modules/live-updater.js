@@ -162,15 +162,22 @@
                         pfPnlEl.innerText = isPrivacyMode
                             ? `₹ •••••• (${sign}${pnlPct.toFixed(2)}%)`
                             : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
-                        pfPnlEl.className = pnlAmt >= 0 ? 'pos' : 'neg';
+                        pfPnlEl.classList.remove('pos', 'neg');
+                        pfPnlEl.classList.add(pnlAmt >= 0 ? 'pos' : 'neg');
                     }
 
                     if (pfDayPnlEl) {
                         const sign = dayPnLAmt >= 0 ? '+' : '';
-                        pfDayPnlEl.innerText = isPrivacyMode
-                            ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
-                            : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
-                        pfDayPnlEl.className = dayPnLAmt >= 0 ? 'pos' : 'neg';
+                        const isMob = window.innerWidth <= 768;
+                        if (isMob) {
+                            pfDayPnlEl.innerText = ltp > 0 ? `${sign}${dayPnlPct.toFixed(2)}%` : '';
+                        } else {
+                            pfDayPnlEl.innerText = isPrivacyMode
+                                ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
+                                : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
+                        }
+                        pfDayPnlEl.classList.remove('pos', 'neg');
+                        pfDayPnlEl.classList.add(dayPnLAmt >= 0 ? 'pos' : 'neg');
                     }
                 });
 
@@ -220,11 +227,13 @@
                 if (footVal) footVal.innerText = valStr;
                 if (footPnl) {
                     footPnl.innerText = isPrivacyMode ? `₹ •••••• (${pnlPctStr})` : `${pnlStr} (${pnlPctStr})`;
-                    footPnl.className = totPnL >= 0 ? 'pos' : 'neg';
+                    footPnl.classList.remove('pos', 'neg');
+                    footPnl.classList.add(totPnL >= 0 ? 'pos' : 'neg');
                 }
                 if (footDayPnl) {
                     footDayPnl.innerText = isPrivacyMode ? `₹ •••••• (${dayPnlPctStr})` : `${dayPnlStr} (${dayPnlPctStr})`;
-                    footDayPnl.className = totDayPnL >= 0 ? 'pos' : 'neg';
+                    footDayPnl.classList.remove('pos', 'neg');
+                    footDayPnl.classList.add(totDayPnL >= 0 ? 'pos' : 'neg');
                 }
             }
 

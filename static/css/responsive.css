@@ -26,25 +26,27 @@
     --tab-active-blue-glow: rgba(59, 130, 246, 0.2);
 }
 
-/* iOS & Android Touch Normalization */
-html, body {
-    -webkit-text-size-adjust: 100%;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-}
+/* iOS & Android Touch Normalization (Mobile devices only) */
+@media (max-width: 768px) {
+    html, body {
+        -webkit-text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
 
-button, input, select, textarea, a {
-    -webkit-tap-highlight-color: transparent;
-}
+    button, input, select, textarea, a {
+        -webkit-tap-highlight-color: transparent;
+    }
 
-/* Fast responsive touch feedback */
-.btn-primary:active,
-.btn-secondary:active,
-.pf-select-btn:active,
-.sidebar-nav-item:active,
-.wl-table tr.pf-row:active {
-    transform: scale(0.985);
-    transition: transform 0.08s ease;
+    /* Fast responsive touch feedback on mobile */
+    .btn-primary:active,
+    .btn-secondary:active,
+    .pf-select-btn:active,
+    .sidebar-nav-item:active,
+    .wl-table tr.pf-row:active {
+        transform: scale(0.985);
+        transition: transform 0.08s ease;
+    }
 }
 
 /* --------------------------------------------------------------------------
@@ -582,160 +584,96 @@ button, input, select, textarea, a {
 
 /* Desktop Defaults for Mobile-Only Watchlist & Portfolio Elements (Web version untouched) */
 @media (min-width: 769px) {
-    .wl-add-tab-btn {
+    .mobile-top-bar,
+    .mobile-bottom-nav,
+    .wl-add-tab-btn,
+    .wl-mobile-toolbar,
+    .wl-sub-change,
+    .wl-mobile-menu-btn,
+    .wl-mobile-menu-drawer,
+    .wl-mobile-sort-sheet,
+    .portfolio-mobile-menu-wrapper,
+    .pf-mobile-list-container,
+    .pf-mob-bottom-bar,
+    #mobile-active-name-badge {
         display: none !important;
     }
-    .wl-mobile-toolbar {
-        display: none !important;
-    }
-    .wl-sub-change {
-        display: none !important;
-    }
-    .wl-mobile-menu-btn {
-        display: none !important;
-    }
-    .wl-mobile-menu-drawer {
-        display: none !important;
-    }
-    .watchlist-file-controls {
-        display: flex !important;
-    }
-    .wl-search-row {
-        display: flex;
-        width: 100%;
-        max-width: 420px;
-    }
-    .wl-search-row .autocomplete-wrapper {
-        width: 100% !important;
-        max-width: 420px !important;
-    }
-    /* Portfolio Desktop Reset */
-    .portfolio-mobile-menu-wrapper {
-        display: none !important;
-    }
+
     .portfolio-label-title {
         display: inline-block !important;
     }
+
     .portfolio-desktop-actions {
         display: flex !important;
-    }
-    .portfolio-top-card {
-        position: static !important;
-        top: auto !important;
-        z-index: auto !important;
-        box-shadow: none !important;
-    }
-    .pf-table th.pf-col-stock,
-    .pf-table td.pf-col-stock {
-        position: static !important;
-        width: auto !important;
-        min-width: auto !important;
-        max-width: none !important;
-        box-shadow: none !important;
-    }
-    /* Analytics & Smallcases Desktop Reset */
-    #tab-dashboard .summary-grid,
-    #overall-summary-mount {
-        grid-template-columns: repeat(4, 1fr) !important;
-    }
-    #smallcase-summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
-    }
-    /* Insights Desktop Reset */
-    .insights-scope-bar {
-        overflow-x: visible !important;
-        flex-wrap: wrap !important;
-    }
-    #insights-category-pills {
-        overflow-x: visible !important;
-        flex-wrap: wrap !important;
-    }
-    #technical-screener-pills {
-        overflow-x: visible !important;
-        flex-wrap: wrap !important;
-    }
-    #insights-indexes-grid {
-        display: grid !important;
-        grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)) !important;
-        overflow-x: visible !important;
-    }
-    .insights-top-cards {
-        display: grid !important;
-        grid-template-columns: 2fr 1fr !important;
-    }
-    .insights-grid {
-        display: grid !important;
-        grid-template-columns: 1.4fr 1fr !important;
-    }
-    #mobile-active-name-badge {
-        display: none !important;
     }
 }
 
 /* --------------------------------------------------------------------------
    2. MOBILE SORT & FILTER BOTTOM SHEET MODAL
    -------------------------------------------------------------------------- */
-.wl-mobile-sort-sheet {
-    align-items: flex-end !important;
-    padding: 0 !important;
-}
+@media (max-width: 768px) {
+    .wl-mobile-sort-sheet {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
 
-.wl-sort-sheet-content {
-    width: 100% !important;
-    max-width: 100% !important;
-    border-radius: 20px 20px 0 0 !important;
-    padding: 16px 20px calc(24px + var(--safe-area-bottom)) 20px !important;
-    max-height: 80vh !important;
-    animation: sheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5) !important;
-}
+    .wl-sort-sheet-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 20px 20px 0 0 !important;
+        padding: 16px 20px calc(24px + var(--safe-area-bottom)) 20px !important;
+        max-height: 80vh !important;
+        animation: sheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5) !important;
+    }
 
-@keyframes sheetSlideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-}
+    @keyframes sheetSlideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
 
-.wl-sort-sheet-handle {
-    width: 38px;
-    height: 4px;
-    background: var(--text-muted);
-    opacity: 0.4;
-    border-radius: 3px;
-    margin: 0 auto 14px auto;
-}
+    .wl-sort-sheet-handle {
+        width: 38px;
+        height: 4px;
+        background: var(--text-muted);
+        opacity: 0.4;
+        border-radius: 3px;
+        margin: 0 auto 14px auto;
+    }
 
-.wl-sort-option-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 13px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    transition: background-color 0.15s ease;
-}
+    .wl-sort-option-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+        transition: background-color 0.15s ease;
+    }
 
-.wl-sort-option-item:hover,
-.wl-sort-option-item:active {
-    background-color: var(--table-hover-bg);
-}
+    .wl-sort-option-item:hover,
+    .wl-sort-option-item:active {
+        background-color: var(--table-hover-bg);
+    }
 
-.wl-sort-option-item.selected {
-    color: var(--tab-active-blue);
-    font-weight: 600;
-    background-color: var(--tab-active-blue-glow);
-}
+    .wl-sort-option-item.selected {
+        color: var(--tab-active-blue);
+        font-weight: 600;
+        background-color: var(--tab-active-blue-glow);
+    }
 
-.wl-sort-option-item .check-icon {
-    font-size: 15px;
-    color: var(--tab-active-blue);
-    display: none;
-}
+    .wl-sort-option-item .check-icon {
+        font-size: 15px;
+        color: var(--tab-active-blue);
+        display: none;
+    }
 
-.wl-sort-option-item.selected .check-icon {
-    display: inline-block;
+    .wl-sort-option-item.selected .check-icon {
+        display: inline-block;
+    }
 }
 
 /* --------------------------------------------------------------------------
@@ -990,280 +928,284 @@ button, input, select, textarea, a {
         border-radius: 8px !important;
     }
 
-    /* Portfolio Holdings Table Container */
+    /* Portfolio Holdings Container on Mobile */
     .table-responsive-container,
     .pf-table-responsive-container {
         border-radius: 12px !important;
-        overflow-x: auto !important;
-        max-height: calc(100vh - 210px) !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-        margin-bottom: 20px;
-    }
-
-    /* Mobile Portfolio Table Styling & Static Frozen Stock Column */
-    table.pf-table {
-        display: table !important;
-        border-collapse: separate !important;
-        border-spacing: 0 !important;
-        width: 100% !important;
-        min-width: 820px !important;
-    }
-
-    table.pf-table thead {
-        display: table-header-group !important;
-    }
-
-    table.pf-table tbody {
-        display: table-row-group !important;
-        width: auto !important;
-    }
-
-    table.pf-table tfoot {
-        display: table-footer-group !important;
-    }
-
-    table.pf-table tr,
-    table.pf-table tr.pf-row {
-        display: table-row !important;
-        padding: 0 !important;
-        border: none !important;
+        overflow-x: hidden !important;
+        max-height: none !important;
         background: transparent !important;
-        transform: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin-bottom: 75px !important; /* Spacing for sticky bottom gain bar */
     }
 
-    table.pf-table th,
-    table.pf-table td {
-        display: table-cell !important;
-        white-space: nowrap !important;
-        padding: 9px 10px !important;
-        font-size: 12.5px !important;
+    /* Native Mobile Fintech Card/List Container (Refer User Reference Image) */
+    .pf-mobile-list-container {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 14px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    /* 1. Mobile Sub-Header: Symbol / Qty / Avg. Price vs Total P&L / LTP */
+    .pf-mob-header-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 9px 14px !important;
+        background: var(--bg-subtle) !important;
         border-bottom: 1px solid var(--border-color) !important;
-        vertical-align: middle !important;
-    }
-
-    /* Fixed / Static Table Headings on Scroll */
-    table.pf-table thead th {
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 15 !important;
-        background-color: var(--table-header-bg) !important;
-        color: var(--text-secondary) !important;
         font-size: 11px !important;
         font-weight: 700 !important;
+        color: var(--text-secondary) !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.04em !important;
-        box-shadow: 0 1px 0 var(--border-color) !important;
+        letter-spacing: 0.5px !important;
     }
 
-    /* Pinned Static Stock Name Column on Mobile (60% Width Allocated) */
-    table.pf-table th.pf-col-stock,
-    table.pf-table td.pf-col-stock {
-        position: sticky !important;
-        left: 0 !important;
-        z-index: 6 !important;
-        background-color: var(--bg-card) !important;
-        width: 58vw !important;
-        min-width: 58vw !important;
-        max-width: 60vw !important;
-        box-sizing: border-box !important;
-        box-shadow: 3px 0 6px rgba(0, 0, 0, 0.14) !important;
-        padding-left: 10px !important;
-        padding-right: 8px !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-
-    table.pf-table thead th.pf-col-stock {
-        position: sticky !important;
-        top: 0 !important;
-        left: 0 !important;
-        z-index: 30 !important;
-        background-color: var(--table-header-bg) !important;
-        width: 58vw !important;
-        min-width: 58vw !important;
-        max-width: 60vw !important;
-        box-sizing: border-box !important;
-        box-shadow: 3px 1px 6px rgba(0, 0, 0, 0.14) !important;
-    }
-
-    table.pf-table tfoot td.pf-col-stock {
-        position: sticky !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        z-index: 20 !important;
-        background-color: var(--table-header-bg) !important;
-        width: 58vw !important;
-        min-width: 58vw !important;
-        max-width: 60vw !important;
-        box-sizing: border-box !important;
-        box-shadow: 3px -1px 6px rgba(0, 0, 0, 0.14) !important;
-    }
-
-    table.pf-table tfoot td {
-        position: sticky !important;
-        bottom: 0 !important;
-        z-index: 10 !important;
-        background-color: var(--table-header-bg) !important;
-        border-top: 2px solid var(--border-color) !important;
-        font-weight: 700 !important;
-    }
-
-    table.pf-table tr.pf-row:hover td.pf-col-stock,
-    table.pf-table tr.pf-row:active td.pf-col-stock {
-        background-color: var(--bg-subtle) !important;
-    }
-
-    /* Proper Column Alignments for Portfolio Table (Header, Body, Footer) */
-    table.pf-table thead th.pf-col-stock,
-    table.pf-table td.pf-col-stock,
-    table.pf-table tfoot td.pf-col-stock {
+    .pf-mob-hdr-left {
         text-align: left !important;
     }
 
-    table.pf-table thead th.pf-col-daypnl,
-    table.pf-table td.pf-col-daypnl,
-    table.pf-table tfoot td.pf-col-daypnl {
+    .pf-mob-hdr-right {
         text-align: right !important;
     }
 
-    table.pf-table thead th.pf-col-qty,
-    table.pf-table td.pf-col-qty,
-    table.pf-table tfoot td.pf-col-qty {
-        text-align: right !important;
+    /* 2. Holdings List */
+    .pf-mob-list {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
     }
 
-    table.pf-table thead th.pf-col-pnl,
-    table.pf-table td.pf-col-pnl,
-    table.pf-table tfoot td.pf-col-pnl {
-        text-align: right !important;
+    /* 3. Each Holding Item */
+    .pf-mob-item {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 14px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        background: var(--bg-card) !important;
+        cursor: pointer !important;
+        transition: background-color 0.15s ease !important;
+        -webkit-tap-highlight-color: transparent !important;
     }
 
-    table.pf-table thead th.pf-col-buy,
-    table.pf-table td.pf-col-buy,
-    table.pf-table tfoot td.pf-col-buy {
-        text-align: right !important;
+    [data-theme="dark"] .pf-mob-item {
+        border-bottom-color: rgba(255, 255, 255, 0.06) !important;
     }
 
-    table.pf-table thead th.pf-col-ltp,
-    table.pf-table td.pf-col-ltp,
-    table.pf-table tfoot td.pf-col-ltp {
-        text-align: right !important;
+    [data-theme="light"] .pf-mob-item {
+        border-bottom-color: rgba(0, 0, 0, 0.06) !important;
     }
 
-    table.pf-table thead th.pf-col-inv,
-    table.pf-table td.pf-col-inv,
-    table.pf-table tfoot td.pf-col-inv {
-        text-align: right !important;
+    .pf-mob-item:last-child {
+        border-bottom: none !important;
     }
 
-    table.pf-table thead th.pf-col-val,
-    table.pf-table td.pf-col-val,
-    table.pf-table tfoot td.pf-col-val {
-        text-align: right !important;
+    .pf-mob-item:hover,
+    .pf-mob-item:active {
+        background: var(--table-hover-bg) !important;
     }
 
-    table.pf-table thead th.pf-col-details,
-    table.pf-table td.pf-col-details,
-    table.pf-table tfoot td.pf-col-details {
-        text-align: center !important;
+    /* Left Side: Symbol, Exchange, Company, Qty @ Avg */
+    .pf-mob-item-left {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        min-width: 0 !important;
+        flex: 1 1 54% !important;
+        padding-right: 8px !important;
     }
 
-    /* Column 1 Details: Stock Symbol & Sub-labels */
-    table.pf-table .pf-col-stock .stock-symbol {
+    .pf-mob-sym-line {
+        display: flex !important;
+        align-items: baseline !important;
+        gap: 4px !important;
+        line-height: 1.2 !important;
+    }
+
+    .pf-mob-sym-line .stock-symbol {
         font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
-        font-size: 13.5px !important;
+        font-size: 14.5px !important;
         font-weight: 700 !important;
         color: var(--text-primary) !important;
-        letter-spacing: 0.2px !important;
-        display: inline !important;
+        letter-spacing: 0.3px !important;
     }
 
-    table.pf-table .pf-col-stock .badge:not(.pf-badge) {
-        display: inline-block !important;
+    .pf-mob-sym-line .badge:not(.pf-badge) {
         font-size: 8px !important;
         font-weight: 700 !important;
         vertical-align: super !important;
         transform: translateY(-4px) !important;
-        margin-left: 2px !important;
         padding: 0 !important;
         background: transparent !important;
         border: none !important;
         color: var(--text-muted) !important;
     }
 
-    table.pf-table .pf-col-stock .pf-badge {
-        display: inline-block !important;
-        font-size: 9px !important;
+    .pf-mob-sym-line .pf-badge {
+        font-size: 9.5px !important;
         font-weight: 600 !important;
         padding: 1px 5px !important;
         border-radius: 4px !important;
-        max-width: 75px !important;
+        max-width: 80px !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
-        vertical-align: middle !important;
-        margin-left: 3px !important;
+        background: var(--bg-subtle) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-secondary) !important;
+        margin-left: 2px !important;
     }
 
-    table.pf-table .pf-col-stock .company-name {
+    .pf-mob-item-left .company-name {
         font-size: 11px !important;
         color: var(--text-secondary) !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        max-width: calc(58vw - 20px) !important;
-        margin-top: 1px !important;
-        display: block !important;
+        max-width: 100% !important;
+        margin: 2px 0 3px 0 !important;
     }
 
-    /* Column 2: Day P&L */
-    table.pf-table .pf-col-daypnl {
-        min-width: 95px !important;
+    .pf-mob-sub-info {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        font-size: 11.5px !important;
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+        flex-wrap: wrap !important;
+    }
+
+    .pf-mob-qty-price {
+        color: var(--text-secondary) !important;
         font-weight: 600 !important;
     }
 
-    /* Column 3: Qty */
-    table.pf-table .pf-col-qty {
-        min-width: 60px !important;
+    .pf-mob-inv-tag {
+        font-size: 10.5px !important;
+        background: var(--bg-subtle) !important;
+        border: 1px solid var(--border-color) !important;
+        padding: 1px 5px !important;
+        border-radius: 4px !important;
+        color: var(--text-muted) !important;
     }
 
-    /* Column 4: Overall P&L */
-    table.pf-table .pf-col-pnl {
-        min-width: 105px !important;
+    /* Right Side: Total P&L & Overall %, LTP & Day Change % */
+    .pf-mob-item-right {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;
+        flex: 1 1 46% !important;
+        min-width: 0 !important;
+        text-align: right !important;
+    }
+
+    .pf-mob-pnl-line {
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.2px !important;
+        white-space: nowrap !important;
+        margin-bottom: 2px !important;
+    }
+
+    .pf-mob-ltp-line {
+        display: flex !important;
+        align-items: baseline !important;
+        gap: 6px !important;
+        font-size: 12px !important;
+        white-space: nowrap !important;
+    }
+
+    .pf-mob-ltp {
+        font-weight: 700 !important;
+        color: var(--text-primary) !important;
+    }
+
+    .pf-mob-daychange {
+        font-size: 11px !important;
         font-weight: 600 !important;
     }
 
-    /* Column 5: Avg Buy Price */
-    table.pf-table .pf-col-buy {
-        min-width: 85px !important;
+    .pf-mob-actions-row {
+        margin-top: 4px !important;
     }
 
-    /* Column 6: LTP */
-    table.pf-table .pf-col-ltp {
-        min-width: 80px !important;
+    .pf-mob-detail-btn {
+        background: transparent !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 6px !important;
+        font-size: 10.5px !important;
+        color: var(--text-secondary) !important;
+        padding: 2px 8px !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 3px !important;
+        transition: all 0.15s ease !important;
+    }
+
+    .pf-mob-detail-btn:hover,
+    .pf-mob-detail-btn:active {
+        background: var(--bg-subtle) !important;
+        color: var(--text-primary) !important;
+        border-color: #3b82f6 !important;
+    }
+
+    /* 4. Sticky Bottom Summary Bar (Today's Gain / Total P&L) */
+    .pf-mob-bottom-bar {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        z-index: 99 !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 10px 16px max(10px, var(--safe-area-bottom)) 16px !important;
+        background: rgba(15, 23, 42, 0.94) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border-top: 1px solid var(--border-color) !important;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35) !important;
+        box-sizing: border-box !important;
+    }
+
+    [data-theme="light"] .pf-mob-bottom-bar {
+        background: rgba(255, 255, 255, 0.94) !important;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .pf-mob-bar-col {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .pf-mob-bar-label {
+        font-size: 11px !important;
         font-weight: 600 !important;
+        color: var(--text-secondary) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 2px !important;
     }
 
-    /* Column 7: Invested */
-    table.pf-table .pf-col-inv {
-        min-width: 95px !important;
+    .pf-mob-bar-val {
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.2px !important;
     }
 
-    /* Column 8: Current Value */
-    table.pf-table .pf-col-val {
-        min-width: 95px !important;
-        font-weight: 600 !important;
-    }
-
-    /* Column 9: Details Button */
-    table.pf-table .pf-col-details {
-        min-width: 75px !important;
-    }
-
-    .pf-table th.pf-col-details,
-    .pf-table td.pf-col-details {
-        min-width: 75px !important;
+    .pf-mob-empty {
+        text-align: center !important;
+        padding: 40px 20px !important;
     }
 }
 
@@ -1374,104 +1316,7 @@ button, input, select, textarea, a {
     }
 }
 
-/* --------------------------------------------------------------------------
-   6. TABLET SCREENS (769px - 1024px, Portrait & Landscape)
-   iPads, Android Galaxy Tabs, Foldables
-   -------------------------------------------------------------------------- */
-@media (min-width: 769px) and (max-width: 1024px) {
-    body {
-        padding: 10px !important;
-    }
 
-    .container {
-        padding: 8px 10px !important;
-    }
-
-    /* Compact Sidebar Rail on Tablets */
-    .main-content-wrapper {
-        margin-left: 240px;
-    }
-
-    .app-sidebar.collapsed + .main-content-wrapper {
-        margin-left: 66px;
-    }
-
-    /* 3-Column Summary Grid */
-    .pf-summary-grid,
-    .summary-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 12px !important;
-    }
-
-    /* Watchlist on Tablets: Full Table with Generous Touch Targets */
-    .wl-table th, .wl-table td {
-        padding: 11px 12px !important;
-        font-size: 13px !important;
-    }
-
-    .wl-table .stock-symbol {
-        font-size: 14.5px !important;
-    }
-
-    /* Modals Centered on Tablet */
-    .small-modal-content {
-        width: 85vw !important;
-        max-width: 650px !important;
-        border-radius: 16px !important;
-    }
-
-    /* Analytics & Insights Grids */
-    .dashboard-grid,
-    .insights-top-cards {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 14px !important;
-    }
-}
-
-/* --------------------------------------------------------------------------
-   7. LAPTOP & DESKTOP SCREENS (1025px - 1440px and > 1440px)
-   -------------------------------------------------------------------------- */
-@media (min-width: 1025px) {
-    .container {
-        max-width: 1680px;
-        margin: 0 auto;
-        padding: 12px 24px;
-    }
-
-    .pf-summary-grid,
-    .summary-grid {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 16px !important;
-    }
-
-    .dashboard-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 20px !important;
-    }
-
-    .insights-top-cards {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 16px !important;
-    }
-
-    .news-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 16px !important;
-    }
-
-    .wl-table th, .wl-table td {
-        padding: 12px 16px !important;
-        font-size: 13.5px !important;
-    }
-}
-
-/* Ultra-Wide Institutional Screens (> 1600px) */
-@media (min-width: 1600px) {
-    .container {
-        max-width: 1840px;
-        padding: 16px 32px;
-    }
-}
 
 /* --------------------------------------------------------------------------
    8. INTEGRATED MODULES RESPONSIVE POLISH

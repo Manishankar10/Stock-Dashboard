@@ -1150,24 +1150,152 @@
 
             const isMobile = window.innerWidth <= 768;
 
-            const table = document.createElement('table');
-            table.className = 'wl-table pf-table';
-            const thead = document.createElement('thead');
             if (isMobile) {
-                thead.innerHTML = `
-                    <tr>
-                        <th class="pf-col-stock" style="text-align:left;">Stock</th>
-                        <th class="pf-col-daypnl" style="text-align:right;">Day P&L</th>
-                        <th class="pf-col-qty" style="text-align:right;">Qty</th>
-                        <th class="pf-col-pnl" style="text-align:right;">Overall P&L</th>
-                        <th class="pf-col-buy" style="text-align:right;">Avg Buy Price</th>
-                        <th class="pf-col-ltp" style="text-align:right;">LTP (₹)</th>
-                        <th class="pf-col-inv" style="text-align:right;">Invested (₹)</th>
-                        <th class="pf-col-val" style="text-align:right;">Current Val (₹)</th>
-                        <th class="pf-col-details" style="text-align:center;">Details</th>
-                    </tr>
+                // Mobile Native 2-Column Fintech Model (Refer Image: Symbol/Qty/Avg. Price & Total P&L/LTP)
+                const mobContainer = document.createElement('div');
+                mobContainer.className = 'pf-mobile-list-container';
+
+                // 1. Mobile Sub-Header
+                const mobHeader = document.createElement('div');
+                mobHeader.className = 'pf-mob-header-row';
+                mobHeader.innerHTML = `
+                    <div class="pf-mob-hdr-left">Symbol / Qty / Avg. Price</div>
+                    <div class="pf-mob-hdr-right">Total P&L / LTP</div>
                 `;
+                mobContainer.appendChild(mobHeader);
+
+                // 2. Mobile Holdings List
+                const mobList = document.createElement('div');
+                mobList.className = 'pf-mob-list';
+
+                if (holdings.length === 0) {
+                    mobList.innerHTML = `
+                        <div class="pf-mob-empty">
+                            <span style="font-size: 28px; margin-bottom: 8px; display: inline-block;">📁</span>
+                            <div style="font-weight: 600; font-size: 14px; color: var(--text-primary); margin-bottom: 4px;">No holdings found</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">No stocks match your filter criteria.</div>
+                            <button class="btn-primary" style="font-size: 12px; padding: 6px 16px;" onclick="openAddHoldingModal()">+ Add Holding</button>
+                        </div>
+                    `;
+                } else {
+                    holdings.forEach(item => {
+                        const sym = item.symbol;
+                        const bInfo = getSymbolBadge(sym);
+                        const safePf = (item.portfolioName || activePortfolioName || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+                        const safeSym = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
+                        const rowKey = `${safePf}_${safeSym}`;
+
+                        const info = stockPricesData[sym] || {};
+                        const ltp = info.price || 0;
+                        const dayChange = info.change || 0;
+                        const invAmt = item.buy_price * item.quantity;
+                        const curVal = ltp > 0 ? (ltp * item.quantity) : invAmt;
+                        const pnlAmt = curVal - invAmt;
+                        const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
+                        const dayPnLAmt = ltp > 0 ? dayChange * item.quantity : 0;
+                        const dayPnlPct = info.change_pct !== undefined ? info.change_pct : 0;
+
+                        const pnlSign = pnlAmt >= 0 ? '+' : '';
+                        const pnlClass = pnlAmt >= 0 ? 'pos' : 'neg';
+                        const daySign = dayChange >= 0 ? '+' : '';
+                        const dayClass = dayChange >= 0 ? 'pos' : 'neg';
+
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'pf-mob-item pf-row';
+                        itemEl.id = `pf-mob-row-${rowKey}`;
+                        itemEl.title = 'Tap to view technical chart';
+                        itemEl.onclick = (e) => {
+                            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                            openInHouseChart(sym);
+                        };
+
+                        const avgPriceStr = formatMoney(item.buy_price);
+                        const ltpStr = ltp > 0 ? formatMoney(ltp) : '-';
+
+                        itemEl.innerHTML = `
+                            <div class="pf-mob-item-left">
+                                <div class="pf-mob-sym-line">
+                                    <span class="stock-symbol">${cleanDisplaySymbol(sym)}</span>
+                                    <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                                    ${isAll ? `<span class="badge pf-badge">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}
+                                </div>
+                                <div class="company-name" id="pf-name-${rowKey}">${escapeHtml(info.name || '')}</div>
+                                <div class="pf-mob-sub-info">
+                                    <span class="pf-mob-qty-price">${formatQty(item.quantity)} @ ${avgPriceStr}</span>
+                                    <span class="pf-mob-inv-tag">Inv: ${formatMoney(invAmt)}</span>
+                                </div>
+                            </div>
+                            <div class="pf-mob-item-right">
+                                <div class="pf-mob-pnl-line ${pnlClass}" id="pf-pnl-${rowKey}">
+                                    ${ltp > 0
+                                        ? (isPrivacyMode
+                                            ? `₹ •••••• (${pnlSign}${pnlPct.toFixed(2)}%)`
+                                            : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`)
+                                        : '<span class="skeleton-box" style="width: 75px; height: 14px;"></span>'
+                                    }
+                                </div>
+                                <div class="pf-mob-ltp-line">
+                                    <span class="pf-mob-ltp" id="pf-ltp-${rowKey}">${ltpStr}</span>
+                                    <span class="pf-mob-daychange ${dayClass}" id="pf-daypnl-${rowKey}">
+                                        ${ltp > 0 ? `${daySign}${dayPnlPct.toFixed(2)}%` : ''}
+                                    </span>
+                                </div>
+                                <div class="pf-mob-actions-row">
+                                    <button type="button" class="pf-mob-detail-btn" title="Holding Details">
+                                        🔍 Details
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Hidden hook elements for real-time calculations -->
+                            <span id="pf-inv-${rowKey}" style="display:none;">${formatMoney(invAmt)}</span>
+                            <span id="pf-val-${rowKey}" style="display:none;">${formatMoney(curVal)}</span>
+                        `;
+
+                        const detailBtn = itemEl.querySelector('.pf-mob-detail-btn');
+                        if (detailBtn) {
+                            detailBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                openHoldingDetailsModal(item);
+                            };
+                        }
+
+                        mobList.appendChild(itemEl);
+                    });
+                }
+                mobContainer.appendChild(mobList);
+
+                // 3. Mobile Sticky Bottom Summary Bar (Today's Gain / Total P&L)
+                const mobBottomBar = document.createElement('div');
+                mobBottomBar.className = 'pf-mob-bottom-bar';
+                mobBottomBar.innerHTML = `
+                    <div class="pf-mob-bar-col">
+                        <div class="pf-mob-bar-label">Today's Gain</div>
+                        <div class="pf-mob-bar-val ${initialTotDayPnL >= 0 ? 'pos' : 'neg'}" id="pf-foot-daypnl">
+                            ${initialTotInvested > 0
+                                ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`)
+                                : '₹0.00'}
+                        </div>
+                    </div>
+                    <div class="pf-mob-bar-col" style="text-align: right;">
+                        <div class="pf-mob-bar-label">Total P&L</div>
+                        <div class="pf-mob-bar-val ${initialTotPnL >= 0 ? 'pos' : 'neg'}" id="pf-foot-pnl">
+                            ${initialTotInvested > 0
+                                ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`)
+                                : '₹0.00'}
+                        </div>
+                    </div>
+                    <!-- Hidden hooks for live-updater summary calculations -->
+                    <span id="pf-foot-inv" style="display:none;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</span>
+                    <span id="pf-foot-val" style="display:none;">${initialTotInvested > 0 ? initValStr : '₹0.00'}</span>
+                `;
+                mobContainer.appendChild(mobBottomBar);
+
+                scrollContainer.appendChild(mobContainer);
             } else {
+                // Desktop 9-Column Table View
+                const table = document.createElement('table');
+                table.className = 'wl-table pf-table';
+                const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
                         <th class="pf-col-stock">Stock</th>
@@ -1181,155 +1309,127 @@
                         <th class="pf-col-details" style="text-align:center;">Details</th>
                     </tr>
                 `;
-            }
 
-            const tbody = document.createElement('tbody');
+                const tbody = document.createElement('tbody');
 
-            if (holdings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#64748b; padding: 30px;">No holdings match the selected filter/sort criteria.</td></tr>';
-            } else {
-                holdings.forEach(item => {
-                    const sym = item.symbol;
-                    const bInfo = getSymbolBadge(sym);
-                    const safePf = (item.portfolioName || activePortfolioName || '').replace(/[^a-zA-Z0-9_-]/g, '_');
-                    const safeSym = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
-                    const rowKey = `${safePf}_${safeSym}`;
+                if (holdings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#64748b; padding: 30px;">No holdings match the selected filter/sort criteria.</td></tr>';
+                } else {
+                    holdings.forEach(item => {
+                        const sym = item.symbol;
+                        const bInfo = getSymbolBadge(sym);
+                        const safePf = (item.portfolioName || activePortfolioName || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+                        const safeSym = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
+                        const rowKey = `${safePf}_${safeSym}`;
 
-                    const tr = document.createElement('tr');
-                    tr.className = 'pf-row';
-                    tr.id = `pf-row-${rowKey}`;
-                    tr.title = 'Click row to view interactive technical chart';
-                    tr.onclick = (e) => {
-                        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-                        openInHouseChart(sym);
-                    };
+                        const tr = document.createElement('tr');
+                        tr.className = 'pf-row';
+                        tr.id = `pf-row-${rowKey}`;
+                        tr.title = 'Click row to view interactive technical chart';
+                        tr.onclick = (e) => {
+                            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                            openInHouseChart(sym);
+                        };
 
-                    const tdStock = document.createElement('td');
-                    tdStock.className = 'pf-col-stock';
-                    tdStock.innerHTML = `<span class="stock-symbol">${cleanDisplaySymbol(sym)}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span>${isAll ? ` <span class="badge pf-badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}<div class="company-name" id="pf-name-${rowKey}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
+                        const tdStock = document.createElement('td');
+                        tdStock.className = 'pf-col-stock';
+                        tdStock.innerHTML = `<span class="stock-symbol">${cleanDisplaySymbol(sym)}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span>${isAll ? ` <span class="badge pf-badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}<div class="company-name" id="pf-name-${rowKey}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
 
-                    const tdQty = document.createElement('td');
-                    tdQty.className = 'pf-col-qty';
-                    tdQty.style.textAlign = 'right';
-                    tdQty.innerText = formatQty(item.quantity);
+                        const tdQty = document.createElement('td');
+                        tdQty.className = 'pf-col-qty';
+                        tdQty.style.textAlign = 'right';
+                        tdQty.innerText = formatQty(item.quantity);
 
-                    const tdBuy = document.createElement('td');
-                    tdBuy.className = 'pf-col-buy';
-                    tdBuy.style.textAlign = 'right';
-                    tdBuy.innerText = formatMoney(item.buy_price);
+                        const tdBuy = document.createElement('td');
+                        tdBuy.className = 'pf-col-buy';
+                        tdBuy.style.textAlign = 'right';
+                        tdBuy.innerText = formatMoney(item.buy_price);
 
-                    const info = stockPricesData[sym] || {};
-                    const ltp = info.price || 0;
-                    const dayChange = info.change || 0;
-                    const invAmt = item.buy_price * item.quantity;
-                    const curVal = ltp > 0 ? (ltp * item.quantity) : invAmt;
-                    const pnlAmt = curVal - invAmt;
-                    const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
-                    const dayPnLAmt = ltp > 0 ? dayChange * item.quantity : 0;
-                    const dayPnlPct = info.change_pct !== undefined ? info.change_pct : 0;
+                        const info = stockPricesData[sym] || {};
+                        const ltp = info.price || 0;
+                        const dayChange = info.change || 0;
+                        const invAmt = item.buy_price * item.quantity;
+                        const curVal = ltp > 0 ? (ltp * item.quantity) : invAmt;
+                        const pnlAmt = curVal - invAmt;
+                        const pnlPct = invAmt > 0 ? (pnlAmt / invAmt) * 100 : 0;
+                        const dayPnLAmt = ltp > 0 ? dayChange * item.quantity : 0;
+                        const dayPnlPct = info.change_pct !== undefined ? info.change_pct : 0;
 
-                    const tdLtp = document.createElement('td');
-                    tdLtp.className = 'pf-col-ltp';
-                    tdLtp.style.textAlign = 'right';
-                    tdLtp.id = `pf-ltp-${rowKey}`;
-                    tdLtp.innerText = ltp > 0 ? formatMoney(ltp) : '-';
+                        const tdLtp = document.createElement('td');
+                        tdLtp.className = 'pf-col-ltp';
+                        tdLtp.style.textAlign = 'right';
+                        tdLtp.id = `pf-ltp-${rowKey}`;
+                        tdLtp.innerText = ltp > 0 ? formatMoney(ltp) : '-';
 
-                    const tdInv = document.createElement('td');
-                    tdInv.className = 'pf-col-inv';
-                    tdInv.style.textAlign = 'right';
-                    tdInv.id = `pf-inv-${rowKey}`;
-                    tdInv.innerText = formatMoney(invAmt);
+                        const tdInv = document.createElement('td');
+                        tdInv.className = 'pf-col-inv';
+                        tdInv.style.textAlign = 'right';
+                        tdInv.id = `pf-inv-${rowKey}`;
+                        tdInv.innerText = formatMoney(invAmt);
 
-                    const tdVal = document.createElement('td');
-                    tdVal.className = 'pf-col-val';
-                    tdVal.style.textAlign = 'right';
-                    tdVal.id = `pf-val-${rowKey}`;
-                    tdVal.innerText = ltp > 0 ? formatMoney(curVal) : formatMoney(invAmt);
+                        const tdVal = document.createElement('td');
+                        tdVal.className = 'pf-col-val';
+                        tdVal.style.textAlign = 'right';
+                        tdVal.id = `pf-val-${rowKey}`;
+                        tdVal.innerText = ltp > 0 ? formatMoney(curVal) : formatMoney(invAmt);
 
-                    const tdPnl = document.createElement('td');
-                    tdPnl.className = 'pf-col-pnl';
-                    tdPnl.style.textAlign = 'right';
-                    tdPnl.id = `pf-pnl-${rowKey}`;
-                    if (ltp > 0) {
-                        const sign = pnlAmt >= 0 ? '+' : '';
-                        tdPnl.innerText = isPrivacyMode
-                            ? `₹ •••••• (${sign}${pnlPct.toFixed(2)}%)`
-                            : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
-                        tdPnl.className = (pnlAmt >= 0 ? 'pos' : 'neg') + ' pf-col-pnl';
-                    } else {
-                        tdPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                        const tdPnl = document.createElement('td');
                         tdPnl.className = 'pf-col-pnl';
-                    }
+                        tdPnl.style.textAlign = 'right';
+                        tdPnl.id = `pf-pnl-${rowKey}`;
+                        if (ltp > 0) {
+                            const sign = pnlAmt >= 0 ? '+' : '';
+                            tdPnl.innerText = isPrivacyMode
+                                ? `₹ •••••• (${sign}${pnlPct.toFixed(2)}%)`
+                                : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
+                            tdPnl.className = (pnlAmt >= 0 ? 'pos' : 'neg') + ' pf-col-pnl';
+                        } else {
+                            tdPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                            tdPnl.className = 'pf-col-pnl';
+                        }
 
-                    const tdDayPnl = document.createElement('td');
-                    tdDayPnl.className = 'pf-col-daypnl';
-                    tdDayPnl.style.textAlign = 'right';
-                    tdDayPnl.id = `pf-daypnl-${rowKey}`;
-                    if (ltp > 0) {
-                        const sign = dayPnLAmt >= 0 ? '+' : '';
-                        tdDayPnl.innerText = isPrivacyMode
-                            ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
-                            : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
-                        tdDayPnl.className = (dayPnLAmt >= 0 ? 'pos' : 'neg') + ' pf-col-daypnl';
-                    } else {
-                        tdDayPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                        const tdDayPnl = document.createElement('td');
                         tdDayPnl.className = 'pf-col-daypnl';
-                    }
+                        tdDayPnl.style.textAlign = 'right';
+                        tdDayPnl.id = `pf-daypnl-${rowKey}`;
+                        if (ltp > 0) {
+                            const sign = dayPnLAmt >= 0 ? '+' : '';
+                            tdDayPnl.innerText = isPrivacyMode
+                                ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
+                                : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`;
+                            tdDayPnl.className = (dayPnLAmt >= 0 ? 'pos' : 'neg') + ' pf-col-daypnl';
+                        } else {
+                            tdDayPnl.innerHTML = `<span class="skeleton-box" style="width: 65px; height: 14px;"></span>`;
+                            tdDayPnl.className = 'pf-col-daypnl';
+                        }
 
-                    const tdDetails = document.createElement('td');
-                    tdDetails.className = 'pf-col-details';
-                    tdDetails.style.textAlign = 'center';
-                    const detailBtn = document.createElement('button');
-                    detailBtn.className = 'btn-details';
-                    detailBtn.innerHTML = '🔍 Details';
-                    detailBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        openHoldingDetailsModal(item);
-                    };
-                    tdDetails.appendChild(detailBtn);
+                        const tdDetails = document.createElement('td');
+                        tdDetails.className = 'pf-col-details';
+                        tdDetails.style.textAlign = 'center';
+                        const detailBtn = document.createElement('button');
+                        detailBtn.className = 'btn-details';
+                        detailBtn.innerHTML = '🔍 Details';
+                        detailBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            openHoldingDetailsModal(item);
+                        };
+                        tdDetails.appendChild(detailBtn);
 
-                    if (isMobile) {
                         tr.appendChild(tdStock);
-                        tr.appendChild(tdDayPnl);
                         tr.appendChild(tdQty);
-                        tr.appendChild(tdPnl);
                         tr.appendChild(tdBuy);
                         tr.appendChild(tdLtp);
                         tr.appendChild(tdInv);
                         tr.appendChild(tdVal);
-                        tr.appendChild(tdDetails);
-                    } else {
-                        tr.appendChild(tdStock);
-                        tr.appendChild(tdQty);
-                        tr.appendChild(tdBuy);
-                        tr.appendChild(tdLtp);
-                        tr.appendChild(tdInv);
-                        tr.appendChild(tdVal);
                         tr.appendChild(tdPnl);
                         tr.appendChild(tdDayPnl);
                         tr.appendChild(tdDetails);
-                    }
 
-                    tbody.appendChild(tr);
-                });
-            }
+                        tbody.appendChild(tr);
+                    });
+                }
 
-            const tfoot = document.createElement('tfoot');
-            if (isMobile) {
-                tfoot.innerHTML = `
-                    <tr>
-                        <td class="pf-col-stock" style="text-align:left;">PORTFOLIO TOTAL:</td>
-                        <td id="pf-foot-daypnl" style="text-align:right;" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'} pf-col-daypnl">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
-                        <td class="pf-col-qty" style="text-align:right;">-</td>
-                        <td id="pf-foot-pnl" style="text-align:right;" class="${initialTotPnL >= 0 ? 'pos' : 'neg'} pf-col-pnl">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
-                        <td class="pf-col-buy" style="text-align:right;"></td>
-                        <td class="pf-col-ltp" style="text-align:right;"></td>
-                        <td id="pf-foot-inv" style="text-align:right;" class="pf-col-inv">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
-                        <td id="pf-foot-val" style="text-align:right;" class="pf-col-val">${initialTotInvested > 0 ? initValStr : '₹0.00'}</td>
-                        <td class="pf-col-details" style="text-align:center;"></td>
-                    </tr>
-                `;
-            } else {
+                const tfoot = document.createElement('tfoot');
                 tfoot.innerHTML = `
                     <tr>
                         <td colspan="4">PORTFOLIO TOTAL:</td>
@@ -1340,12 +1440,12 @@
                         <td></td>
                     </tr>
                 `;
-            }
 
-            table.appendChild(thead);
-            table.appendChild(tbody);
-            table.appendChild(tfoot);
-            scrollContainer.appendChild(table);
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                table.appendChild(tfoot);
+                scrollContainer.appendChild(table);
+            }
 
             container.appendChild(headerBar);
             container.appendChild(summaryGrid);
