@@ -490,7 +490,7 @@
                     tr.className = 'pf-row';
                     tr.title = 'Click row to view interactive technical chart';
                     tr.onclick = (e) => {
-                        if (e.target.closest('.wl-col-actions') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
+                        if (e.target.closest('.wl-row-menu-btn') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
                         if (window._wlMenuJustClosed) return;
                         if (typeof openInHouseChart === 'function') openInHouseChart(sym);
                         else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
@@ -779,10 +779,18 @@
         }
 
         function closeAllWlMenus() {
-            window._wlMenuJustClosed = true;
-            setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
-            document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => el.style.display = 'none');
+            let hadOpen = false;
+            document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => {
+                if (el.style.display === 'block') {
+                    hadOpen = true;
+                    el.style.display = 'none';
+                }
+            });
             document.querySelectorAll('.wl-row-menu-open').forEach(el => el.classList.remove('wl-row-menu-open'));
+            if (hadOpen) {
+                window._wlMenuJustClosed = true;
+                setTimeout(() => { window._wlMenuJustClosed = false; }, 300);
+            }
         }
 
         if (!window._wlRowMenuOutsideBound) {

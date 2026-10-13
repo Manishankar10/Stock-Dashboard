@@ -167,9 +167,15 @@
 
                     if (pfPnlEl) {
                         const sign = pnlAmt >= 0 ? '+' : '';
-                        pfPnlEl.innerText = isPrivacyMode
-                            ? `₹ •••••• (${sign}${pnlPct.toFixed(2)}%)`
-                            : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
+                        if (pfPnlEl.classList.contains('pf-mob-pnl-line')) {
+                            pfPnlEl.innerHTML = isPrivacyMode
+                                ? `₹ •••••• <span class="pf-mob-pct-val">(${sign}${pnlPct.toFixed(2)}%)</span>`
+                                : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} <span class="pf-mob-pct-val">(${sign}${pnlPct.toFixed(2)}%)</span>`;
+                        } else {
+                            pfPnlEl.innerText = isPrivacyMode
+                                ? `₹ •••••• (${sign}${pnlPct.toFixed(2)}%)`
+                                : `${sign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${pnlPct.toFixed(2)}%)`;
+                        }
                         pfPnlEl.classList.remove('pos', 'neg');
                         pfPnlEl.classList.add(pnlAmt >= 0 ? 'pos' : 'neg');
                     }
@@ -177,8 +183,7 @@
                     if (pfDayPctEl) {
                         const daySign = dayChange >= 0 ? '+' : '';
                         pfDayPctEl.innerText = ltp > 0 ? `(${daySign}${dayPnlPct.toFixed(2)}%)` : '(0.00%)';
-                        pfDayPctEl.classList.remove('pos', 'neg');
-                        pfDayPctEl.classList.add(dayPnLAmt >= 0 ? 'pos' : 'neg');
+                        // Keep neutral without pos/neg class so title color var(--text-secondary) applies
                     }
 
                     if (pfDayLblEl) {
@@ -187,11 +192,19 @@
 
                     if (pfDayPnlEl) {
                         const sign = dayPnLAmt >= 0 ? '+' : '';
-                        pfDayPnlEl.innerText = ltp > 0
-                            ? (isPrivacyMode
-                                ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
-                                : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`)
-                            : '';
+                        if (document.getElementById(`pf-mob-card-${rowKey}`)) {
+                            pfDayPnlEl.innerHTML = ltp > 0
+                                ? (isPrivacyMode
+                                    ? `₹ •••••• <span class="pf-mob-pct-val">(${sign}${dayPnlPct.toFixed(2)}%)</span>`
+                                    : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} <span class="pf-mob-pct-val">(${sign}${dayPnlPct.toFixed(2)}%)</span>`)
+                                : '';
+                        } else {
+                            pfDayPnlEl.innerText = ltp > 0
+                                ? (isPrivacyMode
+                                    ? `₹ •••••• (${sign}${dayPnlPct.toFixed(2)}%)`
+                                    : `${sign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${sign}${dayPnlPct.toFixed(2)}%)`)
+                                : '';
+                        }
                         pfDayPnlEl.classList.remove('pos', 'neg');
                         pfDayPnlEl.classList.add(dayPnLAmt >= 0 ? 'pos' : 'neg');
                     }

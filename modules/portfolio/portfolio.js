@@ -1340,7 +1340,8 @@
                         itemEl.setAttribute('data-buy-date', item.buy_date || '');
                         itemEl.title = 'Tap to view technical chart';
                         itemEl.onclick = (e) => {
-                            openInHouseChart(sym);
+                            if (typeof openInHouseChart === 'function') openInHouseChart(sym);
+                            else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
                         };
 
                         const atpStr = isPrivacyMode ? '••••••' : `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
@@ -1362,8 +1363,8 @@
                                     <span class="pf-mob-pnl-line ${pnlClass}" id="pf-pnl-${rowKey}">
                                         ${ltp > 0
                                             ? (isPrivacyMode
-                                                ? `₹ •••••• (${pnlSign}${pnlPct.toFixed(2)}%)`
-                                                : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${pnlSign}${pnlPct.toFixed(2)}%)`)
+                                                ? `₹ •••••• <span class="pf-mob-pct-val">(${pnlSign}${pnlPct.toFixed(2)}%)</span>`
+                                                : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} <span class="pf-mob-pct-val">(${pnlSign}${pnlPct.toFixed(2)}%)</span>`)
                                             : '<span class="skeleton-box" style="width: 80px; height: 14px;"></span>'
                                         }
                                     </span>
@@ -1386,15 +1387,15 @@
                                     <div class="pf-mob-stat-row pf-mob-stat-row-right">
                                         <span class="pf-mob-stat-label">LTP</span>
                                         <span class="pf-mob-stat-value pf-mob-ltp-val" id="pf-ltp-${rowKey}">${ltpStr}</span>
-                                        <span class="pf-mob-stat-change ${dayClass}" id="pf-day-pct-${rowKey}">(${ltp > 0 ? `${daySign}${dayPnlPct.toFixed(2)}%` : '0.00%'})</span>
+                                        <span class="pf-mob-stat-change pf-mob-pct-val" id="pf-day-pct-${rowKey}">(${ltp > 0 ? `${daySign}${dayPnlPct.toFixed(2)}%` : '0.00%'})</span>
                                     </div>
                                     <div class="pf-mob-stat-row pf-mob-stat-row-right">
                                         <span class="pf-mob-stat-label" id="pf-day-lbl-${rowKey}">${dayPnLAmt >= 0 ? "Today's Gain" : "Today's Loss"}</span>
                                         <span class="pf-mob-stat-change ${dayClass}" id="pf-daypnl-${rowKey}">
                                             ${ltp > 0
                                                 ? (isPrivacyMode
-                                                    ? `₹ •••••• (${daySign}${dayPnlPct.toFixed(2)}%)`
-                                                    : `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${daySign}${dayPnlPct.toFixed(2)}%)`)
+                                                    ? `₹ •••••• <span class="pf-mob-pct-val">(${daySign}${dayPnlPct.toFixed(2)}%)</span>`
+                                                    : `${daySign}₹${Math.abs(dayPnLAmt).toLocaleString('en-IN', {minimumFractionDigits: 2})} <span class="pf-mob-pct-val">(${daySign}${dayPnlPct.toFixed(2)}%)</span>`)
                                                 : ''
                                             }
                                         </span>
@@ -1658,7 +1659,7 @@
                 <div id="tx-summary-cards" class="tx-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
                 </div>
 
-                <div class="table-responsive-container tx-table-container" style="max-height: 520px; overflow-y: auto;">
+                <div class="tx-table-container" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
                     <table class="wl-table tx-ledger-table" id="transactions-table">
                         <thead>
                             <tr>
