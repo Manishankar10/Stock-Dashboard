@@ -1288,10 +1288,10 @@
             if (nameDisplay) nameDisplay.innerText = info.name || sym;
 
             const intervalLabel = document.getElementById('intervalBtnLabel');
-            if (intervalLabel) intervalLabel.innerText = '⏱️ 1D';
+            if (intervalLabel) intervalLabel.innerHTML = '<span class="btn-icon">⏱️</span><span class="btn-text"> 1D</span>';
 
             const rangeLabel = document.getElementById('rangeBtnLabel');
-            if (rangeLabel) rangeLabel.innerText = '📅 1Y';
+            if (rangeLabel) rangeLabel.innerHTML = '<span class="btn-icon">📅</span><span class="btn-text"> 1Y</span>';
 
             loadChartData();
         }
@@ -1303,7 +1303,7 @@
         function changeRange(rangeStr) {
             currentChartRange = rangeStr;
             const btnLabel = document.getElementById('rangeBtnLabel');
-            if (btnLabel) btnLabel.innerText = '📅 ' + rangeStr.toUpperCase();
+            if (btnLabel) btnLabel.innerHTML = '<span class="btn-icon">📅</span><span class="btn-text"> ' + rangeStr.toUpperCase() + '</span>';
 
             document.querySelectorAll('#popover-range .tf-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.id === `tf-${rangeStr}`);
@@ -1314,7 +1314,7 @@
         function changeInterval(intervalStr) {
             currentChartInterval = intervalStr;
             const btnLabel = document.getElementById('intervalBtnLabel');
-            if (btnLabel) btnLabel.innerText = '⏱️ ' + intervalStr.toUpperCase();
+            if (btnLabel) btnLabel.innerHTML = '<span class="btn-icon">⏱️</span><span class="btn-text"> ' + intervalStr.toUpperCase() + '</span>';
 
             document.querySelectorAll('#popover-interval .int-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.id === `int-${intervalStr}`);
@@ -1326,9 +1326,9 @@
             chartType = type;
             const btnLabel = document.getElementById('typeBtnLabel');
             if (btnLabel) {
-                if (type === 'candlestick') btnLabel.innerText = '🕯️ Candles';
-                else if (type === 'line') btnLabel.innerText = '📈 Line';
-                else if (type === 'area') btnLabel.innerText = '🌊 Area';
+                if (type === 'candlestick') btnLabel.innerHTML = '<span class="btn-icon">🕯️</span><span class="btn-text"> Candles</span>';
+                else if (type === 'line') btnLabel.innerHTML = '<span class="btn-icon">📈</span><span class="btn-text"> Line</span>';
+                else if (type === 'area') btnLabel.innerHTML = '<span class="btn-icon">🌊</span><span class="btn-text"> Area</span>';
             }
 
             document.querySelectorAll('#popover-type .tf-btn').forEach(btn => {

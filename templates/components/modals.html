@@ -235,6 +235,8 @@
                         <span id="chartSymbolDisplay" class="chart-symbol-text">ROLEXRINGS.NS</span>
                         <span id="chartNameDisplay" class="chart-name-text">Rolex Rings Ltd</span>
                     </div>
+                    <!-- Mobile Close Icon (Top Right on same Stock Name Row) -->
+                    <button type="button" class="chart-close-btn chart-mobile-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
                 </div>
                 
                 <div class="chart-header-right">
@@ -242,8 +244,8 @@
                     <div class="chart-popovers-container">
                         <!-- 1. Indicators Popover -->
                         <div class="chart-popover-wrapper">
-                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-indicators', event)">
-                                <span>fx Indicators</span> <span class="popover-arrow">▾</span>
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-indicators', event)" title="Indicators">
+                                <span class="btn-icon">fx</span> <span class="btn-text">Indicators</span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-indicators">
                                 <div class="popover-menu-title">Indicators</div>
@@ -261,8 +263,8 @@
 
                         <!-- 2. Drawing Tools Popover -->
                         <div class="chart-popover-wrapper">
-                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event);">
-                                <span>✏️ Tools</span> <span class="popover-arrow">▾</span>
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-tools', event);" title="Drawing Tools">
+                                <span class="btn-icon">✏️</span> <span class="btn-text">Tools</span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-tools" style="min-width: 260px; max-height: 480px; overflow-y: auto;">
                                 <div class="popover-menu-title">Tool Color</div>
@@ -297,7 +299,7 @@
                         <!-- 3. Standalone Active Drawings Popover -->
                         <div class="chart-popover-wrapper">
                             <button class="chart-popover-btn" id="btnActiveDrawingsPopover" onclick="toggleChartPopover('popover-active-drawings', event); renderActiveDrawingsList();" title="View & Manage Active Drawings">
-                                <span>📐 Active Drawings (<span id="activeDrawingsCountNav">0</span>)</span> <span class="popover-arrow">▾</span>
+                                <span class="btn-icon">📐</span> <span class="btn-text">Active Drawings (<span id="activeDrawingsCountNav">0</span>)</span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-active-drawings" style="min-width: 280px; width: 300px; padding: 12px;">
                                 <div class="popover-menu-title" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #787b86; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px;">
@@ -312,8 +314,8 @@
 
                         <!-- 4. Time Interval / Candle Frequency Popover -->
                         <div class="chart-popover-wrapper">
-                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-interval', event)">
-                                <span id="intervalBtnLabel">⏱️ 1D</span> <span class="popover-arrow">▾</span>
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-interval', event)" title="Candle Interval">
+                                <span id="intervalBtnLabel"><span class="btn-icon">⏱️</span> <span class="btn-text">1D</span></span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-interval">
                                 <div class="popover-menu-title">Candle Interval</div>
@@ -328,8 +330,8 @@
 
                         <!-- 5. Timeframe Range Popover -->
                         <div class="chart-popover-wrapper">
-                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-range', event)">
-                                <span id="rangeBtnLabel">📅 1Y</span> <span class="popover-arrow">▾</span>
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-range', event)" title="Time Range">
+                                <span id="rangeBtnLabel"><span class="btn-icon">📅</span> <span class="btn-text">1Y</span></span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-range">
                                 <div class="popover-menu-title">Time Range</div>
@@ -348,8 +350,8 @@
 
                         <!-- 6. Chart Type Popover -->
                         <div class="chart-popover-wrapper">
-                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-type', event)">
-                                <span id="typeBtnLabel">🕯️ Candles</span> <span class="popover-arrow">▾</span>
+                            <button class="chart-popover-btn" onclick="toggleChartPopover('popover-type', event)" title="Chart Type">
+                                <span id="typeBtnLabel"><span class="btn-icon">🕯️</span> <span class="btn-text">Candles</span></span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-type">
                                 <div class="popover-menu-title">Chart Type</div>
@@ -360,12 +362,12 @@
                         </div>
 
                         <!-- Quick Action Buttons -->
-                        <button class="chart-action-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View">🔄 Center</button>
-                        <button class="chart-action-btn" onclick="openStockNewsModal(currentChartSymbol)">📰 News</button>
+                        <button class="chart-action-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View"><span class="btn-icon">🔄</span> <span class="btn-text">Center</span></button>
+                        <button class="chart-action-btn" onclick="openStockNewsModal(currentChartSymbol)" title="News"><span class="btn-icon">📰</span> <span class="btn-text">News</span></button>
                     </div>
 
-                    <!-- Top Right Close Icon -->
-                    <button type="button" class="chart-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
+                    <!-- Top Right Close Icon (Desktop) -->
+                    <button type="button" class="chart-close-btn chart-desktop-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
                 </div>
             </div>
 

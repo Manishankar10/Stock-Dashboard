@@ -421,7 +421,7 @@
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 8px 5px !important;
+        padding: 0px 5px !important;
         border-bottom: 1px solid var(--border-color) !important;
         background: transparent !important;
         cursor: pointer;
@@ -555,30 +555,43 @@
         display: none !important;
     }
 
-    /* Mobile Row Actions Menu (Discreet 3-Dots) */
+    /* Mobile Row Actions Menu (Discreet Setting Icon - No Arrow) */
     .wl-table .wl-col-actions {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 0 0 0 8px !important;
+        padding: 0 0 0 6px !important;
         border: none !important;
         flex: 0 0 auto !important;
     }
 
-    .wl-table .wl-col-actions .btn-secondary {
+    .wl-table .wl-col-actions .btn-secondary,
+    .wl-table .wl-col-actions .wl-row-menu-btn {
         background: transparent !important;
         border: none !important;
         color: var(--text-muted) !important;
-        padding: 6px 4px !important;
-        font-size: 16px !important;
+        padding: 0 3px !important;
+        font-size: 14px !important;
         cursor: pointer;
-        opacity: 0.6;
+        opacity: 0.65;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
     }
 
     .wl-table .wl-col-actions .btn-secondary:hover,
-    .wl-table .wl-col-actions .btn-secondary:active {
+    .wl-table .wl-col-actions .btn-secondary:active,
+    .wl-table .wl-col-actions .wl-row-menu-btn:hover,
+    .wl-table .wl-col-actions .wl-row-menu-btn:active {
         opacity: 1;
         color: var(--text-primary) !important;
+    }
+
+    /* Do not show arrow icon below/beside setting icon on mobile */
+    .wl-table .wl-col-actions .wl-setting-arrow {
+        display: none !important;
     }
 }
 
@@ -1269,7 +1282,7 @@
 
     /* High density list rows for landscape */
     .wl-table tr.pf-row {
-        padding: 8px 6px !important;
+        padding: 0px 5px !important;
     }
 
     .wl-price-val {
@@ -1760,5 +1773,155 @@
     .insights-grid {
         grid-template-columns: 1fr !important;
         gap: 16px !important;
+    }
+
+    /* ==========================================================================
+       TECHNICAL CHART MODAL (RESPONSIVE VIEW ONLY - NOT FOR WEB)
+       - Close icon top right on same stock name row
+       - Show only icons little bit bigger
+       ========================================================================== */
+    .chart-topbar {
+        padding: 8px 10px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .chart-header-left {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .chart-header-left .stock-title {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: baseline !important;
+        gap: 6px !important;
+        min-width: 0 !important;
+        flex: 1 !important;
+    }
+
+    .chart-symbol-text {
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+    }
+
+    .chart-name-text {
+        font-size: 12px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 160px !important;
+        color: #787b86 !important;
+    }
+
+    /* Mobile Close Icon: Top Right on same Stock Name Row */
+    .chart-mobile-close-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        padding: 0 !important;
+        font-size: 22px !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        border-radius: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* Hide Desktop Close Icon on Mobile */
+    .chart-desktop-close-btn {
+        display: none !important;
+    }
+
+    .chart-header-right {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        margin: 0 !important;
+        min-width: 0 !important;
+    }
+
+    .chart-popovers-container {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding: 2px 0 3px !important;
+        margin: 0 !important;
+    }
+
+    .chart-popovers-container::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .chart-popover-wrapper {
+        flex-shrink: 0 !important;
+    }
+
+    /* Chart Buttons: Show only icons, little bit bigger */
+    .chart-popover-btn,
+    .chart-action-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .chart-popover-btn .btn-text,
+    .chart-action-btn .btn-text,
+    .chart-popover-btn .popover-arrow {
+        display: none !important;
+    }
+
+    .chart-popover-btn .btn-icon,
+    .chart-action-btn .btn-icon {
+        font-size: 17px !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* Mobile popover menu positioning */
+    .chart-popover-menu {
+        position: fixed !important;
+        top: 88px !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: calc(100% - 24px) !important;
+        max-height: 65vh !important;
+        overflow-y: auto !important;
+        z-index: 10001 !important;
+    }
+}
+
+/* Web / Desktop: Ensure Mobile Close Button is hidden */
+@media (min-width: 769px) {
+    .chart-mobile-close-btn {
+        display: none !important;
     }
 }

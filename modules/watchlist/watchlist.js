@@ -412,10 +412,10 @@
                         </button>
                         <div class="wl-mob-accordion-content" id="wl-mob-actions-content" style="display: none;">
                             <button type="button" class="wl-mob-sub-btn" onclick="exportActiveWatchlistToTxt(); toggleWlMobileMenu(false);">
-                                <span>⇩ Export Watchlist (.txt)</span>
+                                <span>📤 Export Watchlist (.txt)</span>
                             </button>
                             <button type="button" class="wl-mob-sub-btn" onclick="openWatchlistTxtImportModal(); toggleWlMobileMenu(false);">
-                                <span>⇧ Import Watchlist (.txt)</span>
+                                <span>📥 Import Watchlist (.txt)</span>
                             </button>
                             <button type="button" class="wl-mob-sub-btn danger" onclick="deleteActiveWatchlist(); toggleWlMobileMenu(false);">
                                 <span>🗑️ Delete Watchlist</span>
@@ -519,12 +519,12 @@
                     menuWrapper.style.display = 'inline-block';
 
                     const menuBtn = document.createElement('button');
-                    menuBtn.className = 'btn-secondary';
+                    menuBtn.className = 'btn-secondary wl-row-menu-btn';
                     menuBtn.style.padding = '4px 8px';
                     menuBtn.style.fontSize = '12px';
                     menuBtn.style.fontWeight = '600';
                     menuBtn.title = `Actions for ${sym}`;
-                    menuBtn.innerHTML = '⚙️ ▾';
+                    menuBtn.innerHTML = '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
                     menuBtn.onclick = (e) => {
                         e.stopPropagation();
                         toggleWlRowMenu(e, sym);
