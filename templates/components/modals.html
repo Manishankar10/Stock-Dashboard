@@ -235,6 +235,11 @@
                         <span id="chartSymbolDisplay" class="chart-symbol-text">ROLEXRINGS.NS</span>
                         <span id="chartNameDisplay" class="chart-name-text">Rolex Rings Ltd</span>
                     </div>
+                    <!-- Mobile Tool Hint (Decreased Size, Shown at Top Header) -->
+                    <div id="chartMobileToolHint" class="chart-mobile-tool-hint" style="display: none;">
+                        <span id="chartMobileToolHintText">Tap chart to draw</span>
+                        <button type="button" class="tool-hint-cancel-btn" onclick="cancelDrawingTool(); if (event) event.stopPropagation();" title="Cancel Drawing Tool">✕</button>
+                    </div>
                     <!-- Mobile Close Icon (Top Right on same Stock Name Row) -->
                     <button type="button" class="chart-close-btn chart-mobile-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
                 </div>
@@ -440,7 +445,16 @@
 
                 <!-- Mobile Floating Favorite Tools Shortcuts (Refer Image 1) -->
                 <div id="chartMobileFavBar" class="chart-mobile-fav-bar" style="display: none;">
-                    <div class="fav-bar-handle" title="Drag to Reposition Toolbar">⋮⋮</div>
+                    <div class="fav-bar-handle" title="Drag to Move Toolbar">
+                        <svg width="12" height="15" viewBox="0 0 12 15" fill="currentColor">
+                            <circle cx="3" cy="2.5" r="1.3"/>
+                            <circle cx="9" cy="2.5" r="1.3"/>
+                            <circle cx="3" cy="7.5" r="1.3"/>
+                            <circle cx="9" cy="7.5" r="1.3"/>
+                            <circle cx="3" cy="12.5" r="1.3"/>
+                            <circle cx="9" cy="12.5" r="1.3"/>
+                        </svg>
+                    </div>
                     <div class="fav-bar-icons" id="mobileFavBarIcons"></div>
                 </div>
 
@@ -870,6 +884,66 @@
             <!-- Tab Content: Active Alerts -->
             <div id="notif-tab-content-alerts" style="display: none;">
                 <div id="alerts-list-mount" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         EDIT DRAWING MODAL (Web & Mobile)
+    ========================================================= -->
+    <div id="editDrawingModal" class="small-modal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 100040; background: rgba(15,23,42,0.82); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); align-items: center; justify-content: center;">
+        <div class="small-modal-content" style="width: 420px; max-width: 92vw; padding: 22px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #363a45); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="editDrawingTitle" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary, #ffffff); display: flex; align-items: center; gap: 8px;">
+                    <span>✏️</span> <span>Edit Drawing</span>
+                </h3>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary, #94a3b8); line-height: 1; padding: 2px 6px;" onclick="closeEditDrawingModal()">&times;</span>
+            </div>
+
+            <input type="hidden" id="editDrawingKind">
+            <input type="hidden" id="editDrawingId">
+            <input type="hidden" id="editDrawingType">
+
+            <!-- Label / Text Group -->
+            <div class="form-group" id="editDrawingLabelGroup" style="margin-bottom: 14px;">
+                <label id="editDrawingLabelTitle" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Label / Description</label>
+                <input type="text" id="editDrawingLabel" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
+            </div>
+
+            <!-- Price 1 Group -->
+            <div class="form-group" id="editDrawingPrice1Group" style="margin-bottom: 14px;">
+                <label id="editDrawingPrice1Title" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Price Level (₹)</label>
+                <input type="number" step="0.05" id="editDrawingPrice1" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
+            </div>
+
+            <!-- Price 2 Group -->
+            <div class="form-group" id="editDrawingPrice2Group" style="margin-bottom: 14px; display: none;">
+                <label id="editDrawingPrice2Title" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">End Price Level (₹)</label>
+                <input type="number" step="0.05" id="editDrawingPrice2" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
+            </div>
+
+            <!-- Color Group -->
+            <div class="form-group" id="editDrawingColorGroup" style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Drawing Color</label>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #10b981; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#10b981')" title="Emerald"></div>
+                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #ef5350; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#ef5350')" title="Red"></div>
+                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #3b82f6; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#3b82f6')" title="Blue"></div>
+                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #f59e0b; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#f59e0b')" title="Yellow"></div>
+                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #a855f7; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#a855f7')" title="Purple"></div>
+                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #f97316; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#f97316')" title="Orange"></div>
+                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #ffffff; cursor: pointer; border: 1px solid #787b86;" onclick="setEditDrawingColor('#ffffff')" title="White"></div>
+                    <input type="color" id="editDrawingColorPicker" style="width: 28px; height: 28px; padding: 0; border: none; background: transparent; cursor: pointer;" title="Custom Color" onchange="setEditDrawingColor(this.value)">
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color, #363a45); padding-top: 14px; margin-top: 16px;">
+                <button type="button" class="btn-secondary" style="background: rgba(239, 83, 80, 0.15); border: 1px solid #ef5350; color: #ef5350; padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer;" onclick="deleteCurrentEditDrawing()">🗑️ Delete</button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-secondary" style="padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer;" onclick="closeEditDrawingModal()">Cancel</button>
+                    <button type="button" class="btn-primary" style="padding: 8px 16px; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer;" onclick="submitSaveEditDrawing()">💾 Save Changes</button>
+                </div>
             </div>
         </div>
     </div>

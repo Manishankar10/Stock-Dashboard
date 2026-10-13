@@ -65,11 +65,41 @@
             });
         }
 
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.chart-popover-wrapper')) {
-                closeAllChartPopovers();
+        function hasOpenChartPopover() {
+            return !!document.querySelector('.chart-popover-menu.show');
+        }
+
+        function handleChartPointerOrClick(e) {
+            if (!hasOpenChartPopover()) return;
+            // Keep popovers open when interacting with controls inside a popover wrapper
+            if (e.target && e.target.closest && e.target.closest('.chart-popover-wrapper')) {
+                return;
             }
-        });
+            closeAllChartPopovers();
+        }
+
+        // Global capture listeners so any chart tap, canvas touch, or outside click closes popovers immediately
+        window.addEventListener('pointerdown', handleChartPointerOrClick, true);
+        window.addEventListener('touchstart', handleChartPointerOrClick, { capture: true, passive: true });
+        window.addEventListener('mousedown', handleChartPointerOrClick, true);
+        window.addEventListener('click', handleChartPointerOrClick, true);
+
+        // When scrolling the chart via touch gesture/drag or mouse wheel
+        window.addEventListener('touchmove', function(e) {
+            if (hasOpenChartPopover()) {
+                if (!e.target || !e.target.closest || !e.target.closest('.chart-popover-menu')) {
+                    closeAllChartPopovers();
+                }
+            }
+        }, { capture: true, passive: true });
+
+        window.addEventListener('wheel', function(e) {
+            if (hasOpenChartPopover()) {
+                if (!e.target || !e.target.closest || !e.target.closest('.chart-popover-menu')) {
+                    closeAllChartPopovers();
+                }
+            }
+        }, { capture: true, passive: true });
 
         function loadSavedChartIndicators() {
             try {
@@ -316,6 +346,7 @@
                             <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${escapeHtml(labelName)}: ₹${l.price}</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <button class="active-drawing-edit-btn" onclick="openEditDrawingModal('line', '${l.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: #60a5fa; padding: 2px 4px;" title="Edit this line">✏️</button>
                             <button onclick="togglePriceLineVisibility('${l.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isHidden ? '#787b86' : '#10b981'}; padding: 2px 4px;" title="${isHidden ? 'Show this line' : 'Hide this line'}">${isHidden ? '🙈' : '👁️'}</button>
                             <button class="active-drawing-delete-btn" onclick="deletePriceLineById('${l.id}')" title="Delete this line">🗑️</button>
                         </div>
@@ -344,6 +375,7 @@
                             <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${icon} ${escapeHtml(name)}</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <button class="active-drawing-edit-btn" onclick="openEditDrawingModal('shape', '${s.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: #60a5fa; padding: 2px 4px;" title="Edit this shape">✏️</button>
                             <button onclick="toggleShapeVisibility('${s.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isHidden ? '#787b86' : '#10b981'}; padding: 2px 4px;" title="${isHidden ? 'Show this shape' : 'Hide this shape'}">${isHidden ? '🙈' : '👁️'}</button>
                             <button class="active-drawing-delete-btn" onclick="deleteShapeById('${s.id}')" title="Delete this shape">🗑️</button>
                         </div>
@@ -353,6 +385,239 @@
 
             mount.innerHTML = html;
         }
+
+        // =========================================================
+        // EDIT EXISTING DRAWINGS (Web & Mobile)
+        // =========================================================
+        let currentEditDrawingTarget = null; // { kind, id }
+
+        function rgbToHex(rgbStr) {
+            if (!rgbStr || rgbStr.startsWith('#')) return (rgbStr || '').toLowerCase();
+            const match = rgbStr.match(/\d+/g);
+            if (!match || match.length < 3) return rgbStr;
+            return '#' + match.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+        }
+
+        function openEditDrawingModal(kind, id) {
+            const modal = document.getElementById('editDrawingModal');
+            if (!modal) return;
+
+            currentEditDrawingTarget = { kind, id };
+            const kindInput = document.getElementById('editDrawingKind');
+            const idInput = document.getElementById('editDrawingId');
+            if (kindInput) kindInput.value = kind;
+            if (idInput) idInput.value = id;
+
+            const titleEl = document.getElementById('editDrawingTitle');
+            const labelGroup = document.getElementById('editDrawingLabelGroup');
+            const labelTitle = document.getElementById('editDrawingLabelTitle');
+            const labelInput = document.getElementById('editDrawingLabel');
+            const price1Group = document.getElementById('editDrawingPrice1Group');
+            const price1Title = document.getElementById('editDrawingPrice1Title');
+            const price1Input = document.getElementById('editDrawingPrice1');
+            const price2Group = document.getElementById('editDrawingPrice2Group');
+            const price2Title = document.getElementById('editDrawingPrice2Title');
+            const price2Input = document.getElementById('editDrawingPrice2');
+
+            let currentColor = '#10b981';
+
+            if (kind === 'line') {
+                const lines = getSavedPriceLines(currentChartSymbol);
+                const line = lines.find(l => l.id === id);
+                if (!line) {
+                    showToast('Drawing line not found', 'warning');
+                    return;
+                }
+                const labelText = line.label || (line.type === 'target' ? 'Target' : line.type === 'stoploss' ? 'Stop Loss' : 'Support');
+                if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit ${escapeHtml(labelText)} Line</span>`;
+
+                if (labelGroup) labelGroup.style.display = 'block';
+                if (labelTitle) labelTitle.innerText = 'Line Label / Name';
+                if (labelInput) labelInput.value = line.label || '';
+
+                if (price1Group) price1Group.style.display = 'block';
+                if (price1Title) price1Title.innerText = 'Price Level (₹)';
+                if (price1Input) price1Input.value = line.price !== undefined ? line.price : '';
+
+                if (price2Group) price2Group.style.display = 'none';
+
+                currentColor = line.color || '#10b981';
+            } else if (kind === 'shape') {
+                const shapes = getSavedChartShapes(currentChartSymbol);
+                const shape = shapes.find(s => s.id === id);
+                if (!shape) {
+                    showToast('Drawing shape not found', 'warning');
+                    return;
+                }
+                const typeInput = document.getElementById('editDrawingType');
+                if (typeInput) typeInput.value = shape.type;
+                currentColor = shape.color || '#3b82f6';
+
+                if (shape.type === 'note') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Note Callout</span>`;
+                    if (labelGroup) labelGroup.style.display = 'block';
+                    if (labelTitle) labelTitle.innerText = 'Note Text / Message';
+                    if (labelInput) labelInput.value = shape.text || '';
+
+                    if (price1Group) price1Group.style.display = 'block';
+                    if (price1Title) price1Title.innerText = 'Price Level (₹)';
+                    if (price1Input) price1Input.value = shape.price !== undefined ? shape.price : '';
+
+                    if (price2Group) price2Group.style.display = 'none';
+                } else if (shape.type === 'trendline') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Trendline</span>`;
+                    if (labelGroup) labelGroup.style.display = 'none';
+
+                    if (price1Group) price1Group.style.display = 'block';
+                    if (price1Title) price1Title.innerText = 'Start Price (₹)';
+                    if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
+
+                    if (price2Group) price2Group.style.display = 'block';
+                    if (price2Title) price2Title.innerText = 'End Price (₹)';
+                    if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
+                } else if (shape.type === 'rectangle') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Rectangle Zone</span>`;
+                    if (labelGroup) labelGroup.style.display = 'none';
+
+                    if (price1Group) price1Group.style.display = 'block';
+                    if (price1Title) price1Title.innerText = 'Top / Start Price (₹)';
+                    if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
+
+                    if (price2Group) price2Group.style.display = 'block';
+                    if (price2Title) price2Title.innerText = 'Bottom / End Price (₹)';
+                    if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
+                } else if (shape.type === 'pricerange') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Price Range Calculator</span>`;
+                    if (labelGroup) labelGroup.style.display = 'none';
+
+                    if (price1Group) price1Group.style.display = 'block';
+                    if (price1Title) price1Title.innerText = 'Base Price (₹)';
+                    if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
+
+                    if (price2Group) price2Group.style.display = 'block';
+                    if (price2Title) price2Title.innerText = 'Target Price (₹)';
+                    if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
+                } else if (shape.type === 'vertical') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Time Line Marker</span>`;
+                    if (labelGroup) labelGroup.style.display = 'none';
+                    if (price1Group) price1Group.style.display = 'none';
+                    if (price2Group) price2Group.style.display = 'none';
+                }
+            }
+
+            setEditDrawingColor(currentColor);
+            modal.style.display = 'flex';
+        }
+
+        function closeEditDrawingModal() {
+            const modal = document.getElementById('editDrawingModal');
+            if (modal) modal.style.display = 'none';
+            currentEditDrawingTarget = null;
+        }
+
+        function setEditDrawingColor(color) {
+            const picker = document.getElementById('editDrawingColorPicker');
+            if (picker) picker.value = color;
+
+            const hexNorm = rgbToHex(color);
+            const dots = document.querySelectorAll('#editDrawingColorGroup .edit-color-dot');
+            dots.forEach(d => {
+                const dotBg = rgbToHex(d.style.backgroundColor);
+                if (dotBg === hexNorm) {
+                    d.style.outline = '2px solid #ffffff';
+                    d.style.outlineOffset = '2px';
+                    d.style.transform = 'scale(1.15)';
+                } else {
+                    d.style.outline = 'none';
+                    d.style.transform = 'scale(1.0)';
+                }
+            });
+        }
+
+        function submitSaveEditDrawing() {
+            if (!currentEditDrawingTarget) return;
+            const { kind, id } = currentEditDrawingTarget;
+            const colorPicker = document.getElementById('editDrawingColorPicker');
+            const chosenColor = colorPicker ? colorPicker.value : '#10b981';
+
+            if (kind === 'line') {
+                const labelInput = document.getElementById('editDrawingLabel');
+                const priceInput = document.getElementById('editDrawingPrice1');
+                const newLabel = labelInput ? labelInput.value.trim() : '';
+                const newPrice = priceInput ? parseFloat(priceInput.value) : NaN;
+
+                if (isNaN(newPrice)) {
+                    showToast('Please enter a valid numeric price.', 'warning');
+                    return;
+                }
+
+                const lines = getSavedPriceLines(currentChartSymbol);
+                const line = lines.find(l => l.id === id);
+                if (line) {
+                    line.label = newLabel || line.label || 'Line';
+                    line.price = newPrice;
+                    line.color = chosenColor;
+                    localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                    restoreSavedPriceLines(currentChartSymbol);
+                    redrawCanvasOverlay();
+                    renderActiveDrawingsList();
+                    showToast('Price line updated successfully', 'success');
+                }
+            } else if (kind === 'shape') {
+                const shapes = getSavedChartShapes(currentChartSymbol);
+                const shape = shapes.find(s => s.id === id);
+                if (shape) {
+                    shape.color = chosenColor;
+                    if (shape.type === 'note') {
+                        const textInput = document.getElementById('editDrawingLabel');
+                        const priceInput = document.getElementById('editDrawingPrice1');
+                        if (textInput) shape.text = textInput.value.trim() || 'Note';
+                        if (priceInput && !isNaN(parseFloat(priceInput.value))) {
+                            shape.price = parseFloat(priceInput.value);
+                        }
+                    } else if (shape.type === 'trendline' || shape.type === 'rectangle' || shape.type === 'pricerange') {
+                        const p1Input = document.getElementById('editDrawingPrice1');
+                        const p2Input = document.getElementById('editDrawingPrice2');
+                        if (p1Input && !isNaN(parseFloat(p1Input.value))) {
+                            shape.price1 = parseFloat(p1Input.value);
+                        }
+                        if (p2Input && !isNaN(parseFloat(p2Input.value))) {
+                            shape.price2 = parseFloat(p2Input.value);
+                        }
+                        if (shape.type === 'rectangle') {
+                            shape.fillColor = hexToRgba(chosenColor, 0.18);
+                        }
+                    }
+                    localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                    redrawCanvasOverlay();
+                    renderActiveDrawingsList();
+                    showToast('Drawing shape updated successfully', 'success');
+                }
+            }
+
+            closeEditDrawingModal();
+        }
+
+        function deleteCurrentEditDrawing() {
+            if (!currentEditDrawingTarget) return;
+            const { kind, id } = currentEditDrawingTarget;
+            closeEditDrawingModal();
+
+            if (kind === 'line') {
+                deletePriceLineById(id);
+                showToast('Price line deleted', 'info');
+            } else if (kind === 'shape') {
+                deleteShapeById(id);
+                showToast('Drawing shape deleted', 'info');
+            }
+        }
+
+        window.openEditDrawingModal = openEditDrawingModal;
+        window.closeEditDrawingModal = closeEditDrawingModal;
+        window.setEditDrawingColor = setEditDrawingColor;
+        window.submitSaveEditDrawing = submitSaveEditDrawing;
+        window.deleteCurrentEditDrawing = deleteCurrentEditDrawing;
+
 
         async function addHorizontalLinePrompt(type) {
             if (!mainSeries || !latestCandlePrice) {
@@ -423,15 +688,60 @@
         // FAVORITE DRAWING TOOLS SHORTCUTS (Mobile & Web)
         // =========================================================
         const CHART_TOOL_META = {
-            'support_click': { id: 'support_click', icon: '📍', title: 'Support Line (Click)', action: () => activateDrawingTool('support_click') },
-            'support': { id: 'support', icon: '🟢', title: 'Support Line (Price)', action: () => addHorizontalLinePrompt('support') },
-            'target': { id: 'target', icon: '🎯', title: 'Target Price Line', action: () => addHorizontalLinePrompt('target') },
-            'stoploss': { id: 'stoploss', icon: '🛑', title: 'StopLoss Line', action: () => addHorizontalLinePrompt('stoploss') },
-            'trendline': { id: 'trendline', icon: '📈', title: 'Diagonal Trendline', action: () => activateDrawingTool('trendline') },
-            'rectangle': { id: 'rectangle', icon: '⬛', title: 'Rectangle Zone', action: () => activateDrawingTool('rectangle') },
-            'pricerange': { id: 'pricerange', icon: '📏', title: 'Price Range %', action: () => activateDrawingTool('pricerange') },
-            'vertical': { id: 'vertical', icon: '🕒', title: 'Time Line Marker', action: () => activateDrawingTool('vertical') },
-            'note': { id: 'note', icon: '📝', title: 'Text Note / Callout', action: () => activateDrawingTool('note') }
+            'trendline': {
+                id: 'trendline',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="13" x2="13" y2="3"/><circle cx="3" cy="13" r="1.5" fill="currentColor"/><circle cx="13" cy="3" r="1.5" fill="currentColor"/></svg>',
+                title: 'Diagonal Trendline',
+                action: () => activateDrawingTool('trendline')
+            },
+            'support_click': {
+                id: 'support_click',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="currentColor"/></svg>',
+                title: 'Support Line (Click)',
+                action: () => activateDrawingTool('support_click')
+            },
+            'support': {
+                id: 'support',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="#10b981"/></svg>',
+                title: 'Support Line (Price)',
+                action: () => addHorizontalLinePrompt('support')
+            },
+            'target': {
+                id: 'target',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="5" x2="15" y2="5"/><path d="M8 5 L8 12 M5 9 L8 12 L11 9"/></svg>',
+                title: 'Target Price Line',
+                action: () => addHorizontalLinePrompt('target')
+            },
+            'stoploss': {
+                id: 'stoploss',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#ef5350" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="11" x2="15" y2="11"/><path d="M8 11 L8 4 M5 7 L8 4 L11 7"/></svg>',
+                title: 'StopLoss Line',
+                action: () => addHorizontalLinePrompt('stoploss')
+            },
+            'rectangle': {
+                id: 'rectangle',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><circle cx="2.5" cy="3.5" r="1" fill="currentColor"/><circle cx="13.5" cy="3.5" r="1" fill="currentColor"/><circle cx="2.5" cy="12.5" r="1" fill="currentColor"/><circle cx="13.5" cy="12.5" r="1" fill="currentColor"/></svg>',
+                title: 'Rectangle Zone',
+                action: () => activateDrawingTool('rectangle')
+            },
+            'pricerange': {
+                id: 'pricerange',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2.5" x2="13" y2="2.5"/><line x1="3" y1="13.5" x2="13" y2="13.5"/><line x1="8" y1="2.5" x2="8" y2="13.5"/><polyline points="5.5,5 8,2.5 10.5,5"/><polyline points="5.5,11 8,13.5 10.5,11"/></svg>',
+                title: 'Price Range %',
+                action: () => activateDrawingTool('pricerange')
+            },
+            'vertical': {
+                id: 'vertical',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="8" y1="1.5" x2="8" y2="14.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>',
+                title: 'Time Line Marker',
+                action: () => activateDrawingTool('vertical')
+            },
+            'note': {
+                id: 'note',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="3"/><line x1="8" y1="3" x2="8" y2="13.5"/></svg>',
+                title: 'Text Note / Callout',
+                action: () => activateDrawingTool('note')
+            }
         };
 
         function getFavoriteTools() {
@@ -544,65 +854,138 @@
                         mobileIcons.appendChild(btn);
                     });
                 }
+                initMobileFavBarDrag();
             }
 
             updatePopoverToolStars();
         }
 
-        let isMobileFavBarDragInitialized = false;
         function initMobileFavBarDrag() {
-            if (isMobileFavBarDragInitialized) return;
             const bar = document.getElementById('chartMobileFavBar');
             if (!bar) return;
-            isMobileFavBarDragInitialized = true;
+
+            // Restore persisted position
+            try {
+                const savedPos = localStorage.getItem('capital_desk_chart_fav_pos');
+                if (savedPos) {
+                    const pos = JSON.parse(savedPos);
+                    if (pos && typeof pos.left === 'number' && typeof pos.top === 'number') {
+                        bar.style.setProperty('right', 'auto');
+                        bar.style.setProperty('left', pos.left + 'px');
+                        bar.style.setProperty('top', pos.top + 'px');
+                    }
+                }
+            } catch(e) {}
+
+            if (bar._dragInitialized) return;
+            bar._dragInitialized = true;
+
             const handle = bar.querySelector('.fav-bar-handle') || bar;
             let isDragging = false;
-            let startX = 0, startY = 0;
+            let startClientX = 0, startClientY = 0;
             let initialLeft = 0, initialTop = 0;
 
-            const onPointerDown = (e) => {
+            const onDragStart = (e) => {
+                // If clicked directly on an action tool button, let the tool execute without dragging
+                if (e.target && e.target.closest && e.target.closest('.chart-mobile-fav-btn')) {
+                    return;
+                }
+                e.stopPropagation();
+                if (e.cancelable) e.preventDefault();
+
                 isDragging = true;
+                bar.classList.add('is-dragging');
+
                 const rect = bar.getBoundingClientRect();
-                const parentRect = (bar.parentElement || document.body).getBoundingClientRect();
+                const parent = bar.parentElement || document.body;
+                const parentRect = parent.getBoundingClientRect();
+
                 initialLeft = rect.left - parentRect.left;
                 initialTop = rect.top - parentRect.top;
+
                 const pt = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
-                startX = pt.clientX;
-                startY = pt.clientY;
-                bar.style.right = 'auto';
-                bar.style.left = initialLeft + 'px';
-                bar.style.top = initialTop + 'px';
-                window.addEventListener('pointermove', onPointerMove, { passive: false });
-                window.addEventListener('pointerup', onPointerUp);
-                window.addEventListener('touchmove', onPointerMove, { passive: false });
-                window.addEventListener('touchend', onPointerUp);
+                startClientX = pt.clientX;
+                startClientY = pt.clientY;
+
+                bar.style.setProperty('right', 'auto');
+                bar.style.setProperty('left', initialLeft + 'px');
+                bar.style.setProperty('top', initialTop + 'px');
+
+                if (e.pointerId && typeof bar.setPointerCapture === 'function') {
+                    try { bar.setPointerCapture(e.pointerId); } catch(err) {}
+                }
+
+                window.addEventListener('pointermove', onDragMove, { passive: false });
+                window.addEventListener('pointerup', onDragEnd);
+                window.addEventListener('touchmove', onDragMove, { passive: false });
+                window.addEventListener('touchend', onDragEnd);
+                window.addEventListener('pointercancel', onDragEnd);
             };
 
-            const onPointerMove = (e) => {
+            const onDragMove = (e) => {
                 if (!isDragging) return;
-                e.preventDefault();
+                e.stopPropagation();
+                if (e.cancelable) e.preventDefault();
+
                 const pt = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
-                const dx = pt.clientX - startX;
-                const dy = pt.clientY - startY;
-                const parentRect = (bar.parentElement || document.body).getBoundingClientRect();
-                const maxLeft = parentRect.width - bar.offsetWidth - 4;
-                const maxTop = parentRect.height - bar.offsetHeight - 4;
+                const dx = pt.clientX - startClientX;
+                const dy = pt.clientY - startClientY;
+
+                const parent = bar.parentElement || document.body;
+                const parentRect = parent.getBoundingClientRect();
+
+                const maxLeft = Math.max(0, parentRect.width - bar.offsetWidth - 4);
+                const maxTop = Math.max(0, parentRect.height - bar.offsetHeight - 4);
+
                 const newLeft = Math.max(4, Math.min(maxLeft, initialLeft + dx));
                 const newTop = Math.max(4, Math.min(maxTop, initialTop + dy));
-                bar.style.left = newLeft + 'px';
-                bar.style.top = newTop + 'px';
+
+                bar.style.setProperty('left', newLeft + 'px');
+                bar.style.setProperty('top', newTop + 'px');
             };
 
-            const onPointerUp = () => {
+            const onDragEnd = (e) => {
+                if (!isDragging) return;
                 isDragging = false;
-                window.removeEventListener('pointermove', onPointerMove);
-                window.removeEventListener('pointerup', onPointerUp);
-                window.removeEventListener('touchmove', onPointerMove);
-                window.removeEventListener('touchend', onPointerUp);
+                bar.classList.remove('is-dragging');
+
+                if (e && e.pointerId && typeof bar.releasePointerCapture === 'function') {
+                    try { bar.releasePointerCapture(e.pointerId); } catch(err) {}
+                }
+
+                window.removeEventListener('pointermove', onDragMove);
+                window.removeEventListener('pointerup', onDragEnd);
+                window.removeEventListener('touchmove', onDragMove);
+                window.removeEventListener('touchend', onDragEnd);
+                window.removeEventListener('pointercancel', onDragEnd);
+
+                // Persist new position in localStorage
+                try {
+                    const curLeft = parseFloat(bar.style.left);
+                    const curTop = parseFloat(bar.style.top);
+                    if (!isNaN(curLeft) && !isNaN(curTop)) {
+                        localStorage.setItem('capital_desk_chart_fav_pos', JSON.stringify({ left: curLeft, top: curTop }));
+                    }
+                } catch(e) {}
             };
 
-            handle.addEventListener('pointerdown', onPointerDown);
-            handle.addEventListener('touchstart', onPointerDown, { passive: false });
+            handle.addEventListener('pointerdown', onDragStart);
+            handle.addEventListener('touchstart', onDragStart, { passive: false });
+            bar.addEventListener('pointerdown', onDragStart);
+            bar.addEventListener('touchstart', onDragStart, { passive: false });
+
+            window.addEventListener('resize', () => {
+                const parent = bar.parentElement || document.body;
+                const parentRect = parent.getBoundingClientRect();
+                const curLeft = parseFloat(bar.style.left);
+                const curTop = parseFloat(bar.style.top);
+                if (!isNaN(curLeft) && !isNaN(curTop)) {
+                    const maxLeft = Math.max(0, parentRect.width - bar.offsetWidth - 4);
+                    const maxTop = Math.max(0, parentRect.height - bar.offsetHeight - 4);
+                    if (curLeft > maxLeft) bar.style.setProperty('left', Math.max(4, maxLeft) + 'px');
+                    if (curTop > maxTop) bar.style.setProperty('top', Math.max(4, maxTop) + 'px');
+                }
+            });
         }
 
         // =========================================================
@@ -652,6 +1035,41 @@
         }
 
         function showDrawingBanner(toolType) {
+            const isMobile = window.innerWidth <= 768;
+
+            let msg = 'Click on chart to draw';
+            let mobileMsg = 'Tap chart to draw';
+            if (toolType === 'support_click') {
+                msg = '🟢 Support Line: Click anywhere on chart or Right Y-Axis to place line at price level.';
+                mobileMsg = '🟢 Tap to place line';
+            } else if (toolType === 'pricerange') {
+                msg = '📏 Price Range % Calculator: Click 1st point (Start Price), then 2nd point (End Price). Press Esc to cancel.';
+                mobileMsg = '📏 Tap 1st, then 2nd point';
+            } else if (toolType === 'trendline') {
+                msg = '📐 Trendline: Click 1st point (Start), then 2nd point (End). Press Esc to cancel.';
+                mobileMsg = '📈 Tap 1st, then 2nd point';
+            } else if (toolType === 'rectangle') {
+                msg = '⬜ Rectangle Zone: Click 1st corner, then opposite corner. Press Esc to cancel.';
+                mobileMsg = '⬛ Tap 1st, then 2nd corner';
+            } else if (toolType === 'vertical') {
+                msg = '⏱️ Time Line: Click on chart to place vertical marker. Press Esc to cancel.';
+                mobileMsg = '🕒 Tap to place line';
+            } else if (toolType === 'note') {
+                msg = '📍 Text Note: Click on chart to place text note. Press Esc to cancel.';
+                mobileMsg = '📝 Tap to place note';
+            }
+
+            // Mobile: display decreased size hint in top header bar (between stock name & close button)
+            const mobileHint = document.getElementById('chartMobileToolHint');
+            const mobileHintText = document.getElementById('chartMobileToolHintText');
+            if (isMobile && mobileHint && mobileHintText) {
+                mobileHintText.innerText = mobileMsg;
+                mobileHint.style.display = 'inline-flex';
+                const nameEl = document.getElementById('chartNameDisplay');
+                if (nameEl) nameEl.classList.add('hide-on-active-tool');
+            }
+
+            // Web: keep original desktop banner floating in pane
             let banner = document.getElementById('drawingToolBanner');
             const mainContainer = document.getElementById('mainChartPane');
             if (!banner && mainContainer) {
@@ -679,23 +1097,20 @@
                 mainContainer.appendChild(banner);
             }
 
-            let msg = 'Click on chart to draw';
-            if (toolType === 'support_click') msg = '🟢 Support Line: Click anywhere on chart or Right Y-Axis to place line at price level.';
-            else if (toolType === 'pricerange') msg = '📏 Price Range % Calculator: Click 1st point (Start Price), then 2nd point (End Price). Press Esc to cancel.';
-            else if (toolType === 'trendline') msg = '📐 Trendline: Click 1st point (Start), then 2nd point (End). Press Esc to cancel.';
-            else if (toolType === 'rectangle') msg = '⬜ Rectangle Zone: Click 1st corner, then opposite corner. Press Esc to cancel.';
-            else if (toolType === 'vertical') msg = '⏱️ Time Line: Click on chart to place vertical marker. Press Esc to cancel.';
-            else if (toolType === 'note') msg = '📍 Text Note: Click on chart to place text note. Press Esc to cancel.';
-
             if (banner) {
                 banner.innerHTML = `<span>${msg}</span> <button onclick="cancelDrawingTool()" style="background: rgba(0,0,0,0.25); border: none; color: #fff; padding: 2px 8px; border-radius: 10px; cursor: pointer; font-size: 11px;">Cancel (Esc)</button>`;
-                banner.style.display = 'flex';
+                banner.style.display = isMobile ? 'none' : 'flex';
             }
         }
 
         function hideDrawingBanner() {
             const banner = document.getElementById('drawingToolBanner');
             if (banner) banner.style.display = 'none';
+
+            const mobileHint = document.getElementById('chartMobileToolHint');
+            if (mobileHint) mobileHint.style.display = 'none';
+            const nameEl = document.getElementById('chartNameDisplay');
+            if (nameEl) nameEl.classList.remove('hide-on-active-tool');
         }
 
         function cancelDrawingTool() {
@@ -774,6 +1189,7 @@
             };
 
             mainContainer.addEventListener('pointerdown', (e) => {
+                if (hasOpenChartPopover()) closeAllChartPopovers();
                 if (currentDrawingTool) return;
                 if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) return;
                 isUserDraggingChart = true;
@@ -783,9 +1199,33 @@
                 window.addEventListener('touchend', onWindowPointerUp);
             });
 
-            mainContainer.addEventListener('wheel', () => {
+            mainContainer.addEventListener('wheel', (e) => {
+                if (hasOpenChartPopover()) closeAllChartPopovers();
+
+                // Web desktop only: scroll over right Y-axis price scale to expand price as much as possible
+                if (window.innerWidth > 768 && mainSeries && mainChart) {
+                    const rect = mainContainer.getBoundingClientRect();
+                    const isOverRightAxis = (e.clientX >= rect.right - 65);
+                    if (isOverRightAxis) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Scrolling UP (deltaY < 0) expands prices (taller candles, narrower visible price range)
+                        // Scrolling DOWN (deltaY > 0) compresses prices (shorter candles, wider visible price range)
+                        const zoomStep = e.deltaY < 0 ? 0.88 : 1.13;
+                        yAxisScaleMultiplier *= zoomStep;
+
+                        // Expand as much as possible (down to 0.001 = 1000x expansion)
+                        yAxisScaleMultiplier = Math.max(0.001, Math.min(100.0, yAxisScaleMultiplier));
+
+                        mainSeries.applyOptions({});
+                        requestAnimationFrame(() => redrawCanvasOverlay());
+                        return;
+                    }
+                }
+
                 requestAnimationFrame(() => redrawCanvasOverlay());
-            }, { passive: true });
+            }, { passive: false });
 
             mainContainer.addEventListener('dblclick', () => {
                 setTimeout(() => redrawCanvasOverlay(), 50);
@@ -1071,6 +1511,10 @@
                             const span = banner.querySelector('span');
                             if (span) span.innerText = `Click 2nd point to complete ${actionName}`;
                         }
+                        const mobileHintText = document.getElementById('chartMobileToolHintText');
+                        if (mobileHintText) {
+                            mobileHintText.innerText = 'Tap 2nd point to finish';
+                        }
                     } else {
                         const pt1 = drawingPoints[0];
                         const pt2 = pt;
@@ -1214,8 +1658,9 @@
                 popup.innerHTML = `
                     <span style="font-weight: 700; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(obj.name)}</span>
                     <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}" style="width: 18px; height: 18px; border: none; padding: 0; background: transparent; cursor: pointer;" title="Change color">
+                    <button onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #60a5fa; padding: 2px 7px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Edit Drawing Details">✏️ Edit</button>
                     <button onclick="${toggleVisFn}" style="background: rgba(255, 255, 255, 0.08); border: 1px solid #363a45; color: #d1d4dc; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Toggle visibility">${visIcon}</button>
-                    <button onclick="${deleteFn}" style="background: rgba(239, 83, 80, 0.2); border: 1px solid #ef5350; color: #ef5350; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Delete Item">🗑️ Delete</button>
+                    <button onclick="${deleteFn}" style="background: rgba(239, 83, 80, 0.2); border: 1px solid #ef5350; color: #ef5350; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Delete Item">🗑️</button>
                 `;
                 popup.style.display = 'flex';
                 if (drawingCanvas) {
@@ -1551,6 +1996,11 @@
         }
 
         function resetChartView() {
+            yAxisScaleMultiplier = 1.0;
+            yAxisPanOffset = 0.0;
+            if (mainSeries) {
+                try { mainSeries.applyOptions({}); } catch(e){}
+            }
             if (mainChart) {
                 mainChart.timeScale().fitContent();
                 mainChart.priceScale('right').applyOptions({ autoScale: true });
@@ -1567,6 +2017,7 @@
             if (macdChart) {
                 macdChart.timeScale().fitContent();
             }
+            requestAnimationFrame(() => redrawCanvasOverlay());
         }
 
         function resizeChartPanes() {
@@ -1775,6 +2226,165 @@
             return `${weekday} ${day} ${month} '${year}`;
         }
 
+        const CHART_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        function parseTickTime(time) {
+            if (typeof time === 'string') {
+                const parts = time.split('-');
+                if (parts.length >= 3) {
+                    return {
+                        year: parseInt(parts[0], 10),
+                        month: parseInt(parts[1], 10),
+                        day: parseInt(parts[2], 10),
+                        hours: 0,
+                        minutes: 0
+                    };
+                }
+            } else if (typeof time === 'object' && time !== null) {
+                if (time.year !== undefined) {
+                    return {
+                        year: time.year,
+                        month: time.month,
+                        day: time.day,
+                        hours: 0,
+                        minutes: 0
+                    };
+                }
+            } else if (typeof time === 'number') {
+                const d = new Date(time * 1000);
+                return {
+                    year: d.getFullYear(),
+                    month: d.getMonth() + 1,
+                    day: d.getDate(),
+                    hours: d.getHours(),
+                    minutes: d.getMinutes()
+                };
+            }
+            const d = new Date(time);
+            return {
+                year: d.getFullYear(),
+                month: d.getMonth() + 1,
+                day: d.getDate(),
+                hours: d.getHours(),
+                minutes: d.getMinutes()
+            };
+        }
+
+        function getVisibleBarsCount() {
+            try {
+                if (mainChart) {
+                    const range = mainChart.timeScale().getVisibleLogicalRange();
+                    if (range && typeof range.from === 'number' && typeof range.to === 'number') {
+                        return Math.max(1, range.to - range.from);
+                    }
+                }
+            } catch(e) {}
+            if (cachedChartData && cachedChartData.candles) {
+                return cachedChartData.candles.length;
+            }
+            return 100;
+        }
+
+        function formatCrosshairBadgeTime(time) {
+            const pt = parseTickTime(time);
+            if (!pt || isNaN(pt.year)) return String(time);
+            const intv = (currentChartInterval || '1d').toLowerCase();
+            if (['5m', '15m', '30m', '60m', '1h'].includes(intv)) {
+                const hh = String(pt.hours).padStart(2, '0');
+                const mm = String(pt.minutes).padStart(2, '0');
+                return `${pt.day} ${CHART_MONTH_NAMES[pt.month - 1]} ${pt.year} ${hh}:${mm}`;
+            }
+            if (intv === '1mo' || intv === '1m') {
+                return `${CHART_MONTH_NAMES[pt.month - 1]} ${pt.year}`;
+            }
+            return `${pt.day} ${CHART_MONTH_NAMES[pt.month - 1]} ${pt.year}`;
+        }
+
+        function formatChartTickMark(time, tickMarkType, locale) {
+            const pt = parseTickTime(time);
+            if (!pt || isNaN(pt.year)) return '';
+
+            const interval = (currentChartInterval || '1d').toLowerCase();
+            const visibleBars = getVisibleBarsCount();
+
+            // 1. MONTHLY FREQUENCY ('1mo' or '1m')
+            if (interval === '1mo' || interval === '1m') {
+                // Too many candles (Image 1): Only show 4-digit years (e.g. 2019, 2020, 2021...)
+                const isTooMany = visibleBars > 28;
+                if (isTooMany) {
+                    if (tickMarkType === 0 || pt.month === 1) {
+                        return String(pt.year);
+                    }
+                    return '';
+                }
+                // Expanded (Image 2): Mar, May, Jul, Sep, Nov, 2026, Mar, May...
+                if (tickMarkType === 0 || pt.month === 1) {
+                    return String(pt.year);
+                }
+                return CHART_MONTH_NAMES[pt.month - 1];
+            }
+
+            // 2. WEEKLY FREQUENCY ('1wk' or '1w')
+            if (interval === '1wk' || interval === '1w') {
+                // Too many candles (Image 3): Nov, 2025, Mar, May, Jul, Sep, Nov, 2026... (no days)
+                const isTooMany = visibleBars > 45;
+                if (isTooMany) {
+                    if (tickMarkType === 0 || pt.month === 1) {
+                        return String(pt.year);
+                    }
+                    if (tickMarkType === 1 || pt.day <= 7) {
+                        return CHART_MONTH_NAMES[pt.month - 1];
+                    }
+                    return '';
+                }
+                // Expanded (Image 4): May, 18, Jun, 15, Jul, 20, Aug, 17, Sep, 21, Oct, 19...
+                if (tickMarkType === 0 || (pt.month === 1 && pt.day <= 7)) {
+                    return String(pt.year);
+                }
+                if (tickMarkType === 1 || pt.day <= 7) {
+                    return CHART_MONTH_NAMES[pt.month - 1];
+                }
+                return String(pt.day);
+            }
+
+            // 3. DAILY FREQUENCY ('1d')
+            if (interval === '1d') {
+                // Too many candles (Image 5): Apr, May, Jun, Jul, Aug, Sep, Oct... (no days)
+                const isTooMany = visibleBars > 55;
+                if (isTooMany) {
+                    if (tickMarkType === 0 || pt.month === 1) {
+                        return String(pt.year);
+                    }
+                    if (tickMarkType === 1 || pt.day <= 3) {
+                        return CHART_MONTH_NAMES[pt.month - 1];
+                    }
+                    return '';
+                }
+                // Expanded: Show month at month start, and show day of month (e.g. 15, 18...)
+                if (tickMarkType === 0 || (pt.month === 1 && pt.day <= 3)) {
+                    return String(pt.year);
+                }
+                if (tickMarkType === 1 || pt.day === 1 || pt.day <= 2) {
+                    return CHART_MONTH_NAMES[pt.month - 1];
+                }
+                return String(pt.day);
+            }
+
+            // 4. INTRADAY ('5m', '15m', '60m', '1h')
+            if (tickMarkType === 3 || tickMarkType === 4) {
+                const hh = String(pt.hours).padStart(2, '0');
+                const mm = String(pt.minutes).padStart(2, '0');
+                return `${hh}:${mm}`;
+            }
+            if (tickMarkType === 2) {
+                return `${pt.day} ${CHART_MONTH_NAMES[pt.month - 1]}`;
+            }
+            if (tickMarkType === 1) {
+                return CHART_MONTH_NAMES[pt.month - 1];
+            }
+            return String(pt.year);
+        }
+
         function renderInHouseCharts(data) {
             cachedChartData = data;
             buildIndicatorDataMap(data);
@@ -1795,6 +2405,8 @@
             const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
             const themeColors = getChartThemeColors(currentTheme);
 
+            const isIntradayInterval = ['5m', '15m', '1h', '60m'].includes(currentChartInterval);
+
             const baseChartConfig = {
                 layout: {
                     background: { type: 'solid', color: themeColors.bgColor },
@@ -1804,8 +2416,8 @@
                 },
                 localization: {
                     locale: 'en-IN',
-                    timeFormatter: timestamp => formatChartAxisDate(timestamp),
-                    dateFormatter: timestamp => formatChartAxisDate(timestamp)
+                    timeFormatter: timestamp => formatCrosshairBadgeTime(timestamp),
+                    dateFormatter: timestamp => formatCrosshairBadgeTime(timestamp)
                 },
                 grid: {
                     vertLines: { color: themeColors.gridColor, style: LightweightCharts.LineStyle.Dotted },
@@ -1837,7 +2449,7 @@
                 },
                 timeScale: {
                     borderColor: themeColors.borderColor,
-                    timeVisible: true,
+                    timeVisible: isIntradayInterval,
                     secondsVisible: false,
                     rightOffset: 12,
                     barSpacing: 9,
@@ -1846,15 +2458,7 @@
                     fixRightEdge: false,
                     lockVisibleTimeRangeOnResize: true,
                     rightBarStaysOnScroll: true,
-                    tickMarkFormatter: (time, tickMarkType, locale) => {
-                        if (typeof time === 'number') {
-                            const date = new Date(time * 1000);
-                            if (['5m', '15m', '1h', '60m'].includes(currentChartInterval)) {
-                                return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
-                            }
-                        }
-                        return formatChartAxisDate(time);
-                    }
+                    tickMarkFormatter: (time, tickMarkType, locale) => formatChartTickMark(time, tickMarkType, locale)
                 }
             });
 
@@ -1885,17 +2489,25 @@
                 });
             }
 
+            yAxisScaleMultiplier = 1.0;
+            yAxisPanOffset = 0.0;
+
             if (chartType === 'candlestick') {
                 mainSeries = mainChart.addCandlestickSeries({
-                    upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350'
+                    upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+                    autoscaleInfoProvider: customAutoscaleInfo
                 });
                 mainSeries.setData(data.candles);
             } else if (chartType === 'line') {
-                mainSeries = mainChart.addLineSeries({ color: '#2563eb', lineWidth: 2 });
+                mainSeries = mainChart.addLineSeries({
+                    color: '#2563eb', lineWidth: 2,
+                    autoscaleInfoProvider: customAutoscaleInfo
+                });
                 mainSeries.setData(data.candles.map(c => ({ time: c.time, value: c.close })));
             } else if (chartType === 'area') {
                 mainSeries = mainChart.addAreaSeries({
-                    topColor: 'rgba(37, 99, 235, 0.4)', bottomColor: 'rgba(37, 99, 235, 0.0)', lineColor: '#2563eb', lineWidth: 2
+                    topColor: 'rgba(37, 99, 235, 0.4)', bottomColor: 'rgba(37, 99, 235, 0.0)', lineColor: '#2563eb', lineWidth: 2,
+                    autoscaleInfoProvider: customAutoscaleInfo
                 });
                 mainSeries.setData(data.candles.map(c => ({ time: c.time, value: c.close })));
             }
@@ -1941,7 +2553,7 @@
             }
 
             // Indicators
-            cdRiderSeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'CDRider', visible: false });
+            cdRiderSeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'CDRider', visible: false, autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.cdrider) cdRiderSeries.setData(data.cdrider);
 
             const allMarkers = [];
@@ -1949,16 +2561,16 @@
             if (data.cdrider_sell) allMarkers.push(...data.cdrider_sell);
             cachedCdRiderMarkers = allMarkers.sort((a, b) => (typeof a.time === 'number' && typeof b.time === 'number' ? a.time - b.time : 0));
 
-            sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: '50 DMA' });
+            sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: '50 DMA', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.sma50) sma50Series.setData(data.sma50);
 
-            sma200Series = mainChart.addLineSeries({ color: '#e11d48', lineWidth: 2, title: '200 DMA' });
+            sma200Series = mainChart.addLineSeries({ color: '#e11d48', lineWidth: 2, title: '200 DMA', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.sma200) sma200Series.setData(data.sma200);
 
-            ema9Series = mainChart.addLineSeries({ color: '#06b6d4', lineWidth: 2, title: 'EMA 9' });
+            ema9Series = mainChart.addLineSeries({ color: '#06b6d4', lineWidth: 2, title: 'EMA 9', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.ema9) ema9Series.setData(data.ema9);
 
-            gann2DaySeries = mainChart.addLineSeries({ color: themeColors.gannColor, lineWidth: 2, title: 'Gann 2-Day Low' });
+            gann2DaySeries = mainChart.addLineSeries({ color: themeColors.gannColor, lineWidth: 2, title: 'Gann 2-Day Low', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.gann_2day) gann2DaySeries.setData(data.gann_2day);
 
             // RSI Sub-Pane Chart
@@ -2069,7 +2681,10 @@
 
             setupCanvasOverlay();
             if (mainChart) {
-                mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => redrawCanvasOverlay());
+                mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+                    if (hasOpenChartPopover()) closeAllChartPopovers();
+                    redrawCanvasOverlay();
+                });
                 mainChart.subscribeCrosshairMove(() => redrawCanvasOverlay());
             }
 
@@ -2084,11 +2699,48 @@
         let candleTimerIntervalId = null;
         let isRightAxisHovered = false;
 
+        let yAxisScaleMultiplier = 1.0;
+        let yAxisPanOffset = 0.0;
+        let isDraggingPriceScale = false;
+        let startDragPriceScaleY = 0;
+        let hasDraggedPriceScale = false;
+
+        function customAutoscaleInfo(original) {
+            const res = original();
+            if (!res || !res.priceRange) return res;
+            if (yAxisScaleMultiplier === 1.0 && yAxisPanOffset === 0.0) return res;
+            const min = res.priceRange.minValue;
+            const max = res.priceRange.maxValue;
+            if (min === null || max === null || isNaN(min) || isNaN(max)) return res;
+            const span = max - min;
+            const center = (min + max) / 2 + yAxisPanOffset;
+            const halfSpan = (span / 2) * yAxisScaleMultiplier;
+            return {
+                priceRange: {
+                    minValue: center - halfSpan,
+                    maxValue: center + halfSpan
+                },
+                margins: res.margins
+            };
+        }
+
+        function indicatorAutoscaleInfo(original) {
+            if (yAxisScaleMultiplier !== 1.0 || yAxisPanOffset !== 0.0) {
+                return null;
+            }
+            return original();
+        }
+
         let isYScaleAuto = true;
 
         function toggleYScaleMode() {
             if (!mainChart) return;
             isYScaleAuto = !isYScaleAuto;
+            if (isYScaleAuto) {
+                yAxisScaleMultiplier = 1.0;
+                yAxisPanOffset = 0.0;
+                if (mainSeries) try { mainSeries.applyOptions({}); } catch(e){}
+            }
             mainChart.priceScale('right').applyOptions({ autoScale: isYScaleAuto });
             const btn = document.getElementById('btnToggleYScale');
             if (btn) {
@@ -2103,25 +2755,46 @@
             if (!mainContainer) return;
 
             mainContainer.onmousemove = (e) => {
+                if (window.innerWidth <= 768) {
+                    handleRightAxisMouseLeave();
+                    return;
+                }
                 if (!mainSeries || !mainChart) return;
                 const rect = mainContainer.getBoundingClientRect();
                 const y = e.clientY - rect.top;
 
-                if (y < 0 || y > mainContainer.clientHeight) {
-                    handleRightAxisMouseLeave();
+                // Right price axis zone is typically rightmost 65px
+                const isOverRightAxis = (e.clientX >= rect.right - 65);
+
+                if (y < 0 || y > mainContainer.clientHeight || !isOverRightAxis) {
+                    const badge = document.getElementById('rightPriceAxisPlusBadge');
+                    const menu = document.getElementById('plusActionMenu');
+                    const isBadgeHovered = badge && badge.matches(':hover');
+                    const isMenuHovered = menu && menu.matches(':hover');
+                    if (!isBadgeHovered && !isMenuHovered) {
+                        mainContainer.style.cursor = 'default';
+                        handleRightAxisMouseLeave();
+                    }
                     return;
                 }
+
+                // Cursor on right price axis indicates expanding/resizing Y-axis
+                mainContainer.style.cursor = 'ns-resize';
 
                 const price = mainSeries.coordinateToPrice(y);
                 if (price === null || price === undefined || isNaN(price)) return;
 
                 currentRightAxisPrice = parseFloat(price.toFixed(2));
-                renderRightAxisPlusBadge(y, currentRightAxisPrice);
+                renderRightAxisHoverBadge(y, currentRightAxisPrice);
             };
 
             mainContainer.onmousedown = (e) => {
+                if (window.innerWidth <= 768) return;
                 const rect = mainContainer.getBoundingClientRect();
-                if (e.clientX >= rect.right - 70) {
+                if (e.clientX >= rect.right - 65) {
+                    isDraggingPriceScale = true;
+                    startDragPriceScaleY = e.clientY;
+                    hasDraggedPriceScale = false;
                     if (mainChart && isYScaleAuto) {
                         mainChart.priceScale('right').applyOptions({ autoScale: false });
                         isYScaleAuto = false;
@@ -2131,24 +2804,68 @@
                 }
             };
 
+            window.addEventListener('mousemove', (e) => {
+                if (!isDraggingPriceScale || window.innerWidth <= 768) return;
+                const dy = e.clientY - startDragPriceScaleY;
+                if (Math.abs(dy) >= 2) {
+                    hasDraggedPriceScale = true;
+                    // Dragging UP (dy < 0) expands prices; Dragging DOWN (dy > 0) compresses prices
+                    yAxisScaleMultiplier *= (dy < 0 ? 0.98 : 1.02);
+                    yAxisScaleMultiplier = Math.max(0.001, Math.min(100.0, yAxisScaleMultiplier));
+                    startDragPriceScaleY = e.clientY;
+                    if (mainSeries) mainSeries.applyOptions({});
+                    requestAnimationFrame(() => redrawCanvasOverlay());
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDraggingPriceScale) {
+                    isDraggingPriceScale = false;
+                }
+            });
+
+            mainContainer.onclick = (e) => {
+                if (window.innerWidth <= 768) return;
+                if (hasDraggedPriceScale) {
+                    hasDraggedPriceScale = false;
+                    return;
+                }
+                const rect = mainContainer.getBoundingClientRect();
+                if (e.clientX >= rect.right - 65) {
+                    const y = e.clientY - rect.top;
+                    const price = mainSeries ? mainSeries.coordinateToPrice(y) : null;
+                    if (price !== null && price !== undefined && !isNaN(price)) {
+                        currentRightAxisPrice = parseFloat(price.toFixed(2));
+                        showRightAxisPlusBtn(y, currentRightAxisPrice);
+                        toggleRightAxisPlusMenu(e);
+                    }
+                }
+            };
+
             mainContainer.onmouseleave = () => {
+                if (window.innerWidth <= 768) return;
+                mainContainer.style.cursor = 'default';
                 handleRightAxisMouseLeave();
             };
 
             mainContainer.ondblclick = (e) => {
+                if (window.innerWidth <= 768) return;
                 const rect = mainContainer.getBoundingClientRect();
-                if (e.clientX >= rect.right - 70) {
-                    if (mainChart) {
-                        isYScaleAuto = true;
-                        mainChart.priceScale('right').applyOptions({ autoScale: true });
-                        const btn = document.getElementById('btnToggleYScale');
-                        if (btn) { btn.innerText = '🔓 Free Y-Scale'; btn.style.color = '#d1d4dc'; }
-                    }
+                if (e.clientX >= rect.right - 65) {
+                    yAxisScaleMultiplier = 1.0;
+                    yAxisPanOffset = 0.0;
+                    isYScaleAuto = true;
+                    if (mainChart) mainChart.priceScale('right').applyOptions({ autoScale: true });
+                    if (mainSeries) mainSeries.applyOptions({});
+                    const btn = document.getElementById('btnToggleYScale');
+                    if (btn) { btn.innerText = '🔓 Free Y-Scale'; btn.style.color = '#d1d4dc'; }
+                    requestAnimationFrame(() => redrawCanvasOverlay());
                 }
             };
         }
 
-        function renderRightAxisPlusBadge(y, price) {
+        function renderRightAxisHoverBadge(y, price) {
+            if (window.innerWidth <= 768) return;
             const mainContainer = document.getElementById('mainChartPane');
             if (!mainContainer) return;
 
@@ -2162,11 +2879,11 @@
                     z-index: 30;
                     display: none;
                     align-items: center;
-                    pointer-events: auto;
+                    pointer-events: none;
                 `;
                 badge.innerHTML = `
-                    <button type="button" id="axisPlusBtn" onclick="toggleRightAxisPlusMenu(event)" style="background: #10b981; border: 1px solid #059669; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; margin-right: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); transition: transform 0.12s, background 0.12s;" title="Click + for Target, Support Line or Price Alert">+</button>
-                    <div id="axisPriceTextLabel" style="background: #1e222d; border: 1px solid #10b981; color: #f8fafc; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; box-shadow: 0 2px 8px rgba(0,0,0,0.5); pointer-events: none;"></div>
+                    <button type="button" id="axisPlusBtn" onclick="toggleRightAxisPlusMenu(event)" style="background: #10b981; border: 1px solid #059669; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: none; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; margin-right: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); transition: transform 0.12s, background 0.12s; pointer-events: auto;" title="Click + to draw Target, SL or set Price Alert">+</button>
+                    <div id="axisPriceTextLabel" onclick="handlePriceLabelClick(event)" style="background: #1e222d; border: 1px solid #10b981; color: #f8fafc; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; box-shadow: 0 2px 8px rgba(0,0,0,0.5); cursor: pointer; pointer-events: auto;" title="Click to show + tools"></div>
                 `;
                 mainContainer.appendChild(badge);
 
@@ -2177,7 +2894,7 @@
             const btn = badge.querySelector('#axisPlusBtn');
             if (btn) {
                 btn.onclick = (e) => { toggleRightAxisPlusMenu(e); };
-                btn.onmouseenter = () => { isRightAxisHovered = true; btn.style.transform = 'scale(1.25)'; btn.style.background = '#059669'; };
+                btn.onmouseenter = () => { isRightAxisHovered = true; btn.style.transform = 'scale(1.2)'; btn.style.background = '#059669'; };
                 btn.onmouseleave = () => { btn.style.transform = 'scale(1.0)'; btn.style.background = '#10b981'; };
             }
 
@@ -2191,13 +2908,40 @@
             badge.style.display = 'flex';
         }
 
+        function showRightAxisPlusBtn(y, price) {
+            renderRightAxisHoverBadge(y, price);
+            const badge = document.getElementById('rightPriceAxisPlusBadge');
+            if (badge) {
+                const btn = badge.querySelector('#axisPlusBtn');
+                if (btn) {
+                    btn.style.display = 'flex';
+                }
+            }
+        }
+
+        function handlePriceLabelClick(e) {
+            if (e) e.stopPropagation();
+            if (currentRightAxisPrice === null || isNaN(currentRightAxisPrice)) return;
+            const badge = document.getElementById('rightPriceAxisPlusBadge');
+            if (badge) {
+                const btn = badge.querySelector('#axisPlusBtn');
+                if (btn) btn.style.display = 'flex';
+            }
+            toggleRightAxisPlusMenu(e);
+        }
+        window.handlePriceLabelClick = handlePriceLabelClick;
+
         function handleRightAxisMouseLeave() {
             isRightAxisHovered = false;
             setTimeout(() => {
                 const menu = document.getElementById('plusActionMenu');
                 const badge = document.getElementById('rightPriceAxisPlusBadge');
                 if (!isRightAxisHovered && (!menu || menu.style.display !== 'block')) {
-                    if (badge) badge.style.display = 'none';
+                    if (badge) {
+                        badge.style.display = 'none';
+                        const btn = badge.querySelector('#axisPlusBtn');
+                        if (btn) btn.style.display = 'none';
+                    }
                 }
             }, 150);
         }
@@ -2209,6 +2953,13 @@
             currentPlusActionPrice = currentRightAxisPrice;
             const mainContainer = document.getElementById('mainChartPane');
             if (!mainContainer) return;
+
+            // Make sure the plus icon is visible when the menu opens
+            const badge = document.getElementById('rightPriceAxisPlusBadge');
+            if (badge) {
+                const plusBtn = badge.querySelector('#axisPlusBtn');
+                if (plusBtn) plusBtn.style.display = 'flex';
+            }
 
             let menu = document.getElementById('plusActionMenu');
             if (!menu) {
@@ -2223,21 +2974,24 @@
                     padding: 6px;
                     box-shadow: 0 8px 24px rgba(0,0,0,0.7);
                     display: none;
-                    min-width: 230px;
+                    min-width: 235px;
                 `;
                 menu.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 6px 6px; border-bottom: 1px solid #2a2e39; margin-bottom: 4px;">
                         <span style="font-size: 10px; font-weight: 700; color: #787b86; text-transform: uppercase; letter-spacing: 0.5px;">Quick Price Action</span>
                         <button type="button" id="btnClosePlusMenu" onclick="hidePlusActionMenu()" style="background: transparent; border: none; color: #94a3b8; font-size: 14px; font-weight: bold; cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px; transition: color 0.15s;" onmouseover="this.style.color='#ef5350'" onmouseout="this.style.color='#94a3b8'" title="Close Menu">✕</button>
                     </div>
-                    <button type="button" id="btnPlusActionTarget" onclick="executePlusAction('target')" style="background: transparent; border: none; color: #f59e0b; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
-                        🎯 Add Target Line (₹<span id="plusActionTargetPrice">-</span>)
+                    <button type="button" id="btnPlusActionTarget" onclick="executePlusAction('target')" style="background: transparent; border: none; color: #10b981; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                        🎯 Draw Target Line (₹<span id="plusActionTargetPrice">-</span>)
                     </button>
-                    <button type="button" id="btnPlusActionSupport" onclick="executePlusAction('support')" style="background: transparent; border: none; color: #10b981; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
-                        🟢 Add Support Line (₹<span id="plusActionSupportPrice">-</span>)
+                    <button type="button" id="btnPlusActionStoploss" onclick="executePlusAction('stoploss')" style="background: transparent; border: none; color: #ef5350; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                        🛑 Draw SL (Stop Loss) Line (₹<span id="plusActionStoplossPrice">-</span>)
                     </button>
                     <button type="button" id="btnPlusActionAlert" onclick="executePlusAction('alert')" style="background: transparent; border: none; color: #3b82f6; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
                         🔔 Create Price Alert (₹<span id="plusActionAlertPrice">-</span>)
+                    </button>
+                    <button type="button" id="btnPlusActionSupport" onclick="executePlusAction('support')" style="background: transparent; border: none; color: #10b981; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                        🟢 Draw Support Line (₹<span id="plusActionSupportPrice">-</span>)
                     </button>
                 `;
                 mainContainer.appendChild(menu);
@@ -2246,10 +3000,12 @@
                 if (btnClose) btnClose.onclick = (ev) => { ev.stopPropagation(); hidePlusActionMenu(); };
                 const btnTgt = menu.querySelector('#btnPlusActionTarget');
                 if (btnTgt) btnTgt.onclick = () => executePlusAction('target');
-                const btnSup = menu.querySelector('#btnPlusActionSupport');
-                if (btnSup) btnSup.onclick = () => executePlusAction('support');
+                const btnSL = menu.querySelector('#btnPlusActionStoploss');
+                if (btnSL) btnSL.onclick = () => executePlusAction('stoploss');
                 const btnAlt = menu.querySelector('#btnPlusActionAlert');
                 if (btnAlt) btnAlt.onclick = () => executePlusAction('alert');
+                const btnSup = menu.querySelector('#btnPlusActionSupport');
+                if (btnSup) btnSup.onclick = () => executePlusAction('support');
 
                 menu.onmouseleave = () => {
                     setTimeout(() => {
@@ -2265,12 +3021,15 @@
 
             const targetEl = document.getElementById('plusActionTargetPrice');
             if (targetEl) targetEl.innerText = currentPlusActionPrice.toFixed(2);
-            document.getElementById('plusActionSupportPrice').innerText = currentPlusActionPrice.toFixed(2);
-            document.getElementById('plusActionAlertPrice').innerText = currentPlusActionPrice.toFixed(2);
+            const slEl = document.getElementById('plusActionStoplossPrice');
+            if (slEl) slEl.innerText = currentPlusActionPrice.toFixed(2);
+            const alertEl = document.getElementById('plusActionAlertPrice');
+            if (alertEl) alertEl.innerText = currentPlusActionPrice.toFixed(2);
+            const supEl = document.getElementById('plusActionSupportPrice');
+            if (supEl) supEl.innerText = currentPlusActionPrice.toFixed(2);
 
-            const badge = document.getElementById('rightPriceAxisPlusBadge');
             const topPos = badge ? badge.offsetTop : 50;
-            menu.style.top = Math.max(10, Math.min(topPos - 10, mainContainer.clientHeight - 90)) + 'px';
+            menu.style.top = Math.max(10, Math.min(topPos - 10, mainContainer.clientHeight - 130)) + 'px';
             menu.style.right = '70px';
             menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
         }
@@ -2286,8 +3045,11 @@
             hidePlusActionMenu();
 
             if (actionType === 'target') {
-                addHorizontalLineAtPrice('target', price, '#f59e0b', 'Target');
+                addHorizontalLineAtPrice('target', price, '#10b981', 'Target');
                 showSupportAddedToast(price, '🎯 Target Line');
+            } else if (actionType === 'stoploss') {
+                addHorizontalLineAtPrice('stoploss', price, '#ef5350', 'Stop Loss');
+                showSupportAddedToast(price, '🛑 Stop Loss Line');
             } else if (actionType === 'support') {
                 addHorizontalLineAtPrice('support', price, activeToolColor || '#10b981', 'Support');
                 showSupportAddedToast(price, '🟢 Support Line');
