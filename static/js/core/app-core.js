@@ -214,8 +214,8 @@
         let pfSortOption = 'day_pnl_desc'; // 'day_pnl_desc', 'day_pnl_asc', 'duration_desc', 'duration_asc', 'pnl_desc', 'pnl_asc', 'val_desc', 'date_desc', 'date_asc', 'name_asc'
 
         // Watchlist Sort State
-        let wlSortColumn = 'symbol'; // 'symbol', 'price', 'change', 'change_pct'
-        let wlSortDirection = 'asc';  // 'asc', 'desc'
+        let wlSortColumn = 'change_pct'; // 'symbol', 'price', 'change', 'change_pct' (default Day H&L % high to low)
+        let wlSortDirection = 'desc';  // 'asc', 'desc'
 
 
         let isPrivacyMode = localStorage.getItem('capital_desk_privacy_mode') === 'true';

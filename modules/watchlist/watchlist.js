@@ -481,7 +481,7 @@
                     tr.className = 'pf-row';
                     tr.title = 'Click row to view interactive technical chart';
                     tr.onclick = (e) => {
-                        if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.closest('.menu-dropdown-content')) return;
+                        if (e.target.closest('.wl-col-actions') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
                         openInHouseChart(sym);
                     };
                     
@@ -552,24 +552,35 @@
                         text-align: left;
                     `;
 
-                    menuDropdown.innerHTML = `
-                        <div class="menu-item" onclick="event.stopPropagation(); openInHouseChart('${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
-                            📊 Technical Chart
-                        </div>
-                        <div class="menu-item" onclick="event.stopPropagation(); openFundamentalsModal('${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
-                            📈 Fundamentals
-                        </div>
-                        <div class="menu-item" onclick="event.stopPropagation(); openStockNewsModal('${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
-                            📰 Latest News
-                        </div>
-                        <div class="menu-item" onclick="event.stopPropagation(); openCreateAlertModal('${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
-                            🔔 Set Price Alert
-                        </div>
-                        <div class="menu-divider" style="height: 1px; background: var(--border-color); margin: 4px 0;"></div>
-                        <div class="menu-item" onclick="event.stopPropagation(); removeWatchlistStock(null, '${sym}'); closeAllWlMenus();" style="padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #ef4444;">
-                            🗑️ Remove Stock
-                        </div>
-                    `;
+                    const menuItems = [
+                        { label: '📊 Technical Chart', action: () => openInHouseChart(sym) },
+                        { label: '📈 Fundamentals', action: () => openFundamentalsModal(sym) },
+                        { label: '📰 Latest News', action: () => openStockNewsModal(sym) },
+                        { label: '🔔 Set Price Alert', action: () => openCreateAlertModal(sym) },
+                        { divider: true },
+                        { label: '🗑️ Remove Stock', danger: true, action: () => removeWatchlistStock(null, sym) }
+                    ];
+
+                    menuItems.forEach(item => {
+                        if (item.divider) {
+                            const d = document.createElement('div');
+                            d.style.cssText = 'height: 1px; background: var(--border-color); margin: 4px 0;';
+                            menuDropdown.appendChild(d);
+                            return;
+                        }
+                        const mBtn = document.createElement('div');
+                        mBtn.className = 'menu-item';
+                        mBtn.style.cssText = `padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: ${item.danger ? '#ef4444' : 'var(--text-primary)'};`;
+                        mBtn.innerText = item.label;
+                        mBtn.addEventListener('click', (ev) => {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            ev.stopImmediatePropagation();
+                            closeAllWlMenus();
+                            item.action();
+                        });
+                        menuDropdown.appendChild(mBtn);
+                    });
 
                     menuWrapper.appendChild(menuBtn);
                     menuWrapper.appendChild(menuDropdown);
@@ -672,12 +683,51 @@
             const isAlreadyOpen = dropdown && dropdown.style.display === 'block';
             closeAllWlMenus();
             if (dropdown && !isAlreadyOpen) {
+                // Temporarily display to measure dimensions accurately
                 dropdown.style.display = 'block';
+                dropdown.style.top = '100%';
+                dropdown.style.bottom = 'auto';
+
+                if (window.innerWidth <= 768) {
+                    const rect = dropdown.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+                    // If dropdown extends beyond bottom of screen or within 20px of bottom, flip upwards
+                    if (rect.bottom > viewportHeight - 20) {
+                        dropdown.style.top = 'auto';
+                        dropdown.style.bottom = '100%';
+                        dropdown.style.marginTop = '0';
+                        dropdown.style.marginBottom = '4px';
+                    } else {
+                        dropdown.style.top = '100%';
+                        dropdown.style.bottom = 'auto';
+                        dropdown.style.marginTop = '4px';
+                        dropdown.style.marginBottom = '0';
+                    }
+                }
             }
         }
 
         function closeAllWlMenus() {
             document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => el.style.display = 'none');
+        }
+
+        if (!window._wlRowMenuOutsideBound) {
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.menu-dropdown-content') && !e.target.closest('.wl-row-menu-btn')) {
+                    closeAllWlMenus();
+                }
+            });
+            window.addEventListener('scroll', () => {
+                if (window.innerWidth <= 768) {
+                    closeAllWlMenus();
+                }
+            }, { passive: true });
+            document.addEventListener('scroll', (e) => {
+                if (window.innerWidth <= 768 && e.target && e.target !== document) {
+                    closeAllWlMenus();
+                }
+            }, { passive: true, capture: true });
+            window._wlRowMenuOutsideBound = true;
         }
 
         // Search Autocomplete Handler
