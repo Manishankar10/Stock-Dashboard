@@ -63,13 +63,18 @@
     }
 
     .container {
-        padding: 10px 12px calc(20px + var(--safe-area-bottom)) 12px !important;
+        padding: 0 12px calc(20px + var(--safe-area-bottom)) 12px !important;
     }
 
-    /* Watchlist Header Card Reset (Sticky on Mobile: Watchlist tabs remain fixed) */
+    .tab-content.active {
+        transform: none !important;
+    }
+
+    /* Watchlist Header Card Reset (Sticky on Mobile: Watchlist tabs remain fixed flush below header) */
     .watchlist-top-card {
         padding: 0 !important;
-        margin-bottom: 8px !important;
+        margin-top: 0 !important;
+        margin-bottom: 6px !important;
         background: var(--bg-body) !important;
         border: none !important;
         box-shadow: none !important;
@@ -195,16 +200,15 @@
         display: none !important;
     }
 
-    /* Search Box & Controls for Mobile Watchlist (Sticky below watchlist name tabs) */
+    /* Search Box & Controls for Mobile Watchlist: Clean in-flow positioning below tabs */
     #watchlist-view-mount .controls {
-        position: -webkit-sticky !important;
-        position: sticky !important;
-        top: 96px !important;
-        z-index: 99 !important;
-        background: var(--bg-body) !important;
+        position: static !important;
+        top: auto !important;
+        z-index: 1 !important;
+        background: transparent !important;
         width: 100% !important;
-        padding: 0 4px 10px 4px !important;
-        margin-bottom: 6px !important;
+        padding: 2px 2px 8px 2px !important;
+        margin-bottom: 8px !important;
         gap: 6px !important;
         flex-direction: column !important;
         box-sizing: border-box !important;
@@ -407,7 +411,7 @@
 
     /* Mobile Stock List Transformation (Table to Sleek Native 2-Column Cards) */
     #tab-watchlists {
-        overflow-x: hidden !important;
+        overflow: visible !important;
     }
     #watchlist-view-mount {
         position: relative !important;

@@ -1308,28 +1308,29 @@
         }
 
         function initWatchlistMobileSwipe() {
-            const tabWl = document.getElementById('tab-watchlists');
-            if (!tabWl || tabWl.dataset.swipeBound) return;
-            tabWl.dataset.swipeBound = 'true';
+            if (window._wlSwipeInitialized) return;
+            window._wlSwipeInitialized = true;
 
-            tabWl.addEventListener('touchstart', (e) => {
+            document.addEventListener('touchstart', (e) => {
                 // Strictly mobile view check
                 if (window.innerWidth > 768) return;
                 if (_isWlTransitioning) return;
-                if (!tabWl.classList.contains('active')) return;
+
+                const tabWl = document.getElementById('tab-watchlists');
+                if (!tabWl || !tabWl.classList.contains('active')) return;
                 if (!e.touches || e.touches.length !== 1) return;
 
                 const target = e.target;
-                // Exclude touches on horizontal tab strip, search inputs, dropdowns, menus, or modals
-                if (target.closest('#watchlist-selector-mount') ||
-                    target.closest('.watchlist-create-action') ||
-                    target.closest('#wl-search-input') ||
-                    target.closest('.autocomplete-dropdown') ||
-                    target.closest('.menu-dropdown-content') ||
-                    target.closest('.wl-row-menu-btn') ||
-                    target.closest('.wl-mobile-menu-drawer') ||
-                    target.closest('.modal, .small-modal') ||
-                    target.closest('.btn-secondary, button:not(.pf-row)')) {
+                // Exclude touches inside open modals, off-canvas sidebar drawer, or active typing inputs
+                if (document.querySelector('.modal.show, .small-modal.show, .modal[style*="display: block"]') ||
+                    document.getElementById('app-sidebar')?.classList.contains('mobile-open') ||
+                    target.closest('.modal, .small-modal, .sidebar-backdrop, .app-sidebar')) {
+                    _wlSwipeCard = null;
+                    return;
+                }
+
+                // If user is actively typing in an input/textarea, let text selection/editing proceed
+                if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) && document.activeElement === target) {
                     _wlSwipeCard = null;
                     return;
                 }
@@ -1344,10 +1345,13 @@
                 _wlSwipeCard = document.querySelector('#watchlist-view-mount > .card-container') || document.getElementById('watchlist-view-mount');
             }, { passive: true });
 
-            tabWl.addEventListener('touchmove', (e) => {
+            document.addEventListener('touchmove', (e) => {
                 if (window.innerWidth > 768) return;
                 if (!_wlSwipeCard || _isWlTransitioning) return;
                 if (!e.touches || e.touches.length !== 1) return;
+
+                const tabWl = document.getElementById('tab-watchlists');
+                if (!tabWl || !tabWl.classList.contains('active')) return;
 
                 const t = e.touches[0];
                 const dx = t.clientX - _wlSwipeStartX;
@@ -1356,10 +1360,10 @@
                 // Determine gesture direction
                 if (!_wlSwipeIsHorizontal && !_wlSwipeIsVertical) {
                     // Vertical scrolling prioritized for list rows
-                    if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx)) {
+                    if (Math.abs(dy) > 7 && Math.abs(dy) >= Math.abs(dx)) {
                         _wlSwipeIsVertical = true;
                         return;
-                    } else if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+                    } else if (Math.abs(dx) > 9 && Math.abs(dx) > Math.abs(dy)) {
                         const names = Object.keys(watchlistsData || {});
                         const idx = names.indexOf(activeWatchlistName);
 
@@ -1413,7 +1417,7 @@
                 const names = Object.keys(watchlistsData || {});
                 const idx = names.indexOf(activeWatchlistName);
 
-                const isCommitted = Math.abs(dx) > 42 || (Math.abs(dx) > 22 && velocity > 0.32);
+                const isCommitted = Math.abs(dx) > 35 || (Math.abs(dx) > 20 && velocity > 0.28);
 
                 // Right to left (dx < 0): Move to next watchlist
                 if (isCommitted && dx < 0 && idx >= 0 && idx < names.length - 1) {
@@ -1439,8 +1443,8 @@
                 }
             };
 
-            tabWl.addEventListener('touchend', handleTouchEnd, { passive: true });
-            tabWl.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+            document.addEventListener('touchend', handleTouchEnd, { passive: true });
+            document.addEventListener('touchcancel', handleTouchEnd, { passive: true });
         }
         window.initWatchlistMobileSwipe = initWatchlistMobileSwipe;
 
