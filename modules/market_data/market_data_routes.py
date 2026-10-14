@@ -94,24 +94,28 @@ def search_symbol():
 @market_data_bp.route("/api/stock_data", methods=["POST"])
 def get_stock_data():
     symbols = request.json.get("symbols", [])
+    force_refresh = request.json.get("force_refresh", False)
     if not symbols:
         return jsonify({})
 
     result = {}
 
-    # 1. Check warm in-memory cache first
+    # 1. Check warm in-memory cache first (bypassed if force_refresh is requested)
     missing_symbols = []
-    for s in symbols:
-        cached = stock_cache.get(s)
-        if cached and not cached.get("error"):
-            result[s] = cached
-        else:
-            missing_symbols.append(s)
+    if force_refresh:
+        missing_symbols = list(symbols)
+    else:
+        for s in symbols:
+            cached = stock_cache.get(s)
+            if cached and not cached.get("error"):
+                result[s] = cached
+            else:
+                missing_symbols.append(s)
 
     # 2. Fetch any missing symbols in parallel using ThreadPoolExecutor
     if missing_symbols:
         def _fetch_single(s):
-            return s, fetcher.fetch_stock(s, use_cache=True)
+            return s, fetcher.fetch_stock(s, use_cache=not force_refresh)
 
         with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 25)) as executor:
             future_to_sym = {executor.submit(_fetch_single, s): s for s in missing_symbols}

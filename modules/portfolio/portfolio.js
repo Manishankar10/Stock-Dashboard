@@ -395,6 +395,52 @@
         }
         window.reorderPortfolioTableRows = reorderPortfolioTableRows;
 
+        async function triggerPortfolioRefresh(btnEl) {
+            if (window._isPfRefreshing) return;
+            window._isPfRefreshing = true;
+
+            const btns = document.querySelectorAll('.pf-refresh-btn');
+            btns.forEach(b => b.classList.add('refreshing'));
+
+            // 1. Put number loader when showing in init
+            const skelVal = '<span class="skeleton-box" style="width: 75px; height: 16px; display: inline-block;"></span>';
+            const skelSub = '<span class="skeleton-box" style="width: 45px; height: 11px; display: inline-block;"></span>';
+
+            const valEl = document.getElementById('pf-summary-value');
+            const pnlEl = document.getElementById('pf-summary-pnl');
+            const pnlPctEl = document.getElementById('pf-summary-pnl-pct');
+            const dayPnlEl = document.getElementById('pf-summary-daypnl');
+            const dayPnlPctEl = document.getElementById('pf-summary-daypnl-pct');
+
+            if (valEl) valEl.innerHTML = skelVal;
+            if (pnlEl) pnlEl.innerHTML = skelVal;
+            if (pnlPctEl) pnlPctEl.innerHTML = skelSub;
+            if (dayPnlEl) dayPnlEl.innerHTML = skelVal;
+            if (dayPnlPctEl) dayPnlPctEl.innerHTML = skelSub;
+
+            try {
+                if (typeof window.currentTab !== 'undefined') window.currentTab = 'portfolios';
+                if (typeof currentTab !== 'undefined') currentTab = 'portfolios';
+
+                if (typeof refreshPrices === 'function') {
+                    await refreshPrices({ force_refresh: true });
+                }
+            } catch (err) {
+                console.warn('Portfolio refresh error:', err);
+            } finally {
+                btns.forEach(b => b.classList.remove('refreshing'));
+                window._isPfRefreshing = false;
+
+                // Safety fallback: if skeleton remains in DOM for any reason, re-render cached numbers
+                if (valEl && valEl.querySelector('.skeleton-box')) {
+                    if (typeof renderPortfolios === 'function') {
+                        renderPortfolios();
+                    }
+                }
+            }
+        }
+        window.triggerPortfolioRefresh = triggerPortfolioRefresh;
+
         async function fetchPortfolios() {
             const res = await fetch('/api/portfolios');
             portfoliosData = await res.json();
@@ -1222,7 +1268,7 @@
                     </div>
                 </div>
                 <div class="pf-controls-right">
-                    <button class="pf-refresh-btn" onclick="if(typeof refreshPrices === 'function') refreshPrices();" title="Refresh Portfolio Quotes" aria-label="Refresh Quotes">
+                    <button class="pf-refresh-btn" onclick="triggerPortfolioRefresh(this);" title="Refresh Portfolio Quotes" aria-label="Refresh Quotes">
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>

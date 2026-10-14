@@ -1,7 +1,8 @@
         // =========================================================
         // REFRESH LIVE MARKET DATA & UPDATE CALCULATIONS
         // =========================================================
-        async function refreshPrices() {
+        async function refreshPrices(options = {}) {
+            const force = !!(options && options.force_refresh);
             // Request symbols for the current active view only to optimize network payload.
             const allSymbols = new Set();
 
@@ -52,7 +53,7 @@
             const res = await fetch('/api/stock_data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbols: Array.from(allSymbols) })
+                body: JSON.stringify({ symbols: Array.from(allSymbols), force_refresh: force })
             });
             const newPrices = await res.json();
             for (const [sym, info] of Object.entries(newPrices)) {
@@ -239,15 +240,21 @@
 
                 if (invCard) invCard.innerText = invStr;
                 if (valCard) valCard.innerText = valStr;
-                if (pnlCard) pnlCard.innerText = pnlStr;
+                if (pnlCard) {
+                    pnlCard.innerText = pnlStr;
+                    pnlCard.style.color = totPnL >= 0 ? '#10b981' : '#ef4444';
+                }
                 if (pnlPctCard) {
                     pnlPctCard.innerText = pnlPctStr;
-                    pnlPctCard.style.color = totPnL >= 0 ? '#27ae60' : '#c0392b';
+                    pnlPctCard.style.color = totPnL >= 0 ? '#10b981' : '#ef4444';
                 }
-                if (dayPnlCard) dayPnlCard.innerText = dayPnlStr;
+                if (dayPnlCard) {
+                    dayPnlCard.innerText = dayPnlStr;
+                    dayPnlCard.style.color = totDayPnL >= 0 ? '#10b981' : '#ef4444';
+                }
                 if (dayPnlPctCard) {
                     dayPnlPctCard.innerText = dayPnlPctStr;
-                    dayPnlPctCard.style.color = totDayPnL >= 0 ? '#27ae60' : '#c0392b';
+                    dayPnlPctCard.style.color = totDayPnL >= 0 ? '#10b981' : '#ef4444';
                 }
 
                 const footInv = document.getElementById('pf-foot-inv');
