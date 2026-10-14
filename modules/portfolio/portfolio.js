@@ -1218,11 +1218,6 @@
                             <option value="inv_asc" ${pfSortOption === 'inv_asc' ? 'selected' : ''}>Invested Amount (Low to High)</option>
                             <option value="ltp_change_desc" ${pfSortOption === 'ltp_change_desc' ? 'selected' : ''}>LTP Change % (High to Low)</option>
                             <option value="ltp_change_asc" ${pfSortOption === 'ltp_change_asc' ? 'selected' : ''}>LTP Change % (Low to High)</option>
-                            <option value="val_desc" ${pfSortOption === 'val_desc' ? 'selected' : ''}>Current Value (High to Low)</option>
-                            <option value="duration_desc" ${pfSortOption === 'duration_desc' ? 'selected' : ''}>Holding Duration (Longest First)</option>
-                            <option value="duration_asc" ${pfSortOption === 'duration_asc' ? 'selected' : ''}>Holding Duration (Shortest First)</option>
-                            <option value="date_desc" ${pfSortOption === 'date_desc' ? 'selected' : ''}>Buy Date (Newest First)</option>
-                            <option value="date_asc" ${pfSortOption === 'date_asc' ? 'selected' : ''}>Buy Date (Oldest First)</option>
                         </select>
                     </div>
                 </div>
