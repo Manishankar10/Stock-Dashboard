@@ -1693,9 +1693,18 @@
    Applies to both Portrait and Landscape mobile devices
    ========================================================= */
 @media (max-width: 768px) {
-    #fundamentalsModal.small-modal,
-    #fundamentalsModal.fundamentals-modal,
-    #fundamentalsModal,
+    #fundamentalsModal {
+        display: none;
+    }
+
+    #fundamentalsModal[style*="display: none"] {
+        display: none !important;
+    }
+
+    #fundamentalsModal.small-modal[style*="display: block"],
+    #fundamentalsModal.small-modal[style*="display: flex"],
+    #fundamentalsModal.fundamentals-modal[style*="display: block"],
+    #fundamentalsModal.fundamentals-modal[style*="display: flex"],
     #fundamentalsModal[style*="display: block"],
     #fundamentalsModal[style*="display: flex"] {
         display: flex !important;
