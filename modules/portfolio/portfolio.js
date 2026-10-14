@@ -405,6 +405,7 @@
             // 1. Put number loader when showing in init
             const skelVal = '<span class="skeleton-box" style="width: 75px; height: 16px; display: inline-block;"></span>';
             const skelSub = '<span class="skeleton-box" style="width: 45px; height: 11px; display: inline-block;"></span>';
+            const skelLtp = '<span class="skeleton-box" style="width: 55px; height: 12px; display: inline-block; vertical-align: middle;"></span>';
 
             const valEl = document.getElementById('pf-summary-value');
             const pnlEl = document.getElementById('pf-summary-pnl');
@@ -417,6 +418,11 @@
             if (pnlPctEl) pnlPctEl.innerHTML = skelSub;
             if (dayPnlEl) dayPnlEl.innerHTML = skelVal;
             if (dayPnlPctEl) dayPnlPctEl.innerHTML = skelSub;
+
+            // Put number loader on LTP elements across active portfolio holdings
+            document.querySelectorAll('.pf-mob-ltp-val, .pf-col-ltp, [id^="pf-ltp-"]').forEach(el => {
+                el.innerHTML = skelLtp;
+            });
 
             try {
                 if (typeof window.currentTab !== 'undefined') window.currentTab = 'portfolios';
@@ -1347,7 +1353,7 @@
                         };
 
                         const atpStr = isPrivacyMode ? '••••••' : `₹${item.buy_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-                        const ltpStr = ltp > 0 ? (isPrivacyMode ? '••••••' : `₹${ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})}`) : '-';
+                        const ltpStr = ltp > 0 ? (isPrivacyMode ? '••••••' : `₹${ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})}`) : '<span class="skeleton-box" style="width: 55px; height: 12px; display: inline-block; vertical-align: middle;"></span>';
                         const invStr = isPrivacyMode ? '₹ ••••••' : `₹${Math.round(invAmt).toLocaleString('en-IN')}`;
                         const valStr = isPrivacyMode ? '₹ ••••••' : `₹${Math.round(curVal).toLocaleString('en-IN')}`;
 
@@ -1534,7 +1540,7 @@
                         tdLtp.className = 'pf-col-ltp';
                         tdLtp.style.textAlign = 'right';
                         tdLtp.id = `pf-ltp-${rowKey}`;
-                        tdLtp.innerText = ltp > 0 ? formatMoney(ltp) : '-';
+                        tdLtp.innerHTML = ltp > 0 ? (isPrivacyMode ? '••••••' : formatMoney(ltp)) : '<span class="skeleton-box" style="width: 60px; height: 13px; display: inline-block; vertical-align: middle;"></span>';
 
                         const tdInv = document.createElement('td');
                         tdInv.className = 'pf-col-inv';
