@@ -247,39 +247,99 @@
         // =========================================================
         // PORTFOLIO FUNCTIONS & SORTING HELPERS
         // =========================================================
-        function compareDayPnl(symA, symB, qtyA, qtyB, desc = true) {
+        function compareHoldings(symA, symB, qtyA, qtyB, buyPriceA, buyPriceB, buyDateA, buyDateB) {
             const infoA = stockPricesData[symA] || {};
             const infoB = stockPricesData[symB] || {};
-            const hasA = infoA && !infoA.error && infoA.change_pct !== undefined && infoA.change_pct !== null && !isNaN(infoA.change_pct);
-            const hasB = infoB && !infoB.error && infoB.change_pct !== undefined && infoB.change_pct !== null && !isNaN(infoB.change_pct);
+            const qA = Number(qtyA) || 0;
+            const qB = Number(qtyB) || 0;
+            const bpA = Number(buyPriceA) || 0;
+            const bpB = Number(buyPriceB) || 0;
 
-            if (hasA && !hasB) return -1;
-            if (!hasA && hasB) return 1;
-            if (!hasA && !hasB) return (symA || '').localeCompare(symB || '');
+            const ltpA = (infoA && !infoA.error && infoA.price !== undefined) ? Number(infoA.price) : bpA;
+            const ltpB = (infoB && !infoB.error && infoB.price !== undefined) ? Number(infoB.price) : bpB;
 
-            const pctA = Number(infoA.change_pct);
-            const pctB = Number(infoB.change_pct);
-            const diff = desc ? (pctB - pctA) : (pctA - pctB);
-            if (diff !== 0) return diff;
+            const invA = bpA * qA;
+            const invB = bpB * qB;
+            const valA = ltpA * qA;
+            const valB = ltpB * qB;
 
-            const ltpA = infoA.price || 0;
-            const ltpB = infoB.price || 0;
-            const amtA = ltpA > 0 ? ((infoA.change || 0) * (qtyA || 0)) : 0;
-            const amtB = ltpB > 0 ? ((infoB.change || 0) * (qtyB || 0)) : 0;
-            const amtDiff = desc ? (amtB - amtA) : (amtA - amtB);
-            if (amtDiff !== 0) return amtDiff;
+            const pnlAmtA = valA - invA;
+            const pnlAmtB = valB - invB;
 
-            return (symA || '').localeCompare(symB || '');
+            const pnlPctA = invA > 0 ? (pnlAmtA / invA) * 100 : 0;
+            const pnlPctB = invB > 0 ? (pnlAmtB / invB) * 100 : 0;
+
+            const dayAmtA = (infoA && !infoA.error && infoA.change !== undefined) ? (Number(infoA.change) * qA) : 0;
+            const dayAmtB = (infoB && !infoB.error && infoB.change !== undefined) ? (Number(infoB.change) * qB) : 0;
+
+            const dayPctA = (infoA && !infoA.error && infoA.change_pct !== undefined && infoA.change_pct !== null && !isNaN(infoA.change_pct)) ? Number(infoA.change_pct) : -Infinity;
+            const dayPctB = (infoB && !infoB.error && infoB.change_pct !== undefined && infoB.change_pct !== null && !isNaN(infoB.change_pct)) ? Number(infoB.change_pct) : -Infinity;
+
+            const daysA = typeof getHoldingDays === 'function' ? getHoldingDays(buyDateA) : 0;
+            const daysB = typeof getHoldingDays === 'function' ? getHoldingDays(buyDateB) : 0;
+
+            switch (pfSortOption) {
+                case 'day_pnl_amt_desc':
+                case 'day_pnl_desc':
+                    return dayAmtB - dayAmtA;
+                case 'day_pnl_amt_asc':
+                case 'day_pnl_asc':
+                    return dayAmtA - dayAmtB;
+                case 'day_pnl_pct_desc':
+                    return dayPctB - dayPctA;
+                case 'day_pnl_pct_asc':
+                    return dayPctA - dayPctB;
+                case 'pnl_amt_desc':
+                    return pnlAmtB - pnlAmtA;
+                case 'pnl_amt_asc':
+                    return pnlAmtA - pnlAmtB;
+                case 'pnl_pct_desc':
+                case 'pnl_desc':
+                    return pnlPctB - pnlPctA;
+                case 'pnl_pct_asc':
+                case 'pnl_asc':
+                    return pnlPctA - pnlPctB;
+                case 'name_asc':
+                    return (symA || '').localeCompare(symB || '');
+                case 'name_desc':
+                    return (symB || '').localeCompare(symA || '');
+                case 'inv_desc':
+                    return invB - invA;
+                case 'inv_asc':
+                    return invA - invB;
+                case 'ltp_change_desc':
+                    return dayPctB - dayPctA;
+                case 'ltp_change_asc':
+                    return dayPctA - dayPctB;
+                case 'val_desc':
+                    return valB - valA;
+                case 'val_asc':
+                    return valA - valB;
+                case 'duration_desc':
+                    return daysB - daysA;
+                case 'duration_asc':
+                    return daysA - daysB;
+                case 'date_desc':
+                    return (buyDateB || '').localeCompare(buyDateA || '');
+                case 'date_asc':
+                    return (buyDateA || '').localeCompare(buyDateB || '');
+                default:
+                    return 0;
+            }
+        }
+
+        function compareDayPnl(symA, symB, qtyA, qtyB, desc = true) {
+            return compareHoldings(symA, symB, qtyA, qtyB, 0, 0, '', '');
         }
 
         function getPfHeaderSortIcon(descOption, ascOption) {
-            if (pfSortOption === descOption) return '<span style="color:#10b981; margin-left:4px;">▼</span>';
-            if (ascOption && pfSortOption === ascOption) return '<span style="color:#10b981; margin-left:4px;">▲</span>';
+            if (pfSortOption === descOption || (descOption === 'day_pnl_desc' && pfSortOption === 'day_pnl_amt_desc') || (descOption === 'pnl_desc' && pfSortOption === 'pnl_pct_desc')) return '<span style="color:#10b981; margin-left:4px;">▼</span>';
+            if (ascOption && (pfSortOption === ascOption || (ascOption === 'day_pnl_asc' && pfSortOption === 'day_pnl_amt_asc') || (ascOption === 'pnl_asc' && pfSortOption === 'pnl_pct_asc'))) return '<span style="color:#10b981; margin-left:4px;">▲</span>';
             return '<span style="opacity:0.3; margin-left:4px;">↕</span>';
         }
 
         function togglePfSortHeader(descOption, ascOption) {
-            if (pfSortOption === descOption && ascOption) {
+            if ((pfSortOption === descOption || (descOption === 'day_pnl_desc' && pfSortOption === 'day_pnl_amt_desc') || (descOption === 'pnl_desc' && pfSortOption === 'pnl_pct_desc')) && ascOption) {
                 pfSortOption = ascOption;
             } else {
                 pfSortOption = descOption;
@@ -297,42 +357,16 @@
                 const rows = Array.from(tbody.querySelectorAll('tr.pf-row'));
                 if (rows.length > 1) {
                     rows.sort((rowA, rowB) => {
-                        const symA = rowA.getAttribute('data-symbol') || '';
-                        const symB = rowB.getAttribute('data-symbol') || '';
-                        const qtyA = parseFloat(rowA.getAttribute('data-qty') || '0');
-                        const qtyB = parseFloat(rowB.getAttribute('data-qty') || '0');
-                        const buyPriceA = parseFloat(rowA.getAttribute('data-buy-price') || '0');
-                        const buyPriceB = parseFloat(rowB.getAttribute('data-buy-price') || '0');
-                        const buyDateA = rowA.getAttribute('data-buy-date') || '';
-                        const buyDateB = rowB.getAttribute('data-buy-date') || '';
-
-                        const infoA = stockPricesData[symA] || {};
-                        const infoB = stockPricesData[symB] || {};
-                        const ltpA = infoA.price || buyPriceA;
-                        const ltpB = infoB.price || buyPriceB;
-
-                        const invA = buyPriceA * qtyA;
-                        const invB = buyPriceB * qtyB;
-                        const valA = ltpA * qtyA;
-                        const valB = ltpB * qtyB;
-
-                        const pnlPctA = invA > 0 ? ((valA - invA) / invA) * 100 : 0;
-                        const pnlPctB = invB > 0 ? ((valB - invB) / invB) * 100 : 0;
-
-                        const daysA = getHoldingDays(buyDateA);
-                        const daysB = getHoldingDays(buyDateB);
-
-                        if (pfSortOption === 'day_pnl_desc') return compareDayPnl(symA, symB, qtyA, qtyB, true);
-                        if (pfSortOption === 'day_pnl_asc') return compareDayPnl(symA, symB, qtyA, qtyB, false);
-                        if (pfSortOption === 'duration_desc') return daysB - daysA;
-                        if (pfSortOption === 'duration_asc') return daysA - daysB;
-                        if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
-                        if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
-                        if (pfSortOption === 'val_desc') return valB - valA;
-                        if (pfSortOption === 'date_desc') return (buyDateB || '').localeCompare(buyDateA || '');
-                        if (pfSortOption === 'date_asc') return (buyDateA || '').localeCompare(buyDateB || '');
-                        if (pfSortOption === 'name_asc') return symA.localeCompare(symB);
-                        return 0;
+                        return compareHoldings(
+                            rowA.getAttribute('data-symbol') || '',
+                            rowB.getAttribute('data-symbol') || '',
+                            parseFloat(rowA.getAttribute('data-qty') || '0'),
+                            parseFloat(rowB.getAttribute('data-qty') || '0'),
+                            parseFloat(rowA.getAttribute('data-buy-price') || '0'),
+                            parseFloat(rowB.getAttribute('data-buy-price') || '0'),
+                            rowA.getAttribute('data-buy-date') || '',
+                            rowB.getAttribute('data-buy-date') || ''
+                        );
                     });
                     rows.forEach(r => tbody.appendChild(r));
                 }
@@ -344,42 +378,16 @@
                 const cards = Array.from(mobList.querySelectorAll('.pf-mob-card'));
                 if (cards.length > 1) {
                     cards.sort((cardA, cardB) => {
-                        const symA = cardA.getAttribute('data-symbol') || '';
-                        const symB = cardB.getAttribute('data-symbol') || '';
-                        const qtyA = parseFloat(cardA.getAttribute('data-qty') || '0');
-                        const qtyB = parseFloat(cardB.getAttribute('data-qty') || '0');
-                        const buyPriceA = parseFloat(cardA.getAttribute('data-buy-price') || '0');
-                        const buyPriceB = parseFloat(cardB.getAttribute('data-buy-price') || '0');
-                        const buyDateA = cardA.getAttribute('data-buy-date') || '';
-                        const buyDateB = cardB.getAttribute('data-buy-date') || '';
-
-                        const infoA = stockPricesData[symA] || {};
-                        const infoB = stockPricesData[symB] || {};
-                        const ltpA = infoA.price || buyPriceA;
-                        const ltpB = infoB.price || buyPriceB;
-
-                        const invA = buyPriceA * qtyA;
-                        const invB = buyPriceB * qtyB;
-                        const valA = ltpA * qtyA;
-                        const valB = ltpB * qtyB;
-
-                        const pnlPctA = invA > 0 ? ((valA - invA) / invA) * 100 : 0;
-                        const pnlPctB = invB > 0 ? ((valB - invB) / invB) * 100 : 0;
-
-                        const daysA = getHoldingDays(buyDateA);
-                        const daysB = getHoldingDays(buyDateB);
-
-                        if (pfSortOption === 'day_pnl_desc') return compareDayPnl(symA, symB, qtyA, qtyB, true);
-                        if (pfSortOption === 'day_pnl_asc') return compareDayPnl(symA, symB, qtyA, qtyB, false);
-                        if (pfSortOption === 'duration_desc') return daysB - daysA;
-                        if (pfSortOption === 'duration_asc') return daysA - daysB;
-                        if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
-                        if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
-                        if (pfSortOption === 'val_desc') return valB - valA;
-                        if (pfSortOption === 'date_desc') return (buyDateB || '').localeCompare(buyDateA || '');
-                        if (pfSortOption === 'date_asc') return (buyDateA || '').localeCompare(buyDateB || '');
-                        if (pfSortOption === 'name_asc') return symA.localeCompare(symB);
-                        return 0;
+                        return compareHoldings(
+                            cardA.getAttribute('data-symbol') || '',
+                            cardB.getAttribute('data-symbol') || '',
+                            parseFloat(cardA.getAttribute('data-qty') || '0'),
+                            parseFloat(cardB.getAttribute('data-qty') || '0'),
+                            parseFloat(cardA.getAttribute('data-buy-price') || '0'),
+                            parseFloat(cardB.getAttribute('data-buy-price') || '0'),
+                            cardA.getAttribute('data-buy-date') || '',
+                            cardB.getAttribute('data-buy-date') || ''
+                        );
                     });
                     cards.forEach(c => mobList.appendChild(c));
                 }
@@ -600,35 +608,7 @@
             }
 
             // Apply exact current Portfolio Sorting
-            holdings.sort((a, b) => {
-                const infoA = stockPricesData[a.symbol] || {};
-                const infoB = stockPricesData[b.symbol] || {};
-                const ltpA = infoA.price || a.buy_price;
-                const ltpB = infoB.price || b.buy_price;
-
-                const invA = a.buy_price * a.quantity;
-                const invB = b.buy_price * b.quantity;
-                const valA = ltpA * a.quantity;
-                const valB = ltpB * b.quantity;
-
-                const pnlPctA = invA > 0 ? ((valA - invA) / invA) * 100 : 0;
-                const pnlPctB = invB > 0 ? ((valB - invB) / invB) * 100 : 0;
-
-                const daysA = getHoldingDays(a.buy_date);
-                const daysB = getHoldingDays(b.buy_date);
-
-                if (pfSortOption === 'day_pnl_desc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, true);
-                if (pfSortOption === 'day_pnl_asc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, false);
-                if (pfSortOption === 'duration_desc') return daysB - daysA;
-                if (pfSortOption === 'duration_asc') return daysA - daysB;
-                if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
-                if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
-                if (pfSortOption === 'val_desc') return valB - valA;
-                if (pfSortOption === 'date_desc') return (b.buy_date || '').localeCompare(a.buy_date || '');
-                if (pfSortOption === 'date_asc') return (a.buy_date || '').localeCompare(b.buy_date || '');
-                if (pfSortOption === 'name_asc') return a.symbol.localeCompare(b.symbol);
-                return 0;
-            });
+            holdings.sort((a, b) => compareHoldings(a.symbol, b.symbol, a.quantity, b.quantity, a.buy_price, b.buy_price, a.buy_date, b.buy_date));
 
             let csvRows = [];
             const headerRow = [
@@ -1208,41 +1188,52 @@
                 </div>
             `;
 
-            // Filter & Sort Control Bar with Export Action
+            // Filter & Sort Control Bar with Export Action & Quick Refresh
             const filterSortDiv = document.createElement('div');
             filterSortDiv.className = 'filter-sort-bar';
-            filterSortDiv.style.display = 'flex';
-            filterSortDiv.style.justifyContent = 'space-between';
-            filterSortDiv.style.alignItems = 'center';
-            filterSortDiv.style.flexWrap = 'wrap';
-            filterSortDiv.style.gap = '12px';
             filterSortDiv.innerHTML = `
-                <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
-                    <div class="filter-group">
-                        🔍 Filter:
+                <div class="pf-controls-left">
+                    <div class="filter-group pf-filter-group">
+                        <span class="pf-filter-title">🔍 Filter:</span>
                         <select id="pf-filter-select" onchange="pfFilterOption = this.value; renderPortfolios(); refreshPrices();">
                             <option value="all" ${pfFilterOption === 'all' ? 'selected' : ''}>All Holdings</option>
                             <option value="st" ${pfFilterOption === 'st' ? 'selected' : ''}>Short-Term (< 1 Year)</option>
                             <option value="lt" ${pfFilterOption === 'lt' ? 'selected' : ''}>Long-Term (≥ 1 Year)</option>
                         </select>
                     </div>
-                    <div class="sort-group">
-                        ↕️ Sort By:
+                    <div class="sort-group pf-sort-group">
+                        <span class="pf-sort-title">↕️ Sort By:</span>
                         <select id="pf-sort-select" onchange="pfSortOption = this.value; renderPortfolios(); refreshPrices();">
-                            <option value="day_pnl_desc" ${pfSortOption === 'day_pnl_desc' ? 'selected' : ''}>Day P&L % (High to Low)</option>
-                            <option value="day_pnl_asc" ${pfSortOption === 'day_pnl_asc' ? 'selected' : ''}>Day P&L % (Low to High)</option>
+                            <option value="day_pnl_amt_desc" ${pfSortOption === 'day_pnl_amt_desc' || pfSortOption === 'day_pnl_desc' ? 'selected' : ''}>Day P&L (High to Low)</option>
+                            <option value="day_pnl_amt_asc" ${pfSortOption === 'day_pnl_amt_asc' || pfSortOption === 'day_pnl_asc' ? 'selected' : ''}>Day P&L (Low to High)</option>
+                            <option value="day_pnl_pct_desc" ${pfSortOption === 'day_pnl_pct_desc' ? 'selected' : ''}>Day P&L % (High to Low)</option>
+                            <option value="day_pnl_pct_asc" ${pfSortOption === 'day_pnl_pct_asc' ? 'selected' : ''}>Day P&L % (Low to High)</option>
+                            <option value="pnl_amt_desc" ${pfSortOption === 'pnl_amt_desc' ? 'selected' : ''}>Overall P&L (High to Low)</option>
+                            <option value="pnl_amt_asc" ${pfSortOption === 'pnl_amt_asc' ? 'selected' : ''}>Overall P&L (Low to High)</option>
+                            <option value="pnl_pct_desc" ${pfSortOption === 'pnl_pct_desc' || pfSortOption === 'pnl_desc' ? 'selected' : ''}>Overall P&L % (High to Low)</option>
+                            <option value="pnl_pct_asc" ${pfSortOption === 'pnl_pct_asc' || pfSortOption === 'pnl_asc' ? 'selected' : ''}>Overall P&L % (Low to High)</option>
+                            <option value="name_asc" ${pfSortOption === 'name_asc' ? 'selected' : ''}>Stock Symbol (A-Z)</option>
+                            <option value="name_desc" ${pfSortOption === 'name_desc' ? 'selected' : ''}>Stock Symbol (Z-A)</option>
+                            <option value="inv_desc" ${pfSortOption === 'inv_desc' ? 'selected' : ''}>Invested Amount (High to Low)</option>
+                            <option value="inv_asc" ${pfSortOption === 'inv_asc' ? 'selected' : ''}>Invested Amount (Low to High)</option>
+                            <option value="ltp_change_desc" ${pfSortOption === 'ltp_change_desc' ? 'selected' : ''}>LTP Change % (High to Low)</option>
+                            <option value="ltp_change_asc" ${pfSortOption === 'ltp_change_asc' ? 'selected' : ''}>LTP Change % (Low to High)</option>
+                            <option value="val_desc" ${pfSortOption === 'val_desc' ? 'selected' : ''}>Current Value (High to Low)</option>
                             <option value="duration_desc" ${pfSortOption === 'duration_desc' ? 'selected' : ''}>Holding Duration (Longest First)</option>
                             <option value="duration_asc" ${pfSortOption === 'duration_asc' ? 'selected' : ''}>Holding Duration (Shortest First)</option>
-                            <option value="pnl_desc" ${pfSortOption === 'pnl_desc' ? 'selected' : ''}>Overall P&L % (High to Low)</option>
-                            <option value="pnl_asc" ${pfSortOption === 'pnl_asc' ? 'selected' : ''}>Overall P&L % (Low to High)</option>
-                            <option value="val_desc" ${pfSortOption === 'val_desc' ? 'selected' : ''}>Current Value (High to Low)</option>
                             <option value="date_desc" ${pfSortOption === 'date_desc' ? 'selected' : ''}>Buy Date (Newest First)</option>
                             <option value="date_asc" ${pfSortOption === 'date_asc' ? 'selected' : ''}>Buy Date (Oldest First)</option>
-                            <option value="name_asc" ${pfSortOption === 'name_asc' ? 'selected' : ''}>Stock Symbol (A-Z)</option>
                         </select>
                     </div>
                 </div>
-                <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="exportActivePortfolioToExcel()" title="Export current filtered & sorted portfolio table data to Excel">📥 Export Excel</button>
+                <div class="pf-controls-right">
+                    <button class="pf-refresh-btn" onclick="if(typeof refreshPrices === 'function') refreshPrices();" title="Refresh Portfolio Quotes" aria-label="Refresh Quotes">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
+                    </button>
+                    <button class="btn-secondary pf-export-btn" style="font-size: 12px; padding: 6px 14px;" onclick="exportActivePortfolioToExcel()" title="Export current filtered & sorted portfolio table data to Excel">📥 Export Excel</button>
+                </div>
             `;
 
             // Apply Filtering
@@ -1253,35 +1244,7 @@
             }
 
             // Apply Sorting
-            holdings.sort((a, b) => {
-                const infoA = stockPricesData[a.symbol] || {};
-                const infoB = stockPricesData[b.symbol] || {};
-                const ltpA = infoA.price || a.buy_price;
-                const ltpB = infoB.price || b.buy_price;
-
-                const invA = a.buy_price * a.quantity;
-                const invB = b.buy_price * b.quantity;
-                const valA = ltpA * a.quantity;
-                const valB = ltpB * b.quantity;
-
-                const pnlPctA = invA > 0 ? ((valA - invA) / invA) * 100 : 0;
-                const pnlPctB = invB > 0 ? ((valB - invB) / invB) * 100 : 0;
-
-                const daysA = getHoldingDays(a.buy_date);
-                const daysB = getHoldingDays(b.buy_date);
-
-                if (pfSortOption === 'day_pnl_desc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, true);
-                if (pfSortOption === 'day_pnl_asc') return compareDayPnl(a.symbol, b.symbol, a.quantity, b.quantity, false);
-                if (pfSortOption === 'duration_desc') return daysB - daysA;
-                if (pfSortOption === 'duration_asc') return daysA - daysB;
-                if (pfSortOption === 'pnl_desc') return pnlPctB - pnlPctA;
-                if (pfSortOption === 'pnl_asc') return pnlPctA - pnlPctB;
-                if (pfSortOption === 'val_desc') return valB - valA;
-                if (pfSortOption === 'date_desc') return (b.buy_date || '').localeCompare(a.buy_date || '');
-                if (pfSortOption === 'date_asc') return (a.buy_date || '').localeCompare(b.buy_date || '');
-                if (pfSortOption === 'name_asc') return a.symbol.localeCompare(b.symbol);
-                return 0;
-            });
+            holdings.sort((a, b) => compareHoldings(a.symbol, b.symbol, a.quantity, b.quantity, a.buy_price, b.buy_price, a.buy_date, b.buy_date));
 
             // Table Container (Non-congested, Fits 100% Screen Container)
             const scrollContainer = document.createElement('div');

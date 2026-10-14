@@ -205,6 +205,15 @@
         let activeWatchlistName = '';
         let activePortfolioName = '';
         let stockPricesData = {};
+        try {
+            const cachedPrices = localStorage.getItem('cd_cached_stock_prices');
+            if (cachedPrices) {
+                const parsed = JSON.parse(cachedPrices);
+                if (parsed && typeof parsed === 'object') {
+                    stockPricesData = parsed;
+                }
+            }
+        } catch (e) {}
         let searchTimeout = null;
         window.portfoliosLoaded = false;
         window.watchlistsLoaded = false;

@@ -677,6 +677,7 @@
     .portfolio-mobile-menu-wrapper,
     .pf-mobile-list-container,
     .pf-mob-bottom-bar,
+    .pf-refresh-btn,
     #mobile-active-name-badge {
         display: none !important;
     }
@@ -687,6 +688,39 @@
 
     .portfolio-desktop-actions {
         display: flex !important;
+    }
+
+    .pf-controls-left {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .pf-controls-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .pf-filter-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .pf-sort-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .pf-sort-title {
+        display: inline;
+    }
+
+    .pf-export-btn {
+        display: inline-block;
     }
 }
 
@@ -973,39 +1007,125 @@
         font-size: 11.5px !important;
     }
 
-    /* Portfolio Filter & Sort Toolbar (Excel Export moved to top menu) */
+    /* Portfolio Filter & Sort Toolbar - Trendy Glassy Design */
     .filter-sort-bar {
-        flex-direction: column !important;
-        align-items: stretch !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
         gap: 10px !important;
-        padding: 10px 12px !important;
-        border-radius: 12px !important;
+        padding: 8px 10px !important;
+        border-radius: 14px !important;
         margin-bottom: 12px !important;
+        background: rgba(30, 41, 59, 0.45) !important;
+        backdrop-filter: blur(16px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
     }
 
-    .filter-sort-bar > div:first-child {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        width: 100%;
+    [data-theme="light"] .filter-sort-bar {
+        background: rgba(255, 255, 255, 0.65) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.8) !important;
     }
 
-    .filter-group, .sort-group {
+    .pf-controls-left {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        align-items: center !important;
+    }
+
+    /* Hide filter by section in responsive view */
+    .pf-filter-group {
+        display: none !important;
+    }
+
+    .pf-sort-group {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        align-items: center !important;
         width: 100% !important;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
     }
 
-    .filter-group select, .sort-group select {
-        flex: 1 1 auto;
-        max-width: 65%;
-        padding: 7px 10px !important;
-        font-size: 12.5px !important;
-        border-radius: 8px !important;
+    /* Remove the title sort by */
+    .pf-sort-title {
+        display: none !important;
     }
 
-    /* Move excel export to menu -> hide standalone button in filter bar on mobile */
+    /* Place sortby dropdown only in left */
+    #pf-sort-select {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: 38px !important;
+        padding: 0 32px 0 12px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
+        background-color: rgba(255, 255, 255, 0.06) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        border-radius: 10px !important;
+        outline: none !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 10px center !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    [data-theme="light"] #pf-sort-select {
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        color: #0f172a !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    }
+
+    #pf-sort-select:focus {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25) !important;
+    }
+
+    .pf-controls-right {
+        display: flex !important;
+        align-items: center !important;
+        flex: 0 0 auto !important;
+    }
+
+    /* Place refresh icon at right on same row */
+    .pf-refresh-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 10px !important;
+        background: rgba(16, 185, 129, 0.12) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        color: #10b981 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        padding: 0 !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+    }
+
+    .pf-refresh-btn:active {
+        transform: scale(0.92) !important;
+        background: rgba(16, 185, 129, 0.25) !important;
+    }
+
+    /* Hide Excel Export button on mobile */
+    .pf-export-btn,
     .filter-sort-bar > button.btn-secondary {
         display: none !important;
     }

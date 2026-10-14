@@ -113,7 +113,7 @@ def get_stock_data():
         def _fetch_single(s):
             return s, fetcher.fetch_stock(s, use_cache=True)
 
-        with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 12)) as executor:
+        with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 20)) as executor:
             futures = [executor.submit(_fetch_single, s) for s in missing_symbols]
             for future in futures:
                 try:

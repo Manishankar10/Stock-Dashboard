@@ -496,29 +496,54 @@
                         else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
                     };
                     
+                    const info = stockPricesData[sym];
+                    const hasData = info && !info.error && info.price !== undefined;
+                    const nameHtml = (hasData && info.name) 
+                        ? escapeHtml(info.name) 
+                        : '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
+                    const priceVal = hasData 
+                        ? '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) 
+                        : '<span class="skeleton-box" style="width: 60px; height: 14px;"></span>';
+                    const priceCls = (hasData && info.change !== undefined) 
+                        ? (info.change >= 0 ? 'pos' : 'neg') 
+                        : '';
+                    const sign = (hasData && info.change !== undefined && info.change >= 0) ? '+' : '';
+                    const changeAmtHtml = (hasData && info.change !== undefined)
+                        ? `${sign}₹${Math.abs(info.change).toFixed(2)}`
+                        : '<span class="skeleton-box" style="width: 50px; height: 14px;"></span>';
+                    const changePctHtml = (hasData && info.change_pct !== undefined)
+                        ? `${sign}${info.change_pct.toFixed(2)}%`
+                        : '<span class="skeleton-box" style="width: 45px; height: 14px;"></span>';
+                    const subChangeHtml = (hasData && info.change !== undefined && info.change_pct !== undefined)
+                        ? `${sign}₹${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`
+                        : '';
+                    const changeCls = (hasData && info.change !== undefined)
+                        ? (info.change >= 0 ? 'pos' : 'neg')
+                        : '';
+
                     const tdSymbol = document.createElement('td');
                     tdSymbol.className = 'wl-col-symbol';
-                    tdSymbol.innerHTML = `<div class="stock-symbol-row"><span class="stock-symbol">${cleanDisplaySymbol(sym)}</span><span class="badge ${bInfo.class}">${bInfo.label}</span></div><div class="company-name" id="name-${sym}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
+                    tdSymbol.innerHTML = `<div class="stock-symbol-row"><span class="stock-symbol">${cleanDisplaySymbol(sym)}</span><span class="badge ${bInfo.class}">${bInfo.label}</span></div><div class="company-name" id="name-${sym}">${nameHtml}</div>`;
 
                     const tdPrice = document.createElement('td');
                     tdPrice.className = 'wl-col-price';
                     tdPrice.style.textAlign = 'right';
                     tdPrice.innerHTML = `
-                        <span class="wl-price-val" id="price-${sym}"><span class="skeleton-box" style="width: 60px; height: 14px;"></span></span>
-                        <span class="wl-sub-change" id="sub-change-${sym}"></span>
+                        <span class="wl-price-val ${priceCls}" id="price-${sym}">${priceVal}</span>
+                        <span class="wl-sub-change ${changeCls}" id="sub-change-${sym}">${subChangeHtml}</span>
                     `;
 
                     const tdChangeAmt = document.createElement('td');
-                    tdChangeAmt.className = 'wl-col-change-amt';
+                    tdChangeAmt.className = `wl-col-change-amt ${changeCls}`;
                     tdChangeAmt.style.textAlign = 'right';
                     tdChangeAmt.id = `change-amt-${sym}`;
-                    tdChangeAmt.innerHTML = `<span class="skeleton-box" style="width: 50px; height: 14px;"></span>`;
+                    tdChangeAmt.innerHTML = changeAmtHtml;
 
                     const tdChangePct = document.createElement('td');
-                    tdChangePct.className = 'wl-col-change-pct';
+                    tdChangePct.className = `wl-col-change-pct ${changeCls}`;
                     tdChangePct.style.textAlign = 'right';
                     tdChangePct.id = `change-pct-${sym}`;
-                    tdChangePct.innerHTML = `<span class="skeleton-box" style="width: 45px; height: 14px;"></span>`;
+                    tdChangePct.innerHTML = changePctHtml;
 
                     const tdActions = document.createElement('td');
                     tdActions.className = 'wl-col-actions';

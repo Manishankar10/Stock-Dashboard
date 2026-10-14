@@ -60,6 +60,9 @@
                     stockPricesData[sym] = info;
                 }
             }
+            try {
+                localStorage.setItem('cd_cached_stock_prices', JSON.stringify(stockPricesData));
+            } catch (e) {}
 
             // On initial load, re-render watchlist so default sort (Day P&L % High to Low) uses fresh live prices
             if (!window._wlInitialSorted && currentTab === 'watchlists') {
