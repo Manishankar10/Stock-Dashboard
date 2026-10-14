@@ -3,7 +3,7 @@ import math
 import difflib
 import time
 import requests
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -113,24 +113,24 @@ def get_stock_data():
         def _fetch_single(s):
             return s, fetcher.fetch_stock(s, use_cache=True)
 
-        with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 20)) as executor:
-            futures = [executor.submit(_fetch_single, s) for s in missing_symbols]
-            for future in futures:
-                try:
-                    s_sym, s_data = future.result(timeout=6)
-                    if s_data and not s_data.get("error"):
-                        result[s_sym] = s_data
-                    else:
-                        # Check expired cache fallback if fresh fetch returned error
+        with ThreadPoolExecutor(max_workers=min(len(missing_symbols), 25)) as executor:
+            future_to_sym = {executor.submit(_fetch_single, s): s for s in missing_symbols}
+            try:
+                for future in as_completed(future_to_sym, timeout=5.0):
+                    s_sym = future_to_sym[future]
+                    try:
+                        _, s_data = future.result()
+                        if s_data and not s_data.get("error"):
+                            result[s_sym] = s_data
+                        else:
+                            fb = stock_cache.get_expired_fallback(s_sym)
+                            result[s_sym] = fb if fb else s_data
+                    except Exception:
                         fb = stock_cache.get_expired_fallback(s_sym)
                         if fb:
                             result[s_sym] = fb
-                        else:
-                            result[s_sym] = s_data
-                except Exception:
-                    fb = stock_cache.get_expired_fallback(s_sym)
-                    if fb:
-                        result[s_sym] = fb
+            except TimeoutError:
+                pass
 
     # 3. Ensure all requested symbols have an explicit entry
     for sym in symbols:

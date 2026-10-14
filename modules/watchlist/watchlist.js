@@ -1,20 +1,57 @@
         // =========================================================
         // WATCHLIST FUNCTIONS
         // =========================================================
+        // Immediately restore watchlists from localStorage for 0ms initial paint
+        try {
+            const cachedWl = localStorage.getItem('cd_cached_watchlists');
+            if (cachedWl) {
+                const parsed = JSON.parse(cachedWl);
+                if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                    watchlistsData = parsed;
+                    const names = Object.keys(watchlistsData);
+                    if (!activeWatchlistName || !watchlistsData[activeWatchlistName]) {
+                        activeWatchlistName = names[0];
+                    }
+                    setTimeout(() => {
+                        if (typeof renderWatchlists === 'function') renderWatchlists();
+                    }, 0);
+                }
+            }
+        } catch(e) {}
+
         async function fetchWatchlists() {
-            const res = await fetch('/api/watchlists');
-            watchlistsData = await res.json();
-            window.watchlistsLoaded = true;
-            
-            const names = Object.keys(watchlistsData);
-            if (names.length > 0 && (!activeWatchlistName || !watchlistsData[activeWatchlistName])) {
-                activeWatchlistName = names[0];
+            try {
+                const res = await fetch('/api/watchlists');
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    throw new Error('Watchlists API error: ' + res.status);
+                }
+                const data = await res.json();
+                if (data && typeof data === 'object' && !data.error) {
+                    watchlistsData = data;
+                    window.watchlistsLoaded = true;
+                    try {
+                        localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
+                    } catch(e) {}
+                    
+                    const names = Object.keys(watchlistsData);
+                    if (names.length > 0 && (!activeWatchlistName || !watchlistsData[activeWatchlistName])) {
+                        activeWatchlistName = names[0];
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching watchlists:', error);
+            } finally {
+                renderWatchlists();
+                if (typeof refreshPrices === 'function') {
+                    refreshPrices().then(() => {
+                        renderWatchlists();
+                    });
+                }
             }
-            renderWatchlists();
-            if (typeof refreshPrices === 'function') {
-                await refreshPrices();
-            }
-            renderWatchlists();
         }
         window.fetchWatchlists = fetchWatchlists;
 
@@ -60,14 +97,15 @@
             document.querySelectorAll('.wl-overflow.open').forEach(menu => menu.classList.remove('open'));
         }
 
-        async function selectWatchlist(name) {
+        function selectWatchlist(name) {
             activeWatchlistName = name;
             renderWatchlists();
-            if (typeof refreshPrices === 'function') {
-                await refreshPrices();
-            }
-            renderWatchlists();
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
+            if (typeof refreshPrices === 'function') {
+                refreshPrices().then(() => {
+                    renderWatchlists();
+                });
+            }
         }
 
         function toggleWatchlistSort(col) {
@@ -261,7 +299,8 @@
                 return;
             }
 
-            let symbols = (watchlistsData[activeWatchlistName] || []).slice();
+            const rawList = watchlistsData[activeWatchlistName];
+            let symbols = Array.isArray(rawList) ? rawList.slice() : [];
 
             // Apply Watchlist Sorting
             symbols.sort((a, b) => {
@@ -655,35 +694,6 @@
                     menuWrapper.appendChild(menuDropdown);
                     tdActions.appendChild(menuWrapper);
 
-                    const info = stockPricesData[sym];
-                    if (info && !info.error) {
-                        if (info.name) {
-                            const nameEl = tdSymbol.querySelector(`#name-${sym}`);
-                            if (nameEl) nameEl.innerText = info.name;
-                        }
-                        if (info.price !== undefined) {
-                            const priceValEl = tdPrice.querySelector(`#price-${sym}`);
-                            if (priceValEl) {
-                                priceValEl.innerText = '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2});
-                                if (info.change !== undefined) {
-                                    priceValEl.className = `wl-price-val ${info.change >= 0 ? 'pos' : 'neg'}`;
-                                }
-                            }
-                        }
-                        if (info.change !== undefined) {
-                            const sign = info.change >= 0 ? '+' : '';
-                            tdChangeAmt.innerText = `${sign}₹${Math.abs(info.change).toFixed(2)}`;
-                            tdChangeAmt.className = `wl-col-change-amt ${info.change >= 0 ? 'pos' : 'neg'}`;
-                            tdChangePct.innerText = `${sign}${info.change_pct.toFixed(2)}%`;
-                            tdChangePct.className = `wl-col-change-pct ${info.change >= 0 ? 'pos' : 'neg'}`;
-
-                            const subChangeEl = tdPrice.querySelector(`#sub-change-${sym}`);
-                            if (subChangeEl) {
-                                subChangeEl.innerText = `${sign}₹${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`;
-                                subChangeEl.className = `wl-sub-change ${info.change >= 0 ? 'pos' : 'neg'}`;
-                            }
-                        }
-                    }
 
                     tr.appendChild(tdSymbol);
                     tr.appendChild(tdPrice);

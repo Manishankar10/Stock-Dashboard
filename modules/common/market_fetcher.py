@@ -175,7 +175,12 @@ class StockFetcher:
         for host in hosts:
             try:
                 url = f'https://{host}/v8/finance/chart/{symbol}?interval=1d&range=5d&_={t_now}'
-                r = self.session.get(url, timeout=4)
+                r = self.session.get(url, timeout=3.5)
+                if r.status_code == 404:
+                    err_data = {'error': 'No Data Available'}
+                    if use_cache:
+                        stock_cache.set(symbol, err_data, ttl=60)
+                    return err_data
                 if r.status_code == 200:
                     res = r.json()
                     result_list = res.get('chart', {}).get('result', [])

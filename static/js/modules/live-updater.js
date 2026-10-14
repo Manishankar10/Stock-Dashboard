@@ -346,11 +346,9 @@
 
 
         // Initialize App Data
-        async function initApp() {
+        function initApp() {
             initTheme();
             initPrivacyMode();
-            await checkAuthAndLoadUserInfo();
-            await fetchAlerts();
 
             const initialTab = window.INITIAL_TAB || 'watchlists';
             const pathname = window.location.pathname;
@@ -365,15 +363,27 @@
             else if (pathname === '/plan-calculator') targetTab = 'plan-calculator';
             else if (pathname === '/' || pathname === '/watchlists') targetTab = 'watchlists';
 
+            // 1. Immediately activate target tab so UI is interactive instantly (0ms)
+            switchTab(targetTab, false);
+
+            // 2. Fetch view data in parallel without blocking UI
             if (targetTab === 'watchlists') {
-                await fetchWatchlists();
+                if (typeof fetchWatchlists === 'function') {
+                    fetchWatchlists();
+                }
             } else if (targetTab === 'portfolios') {
                 if (typeof fetchPortfolios === 'function') {
-                    await fetchPortfolios();
+                    fetchPortfolios();
                 }
             }
 
-            switchTab(targetTab, false);
+            // 3. Run auth check and notifications in background
+            if (typeof checkAuthAndLoadUserInfo === 'function') {
+                checkAuthAndLoadUserInfo();
+            }
+            if (typeof fetchAlerts === 'function') {
+                fetchAlerts();
+            }
         }
 
         initApp();

@@ -179,15 +179,13 @@ function switchTab(tabName, pushState = true) {
     } else if (tabName === 'smallcases') {
         if (typeof loadSmallcasesTab === 'function') loadSmallcasesTab();
     } else if (tabName === 'watchlists') {
+        if (typeof renderWatchlists === 'function') renderWatchlists();
         if (!window.watchlistsLoaded && typeof fetchWatchlists === 'function') {
             fetchWatchlists();
-        } else {
-            if (typeof renderWatchlists === 'function') renderWatchlists();
-            if (typeof refreshPrices === 'function') {
-                refreshPrices().then(() => {
-                    if (typeof renderWatchlists === 'function') renderWatchlists();
-                });
-            }
+        } else if (typeof refreshPrices === 'function') {
+            refreshPrices().then(() => {
+                if (typeof renderWatchlists === 'function') renderWatchlists();
+            });
         }
     } else if (tabName === 'portfolios') {
         if (!window.portfoliosLoaded && typeof fetchPortfolios === 'function') {
