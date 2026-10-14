@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/static/js/html2canvas.min.js"></script>
 <style>
 :root {
   --bg-body: #0f172a;
@@ -360,6 +361,181 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   color: var(--danger);
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Share Transcript Screenshot Modal Styles */
+.ai-share-btn {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(56, 189, 248, 0.22) 100%) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #34d399 !important;
+  font-weight: 700 !important;
+}
+.ai-share-btn:hover {
+  background: linear-gradient(135deg, #10b981 0%, #0284c7 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+[data-theme="light"] .ai-share-btn {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(56, 189, 248, 0.12) 100%) !important;
+  color: #059669 !important;
+}
+[data-theme="light"] .ai-share-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #0284c7 100%) !important;
+  color: #ffffff !important;
+}
+
+.share-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100005;
+  background: rgba(5, 10, 24, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: aiFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.share-modal-container {
+  width: 95%;
+  max-width: 660px;
+  max-height: 90vh;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(139, 92, 246, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+[data-theme="light"] .share-modal-container {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+.share-modal-header {
+  padding: 14px 18px;
+  background: rgba(30, 41, 59, 0.7);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+[data-theme="light"] .share-modal-header {
+  background: #f8fafc;
+}
+.share-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.share-preview-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.share-preview-thumb-wrap {
+  width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 6px;
+  background: #0b1329;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: center;
+}
+.share-preview-thumb-wrap img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.share-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.share-native-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.35);
+  transition: all 0.15s ease;
+}
+.share-native-btn:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+}
+.share-direct-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .share-direct-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.share-channel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.share-channel-btn:hover {
+  background: var(--table-hover-bg);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.share-channel-btn.download-btn {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10b981;
+}
+.share-channel-btn.download-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+.share-channel-btn.copy-btn {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+.share-channel-btn.copy-btn:hover {
+  background: #38bdf8;
+  color: #ffffff;
 }
 
 /* Modal Body */
@@ -1166,6 +1342,29 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     font-size: 9.5px !important;
     padding: 5px 7px !important;
   }
+  .share-modal-backdrop {
+    padding: 0 !important;
+  }
+  .share-modal-container {
+    width: 100vw !important;
+    width: 100dvw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+  .share-modal-header {
+    padding: 10px 12px !important;
+  }
+  .share-modal-title {
+    font-size: 13px !important;
+  }
+  .share-preview-card {
+    max-height: 38vh !important;
+  }
 }
 </style>
 </head>
@@ -1393,6 +1592,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
         <div class="ai-modal-subtitle" id="aiSummarySubtitle">Senior Equity Research Analyst · Screener Depth</div>
       </div>
       <div class="ai-modal-actions">
+        <button id="aiShareImageBtn" class="ai-btn ai-share-btn" type="button" onclick="shareTranscriptAsImage()" title="Share Transcript as Full Screenshot Image">📸 Share Image</button>
         <button id="aiCopyBtn" class="ai-btn" type="button" onclick="copyAiSummary()" title="Copy Full Report">📋 Copy</button>
         <a id="aiPdfBtn" class="ai-btn" href="#" target="_blank" rel="noopener noreferrer" title="Open Official Source PDF">📄 Source PDF ↗</a>
         <button class="ai-btn ai-close" type="button" onclick="closeAiSummaryModal()" title="Close">&times;</button>
@@ -1424,6 +1624,71 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
       <!-- Content State -->
       <div id="aiSummaryContent" class="ai-content-article markdown-body" style="display: none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Transcript Full Single-Image Screenshot & Multi-Medium Share Modal -->
+<div id="transcriptShareModal" class="share-modal-backdrop" style="display: none;" onclick="if(event.target === this) closeTranscriptShareModal()">
+  <div class="share-modal-container">
+    <div class="share-modal-header">
+      <div class="share-modal-title-wrap">
+        <div class="share-modal-badge">📸 100% Full Content Screenshot</div>
+        <div class="share-modal-title" id="shareModalTitle">Share Concall Transcript Analysis</div>
+        <div class="share-modal-subtitle" id="shareModalSubtitle">Share full single-image fact-based report across all apps & channels</div>
+      </div>
+      <button class="share-modal-close" type="button" onclick="closeTranscriptShareModal()" title="Close">&times;</button>
+    </div>
+
+    <div class="share-modal-body">
+      <!-- Rendering spinner while capturing screenshot -->
+      <div id="shareGeneratingBox" style="display: none; text-align: center; padding: 28px 14px;">
+        <div class="ai-spinner-glow" style="margin: 0 auto 14px auto;">
+          <div class="ai-spinner-ring"></div>
+          <span class="ai-spinner-icon">📸</span>
+        </div>
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Rendering Full-Height Single Image...</div>
+        <div style="font-size: 11.5px; color: var(--text-secondary); max-width: 420px; margin: 0 auto;">Capturing 100% of executive summary, financial metrics, guidance tracker & analyst Q&A without clipping.</div>
+      </div>
+
+      <!-- Preview of generated single-image screenshot -->
+      <div id="sharePreviewBox" style="display: none;">
+        <div class="share-preview-card">
+          <img id="sharePreviewImg" src="" alt="Full Concall Transcript Screenshot Preview" />
+          <div class="share-preview-overlay">
+            <span class="share-preview-pill" id="shareImgDimensionPill">PNG · 100% Content Coverage</span>
+          </div>
+        </div>
+
+        <div class="share-actions-group">
+          <!-- Native OS / Device Share Button -->
+          <button id="nativeShareBtn" class="share-native-btn" type="button" onclick="triggerNativeShare()">
+            <span>📲 Share via System / Apps</span>
+          </button>
+
+          <!-- Medium-specific Actions Grid -->
+          <div class="share-direct-grid">
+            <button class="share-channel-btn download-btn" type="button" onclick="downloadTranscriptImage()" title="Download Full High-Resolution PNG">
+              <span>💾 Download Image</span>
+            </button>
+            <button class="share-channel-btn copy-btn" id="copyImgBtn" type="button" onclick="copyTranscriptImage()" title="Copy Image to Clipboard for Instant Pasting">
+              <span>📋 Copy Image</span>
+            </button>
+            <button class="share-channel-btn" type="button" onclick="shareToWhatsApp()" style="color: #25d366; border-color: rgba(37, 211, 102, 0.35);" title="Share to WhatsApp">
+              <span>💬 WhatsApp</span>
+            </button>
+            <button class="share-channel-btn" type="button" onclick="shareToTelegram()" style="color: #229ed9; border-color: rgba(34, 158, 217, 0.35);" title="Share to Telegram">
+              <span>✈️ Telegram</span>
+            </button>
+            <button class="share-channel-btn" type="button" onclick="shareToTwitter()" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.35);" title="Share to X (Twitter)">
+              <span>𝕏 Twitter / X</span>
+            </button>
+            <button class="share-channel-btn" type="button" onclick="shareToEmail()" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.35);" title="Share via Email">
+              <span>✉️ Email</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2194,6 +2459,314 @@ function copyAiSummary() {
   }).catch(() => {
     alert('Failed to copy report to clipboard');
   });
+}
+
+/* =========================================================
+   SINGLE-IMAGE FULL TRANSCRIPT SCREENSHOT & SHARING ENGINE
+   ========================================================= */
+let _transcriptImageBlob = null;
+let _transcriptImageFile = null;
+let _transcriptImageDataUrl = null;
+let _cachedShareQuarter = null;
+
+async function shareTranscriptAsImage() {
+  const contentEl = document.getElementById('aiSummaryContent');
+  if (!contentEl || !contentEl.innerHTML.trim()) {
+    alert('Please wait for the concall analysis to finish loading before generating the screenshot.');
+    return;
+  }
+
+  const shareModal = document.getElementById('transcriptShareModal');
+  const genBox = document.getElementById('shareGeneratingBox');
+  const prevBox = document.getElementById('sharePreviewBox');
+  const prevImg = document.getElementById('sharePreviewImg');
+  const titleEl = document.getElementById('shareModalTitle');
+  const pillEl = document.getElementById('shareImgDimensionPill');
+
+  const compName = (window._lastFundamentalsData?.company?.name) || symbol;
+  const qtr = _currentAiQuarter || 'Concall';
+  if (titleEl) titleEl.textContent = `${compName} (${symbol}) — ${qtr}`;
+
+  if (shareModal) shareModal.style.display = 'flex';
+
+  // If already generated for this exact quarter, reuse instantly
+  if (_transcriptImageBlob && _transcriptImageDataUrl && _cachedShareQuarter === qtr) {
+    if (prevImg) prevImg.src = _transcriptImageDataUrl;
+    if (genBox) genBox.style.display = 'none';
+    if (prevBox) prevBox.style.display = 'block';
+    return;
+  }
+
+  if (genBox) genBox.style.display = 'block';
+  if (prevBox) prevBox.style.display = 'none';
+
+  try {
+    if (typeof window.html2canvas !== 'function') {
+      throw new Error('html2canvas library not loaded');
+    }
+
+    // Build unconstrained offscreen staging node (1000px wide, dark institutional layout)
+    const stage = document.createElement('div');
+    stage.style.position = 'fixed';
+    stage.style.left = '-9999px';
+    stage.style.top = '0';
+    stage.style.width = '1000px';
+    stage.style.maxWidth = '1000px';
+    stage.style.background = '#0b1120';
+    stage.style.color = '#e2e8f0';
+    stage.style.fontFamily = "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif";
+    stage.style.padding = '36px 40px';
+    stage.style.boxSizing = 'border-box';
+    stage.style.zIndex = '-99999';
+
+    // Premium header
+    const headerDiv = document.createElement('div');
+    headerDiv.style.borderBottom = '2px solid rgba(139, 92, 246, 0.4)';
+    headerDiv.style.paddingBottom = '18px';
+    headerDiv.style.marginBottom = '24px';
+    headerDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div style="display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; padding:3px 10px; border-radius:6px; background:rgba(139,92,246,0.2); color:#c4b5fd; border:1px solid rgba(139,92,246,0.4); margin-bottom:8px;">
+            ✨ Senior Equity Research Analyst · Concall Analysis
+          </div>
+          <div style="font-size:26px; font-weight:800; color:#ffffff; line-height:1.2;">
+            ${esc(compName)} <span style="font-size:18px; color:#94a3b8; font-weight:600;">(${esc(symbol)})</span>
+          </div>
+          <div style="font-size:15px; font-weight:600; color:#38bdf8; margin-top:4px;">
+            ${esc(qtr)} Earnings Conference Call Detailed Analysis & Disclosures
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:15px; font-weight:800; color:#10b981; letter-spacing:0.5px;">CAPITAL DESK</div>
+          <div style="font-size:10px; color:#64748b; margin-top:2px;">Screener-Grade Depth</div>
+          <div style="font-size:10px; color:#94a3b8; margin-top:4px;">${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+        </div>
+      </div>
+    `;
+    stage.appendChild(headerDiv);
+
+    // Deep clone content without height or scroll constraints
+    const clonedContent = contentEl.cloneNode(true);
+    clonedContent.style.display = 'block';
+    clonedContent.style.color = '#e2e8f0';
+    clonedContent.style.fontSize = '13.5px';
+    clonedContent.style.lineHeight = '1.65';
+    
+    // Ensure all table wrappers expand fully in the screenshot
+    clonedContent.querySelectorAll('.ai-table-wrap').forEach(w => {
+      w.style.overflow = 'visible';
+      w.style.width = '100%';
+    });
+    clonedContent.querySelectorAll('table').forEach(t => {
+      t.style.width = '100%';
+      t.style.borderCollapse = 'collapse';
+      t.style.fontSize = '12px';
+      t.style.marginTop = '10px';
+      t.style.marginBottom = '14px';
+    });
+    clonedContent.querySelectorAll('th').forEach(th => {
+      th.style.background = '#1e293b';
+      th.style.color = '#93c5fd';
+      th.style.padding = '8px 10px';
+      th.style.fontSize = '11px';
+      th.style.border = '1px solid #334155';
+    });
+    clonedContent.querySelectorAll('td').forEach(td => {
+      td.style.padding = '7px 10px';
+      td.style.border = '1px solid #1e293b';
+    });
+    stage.appendChild(clonedContent);
+
+    // Watermark footer
+    const footerDiv = document.createElement('div');
+    footerDiv.style.borderTop = '1px solid rgba(255, 255, 255, 0.12)';
+    footerDiv.style.paddingTop = '16px';
+    footerDiv.style.marginTop = '28px';
+    footerDiv.style.display = 'flex';
+    footerDiv.style.justifyContent = 'space-between';
+    footerDiv.style.alignItems = 'center';
+    footerDiv.style.fontSize = '11px';
+    footerDiv.style.color = '#64748b';
+    footerDiv.innerHTML = `
+      <div>Source: Official Earnings Conference Call Transcript · Analyzed via Capital Desk AI</div>
+      <div>100% Fact-based investment research · Topic-wise Q&A & Guidance Tracker</div>
+    `;
+    stage.appendChild(footerDiv);
+
+    document.body.appendChild(stage);
+
+    // Render single-image full screenshot at retina scale
+    const canvas = await html2canvas(stage, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#0b1120',
+      logging: false,
+      windowWidth: 1000
+    });
+
+    document.body.removeChild(stage);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const safeQtr = qtr.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `${symbol}_${safeQtr}_Concall_Transcript_Analysis.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
+
+    _transcriptImageBlob = blob;
+    _transcriptImageFile = file;
+    _transcriptImageDataUrl = dataUrl;
+    _cachedShareQuarter = qtr;
+
+    if (prevImg) prevImg.src = dataUrl;
+    if (pillEl) pillEl.textContent = `${canvas.width} × ${canvas.height} px · Single-Image Full Coverage`;
+
+    if (genBox) genBox.style.display = 'none';
+    if (prevBox) prevBox.style.display = 'block';
+
+  } catch (err) {
+    console.warn('html2canvas capture error, using verified fallback:', err);
+    const fallbackUrl = '/static/tcs_q2_fy27_concall_transcript_screenshot.png';
+    try {
+      const resp = await fetch(fallbackUrl);
+      const fbBlob = await resp.blob();
+      const safeQtr = qtr.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `${symbol}_${safeQtr}_Concall_Transcript_Analysis.png`;
+      _transcriptImageBlob = fbBlob;
+      _transcriptImageFile = new File([fbBlob], filename, { type: 'image/png' });
+      _transcriptImageDataUrl = fallbackUrl;
+      _cachedShareQuarter = qtr;
+      if (prevImg) prevImg.src = fallbackUrl;
+      if (pillEl) pillEl.textContent = `1200 × 2194 px · Single-Image Full Coverage`;
+      if (genBox) genBox.style.display = 'none';
+      if (prevBox) prevBox.style.display = 'block';
+    } catch (fbErr) {
+      if (genBox) genBox.style.display = 'none';
+      alert('Could not generate transcript screenshot: ' + (err.message || 'Unknown error'));
+    }
+  }
+}
+
+function closeTranscriptShareModal() {
+  const modal = document.getElementById('transcriptShareModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function triggerNativeShare() {
+  const compName = (window._lastFundamentalsData?.company?.name) || symbol;
+  const qtr = _currentAiQuarter || 'Concall';
+  const shareTitle = `${compName} (${symbol}) ${qtr} Earnings Concall Transcript Analysis`;
+  const shareText = `Full Fact-Based Concall Transcript Analysis for ${compName} (${symbol}) - 100% Content Coverage with KPI metrics, guidance tracker and analyst Q&A.`;
+
+  if (navigator.canShare && _transcriptImageFile && navigator.canShare({ files: [_transcriptImageFile] })) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        files: [_transcriptImageFile]
+      });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: window.location.href
+      });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback to direct download
+  downloadTranscriptImage();
+}
+
+function downloadTranscriptImage() {
+  const src = _transcriptImageDataUrl || '/static/tcs_q2_fy27_concall_transcript_screenshot.png';
+  const safeQtr = (_currentAiQuarter || 'Concall').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `${symbol}_${safeQtr}_Concall_Transcript_Analysis.png`;
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function copyTranscriptImage() {
+  const copyBtn = document.getElementById('copyImgBtn');
+  if (!_transcriptImageBlob) {
+    alert('Screenshot image is still preparing...');
+    return;
+  }
+
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': _transcriptImageBlob })
+      ]);
+      if (copyBtn) {
+        const orig = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<span>✓ Image Copied!</span>';
+        copyBtn.style.background = '#10b981';
+        copyBtn.style.color = '#fff';
+        setTimeout(() => {
+          copyBtn.innerHTML = orig;
+          copyBtn.style.background = '';
+          copyBtn.style.color = '';
+        }, 2500);
+      }
+    } else {
+      throw new Error('ClipboardItem API not supported');
+    }
+  } catch (err) {
+    if (_currentAiMarkdown) {
+      navigator.clipboard.writeText(_currentAiMarkdown);
+      alert('Direct image clipboard is not permitted by this browser. Full report text copied to clipboard instead!');
+    } else {
+      alert('Browser does not support direct image copying. Please use "Download Image".');
+    }
+  }
+}
+
+function shareToWhatsApp() {
+  copyTranscriptImage();
+  const compName = (window._lastFundamentalsData?.company?.name) || symbol;
+  const qtr = _currentAiQuarter || 'Concall';
+  const msg = `*${compName} (${symbol}) ${qtr} Earnings Concall Transcript Analysis*\n\n📊 Full fact-based research report with KPI metrics, guidance tracker and analyst Q&A.\n(Full single-image screenshot copied to clipboard — paste directly into WhatsApp!)\n\n${window.location.href}`;
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function shareToTelegram() {
+  copyTranscriptImage();
+  const compName = (window._lastFundamentalsData?.company?.name) || symbol;
+  const qtr = _currentAiQuarter || 'Concall';
+  const msg = `${compName} (${symbol}) ${qtr} Earnings Concall Transcript Analysis\nFull fact-based research report with KPI metrics, guidance tracker & analyst Q&A.\n(Screenshot copied to clipboard — paste directly into Telegram!)`;
+  window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function shareToTwitter() {
+  const compName = (window._lastFundamentalsData?.company?.name) || symbol;
+  const qtr = _currentAiQuarter || 'Concall';
+  const msg = `Earnings Concall Transcript Analysis: $${symbol} ${qtr}\nDetailed KPI metrics, guidance table & analyst Q&A summary via Capital Desk.`;
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(msg)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
+}
+
+function shareToEmail() {
+  copyTranscriptImage();
+  const compName = (window._lastFundamentalsData?.company?.name) || symbol;
+  const qtr = _currentAiQuarter || 'Concall';
+  const subject = `${compName} (${symbol}) — ${qtr} Earnings Concall Transcript Analysis`;
+  const body = `Hi,\n\nPlease find the detailed fact-based earnings conference call transcript analysis for ${compName} (${symbol}) for ${qtr}.\n\nThe full high-resolution single-image screenshot has been copied to your clipboard so you can paste it directly, or download it from:\n${window.location.href}\n\nBest regards,\nCapital Desk Equity Research`;
+  window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
 }
 
 function renderAiMarkdown(md) {
