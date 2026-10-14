@@ -210,7 +210,8 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
    ========================================================= */
 @media (max-width: 768px) {
   body {
-    padding: 4px 4px 16px 4px !important;
+    padding: 1px 1px !important;
+    margin: 0 !important;
     background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%) !important;
     font-size: 11px !important;
   }
@@ -218,14 +219,16 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     background: #f8fafc !important;
   }
   .container {
-    gap: 8px !important;
+    padding: 1px 1px !important;
+    gap: 6px !important;
     max-width: 100% !important;
+    width: 100% !important;
   }
   
   /* Trendy Glassy Cards */
   .card {
-    padding: 8px 10px !important;
-    border-radius: 10px !important;
+    padding: 7px 8px !important;
+    border-radius: 8px !important;
     background: rgba(30, 41, 59, 0.5) !important;
     backdrop-filter: blur(16px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
@@ -442,7 +445,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   <div id="loading" class="card empty-state">⏳ Fetching Screener.in fundamental analysis...</div>
   <div id="error" class="card" style="display:none; color: var(--danger);"></div>
 
-  <div id="content" style="display:none;" class="container" style="padding: 0;">
+  <div id="content" style="display:none;" class="container">
 
     <!-- 9 Screener Ratio Cards Grid -->
     <div class="card">

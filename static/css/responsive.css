@@ -1680,39 +1680,26 @@
         padding: 14px !important;
     }
 
-    /* =========================================================
-       FUNDAMENTAL ANALYSIS POPUP - FULL PAGE ON MOBILE
-       Matches Chart & Alerts Modals with trendy glassy header
-       ========================================================= */
-    #fundamentalsModal {
+    /* Technical Charts in Landscape */
+    .chart-fullscreen-overlay {
         position: fixed !important;
         inset: 0 !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        height: 100dvh !important;
-        max-width: 100vw !important;
-        max-height: 100vh !important;
-        max-height: 100dvh !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border-radius: 0 !important;
-        border: none !important;
         z-index: 10050 !important;
-        overflow: hidden !important;
-        background: rgba(15, 23, 42, 0.98) !important;
-        backdrop-filter: blur(20px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
     }
+}
 
-    [data-theme="light"] #fundamentalsModal {
-        background: rgba(248, 250, 252, 0.98) !important;
-    }
-
-    #fundamentalsModal {
+/* =========================================================
+   FUNDAMENTAL ANALYSIS POPUP - FULL SCREEN ON ALL MOBILE
+   Applies to both Portrait and Landscape mobile devices
+   ========================================================= */
+@media (max-width: 768px) {
+    #fundamentalsModal.small-modal,
+    #fundamentalsModal.fundamentals-modal,
+    #fundamentalsModal,
+    #fundamentalsModal[style*="display: block"],
+    #fundamentalsModal[style*="display: flex"] {
+        display: flex !important;
+        flex-direction: column !important;
         position: fixed !important;
         inset: 0 !important;
         top: 0 !important;
@@ -1723,16 +1710,28 @@
         width: 100dvw !important;
         height: 100vh !important;
         height: 100dvh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        max-height: 100dvh !important;
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
         border-radius: 0 !important;
         z-index: 10030 !important;
         overflow: hidden !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
         background: var(--bg-body, #0f172a) !important;
     }
 
-    #fundamentalsModal .small-modal-content {
+    [data-theme="light"] #fundamentalsModal.small-modal,
+    [data-theme="light"] #fundamentalsModal.fundamentals-modal,
+    [data-theme="light"] #fundamentalsModal {
+        background: rgba(248, 250, 252, 0.98) !important;
+    }
+
+    #fundamentalsModal .small-modal-content,
+    #fundamentalsModal .fundamentals-modal-content {
         position: fixed !important;
         inset: 0 !important;
         top: 0 !important;
@@ -1758,25 +1757,29 @@
         background: var(--bg-body, #0f172a) !important;
     }
 
+    [data-theme="light"] #fundamentalsModal .small-modal-content {
+        background: #ffffff !important;
+    }
+
     /* Glassy Header on Mobile */
     #fundamentalsModal .fundamentals-modal-header,
     #fundamentalsModal .small-modal-content > div:first-child {
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 8px 12px !important;
-        background: rgba(30, 41, 59, 0.85) !important;
+        padding: 8px 10px !important;
+        background: rgba(30, 41, 59, 0.92) !important;
         backdrop-filter: blur(16px) saturate(180%) !important;
         -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
         flex: 0 0 auto !important;
         box-sizing: border-box !important;
-        gap: 10px !important;
+        gap: 8px !important;
     }
 
     [data-theme="light"] #fundamentalsModal .fundamentals-modal-header,
     [data-theme="light"] #fundamentalsModal .small-modal-content > div:first-child {
-        background: rgba(255, 255, 255, 0.88) !important;
+        background: rgba(255, 255, 255, 0.95) !important;
         border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
@@ -1788,14 +1791,14 @@
     #fundamentalsModal .mobile-fundamentals-title {
         display: flex !important;
         align-items: center !important;
-        gap: 9px !important;
+        gap: 8px !important;
         min-width: 0 !important;
         flex: 1 !important;
     }
 
     #fundamentalsModal #fundamentals-modal-logo {
-        width: 32px !important;
-        height: 32px !important;
+        width: 30px !important;
+        height: 30px !important;
         border-radius: 6px !important;
         object-fit: contain !important;
         background: rgba(255, 255, 255, 0.06) !important;
@@ -1804,8 +1807,8 @@
     }
 
     #fundamentalsModal #fundamentals-modal-logo-placeholder {
-        width: 32px !important;
-        height: 32px !important;
+        width: 30px !important;
+        height: 30px !important;
         border-radius: 6px !important;
         background: rgba(16, 185, 129, 0.15) !important;
         color: var(--accent, #10b981) !important;
@@ -1813,7 +1816,7 @@
         align-items: center !important;
         justify-content: center !important;
         font-weight: 700 !important;
-        font-size: 14px !important;
+        font-size: 13px !important;
         flex-shrink: 0 !important;
     }
 
@@ -1829,7 +1832,7 @@
     }
 
     #fundamentalsModal #fundamentals-modal-company-details {
-        font-size: 10.5px !important;
+        font-size: 10px !important;
         color: var(--text-secondary) !important;
         margin-top: 1px !important;
         line-height: 1.2 !important;
@@ -1843,6 +1846,8 @@
         height: 100% !important;
         flex: 1 1 auto !important;
         border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
         background: var(--bg-body, #0f172a) !important;
     }
 
@@ -1850,13 +1855,6 @@
         width: 95vw !important;
         max-width: 95vw !important;
         max-height: 90vh !important;
-    }
-
-    /* Technical Charts in Landscape */
-    .chart-fullscreen-overlay {
-        position: fixed !important;
-        inset: 0 !important;
-        z-index: 10050 !important;
     }
 }
 
