@@ -406,8 +406,17 @@
     }
 
     /* Mobile Stock List Transformation (Table to Sleek Native 2-Column Cards) */
-    #tab-watchlists,
-    #watchlist-view-mount,
+    #tab-watchlists {
+        overflow-x: hidden !important;
+    }
+    #watchlist-view-mount {
+        position: relative !important;
+        overflow-x: hidden !important;
+        touch-action: pan-y !important;
+    }
+    #watchlist-view-mount > .card-container {
+        will-change: transform, opacity;
+    }
     #watchlist-view-mount .card-container,
     #watchlist-view-mount .table-responsive-container,
     .table-responsive-container.wl-table-container,

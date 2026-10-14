@@ -101,6 +101,9 @@
             activeWatchlistName = name;
             renderWatchlists();
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
+            if (window.innerWidth <= 768 && typeof scrollActiveWatchlistTabIntoView === 'function') {
+                scrollActiveWatchlistTabIntoView(name);
+            }
             if (typeof refreshPrices === 'function') {
                 refreshPrices().then(() => {
                     renderWatchlists();
@@ -286,6 +289,10 @@
                     addTabBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
                     addTabBtn.onclick = () => openCreateWatchlistModal();
                     selectorMount.appendChild(addTabBtn);
+
+                    if (window.innerWidth <= 768 && typeof scrollActiveWatchlistTabIntoView === 'function') {
+                        scrollActiveWatchlistTabIntoView(activeWatchlistName);
+                    }
                 }
             }
 
@@ -711,6 +718,10 @@
             div.appendChild(controlsDiv);
             div.appendChild(scrollContainer);
             viewMount.appendChild(div);
+
+            if (typeof initWatchlistMobileSwipe === 'function') {
+                initWatchlistMobileSwipe();
+            }
         }
 
         // =========================================================
@@ -1199,3 +1210,243 @@
         }
         window.openWlMobileSortModal = openWlMobileSortModal;
         window.closeWlMobileSortModal = closeWlMobileSortModal;
+
+        // =========================================================
+        // MOBILE WATCHLIST SMOOTH SWIPE ENGINE
+        // Strictly active only on mobile view (window.innerWidth <= 768)
+        // Rule: Swiping left-to-right or right-to-left moves between watchlists.
+        // Rule: Don't do for first (left) and last (right).
+        // =========================================================
+        let _wlSwipeStartX = 0;
+        let _wlSwipeStartY = 0;
+        let _wlSwipeStartTime = 0;
+        let _wlSwipeIsHorizontal = false;
+        let _wlSwipeIsVertical = false;
+        let _wlSwipeCard = null;
+        let _isWlTransitioning = false;
+
+        function scrollActiveWatchlistTabIntoView(name) {
+            const targetName = name || activeWatchlistName;
+            if (window.innerWidth > 768 || !targetName) return;
+            requestAnimationFrame(() => {
+                const selectorMount = document.getElementById('watchlist-selector-mount');
+                if (!selectorMount) return;
+                const buttons = Array.from(selectorMount.querySelectorAll('button'));
+                const activeBtn = buttons.find(b => b.dataset.watchlistName === targetName) || selectorMount.querySelector('.pf-select-btn.active');
+                if (activeBtn) {
+                    activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            });
+        }
+        window.scrollActiveWatchlistTabIntoView = scrollActiveWatchlistTabIntoView;
+
+        function executeWatchlistSwipeTransition(direction, targetName, oldCard) {
+            if (_isWlTransitioning || !targetName) return;
+            _isWlTransitioning = true;
+
+            // 1. Immediately highlight the target tab button in selector bar and smoothly center it
+            const selectorMount = document.getElementById('watchlist-selector-mount');
+            if (selectorMount) {
+                const buttons = selectorMount.querySelectorAll('.pf-select-btn');
+                buttons.forEach(b => {
+                    b.classList.toggle('active', b.dataset.watchlistName === targetName);
+                });
+                scrollActiveWatchlistTabIntoView(targetName);
+            }
+            if (typeof updateMobileHeaderActiveBadge === 'function') {
+                const badge = document.getElementById('mobile-active-name-badge');
+                if (badge) badge.innerText = targetName;
+            }
+
+            // 2. Hardware-accelerated slide out of the current card
+            const exitX = direction === 'next' ? -80 : 80;
+            if (oldCard) {
+                oldCard.style.willChange = 'transform, opacity';
+                oldCard.style.transition = 'transform 0.16s cubic-bezier(0.4, 0, 1, 1), opacity 0.16s ease-out';
+                oldCard.style.transform = `translateX(${exitX}px)`;
+                oldCard.style.opacity = '0';
+            }
+
+            setTimeout(() => {
+                // 3. Switch to target watchlist and re-render
+                activeWatchlistName = targetName;
+                renderWatchlists();
+
+                // 4. Smooth slide-in of the new card from the incoming edge
+                const newCard = document.querySelector('#watchlist-view-mount > .card-container') || document.getElementById('watchlist-view-mount');
+                if (newCard) {
+                    const enterStartX = direction === 'next' ? 75 : -75;
+                    newCard.style.willChange = 'transform, opacity';
+                    newCard.style.transition = 'none';
+                    newCard.style.transform = `translateX(${enterStartX}px)`;
+                    newCard.style.opacity = '0';
+
+                    // Force browser reflow
+                    void newCard.offsetWidth;
+
+                    // Decelerate smoothly into natural position
+                    newCard.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease-out';
+                    newCard.style.transform = 'translateX(0)';
+                    newCard.style.opacity = '1';
+                }
+
+                // 5. Clean up inline styles once transition completes
+                setTimeout(() => {
+                    if (newCard) {
+                        newCard.style.transition = '';
+                        newCard.style.transform = '';
+                        newCard.style.opacity = '';
+                        newCard.style.willChange = '';
+                    }
+                    _isWlTransitioning = false;
+                }, 260);
+
+                if (typeof refreshPrices === 'function') {
+                    refreshPrices().catch(() => {});
+                }
+            }, 160);
+        }
+
+        function initWatchlistMobileSwipe() {
+            const tabWl = document.getElementById('tab-watchlists');
+            if (!tabWl || tabWl.dataset.swipeBound) return;
+            tabWl.dataset.swipeBound = 'true';
+
+            tabWl.addEventListener('touchstart', (e) => {
+                // Strictly mobile view check
+                if (window.innerWidth > 768) return;
+                if (_isWlTransitioning) return;
+                if (!tabWl.classList.contains('active')) return;
+                if (!e.touches || e.touches.length !== 1) return;
+
+                const target = e.target;
+                // Exclude touches on horizontal tab strip, search inputs, dropdowns, menus, or modals
+                if (target.closest('#watchlist-selector-mount') ||
+                    target.closest('.watchlist-create-action') ||
+                    target.closest('#wl-search-input') ||
+                    target.closest('.autocomplete-dropdown') ||
+                    target.closest('.menu-dropdown-content') ||
+                    target.closest('.wl-row-menu-btn') ||
+                    target.closest('.wl-mobile-menu-drawer') ||
+                    target.closest('.modal, .small-modal') ||
+                    target.closest('.btn-secondary, button:not(.pf-row)')) {
+                    _wlSwipeCard = null;
+                    return;
+                }
+
+                const t = e.touches[0];
+                _wlSwipeStartX = t.clientX;
+                _wlSwipeStartY = t.clientY;
+                _wlSwipeStartTime = Date.now();
+                _wlSwipeIsHorizontal = false;
+                _wlSwipeIsVertical = false;
+
+                _wlSwipeCard = document.querySelector('#watchlist-view-mount > .card-container') || document.getElementById('watchlist-view-mount');
+            }, { passive: true });
+
+            tabWl.addEventListener('touchmove', (e) => {
+                if (window.innerWidth > 768) return;
+                if (!_wlSwipeCard || _isWlTransitioning) return;
+                if (!e.touches || e.touches.length !== 1) return;
+
+                const t = e.touches[0];
+                const dx = t.clientX - _wlSwipeStartX;
+                const dy = t.clientY - _wlSwipeStartY;
+
+                // Determine gesture direction
+                if (!_wlSwipeIsHorizontal && !_wlSwipeIsVertical) {
+                    // Vertical scrolling prioritized for list rows
+                    if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx)) {
+                        _wlSwipeIsVertical = true;
+                        return;
+                    } else if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+                        const names = Object.keys(watchlistsData || {});
+                        const idx = names.indexOf(activeWatchlistName);
+
+                        // Right to left swipe (dx < 0): Move to next watchlist.
+                        // Rule: Don't do for last (right)
+                        if (dx < 0 && (idx < 0 || idx >= names.length - 1)) {
+                            _wlSwipeIsVertical = true;
+                            return;
+                        }
+                        // Left to right swipe (dx > 0): Move to previous watchlist.
+                        // Rule: Don't do for first (left)
+                        if (dx > 0 && idx <= 0) {
+                            _wlSwipeIsVertical = true;
+                            return;
+                        }
+
+                        _wlSwipeIsHorizontal = true;
+                        if (typeof closeAllWlMenus === 'function') closeAllWlMenus();
+                    }
+                }
+
+                if (_wlSwipeIsHorizontal) {
+                    if (e.cancelable) e.preventDefault();
+                    const moveX = dx * 0.82; // Natural elastic feel
+                    _wlSwipeCard.style.willChange = 'transform, opacity';
+                    _wlSwipeCard.style.transition = 'none';
+                    _wlSwipeCard.style.transform = `translateX(${moveX}px)`;
+                    const fade = Math.max(0.65, 1 - (Math.abs(moveX) / 600));
+                    _wlSwipeCard.style.opacity = String(fade);
+                }
+            }, { passive: false });
+
+            const handleTouchEnd = (e) => {
+                if (window.innerWidth > 768) return;
+                if (!_wlSwipeCard) return;
+
+                const card = _wlSwipeCard;
+                _wlSwipeCard = null;
+
+                if (!_wlSwipeIsHorizontal) {
+                    return;
+                }
+                _wlSwipeIsHorizontal = false;
+
+                const t = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]);
+                const endX = t ? t.clientX : _wlSwipeStartX;
+                const dx = endX - _wlSwipeStartX;
+                const elapsed = Math.max(Date.now() - _wlSwipeStartTime, 1);
+                const velocity = Math.abs(dx) / elapsed;
+
+                const names = Object.keys(watchlistsData || {});
+                const idx = names.indexOf(activeWatchlistName);
+
+                const isCommitted = Math.abs(dx) > 42 || (Math.abs(dx) > 22 && velocity > 0.32);
+
+                // Right to left (dx < 0): Move to next watchlist
+                if (isCommitted && dx < 0 && idx >= 0 && idx < names.length - 1) {
+                    executeWatchlistSwipeTransition('next', names[idx + 1], card);
+                }
+                // Left to right (dx > 0): Move to previous watchlist
+                else if (isCommitted && dx > 0 && idx > 0) {
+                    executeWatchlistSwipeTransition('prev', names[idx - 1], card);
+                }
+                // Uncommitted or boundary: smooth spring return
+                else {
+                    card.style.transition = 'transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.2), opacity 0.22s ease';
+                    card.style.transform = 'translateX(0)';
+                    card.style.opacity = '1';
+                    setTimeout(() => {
+                        if (card) {
+                            card.style.transition = '';
+                            card.style.transform = '';
+                            card.style.opacity = '';
+                            card.style.willChange = '';
+                        }
+                    }, 240);
+                }
+            };
+
+            tabWl.addEventListener('touchend', handleTouchEnd, { passive: true });
+            tabWl.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+        }
+        window.initWatchlistMobileSwipe = initWatchlistMobileSwipe;
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initWatchlistMobileSwipe);
+        } else {
+            initWatchlistMobileSwipe();
+        }
+
