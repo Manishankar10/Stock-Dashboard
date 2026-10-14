@@ -11,6 +11,7 @@ from modules.common.auth_utils import login_required
 from modules.common.data_paths import BASE_DATA_DIR
 from modules.common.market_fetcher import (
     fiidii_cache,
+    news_cache,
     HighPerformanceCache,
     POPULAR_MARKET_INDEXES,
     fetcher
