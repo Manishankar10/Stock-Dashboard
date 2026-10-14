@@ -1810,23 +1810,36 @@
         height: 30px !important;
         border-radius: 6px !important;
         object-fit: contain !important;
-        background: rgba(255, 255, 255, 0.06) !important;
+        background: rgba(255, 255, 255, 0.08) !important;
         padding: 2px !important;
         flex-shrink: 0 !important;
+    }
+    #fundamentalsModal #fundamentals-modal-logo[style*="display: none"] {
+        display: none !important;
+    }
+    #fundamentalsModal #fundamentals-modal-logo[style*="display: block"] {
+        display: block !important;
     }
 
     #fundamentalsModal #fundamentals-modal-logo-placeholder {
         width: 30px !important;
         height: 30px !important;
         border-radius: 6px !important;
-        background: rgba(16, 185, 129, 0.15) !important;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%) !important;
         color: var(--accent, #10b981) !important;
-        display: flex !important;
+        display: flex;
         align-items: center !important;
         justify-content: center !important;
-        font-weight: 700 !important;
-        font-size: 13px !important;
+        font-weight: 800 !important;
+        font-size: 11px !important;
+        letter-spacing: 0.5px !important;
         flex-shrink: 0 !important;
+    }
+    #fundamentalsModal #fundamentals-modal-logo-placeholder[style*="display: none"] {
+        display: none !important;
+    }
+    #fundamentalsModal #fundamentals-modal-logo-placeholder[style*="display: flex"] {
+        display: flex !important;
     }
 
     #fundamentalsModal #fundamentals-modal-company-name {

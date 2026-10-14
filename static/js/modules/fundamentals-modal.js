@@ -17,13 +17,26 @@
             const safeSymbol = String(symbol || '').trim();
             if (!safeSymbol) return;
 
-            // Reset logo & placeholder
+            const cleanSym = safeSymbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+            let _currentModalSymbol = safeSymbol;
+
+            // Reset logo & placeholder with clean stock monogram
             if (logoEl) {
                 logoEl.src = '';
                 logoEl.style.display = 'none';
             }
             if (placeholderEl) {
+                placeholderEl.textContent = cleanSym.slice(0, 3);
                 placeholderEl.style.display = 'flex';
+            }
+            const webLogoEl = document.getElementById('fundamentals-modal-logo-web');
+            const webNameEl = document.getElementById('fundamentals-modal-web-name');
+            if (webLogoEl) {
+                webLogoEl.src = '';
+                webLogoEl.style.display = 'none';
+            }
+            if (webNameEl) {
+                webNameEl.textContent = `📈 ${safeSymbol} Fundamental Analysis`;
             }
 
             // Prefill with stock symbol and live price if available
@@ -58,12 +71,17 @@
                         const dEl = document.getElementById('fundamentals-modal-company-details');
                         const lEl = document.getElementById('fundamentals-modal-logo');
                         const pEl = document.getElementById('fundamentals-modal-logo-placeholder');
+                        const wLogoEl = document.getElementById('fundamentals-modal-logo-web');
+                        const wNameEl = document.getElementById('fundamentals-modal-web-name');
 
                         if (nEl && name) {
                             nEl.textContent = name;
                         }
+                        if (wNameEl && name) {
+                            wNameEl.textContent = name;
+                        }
                         if (dEl) {
-                            const symDisplay = retSym || safeSymbol;
+                            const symDisplay = retSym || _currentModalSymbol;
                             let det = symDisplay;
                             if (price != null && price !== '') {
                                 const chg = changePercent != null && !isNaN(Number(changePercent)) ? Number(changePercent) : null;
@@ -74,10 +92,24 @@
                             }
                             dEl.textContent = det;
                         }
-                        if (lEl && logo) {
-                            lEl.src = logo;
-                            lEl.style.display = 'block';
+                        if (logo) {
+                            if (lEl) {
+                                lEl.src = logo;
+                                lEl.style.display = 'block';
+                            }
+                            if (wLogoEl) {
+                                wLogoEl.src = logo;
+                                wLogoEl.style.display = 'block';
+                            }
                             if (pEl) pEl.style.display = 'none';
+                        } else {
+                            if (pEl) {
+                                const dispSym = (retSym || _currentModalSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase();
+                                pEl.textContent = dispSym.slice(0, 3) || 'STK';
+                                pEl.style.display = 'flex';
+                            }
+                            if (lEl) lEl.style.display = 'none';
+                            if (wLogoEl) wLogoEl.style.display = 'none';
                         }
                     }
                 });
@@ -96,8 +128,14 @@
                 logoEl.src = '';
                 logoEl.style.display = 'none';
             }
+            const webLogoEl = document.getElementById('fundamentals-modal-logo-web');
+            if (webLogoEl) {
+                webLogoEl.src = '';
+                webLogoEl.style.display = 'none';
+            }
             if (placeholderEl) {
                 placeholderEl.style.display = 'flex';
+                placeholderEl.textContent = '';
             }
             document.body.style.overflow = '';
         }

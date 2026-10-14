@@ -430,9 +430,24 @@ def fetch_screener_fundamentals(symbol):
         fin_ratios = parse_sec("ratios")
         sh = parse_sec("shareholding")
 
-        # Logo extraction
+        # Logo extraction (Screener thumbnail -> company official website favicon -> None)
         logo_img = soup.find("img", src=lambda s: s and "company-logos" in s)
         logo_url = logo_img["src"] if (logo_img and logo_img.get("src")) else None
+        if logo_url:
+            if logo_url.startswith("//"):
+                logo_url = "https:" + logo_url
+            elif logo_url.startswith("/"):
+                logo_url = "https://www.screener.in" + logo_url
+        else:
+            # Fallback to official company website favicon via Google high-res service
+            company_website = None
+            for a in soup.find_all("a", href=True):
+                href = a["href"].strip()
+                if href.startswith("http") and not any(x in href.lower() for x in ["screener", "bseindia", "nseindia", "google"]):
+                    company_website = href
+                    break
+            if company_website:
+                logo_url = f"https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url={company_website}&size=128"
 
         # Clean concalls & presentations list from Screener
         concalls_list = []
@@ -677,7 +692,7 @@ def fundamentals():
             "source": "Yahoo Finance direct API",
             "company": {
                 "name": _raw(price, "longName") or _raw(price, "shortName"),
-                "logo": None,
+                "logo": (f"https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url={profile.get('website')}&size=128" if profile.get("website") else None),
                 "sector": profile.get("sector"),
                 "industry": profile.get("industry"),
                 "country": profile.get("country"),

@@ -905,7 +905,8 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   <!-- Header Card -->
   <div class="card header">
     <div class="brand">
-      <img src="/static/favicon-192.png" alt="Capital Desk Logo">
+      <img id="companyLogo" src="/static/favicon-192.png" alt="Company Logo" referrerpolicy="no-referrer" style="width:38px; height:38px; border-radius:8px; object-fit:contain; background:rgba(255,255,255,0.06); padding:2px;">
+      <div id="companyLogoPlaceholder" style="width:38px; height:38px; border-radius:8px; background:rgba(16, 185, 129, 0.15); color:var(--accent, #10b981); display:none; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;"></div>
       <div>
         <div class="title" id="companyTitle">Fundamental Analysis</div>
         <div class="sub" id="companySub">Loading company data...</div>
@@ -1152,6 +1153,28 @@ function render(d) {
   document.getElementById('companySub').textContent = `${symbol} · Screener.in Direct Replica`;
   document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   document.getElementById('screenerBtn').href = `https://www.screener.in/company/${encodeURIComponent(baseSym)}/`;
+
+  // Update Brand Logo
+  const logoEl = document.getElementById('companyLogo');
+  const phEl = document.getElementById('companyLogoPlaceholder');
+  if (c.logo) {
+    if (logoEl) {
+      logoEl.src = c.logo;
+      logoEl.style.display = 'block';
+      logoEl.onload = () => { if (phEl) phEl.style.display = 'none'; };
+      logoEl.onerror = () => {
+        logoEl.style.display = 'none';
+        if (phEl) {
+          phEl.style.display = 'flex';
+          phEl.textContent = baseSym.slice(0, 3).toUpperCase();
+        }
+      };
+    }
+  } else if (phEl) {
+    if (logoEl) logoEl.style.display = 'none';
+    phEl.style.display = 'flex';
+    phEl.textContent = baseSym.slice(0, 3).toUpperCase();
+  }
 
   // Render Top 9 Ratios Grid
   const ratioKeys = [
