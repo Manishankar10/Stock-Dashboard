@@ -46,8 +46,12 @@ YAHOO_Q1 = "https://query1.finance.yahoo.com"
 YAHOO_Q2 = "https://query2.finance.yahoo.com"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
 
-_FUNDAMENTALS_CACHE_TTL = 86400
+_FUNDAMENTALS_CACHE_TTL = 7200
 _fundamentals_cache = {}
+_schedules_cache = {}
+_shareholders_cache = {}
+_charts_cache = {}
+_fundamentals_cache_lock = threading.Lock()
 
 # Yahoo's crumb is tied to the session cookie. Keep both together.
 _yahoo_lock = threading.RLock()
@@ -311,44 +315,83 @@ def _build_chart(symbol):
     return chart
 
 
-def fetch_screener_fundamentals(symbol):
+def fetch_screener_fundamentals(symbol, mode="consolidated"):
     """Fetch 100% free fundamental analysis data from Screener.in for Indian stock tickers."""
     base_sym = symbol.replace(".NS", "").replace(".BO", "").strip().upper()
     if base_sym.startswith("^") or "=F" in base_sym:
         return None
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
-
-    url = f"https://www.screener.in/company/{base_sym}/consolidated/"
     try:
-        r = requests.get(url, headers=headers, timeout=8)
-        if r.status_code != 200:
-            url = f"https://www.screener.in/company/{base_sym}/"
-            r = requests.get(url, headers=headers, timeout=8)
-        
-        if r.status_code != 200:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+
+        req_mode = (mode or "consolidated").strip().lower()
+        if req_mode == "standalone":
+            urls_to_try = [
+                f"https://www.screener.in/company/{base_sym}/",
+                f"https://www.screener.in/company/{base_sym}/consolidated/"
+            ]
+        else:
+            urls_to_try = [
+                f"https://www.screener.in/company/{base_sym}/consolidated/",
+                f"https://www.screener.in/company/{base_sym}/"
+            ]
+
+        r = None
+        final_url = ""
+        for u in urls_to_try:
+            try:
+                res = requests.get(u, headers=headers, timeout=8)
+                if res.status_code == 200:
+                    r = res
+                    final_url = u
+                    break
+            except Exception:
+                pass
+
+        if not r:
             try:
                 search_url = f"https://www.screener.in/api/company/search/?q={base_sym}"
                 sr = requests.get(search_url, headers=headers, timeout=5)
                 if sr.status_code == 200 and sr.json():
                     c_path = sr.json()[0].get("url")
                     if c_path:
-                        url = f"https://www.screener.in{c_path}"
-                        r = requests.get(url, headers=headers, timeout=8)
+                        target_path = c_path
+                        if req_mode == "standalone":
+                            target_path = target_path.replace("/consolidated/", "/")
+                        elif "/consolidated/" not in target_path and req_mode == "consolidated":
+                            target_path = target_path.rstrip("/") + "/consolidated/"
+
+                        final_url = f"https://www.screener.in{target_path}"
+                        res = requests.get(final_url, headers=headers, timeout=8)
+                        if res.status_code == 200:
+                            r = res
+                        else:
+                            final_url = f"https://www.screener.in{c_path}"
+                            res = requests.get(final_url, headers=headers, timeout=8)
+                            if res.status_code == 200:
+                                r = res
             except Exception:
                 pass
 
-        if r.status_code != 200:
+        if not r or r.status_code != 200:
             return None
 
         # Re-parse soup from the successfully fetched working URL response
         soup = BeautifulSoup(r.text, "html.parser")
         h1 = soup.find("h1")
         name = h1.text.strip() if h1 else base_sym
+
+        actual_mode = "consolidated" if "/consolidated/" in final_url else "standalone"
+        has_consolidated = bool("/consolidated/" in r.text or soup.find("a", href=lambda h: h and "/consolidated/" in h))
+        has_standalone = True
+
+        c_info = soup.find("div", id="company-info") or {}
+        company_id = c_info.get("data-company-id")
+        warehouse_id = c_info.get("data-warehouse-id")
 
         # Top ratios
         ratios = {}
@@ -362,7 +405,7 @@ def fetch_screener_fundamentals(symbol):
         pros = [li.text.strip() for li in soup.select("section#analysis .pros li")]
         cons = [li.text.strip() for li in soup.select("section#analysis .cons li")]
 
-        # Table parser helper
+        # Table parser helper with split details (schedules) detection
         def parse_sec(sec_id):
             sec = soup.find("section", id=sec_id)
             if not sec:
@@ -377,9 +420,39 @@ def fetch_screener_fundamentals(symbol):
                 tds = tr.find_all("td")
                 if not tds:
                     continue
-                lbl = tds[0].text.strip().replace("\u200b", "").replace("\xa0+", "").replace("\xa0", " ")
+                btn = tds[0].find("button")
+                onclick = btn.get("onclick", "") if btn else ""
+                expandable = False
+                schedule_name = None
+                schedule_section = None
+                schedule_type = "schedule"
+                if btn:
+                    if "showSchedule" in onclick:
+                        m = re.search(r"showSchedule\s*\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]", onclick)
+                        if m:
+                            expandable = True
+                            schedule_name = m.group(1)
+                            schedule_section = m.group(2)
+                            schedule_type = "schedule"
+                    elif "showShareholders" in onclick:
+                        m = re.search(r"showShareholders\s*\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]", onclick)
+                        if m:
+                            expandable = True
+                            schedule_name = m.group(1)
+                            schedule_section = m.group(2)
+                            schedule_type = "shareholders"
+
+                raw_lbl = tds[0].text.strip().replace("\u200b", "").replace("\xa0+", "").replace("\xa0", " ")
+                clean_lbl = raw_lbl.rstrip("+").strip()
                 vals = [td.text.strip().replace("\u20b9", "").strip() for td in tds[1:]]
-                rows_list.append({"label": lbl, "values": vals})
+                rows_list.append({
+                    "label": clean_lbl,
+                    "values": vals,
+                    "expandable": expandable,
+                    "schedule_name": schedule_name,
+                    "schedule_section": schedule_section,
+                    "schedule_type": schedule_type,
+                })
             return {"columns": cols, "rows": rows_list}
 
         # Compounded growth tables
@@ -429,6 +502,31 @@ def fetch_screener_fundamentals(symbol):
         cf = parse_sec("cash-flow")
         fin_ratios = parse_sec("ratios")
         sh = parse_sec("shareholding")
+
+        # Peer comparison table from Screener API
+        peers_data = {"columns": [], "rows": []}
+        if warehouse_id:
+            try:
+                p_res = requests.get(f"https://www.screener.in/api/company/{warehouse_id}/peers/", headers=headers, timeout=6)
+                if p_res.status_code == 200:
+                    p_soup = BeautifulSoup(p_res.text, "html.parser")
+                    p_tbl = p_soup.find("table")
+                    if p_tbl:
+                        trs = p_tbl.find_all("tr")
+                        if trs:
+                            raw_cols = [c.text.strip() for c in trs[0].find_all(["th", "td"])]
+                            peers_cols = [re.sub(r"\s+", " ", c).strip() for c in raw_cols[1:]]
+                            peers_rows = []
+                            for r_tr in trs[1:]:
+                                cells = [c.text.strip() for c in r_tr.find_all(["th", "td"])]
+                                if not cells:
+                                    continue
+                                r_name = cells[1] if len(cells) > 1 else cells[0]
+                                r_vals = [c.replace("\u20b9", "").strip() for c in cells[1:]]
+                                peers_rows.append({"name": r_name, "values": r_vals})
+                            peers_data = {"columns": peers_cols, "rows": peers_rows}
+            except Exception:
+                pass
 
         # Logo extraction (Screener thumbnail -> company official website favicon -> None)
         logo_img = soup.find("img", src=lambda s: s and "company-logos" in s)
@@ -480,8 +578,23 @@ def fetch_screener_fundamentals(symbol):
                         seen_quarters[quarter_str]["presentation"] = ppt_url
         concalls_list = list(seen_quarters.values())
 
+        # Screener Price & DMA Chart data
+        chart_data = []
+        if company_id:
+            try:
+                ch_res = requests.get(f"https://www.screener.in/api/company/{company_id}/chart/?q=Price-DMA50-DMA200-Volume&days=365", headers=headers, timeout=5)
+                if ch_res.status_code == 200:
+                    chart_data = ch_res.json().get("datasets", [])
+            except Exception:
+                pass
+
         return {
             "symbol": symbol,
+            "mode": actual_mode,
+            "has_consolidated": has_consolidated,
+            "has_standalone": has_standalone,
+            "company_id": company_id,
+            "warehouse_id": warehouse_id,
             "as_of": dt.datetime.now(dt.timezone.utc).isoformat(),
             "source": "Screener.in (100% Free Data)",
             "company": {
@@ -493,6 +606,7 @@ def fetch_screener_fundamentals(symbol):
             "top_ratios": ratios,
             "pros": pros,
             "cons": cons,
+            "peers": peers_data,
             "quote": {
                 "current_price": cur_price,
                 "fifty_two_week_high": high,
@@ -518,31 +632,139 @@ def fetch_screener_fundamentals(symbol):
             "income_statement": quarters if quarters.get("rows") else pnl,
             "concalls": concalls_list,
             "charts": {
-                "price": [],
+                "price": chart_data,
                 "annual": [],
             },
-            "links": [{"label": "Screener.in", "url": f"https://www.screener.in/company/{base_sym}/"}],
+            "links": [{"label": "Screener.in", "url": final_url or f"https://www.screener.in/company/{base_sym}/"}],
         }
     except Exception:
         return None
 
 
+@fundamentals_bp.get("/api/fundamentals/schedule")
+def get_schedule():
+    """Proxy Screener.in expandable schedule / split details endpoint."""
+    company_id = (request.args.get("company_id") or "").strip()
+    parent = (request.args.get("parent") or "").strip()
+    section = (request.args.get("section") or "profit-loss").strip()
+    is_consolidated = (request.args.get("mode") or "consolidated").strip().lower() == "consolidated"
+    if not company_id or not parent:
+        return jsonify({"error": "company_id and parent are required"}), 400
+
+    cache_key = f"{company_id}:{parent}:{section}:{is_consolidated}"
+    now = time.time()
+    with _fundamentals_cache_lock:
+        cached = _schedules_cache.get(cache_key)
+        if cached and now - cached[0] < 7200:
+            return jsonify(cached[1])
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+    }
+    url = f"https://www.screener.in/api/company/{company_id}/schedules/?parent={requests.utils.quote(parent)}&section={requests.utils.quote(section)}"
+    if is_consolidated:
+        url += "&consolidated="
+
+    try:
+        r = requests.get(url, headers=headers, timeout=7)
+        if r.status_code == 200:
+            data = r.json()
+            with _fundamentals_cache_lock:
+                _schedules_cache[cache_key] = (now, data)
+            return jsonify(data)
+        return jsonify({"error": f"Screener returned status {r.status_code}"}), r.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@fundamentals_bp.get("/api/fundamentals/shareholders")
+def get_shareholders():
+    """Proxy Screener.in expandable investor breakdown endpoint."""
+    company_id = (request.args.get("company_id") or "").strip()
+    classification = (request.args.get("classification") or "").strip().lower()
+    period = (request.args.get("period") or "quarterly").strip().lower()
+    if not company_id or not classification:
+        return jsonify({"error": "company_id and classification are required"}), 400
+
+    cache_key = f"{company_id}:{classification}:{period}"
+    now = time.time()
+    with _fundamentals_cache_lock:
+        cached = _shareholders_cache.get(cache_key)
+        if cached and now - cached[0] < 7200:
+            return jsonify(cached[1])
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+    }
+    url = f"https://www.screener.in/api/3/{company_id}/investors/{requests.utils.quote(classification)}/{requests.utils.quote(period)}/"
+
+    try:
+        r = requests.get(url, headers=headers, timeout=7)
+        if r.status_code == 200:
+            data = r.json()
+            with _fundamentals_cache_lock:
+                _shareholders_cache[cache_key] = (now, data)
+            return jsonify(data)
+        return jsonify({"error": f"Screener returned status {r.status_code}"}), r.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@fundamentals_bp.get("/api/fundamentals/chart")
+def get_chart():
+    """Proxy Screener.in interactive technical chart endpoint."""
+    company_id = (request.args.get("company_id") or "").strip()
+    days = (request.args.get("days") or "365").strip()
+    if not company_id:
+        return jsonify({"error": "company_id is required"}), 400
+
+    cache_key = f"{company_id}:{days}"
+    now = time.time()
+    with _fundamentals_cache_lock:
+        cached = _charts_cache.get(cache_key)
+        if cached and now - cached[0] < 3600:
+            return jsonify(cached[1])
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+    }
+    url = f"https://www.screener.in/api/company/{company_id}/chart/?q=Price-DMA50-DMA200-Volume&days={days}"
+
+    try:
+        r = requests.get(url, headers=headers, timeout=7)
+        if r.status_code == 200:
+            data = r.json()
+            with _fundamentals_cache_lock:
+                _charts_cache[cache_key] = (now, data)
+            return jsonify(data)
+        return jsonify({"error": f"Screener returned status {r.status_code}"}), r.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @fundamentals_bp.get("/api/fundamentals")
 def fundamentals():
     symbol = (request.args.get("symbol") or "").strip().upper()
+    mode = (request.args.get("mode") or "consolidated").strip().lower()
     if not symbol:
         return jsonify({"error": "symbol is required"}), 400
 
+    cache_key = f"{symbol}:{mode}"
     now = time.time()
-    cached = _fundamentals_cache.get(symbol)
-    if cached and now - cached[0] < _FUNDAMENTALS_CACHE_TTL:
-        return jsonify(cached[1])
+    with _fundamentals_cache_lock:
+        cached = _fundamentals_cache.get(cache_key)
+        if cached and now - cached[0] < _FUNDAMENTALS_CACHE_TTL:
+            return jsonify(cached[1])
 
     # 1. Primary: Try 100% Free Screener.in Adapter for Indian Stocks
-    screener_data = fetch_screener_fundamentals(symbol)
+    screener_data = fetch_screener_fundamentals(symbol, mode=mode)
     if screener_data:
         cleaned_scr = _clean(screener_data)
-        _fundamentals_cache[symbol] = (time.time(), cleaned_scr)
+        with _fundamentals_cache_lock:
+            _fundamentals_cache[cache_key] = (time.time(), cleaned_scr)
         return jsonify(cleaned_scr)
 
     modules = [

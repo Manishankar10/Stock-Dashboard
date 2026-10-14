@@ -596,6 +596,265 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   background: rgba(139, 92, 246, 0.07);
 }
 
+/* =========================================================
+   SCREENER.IN WEB STICKY TOP NAVIGATION BAR (WEB ONLY)
+   ========================================================= */
+#screenerWebNav {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 950;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0 16px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.web-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+  flex: 1;
+}
+.web-nav-left::-webkit-scrollbar { display: none; }
+.web-nav-brand {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 2.5px solid transparent;
+  flex-shrink: 0;
+}
+.web-nav-brand:hover {
+  color: var(--accent);
+}
+.web-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.web-nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 2.5px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.web-nav-link:hover {
+  color: var(--text-primary);
+}
+.web-nav-link.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+
+/* Mode Switcher Segmented Control (Consolidated / Standalone) */
+.mode-switch-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.mode-switch-btn {
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.mode-switch-btn:hover {
+  color: var(--text-primary);
+}
+.mode-switch-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.mode-switch-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Mobile Mode Switcher Pill */
+#mobileModeSwitch {
+  display: none;
+}
+
+/* Expandable Split Details (+) Button and Rows */
+.split-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-left: 6px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.split-expand-btn:hover {
+  background: var(--accent);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+.split-detail-row {
+  background: rgba(15, 23, 42, 0.35);
+}
+[data-theme="light"] .split-detail-row {
+  background: rgba(241, 245, 249, 0.55);
+}
+.split-detail-row td {
+  font-size: 11px !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px dashed var(--border-color) !important;
+}
+.split-child-label {
+  padding-left: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Peer Comparison Table Specific Styling */
+.peer-table-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.peer-table-link:hover {
+  text-decoration: underline;
+}
+
+/* Chart Canvas & Controls Container */
+.chart-container-wrap {
+  width: 100%;
+  position: relative;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chart-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.chart-range-btns {
+  display: inline-flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px;
+}
+.range-btn {
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.range-btn:hover {
+  color: var(--text-primary);
+}
+.range-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+.chart-canvas-box {
+  width: 100%;
+  height: 300px;
+  position: relative;
+}
+.chart-canvas-box canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #f8fafc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  z-index: 10;
+  transform: translate(-50%, -115%);
+  transition: opacity 0.1s ease;
+}
+[data-theme="light"] .chart-tooltip {
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 @media (max-width: 900px) and (min-width: 769px) {
   .analysis-grid, .growth-grid { grid-template-columns: 1fr; }
   .ratios-grid { grid-template-columns: repeat(3, 1fr); }
@@ -641,6 +900,17 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   /* Remove details page header card on mobile (header is shown in modal top bar) */
   .card.header {
     display: none !important;
+  }
+
+  /* Screener Web Nav strictly hidden on mobile */
+  #screenerWebNav {
+    display: none !important;
+  }
+  #mobileModeSwitch {
+    display: flex !important;
+  }
+  .chart-canvas-box {
+    height: 220px !important;
   }
 
   /* Concalls on Mobile */
@@ -902,7 +1172,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 <body>
 <div class="container">
 
-  <!-- Header Card -->
+  <!-- Header Card (Desktop only, mobile shows company info in modal top bar) -->
   <div class="card header">
     <div class="brand">
       <img id="companyLogo" src="/static/favicon-192.png" alt="Company Logo" referrerpolicy="no-referrer" style="width:38px; height:38px; border-radius:8px; object-fit:contain; background:rgba(255,255,255,0.06); padding:2px;">
@@ -919,18 +1189,83 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     </div>
   </div>
 
+  <!-- Screener.in Web Sticky Top Navigation Bar (Web Only - Refer Screener.in Image 1) -->
+  <nav id="screenerWebNav">
+    <div class="web-nav-left">
+      <a href="#overviewSection" class="web-nav-brand" id="webNavBrand">
+        <span id="webNavCompanyName">Company</span>
+      </a>
+      <div class="web-nav-links">
+        <a href="#chartSection" class="web-nav-link" data-section="chartSection">Chart</a>
+        <a href="#analysisSection" class="web-nav-link" data-section="analysisSection">Analysis</a>
+        <a href="#peersSection" class="web-nav-link" data-section="peersSection">Peers</a>
+        <a href="#quartersSection" class="web-nav-link" data-section="quartersSection">Quarters</a>
+        <a href="#pnlSection" class="web-nav-link" data-section="pnlSection">Profit & Loss</a>
+        <a href="#balanceSection" class="web-nav-link" data-section="balanceSection">Balance Sheet</a>
+        <a href="#cashflowSection" class="web-nav-link" data-section="cashflowSection">Cash Flow</a>
+        <a href="#ratiosSection" class="web-nav-link" data-section="ratiosSection">Ratios</a>
+        <a href="#shareholdingSection" class="web-nav-link" data-section="shareholdingSection">Investors</a>
+        <a href="#concallsSection" class="web-nav-link" data-section="concallsSection">Documents</a>
+      </div>
+    </div>
+    <div class="mode-switch-group" id="webModeSwitch">
+      <button class="mode-switch-btn active" id="btnWebConsolidated" onclick="switchFundamentalMode('consolidated')">Consolidated</button>
+      <button class="mode-switch-btn" id="btnWebStandalone" onclick="switchFundamentalMode('standalone')">Standalone</button>
+    </div>
+  </nav>
+
+  <!-- Mobile-only Consolidated / Standalone Switcher (Below header) -->
+  <div id="mobileModeSwitch" class="card" style="padding: 6px; align-items: center; justify-content: center;">
+    <div class="mode-switch-group" style="width: 100%; display: flex;">
+      <button class="mode-switch-btn active" id="btnMobConsolidated" onclick="switchFundamentalMode('consolidated')" style="flex: 1; text-align: center;">Consolidated</button>
+      <button class="mode-switch-btn" id="btnMobStandalone" onclick="switchFundamentalMode('standalone')" style="flex: 1; text-align: center;">Standalone</button>
+    </div>
+  </div>
+
   <div id="loading" class="card empty-state">⏳ Fetching Screener.in fundamental analysis...</div>
   <div id="error" class="card" style="display:none; color: var(--danger);"></div>
 
   <div id="content" style="display:none;" class="container">
 
-    <!-- 9 Screener Ratio Cards Grid -->
-    <div class="card">
+    <!-- Overview Top Ratios Card -->
+    <div class="card" id="overviewSection">
       <div class="ratios-grid" id="ratiosGrid"></div>
     </div>
 
+    <!-- Technical Price & Moving Averages Chart -->
+    <div class="card" id="chartSection">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">📈 Price & Moving Averages</div>
+          <div class="sec-sub">Technical Price History, 50 DMA, 200 DMA & Volumes</div>
+        </div>
+      </div>
+      <div class="chart-container-wrap">
+        <div class="chart-controls">
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> Price</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #38bdf8;"></span> 50 DMA</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #f59e0b;"></span> 200 DMA</span>
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(148, 163, 184, 0.4);"></span> Volume</span>
+          </div>
+          <div class="chart-range-btns" id="chartRangeBtns">
+            <button class="range-btn" onclick="setChartRange(30)">1M</button>
+            <button class="range-btn" onclick="setChartRange(90)">3M</button>
+            <button class="range-btn" onclick="setChartRange(180)">6M</button>
+            <button class="range-btn active" onclick="setChartRange(365)">1Y</button>
+            <button class="range-btn" onclick="setChartRange(1095)">3Y</button>
+            <button class="range-btn" onclick="setChartRange(1825)">5Y</button>
+          </div>
+        </div>
+        <div class="chart-canvas-box" id="chartCanvasBox">
+          <canvas id="screenerChartCanvas"></canvas>
+          <div id="chartTooltip" class="chart-tooltip" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Pros & Cons Cards -->
-    <div class="analysis-grid" id="analysisContainer">
+    <div class="analysis-grid" id="analysisSection">
       <div class="card pros-card">
         <div class="analysis-title pros-title">✓ Pros</div>
         <ul class="analysis-list" id="prosList"></ul>
@@ -941,60 +1276,71 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
       </div>
     </div>
 
+    <!-- Peer Comparison Table -->
+    <div class="card" id="peersSection">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">👥 Peer Comparison</div>
+          <div class="sec-sub">Industry competitors and key valuation metrics</div>
+        </div>
+      </div>
+      <div id="peersTable"></div>
+    </div>
+
     <!-- 1. Quarterly Results Table -->
-    <div class="card">
+    <div class="card" id="quartersSection">
       <div class="sec-head">
         <div>
           <div class="sec-title">📊 Quarterly Results</div>
-          <div class="sec-sub">Consolidated figures in ₹ Cr.</div>
+          <div class="sec-sub" id="quartersSub">Consolidated figures in ₹ Cr.</div>
         </div>
       </div>
       <div id="quartersTable"></div>
     </div>
 
     <!-- 2. Annual Profit & Loss Table -->
-    <div class="card">
+    <div class="card" id="pnlSection">
       <div class="sec-head">
         <div>
           <div class="sec-title">📈 Profit & Loss (Annual)</div>
-          <div class="sec-sub">10-Year consolidated historical performance in ₹ Cr.</div>
+          <div class="sec-sub" id="pnlSub">10-Year historical performance in ₹ Cr.</div>
         </div>
       </div>
       <div id="pnlTable"></div>
-    </div>
 
-    <!-- 3. Compounded Growth Ratios Grid -->
-    <div class="card">
-      <div class="sec-head">
-        <div class="sec-title">🚀 Compounded Growth Ratios</div>
+      <!-- 3. Compounded Growth Ratios Grid -->
+      <div style="margin-top: 16px;">
+        <div class="sec-head">
+          <div class="sec-title" style="font-size: 13.5px;">🚀 Compounded Growth Ratios</div>
+        </div>
+        <div class="growth-grid" id="compoundedGrowth"></div>
       </div>
-      <div class="growth-grid" id="compoundedGrowth"></div>
     </div>
 
     <!-- 4. Balance Sheet Table -->
-    <div class="card">
+    <div class="card" id="balanceSection">
       <div class="sec-head">
         <div>
           <div class="sec-title">🏦 Balance Sheet</div>
-          <div class="sec-sub">Annual Assets, Liabilities & Capital Breakdown in ₹ Cr.</div>
+          <div class="sec-sub" id="balanceSub">Annual Assets, Liabilities & Capital Breakdown in ₹ Cr.</div>
         </div>
       </div>
       <div id="balanceTable"></div>
     </div>
 
     <!-- 5. Cash Flows Table -->
-    <div class="card">
+    <div class="card" id="cashflowSection">
       <div class="sec-head">
         <div>
           <div class="sec-title">💸 Cash Flows</div>
-          <div class="sec-sub">Annual Operating, Investing & Financing Cash Movements in ₹ Cr.</div>
+          <div class="sec-sub" id="cashflowSub">Annual Operating, Investing & Financing Cash Movements in ₹ Cr.</div>
         </div>
       </div>
       <div id="cashflowTable"></div>
     </div>
 
     <!-- 6. Financial Ratios Table -->
-    <div class="card">
+    <div class="card" id="ratiosSection">
       <div class="sec-head">
         <div>
           <div class="sec-title">📐 Key Financial Ratios</div>
@@ -1005,7 +1351,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     </div>
 
     <!-- 7. Shareholding Pattern Table -->
-    <div class="card">
+    <div class="card" id="shareholdingSection">
       <div class="sec-head">
         <div>
           <div class="sec-title">🤝 Shareholding Pattern (%)</div>
@@ -1016,7 +1362,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     </div>
 
     <!-- 8. Company Profile & Business Summary -->
-    <div class="card">
+    <div class="card" id="aboutSection">
       <div class="sec-head">
         <div class="sec-title">🏢 Business Summary</div>
       </div>
@@ -1092,7 +1438,11 @@ function esc(v) {
   return d.innerHTML;
 }
 
-function renderScreenerTable(section) {
+let currentFundamentalMode = 'consolidated';
+let _chartDatasets = [];
+let _chartCurrentDays = 365;
+
+function renderScreenerTable(section, secId) {
   const cols = section?.columns || [];
   const rows = section?.rows || [];
   if (!cols.length || !rows.length) {
@@ -1101,19 +1451,414 @@ function renderScreenerTable(section) {
 
   // Standard chronological ordering (older to newer)
   const colIndices = cols.map((_, i) => i);
-
   const headerHtml = `<thead><tr><th>Particulars</th>${colIndices.map(i => `<th>${esc(cols[i])}</th>`).join('')}</tr></thead>`;
   
-  const bodyHtml = rows.map(r => {
+  const bodyHtml = rows.map((r, rowIdx) => {
     const lbl = r.label || '';
     const isHighlight = /operating profit|net profit|cash from operating|total liabilities|total assets|roce %/i.test(lbl);
-    return `<tr class="${isHighlight ? 'highlight' : ''}">
-      <td>${esc(lbl)}</td>
+    
+    let btnHtml = '';
+    if (r.expandable) {
+      btnHtml = `<button class="split-expand-btn" type="button" 
+        data-sched-name="${esc(r.schedule_name || lbl)}" 
+        data-sched-sec="${esc(r.schedule_section || secId || '')}" 
+        data-sched-type="${esc(r.schedule_type || 'schedule')}"
+        data-row-id="${secId}-${rowIdx}"
+        onclick="toggleSplitSchedule(this)" title="Toggle Split Details / Schedule">+</button>`;
+    }
+
+    return `<tr class="${isHighlight ? 'highlight' : ''}" id="row-${secId}-${rowIdx}">
+      <td>${esc(lbl)}${btnHtml}</td>
       ${colIndices.map(i => `<td>${r.values?.[i] != null && r.values?.[i] !== '' ? esc(r.values[i]) : '—'}</td>`).join('')}
     </tr>`;
   }).join('');
 
+  return `<div class="table-wrap"><table class="table" data-sec-id="${esc(secId || '')}">${headerHtml}<tbody>${bodyHtml}</tbody></table></div>`;
+}
+
+function renderPeersTable(peers) {
+  const cols = peers?.columns || [];
+  const rows = peers?.rows || [];
+  if (!cols.length || !rows.length) {
+    return `<div class="empty-state">No peer comparison data available for this industry</div>`;
+  }
+
+  const headerHtml = `<thead><tr>
+    <th>S.No.</th>
+    <th>Name</th>
+    ${cols.slice(1).map(c => `<th>${esc(c)}</th>`).join('')}
+  </tr></thead>`;
+
+  const bodyHtml = rows.map((r, idx) => {
+    const pName = r.name || '—';
+    const isCurrent = symbol.toUpperCase().includes(pName.toUpperCase()) || pName.toUpperCase().includes(symbol.replace(/\.(NS|BO)$/i, '').toUpperCase());
+    const rowCells = r.values || [];
+    return `<tr class="${isCurrent ? 'highlight' : ''}">
+      <td>${esc(idx + 1)}.</td>
+      <td><a class="peer-table-link" href="/fundamentals?symbol=${encodeURIComponent(pName)}.NS">${esc(pName)}</a></td>
+      ${rowCells.slice(1).map(v => `<td>${v != null && v !== '' ? esc(v) : '—'}</td>`).join('')}
+    </tr>`;
+  }).join('');
+
   return `<div class="table-wrap"><table class="table">${headerHtml}<tbody>${bodyHtml}</tbody></table></div>`;
+}
+
+async function toggleSplitSchedule(btn) {
+  const schedName = btn.dataset.schedName;
+  const schedSec = btn.dataset.schedSec;
+  const schedType = btn.dataset.schedType || 'schedule';
+  const rowId = btn.dataset.rowId;
+  const pRow = document.getElementById('row-' + rowId);
+  if (!pRow) return;
+
+  const isExpanded = btn.classList.contains('expanded');
+  const existingRows = document.querySelectorAll(`tr[data-parent-row="${rowId}"]`);
+
+  if (isExpanded) {
+    existingRows.forEach(tr => tr.style.display = 'none');
+    btn.textContent = '+';
+    btn.classList.remove('expanded');
+    return;
+  }
+
+  if (existingRows.length > 0) {
+    existingRows.forEach(tr => tr.style.display = '');
+    btn.textContent = '−';
+    btn.classList.add('expanded');
+    return;
+  }
+
+  // Fetch from backend
+  btn.textContent = '…';
+  btn.disabled = true;
+
+  try {
+    let url = '';
+    if (schedType === 'shareholders') {
+      url = `/api/fundamentals/shareholders?company_id=${encodeURIComponent(window.companyId || '')}&classification=${encodeURIComponent(schedName)}&period=quarterly`;
+    } else {
+      url = `/api/fundamentals/schedule?company_id=${encodeURIComponent(window.companyId || '')}&parent=${encodeURIComponent(schedName)}&section=${encodeURIComponent(schedSec)}&mode=${encodeURIComponent(window.currentFundamentalMode || 'consolidated')}`;
+    }
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Schedule data not available');
+    const data = await res.json();
+    if (!data || data.error) throw new Error(data?.error || 'Schedule unavailable');
+
+    const table = pRow.closest('table');
+    const ths = Array.from(table.querySelectorAll('thead th')).slice(1).map(th => th.textContent.trim());
+
+    let lastInserted = pRow;
+    const entries = Object.entries(data);
+    let count = 0;
+
+    for (const [subMetric, dateMap] of entries) {
+      if (subMetric === 'isExpandable' || typeof dateMap !== 'object' || !dateMap) continue;
+
+      const childTr = document.createElement('tr');
+      childTr.className = 'split-detail-row';
+      childTr.setAttribute('data-parent-row', rowId);
+
+      const labelTd = document.createElement('td');
+      labelTd.innerHTML = `<span class="split-child-label">↳ ${esc(subMetric)}</span>`;
+      childTr.appendChild(labelTd);
+
+      ths.forEach(colDate => {
+        const valTd = document.createElement('td');
+        const val = dateMap[colDate];
+        valTd.textContent = (val != null && val !== '') ? val : '—';
+        childTr.appendChild(valTd);
+      });
+
+      lastInserted.insertAdjacentElement('afterend', childTr);
+      lastInserted = childTr;
+      count++;
+    }
+
+    if (count > 0) {
+      btn.textContent = '−';
+      btn.classList.add('expanded');
+    } else {
+      btn.textContent = '+';
+    }
+  } catch (err) {
+    console.warn('Unable to load schedule:', err);
+    btn.textContent = '+';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function switchFundamentalMode(newMode) {
+  if (currentFundamentalMode === newMode && window._lastFundamentalsData) return;
+  currentFundamentalMode = newMode;
+
+  // Sync button active classes
+  document.querySelectorAll('.mode-switch-btn').forEach(btn => {
+    const isTarget = btn.id.toLowerCase().includes(newMode);
+    btn.classList.toggle('active', isTarget);
+  });
+
+  await loadFundamentals(newMode);
+}
+
+function setChartRange(days) {
+  _chartCurrentDays = days;
+  document.querySelectorAll('#chartRangeBtns .range-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim() === (days === 30 ? '1M' : days === 90 ? '3M' : days === 180 ? '6M' : days === 365 ? '1Y' : days === 1095 ? '3Y' : '5Y'));
+  });
+  renderScreenerChart(_chartDatasets, days);
+}
+
+function renderScreenerChart(datasets, days = _chartCurrentDays) {
+  _chartDatasets = datasets || [];
+  const canvas = document.getElementById('screenerChartCanvas');
+  const box = document.getElementById('chartCanvasBox');
+  if (!canvas || !box) return;
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = box.getBoundingClientRect();
+  const width = rect.width || 800;
+  const height = rect.height || 300;
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  ctx.scale(dpr, dpr);
+
+  if (!_chartDatasets.length) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No technical chart dataset available', width / 2, height / 2);
+    return;
+  }
+
+  const priceDs = _chartDatasets.find(d => /price/i.test(d.metric)) || _chartDatasets[0];
+  const dma50Ds = _chartDatasets.find(d => /dma50|50.*dma/i.test(d.metric));
+  const dma200Ds = _chartDatasets.find(d => /dma200|200.*dma/i.test(d.metric));
+  const volDs = _chartDatasets.find(d => /volume/i.test(d.metric));
+
+  let priceVals = (priceDs?.values || []).map(v => [v[0], parseFloat(v[1])]).filter(v => !isNaN(v[1]));
+  if (!priceVals.length) return;
+
+  if (days && priceVals.length > 5) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const idx = priceVals.findIndex(v => v[0] >= cutoffStr);
+    if (idx > 0) {
+      priceVals = priceVals.slice(idx);
+    }
+  }
+
+  const dateMap = new Set(priceVals.map(v => v[0]));
+  const filterDs = (ds) => (ds?.values || []).map(v => [v[0], parseFloat(v[1])]).filter(v => dateMap.has(v[0]) && !isNaN(v[1]));
+
+  const dma50Vals = filterDs(dma50Ds);
+  const dma200Vals = filterDs(dma200Ds);
+  const volVals = filterDs(volDs);
+
+  const padding = { top: 20, right: 20, bottom: 25, left: 55 };
+  const plotW = width - padding.left - padding.right;
+  const plotH = height - padding.top - padding.bottom;
+
+  let allPrices = priceVals.map(v => v[1]);
+  if (dma50Vals.length) allPrices = allPrices.concat(dma50Vals.map(v => v[1]));
+  if (dma200Vals.length) allPrices = allPrices.concat(dma200Vals.map(v => v[1]));
+  const minP = Math.min(...allPrices) * 0.98;
+  const maxP = Math.max(...allPrices) * 1.02;
+  const pRange = maxP - minP || 1;
+
+  const maxVol = volVals.length ? Math.max(...volVals.map(v => v[1])) * 1.15 : 1;
+
+  const getX = (idx, total) => padding.left + (idx / Math.max(total - 1, 1)) * plotW;
+  const getY = (val) => padding.top + (1 - (val - minP) / pRange) * plotH;
+  const getVolY = (vol) => padding.top + plotH - (vol / (maxVol || 1)) * (plotH * 0.28);
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Background Grid
+  ctx.strokeStyle = document.documentElement.getAttribute('data-theme') === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  const gridRows = 4;
+  for (let i = 0; i <= gridRows; i++) {
+    const y = padding.top + (i / gridRows) * plotH;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+
+    const priceAtY = maxP - (i / gridRows) * pRange;
+    ctx.fillStyle = '#64748b';
+    ctx.font = '9.5px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(priceAtY.toFixed(1), padding.left - 6, y + 3);
+  }
+
+  // Draw Volume Bars
+  if (volVals.length) {
+    const barW = Math.max(1, (plotW / volVals.length) * 0.7);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+    volVals.forEach((v, i) => {
+      const x = getX(i, volVals.length) - barW / 2;
+      const y = getVolY(v[1]);
+      const h = padding.top + plotH - y;
+      ctx.fillRect(x, y, barW, h);
+    });
+  }
+
+  const drawLine = (data, color, lineWidth = 1.5) => {
+    if (!data.length) return;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    data.forEach((pt, i) => {
+      const x = getX(i, data.length);
+      const y = getY(pt[1]);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  };
+
+  // Draw 200 DMA (Amber)
+  drawLine(dma200Vals, '#f59e0b', 1.5);
+
+  // Draw 50 DMA (Sky Blue)
+  drawLine(dma50Vals, '#38bdf8', 1.5);
+
+  // Draw Price Gradient Fill & Line (Emerald)
+  if (priceVals.length) {
+    const grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + plotH);
+    grad.addColorStop(0, 'rgba(16, 185, 129, 0.22)');
+    grad.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+    ctx.beginPath();
+    priceVals.forEach((pt, i) => {
+      const x = getX(i, priceVals.length);
+      const y = getY(pt[1]);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(padding.left + plotW, padding.top + plotH);
+    ctx.lineTo(padding.left, padding.top + plotH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    drawLine(priceVals, '#10b981', 2);
+  }
+
+  // Date labels along X axis
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9.5px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  const labelCount = Math.min(6, priceVals.length);
+  for (let k = 0; k < labelCount; k++) {
+    const idx = Math.floor((k / (labelCount - 1 || 1)) * (priceVals.length - 1));
+    const pt = priceVals[idx];
+    if (pt) {
+      const x = getX(idx, priceVals.length);
+      ctx.fillText(pt[0].slice(2), x, height - 8);
+    }
+  }
+
+  window._chartPoints = priceVals.map((p, idx) => ({
+    date: p[0],
+    price: p[1],
+    dma50: dma50Vals[idx]?.[1],
+    dma200: dma200Vals[idx]?.[1],
+    volume: volVals[idx]?.[1],
+    x: getX(idx, priceVals.length),
+    y: getY(p[1])
+  }));
+
+  if (!box._listenerAttached) {
+    box._listenerAttached = true;
+    const tooltip = document.getElementById('chartTooltip');
+
+    const onMove = (e) => {
+      if (!window._chartPoints || !window._chartPoints.length) return;
+      const bRect = box.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const mouseX = clientX - bRect.left;
+
+      let closest = window._chartPoints[0];
+      let minDiff = Infinity;
+      for (const pt of window._chartPoints) {
+        const diff = Math.abs(pt.x - mouseX);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = pt;
+        }
+      }
+
+      if (closest && minDiff < 35) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = closest.x + 'px';
+        tooltip.style.top = Math.max(closest.y, 35) + 'px';
+        tooltip.innerHTML = `
+          <div style="font-weight:700; color:var(--text-primary); margin-bottom:2px;">${closest.date}</div>
+          <div style="color:#10b981; font-weight:600;">Price: ₹${closest.price.toFixed(2)}</div>
+          ${closest.dma50 != null ? `<div style="color:#38bdf8;">50 DMA: ₹${closest.dma50.toFixed(2)}</div>` : ''}
+          ${closest.dma200 != null ? `<div style="color:#f59e0b;">200 DMA: ₹${closest.dma200.toFixed(2)}</div>` : ''}
+          ${closest.volume != null ? `<div style="color:#94a3b8;">Vol: ${closest.volume.toLocaleString()}</div>` : ''}
+        `;
+      } else {
+        tooltip.style.display = 'none';
+      }
+    };
+
+    box.addEventListener('mousemove', onMove);
+    box.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
+    box.addEventListener('touchmove', onMove, { passive: true });
+    box.addEventListener('touchend', () => { if (tooltip) tooltip.style.display = 'none'; });
+  }
+}
+
+function initWebNavScrollSpy() {
+  const sections = [
+    'overviewSection', 'chartSection', 'analysisSection', 'peersSection',
+    'quartersSection', 'pnlSection', 'balanceSection', 'cashflowSection',
+    'ratiosSection', 'shareholdingSection', 'concallsSection'
+  ];
+
+  const links = document.querySelectorAll('.web-nav-link');
+
+  links.forEach(link => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      const secId = link.getAttribute('data-section');
+      const el = document.getElementById(secId);
+      if (el) {
+        const navHeight = document.getElementById('screenerWebNav')?.offsetHeight || 50;
+        const top = el.getBoundingClientRect().top + window.pageYOffset - navHeight - 12;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    };
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        links.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('data-section') === id);
+        });
+      }
+    });
+  }, {
+    rootMargin: '-70px 0px -65% 0px',
+    threshold: 0
+  });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
 }
 
 function focusLatestTables() {
@@ -1126,13 +1871,13 @@ function focusLatestTables() {
   }
 }
 
-async function loadFundamentals() {
+async function loadFundamentals(mode = currentFundamentalMode) {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('error').style.display = 'none';
   document.getElementById('content').style.display = 'none';
 
   try {
-    const res = await fetch('/api/fundamentals?symbol=' + encodeURIComponent(symbol), { cache: 'no-store' });
+    const res = await fetch(`/api/fundamentals?symbol=${encodeURIComponent(symbol)}&mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Unable to fetch fundamentals');
     render(data);
@@ -1149,10 +1894,44 @@ function render(d) {
   const tr = d.top_ratios || {};
   const baseSym = symbol.replace(/\.(NS|BO)$/i, '');
 
+  window.companyId = d.company_id || '';
+  window.warehouseId = d.warehouse_id || '';
+  window.currentFundamentalMode = d.mode || currentFundamentalMode;
+
   document.getElementById('companyTitle').textContent = c.name || symbol;
   document.getElementById('companySub').textContent = `${symbol} · Screener.in Direct Replica`;
   document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   document.getElementById('screenerBtn').href = `https://www.screener.in/company/${encodeURIComponent(baseSym)}/`;
+
+  // Top Web Nav Brand Link
+  const webNavName = document.getElementById('webNavCompanyName');
+  if (webNavName) webNavName.textContent = c.name || symbol;
+
+  // Sync mode buttons
+  const isCons = (window.currentFundamentalMode === 'consolidated');
+  document.getElementById('btnWebConsolidated').classList.toggle('active', isCons);
+  document.getElementById('btnWebStandalone').classList.toggle('active', !isCons);
+  document.getElementById('btnMobConsolidated').classList.toggle('active', isCons);
+  document.getElementById('btnMobStandalone').classList.toggle('active', !isCons);
+
+  if (d.has_consolidated === false) {
+    document.getElementById('btnWebConsolidated').disabled = true;
+    document.getElementById('btnMobConsolidated').disabled = true;
+  } else {
+    document.getElementById('btnWebConsolidated').disabled = false;
+    document.getElementById('btnMobConsolidated').disabled = false;
+  }
+
+  // Update Section Subtitles with mode
+  const modeTitle = isCons ? 'Consolidated' : 'Standalone';
+  const qSub = document.getElementById('quartersSub');
+  if (qSub) qSub.textContent = `${modeTitle} figures in ₹ Cr.`;
+  const pSub = document.getElementById('pnlSub');
+  if (pSub) pSub.textContent = `10-Year ${modeTitle.toLowerCase()} historical performance in ₹ Cr.`;
+  const bSub = document.getElementById('balanceSub');
+  if (bSub) bSub.textContent = `Annual ${modeTitle.toLowerCase()} Assets, Liabilities & Capital Breakdown in ₹ Cr.`;
+  const cSub = document.getElementById('cashflowSub');
+  if (cSub) cSub.textContent = `Annual ${modeTitle.toLowerCase()} Cash Movements in ₹ Cr.`;
 
   // Update Brand Logo
   const logoEl = document.getElementById('companyLogo');
@@ -1198,6 +1977,9 @@ function render(d) {
     </div>`;
   }).join('');
 
+  // Render Technical Price Chart
+  renderScreenerChart(d.charts?.price || []);
+
   // Render Pros & Cons
   const pros = d.pros || [];
   const cons = d.cons || [];
@@ -1209,13 +1991,19 @@ function render(d) {
     ? cons.map(c => `<li><span style="color:#f87171; font-weight:bold;">✗</span> ${esc(c)}</li>`).join('')
     : `<li><span style="color:var(--text-secondary)">No cons data listed</span></li>`;
 
-  // Render Financial Tables
-  document.getElementById('quartersTable').innerHTML = renderScreenerTable(d.quarters);
-  document.getElementById('pnlTable').innerHTML = renderScreenerTable(d.profit_loss);
-  document.getElementById('balanceTable').innerHTML = renderScreenerTable(d.balance_sheet);
-  document.getElementById('cashflowTable').innerHTML = renderScreenerTable(d.cashflow);
-  document.getElementById('ratiosTable').innerHTML = renderScreenerTable(d.ratios);
-  document.getElementById('shareholdingTable').innerHTML = renderScreenerTable(d.shareholding);
+  // Render Peers Table
+  const peersEl = document.getElementById('peersTable');
+  if (peersEl) peersEl.innerHTML = renderPeersTable(d.peers);
+
+  // Render Financial Tables with expandable schedule splits
+  document.getElementById('quartersTable').innerHTML = renderScreenerTable(d.quarters, 'quarters');
+  document.getElementById('pnlTable').innerHTML = renderScreenerTable(d.profit_loss, 'profit-loss');
+  document.getElementById('balanceTable').innerHTML = renderScreenerTable(d.balance_sheet, 'balance-sheet');
+  document.getElementById('cashflowTable').innerHTML = renderScreenerTable(d.cashflow, 'cash-flow');
+  document.getElementById('ratiosTable').innerHTML = renderScreenerTable(d.ratios, 'ratios');
+  document.getElementById('shareholdingTable').innerHTML = renderScreenerTable(d.shareholding, 'shareholding');
+
+  initWebNavScrollSpy();
 
   // Render Compounded Growth Grid
   const cg = d.compounded_growth || {};
