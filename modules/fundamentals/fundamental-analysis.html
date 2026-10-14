@@ -385,6 +385,95 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   color: #ffffff !important;
 }
 
+/* Actions Dropdown for Concall Summary (Hidden on Web/Desktop, enabled strictly on mobile) */
+.ai-actions-dropdown-wrap {
+  display: none;
+  position: relative;
+}
+.ai-actions-toggle-btn {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.22) 0%, rgba(99, 102, 241, 0.25) 100%);
+  border-color: rgba(167, 139, 250, 0.45);
+  color: #c4b5fd;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.ai-actions-toggle-btn:hover, .ai-actions-toggle-btn:active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: #ffffff;
+}
+[data-theme="light"] .ai-actions-toggle-btn {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(99, 102, 241, 0.16) 100%);
+  color: #6d28d9;
+  border-color: rgba(139, 92, 246, 0.35);
+}
+.actions-caret {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-left: 2px;
+}
+.ai-actions-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100020;
+  min-width: 175px;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(139, 92, 246, 0.2);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: aiDropdownFadeIn 0.15s ease-out;
+}
+[data-theme="light"] .ai-actions-dropdown-menu {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #cbd5e1;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+}
+@keyframes aiDropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ai-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+.ai-dropdown-item:hover, .ai-dropdown-item:active {
+  background: rgba(139, 92, 246, 0.16);
+  color: #c4b5fd;
+}
+[data-theme="light"] .ai-dropdown-item:hover {
+  background: rgba(139, 92, 246, 0.10);
+  color: #6d28d9;
+}
+.ai-dropdown-icon {
+  font-size: 13px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 .share-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -442,21 +531,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.share-preview-thumb-wrap {
-  width: 100%;
-  max-height: 220px;
-  overflow-y: auto;
-  border-radius: 6px;
-  background: #0b1329;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  justify-content: center;
-}
-.share-preview-thumb-wrap img {
-  width: 100%;
-  height: auto;
-  display: block;
+  overflow: hidden;
 }
 .share-badge-row {
   display: flex;
@@ -465,6 +540,46 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   font-size: 11px;
   color: var(--text-secondary);
   font-weight: 600;
+}
+.share-preview-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(139, 92, 246, 0.18);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  font-weight: 700;
+}
+[data-theme="light"] .share-preview-pill {
+  background: rgba(139, 92, 246, 0.1);
+  color: #6d28d9;
+}
+.share-preview-thumb-wrap {
+  width: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 6px;
+  background: #0b1329;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
+}
+.share-preview-thumb-wrap img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.share-preview-hint {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
+}
+.share-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .share-native-btn {
   width: 100%;
@@ -536,6 +651,229 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 .share-channel-btn.copy-btn:hover {
   background: #38bdf8;
   color: #ffffff;
+}
+
+/* Screener.in Trades Button in Investors Tab */
+.trades-trigger-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.15;
+}
+.trades-trigger-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+}
+.trades-trigger-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.6px;
+}
+.trades-trigger-badge {
+  font-size: 9px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-top: 1px;
+}
+[data-theme="light"] .trades-trigger-btn {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+[data-theme="light"] .trades-trigger-title {
+  color: #0284c7;
+}
+
+/* Screener-Style Trades Modal Popup */
+.trades-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100008;
+  background: rgba(5, 10, 24, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: aiFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.trades-modal-container {
+  width: 95%;
+  max-width: 680px;
+  max-height: 88vh;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+[data-theme="light"] .trades-modal-container {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+.trades-modal-header {
+  padding: 16px 20px 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.trades-modal-title {
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+[data-theme="light"] .trades-modal-title {
+  color: #0f172a;
+}
+.trades-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.trades-modal-close:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.15);
+}
+.trades-modal-tabs {
+  padding: 0 20px 12px 20px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.trades-tab-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.trades-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+.trades-tab-btn.active {
+  background: rgba(30, 41, 59, 0.95);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  font-weight: 700;
+}
+[data-theme="light"] .trades-tab-btn.active {
+  background: rgba(59, 130, 246, 0.12);
+  color: #0284c7;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.trades-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+}
+.trades-table-head {
+  padding: 10px 20px;
+  display: flex;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+.trades-head-person {
+  flex: 1;
+}
+.trades-head-qty {
+  width: 110px;
+  text-align: right;
+}
+.trades-head-price {
+  width: 70px;
+  text-align: right;
+}
+.trades-date-group-head {
+  padding: 8px 20px;
+  background: rgba(15, 23, 42, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+[data-theme="light"] .trades-date-group-head {
+  background: #f1f5f9;
+}
+.trades-row {
+  padding: 9px 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  transition: background 0.1s ease;
+}
+.trades-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.trades-person-cell {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 8px;
+}
+.trades-chevron {
+  color: #38bdf8;
+  font-size: 13px;
+  font-weight: 700;
+}
+.trade-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 12px;
+}
+.trade-badge.trade-sell {
+  color: #f87171;
+}
+.trade-badge.trade-buy {
+  color: #34d399;
+}
+.trades-qty-cell {
+  width: 110px;
+  text-align: right;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.trades-price-cell {
+  width: 70px;
+  text-align: right;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 /* Modal Body */
@@ -1240,6 +1578,56 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     background: #e2e8f0 !important;
   }
 
+  /* Peers Table Specific Mobile Styling - Minimal S.No width, Stock Name left-to-right */
+  .peers-table {
+    min-width: 580px !important;
+  }
+  .peers-table th.col-sno,
+  .peers-table td.col-sno,
+  .peers-table th:first-child,
+  .peers-table td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 6 !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 28px !important;
+    padding: 6px 2px !important;
+    text-align: center !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+    border-right: none !important;
+  }
+  .peers-table th.col-peer-name,
+  .peers-table td.col-peer-name,
+  .peers-table th:nth-child(2),
+  .peers-table td:nth-child(2) {
+    position: sticky !important;
+    left: 28px !important;
+    z-index: 5 !important;
+    min-width: 125px !important;
+    max-width: 160px !important;
+    width: 135px !important;
+    text-align: left !important;
+    padding: 6px 8px !important;
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    background: #1e293b !important;
+    border-right: 1px solid var(--border-color) !important;
+    box-shadow: 3px 0 6px -1px rgba(0, 0, 0, 0.4) !important;
+  }
+  [data-theme="light"] .peers-table th.col-peer-name,
+  [data-theme="light"] .peers-table td.col-peer-name,
+  [data-theme="light"] .peers-table th:nth-child(2),
+  [data-theme="light"] .peers-table td:nth-child(2) {
+    background: #ffffff !important;
+    box-shadow: 3px 0 6px -1px rgba(0, 0, 0, 0.08) !important;
+  }
+
   /* Compounded Growth Ratios Grid */
   .growth-grid {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -1306,6 +1694,24 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     font-size: 18px !important;
     padding: 2px 7px !important;
   }
+  /* Mobile View: strictly hide standalone top buttons and show Actions menu near close icon */
+  #aiShareImageBtn,
+  #aiCopyBtn,
+  #aiPdfBtn {
+    display: none !important;
+  }
+  .ai-actions-dropdown-wrap {
+    display: inline-block !important;
+  }
+  .ai-actions-toggle-btn {
+    padding: 4px 9px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+  }
+  .ai-modal-actions {
+    gap: 6px !important;
+  }
   .ai-modal-body {
     padding: 10px 8px !important;
   }
@@ -1342,6 +1748,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     font-size: 9.5px !important;
     padding: 5px 7px !important;
   }
+  /* Mobile Share Modal: full screen, clean separation so apps never overlap content */
   .share-modal-backdrop {
     padding: 0 !important;
   }
@@ -1358,12 +1765,140 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   }
   .share-modal-header {
     padding: 10px 12px !important;
+    flex-shrink: 0 !important;
   }
   .share-modal-title {
     font-size: 13px !important;
   }
+  .share-modal-subtitle {
+    font-size: 9.5px !important;
+  }
+  .share-modal-body {
+    padding: 10px 12px 24px 12px !important;
+    gap: 10px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex: 1 1 auto !important;
+  }
   .share-preview-card {
-    max-height: 38vh !important;
+    padding: 8px 10px !important;
+    gap: 6px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    max-height: none !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  .share-preview-thumb-wrap {
+    width: 100% !important;
+    height: 160px !important;
+    max-height: 160px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 6px !important;
+    background: #080e1e !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    display: block !important;
+  }
+  .share-preview-thumb-wrap img {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+  }
+  .share-badge-row {
+    font-size: 10px !important;
+  }
+  .share-preview-pill {
+    font-size: 9px !important;
+    padding: 1px 6px !important;
+  }
+  .share-preview-hint {
+    font-size: 9.5px !important;
+  }
+  .share-actions-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-top: 2px !important;
+    flex-shrink: 0 !important;
+  }
+  .share-native-btn {
+    padding: 10px 14px !important;
+    font-size: 12.5px !important;
+    border-radius: 7px !important;
+  }
+  .share-direct-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+  .share-channel-btn {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+    border-radius: 7px !important;
+  }
+
+  /* Trades Modal Mobile Overrides */
+  .trades-modal-backdrop {
+    padding: 0 !important;
+  }
+  .trades-modal-container {
+    width: 100vw !important;
+    width: 100dvw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+  .trades-modal-header {
+    padding: 12px 14px 10px 14px !important;
+  }
+  .trades-modal-title {
+    font-size: 14.5px !important;
+  }
+  .trades-modal-tabs {
+    padding: 0 10px 8px 10px !important;
+    gap: 4px !important;
+  }
+  .trades-tab-btn {
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+  }
+  .trades-table-head {
+    padding: 7px 12px !important;
+    font-size: 10px !important;
+  }
+  .trades-head-qty {
+    width: 85px !important;
+  }
+  .trades-head-price {
+    width: 50px !important;
+  }
+  .trades-date-group-head {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+  }
+  .trades-row {
+    padding: 8px 12px !important;
+    font-size: 11px !important;
+  }
+  .trades-person-cell {
+    font-size: 11px !important;
+  }
+  .trade-badge {
+    font-size: 10px !important;
+    margin-right: 6px !important;
+  }
+  .trades-qty-cell {
+    width: 85px !important;
+    font-size: 11px !important;
+  }
+  .trades-price-cell {
+    width: 50px !important;
+    font-size: 11px !important;
   }
 }
 </style>
@@ -1412,14 +1947,6 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
       <button class="mode-switch-btn" id="btnWebStandalone" onclick="switchFundamentalMode('standalone')">Standalone</button>
     </div>
   </nav>
-
-  <!-- Mobile-only Consolidated / Standalone Switcher (Below header) -->
-  <div id="mobileModeSwitch" class="card" style="padding: 6px; align-items: center; justify-content: center;">
-    <div class="mode-switch-group" style="width: 100%; display: flex;">
-      <button class="mode-switch-btn active" id="btnMobConsolidated" onclick="switchFundamentalMode('consolidated')" style="flex: 1; text-align: center;">Consolidated</button>
-      <button class="mode-switch-btn" id="btnMobStandalone" onclick="switchFundamentalMode('standalone')" style="flex: 1; text-align: center;">Standalone</button>
-    </div>
-  </div>
 
   <div id="loading" class="card empty-state">⏳ Fetching Screener.in fundamental analysis...</div>
   <div id="error" class="card" style="display:none; color: var(--danger);"></div>
@@ -1484,6 +2011,14 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
         </div>
       </div>
       <div id="peersTable"></div>
+    </div>
+
+    <!-- Mobile-only Consolidated / Standalone Switcher (Positioned right before Quarterly Results) -->
+    <div id="mobileModeSwitch" class="card" style="padding: 6px; align-items: center; justify-content: center;">
+      <div class="mode-switch-group" style="width: 100%; display: flex;">
+        <button class="mode-switch-btn active" id="btnMobConsolidated" onclick="switchFundamentalMode('consolidated')" style="flex: 1; text-align: center;">Consolidated</button>
+        <button class="mode-switch-btn" id="btnMobStandalone" onclick="switchFundamentalMode('standalone')" style="flex: 1; text-align: center;">Standalone</button>
+      </div>
     </div>
 
     <!-- 1. Quarterly Results Table -->
@@ -1551,10 +2086,16 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
     <!-- 7. Shareholding Pattern Table -->
     <div class="card" id="shareholdingSection">
-      <div class="sec-head">
+      <div class="sec-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <div>
           <div class="sec-title">🤝 Shareholding Pattern (%)</div>
           <div class="sec-sub">Promoter, FII, DII and Public ownership trends across quarters</div>
+        </div>
+        <div class="trades-trigger-wrap">
+          <button id="tradesBtn" class="trades-trigger-btn" type="button" onclick="openTradesModal()" title="View Insider, Bulk & Block Deals">
+            <span class="trades-trigger-title">TRADES</span>
+            <span class="trades-trigger-badge" id="tradesBtnBadge">5 Recently</span>
+          </button>
         </div>
       </div>
       <div id="shareholdingTable"></div>
@@ -1592,9 +2133,33 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
         <div class="ai-modal-subtitle" id="aiSummarySubtitle">Senior Equity Research Analyst · Screener Depth</div>
       </div>
       <div class="ai-modal-actions">
+        <!-- Standalone Action Buttons (Web / Desktop View) -->
         <button id="aiShareImageBtn" class="ai-btn ai-share-btn" type="button" onclick="shareTranscriptAsImage()" title="Share Transcript as Full Screenshot Image">📸 Share Image</button>
         <button id="aiCopyBtn" class="ai-btn" type="button" onclick="copyAiSummary()" title="Copy Full Report">📋 Copy</button>
         <a id="aiPdfBtn" class="ai-btn" href="#" target="_blank" rel="noopener noreferrer" title="Open Official Source PDF">📄 Source PDF ↗</a>
+
+        <!-- Compact Actions Dropdown Menu (Near Close Icon, Strictly Mobile View) -->
+        <div class="ai-actions-dropdown-wrap" id="aiActionsDropdownWrap">
+          <button id="aiActionsBtn" class="ai-btn ai-actions-toggle-btn" type="button" onclick="toggleAiActionsMenu(event)" title="Concall Actions Menu">
+            <span>Actions</span>
+            <span class="actions-caret">▾</span>
+          </button>
+          <div id="aiActionsDropdownMenu" class="ai-actions-dropdown-menu" style="display: none;">
+            <button class="ai-dropdown-item" id="aiMobCopyBtn" type="button" onclick="copyAiSummaryFromMenu()">
+              <span class="ai-dropdown-icon">📋</span>
+              <span>Copy Report</span>
+            </button>
+            <button class="ai-dropdown-item" id="aiMobShareBtn" type="button" onclick="shareTranscriptFromMenu()">
+              <span class="ai-dropdown-icon">📸</span>
+              <span>Share Image</span>
+            </button>
+            <a class="ai-dropdown-item" id="aiMobPdfBtn" href="#" target="_blank" rel="noopener noreferrer" onclick="closeAiActionsMenu()">
+              <span class="ai-dropdown-icon">📄</span>
+              <span>Source PDF ↗</span>
+            </a>
+          </div>
+        </div>
+
         <button class="ai-btn ai-close" type="button" onclick="closeAiSummaryModal()" title="Close">&times;</button>
       </div>
     </div>
@@ -1654,9 +2219,18 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
       <!-- Preview of generated single-image screenshot -->
       <div id="sharePreviewBox" style="display: none;">
         <div class="share-preview-card">
-          <img id="sharePreviewImg" src="" alt="Full Concall Transcript Screenshot Preview" />
-          <div class="share-preview-overlay">
+          <div class="share-badge-row">
+            <span style="display: flex; align-items: center; gap: 5px;">
+              <span>🖼️</span>
+              <span>Report Screenshot Preview</span>
+            </span>
             <span class="share-preview-pill" id="shareImgDimensionPill">PNG · 100% Content Coverage</span>
+          </div>
+          <div class="share-preview-thumb-wrap">
+            <img id="sharePreviewImg" src="" alt="Full Concall Transcript Screenshot Preview" />
+          </div>
+          <div class="share-preview-hint">
+            <span>↕ Scroll inside box to preview complete fact-based report</span>
           </div>
         </div>
 
@@ -1688,6 +2262,45 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Screener-Grade Trades Modal (Insider Trades, Bulk Deals, Block Deals, SAST) -->
+<div id="tradesModal" class="trades-modal-backdrop" style="display: none;" onclick="if(event.target === this) closeTradesModal()">
+  <div class="trades-modal-container">
+    <div class="trades-modal-header">
+      <div class="trades-modal-title" id="tradesModalTitle">Company trades</div>
+      <button class="trades-modal-close" type="button" onclick="closeTradesModal()" title="Close">&times;</button>
+    </div>
+
+    <!-- Category Tabs matching Screener.in -->
+    <div class="trades-modal-tabs">
+      <button class="trades-tab-btn" id="tabInsider" type="button" onclick="switchTradesTab('insider')">Insider Trades</button>
+      <button class="trades-tab-btn active" id="tabBulk" type="button" onclick="switchTradesTab('bulk')">Bulk Deals</button>
+      <button class="trades-tab-btn" id="tabBlock" type="button" onclick="switchTradesTab('block')">Block Deals</button>
+      <button class="trades-tab-btn" id="tabSast" type="button" onclick="switchTradesTab('sast')">Sast Trades</button>
+    </div>
+
+    <div class="trades-modal-body">
+      <!-- Loading State -->
+      <div id="tradesLoading" style="display: none; text-align: center; padding: 30px 10px;">
+        <div class="ai-spinner-glow" style="margin: 0 auto 10px auto; width: 44px; height: 44px;">
+          <div class="ai-spinner-ring"></div>
+          <span class="ai-spinner-icon" style="font-size: 18px;">⚡</span>
+        </div>
+        <div style="font-size: 12.5px; color: var(--text-secondary);">Loading institutional trades & bulk deals...</div>
+      </div>
+
+      <!-- Content State -->
+      <div id="tradesContent">
+        <div class="trades-table-head">
+          <div class="trades-head-person">Person</div>
+          <div class="trades-head-qty">Quantity</div>
+          <div class="trades-head-price">Price</div>
+        </div>
+        <div class="trades-list" id="tradesList"></div>
       </div>
     </div>
   </div>
@@ -1749,8 +2362,8 @@ function renderPeersTable(peers) {
   }
 
   const headerHtml = `<thead><tr>
-    <th>S.No.</th>
-    <th>Name</th>
+    <th class="col-sno">S.No.</th>
+    <th class="col-peer-name">Name</th>
     ${cols.slice(1).map(c => `<th>${esc(c)}</th>`).join('')}
   </tr></thead>`;
 
@@ -1759,13 +2372,13 @@ function renderPeersTable(peers) {
     const isCurrent = symbol.toUpperCase().includes(pName.toUpperCase()) || pName.toUpperCase().includes(symbol.replace(/\.(NS|BO)$/i, '').toUpperCase());
     const rowCells = r.values || [];
     return `<tr class="${isCurrent ? 'highlight' : ''}">
-      <td>${esc(idx + 1)}.</td>
-      <td><a class="peer-table-link" href="/fundamentals?symbol=${encodeURIComponent(pName)}.NS">${esc(pName)}</a></td>
+      <td class="col-sno">${esc(idx + 1)}.</td>
+      <td class="col-peer-name"><a class="peer-table-link" href="/fundamentals?symbol=${encodeURIComponent(pName)}.NS">${esc(pName)}</a></td>
       ${rowCells.slice(1).map(v => `<td>${v != null && v !== '' ? esc(v) : '—'}</td>`).join('')}
     </tr>`;
   }).join('');
 
-  return `<div class="table-wrap"><table class="table">${headerHtml}<tbody>${bodyHtml}</tbody></table></div>`;
+  return `<div class="table-wrap peers-table-wrap" id="peersTableWrap"><table class="table peers-table">${headerHtml}<tbody>${bodyHtml}</tbody></table></div>`;
 }
 
 async function toggleSplitSchedule(btn) {
@@ -2130,6 +2743,10 @@ function focusLatestTables() {
   if (window.innerWidth <= 768) {
     requestAnimationFrame(() => {
       document.querySelectorAll('.table-wrap').forEach(wrap => {
+        if (wrap.classList.contains('peers-table-wrap') || wrap.id === 'peersTableWrap') {
+          wrap.scrollLeft = 0;
+          return;
+        }
         wrap.scrollLeft = wrap.scrollWidth;
       });
     });
@@ -2301,6 +2918,9 @@ function render(d) {
   focusLatestTables();
   setTimeout(focusLatestTables, 80);
 
+  // Pre-fetch trades badge count & data in background
+  preloadTradesData(c.name || symbol, d.company_id || '');
+
   // Send company name and logo to parent modal header
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({
@@ -2392,6 +3012,16 @@ async function openConcallAiSummary(quarter, transcriptUrl) {
     }
   }
 
+  const mobPdfBtn = document.getElementById('aiMobPdfBtn');
+  if (mobPdfBtn) {
+    if (transcriptUrl) {
+      mobPdfBtn.href = transcriptUrl;
+      mobPdfBtn.style.display = 'flex';
+    } else {
+      mobPdfBtn.style.display = 'none';
+    }
+  }
+
   // Show loading state
   if (loading) loading.style.display = 'flex';
   if (errorEl) errorEl.style.display = 'none';
@@ -2436,15 +3066,48 @@ function retryAiSummary() {
 }
 
 function closeAiSummaryModal() {
+  closeAiActionsMenu();
   const modal = document.getElementById('aiSummaryModal');
   if (modal) modal.style.display = 'none';
   document.body.style.overflow = '';
 }
 
+function toggleAiActionsMenu(event) {
+  if (event) {
+    event.stopPropagation();
+  }
+  const menu = document.getElementById('aiActionsDropdownMenu');
+  if (!menu) return;
+  menu.style.display = (menu.style.display === 'none' || !menu.style.display) ? 'flex' : 'none';
+}
+
+function closeAiActionsMenu() {
+  const menu = document.getElementById('aiActionsDropdownMenu');
+  if (menu) menu.style.display = 'none';
+}
+
+function copyAiSummaryFromMenu() {
+  closeAiActionsMenu();
+  copyAiSummary();
+}
+
+function shareTranscriptFromMenu() {
+  closeAiActionsMenu();
+  shareTranscriptAsImage();
+}
+
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('aiActionsDropdownWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    closeAiActionsMenu();
+  }
+});
+
 function copyAiSummary() {
   if (!_currentAiMarkdown) return;
   navigator.clipboard.writeText(_currentAiMarkdown).then(() => {
     const copyBtn = document.getElementById('aiCopyBtn');
+    const actionsBtn = document.getElementById('aiActionsBtn');
     if (copyBtn) {
       const orig = copyBtn.innerHTML;
       copyBtn.innerHTML = '✓ Copied!';
@@ -2454,6 +3117,17 @@ function copyAiSummary() {
         copyBtn.innerHTML = orig;
         copyBtn.style.background = '';
         copyBtn.style.color = '';
+      }, 2000);
+    }
+    if (actionsBtn) {
+      const orig = actionsBtn.innerHTML;
+      actionsBtn.innerHTML = '<span>✓ Copied!</span>';
+      actionsBtn.style.background = '#10b981';
+      actionsBtn.style.color = '#fff';
+      setTimeout(() => {
+        actionsBtn.innerHTML = orig;
+        actionsBtn.style.background = '';
+        actionsBtn.style.color = '';
       }, 2000);
     }
   }).catch(() => {
@@ -2860,6 +3534,135 @@ function parseMarkdownFallback(md) {
 
   return html;
 }
+
+/* =========================================================
+   SCREENER-GRADE TRADES ENGINE (Insider, Bulk, Block, SAST)
+   ========================================================= */
+let _currentTradesData = null;
+let _currentTradesTab = 'bulk';
+
+async function preloadTradesData(compName, companyId) {
+  try {
+    const compId = companyId || window.companyId || '';
+    const resp = await fetch(`/api/fundamentals/trades?symbol=${encodeURIComponent(symbol)}&company=${encodeURIComponent(compName || '')}&company_id=${encodeURIComponent(compId)}`, { cache: 'no-store' });
+    if (resp.ok) {
+      const data = await resp.json();
+      _currentTradesData = data;
+      if (data && data.badge_count) {
+        const badgeEl = document.getElementById('tradesBtnBadge');
+        if (badgeEl) badgeEl.textContent = data.badge_count;
+      }
+    }
+  } catch (err) {
+    console.debug('Background trades prefetch:', err);
+  }
+}
+
+async function openTradesModal() {
+  const modal = document.getElementById('tradesModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  const compName = (window._lastFundamentalsData?.company?.name) || symbol;
+  const titleEl = document.getElementById('tradesModalTitle');
+  if (titleEl) titleEl.textContent = `${compName} trades`;
+
+  if (_currentTradesData && _currentTradesData.symbol === symbol) {
+    switchTradesTab(_currentTradesTab || 'bulk');
+    return;
+  }
+
+  const loadingEl = document.getElementById('tradesLoading');
+  const contentEl = document.getElementById('tradesContent');
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (contentEl) contentEl.style.display = 'none';
+
+  try {
+    const compId = window.companyId || '';
+    const resp = await fetch(`/api/fundamentals/trades?symbol=${encodeURIComponent(symbol)}&company=${encodeURIComponent(compName)}&company_id=${encodeURIComponent(compId)}`, { cache: 'no-store' });
+    const data = await resp.json();
+    _currentTradesData = data;
+    if (data && data.badge_count) {
+      const badgeEl = document.getElementById('tradesBtnBadge');
+      if (badgeEl) badgeEl.textContent = data.badge_count;
+    }
+  } catch (err) {
+    console.warn('Error loading trades data:', err);
+  } finally {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (contentEl) contentEl.style.display = 'block';
+    switchTradesTab(_currentTradesTab || 'bulk');
+  }
+}
+
+function closeTradesModal() {
+  const modal = document.getElementById('tradesModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function switchTradesTab(tabKey) {
+  _currentTradesTab = tabKey;
+  ['insider', 'bulk', 'block', 'sast'].forEach(k => {
+    const id = 'tab' + k.charAt(0).toUpperCase() + k.slice(1);
+    const tabBtn = document.getElementById(id);
+    if (tabBtn) tabBtn.classList.toggle('active', k === tabKey);
+  });
+  renderTradesTab(tabKey);
+}
+
+function renderTradesTab(tabKey) {
+  const listEl = document.getElementById('tradesList');
+  if (!listEl) return;
+
+  if (!_currentTradesData || !_currentTradesData.categories) {
+    listEl.innerHTML = '<div style="padding: 36px 16px; text-align: center; color: var(--text-secondary); font-size: 13px;">No trade data available for this company.</div>';
+    return;
+  }
+
+  const cat = _currentTradesData.categories[tabKey];
+  const groups = cat?.groups || [];
+  if (!groups.length) {
+    listEl.innerHTML = `<div style="padding: 36px 16px; text-align: center; color: var(--text-secondary); font-size: 13px;">No ${esc(cat?.label || tabKey)} reported for this company.</div>`;
+    return;
+  }
+
+  let html = '';
+  groups.forEach(g => {
+    html += `<div class="trades-date-group-head">${esc(g.date)}</div>`;
+    (g.trades || []).forEach(t => {
+      const isSell = (t.type || '').toUpperCase() === 'SELL';
+      const badgeClass = isSell ? 'trade-sell' : 'trade-buy';
+      const badgeText = isSell ? 'SELL' : 'BUY';
+      html += `
+        <div class="trades-row">
+          <div class="trades-person-cell">
+            <span class="trades-person-name">${esc(t.person)}</span>
+            <span class="trades-chevron">›</span>
+          </div>
+          <div class="trades-qty-cell">
+            <span class="trade-badge ${badgeClass}">${badgeText}</span>
+            <span class="trade-qty-val">${esc(t.quantity || '—')}</span>
+          </div>
+          <div class="trades-price-cell">
+            <span class="trade-price-val">${esc(t.price || '—')}</span>
+          </div>
+        </div>
+      `;
+    });
+  });
+
+  listEl.innerHTML = html;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeTradesModal();
+    closeAiSummary();
+    closeTranscriptShareModal();
+  }
+});
 
 let _wasMob = window.innerWidth <= 768;
 window.addEventListener('resize', () => {
