@@ -1805,8 +1805,9 @@
         border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
-    /* On mobile: Hide original web title, show mobile 2-row title with logo */
-    #fundamentalsModal .web-fundamentals-title {
+    /* On mobile: Hide original web title and web actions, show mobile 2-row title with logo */
+    #fundamentalsModal .web-fundamentals-title,
+    #fundamentalsModal .web-fundamentals-actions {
         display: none !important;
     }
 

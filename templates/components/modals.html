@@ -777,12 +777,20 @@
         <div class="small-modal-content fundamentals-modal-content" style="width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh; margin: 2.5vh auto; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
             <div class="fundamentals-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border-color); background:var(--bg-card); flex:0 0 auto;">
                 <!-- Desktop Web Title (default visible on web) -->
-                <div class="web-fundamentals-title" style="display:flex; align-items:center; gap:10px;">
-                    <img id="fundamentals-modal-logo-web" src="" alt="" referrerpolicy="no-referrer" style="width:32px; height:32px; border-radius:6px; object-fit:contain; background:rgba(255,255,255,0.06); padding:2px; flex-shrink:0; display:none;" onload="this.style.display='block';">
-                    <div>
-                        <h3 id="fundamentals-modal-web-name" style="margin:0; font-size:16px;">📈 Fundamental Analysis</h3>
-                        <div id="fundamentals-modal-subtitle" style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Loading stock fundamentals...</div>
+                <div class="web-fundamentals-title" style="display:flex; align-items:center; gap:12px; min-width:0;">
+                    <img id="fundamentals-modal-logo-web" src="" alt="" referrerpolicy="no-referrer" style="width:34px; height:34px; border-radius:6px; object-fit:contain; background:rgba(255,255,255,0.06); padding:2px; flex-shrink:0; display:none;" onload="this.style.display='block'; const ph = document.getElementById('fundamentals-modal-logo-web-placeholder'); if (ph) ph.style.display='none';" onerror="this.style.display='none'; const ph = document.getElementById('fundamentals-modal-logo-web-placeholder'); if (ph) ph.style.display='flex';">
+                    <div id="fundamentals-modal-logo-web-placeholder" style="width:34px; height:34px; border-radius:6px; background:linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%); color:var(--accent, #10b981); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; letter-spacing:0.5px; flex-shrink:0;"></div>
+                    <div style="min-width:0;">
+                        <h3 id="fundamentals-modal-web-name" style="margin:0; font-size:16px; font-weight:700; color:var(--text-primary); line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Fundamental Analysis</h3>
+                        <div id="fundamentals-modal-subtitle" style="font-size:11px; color:var(--text-secondary); margin-top:2px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Loading stock fundamentals...</div>
                     </div>
+                </div>
+
+                <!-- Web Actions (Updated, Refresh, Screener link) - Shown on Web -->
+                <div class="web-fundamentals-actions" id="webFundamentalsActions" style="display:flex; align-items:center; gap:10px; margin-left:auto; margin-right:14px;">
+                    <span id="fundamentals-modal-updated" style="font-size:11px; color:var(--text-secondary); white-space:nowrap;">Updating...</span>
+                    <button type="button" id="fundamentals-modal-refresh-btn" class="btn" onclick="refreshFundamentalsModal()" style="display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); cursor:pointer;">↻ Refresh</button>
+                    <a id="fundamentals-modal-screener-btn" class="btn primary" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; background:var(--accent, #10b981); border:1px solid var(--accent, #10b981); color:#fff; text-decoration:none; white-space:nowrap;">Screener.in ↗</a>
                 </div>
 
                 <!-- Mobile Responsive Title (2 rows + company logo) -->
@@ -795,7 +803,7 @@
                     </div>
                 </div>
 
-                <span class="close-btn" onclick="closeFundamentalsModal()" style="font-size:24px; cursor:pointer; color:var(--text-secondary); line-height:1;">&times;</span>
+                <span class="close-btn" onclick="closeFundamentalsModal()" style="font-size:24px; cursor:pointer; color:var(--text-secondary); line-height:1; flex-shrink:0;">&times;</span>
             </div>
             <iframe id="fundamentalsFrame" title="Fundamental Analysis" style="width:100%; height:100%; border:0; background:var(--bg-primary); flex:1 1 auto;"></iframe>
         </div>

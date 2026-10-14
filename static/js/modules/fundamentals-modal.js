@@ -30,13 +30,30 @@
                 placeholderEl.style.display = 'flex';
             }
             const webLogoEl = document.getElementById('fundamentals-modal-logo-web');
+            const webLogoPhEl = document.getElementById('fundamentals-modal-logo-web-placeholder');
             const webNameEl = document.getElementById('fundamentals-modal-web-name');
+            const updatedEl = document.getElementById('fundamentals-modal-updated');
+            const screenerBtnEl = document.getElementById('fundamentals-modal-screener-btn');
+
             if (webLogoEl) {
                 webLogoEl.src = '';
                 webLogoEl.style.display = 'none';
             }
+            if (webLogoPhEl) {
+                webLogoPhEl.textContent = cleanSym.slice(0, 3);
+                webLogoPhEl.style.display = 'flex';
+            }
             if (webNameEl) {
-                webNameEl.textContent = `📈 ${safeSymbol} Fundamental Analysis`;
+                webNameEl.textContent = safeSymbol;
+            }
+            if (subtitle) {
+                subtitle.textContent = `${safeSymbol} · SCREENER.IN DIRECT REPLICA`;
+            }
+            if (updatedEl) {
+                updatedEl.textContent = 'Updating...';
+            }
+            if (screenerBtnEl) {
+                screenerBtnEl.href = `https://www.screener.in/company/${encodeURIComponent(cleanSym)}/`;
             }
 
             // Prefill with stock symbol and live price if available
@@ -53,26 +70,33 @@
             } catch (e) {}
             if (companyDetailsEl) companyDetailsEl.textContent = initialDetails;
 
-            if (subtitle) subtitle.textContent = `Loading fundamentals for ${safeSymbol}...`;
             frame.src = `/fundamentals?symbol=${encodeURIComponent(safeSymbol)}`;
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
 
             frame.onload = () => {
-                if (subtitle) subtitle.textContent = `Fundamental analysis • ${safeSymbol}`;
+                if (subtitle && !subtitle.textContent.includes('SCREENER.IN DIRECT REPLICA')) {
+                    subtitle.textContent = `${safeSymbol} · SCREENER.IN DIRECT REPLICA`;
+                }
             };
 
             // Attach one-time postMessage listener to receive full company name and logo from iframe
             if (!_fundamentalsMsgListenerAttached) {
                 window.addEventListener('message', (event) => {
                     if (event.data && event.data.type === 'FUNDAMENTALS_INFO') {
-                        const { name, symbol: retSym, logo, price, changePercent } = event.data;
+                        const { name, symbol: retSym, logo, price, changePercent, updatedAt, screenerUrl } = event.data;
                         const nEl = document.getElementById('fundamentals-modal-company-name');
                         const dEl = document.getElementById('fundamentals-modal-company-details');
                         const lEl = document.getElementById('fundamentals-modal-logo');
                         const pEl = document.getElementById('fundamentals-modal-logo-placeholder');
                         const wLogoEl = document.getElementById('fundamentals-modal-logo-web');
+                        const wLogoPhEl = document.getElementById('fundamentals-modal-logo-web-placeholder');
                         const wNameEl = document.getElementById('fundamentals-modal-web-name');
+                        const subEl = document.getElementById('fundamentals-modal-subtitle');
+                        const uEl = document.getElementById('fundamentals-modal-updated');
+                        const scrEl = document.getElementById('fundamentals-modal-screener-btn');
+
+                        const dispSymbol = retSym || _currentModalSymbol;
 
                         if (nEl && name) {
                             nEl.textContent = name;
@@ -80,9 +104,23 @@
                         if (wNameEl && name) {
                             wNameEl.textContent = name;
                         }
+                        if (subEl) {
+                            subEl.textContent = `${dispSymbol} · SCREENER.IN DIRECT REPLICA`;
+                        }
+                        if (uEl) {
+                            uEl.textContent = updatedAt || ('Updated ' + new Date().toLocaleTimeString());
+                        }
+                        if (scrEl) {
+                            if (screenerUrl) {
+                                scrEl.href = screenerUrl;
+                            } else {
+                                const bSym = String(dispSymbol).replace(/\.(NS|BO)$/i, '');
+                                scrEl.href = `https://www.screener.in/company/${encodeURIComponent(bSym)}/`;
+                            }
+                        }
+
                         if (dEl) {
-                            const symDisplay = retSym || _currentModalSymbol;
-                            let det = symDisplay;
+                            let det = dispSymbol;
                             if (price != null && price !== '') {
                                 const chg = changePercent != null && !isNaN(Number(changePercent)) ? Number(changePercent) : null;
                                 const sign = (chg != null && chg >= 0) ? '+' : '';
@@ -102,11 +140,16 @@
                                 wLogoEl.style.display = 'block';
                             }
                             if (pEl) pEl.style.display = 'none';
+                            if (wLogoPhEl) wLogoPhEl.style.display = 'none';
                         } else {
+                            const dispSym = (dispSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase();
                             if (pEl) {
-                                const dispSym = (retSym || _currentModalSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase();
                                 pEl.textContent = dispSym.slice(0, 3) || 'STK';
                                 pEl.style.display = 'flex';
+                            }
+                            if (wLogoPhEl) {
+                                wLogoPhEl.textContent = dispSym.slice(0, 3) || 'STK';
+                                wLogoPhEl.style.display = 'flex';
                             }
                             if (lEl) lEl.style.display = 'none';
                             if (wLogoEl) wLogoEl.style.display = 'none';
@@ -115,6 +158,23 @@
                 });
                 _fundamentalsMsgListenerAttached = true;
             }
+        }
+
+        function refreshFundamentalsModal() {
+            const frame = document.getElementById('fundamentalsFrame');
+            if (!frame) return;
+            const uEl = document.getElementById('fundamentals-modal-updated');
+            if (uEl) uEl.textContent = 'Updating...';
+            try {
+                if (frame.contentWindow && typeof frame.contentWindow.loadFundamentals === 'function') {
+                    frame.contentWindow.loadFundamentals();
+                    return;
+                }
+            } catch (e) {}
+            // Fallback: reload frame
+            const currentSrc = frame.src;
+            frame.src = 'about:blank';
+            setTimeout(() => { frame.src = currentSrc; }, 50);
         }
 
         function closeFundamentalsModal() {
