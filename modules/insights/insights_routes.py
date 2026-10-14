@@ -4,6 +4,9 @@ import datetime
 import time
 import threading
 import requests
+import re
+import urllib.parse
+import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, session, render_template
@@ -14,9 +17,12 @@ from modules.common.market_fetcher import (
     news_cache,
     HighPerformanceCache,
     POPULAR_MARKET_INDEXES,
+    POPULAR_INDIAN_STOCKS,
+    format_financial_symbol,
     fetcher
 )
 from modules.common.indicators import calculate_indicators
+from modules.news.news_routes import get_stock_keywords
 
 insights_bp = Blueprint("insights_api", __name__)
 
@@ -544,14 +550,22 @@ def get_insights_news_api():
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "articles": []})
 
-PRECOMPUTED_FILE = os.path.join(os.path.dirname(__file__), "precomputed_technicals.json")
+PRECOMPUTED_CANDIDATES = [
+    os.path.join(os.path.dirname(__file__), "precomputed_technicals.json"),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "precomputed_technicals.json")),
+    os.path.join(BASE_DATA_DIR, "precomputed_technicals.json"),
+    os.path.join(os.getcwd(), "precomputed_technicals.json")
+]
 _PRECOMPUTED_TECHNICALS = None
-if os.path.exists(PRECOMPUTED_FILE):
-    try:
-        with open(PRECOMPUTED_FILE, "r", encoding="utf-8") as f:
-            _PRECOMPUTED_TECHNICALS = json.load(f)
-    except Exception:
-        pass
+for p_candidate in PRECOMPUTED_CANDIDATES:
+    if os.path.exists(p_candidate):
+        try:
+            with open(p_candidate, "r", encoding="utf-8") as f:
+                _PRECOMPUTED_TECHNICALS = json.load(f)
+                if _PRECOMPUTED_TECHNICALS:
+                    break
+        except Exception:
+            pass
 
 technicals_cache = HighPerformanceCache(default_ttl=300)
 _LAST_SUCCESSFUL_TECHNICALS_CACHE = _PRECOMPUTED_TECHNICALS or {}
