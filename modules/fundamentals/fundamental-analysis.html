@@ -1221,6 +1221,54 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   display: none;
 }
 
+/* Mode Switch Loader (Floating Pill without clearing content) */
+.mode-switch-pill {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100010;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  padding: 8px 18px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #38bdf8;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: aiFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+[data-theme="light"] .mode-switch-pill {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #38bdf8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: #0284c7;
+}
+.mode-switch-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(56, 189, 248, 0.3);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: modeSpin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+[data-theme="light"] .mode-switch-spinner {
+  border-color: rgba(2, 132, 199, 0.3);
+  border-top-color: #0284c7;
+}
+@keyframes modeSpin {
+  to { transform: rotate(360deg); }
+}
+
 /* Expandable Split Details (+) Button and Rows */
 .split-expand-btn {
   display: inline-flex;
@@ -1578,33 +1626,70 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     background: #e2e8f0 !important;
   }
 
-  /* Peers Table Specific Mobile Styling - Minimal S.No width, Stock Name left-to-right */
+  /* Peers Table Specific Mobile Styling - Single-line S.No, Stock Name left-to-right */
   .peers-table {
     min-width: 580px !important;
   }
   .peers-table th.col-sno,
+  .peers-table th:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 7 !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    box-sizing: border-box !important;
+    padding: 6px 2px !important;
+    text-align: center !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    background: #0f172a !important; /* EXACT SAME AS OTHER TABLE HEADERS */
+    color: var(--text-secondary) !important;
+    border-right: none !important;
+    box-shadow: none !important;
+  }
   .peers-table td.col-sno,
-  .peers-table th:first-child,
   .peers-table td:first-child {
     position: sticky !important;
     left: 0 !important;
-    z-index: 6 !important;
-    width: 24px !important;
-    min-width: 24px !important;
-    max-width: 28px !important;
+    z-index: 5 !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    box-sizing: border-box !important;
     padding: 6px 2px !important;
     text-align: center !important;
     font-size: 10px !important;
     font-weight: 700 !important;
-    box-shadow: none !important;
+    white-space: nowrap !important;
+    background: #1e293b !important; /* Solid opaque background to prevent digits bleeding through */
+    color: var(--text-primary) !important;
     border-right: none !important;
+    box-shadow: none !important;
   }
   .peers-table th.col-peer-name,
+  .peers-table th:nth-child(2) {
+    position: sticky !important;
+    left: 34px !important;
+    z-index: 7 !important;
+    min-width: 125px !important;
+    max-width: 160px !important;
+    width: 135px !important;
+    text-align: left !important;
+    padding: 6px 8px !important;
+    font-size: 9.5px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    background: #0f172a !important; /* EXACT SAME AS OTHER TABLE HEADERS (#0f172a) */
+    color: var(--text-secondary) !important;
+    border-right: 1px solid var(--border-color) !important;
+    box-shadow: 3px 0 6px -1px rgba(0, 0, 0, 0.4) !important;
+  }
   .peers-table td.col-peer-name,
-  .peers-table th:nth-child(2),
   .peers-table td:nth-child(2) {
     position: sticky !important;
-    left: 28px !important;
+    left: 34px !important;
     z-index: 5 !important;
     min-width: 125px !important;
     max-width: 160px !important;
@@ -1620,12 +1705,34 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     border-right: 1px solid var(--border-color) !important;
     box-shadow: 3px 0 6px -1px rgba(0, 0, 0, 0.4) !important;
   }
+  /* Highlight row for current company in Peers table */
+  .peers-table tr.highlight td.col-sno,
+  .peers-table tr.highlight td:first-child,
+  .peers-table tr.highlight td.col-peer-name,
+  .peers-table tr.highlight td:nth-child(2) {
+    background: rgba(30, 58, 138, 0.5) !important;
+  }
+  /* Light theme overrides */
+  [data-theme="light"] .peers-table th.col-sno,
+  [data-theme="light"] .peers-table th:first-child,
   [data-theme="light"] .peers-table th.col-peer-name,
+  [data-theme="light"] .peers-table th:nth-child(2) {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+  }
+  [data-theme="light"] .peers-table td.col-sno,
+  [data-theme="light"] .peers-table td:first-child,
   [data-theme="light"] .peers-table td.col-peer-name,
-  [data-theme="light"] .peers-table th:nth-child(2),
   [data-theme="light"] .peers-table td:nth-child(2) {
     background: #ffffff !important;
+    color: #0f172a !important;
     box-shadow: 3px 0 6px -1px rgba(0, 0, 0, 0.08) !important;
+  }
+  [data-theme="light"] .peers-table tr.highlight td.col-sno,
+  [data-theme="light"] .peers-table tr.highlight td:first-child,
+  [data-theme="light"] .peers-table tr.highlight td.col-peer-name,
+  [data-theme="light"] .peers-table tr.highlight td:nth-child(2) {
+    background: #eff6ff !important;
   }
 
   /* Compounded Growth Ratios Grid */
@@ -1950,6 +2057,12 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
   <div id="loading" class="card empty-state">⏳ Fetching Screener.in fundamental analysis...</div>
   <div id="error" class="card" style="display:none; color: var(--danger);"></div>
+
+  <!-- Floating Mode Switch Loader (shown when toggling Consolidated / Standalone without clearing data) -->
+  <div id="modeSwitchPill" class="mode-switch-pill" style="display: none;">
+    <span class="mode-switch-spinner"></span>
+    <span id="modeSwitchPillText">Loading Consolidated figures in ₹ Cr...</span>
+  </div>
 
   <div id="content" style="display:none;" class="container">
 
@@ -2362,7 +2475,7 @@ function renderPeersTable(peers) {
   }
 
   const headerHtml = `<thead><tr>
-    <th class="col-sno">S.No.</th>
+    <th class="col-sno">S.No</th>
     <th class="col-peer-name">Name</th>
     ${cols.slice(1).map(c => `<th>${esc(c)}</th>`).join('')}
   </tr></thead>`;
@@ -2753,10 +2866,45 @@ function focusLatestTables() {
   }
 }
 
+function showModeSwitchLoader(mode) {
+  const pill = document.getElementById('modeSwitchPill');
+  const txt = document.getElementById('modeSwitchPillText');
+  const title = mode === 'standalone' ? 'Standalone' : 'Consolidated';
+  if (txt) txt.textContent = `Loading ${title} figures in ₹ Cr...`;
+  if (pill) pill.style.display = 'flex';
+
+  document.querySelectorAll('.mode-switch-btn').forEach(btn => {
+    btn.disabled = true;
+    if (btn.id.toLowerCase().includes(mode)) {
+      if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+      btn.innerHTML = `<span class="mode-switch-spinner"></span> ${title}`;
+    }
+  });
+}
+
+function hideModeSwitchLoader() {
+  const pill = document.getElementById('modeSwitchPill');
+  if (pill) pill.style.display = 'none';
+
+  document.querySelectorAll('.mode-switch-btn').forEach(btn => {
+    btn.disabled = false;
+    if (btn.dataset.origText) {
+      btn.textContent = btn.dataset.origText;
+      delete btn.dataset.origText;
+    }
+  });
+}
+
 async function loadFundamentals(mode = currentFundamentalMode) {
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('error').style.display = 'none';
-  document.getElementById('content').style.display = 'none';
+  const isInitial = !window._lastFundamentalsData;
+  if (isInitial) {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('error').style.display = 'none';
+    document.getElementById('content').style.display = 'none';
+  } else {
+    // Mode switch: do NOT clear content / data, just show loader!
+    showModeSwitchLoader(mode);
+  }
 
   try {
     const res = await fetch(`/api/fundamentals?symbol=${encodeURIComponent(symbol)}&mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
@@ -2764,10 +2912,18 @@ async function loadFundamentals(mode = currentFundamentalMode) {
     if (!res.ok || data.error) throw new Error(data.error || 'Unable to fetch fundamentals');
     render(data);
   } catch (e) {
-    document.getElementById('error').style.display = 'block';
-    document.getElementById('error').innerHTML = `<strong>Error:</strong> ${esc(e.message)}`;
+    if (isInitial) {
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').innerHTML = `<strong>Error:</strong> ${esc(e.message)}`;
+    } else {
+      alert(`Could not load ${mode} data: ${e.message}`);
+    }
   } finally {
-    document.getElementById('loading').style.display = 'none';
+    if (isInitial) {
+      document.getElementById('loading').style.display = 'none';
+    } else {
+      hideModeSwitchLoader();
+    }
   }
 }
 
