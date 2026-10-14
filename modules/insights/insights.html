@@ -46,6 +46,16 @@
                         <button id="insights-scope-watchlist" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="loadInsightsTab('watchlist')">Watchlist</button>
                     </div>
                 </div>
+
+                <!-- Watchlist Sub-Selector (Visible only when Scope is 'watchlist') -->
+                <div id="insights-watchlist-container" style="display: none; width: 100%; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                        📋 Select Watchlist:
+                    </span>
+                    <div id="insights-watchlist-pills" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                        <!-- Dynamically populated buttons for each watchlist -->
+                    </div>
+                </div>
             </div>
 
             <!-- Technical Signals & Stock Screeners Section (Accordion) -->

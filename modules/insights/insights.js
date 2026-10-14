@@ -1,6 +1,146 @@
         let currentInsightsScope = 'all';
+        let currentInsightsWatchlist = '';
         let currentNewsCategory = 'all';
         let cachedInsightsArticles = [];
+
+        async function ensureWatchlistsAndPortfolios() {
+            const promises = [];
+            if (!window.watchlistsLoaded || !watchlistsData || Object.keys(watchlistsData).length === 0) {
+                promises.push(
+                    fetch('/api/watchlists')
+                        .then(res => res.json())
+                        .then(data => {
+                            watchlistsData = data || {};
+                            window.watchlistsLoaded = true;
+                        })
+                        .catch(e => console.error('Error fetching watchlists:', e))
+                );
+            }
+            if (!window.portfoliosLoaded || !portfoliosData || Object.keys(portfoliosData).length === 0) {
+                promises.push(
+                    fetch('/api/portfolios')
+                        .then(res => res.json())
+                        .then(data => {
+                            portfoliosData = data || {};
+                            window.portfoliosLoaded = true;
+                        })
+                        .catch(e => console.error('Error fetching portfolios:', e))
+                );
+            }
+            if (promises.length > 0) {
+                await Promise.all(promises);
+            }
+        }
+
+        function getScopedSymbols() {
+            if (currentInsightsScope === 'portfolio') {
+                const pfSyms = new Set();
+                Object.values(portfoliosData || {}).forEach(holdings => {
+                    (holdings || []).forEach(h => {
+                        if (h.symbol) {
+                            pfSyms.add(h.symbol);
+                            if (typeof cleanDisplaySymbol === 'function') pfSyms.add(cleanDisplaySymbol(h.symbol));
+                            pfSyms.add(h.symbol.replace('.NS', '').replace('.BO', ''));
+                        }
+                    });
+                });
+                return pfSyms;
+            } else if (currentInsightsScope === 'watchlist') {
+                const wlSyms = new Set();
+                if (currentInsightsWatchlist && watchlistsData && watchlistsData[currentInsightsWatchlist]) {
+                    watchlistsData[currentInsightsWatchlist].forEach(s => {
+                        if (s) {
+                            wlSyms.add(s);
+                            if (typeof cleanDisplaySymbol === 'function') wlSyms.add(cleanDisplaySymbol(s));
+                            wlSyms.add(s.replace('.NS', '').replace('.BO', ''));
+                        }
+                    });
+                }
+                return wlSyms;
+            }
+            return null; // 'all' scope -> no symbol restriction
+        }
+
+        function getScopedScannerStocks(stocks) {
+            if (!Array.isArray(stocks)) return [];
+            const scopedSyms = getScopedSymbols();
+            if (!scopedSyms) return stocks;
+            return stocks.filter(stock => {
+                const raw = stock.symbol || '';
+                const clean = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(raw) : raw;
+                const bare = raw.replace('.NS', '').replace('.BO', '');
+                return scopedSyms.has(raw) || scopedSyms.has(clean) || scopedSyms.has(bare);
+            });
+        }
+
+        function renderInsightsWatchlistPills() {
+            const pillsContainer = document.getElementById('insights-watchlist-pills');
+            if (!pillsContainer) return;
+
+            const names = Object.keys(watchlistsData || {});
+            if (names.length === 0) {
+                pillsContainer.innerHTML = '<span style="font-size: 11.5px; color: var(--text-secondary); font-style: italic;">No watchlists available</span>';
+                return;
+            }
+
+            if (!currentInsightsWatchlist || !watchlistsData[currentInsightsWatchlist]) {
+                currentInsightsWatchlist = names[0];
+            }
+
+            let html = '';
+            names.forEach(name => {
+                const count = (watchlistsData[name] || []).length;
+                const isActive = name === currentInsightsWatchlist;
+                const btnClass = isActive ? 'btn-primary' : 'btn-secondary';
+                const activeStyle = isActive ? 'background: var(--accent-color, #10b981); color: #fff; border-color: var(--accent-color, #10b981);' : '';
+                html += `
+                    <button type="button" class="${btnClass}" onclick="selectInsightsWatchlist('${escapeHtml(name)}')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; ${activeStyle}">
+                        <span>${escapeHtml(name)}</span>
+                        <span style="font-size: 10px; font-weight: 700; background: ${isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)'}; color: ${isActive ? '#fff' : 'var(--text-secondary)'}; padding: 1px 6px; border-radius: 10px;">
+                            ${count}
+                        </span>
+                    </button>
+                `;
+            });
+            pillsContainer.innerHTML = html;
+        }
+
+        async function selectInsightsWatchlist(name) {
+            currentInsightsWatchlist = name;
+            renderInsightsWatchlistPills();
+
+            populateInsightsStockFilterOptions();
+            renderTechnicalScreenerPills();
+            renderTechnicalScreenerTable();
+
+            showNewsSkeletonsOnly();
+            const feedEl = document.getElementById('insights-news-feed');
+            const loadMoreContainer = document.getElementById('insights-load-more-container');
+            const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
+            const stockParam = stockFilter !== 'all' ? `&stock=${encodeURIComponent(stockFilter)}` : '';
+
+            try {
+                const res = await fetch(`/api/insights/news?scope=watchlist&watchlist=${encodeURIComponent(currentInsightsWatchlist)}${stockParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`);
+                const data = await res.json();
+                if (data.success) {
+                    cachedInsightsArticles = data.articles || [];
+                    populateInsightsStockFilterOptions();
+                    filterAndRenderInsightsNews();
+                    if (loadMoreContainer) loadMoreContainer.style.display = 'block';
+                } else if (feedEl) {
+                    feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${escapeHtml(data.error || 'Failed')}</div>`;
+                }
+            } catch(err) {
+                if (feedEl) feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load news: ${escapeHtml(err.message)}</div>`;
+            }
+
+            fetch(`/api/insights/summary?scope=watchlist&watchlist=${encodeURIComponent(currentInsightsWatchlist)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) renderInsightsSummaryUI(data);
+                })
+                .catch(err => console.error('Error loading watchlist summary:', err));
+        }
 
         async function setNewsCategory(cat) {
             currentNewsCategory = cat;
@@ -13,9 +153,10 @@
             showNewsSkeletonsOnly();
             const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
             const stockParam = stockFilter !== 'all' ? `&stock=${encodeURIComponent(stockFilter)}` : '';
+            const wlParam = currentInsightsScope === 'watchlist' && currentInsightsWatchlist ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
             
             try {
-                const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${stockParam}&category=${encodeURIComponent(cat)}&limit=30`);
+                const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}${stockParam}&category=${encodeURIComponent(cat)}&limit=30`);
                 const data = await res.json();
                 if (data.success && data.articles) {
                     cachedInsightsArticles = data.articles;
@@ -150,45 +291,73 @@
         }
 
         async function loadInsightsTab(scope = null) {
+            await ensureWatchlistsAndPortfolios();
+
             const isScopeChange = (scope !== null);
             if (scope) currentInsightsScope = scope;
             
             const btnAll = document.getElementById('insights-scope-all');
             const btnPf = document.getElementById('insights-scope-portfolio');
             const btnWl = document.getElementById('insights-scope-watchlist');
+            const wlContainer = document.getElementById('insights-watchlist-container');
 
             if (btnAll) btnAll.className = currentInsightsScope === 'all' ? 'btn-primary' : 'btn-secondary';
             if (btnPf) btnPf.className = currentInsightsScope === 'portfolio' ? 'btn-primary' : 'btn-secondary';
             if (btnWl) btnWl.className = currentInsightsScope === 'watchlist' ? 'btn-primary' : 'btn-secondary';
 
+            if (currentInsightsScope === 'watchlist') {
+                if (wlContainer) wlContainer.style.display = 'flex';
+                const names = Object.keys(watchlistsData || {});
+                if (!currentInsightsWatchlist || !watchlistsData[currentInsightsWatchlist]) {
+                    currentInsightsWatchlist = names.length > 0 ? names[0] : '';
+                }
+                renderInsightsWatchlistPills();
+            } else {
+                if (wlContainer) wlContainer.style.display = 'none';
+            }
+
+            const wlParam = currentInsightsScope === 'watchlist' && currentInsightsWatchlist ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
+
             if (isScopeChange) {
                 showNewsSkeletonsOnly();
                 populateInsightsStockFilterOptions();
+                renderTechnicalScreenerPills();
+                renderTechnicalScreenerTable();
+
                 const feedEl = document.getElementById('insights-news-feed');
-                fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}`)
+                const loadMoreContainer = document.getElementById('insights-load-more-container');
+                fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`)
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) {
                             cachedInsightsArticles = data.articles || [];
                             populateInsightsStockFilterOptions();
                             filterAndRenderInsightsNews();
+                            if (loadMoreContainer) loadMoreContainer.style.display = 'block';
                         } else if (feedEl) {
-                            feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${data.error}</div>`;
+                            feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${escapeHtml(data.error || 'Failed')}</div>`;
                         }
                     })
                     .catch(err => {
                         if (feedEl) {
-                            feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${err.message}</div>`;
+                            feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${escapeHtml(err.message)}</div>`;
                         }
                     });
+
+                fetch(`/api/insights/summary?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) renderInsightsSummaryUI(data);
+                    })
+                    .catch(err => console.error('Error loading insights summary:', err));
+
                 return;
             }
 
             showInsightsSkeletons();
 
             // 1. Parallel Fetch: Highlights, Distribution & Thesis Summary (~100ms)
-            const pfParam = activePortfolioName ? `?portfolio=${encodeURIComponent(activePortfolioName)}` : '';
-            fetch(`/api/insights/summary${pfParam}`)
+            fetch(`/api/insights/summary?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -220,7 +389,7 @@
             // 4. Parallel Fetch: News Articles Feed (~400ms)
             const feedEl = document.getElementById('insights-news-feed');
             const loadMoreContainer = document.getElementById('insights-load-more-container');
-            fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}&limit=30`)
+            fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -231,9 +400,15 @@
                             loadMoreContainer.style.display = 'block';
                         }
                     } else if (feedEl) {
-                        feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${data.error}</div>`;
+                        feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Error loading news: ${escapeHtml(data.error || 'Failed')}</div>`;
                     }
                 })
+                .catch(err => {
+                    if (feedEl) {
+                        feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load insights feed: ${escapeHtml(err.message)}</div>`;
+                    }
+                });
+
             // 5. Parallel Fetch: Technical Intelligence Screeners (~400ms)
             loadTechnicalInsights();
         }
@@ -330,12 +505,15 @@
                 const isActive = key === activeScreenerId;
                 const btnClass = isActive ? 'btn-primary' : 'btn-secondary';
                 const activeStyle = isActive ? 'background: var(--accent-color); color: #fff; border-color: var(--accent-color);' : '';
+                
+                const scopedStocks = getScopedScannerStocks(scanner.stocks);
+                const count = scopedStocks.length;
 
                 html += `
                     <button type="button" class="${btnClass}" onclick="selectTechnicalScreener('${key}')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px; display: flex; align-items: center; gap: 6px; ${activeStyle}">
                         ${scanner.title}
                         <span style="font-size: 10px; font-weight: 700; background: ${isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg-card)'}; color: ${isActive ? '#fff' : 'var(--text-primary)'}; padding: 1px 6px; border-radius: 8px;">
-                            ${scanner.count || 0}
+                            ${count}
                         </span>
                     </button>
                 `;
@@ -349,22 +527,42 @@
             const titleEl = document.getElementById('screener-meta-title');
             const descEl = document.getElementById('screener-meta-desc');
             const countEl = document.getElementById('screener-meta-count');
+            const scannedCountEl = document.getElementById('technicals-scanned-count');
 
             if (!tableBody || !technicalsData || !technicalsData.scanners) return;
 
             const scanner = technicalsData.scanners[activeScreenerId];
             if (!scanner) return;
 
+            const stocks = getScopedScannerStocks(scanner.stocks);
+
             if (titleEl) titleEl.textContent = scanner.title;
             if (descEl) descEl.textContent = scanner.description;
-            if (countEl) countEl.textContent = `${scanner.count || 0} Stocks`;
+            if (countEl) countEl.textContent = `${stocks.length} Stocks`;
 
-            const stocks = scanner.stocks || [];
+            if (scannedCountEl) {
+                const scopedSyms = getScopedSymbols();
+                if (currentInsightsScope === 'portfolio') {
+                    scannedCountEl.textContent = `(${scopedSyms ? scopedSyms.size : 0} portfolio stocks)`;
+                } else if (currentInsightsScope === 'watchlist') {
+                    const wlCount = (watchlistsData && currentInsightsWatchlist && watchlistsData[currentInsightsWatchlist]) ? watchlistsData[currentInsightsWatchlist].length : 0;
+                    scannedCountEl.textContent = `(${wlCount} stocks in ${currentInsightsWatchlist || 'Watchlist'})`;
+                } else {
+                    scannedCountEl.textContent = `(Scanned ${technicalsData.total_scanned || 0} stocks)`;
+                }
+            }
+
             if (stocks.length === 0) {
+                let emptyMsg = `🔍 No stocks currently meet the criteria for <strong>${escapeHtml(scanner.title)}</strong> in tracked symbols.`;
+                if (currentInsightsScope === 'portfolio') {
+                    emptyMsg = `🔍 No stocks in your <strong>portfolio</strong> currently meet the criteria for <strong>${escapeHtml(scanner.title)}</strong>.`;
+                } else if (currentInsightsScope === 'watchlist') {
+                    emptyMsg = `🔍 No stocks in watchlist "<strong>${escapeHtml(currentInsightsWatchlist || '')}</strong>" currently meet the criteria for <strong>${escapeHtml(scanner.title)}</strong>.`;
+                }
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="5" style="text-align: center; padding: 35px; color: var(--text-secondary);">
-                            🔍 No stocks currently meet the criteria for <strong>${escapeHtml(scanner.title)}</strong> in tracked symbols.
+                            ${emptyMsg}
                         </td>
                     </tr>
                 `;
@@ -712,16 +910,21 @@
 
         function isPortfolioSymbol(sym) {
             if (!sym || sym === 'MARKET' || sym === 'GENERAL') return false;
+            const clean = sym.replace('.NS', '').replace('.BO', '');
             for (const holdings of Object.values(portfoliosData || {})) {
-                if (holdings.some(h => h.symbol === sym)) return true;
+                if (holdings.some(h => h.symbol === sym || h.symbol?.replace('.NS', '').replace('.BO', '') === clean)) return true;
             }
             return false;
         }
 
-        function isWatchlistSymbol(sym) {
+        function isWatchlistSymbol(sym, specificWl = null) {
             if (!sym || sym === 'MARKET' || sym === 'GENERAL') return false;
+            const clean = sym.replace('.NS', '').replace('.BO', '');
+            if (specificWl && watchlistsData && watchlistsData[specificWl]) {
+                return watchlistsData[specificWl].some(s => s === sym || s?.replace('.NS', '').replace('.BO', '') === clean);
+            }
             for (const list of Object.values(watchlistsData || {})) {
-                if (list.includes(sym)) return true;
+                if (list.some(s => s === sym || s?.replace('.NS', '').replace('.BO', '') === clean)) return true;
             }
             return false;
         }
@@ -735,7 +938,9 @@
 
             if (currentInsightsScope === 'portfolio') {
                 for (const holdings of Object.values(portfoliosData || {})) {
-                    holdings.forEach(h => symbols.add(h.symbol));
+                    holdings.forEach(h => {
+                        if (h.symbol) symbols.add(h.symbol);
+                    });
                 }
                 (cachedInsightsArticles || []).forEach(art => {
                     if (art.symbol && isPortfolioSymbol(art.symbol)) {
@@ -743,20 +948,22 @@
                     }
                 });
             } else if (currentInsightsScope === 'watchlist') {
-                for (const wlSymbols of Object.values(watchlistsData || {})) {
-                    wlSymbols.forEach(s => symbols.add(s));
+                if (currentInsightsWatchlist && watchlistsData && watchlistsData[currentInsightsWatchlist]) {
+                    watchlistsData[currentInsightsWatchlist].forEach(s => {
+                        if (s) symbols.add(s);
+                    });
                 }
                 (cachedInsightsArticles || []).forEach(art => {
-                    if (art.symbol && isWatchlistSymbol(art.symbol)) {
+                    if (art.symbol && isWatchlistSymbol(art.symbol, currentInsightsWatchlist)) {
                         symbols.add(art.symbol);
                     }
                 });
             } else {
                 for (const wlSymbols of Object.values(watchlistsData || {})) {
-                    wlSymbols.forEach(s => symbols.add(s));
+                    wlSymbols.forEach(s => { if (s) symbols.add(s); });
                 }
                 for (const holdings of Object.values(portfoliosData || {})) {
-                    holdings.forEach(h => symbols.add(h.symbol));
+                    holdings.forEach(h => { if (h.symbol) symbols.add(h.symbol); });
                 }
                 (cachedInsightsArticles || []).forEach(art => {
                     if (art.symbol && art.symbol !== 'MARKET' && art.symbol !== 'GENERAL') {
@@ -772,7 +979,7 @@
             sortedSymbols.forEach(sym => {
                 const opt = document.createElement('option');
                 opt.value = sym;
-                opt.innerText = sym;
+                opt.innerText = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym;
                 if (sym === selectedVal) {
                     opt.selected = true;
                     foundSelected = true;
@@ -799,12 +1006,17 @@
             if (currentInsightsScope === 'portfolio') {
                 articles = articles.filter(art => art.tag_type === 'PORTFOLIO' || isPortfolioSymbol(art.symbol));
             } else if (currentInsightsScope === 'watchlist') {
-                articles = articles.filter(art => art.tag_type === 'WATCHLIST' || isWatchlistSymbol(art.symbol));
+                if (currentInsightsWatchlist) {
+                    articles = articles.filter(art => isWatchlistSymbol(art.symbol, currentInsightsWatchlist));
+                } else {
+                    articles = articles.filter(art => art.tag_type === 'WATCHLIST' || isWatchlistSymbol(art.symbol));
+                }
             }
 
             // Single Stock Specific Filter
             if (stockFilter !== 'all') {
-                articles = articles.filter(art => art.symbol === stockFilter);
+                const cleanSelected = stockFilter.replace('.NS', '').replace('.BO', '');
+                articles = articles.filter(art => art.symbol === stockFilter || art.symbol?.replace('.NS', '').replace('.BO', '') === cleanSelected);
             }
 
             articles.sort((a, b) => {
@@ -818,14 +1030,14 @@
             });
 
             if (countEl) {
-                const scopeName = currentInsightsScope === 'portfolio' ? 'Portfolio' : (currentInsightsScope === 'watchlist' ? 'Watchlist' : 'All Market');
+                const scopeName = currentInsightsScope === 'portfolio' ? 'Portfolio' : (currentInsightsScope === 'watchlist' ? `Watchlist: ${currentInsightsWatchlist || 'Selected'}` : 'All Market');
                 const catLabel = currentNewsCategory !== 'all' ? ` • ${currentNewsCategory.toUpperCase()}` : '';
                 const filterLabel = stockFilter !== 'all' ? ` (${stockFilter}${catLabel})` : ` (${scopeName}${catLabel})`;
                 countEl.innerText = `${articles.length} stories found${filterLabel}`;
             }
 
             if (articles.length === 0) {
-                const scopeTitle = currentInsightsScope === 'portfolio' ? 'your portfolio holdings' : (currentInsightsScope === 'watchlist' ? 'your watchlist stocks' : 'the market');
+                const scopeTitle = currentInsightsScope === 'portfolio' ? 'your portfolio holdings' : (currentInsightsScope === 'watchlist' ? `watchlist "${currentInsightsWatchlist || 'Selected'}"` : 'the market');
                 const emptyMsg = stockFilter !== 'all' 
                     ? `No news articles found matching stock ${escapeHtml(stockFilter)} (${currentNewsCategory.toUpperCase()}).`
                     : `No news articles found for ${scopeTitle} (${currentNewsCategory.toUpperCase()}).`;
@@ -897,6 +1109,7 @@
             const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
             const feedEl = document.getElementById('insights-news-feed');
             const loadMoreContainer = document.getElementById('insights-load-more-container');
+            const wlParam = currentInsightsScope === 'watchlist' && currentInsightsWatchlist ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
 
             if (stockFilter !== 'all') {
                 if (feedEl) {
@@ -908,7 +1121,7 @@
                     `;
                 }
                 try {
-                    const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}&stock=${encodeURIComponent(stockFilter)}&category=${encodeURIComponent(currentNewsCategory)}&limit=50`);
+                    const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}&stock=${encodeURIComponent(stockFilter)}&category=${encodeURIComponent(currentNewsCategory)}&limit=50`);
                     const data = await res.json();
                     if (data.success && data.articles) {
                         cachedInsightsArticles = data.articles;
@@ -921,7 +1134,7 @@
                 }
             } else {
                 try {
-                    const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`);
+                    const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`);
                     const data = await res.json();
                     if (data.success && data.articles) {
                         cachedInsightsArticles = data.articles;
@@ -947,7 +1160,8 @@
 
             try {
                 const stockParam = stockFilter !== 'all' ? `&stock=${encodeURIComponent(stockFilter)}` : '';
-                const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${stockParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=100`);
+                const wlParam = currentInsightsScope === 'watchlist' && currentInsightsWatchlist ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
+                const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}${stockParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=100`);
                 const data = await res.json();
                 if (data.success && data.articles) {
                     const existingTitles = new Set(cachedInsightsArticles.map(a => a.title));

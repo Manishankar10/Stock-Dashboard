@@ -1556,8 +1556,7 @@
         margin: auto !important;
     }
 
-    #stockNewsModal .small-modal-content,
-    #createAlertModal .small-modal-content {
+    #stockNewsModal .small-modal-content {
         width: 95vw !important;
         max-width: 95vw !important;
         max-height: 90vh !important;
@@ -1943,6 +1942,41 @@
         border-radius: 20px !important;
         padding: 6px 14px !important;
         font-size: 12.5px !important;
+    }
+
+    /* Insights Watchlists Sub-Selector on Mobile */
+    #insights-watchlist-container {
+        margin-top: 10px !important;
+        padding-top: 10px !important;
+        gap: 6px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        width: 100% !important;
+    }
+
+    #insights-watchlist-pills {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding-bottom: 2px !important;
+    }
+
+    #insights-watchlist-pills::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #insights-watchlist-pills button {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        border-radius: 20px !important;
+        padding: 5px 12px !important;
+        font-size: 12px !important;
     }
 
     /* Technical Screener Table & Meta in Accordion on Mobile */
@@ -2507,12 +2541,244 @@
     .chart-mobile-fav-btn:active,
     .chart-mobile-fav-btn:hover {
         background: #2a2e39 !important;
-        color: #ffffff !important;
+    /* =========================================================
+       ALERTS & NOTIFICATIONS POPUPS - FULL PAGE ON MOBILE
+       Matches Chart Modal edge-to-edge coverage and close button
+       ========================================================= */
+
+    /* 1. Alerts & Notifications Manager Modal (Full Page) */
+    #notificationsModal {
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        max-height: 100dvh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        z-index: 10050 !important;
+        overflow: hidden !important;
+        background: rgba(15, 23, 42, 0.95) !important;
     }
-    .chart-mobile-fav-btn.active {
-        background: rgba(16, 185, 129, 0.25) !important;
-        border-color: #10b981 !important;
-        color: #10b981 !important;
+
+    #notificationsModal .modal-content {
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        max-height: 100dvh !important;
+        margin: 0 !important;
+        padding: 16px 14px calc(24px + var(--safe-area-bottom, 0px)) 14px !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        background: var(--bg-card, #1e222d) !important;
+    }
+
+    #notificationsModal .modal-content > div:first-child {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding-bottom: 12px !important;
+        margin-bottom: 14px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        flex-shrink: 0 !important;
+    }
+
+    #notificationsModal .modal-content > div:first-child h2 {
+        font-size: 16.5px !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        color: var(--text-primary) !important;
+    }
+
+    #notificationsModal .modal-content > div:nth-child(2) {
+        display: flex !important;
+        gap: 8px !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 14px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        flex-shrink: 0 !important;
+    }
+
+    #notificationsModal .modal-content .pf-select-btn {
+        flex: 1 1 50% !important;
+        justify-content: center !important;
+        font-size: 12.5px !important;
+        padding: 9px 12px !important;
+        text-align: center !important;
+        border-radius: 8px !important;
+    }
+
+    #notif-tab-content-notifs,
+    #notif-tab-content-alerts {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    #notifications-list-mount,
+    #alerts-list-mount {
+        flex: 1 1 auto !important;
+        max-height: none !important;
+        height: 100% !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-right: 2px !important;
+    }
+
+    /* 2. Create Price Alert Modal (Full Page) */
+    #createAlertModal {
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        max-height: 100dvh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        z-index: 10050 !important;
+        overflow: hidden !important;
+        background: rgba(15, 23, 42, 0.95) !important;
+    }
+
+    #createAlertModal .small-modal-content {
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        max-height: 100dvh !important;
+        margin: 0 !important;
+        padding: 16px 16px calc(24px + var(--safe-area-bottom, 0px)) 16px !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        background: var(--bg-card, #1e222d) !important;
+    }
+
+    #createAlertModal .small-modal-content > div:first-child {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding-bottom: 12px !important;
+        margin-bottom: 18px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        flex-shrink: 0 !important;
+    }
+
+    #createAlertModal .small-modal-content > div:first-child h2 {
+        font-size: 16.5px !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        color: var(--text-primary) !important;
+    }
+
+    #createAlertModal .form-group {
+        margin-bottom: 14px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #createAlertModal .form-group input,
+    #createAlertModal .form-group select {
+        width: 100% !important;
+        padding: 11px 14px !important;
+        font-size: 13.5px !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    #createAlertModal .small-modal-content > div:last-child {
+        margin-top: auto !important;
+        padding-top: 16px !important;
+        display: flex !important;
+        gap: 12px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #createAlertModal .small-modal-content > div:last-child button {
+        flex: 1 1 50% !important;
+        padding: 11px !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        border-radius: 8px !important;
+        justify-content: center !important;
+    }
+
+    /* 3. Close Button in Alerts Popups: Exactly as in Charts */
+    #notificationsModal .close-btn,
+    #createAlertModal .close-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+        padding: 0 !important;
+        font-size: 22px !important;
+        font-weight: bold !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        border-radius: 6px !important;
+        flex-shrink: 0 !important;
+        background: rgba(239, 83, 80, 0.15) !important;
+        border: 1px solid rgba(239, 83, 80, 0.4) !important;
+        color: #ef5350 !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+        float: none !important;
+        box-sizing: border-box !important;
+        text-align: center !important;
+    }
+
+    #notificationsModal .close-btn:active,
+    #createAlertModal .close-btn:active {
+        background: #ef5350 !important;
+        color: #ffffff !important;
+        border-color: #ef5350 !important;
+        transform: scale(0.96) !important;
     }
 }
 

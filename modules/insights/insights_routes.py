@@ -185,6 +185,19 @@ def get_insights_summary_api():
 
         all_symbols = list(wl_symbols.union(pf_symbols))
 
+        scope_filter = request.args.get("scope", "all").lower()
+        watchlist_param = request.args.get("watchlist", "").strip()
+
+        if scope_filter == "watchlist":
+            if watchlist_param and watchlist_param in watchlists:
+                scoped_symbols = list(watchlists[watchlist_param])
+            else:
+                scoped_symbols = list(wl_symbols)
+        elif scope_filter == "portfolio":
+            scoped_symbols = list(pf_symbols)
+        else:
+            scoped_symbols = all_symbols
+
         tot_invested = 0.0
         tot_cur_val = 0.0
         tot_day_pnl = 0.0
@@ -255,23 +268,28 @@ def get_insights_summary_api():
             if len(stock_list) > 1:
                 top_loser = stock_list[-1]
 
-        idx_count = sum(1 for s in all_symbols if s.startswith("^"))
-        cmd_count = sum(1 for s in all_symbols if "=F" in s or "GOLDBEES" in s or "SILVERBEES" in s)
-        equity_count = len(all_symbols) - idx_count - cmd_count
+        idx_count = sum(1 for s in scoped_symbols if s.startswith("^"))
+        cmd_count = sum(1 for s in scoped_symbols if "=F" in s or "GOLDBEES" in s or "SILVERBEES" in s)
+        equity_count = len(scoped_symbols) - idx_count - cmd_count
 
-        total_tracked = len(all_symbols) or 1
+        total_tracked = len(scoped_symbols) or 1
         distribution = {
-            "equities": {"count": equity_count, "pct": round(equity_count / total_tracked * 100, 1)},
-            "indices": {"count": idx_count, "pct": round(idx_count / total_tracked * 100, 1)},
-            "commodities": {"count": cmd_count, "pct": round(cmd_count / total_tracked * 100, 1)}
+            "equities": {"count": equity_count, "pct": round(equity_count / total_tracked * 100, 1) if scoped_symbols else 0},
+            "indices": {"count": idx_count, "pct": round(idx_count / total_tracked * 100, 1) if scoped_symbols else 0},
+            "commodities": {"count": cmd_count, "pct": round(cmd_count / total_tracked * 100, 1) if scoped_symbols else 0}
         }
+
+        if scope_filter == "watchlist":
+            scoped_clean = {s.replace(".NS", "").replace(".BO", "") for s in scoped_symbols}
+            scoped_set = set(scoped_symbols)
+            theses = [t for t in theses if t.get("symbol") in scoped_set or t.get("symbol", "").replace(".NS", "").replace(".BO", "") in scoped_clean]
 
         overall_pnl_amt = tot_cur_val - tot_invested
         overall_pnl_pct = (overall_pnl_amt / tot_invested * 100) if tot_invested > 0 else 0.0
 
         return jsonify({
             "success": True,
-            "total_tracked_count": len(all_symbols),
+            "total_tracked_count": len(scoped_symbols),
             "portfolio_count": len(pf_symbols),
             "watchlist_count": len(wl_symbols),
             "metrics": {
@@ -355,10 +373,11 @@ def get_insights_news_api():
 
         category_filter = request.args.get("category", "all").lower()
         scope_filter = request.args.get("scope", "all").lower()
+        watchlist_param = request.args.get("watchlist", "").strip()
         stock_param = request.args.get("stock", "").strip()
         limit = min(int(request.args.get("limit", 60)), 100)
 
-        cache_key = f"news_{category_filter}_{scope_filter}_{stock_param}_{limit}"
+        cache_key = f"news_{category_filter}_{scope_filter}_{watchlist_param}_{stock_param}_{limit}"
         cached_news = news_cache.get(cache_key)
         if cached_news:
             return jsonify(cached_news)
@@ -369,7 +388,10 @@ def get_insights_news_api():
         elif scope_filter == "portfolio":
             target_symbols = list(pf_symbols)
         elif scope_filter == "watchlist":
-            target_symbols = list(wl_symbols)
+            if watchlist_param and watchlist_param in watchlists:
+                target_symbols = list(watchlists[watchlist_param])
+            else:
+                target_symbols = list(wl_symbols)
         else:
             target_symbols = all_symbols
 
@@ -522,8 +544,14 @@ def get_insights_news_api():
                             # Scope filter enforcement
                             if scope_filter == "portfolio" and tag_type != "PORTFOLIO":
                                 continue
-                            if scope_filter == "watchlist" and tag_type != "WATCHLIST":
-                                continue
+                            if scope_filter == "watchlist":
+                                if watchlist_param and watchlist_param in watchlists:
+                                    cur_wl_symbols = set(watchlists[watchlist_param])
+                                    cur_wl_clean = {s.replace(".NS", "").replace(".BO", "") for s in cur_wl_symbols}
+                                    if tag_sym not in cur_wl_symbols and tag_sym.replace(".NS", "").replace(".BO", "") not in cur_wl_clean:
+                                        continue
+                                elif tag_type != "WATCHLIST":
+                                    continue
 
                             seen_titles.add(headline)
                             news_articles.append({
@@ -540,9 +568,25 @@ def get_insights_news_api():
 
         # Final scope cleanup check
         if scope_filter == "portfolio":
-            news_articles = [a for a in news_articles if a.get("tag_type") == "PORTFOLIO" or a.get("symbol") in pf_symbols]
+            clean_pf = {s.replace(".NS", "").replace(".BO", "") for s in pf_symbols}
+            news_articles = [
+                a for a in news_articles 
+                if a.get("tag_type") == "PORTFOLIO" or a.get("symbol") in pf_symbols or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in clean_pf
+            ]
         elif scope_filter == "watchlist":
-            news_articles = [a for a in news_articles if a.get("tag_type") == "WATCHLIST" or a.get("symbol") in wl_symbols]
+            if watchlist_param and watchlist_param in watchlists:
+                target_wl_syms = set(watchlists[watchlist_param])
+                target_wl_clean = {s.replace(".NS", "").replace(".BO", "") for s in target_wl_syms}
+                news_articles = [
+                    a for a in news_articles 
+                    if a.get("symbol") in target_wl_syms or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in target_wl_clean
+                ]
+            else:
+                clean_wl = {s.replace(".NS", "").replace(".BO", "") for s in wl_symbols}
+                news_articles = [
+                    a for a in news_articles 
+                    if a.get("tag_type") == "WATCHLIST" or a.get("symbol") in wl_symbols or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in clean_wl
+                ]
 
         res_payload = {"success": True, "articles": news_articles, "total": len(news_articles)}
         news_cache.set(cache_key, res_payload, ttl=300)
