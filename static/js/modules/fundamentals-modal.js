@@ -1,14 +1,44 @@
         // =========================================================
         // FUNDAMENTALS MODAL
         // =========================================================
+        let _fundamentalsMsgListenerAttached = false;
+
         function openFundamentalsModal(symbol) {
             const modal = document.getElementById('fundamentalsModal');
             const frame = document.getElementById('fundamentalsFrame');
             const subtitle = document.getElementById('fundamentals-modal-subtitle');
+            const companyNameEl = document.getElementById('fundamentals-modal-company-name');
+            const companyDetailsEl = document.getElementById('fundamentals-modal-company-details');
+            const logoEl = document.getElementById('fundamentals-modal-logo');
+            const placeholderEl = document.getElementById('fundamentals-modal-logo-placeholder');
+
             if (!modal || !frame) return;
 
             const safeSymbol = String(symbol || '').trim();
             if (!safeSymbol) return;
+
+            // Reset logo & placeholder
+            if (logoEl) {
+                logoEl.src = '';
+                logoEl.style.display = 'none';
+            }
+            if (placeholderEl) {
+                placeholderEl.style.display = 'flex';
+            }
+
+            // Prefill with stock symbol and live price if available
+            if (companyNameEl) companyNameEl.textContent = safeSymbol;
+            let initialDetails = `${safeSymbol} · NSE`;
+            try {
+                const stock = (window.stockPricesData && window.stockPricesData[safeSymbol]) || null;
+                if (stock && stock.current_price != null) {
+                    const p = Number(stock.current_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const chg = Number(stock.change_percent || 0);
+                    const sign = chg >= 0 ? '+' : '';
+                    initialDetails = `${safeSymbol} · ₹${p} (${sign}${chg.toFixed(2)}%)`;
+                }
+            } catch (e) {}
+            if (companyDetailsEl) companyDetailsEl.textContent = initialDetails;
 
             if (subtitle) subtitle.textContent = `Loading fundamentals for ${safeSymbol}...`;
             frame.src = `/fundamentals?symbol=${encodeURIComponent(safeSymbol)}`;
@@ -18,13 +48,57 @@
             frame.onload = () => {
                 if (subtitle) subtitle.textContent = `Fundamental analysis • ${safeSymbol}`;
             };
+
+            // Attach one-time postMessage listener to receive full company name and logo from iframe
+            if (!_fundamentalsMsgListenerAttached) {
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'FUNDAMENTALS_INFO') {
+                        const { name, symbol: retSym, logo, price, changePercent } = event.data;
+                        const nEl = document.getElementById('fundamentals-modal-company-name');
+                        const dEl = document.getElementById('fundamentals-modal-company-details');
+                        const lEl = document.getElementById('fundamentals-modal-logo');
+                        const pEl = document.getElementById('fundamentals-modal-logo-placeholder');
+
+                        if (nEl && name) {
+                            nEl.textContent = name;
+                        }
+                        if (dEl) {
+                            const symDisplay = retSym || safeSymbol;
+                            let det = symDisplay;
+                            if (price != null && price !== '') {
+                                const chg = changePercent != null && !isNaN(Number(changePercent)) ? Number(changePercent) : null;
+                                const sign = (chg != null && chg >= 0) ? '+' : '';
+                                det += ` · ₹${price}${chg != null ? ` (${sign}${chg.toFixed(2)}%)` : ''}`;
+                            } else {
+                                det += ' · Screener.in';
+                            }
+                            dEl.textContent = det;
+                        }
+                        if (lEl && logo) {
+                            lEl.src = logo;
+                            lEl.style.display = 'block';
+                            if (pEl) pEl.style.display = 'none';
+                        }
+                    }
+                });
+                _fundamentalsMsgListenerAttached = true;
+            }
         }
 
         function closeFundamentalsModal() {
             const modal = document.getElementById('fundamentalsModal');
             const frame = document.getElementById('fundamentalsFrame');
+            const logoEl = document.getElementById('fundamentals-modal-logo');
+            const placeholderEl = document.getElementById('fundamentals-modal-logo-placeholder');
             if (modal) modal.style.display = 'none';
             if (frame) frame.src = 'about:blank';
+            if (logoEl) {
+                logoEl.src = '';
+                logoEl.style.display = 'none';
+            }
+            if (placeholderEl) {
+                placeholderEl.style.display = 'flex';
+            }
             document.body.style.overflow = '';
         }
 

@@ -1712,6 +1712,26 @@
         background: rgba(248, 250, 252, 0.98) !important;
     }
 
+    #fundamentalsModal {
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        width: 100dvw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        z-index: 10030 !important;
+        overflow: hidden !important;
+        background: var(--bg-body, #0f172a) !important;
+    }
+
     #fundamentalsModal .small-modal-content {
         position: fixed !important;
         inset: 0 !important;
@@ -1720,6 +1740,7 @@
         right: 0 !important;
         bottom: 0 !important;
         width: 100vw !important;
+        width: 100dvw !important;
         height: 100vh !important;
         height: 100dvh !important;
         max-width: 100vw !important;
@@ -1738,35 +1759,83 @@
     }
 
     /* Glassy Header on Mobile */
+    #fundamentalsModal .fundamentals-modal-header,
     #fundamentalsModal .small-modal-content > div:first-child {
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 10px 14px !important;
-        background: rgba(30, 41, 59, 0.8) !important;
+        padding: 8px 12px !important;
+        background: rgba(30, 41, 59, 0.85) !important;
         backdrop-filter: blur(16px) saturate(180%) !important;
         -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
         flex: 0 0 auto !important;
         box-sizing: border-box !important;
+        gap: 10px !important;
     }
 
+    [data-theme="light"] #fundamentalsModal .fundamentals-modal-header,
     [data-theme="light"] #fundamentalsModal .small-modal-content > div:first-child {
-        background: rgba(255, 255, 255, 0.85) !important;
+        background: rgba(255, 255, 255, 0.88) !important;
         border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
-    #fundamentalsModal .small-modal-content > div:first-child h3 {
-        font-size: 14.5px !important;
+    /* On mobile: Hide original web title, show mobile 2-row title with logo */
+    #fundamentalsModal .web-fundamentals-title {
+        display: none !important;
+    }
+
+    #fundamentalsModal .mobile-fundamentals-title {
+        display: flex !important;
+        align-items: center !important;
+        gap: 9px !important;
+        min-width: 0 !important;
+        flex: 1 !important;
+    }
+
+    #fundamentalsModal #fundamentals-modal-logo {
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 6px !important;
+        object-fit: contain !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        padding: 2px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #fundamentalsModal #fundamentals-modal-logo-placeholder {
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 6px !important;
+        background: rgba(16, 185, 129, 0.15) !important;
+        color: var(--accent, #10b981) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #fundamentalsModal #fundamentals-modal-company-name {
+        font-size: 13.5px !important;
         font-weight: 700 !important;
         margin: 0 !important;
         color: var(--text-primary) !important;
+        line-height: 1.25 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
 
-    #fundamentalsModal #fundamentals-modal-subtitle {
+    #fundamentalsModal #fundamentals-modal-company-details {
         font-size: 10.5px !important;
         color: var(--text-secondary) !important;
-        margin-top: 2px !important;
+        margin-top: 1px !important;
+        line-height: 1.2 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
 
     #fundamentalsModal #fundamentalsFrame {
@@ -3015,5 +3084,11 @@
     }
     .chart-mobile-tool-hint {
         display: none !important;
+    }
+    #fundamentalsModal .mobile-fundamentals-title {
+        display: none !important;
+    }
+    #fundamentalsModal .web-fundamentals-title {
+        display: block !important;
     }
 }

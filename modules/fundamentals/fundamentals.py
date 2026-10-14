@@ -430,12 +430,48 @@ def fetch_screener_fundamentals(symbol):
         fin_ratios = parse_sec("ratios")
         sh = parse_sec("shareholding")
 
+        # Logo extraction
+        logo_img = soup.find("img", src=lambda s: s and "company-logos" in s)
+        logo_url = logo_img["src"] if (logo_img and logo_img.get("src")) else None
+
+        # Clean concalls & presentations list from Screener
+        concalls_list = []
+        seen_quarters = {}
+        for li in soup.select(".documents.concalls li"):
+            q_el = li.find("div")
+            quarter_str = q_el.text.strip() if q_el else ""
+            transcript_url = None
+            ppt_url = None
+            for a in li.find_all("a"):
+                txt = a.text.strip().lower()
+                href = a.get("href", "").strip()
+                if not href:
+                    continue
+                if "transcript" in txt or "concall" in txt:
+                    transcript_url = href
+                elif "ppt" in txt or "presentation" in txt:
+                    ppt_url = href
+            if quarter_str and (transcript_url or ppt_url):
+                if quarter_str not in seen_quarters:
+                    seen_quarters[quarter_str] = {
+                        "quarter": quarter_str,
+                        "transcript": transcript_url,
+                        "presentation": ppt_url
+                    }
+                else:
+                    if transcript_url and not seen_quarters[quarter_str]["transcript"]:
+                        seen_quarters[quarter_str]["transcript"] = transcript_url
+                    if ppt_url and not seen_quarters[quarter_str]["presentation"]:
+                        seen_quarters[quarter_str]["presentation"] = ppt_url
+        concalls_list = list(seen_quarters.values())
+
         return {
             "symbol": symbol,
             "as_of": dt.datetime.now(dt.timezone.utc).isoformat(),
             "source": "Screener.in (100% Free Data)",
             "company": {
                 "name": name,
+                "logo": logo_url,
                 "country": "India",
                 "summary": summary,
             },
@@ -465,6 +501,7 @@ def fetch_screener_fundamentals(symbol):
             "ratios": fin_ratios,
             "shareholding": sh,
             "income_statement": quarters if quarters.get("rows") else pnl,
+            "concalls": concalls_list,
             "charts": {
                 "price": [],
                 "annual": [],
@@ -640,6 +677,7 @@ def fundamentals():
             "source": "Yahoo Finance direct API",
             "company": {
                 "name": _raw(price, "longName") or _raw(price, "shortName"),
+                "logo": None,
                 "sector": profile.get("sector"),
                 "industry": profile.get("industry"),
                 "country": profile.get("country"),
@@ -716,6 +754,7 @@ def fundamentals():
                 "recommendation_trend": _module(q, "recommendationTrend"),
             },
             "documents": [],
+            "concalls": [],
             "links": [{"label": "Screener", "url": "https://www.screener.in/company/" + symbol.replace(".NS", "").replace(".BO", "") + "/"}],
             "calendar": calendar,
         }

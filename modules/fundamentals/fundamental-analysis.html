@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/api/fundamentals/concalls/assets/fundamentals_concalls.css">
 <style>
 :root {
   --bg-body: #0f172a;
@@ -140,6 +139,66 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
 .empty-state { padding: 40px; text-align: center; color: var(--text-secondary); font-size: 13px; }
 
+/* Concalls & Presentations List */
+.concalls-grid { display: flex; flex-direction: column; gap: 8px; }
+.concall-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+  transition: border-color 0.15s ease;
+}
+.concall-item:hover { border-color: var(--accent); }
+.concall-quarter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.concall-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.concall-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.concall-chip.concall-transcript {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.concall-chip.concall-transcript:hover, .concall-chip.concall-transcript:active {
+  background: #10b981;
+  color: #ffffff;
+}
+.concall-chip.concall-ppt {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.concall-chip.concall-ppt:hover, .concall-chip.concall-ppt:active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
 @media (max-width: 900px) and (min-width: 769px) {
   .analysis-grid, .growth-grid { grid-template-columns: 1fr; }
   .ratios-grid { grid-template-columns: repeat(3, 1fr); }
@@ -151,22 +210,22 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
    ========================================================= */
 @media (max-width: 768px) {
   body {
-    padding: 8px 8px 24px 8px !important;
+    padding: 4px 4px 16px 4px !important;
     background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%) !important;
-    font-size: 11.5px !important;
+    font-size: 11px !important;
   }
   [data-theme="light"] body {
     background: #f8fafc !important;
   }
   .container {
-    gap: 10px !important;
+    gap: 8px !important;
     max-width: 100% !important;
   }
   
   /* Trendy Glassy Cards */
   .card {
-    padding: 10px 12px !important;
-    border-radius: 12px !important;
+    padding: 8px 10px !important;
+    border-radius: 10px !important;
     background: rgba(30, 41, 59, 0.5) !important;
     backdrop-filter: blur(16px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
@@ -179,34 +238,26 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.05) !important;
   }
 
-  /* Header Card */
-  .header {
-    padding: 9px 11px !important;
-    gap: 8px !important;
-    border-radius: 12px !important;
+  /* Remove details page header card on mobile (header is shown in modal top bar) */
+  .card.header {
+    display: none !important;
   }
-  .brand {
-    gap: 8px !important;
-  }
-  .brand img {
-    width: 26px !important;
-    height: 26px !important;
-  }
-  .title {
-    font-size: 14.5px !important;
-    font-weight: 700 !important;
-    line-height: 1.2 !important;
-  }
-  .sub {
-    font-size: 9.5px !important;
-  }
-  .btn {
-    padding: 5px 8px !important;
-    font-size: 10.5px !important;
+
+  /* Concalls on Mobile */
+  .concall-item {
+    padding: 6px 8px !important;
+    gap: 6px !important;
     border-radius: 6px !important;
   }
-  #lastUpdated {
-    display: none !important;
+  .concall-quarter {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+  }
+  .concall-chip {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+    gap: 4px !important;
+    border-radius: 4px !important;
   }
 
   /* 9 Screener Ratio Cards Grid */
@@ -366,26 +417,6 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     font-size: 11.5px !important;
     line-height: 1.5 !important;
   }
-
-  .table-order-badge {
-    display: inline-block !important;
-    font-size: 8.5px !important;
-    color: var(--accent) !important;
-    background: var(--accent-soft) !important;
-    border: 1px solid rgba(16, 185, 129, 0.25) !important;
-    padding: 1px 5px !important;
-    border-radius: 4px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.2px !important;
-    margin-left: 5px !important;
-    vertical-align: middle !important;
-  }
-}
-
-@media (min-width: 769px) {
-  .table-order-badge {
-    display: none !important;
-  }
 }
 </style>
 </head>
@@ -513,40 +544,17 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     </div>
 
     <!-- Official quarterly concall presentations and transcripts -->
-    <section class="card concalls-card" aria-labelledby="concallsTitle">
+    <div class="card concalls-card" id="concallsSection">
       <div class="sec-head">
         <div>
-          <div class="sec-title" id="concallsTitle">📞 Concalls</div>
-          <div class="sec-sub">Quarter-wise official NSE filings · AI summaries send the public transcript to Gemini</div>
+          <div class="sec-title" id="concallsTitle">📞 Concalls & Presentations</div>
+          <div class="sec-sub">Official quarterly transcripts and investor presentations</div>
         </div>
-        <a class="concalls-source" id="concallsSource" href="#" target="_blank" rel="noopener noreferrer">NSE filings ↗</a>
       </div>
-      <div id="concallsContent" aria-live="polite"><div class="empty-state">Loading official concall documents…</div></div>
-      <div class="concalls-more-wrap" id="concallsMoreWrap" hidden>
-        <button class="btn" id="concallsMore" type="button">Load older filings</button>
-      </div>
-    </section>
+      <div id="concallsContainer"></div>
+    </div>
 
   </div>
-</div>
-
-<div class="concall-summary-modal" id="concallSummaryModal" hidden>
-  <button class="concall-summary-backdrop" type="button" data-summary-close aria-label="Close transcript summary"></button>
-  <section class="concall-summary-dialog" role="dialog" aria-modal="true" aria-labelledby="concallSummaryHeading">
-    <header class="concall-summary-header">
-      <div class="concall-summary-heading-wrap">
-        <div class="concall-summary-eyebrow">TRANSCRIPT BRIEF</div>
-        <h2 id="concallSummaryHeading">AI Concalls Summary</h2>
-        <div id="concallSummaryMeta" class="concall-summary-meta"></div>
-      </div>
-      <button class="concall-summary-close" type="button" data-summary-close aria-label="Close">×</button>
-    </header>
-    <div class="concall-summary-body" id="concallSummaryBody" aria-live="polite"></div>
-    <footer class="concall-summary-footer">
-      <span>AI-generated from the official transcript. Check the source for full context.</span>
-      <a id="concallSummarySource" href="#" target="_blank" rel="noopener noreferrer">Open transcript ↗</a>
-    </footer>
-  </section>
 </div>
 
 <script>
@@ -566,14 +574,10 @@ function renderScreenerTable(section) {
     return `<div class="empty-state">No financial statement data available</div>`;
   }
 
-  const isMobile = window.innerWidth <= 768;
-  let colIndices = cols.map((_, i) => i);
-  if (isMobile) {
-    // Reverse columns so latest year/quarter appears first
-    colIndices.reverse();
-  }
+  // Standard chronological ordering (older to newer)
+  const colIndices = cols.map((_, i) => i);
 
-  const headerHtml = `<thead><tr><th>Particulars <span class="table-order-badge">Latest First ◀</span></th>${colIndices.map(i => `<th>${esc(cols[i])}</th>`).join('')}</tr></thead>`;
+  const headerHtml = `<thead><tr><th>Particulars</th>${colIndices.map(i => `<th>${esc(cols[i])}</th>`).join('')}</tr></thead>`;
   
   const bodyHtml = rows.map(r => {
     const lbl = r.label || '';
@@ -585,6 +589,16 @@ function renderScreenerTable(section) {
   }).join('');
 
   return `<div class="table-wrap"><table class="table">${headerHtml}<tbody>${bodyHtml}</tbody></table></div>`;
+}
+
+function focusLatestTables() {
+  if (window.innerWidth <= 768) {
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.table-wrap').forEach(wrap => {
+        wrap.scrollLeft = wrap.scrollWidth;
+      });
+    });
+  }
 }
 
 async function loadFundamentals() {
@@ -675,9 +689,63 @@ function render(d) {
 
   document.getElementById('companySummary').textContent = c.summary || 'No business description available.';
 
+  // Render Concalls & Presentations
+  const concalls = d.concalls || [];
+  window._allConcalls = concalls;
+  renderConcallsList(concalls, false);
+
   document.getElementById('content').style.display = 'flex';
   window._lastFundamentalsData = d;
+
+  // Focus the latest column on mobile (user can swipe left for older)
+  focusLatestTables();
+  setTimeout(focusLatestTables, 80);
+
+  // Send company name and logo to parent modal header
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: 'FUNDAMENTALS_INFO',
+      symbol: symbol,
+      name: c.name || symbol,
+      logo: c.logo || null,
+      price: tr['Current Price'] || (d.quote && d.quote.current_price) || '',
+      changePercent: (d.quote && d.quote.change_percent != null) ? d.quote.change_percent : null
+    }, '*');
+  }
 }
+
+window.renderConcallsList = function(concalls, showAll) {
+  const concallsEl = document.getElementById('concallsContainer');
+  if (!concallsEl) return;
+  if (!concalls || !concalls.length) {
+    concallsEl.innerHTML = '<div class="empty-state">No concall transcripts or presentations available for this company.</div>';
+    return;
+  }
+  const visible = showAll ? concalls : concalls.slice(0, 8);
+  const itemsHtml = visible.map(c => `
+    <div class="concall-item">
+      <div class="concall-quarter">
+        <span style="font-size: 13px;">📅</span>
+        <span>${esc(c.quarter)}</span>
+      </div>
+      <div class="concall-actions">
+        ${c.transcript ? `<a class="concall-chip concall-transcript" href="${esc(c.transcript)}" target="_blank" rel="noopener noreferrer">📄 Concall</a>` : ''}
+        ${c.presentation ? `<a class="concall-chip concall-ppt" href="${esc(c.presentation)}" target="_blank" rel="noopener noreferrer">📊 Presentation</a>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  let toggleBtnHtml = '';
+  if (concalls.length > 8) {
+    if (!showAll) {
+      toggleBtnHtml = `<button class="btn" onclick="renderConcallsList(window._allConcalls, true)" style="margin-top: 10px; width: 100%; justify-content: center; font-size: 11px;">Show older quarters (${concalls.length - 8} more) ▼</button>`;
+    } else {
+      toggleBtnHtml = `<button class="btn" onclick="renderConcallsList(window._allConcalls, false)" style="margin-top: 10px; width: 100%; justify-content: center; font-size: 11px;">Show less ▲</button>`;
+    }
+  }
+
+  concallsEl.innerHTML = `<div class="concalls-grid">${itemsHtml}</div>${toggleBtnHtml}`;
+};
 
 let _wasMob = window.innerWidth <= 768;
 window.addEventListener('resize', () => {
@@ -687,6 +755,8 @@ window.addEventListener('resize', () => {
     if (window._lastFundamentalsData) {
       render(window._lastFundamentalsData);
     }
+  } else {
+    focusLatestTables();
   }
 });
 
@@ -697,6 +767,5 @@ function setTheme() {
 setTheme();
 loadFundamentals();
 </script>
-<script src="/api/fundamentals/concalls/assets/fundamentals_concalls.js" defer></script>
 </body>
 </html>
