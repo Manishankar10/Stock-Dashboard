@@ -1047,22 +1047,22 @@
             let msg = 'Click on chart to draw';
             let mobileMsg = 'Tap chart to draw';
             if (toolType === 'support_click') {
-                msg = '🟢 Support Line: Click anywhere on chart or Right Y-Axis to place line at price level.';
+                msg = '🟢 Support Line: Click chart or Y-Axis to place';
                 mobileMsg = '🟢 Tap to place line';
             } else if (toolType === 'pricerange') {
-                msg = '📏 Price Range % Calculator: Click 1st point (Start Price), then 2nd point (End Price). Press Esc to cancel.';
+                msg = '📏 Price Range: Click 1st, then 2nd point';
                 mobileMsg = '📏 Tap 1st, then 2nd point';
             } else if (toolType === 'trendline') {
-                msg = '📐 Trendline: Click 1st point (Start), then 2nd point (End). Press Esc to cancel.';
+                msg = '📐 Trendline: Click 1st, then 2nd point';
                 mobileMsg = '📈 Tap 1st, then 2nd point';
             } else if (toolType === 'rectangle') {
-                msg = '⬜ Rectangle Zone: Click 1st corner, then opposite corner. Press Esc to cancel.';
+                msg = '⬜ Rectangle: Click 1st corner, then opposite corner';
                 mobileMsg = '⬛ Tap 1st, then 2nd corner';
             } else if (toolType === 'vertical') {
-                msg = '⏱️ Time Line: Click on chart to place vertical marker. Press Esc to cancel.';
+                msg = '⏱️ Time Line: Click on chart to place';
                 mobileMsg = '🕒 Tap to place line';
             } else if (toolType === 'note') {
-                msg = '📍 Text Note: Click on chart to place text note. Press Esc to cancel.';
+                msg = '📍 Note: Click on chart to place text note';
                 mobileMsg = '📝 Tap to place note';
             }
 
@@ -1076,28 +1076,29 @@
                 if (nameEl) nameEl.classList.add('hide-on-active-tool');
             }
 
-            // Web: keep original desktop banner floating in pane
+            // Web: display smaller hint banner at top left of chart (not centered)
             let banner = document.getElementById('drawingToolBanner');
             const mainContainer = document.getElementById('mainChartPane');
             if (!banner && mainContainer) {
                 banner = document.createElement('div');
                 banner.id = 'drawingToolBanner';
+                banner.className = 'drawing-tool-banner';
                 banner.style.cssText = `
                     position: absolute;
                     top: 10px;
-                    left: 50%;
-                    transform: translateX(-50%);
+                    left: 12px;
                     background: rgba(16, 185, 129, 0.95);
                     color: #ffffff;
-                    padding: 6px 16px;
-                    border-radius: 20px;
-                    font-size: 12px;
-                    font-weight: 700;
+                    padding: 3px 10px;
+                    border-radius: 8px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    line-height: 1.3;
                     z-index: 100;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
                     backdrop-filter: blur(4px);
                     pointer-events: auto;
                 `;
@@ -1105,8 +1106,15 @@
             }
 
             if (banner) {
-                banner.innerHTML = `<span>${msg}</span> <button onclick="cancelDrawingTool()" style="background: rgba(0,0,0,0.25); border: none; color: #fff; padding: 2px 8px; border-radius: 10px; cursor: pointer; font-size: 11px;">Cancel (Esc)</button>`;
+                banner.innerHTML = `<span style="font-size: 11px;">${msg}</span> <button onclick="cancelDrawingTool()" style="background: rgba(0,0,0,0.25); border: none; color: #fff; padding: 1px 6px; border-radius: 5px; cursor: pointer; font-size: 10px; font-weight: 500;">Cancel (Esc)</button>`;
                 banner.style.display = isMobile ? 'none' : 'flex';
+                if (!isMobile) {
+                    banner.style.left = '12px';
+                    banner.style.right = 'auto';
+                    banner.style.transform = 'none';
+                    banner.style.fontSize = '11px';
+                    banner.style.padding = '3px 10px';
+                }
             }
         }
 
@@ -1666,9 +1674,8 @@
                         drawingPoints.push(pt);
                         const banner = document.getElementById('drawingToolBanner');
                         if (banner) {
-                            const actionName = currentDrawingTool === 'trendline' ? 'Trendline' : currentDrawingTool === 'rectangle' ? 'Rectangle Zone' : 'Price Range % Calculator';
                             const span = banner.querySelector('span');
-                            if (span) span.innerText = `Click 2nd point to complete ${actionName}`;
+                            if (span) span.innerText = 'Click 2nd point to finish';
                         }
                         const mobileHintText = document.getElementById('chartMobileToolHintText');
                         if (mobileHintText) {
