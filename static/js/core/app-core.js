@@ -100,10 +100,18 @@
 
                 const cleanup = () => {
                     overlay.style.display = 'none';
+                    overlay.onclick = null;
                     confirmBtn.onclick = null;
                     cancelBtn.onclick = null;
                     inputEl.onkeydown = null;
                     document.removeEventListener('keydown', handleKey);
+                };
+
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        cleanup();
+                        resolve(isPrompt ? null : false);
+                    }
                 };
 
                 const handleKey = (e) => {
@@ -140,14 +148,72 @@
             });
         }
 
-        // Show Toast now directs to System Modal Popup for clean centered UI
-        function showToast(message, type = 'info', title = null) {
-            return showSystemModal({
-                type: type,
-                title: title,
-                message: message
-            });
+        // =========================================================
+        // BOTTOM CENTER TOASTER NOTIFICATION SYSTEM
+        // Modern, non-intrusive floating toaster at bottom center
+        // =========================================================
+        function showToast(message, type = 'info', durationOrTitle = 2800) {
+            if (!message) return;
+            const msgStr = String(message);
+            const duration = typeof durationOrTitle === 'number' ? durationOrTitle : 2800;
+
+            let container = document.getElementById('appBottomToastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'appBottomToastContainer';
+                container.className = 'app-bottom-toast-container';
+                container.setAttribute('aria-live', 'polite');
+                container.setAttribute('aria-atomic', 'true');
+                document.body.appendChild(container);
+            }
+
+            // Keep at most 3 simultaneous toasts to prevent viewport clutter
+            const existingToasts = container.querySelectorAll('.app-bottom-toast:not(.toast-hiding)');
+            if (existingToasts.length >= 3) {
+                const oldest = existingToasts[0];
+                oldest.classList.add('toast-hiding');
+                setTimeout(() => { if (oldest.parentElement) oldest.remove(); }, 220);
+            }
+
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+
+            const toastType = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'info';
+            const icon = icons[toastType] || 'ℹ️';
+
+            const toast = document.createElement('div');
+            toast.className = `app-bottom-toast toast-${toastType}`;
+            toast.role = 'status';
+            toast.innerHTML = `
+                <span class="app-toast-icon">${icon}</span>
+                <span class="app-toast-text">${escapeHtml(msgStr)}</span>
+                <span class="app-toast-dismiss" title="Dismiss">&times;</span>
+            `;
+
+            let isDismissed = false;
+            const dismissToast = (e) => {
+                if (e) e.stopPropagation();
+                if (isDismissed) return;
+                isDismissed = true;
+                toast.classList.add('toast-hiding');
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+                }, 220);
+            };
+
+            toast.onclick = dismissToast;
+
+            container.appendChild(toast);
+
+            setTimeout(dismissToast, duration);
+            return toast;
         }
+        window.showToast = showToast;
+        window.showBottomToast = showToast;
 
         // Override window.alert globally to force centered System Modal Dialog everywhere
         window.alert = function(msg) {
@@ -182,6 +248,7 @@
                 type: 'confirm'
             });
         }
+        window.showCustomConfirm = showCustomConfirm;
 
         function showCustomPrompt(options = {}) {
             return showSystemModal({
@@ -190,6 +257,7 @@
                 isPrompt: true
             });
         }
+        window.showCustomPrompt = showCustomPrompt;
 
         function cleanDisplaySymbol(sym) {
             if (!sym) return '';
@@ -197,6 +265,7 @@
             if (s.startsWith('^') || s.includes('=F')) return s;
             return s.replace(/\.(NS|BO)$/i, '');
         }
+        window.cleanDisplaySymbol = cleanDisplaySymbol;
 
         // Global App State
         let currentTab = 'watchlists';

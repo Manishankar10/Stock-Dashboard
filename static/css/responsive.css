@@ -3274,3 +3274,19 @@
         padding: 6px 10px !important;
     }
 }
+
+/* Mobile Bottom Center Toaster adjustments */
+@media (max-width: 768px) {
+    .app-bottom-toast-container,
+    #appBottomToastContainer {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        max-width: calc(100vw - 32px);
+        width: max-content;
+    }
+    .app-bottom-toast {
+        padding: 9px 15px;
+        font-size: 13px;
+        max-width: calc(100vw - 36px);
+    }
+}
+

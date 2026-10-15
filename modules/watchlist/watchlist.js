@@ -147,12 +147,29 @@
         async function deleteActiveWatchlist(targetName = null) {
             const nameToDelete = (typeof targetName === 'string' && targetName.trim() !== '') ? targetName.trim() : activeWatchlistName;
             if (!nameToDelete) {
-                (window.nativeAlert || alert)('No active watchlist selected to delete. Please select or create a watchlist first.');
+                showToast('No active watchlist selected to delete.', 'warning');
                 return;
             }
 
-            const confirmFn = window.nativeConfirm || confirm;
-            const confirmed = confirmFn(`Are you sure you want to permanently delete watchlist "${nameToDelete}"?\n\nAll stocks in this watchlist will be removed.`);
+            let confirmed = false;
+            if (typeof showCustomConfirm === 'function') {
+                confirmed = await showCustomConfirm({
+                    title: 'Delete Watchlist',
+                    message: `Are you sure you want to permanently delete watchlist "${nameToDelete}"?\n\nAll stocks in this watchlist will be removed.`,
+                    isDanger: true,
+                    confirmText: 'Delete'
+                });
+            } else if (typeof window.showCustomConfirm === 'function') {
+                confirmed = await window.showCustomConfirm({
+                    title: 'Delete Watchlist',
+                    message: `Are you sure you want to permanently delete watchlist "${nameToDelete}"?\n\nAll stocks in this watchlist will be removed.`,
+                    isDanger: true,
+                    confirmText: 'Delete'
+                });
+            } else {
+                const confirmFn = window.nativeConfirm || window.confirm;
+                confirmed = confirmFn(`Are you sure you want to permanently delete watchlist "${nameToDelete}"?\n\nAll stocks in this watchlist will be removed.`);
+            }
 
             if (!confirmed) return;
 
@@ -160,7 +177,7 @@
                 const res = await fetch(`/api/watchlists/${encodeURIComponent(nameToDelete)}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
-                    (window.nativeAlert || alert)(`Watchlist "${nameToDelete}" deleted successfully.`);
+                    showToast(`Watchlist "${nameToDelete}" deleted successfully`, 'info');
                     watchlistsData = data.watchlists;
                     const names = Object.keys(watchlistsData);
                     if (activeWatchlistName === nameToDelete) {
@@ -169,13 +186,14 @@
                     renderWatchlists();
                     refreshPrices();
                 } else {
-                    (window.nativeAlert || alert)(data.error || 'Failed to delete watchlist.');
+                    showToast(data.error || 'Failed to delete watchlist', 'error');
                 }
             } catch (err) {
                 console.error('Delete watchlist error:', err);
-                (window.nativeAlert || alert)('Error deleting watchlist. Please check network connection.');
+                showToast('Error deleting watchlist. Please check network connection.', 'error');
             }
         }
+        window.deleteActiveWatchlist = deleteActiveWatchlist;
 
         async function addWatchlistStock(watchlistName, symbolInputValue = null) {
             const targetName = watchlistName || activeWatchlistName;
@@ -192,7 +210,7 @@
             const data = await res.json();
             if (data.success) {
                 if (input) input.value = '';
-                showToast(`Added ${symbol} to ${targetName}`, 'success');
+                showToast(`Added ${cleanDisplaySymbol(symbol)} to ${targetName}`, 'success');
                 watchlistsData = data.watchlists;
                 renderWatchlists();
                 refreshPrices();
@@ -200,27 +218,51 @@
                 showToast(data.error || 'Failed to add stock', 'error');
             }
         }
+        window.addWatchlistStock = addWatchlistStock;
 
         async function removeWatchlistStock(watchlistName, symbol) {
             const targetName = watchlistName || activeWatchlistName;
-            if (!targetName) return;
-            const confirmFn = window.nativeConfirm || window.confirm;
-            if (!confirmFn(`Are you sure you want to remove ${cleanDisplaySymbol(symbol)} (${symbol}) from "${targetName}"?`)) return;
+            if (!targetName || !symbol) return;
+
+            let confirmed = false;
+            if (typeof showCustomConfirm === 'function') {
+                confirmed = await showCustomConfirm({
+                    title: 'Remove Stock',
+                    message: `Are you sure you want to remove ${cleanDisplaySymbol(symbol)} (${symbol}) from "${targetName}"?`,
+                    isDanger: true,
+                    confirmText: 'Remove'
+                });
+            } else if (typeof window.showCustomConfirm === 'function') {
+                confirmed = await window.showCustomConfirm({
+                    title: 'Remove Stock',
+                    message: `Are you sure you want to remove ${cleanDisplaySymbol(symbol)} (${symbol}) from "${targetName}"?`,
+                    isDanger: true,
+                    confirmText: 'Remove'
+                });
+            } else {
+                const confirmFn = window.nativeConfirm || window.confirm;
+                confirmed = confirmFn(`Are you sure you want to remove ${cleanDisplaySymbol(symbol)} (${symbol}) from "${targetName}"?`);
+            }
+
+            if (!confirmed) return;
+
             try {
                 const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
+                    showToast(`Removed ${cleanDisplaySymbol(symbol)} from ${targetName}`, 'info');
                     watchlistsData = data.watchlists;
                     renderWatchlists();
                     refreshPrices();
                 } else {
-                    alert(data.error || 'Failed to remove stock');
+                    showToast(data.error || 'Failed to remove stock', 'error');
                 }
             } catch (err) {
                 console.error('Remove stock error:', err);
-                alert('Failed to remove stock. Please check network connection.');
+                showToast('Failed to remove stock. Please check network connection.', 'error');
             }
         }
+        window.removeWatchlistStock = removeWatchlistStock;
 
         function getSymbolBadge(sym, defaultExch = '') {
             if (!sym) return { label: 'NSE', class: 'badge-nse' };
@@ -971,12 +1013,13 @@
             const data = await res.json();
             if (data.success) {
                 closeCreateWatchlistModal();
+                showToast(`Created watchlist "${name}"`, 'success');
                 watchlistsData = data.watchlists;
                 activeWatchlistName = name;
                 renderWatchlists();
                 refreshPrices();
             } else {
-                alert(data.error || 'Failed to create watchlist');
+                showToast(data.error || 'Failed to create watchlist', 'error');
             }
         }
 
@@ -992,13 +1035,13 @@
         // =========================================================
         function exportActiveWatchlistToTxt() {
             if (!activeWatchlistName || !watchlistsData[activeWatchlistName]) {
-                alert('No active watchlist selected to export!');
+                showToast('No active watchlist selected to export!', 'warning');
                 return;
             }
 
             const symbols = (watchlistsData[activeWatchlistName] || []).slice();
             if (symbols.length === 0) {
-                alert('The current watchlist is empty.');
+                showToast('The current watchlist is empty.', 'info');
                 return;
             }
 
@@ -1013,6 +1056,7 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
+            showToast(`Exported ${symbols.length} stocks from ${activeWatchlistName}`, 'success');
         }
 
         function openWatchlistTxtImportModal() {

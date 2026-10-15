@@ -245,3 +245,15 @@ def remove_stock(name, symbol):
         to_remove = []
         for s in data[target_key]:
             s_str = str(s).strip()
+            if s_str.upper() == sym_unquoted.upper() or s_str.upper() == str(symbol).strip().upper():
+                to_remove.append(s)
+            elif re.sub(r"\.(NS|BO)$", "", s_str, flags=re.IGNORECASE).upper() == sym_clean.upper():
+                to_remove.append(s)
+
+        for s in to_remove:
+            if s in data[target_key]:
+                data[target_key].remove(s)
+
+        save_data(data)
+
+    return jsonify({"success": True, "watchlists": data})
