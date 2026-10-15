@@ -1,17 +1,22 @@
-"""Fetch and normalize the public IPO/GMP feed for the IPO tracker."""
+"""Fetch and normalize the public IPO/GMP feed for the IPO tracker.
+Primary provider: InvestorGain (live IPO GMP report)
+Secondary fallback: IPOWatch
+Tertiary fallback: gmptoday / bundled seed
+"""
 
 import copy
 import datetime as dt
+import json
 import logging
 import os
 import re
 import threading
 import time
 
-import json
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from bs4 import BeautifulSoup
 from db_store import db as _mongo_db
 
 try:
@@ -20,16 +25,24 @@ try:
 except ImportError:
     _HAS_CURL_CFFI = False
 
+logger = logging.getLogger(__name__)
 
-FEED_URL = os.environ.get("IPO_TRACKER_FEED_URL", "https://gmptoday.in/api/gmp.json")
+INVESTORGAIN_URL = os.environ.get("IPO_TRACKER_FEED_URL", "https://www.investorgain.com/report/live-ipo-gmp/331/")
+IPOWATCH_URL = "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/"
+GMPTODAY_URL = "https://gmptoday.in/api/gmp.json"
+
+PROVIDER_PAGE_URL = "https://www.investorgain.com/report/live-ipo-gmp/331/"
 OFFICIAL_IPO_URL = "https://www.nseindia.com/market-data/all-upcoming-issues-ipo"
-PROVIDER_PAGE_URL = "https://gmptoday.in/"
+FEED_URL = INVESTORGAIN_URL
+
 try:
-    FEED_TTL_SECONDS = max(60, int(os.environ.get("IPO_TRACKER_CACHE_SECONDS", "600")))
+    FEED_TTL_SECONDS = max(60, int(os.environ.get("IPO_TRACKER_CACHE_SECONDS", "300")))
 except (TypeError, ValueError):
-    FEED_TTL_SECONDS = 600
-REQUEST_TIMEOUT = (8, 30)
+    FEED_TTL_SECONDS = 300
+
+REQUEST_TIMEOUT = (8, 20)
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
 _HTTP_SESSION = requests.Session()
 _HTTP_SESSION.headers.update({
     "User-Agent": USER_AGENT,
@@ -38,22 +51,19 @@ _HTTP_SESSION.headers.update({
     "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
     "Sec-Ch-Ua-Mobile": "?0",
     "Sec-Ch-Ua-Platform": '"Windows"',
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "same-origin",
-    "Referer": PROVIDER_PAGE_URL,
 })
 _RETRY_POLICY = Retry(
-    total=1,
+    total=2,
     connect=1,
     read=1,
     status=1,
-    backoff_factor=0.25,
+    backoff_factor=0.3,
     status_forcelist=(429, 500, 502, 503, 504),
     allowed_methods=frozenset({"GET"}),
     respect_retry_after_header=True,
 )
 _HTTP_SESSION.mount("https://", HTTPAdapter(max_retries=_RETRY_POLICY))
+_HTTP_SESSION.mount("http://", HTTPAdapter(max_retries=_RETRY_POLICY))
 
 _cache_lock = threading.RLock()
 _cached_payload = None
@@ -69,12 +79,11 @@ def _load_fallback_seed():
                 if isinstance(data, dict) and isinstance(data.get("ipos"), list) and data["ipos"]:
                     return data
     except Exception as exc:
-        logging.getLogger(__name__).warning("Error loading fallback IPO seed: %s", exc)
+        logger.warning("Error loading fallback IPO seed: %s", exc)
     return None
 
 
 def _restore_cache_from_mongo():
-    """Restore the last shared feed snapshot so an app restart can serve stale data."""
     global _cached_payload, _cached_monotonic
     if _mongo_db is not None:
         try:
@@ -93,7 +102,6 @@ def _restore_cache_from_mongo():
         except Exception:
             pass
 
-    # Fall back to bundled seed if Mongo is empty or unavailable
     seed = _load_fallback_seed()
     if seed:
         _cached_payload = seed
@@ -110,7 +118,6 @@ def _persist_cache_to_mongo(payload):
             upsert=True,
         )
     except Exception:
-        # The in-process feed cache still works if the database is temporarily unavailable.
         return
 
 
@@ -123,7 +130,7 @@ def _number(value):
         return None
     if isinstance(value, (int, float)):
         return float(value)
-    raw = str(value).strip().replace(",", "")
+    raw = str(value).strip().replace(",", "").replace("₹", "")
     if not raw or raw.lower() in {"-", "—", "n/a", "na", "none", "null"}:
         return None
     match = re.search(r"[-+]?(?:\d+\.?\d*|\.\d+)", raw)
@@ -135,279 +142,326 @@ def _number(value):
         return None
 
 
-def _upper_price(value):
-    """The feed commonly provides the upper band as one number; accept ranges too."""
-    if value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    raw = str(value).replace(",", "")
-    numbers = re.findall(r"[-+]?(?:\d+\.?\d*|\.\d+)", raw)
-    if not numbers:
-        return None
-    try:
-        return float(numbers[-1])
-    except ValueError:
-        return None
-
-
-def _safe_source_rows(rows):
-    result = []
-    if not isinstance(rows, list):
-        return result
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        result.append({
-            "label": str(row.get("label") or row.get("src") or "Source")[:80],
-            "url": str(row.get("url") or "")[:500],
-            "gmp": _number(row.get("gmp")),
-        })
-    return result[:12]
-
-
-def normalize_ipo(item):
-    if not isinstance(item, dict):
-        return None
-
-    name = str(item.get("name") or item.get("company") or "").strip()
-    if not name:
-        return None
-
-    gmp = _number(item.get("gmp_median", item.get("median_gmp", item.get("gmp"))))
-    upper_price = _upper_price(item.get("price_band") or item.get("upper_price"))
-    gmp_pct = _number(item.get("est_listing_gain_pct", item.get("gmp_pct")))
-    if gmp_pct is None and gmp is not None and upper_price and upper_price > 0:
-        gmp_pct = round((gmp / upper_price * 100.0), 2)
-
-    slug = str(item.get("slug") or "").strip(" /")
-    open_date = str(item.get("open_date") or "").strip()
-    close_date = str(item.get("close_date") or "").strip()
-    bidding = str(item.get("bidding") or item.get("open_close") or item.get("dates") or "").strip()
-
-    if open_date and close_date:
-        dates = f"{open_date} to {close_date}"
-    elif bidding:
-        dates = bidding
-    else:
-        dates = "Dates not reported"
-
-    detail_url = str(item.get("url") or "").strip()
-    if not detail_url:
-        detail_url = f"https://gmptoday.in/ipo/{slug}/" if slug and re.fullmatch(r"[a-zA-Z0-9-]+", slug) else PROVIDER_PAGE_URL
-
-    source_count = int(_number(item.get("gmp_sources", item.get("n_sources", item.get("source_count")))) or 0)
-    source_rows = _safe_source_rows(item.get("source_rows") or item.get("sources"))
-
-    return {
-        "id": str(item.get("key") or slug or name.lower())[:160],
-        "name": name[:180],
-        "segment": str(item.get("type") or item.get("group") or item.get("segment") or "IPO").upper()[:40],
-        "status": str(item.get("status") or "Status unavailable")[:60],
-        "dates": dates[:100],
-        "open_date": open_date[:40],
-        "close_date": close_date[:40],
-        "allotment_date": str(item.get("allotment_date") or "")[:40],
-        "listing_date": str(item.get("listing_date") or "")[:60],
-        "upper_price": upper_price,
-        "upper_price_display": str(item.get("price_band_display") or (f"₹{upper_price:g}" if upper_price else ""))[:80],
-        "issue_size": str(item.get("issue_size") or "Not reported")[:100],
-        "lot_size": _number(item.get("lot_size")),
-        "min_investment": _number(item.get("min_investment")),
-        "subscription": _number(item.get("subscription")),
-        "gmp": gmp,
-        "gmp_min": _number(item.get("gmp_min", item.get("min_gmp"))),
-        "gmp_max": _number(item.get("gmp_max", item.get("max_gmp"))),
-        "gmp_pct": gmp_pct,
-        "source_count": source_count,
-        "confidence": str(item.get("confidence") or "")[:30],
-        "score": _number(item.get("score")),
-        "source_rows": source_rows,
-        "detail_url": detail_url,
-    }
-
-
-def _parse_provider_html(html, sample_items=None):
-    sample_map = {item.get("slug"): item for item in (sample_items or []) if isinstance(item, dict) and item.get("slug")}
-    pattern = re.compile(r'<a\s+class="row"\s+href="/ipo/([^/"]+)/"\s+([^>]*)>(.*?)</a>', re.DOTALL)
-    matches = pattern.findall(html)
-    if not matches:
-        return []
-
-    normalized_list = []
-    for slug, attr_str, inner_html in matches:
-        attrs = dict(re.findall(r'data-([a-zA-Z0-9-]+)="([^"]*)"', attr_str))
-        sample = sample_map.get(slug, {})
-
-        name_m = re.search(r'class="row-name"[^>]*>(.*?)(?:<em|\s*</span>)', inner_html, re.DOTALL)
-        name = (name_m.group(1).strip() if name_m else attrs.get('name', slug)) or sample.get('name', '')
-        name = re.sub(r'<[^>]+>', '', name).strip()
-        if not name:
-            name = slug.replace('-', ' ').title()
-
-        st_m = re.search(r'class="st st-([a-zA-Z0-9-]+)"[^>]*>(.*?)</em>', inner_html)
-        status = st_m.group(2).strip() if st_m else sample.get('status')
-        if not status:
-            status = 'Open' if 'data-close' in attrs else 'Upcoming'
-
-        group_attr = attrs.get('group', '').upper()
-        if group_attr == 'MAINBOARD':
-            segment = 'MAINBOARD'
-        elif group_attr == 'SME':
-            segment = 'SME'
-        elif group_attr:
-            segment = group_attr
-        else:
-            if 'sme' in name.lower() or 'sme' in str(sample.get('type', '')).lower():
-                segment = 'SME'
-            elif sample.get('type'):
-                segment = str(sample.get('type')).upper()
-            else:
-                segment = 'MAINBOARD'
-
-        when_m = re.search(r'class="c-when"[^>]*>(.*?)</span>', inner_html)
-        when = when_m.group(1).strip() if when_m else ''
-        if not when or when in {'—', '-'}:
-            when = sample.get('bidding') or sample.get('dates') or 'Dates not reported'
-
-        gmp = _number(attrs.get('med'))
-        if gmp is None:
-            gmp = _number(sample.get('gmp_median', sample.get('median_gmp', sample.get('gmp'))))
-
-        gmp_pct = _number(attrs.get('est'))
-        if gmp_pct is None:
-            gmp_pct = _number(sample.get('est_listing_gain_pct', sample.get('gmp_pct')))
-
-        range_m = re.search(r'class="c-range[^"]*"[^>]*>([^<]+)', inner_html)
-        range_text = range_m.group(1).strip() if range_m else ''
-        gmp_min = _number(sample.get('gmp_min', sample.get('min_gmp')))
-        gmp_max = _number(sample.get('gmp_max', sample.get('max_gmp')))
-        if (gmp_min is None or gmp_max is None) and range_text and '–' in range_text:
-            nums = re.findall(r'[-+]?(?:\d+\.?\d*|\.\d+)', range_text.replace(',', ''))
-            if len(nums) >= 2:
-                try:
-                    gmp_min = float(nums[0])
-                    gmp_max = float(nums[1])
-                except ValueError:
-                    pass
-
-        upper_price = _number(sample.get('price_band') or sample.get('upper_price'))
-        if upper_price is None and gmp and gmp_pct and gmp_pct > 0:
-            upper_price = round(gmp / (gmp_pct / 100.0), 2)
-
-        tags = re.findall(r'class="tag tag-([a-zA-Z0-9-]+)"[^>]*>(.*?)</em>', inner_html)
-        min_inv_num = _number(sample.get('min_investment'))
-        for t_type, t_val in tags:
-            t_clean = t_val.strip()
-            if ('Min' in t_clean or '₹' in t_clean) and min_inv_num is None:
-                min_inv_num = _number(t_clean)
-
-        lot_size = _number(sample.get('lot_size'))
-        if lot_size is None and min_inv_num and upper_price and upper_price > 0:
-            lot_size = round(min_inv_num / upper_price)
-
-        sub_m = re.search(r'class="c-sub[^"]*"[^>]*>([^<]+)', inner_html)
-        subscription = _number(sub_m.group(1).replace('×', '') if sub_m else attrs.get('sub'))
-        if subscription is None:
-            subscription = _number(sample.get('subscription'))
-
-        conf_m = re.search(r'class="badge badge-([a-zA-Z0-9-]+)"[^>]*>(.*?)</em>', inner_html)
-        confidence = conf_m.group(2).strip() if conf_m else sample.get('confidence', '')
-
-        sources_m = re.search(r'<small>(\d+)\s+sources?</small>', inner_html)
-        source_count = int(sources_m.group(1)) if sources_m else int(_number(sample.get('gmp_sources', sample.get('n_sources'))) or 0)
-
-        source_rows = _safe_source_rows(sample.get('source_rows') or sample.get('sources'))
-
-        normalized_list.append({
-            "id": slug,
-            "name": name[:180],
-            "segment": segment[:40],
-            "status": status[:60],
-            "dates": when[:100],
-            "open_date": str(sample.get("open_date") or "")[:40],
-            "close_date": str(sample.get("close_date") or "")[:40],
-            "allotment_date": str(sample.get("allotment_date") or "")[:40],
-            "listing_date": str(sample.get("listing_date") or "")[:60],
-            "upper_price": upper_price,
-            "upper_price_display": (f"₹{upper_price:g}" if upper_price else "")[:80],
-            "issue_size": str(sample.get("issue_size") or "Not reported")[:100],
-            "lot_size": lot_size,
-            "min_investment": min_inv_num,
-            "subscription": subscription,
-            "gmp": gmp,
-            "gmp_min": gmp_min,
-            "gmp_max": gmp_max,
-            "gmp_pct": gmp_pct,
-            "source_count": source_count,
-            "confidence": confidence[:30],
-            "score": _number(sample.get("score")),
-            "source_rows": source_rows,
-            "detail_url": f"https://gmptoday.in/ipo/{slug}/",
-        })
-
-    return normalized_list
+def _parse_date(val):
+    if not val:
+        return ""
+    val_str = str(val).strip()
+    m_full = re.search(r"(\d{1,2})-([A-Za-z]{3})-(\d{2,4})", val_str)
+    if m_full:
+        day, mon, yr = m_full.group(1), m_full.group(2).capitalize(), m_full.group(3)
+        if len(yr) == 2:
+            yr = f"20{yr}"
+        return f"{day} {mon} {yr}"
+    m_short = re.search(r"(\d{1,2})-([A-Za-z]{3})", val_str)
+    if m_short:
+        day, mon = m_short.group(1), m_short.group(2).capitalize()
+        curr_year = dt.datetime.now().year
+        return f"{day} {mon} {curr_year}"
+    return val_str
 
 
 def _fetch_url(url, is_json=False):
     """Fetch URL with curl_cffi Chrome impersonation first, falling back to requests."""
     if _HAS_CURL_CFFI:
         try:
-            headers = {"Referer": PROVIDER_PAGE_URL}
+            headers = {"User-Agent": USER_AGENT}
             if is_json:
                 headers["Accept"] = "application/json, text/plain, */*"
             resp = cffi_requests.get(url, impersonate="chrome124", timeout=REQUEST_TIMEOUT[1], headers=headers)
             if resp.status_code == 200:
                 return resp
         except Exception as exc:
-            logging.getLogger(__name__).warning("curl_cffi fetch notice for %s: %s", url, exc)
+            logger.debug("curl_cffi fetch notice for %s: %s", url, exc)
 
     try:
         resp = _HTTP_SESSION.get(url, timeout=REQUEST_TIMEOUT)
         return resp
     except Exception as exc:
-        logging.getLogger(__name__).warning("requests fetch notice for %s: %s", url, exc)
+        logger.debug("requests fetch notice for %s: %s", url, exc)
         return None
 
 
+def _fetch_from_investorgain():
+    """Primary provider: parse InvestorGain's live IPO GMP table."""
+    resp = _fetch_url(INVESTORGAIN_URL, is_json=False)
+    if not resp or resp.status_code != 200 or not resp.text:
+        return None
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    table = soup.find("table", id="reportTable")
+    if not table:
+        table = soup.find("table")
+    if not table:
+        return None
+
+    ipos = []
+    rows = table.find_all("tr")
+    for row in rows[1:]:
+        tds = row.find_all("td")
+        if len(tds) < 8:
+            continue
+
+        td0 = tds[0]
+        link = td0.find("a")
+        raw_name = link.get_text(strip=True) if link else td0.get_text(" ", strip=True)
+        if not raw_name or raw_name.lower() in ("name", "company"):
+            continue
+
+        clean_name = re.sub(r"\s+(?:IPO|BSE\s+SME|NSE\s+SME)\s+[UOC]$", "", raw_name, flags=re.IGNORECASE)
+        clean_name = re.sub(r"\s+[UOC]$", "", clean_name).strip()
+
+        href = link.get("href", "") if link else ""
+        slug = href.strip("/") if href else clean_name.lower().replace(" ", "-")
+        detail_url = f"https://www.investorgain.com{href}" if href else INVESTORGAIN_URL
+
+        badges = [b.get_text(strip=True) for b in td0.find_all("span", class_="badge")]
+        status = "Closed"
+        if "O" in badges:
+            status = "Open"
+        elif "U" in badges:
+            status = "Upcoming"
+        elif "C" in badges:
+            status = "Closed"
+        else:
+            txt_lower = td0.get_text(" ", strip=True).lower()
+            if "open" in txt_lower:
+                status = "Open"
+            elif "upcoming" in txt_lower:
+                status = "Upcoming"
+
+        segment = "SME" if any("sme" in b.lower() for b in badges) or "sme" in raw_name.lower() else "MAINBOARD"
+
+        # GMP column (e.g. '₹ 111 (16.02%) 83 ↓ / 111 ↑')
+        gmp_td = tds[1].get_text(" ", strip=True) if len(tds) > 1 else ""
+        gmp = _number(gmp_td.split("(")[0] if "(" in gmp_td else gmp_td)
+
+        gmp_pct = None
+        if "(" in gmp_td and "%" in gmp_td:
+            gmp_pct = _number(gmp_td.split("(")[1].split("%")[0])
+
+        gmp_min, gmp_max = None, None
+        if "/" in gmp_td:
+            parts = gmp_td.split("/")
+            nums_left = re.findall(r"[-+]?\d+", parts[0].replace(",", ""))
+            nums_right = re.findall(r"[-+]?\d+", parts[1].replace(",", ""))
+            if nums_left and nums_right:
+                try:
+                    gmp_min = float(nums_left[-1])
+                    gmp_max = float(nums_right[0])
+                except ValueError:
+                    pass
+
+        rating_text = tds[2].get_text(strip=True) if len(tds) > 2 else ""
+        confidence = "High" if "🔥🔥🔥" in rating_text else ("Moderate" if "🔥" in rating_text else "")
+
+        sub_text = tds[3].get_text(strip=True) if len(tds) > 3 else ""
+        subscription = _number(sub_text.replace("x", "")) if (sub_text and sub_text != "-") else None
+
+        price_val = _number(tds[4].get_text(strip=True)) if len(tds) > 4 else None
+        issue_size = tds[5].get_text(" ", strip=True) if len(tds) > 5 else "Not reported"
+        if not issue_size or issue_size in ("-", "—"):
+            issue_size = "Not reported"
+
+        lot_size = _number(tds[6].get_text(strip=True)) if len(tds) > 6 else None
+        min_inv = round(price_val * lot_size, 2) if (price_val and lot_size) else None
+
+        open_d = _parse_date(tds[7].get_text(" ", strip=True)) if len(tds) > 7 else ""
+        close_d = _parse_date(tds[8].get_text(" ", strip=True)) if len(tds) > 8 else ""
+        boa_d = _parse_date(tds[9].get_text(" ", strip=True)) if len(tds) > 9 else ""
+        list_d = _parse_date(tds[10].get_text(" ", strip=True)) if len(tds) > 10 else ""
+        dates = f"{open_d} to {close_d}" if (open_d and close_d) else (f"Opens {open_d}" if open_d else "Dates not reported")
+
+        source_rows = [{"label": "InvestorGain Live GMP", "url": detail_url, "gmp": gmp}]
+
+        ipos.append({
+            "id": slug,
+            "name": clean_name[:180],
+            "segment": segment[:40],
+            "status": status[:60],
+            "dates": dates[:100],
+            "open_date": open_d[:40],
+            "close_date": close_d[:40],
+            "allotment_date": boa_d[:40],
+            "listing_date": list_d[:60],
+            "upper_price": price_val,
+            "upper_price_display": f"₹{price_val:g}" if price_val else "Not reported",
+            "issue_size": issue_size[:100],
+            "lot_size": lot_size,
+            "min_investment": min_inv,
+            "subscription": subscription,
+            "gmp": gmp,
+            "gmp_min": gmp_min,
+            "gmp_max": gmp_max,
+            "gmp_pct": gmp_pct,
+            "source_count": 1,
+            "confidence": confidence,
+            "score": None,
+            "source_rows": source_rows,
+            "detail_url": detail_url,
+        })
+
+    return ipos if ipos else None
+
+
+def _fetch_from_ipowatch():
+    """Secondary provider: parse IPOWatch GMP table."""
+    resp = _fetch_url(IPOWATCH_URL, is_json=False)
+    if not resp or resp.status_code != 200 or not resp.text:
+        return None
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    tables = soup.find_all("table")
+    if not tables:
+        return None
+
+    ipos = []
+    for table in tables:
+        rows = table.find_all("tr")
+        for row in rows[1:]:
+            tds = row.find_all("td")
+            if len(tds) < 5:
+                continue
+
+            raw_name = tds[0].get_text(" ", strip=True)
+            status = "Upcoming"
+            if "open" in raw_name.lower():
+                status = "Open"
+            elif "closed" in raw_name.lower() or "allot" in raw_name.lower() or "listed" in raw_name.lower():
+                status = "Closed"
+
+            clean_name = re.sub(r"(?:Upcoming|Open|Closed|Allotted|Listed)$", "", raw_name, flags=re.IGNORECASE).strip()
+            segment = "SME" if "sme" in raw_name.lower() else "MAINBOARD"
+
+            gmp = _number(tds[1].get_text(" ", strip=True))
+            price_val = _number(tds[3].get_text(" ", strip=True))
+            est_gain_text = tds[4].get_text(" ", strip=True) if len(tds) > 4 else ""
+            gmp_pct = None
+            if "(" in est_gain_text and "%" in est_gain_text:
+                gmp_pct = _number(est_gain_text.split("(")[1].split("%")[0])
+
+            dates_text = tds[5].get_text(" ", strip=True) if len(tds) > 5 else "Dates not reported"
+
+            link = tds[0].find("a")
+            detail_url = link.get("href", IPOWATCH_URL) if link else IPOWATCH_URL
+            slug = clean_name.lower().replace(" ", "-")
+
+            ipos.append({
+                "id": slug,
+                "name": clean_name[:180],
+                "segment": segment,
+                "status": status,
+                "dates": dates_text[:100],
+                "open_date": "",
+                "close_date": "",
+                "allotment_date": "",
+                "listing_date": "",
+                "upper_price": price_val,
+                "upper_price_display": f"₹{price_val:g}" if price_val else "Not reported",
+                "issue_size": "Not reported",
+                "lot_size": None,
+                "min_investment": None,
+                "subscription": None,
+                "gmp": gmp,
+                "gmp_min": None,
+                "gmp_max": None,
+                "gmp_pct": gmp_pct,
+                "source_count": 1,
+                "confidence": "Moderate",
+                "score": None,
+                "source_rows": [{"label": "IPOWatch GMP", "url": detail_url, "gmp": gmp}],
+                "detail_url": detail_url,
+            })
+
+    return ipos if ipos else None
+
+
+def normalize_ipo(item):
+    """Normalize raw dictionary IPO record (backwards compatibility)."""
+    if not isinstance(item, dict):
+        return None
+    name = str(item.get("name") or item.get("company") or "").strip()
+    if not name:
+        return None
+    upper_price = _number(item.get("upper_price") or item.get("price_band"))
+    gmp = _number(item.get("gmp") or item.get("gmp_median"))
+    gmp_pct = _number(item.get("gmp_pct") or item.get("est_listing_gain_pct"))
+    if gmp_pct is None and gmp is not None and upper_price and upper_price > 0:
+        gmp_pct = round((gmp / upper_price * 100.0), 2)
+
+    return {
+        "id": str(item.get("id") or item.get("slug") or name.lower().replace(" ", "-"))[:160],
+        "name": name[:180],
+        "segment": str(item.get("segment") or item.get("type") or "MAINBOARD").upper()[:40],
+        "status": str(item.get("status") or "Upcoming")[:60],
+        "dates": str(item.get("dates") or "Dates not reported")[:100],
+        "open_date": str(item.get("open_date") or "")[:40],
+        "close_date": str(item.get("close_date") or "")[:40],
+        "allotment_date": str(item.get("allotment_date") or "")[:40],
+        "listing_date": str(item.get("listing_date") or "")[:60],
+        "upper_price": upper_price,
+        "upper_price_display": str(item.get("upper_price_display") or (f"₹{upper_price:g}" if upper_price else "Not reported"))[:80],
+        "issue_size": str(item.get("issue_size") or "Not reported")[:100],
+        "lot_size": _number(item.get("lot_size")),
+        "min_investment": _number(item.get("min_investment")),
+        "subscription": _number(item.get("subscription")),
+        "gmp": gmp,
+        "gmp_min": _number(item.get("gmp_min")),
+        "gmp_max": _number(item.get("gmp_max")),
+        "gmp_pct": gmp_pct,
+        "source_count": int(_number(item.get("source_count")) or 1),
+        "confidence": str(item.get("confidence") or "")[:30],
+        "score": _number(item.get("score")),
+        "source_rows": item.get("source_rows") or [],
+        "detail_url": str(item.get("detail_url") or PROVIDER_PAGE_URL),
+    }
+
+
 def _fetch_payload():
-    json_data = {}
-    sample_items = []
-    resp_json = _fetch_url(FEED_URL, is_json=True)
-    if resp_json and resp_json.status_code == 200:
-        try:
-            data = resp_json.json()
-            if isinstance(data, dict) and isinstance(data.get("ipos"), list):
-                json_data = data
-                sample_items = data["ipos"]
-        except Exception as exc:
-            logging.getLogger(__name__).warning("IPO JSON parse notice: %s", exc)
+    """Try InvestorGain first, then IPOWatch, then fallback to seed."""
+    ipos = None
+    provider_name = "InvestorGain"
+    provider_url = PROVIDER_PAGE_URL
 
-    html_ipos = []
-    resp_html = _fetch_url(PROVIDER_PAGE_URL, is_json=False)
-    if resp_html and resp_html.status_code == 200:
-        try:
-            html_ipos = _parse_provider_html(resp_html.text, sample_items)
-        except Exception as exc:
-            logging.getLogger(__name__).warning("IPO HTML page parse notice: %s", exc)
+    try:
+        ipos = _fetch_from_investorgain()
+        if ipos:
+            provider_name = "InvestorGain"
+            provider_url = INVESTORGAIN_URL
+    except Exception as exc:
+        logger.warning("InvestorGain fetch notice: %s", exc)
 
-    if html_ipos:
-        ipos = html_ipos
-    elif sample_items:
-        ipos = [normalized for normalized in (normalize_ipo(item) for item in sample_items) if normalized]
-    else:
+    if not ipos:
+        try:
+            ipos = _fetch_from_ipowatch()
+            if ipos:
+                provider_name = "IPOWatch"
+                provider_url = IPOWATCH_URL
+        except Exception as exc:
+            logger.warning("IPOWatch fetch notice: %s", exc)
+
+    if not ipos:
+        seed = _load_fallback_seed()
+        if seed and isinstance(seed.get("ipos"), list) and seed["ipos"]:
+            ipos = seed["ipos"]
+            provider_name = seed.get("provider", "InvestorGain")
+            provider_url = seed.get("provider_url", PROVIDER_PAGE_URL)
+
+    if not ipos:
         raise IPOFeedError("Could not reach the live IPO data provider. Please retry in a moment.")
+
+    now_iso = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    now_display = dt.datetime.now().strftime("%d %b %Y, %I:%M %p")
 
     return {
         "ipos": ipos,
-        "generated_at": json_data.get("generated_at") or json_data.get("updated_at") or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-        "generated_display": json_data.get("generated_display") or json_data.get("generated_at") or json_data.get("updated_at") or "Provider live sync",
-        "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-        "provider": "IPO GMP Today",
-        "provider_url": PROVIDER_PAGE_URL,
-        "provider_data_url": FEED_URL,
+        "generated_at": now_iso,
+        "generated_display": f"{provider_name} Live Sync · {now_display}",
+        "fetched_at": now_iso,
+        "provider": provider_name,
+        "provider_url": provider_url,
+        "provider_data_url": provider_url,
         "official_ipo_url": OFFICIAL_IPO_URL,
-        "license": "CC BY 4.0",
+        "license": "Live Market Tracking",
         "is_stale": False,
         "refresh_error": None,
     }
@@ -465,11 +519,11 @@ def save_synced_ipo_data(json_data):
         "generated_at": json_data.get("generated_at") or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "generated_display": json_data.get("generated_display") or "Client direct sync",
         "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-        "provider": "IPO GMP Today",
-        "provider_url": PROVIDER_PAGE_URL,
-        "provider_data_url": FEED_URL,
+        "provider": json_data.get("provider") or "InvestorGain",
+        "provider_url": json_data.get("provider_url") or PROVIDER_PAGE_URL,
+        "provider_data_url": json_data.get("provider_data_url") or PROVIDER_PAGE_URL,
         "official_ipo_url": OFFICIAL_IPO_URL,
-        "license": "CC BY 4.0",
+        "license": "Live Market Tracking",
         "is_stale": False,
         "refresh_error": None,
     }

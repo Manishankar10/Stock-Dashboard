@@ -111,11 +111,15 @@
         function formatAppDate(value) {
             if (!value) return '';
             const strVal = String(value).trim();
-            if (/^\d{1,2}\s+[A-Za-z]{3}$/.test(strVal)) {
-                return strVal + ' ' + new Date().getFullYear();
+            const mFull = strVal.match(/^(\d{1,2})[-/\s]+([A-Za-z]{3})[-/\s]+(\d{2,4})$/);
+            if (mFull) {
+                let yr = mFull[3];
+                if (yr.length === 2) yr = '20' + yr;
+                return mFull[1] + ' ' + mFull[2] + ' ' + yr;
             }
-            if (/^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}$/.test(strVal)) {
-                return strVal;
+            const mShort = strVal.match(/^(\d{1,2})[-/\s]+([A-Za-z]{3})$/);
+            if (mShort) {
+                return mShort[1] + ' ' + mShort[2] + ' ' + new Date().getFullYear();
             }
             try {
                 if (typeof strVal === 'string') {
@@ -143,9 +147,11 @@
         let datesText = escapeHtml(ipo.dates || 'Dates not reported');
         if (ipo.open_date && ipo.close_date) {
             datesText = escapeHtml(formatAppDate(ipo.open_date) + ' to ' + formatAppDate(ipo.close_date));
-        } else if (ipo.dates && /^\d{2,4}[-/]\d{2}[-/]\d{2,4}\s+to\s+\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(ipo.dates)) {
-            const parts = ipo.dates.split(' to ');
-            datesText = escapeHtml(formatAppDate(parts[0]) + ' to ' + formatAppDate(parts[1]));
+        } else if (ipo.dates && /\s+to\s+/i.test(ipo.dates)) {
+            const parts = ipo.dates.split(/\s+to\s+/i);
+            if (parts.length === 2) {
+                datesText = escapeHtml(formatAppDate(parts[0]) + ' to ' + formatAppDate(parts[1]));
+            }
         }
 
         let secondaryDate = '';
@@ -237,37 +243,21 @@
         noticeElement.textContent = data.is_stale
             ? 'The provider could not be refreshed. Showing cached results; the update time above is from the last successful feed.'
             : '';
-        if (data.provider_url) document.getElementById('provider-link').href = externalUrl(data.provider_url) || 'https://gmptoday.in/';
+        if (data.provider_url) document.getElementById('provider-link').href = externalUrl(data.provider_url) || 'https://www.investorgain.com/report/live-ipo-gmp/331/';
         if (data.official_ipo_url) document.getElementById('official-link').href = externalUrl(data.official_ipo_url) || 'https://www.nseindia.com/market-data/all-upcoming-issues-ipo';
     }
 
     async function tryDirectProviderSync() {
         try {
-            const resp = await fetch('https://gmptoday.in/api/gmp.json', { cache: 'no-store' });
+            const resp = await fetch('/api/ipos?refresh=1', { cache: 'no-store' });
             if (!resp.ok) return false;
             const data = await resp.json();
             if (!data || !Array.isArray(data.ipos) || !data.ipos.length) return false;
-
-            // Background sync to server to populate server cache
-            fetch('/api/ipos/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            }).catch(function () {});
-
-            // If local table is not yet loaded, load it from refreshed endpoint
-            if (!ipos.length) {
-                const refreshed = await fetch('/api/ipos', { cache: 'no-store' });
-                if (refreshed.ok) {
-                    const freshData = await refreshed.json();
-                    ipos = Array.isArray(freshData.ipos) ? freshData.ipos : [];
-                    iposLoaded = true;
-                    updateCounts();
-                    setFreshness(freshData);
-                    render();
-                    return true;
-                }
-            }
+            ipos = data.ipos;
+            iposLoaded = true;
+            updateCounts();
+            setFreshness(data);
+            render();
             return true;
         } catch (e) {
             console.warn('Direct provider sync notice:', e);
