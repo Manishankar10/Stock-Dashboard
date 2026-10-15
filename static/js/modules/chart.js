@@ -1520,6 +1520,8 @@
         }
 
         let activeDrawingDrag = null;
+        let lastDrawingClickTime = 0;
+        let lastDrawingClickId = null;
 
         function handleChartPaneMouseMove(e) {
             if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) {
@@ -1544,7 +1546,7 @@
             if (drawingCanvas) {
                 if (clickedObj) {
                     drawingCanvas.style.pointerEvents = 'auto';
-                    drawingCanvas.style.cursor = 'grab';
+                    drawingCanvas.style.cursor = clickedObj.cursor || 'grab';
                 } else {
                     drawingCanvas.style.pointerEvents = 'none';
                     drawingCanvas.style.cursor = 'default';
@@ -1570,31 +1572,18 @@
             if (e.cancelable) e.preventDefault();
             e.stopPropagation();
 
-            let dragPart = 'body';
-            if (clickedObj.kind === 'shape') {
-                const shapes = getSavedChartShapes(currentChartSymbol);
-                const s = shapes.find(x => x.id === clickedObj.id);
-                if (s && (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange' || s.type === 'fib')) {
-                    const timeScale = mainChart.timeScale();
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
-                    const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
-                    const y2 = mainSeries.priceToCoordinate(s.price2);
-                    if (x1 !== null && y1 !== null && Math.hypot(pt.x - x1, pt.y - y1) < 14) dragPart = 'p1';
-                    else if (x2 !== null && y2 !== null && Math.hypot(pt.x - x2, pt.y - y2) < 14) dragPart = 'p2';
-                } else if (s && (s.type === 'parallelchannel' || s.type === 'fibext')) {
-                    const timeScale = mainChart.timeScale();
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
-                    const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
-                    const y2 = mainSeries.priceToCoordinate(s.price2);
-                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
-                    const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
-                    if (x1 !== null && y1 !== null && Math.hypot(pt.x - x1, pt.y - y1) < 14) dragPart = 'p1';
-                    else if (x2 !== null && y2 !== null && Math.hypot(pt.x - x2, pt.y - y2) < 14) dragPart = 'p2';
-                    else if (x3 !== null && y3 !== null && Math.hypot(pt.x - x3, pt.y - y3) < 14) dragPart = 'p3';
-                }
+            const now = Date.now();
+            if (lastDrawingClickId === clickedObj.id && (now - lastDrawingClickTime) < 350) {
+                lastDrawingClickTime = 0;
+                lastDrawingClickId = null;
+                hideCanvasObjectMenu();
+                openEditDrawingModal(clickedObj.kind, clickedObj.id);
+                return;
             }
+            lastDrawingClickTime = now;
+            lastDrawingClickId = clickedObj.id;
+
+            let dragPart = clickedObj.subPart || 'body';
 
             activeDrawingDrag = {
                 target: clickedObj,
@@ -1645,7 +1634,7 @@
                                 s.logical = initS.logical + dLogical;
                                 s.time = curPt.time || s.time;
                                 s.futureOffset = curPt.futureOffset || 0;
-                            } else if (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange' || s.type === 'fib') {
+                            } else if (s.type === 'trendline' || s.type === 'fib') {
                                 if (activeDrawingDrag.dragPart === 'p1') {
                                     s.price1 = parseFloat(curPt.price.toFixed(2));
                                     s.logical1 = curPt.logical;
@@ -1661,9 +1650,66 @@
                                     s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
                                     s.logical1 = initS.logical1 + dLogical;
                                     s.logical2 = initS.logical2 + dLogical;
+                                    if (cachedChartData && cachedChartData.candles) {
+                                        if (cachedChartData.candles[s.logical1]) s.time1 = cachedChartData.candles[s.logical1].time;
+                                        if (cachedChartData.candles[s.logical2]) s.time2 = cachedChartData.candles[s.logical2].time;
+                                    }
                                 }
-                            } else if (s.type === 'parallelchannel' || s.type === 'fibext') {
-                                if (activeDrawingDrag.dragPart === 'p1') {
+                            } else if (s.type === 'rectangle' || s.type === 'pricerange') {
+                                const isP1Top = initS.price1 >= initS.price2;
+                                const isP1Left = initS.logical1 <= (initS.logical2 !== undefined ? initS.logical2 : initS.logical1);
+
+                                if (activeDrawingDrag.dragPart === 'border-top') {
+                                    if (isP1Top) s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    else s.price2 = parseFloat(curPt.price.toFixed(2));
+                                } else if (activeDrawingDrag.dragPart === 'border-bottom') {
+                                    if (isP1Top) s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    else s.price1 = parseFloat(curPt.price.toFixed(2));
+                                } else if (activeDrawingDrag.dragPart === 'border-left') {
+                                    if (isP1Left) {
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                    } else {
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                    }
+                                } else if (activeDrawingDrag.dragPart === 'border-right') {
+                                    if (isP1Left) {
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                    } else {
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                    }
+                                } else if (activeDrawingDrag.dragPart === 'corner-top-left') {
+                                    if (isP1Top) s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    else s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    if (isP1Left) {
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                    } else {
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                    }
+                                } else if (activeDrawingDrag.dragPart === 'corner-top-right') {
+                                    if (isP1Top) s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    else s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    if (isP1Left) {
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                    } else {
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                    }
+                                } else if (activeDrawingDrag.dragPart === 'corner-bottom-left') {
+                                    if (isP1Top) s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    else s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    if (isP1Left) {
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                    } else {
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                    }
+                                } else if (activeDrawingDrag.dragPart === 'corner-bottom-right') {
+                                    if (isP1Top) s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    else s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    if (isP1Left) {
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                    } else {
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                    }
+                                } else if (activeDrawingDrag.dragPart === 'p1') {
                                     s.price1 = parseFloat(curPt.price.toFixed(2));
                                     s.logical1 = curPt.logical;
                                     s.time1 = curPt.time || s.time1;
@@ -1673,18 +1719,46 @@
                                     s.logical2 = curPt.logical;
                                     s.time2 = curPt.time || s.time2;
                                     s.futureOffset2 = curPt.futureOffset || 0;
-                                } else if (activeDrawingDrag.dragPart === 'p3') {
+                                } else {
+                                    // ONLY if clicked body -> move the entire shape!
+                                    s.price1 = parseFloat((initS.price1 + dPrice).toFixed(2));
+                                    s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
+                                    s.logical1 = initS.logical1 + dLogical;
+                                    s.logical2 = (initS.logical2 !== undefined ? initS.logical2 : initS.logical1) + dLogical;
+                                    if (cachedChartData && cachedChartData.candles) {
+                                        if (cachedChartData.candles[s.logical1]) s.time1 = cachedChartData.candles[s.logical1].time;
+                                        if (cachedChartData.candles[s.logical2]) s.time2 = cachedChartData.candles[s.logical2].time;
+                                    }
+                                }
+                            } else if (s.type === 'parallelchannel' || s.type === 'fibext') {
+                                if (activeDrawingDrag.dragPart === 'parallel' || activeDrawingDrag.dragPart === 'p3') {
                                     s.price3 = parseFloat(curPt.price.toFixed(2));
                                     s.logical3 = curPt.logical;
                                     s.time3 = curPt.time || s.time3;
                                     s.futureOffset3 = curPt.futureOffset || 0;
+                                } else if (activeDrawingDrag.dragPart === 'p1') {
+                                    s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    s.logical1 = curPt.logical;
+                                    s.time1 = curPt.time || s.time1;
+                                    s.futureOffset1 = curPt.futureOffset || 0;
+                                } else if (activeDrawingDrag.dragPart === 'p2') {
+                                    s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    s.logical2 = curPt.logical;
+                                    s.time2 = curPt.time || s.time2;
+                                    s.futureOffset2 = curPt.futureOffset || 0;
                                 } else {
+                                    // ONLY if clicked body -> move the entire channel/ext!
                                     s.price1 = parseFloat((initS.price1 + dPrice).toFixed(2));
                                     s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
                                     if (initS.price3 !== undefined) s.price3 = parseFloat((initS.price3 + dPrice).toFixed(2));
                                     s.logical1 = initS.logical1 + dLogical;
                                     s.logical2 = initS.logical2 + dLogical;
                                     if (initS.logical3 !== undefined) s.logical3 = initS.logical3 + dLogical;
+                                    if (cachedChartData && cachedChartData.candles) {
+                                        if (cachedChartData.candles[s.logical1]) s.time1 = cachedChartData.candles[s.logical1].time;
+                                        if (cachedChartData.candles[s.logical2]) s.time2 = cachedChartData.candles[s.logical2].time;
+                                        if (s.logical3 !== undefined && cachedChartData.candles[s.logical3]) s.time3 = cachedChartData.candles[s.logical3].time;
+                                    }
                                 }
                             }
                             localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
@@ -1703,6 +1777,8 @@
                 if (!activeDrawingDrag) return;
 
                 if (activeDrawingDrag.hasMoved) {
+                    lastDrawingClickTime = 0;
+                    lastDrawingClickId = null;
                     if (activeDrawingDrag.target.kind === 'line') {
                         const finalPt = getChartPointFromEvent(upEvt) || activeDrawingDrag.startPt;
                         if (finalPt && finalPt.price !== null && !isNaN(finalPt.price)) {
@@ -1927,13 +2003,13 @@
             if (!mainChart || !mainSeries) return null;
             const timeScale = mainChart.timeScale();
 
-            // Check price lines first
+            // Check price lines first (horizontal lines: hover/drag changes price)
             const lines = getSavedPriceLines(currentChartSymbol);
             for (let l of lines) {
                 if (l.hidden) continue;
                 const lineY = mainSeries.priceToCoordinate(l.price);
                 if (lineY !== null && Math.abs(y - lineY) < 10) {
-                    return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color, hidden: !!l.hidden, price: l.price };
+                    return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color, hidden: !!l.hidden, price: l.price, subPart: 'body', cursor: 'ns-resize' };
                 }
             }
 
@@ -1944,13 +2020,13 @@
                 if (s.type === 'vertical') {
                     const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                     if (shapeX !== null && Math.abs(x - shapeX) < 10) {
-                        return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color, hidden: !!s.hidden, type: s.type };
+                        return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'ew-resize' };
                     }
                 } else if (s.type === 'note') {
                     const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                     const shapeY = mainSeries.priceToCoordinate(s.price);
                     if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 35 && Math.abs(y - shapeY) < 22) {
-                        return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color, hidden: !!s.hidden, type: s.type };
+                        return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
                     }
                 } else if (s.type === 'trendline') {
                     const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
@@ -1958,9 +2034,17 @@
                     const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        const d1 = Math.hypot(x - x1, y - y1);
+                        const d2 = Math.hypot(x - x2, y - y2);
+                        if (d1 <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                        }
+                        if (d2 <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                        }
                         const dist = distanceToSegment(x, y, x1, y1, x2, y2);
                         if (dist < 10) {
-                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type };
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
                         }
                     }
                 } else if (s.type === 'rectangle' || s.type === 'pricerange') {
@@ -1969,18 +2053,57 @@
                     const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && y2 !== null) {
-                        const startX = x1, endX = (x2 !== null) ? x2 : x1;
-                        const minX = Math.min(startX, endX) - 15, maxX = Math.max(startX, endX) + 15;
-                        const minY = Math.min(y1, y2) - 8, maxY = Math.max(y1, y2) + 8;
-                        if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                            if (s.type === 'pricerange') {
-                                const diff = s.price2 - s.price1;
-                                const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
-                                const sign = diff >= 0 ? '+' : '-';
-                                const label = `Price Range: ${sign}₹${Math.abs(diff).toFixed(2)} (${sign}${Math.abs(pct).toFixed(2)}%)`;
-                                return { kind: 'shape', id: s.id, name: label, color: s.color, hidden: !!s.hidden, type: s.type };
-                            }
-                            return { kind: 'shape', id: s.id, name: 'Rectangle Zone', color: s.color, hidden: !!s.hidden, type: s.type };
+                        let startX = x1, endX = (x2 !== null) ? x2 : x1;
+                        if (s.type === 'pricerange' && Math.abs(endX - startX) < 20) {
+                            startX = x1 - 25;
+                            endX = x1 + 25;
+                        }
+                        const minX = Math.min(startX, endX);
+                        const maxX = Math.max(startX, endX);
+                        const topY = Math.min(y1, y2);
+                        const bottomY = Math.max(y1, y2);
+
+                        let name = 'Rectangle Zone';
+                        if (s.type === 'pricerange') {
+                            const diff = s.price2 - s.price1;
+                            const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
+                            const sign = diff >= 0 ? '+' : '-';
+                            name = `Price Range: ${sign}₹${Math.abs(diff).toFixed(2)} (${sign}${Math.abs(pct).toFixed(2)}%)`;
+                        }
+
+                        // 1. Check corners first (for precision resize)
+                        const C_PAD = 14;
+                        if (Math.hypot(x - minX, y - topY) <= C_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-top-left', cursor: 'nwse-resize' };
+                        }
+                        if (Math.hypot(x - maxX, y - topY) <= C_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-top-right', cursor: 'nesw-resize' };
+                        }
+                        if (Math.hypot(x - minX, y - bottomY) <= C_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-bottom-left', cursor: 'nesw-resize' };
+                        }
+                        if (Math.hypot(x - maxX, y - bottomY) <= C_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-bottom-right', cursor: 'nwse-resize' };
+                        }
+
+                        // 2. Check borders (edges for resizing boundaries)
+                        const B_PAD = 9;
+                        if (Math.abs(y - topY) <= B_PAD && x >= minX - B_PAD && x <= maxX + B_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-top', cursor: 'ns-resize' };
+                        }
+                        if (Math.abs(y - bottomY) <= B_PAD && x >= minX - B_PAD && x <= maxX + B_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-bottom', cursor: 'ns-resize' };
+                        }
+                        if (Math.abs(x - minX) <= B_PAD && y >= topY - B_PAD && y <= bottomY + B_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-left', cursor: 'ew-resize' };
+                        }
+                        if (Math.abs(x - maxX) <= B_PAD && y >= topY - B_PAD && y <= bottomY + B_PAD) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-right', cursor: 'ew-resize' };
+                        }
+
+                        // 3. Interior is the body (strictly for moving the whole drawing)
+                        if (x > minX && x < maxX && y > topY && y < bottomY) {
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
                         }
                     }
                 } else if (s.type === 'fib') {
@@ -1989,11 +2112,19 @@
                     const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        const d1 = Math.hypot(x - x1, y - y1);
+                        const d2 = Math.hypot(x - x2, y - y2);
+                        if (d1 <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                        }
+                        if (d2 <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                        }
                         const dist = distanceToSegment(x, y, x1, y1, x2, y2);
                         const minX = Math.min(x1, x2) - 15, maxX = Math.max(x1, x2) + 90;
                         const minY = Math.min(y1, y2) - 20, maxY = Math.max(y1, y2) + 20;
                         if (dist < 12 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
-                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type };
+                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
                         }
                     }
                 } else if (s.type === 'parallelchannel') {
@@ -2009,13 +2140,35 @@
                             const baseLineYAtX3 = (x2 !== x1) ? (y1 + (y2 - y1) * ((x3 - x1) / (x2 - x1))) : y1;
                             dy = y3 - baseLineYAtX3;
                         }
-                        const dist1 = distanceToSegment(x, y, x1, y1, x2, y2);
+                        // Check anchor handles
+                        if (Math.hypot(x - x1, y - y1) <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                        }
+                        if (Math.hypot(x - x2, y - y2) <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                        }
+                        // Check parallel handle and parallel line (border)
+                        const midX = (x1 + x2) / 2;
+                        const midY = (y1 + y2) / 2 + dy;
+                        if (Math.hypot(x - midX, y - midY) <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'parallel', cursor: 'ns-resize' };
+                        }
                         const dist2 = distanceToSegment(x, y, x1, y1 + dy, x2, y2 + dy);
-                        const distMid = distanceToSegment(x, y, x1, y1 + dy / 2, x2, y2 + dy / 2);
-                        const minX = Math.min(x1, x2) - 15, maxX = Math.max(x1, x2) + 15;
-                        const minY = Math.min(y1, y2, y1 + dy, y2 + dy) - 10, maxY = Math.max(y1, y2, y1 + dy, y2 + dy) + 10;
-                        if (dist1 < 10 || dist2 < 10 || distMid < 10 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
-                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type };
+                        if (dist2 <= 8) {
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'parallel', cursor: 'ns-resize' };
+                        }
+                        // Check baseline
+                        const dist1 = distanceToSegment(x, y, x1, y1, x2, y2);
+                        if (dist1 <= 8) {
+                            const d1 = Math.hypot(x - x1, y - y1);
+                            const d2 = Math.hypot(x - x2, y - y2);
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: (d1 < d2 ? 'p1' : 'p2'), cursor: 'crosshair' };
+                        }
+                        // Interior check for body
+                        const minX = Math.min(x1, x2) - 5, maxX = Math.max(x1, x2) + 5;
+                        const minY = Math.min(y1, y2, y1 + dy, y2 + dy) - 5, maxY = Math.max(y1, y2, y1 + dy, y2 + dy) + 5;
+                        if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
                         }
                     }
                 } else if (s.type === 'fibext') {
@@ -2026,13 +2179,22 @@
                     const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
                     const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        if (Math.hypot(x - x1, y - y1) <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                        }
+                        if (Math.hypot(x - x2, y - y2) <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                        }
+                        if (x3 !== null && y3 !== null && Math.hypot(x - x3, y - y3) <= 12) {
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p3', cursor: 'crosshair' };
+                        }
                         const dist1 = distanceToSegment(x, y, x1, y1, x2, y2);
                         let dist2 = 999;
                         if (x3 !== null && y3 !== null) dist2 = distanceToSegment(x, y, x2, y2, x3, y3);
                         const minX = Math.min(x1, x2, x3 || x2) - 15, maxX = Math.max(x1, x2, x3 || x2) + 160;
                         const minY = Math.min(y1, y2, y3 || y2) - 30, maxY = Math.max(y1, y2, y3 || y2) + 30;
                         if (dist1 < 10 || dist2 < 10 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
-                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type };
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
                         }
                     }
                 }
@@ -2287,6 +2449,13 @@
 
                     ctx.beginPath(); ctx.arc(centerX, y1, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
                     ctx.beginPath(); ctx.arc(centerX, y2, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+                    if (!s.isPreview) {
+                        ctx.beginPath(); ctx.arc(leftX, topY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(leftX + boxWidth, topY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(leftX, bottomY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(leftX + boxWidth, bottomY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    }
 
                     // 3. Floating Price & Percentage Label (Clean floating text without border or background)
                     const diff = s.price2 - s.price1;
@@ -2729,6 +2898,26 @@
                     ctx.lineWidth = 1.5;
                     if (s.isPreview) ctx.setLineDash([4, 4]);
                     ctx.strokeRect(rectX, rectY, w, h);
+
+                    if (!s.isPreview) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = s.color || '#a855f7';
+                        ctx.lineWidth = 2;
+                        const midX = rectX + w / 2;
+                        const midY = rectY + h / 2;
+
+                        // 4 Corners
+                        ctx.beginPath(); ctx.arc(rectX, rectY, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(rectX + w, rectY, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(rectX, rectY + h, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(rectX + w, rectY + h, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+                        // 4 Edge Midpoints
+                        ctx.beginPath(); ctx.arc(midX, rectY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(midX, rectY + h, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(rectX, midY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(rectX + w, midY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    }
                     ctx.restore();
                 }
             } else if (s.type === 'vertical') {
