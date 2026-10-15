@@ -5,7 +5,7 @@
      ========================================================= -->
 
 <div id="tab-mutual-funds" class="tab-content" style="display: none;">
-    <main class="mf-shell" style="width: 100%; margin: 0; padding: 0;">
+    <main class="mf-shell" data-mf-subview="portfolio" style="width: 100%; margin: 0; padding: 0;">
         <!-- Selector Bar (Common Header Style as Watchlist & Portfolio) -->
         <div class="card-container" style="padding: 14px 20px; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -175,20 +175,29 @@
         const exploreBtn = document.getElementById('mf-subtab-explore-btn');
         const portfolioBtn = document.getElementById('mf-subtab-portfolio-btn');
         const portfolioControls = document.getElementById('mf-header-portfolio-controls');
+        const mfShell = document.querySelector('.mf-shell') || document.getElementById('tab-mutual-funds');
 
         if (view === 'explore') {
+            if (mfShell) mfShell.setAttribute('data-mf-subview', 'explore');
             if (portfolioView) portfolioView.style.display = 'none';
             if (exploreView) exploreView.style.display = 'block';
             if (portfolioBtn) portfolioBtn.classList.remove('active');
             if (exploreBtn) exploreBtn.classList.add('active');
-            if (portfolioControls) portfolioControls.style.display = 'none';
+            if (portfolioControls) {
+                portfolioControls.style.display = 'none';
+                portfolioControls.classList.add('is-hidden');
+            }
             if (typeof window.loadMfCatalog === 'function') window.loadMfCatalog();
         } else {
+            if (mfShell) mfShell.setAttribute('data-mf-subview', 'portfolio');
             if (exploreView) exploreView.style.display = 'none';
             if (portfolioView) portfolioView.style.display = 'block';
             if (exploreBtn) exploreBtn.classList.remove('active');
             if (portfolioBtn) portfolioBtn.classList.add('active');
-            if (portfolioControls) portfolioControls.style.display = 'inline-flex';
+            if (portfolioControls) {
+                portfolioControls.style.display = 'inline-flex';
+                portfolioControls.classList.remove('is-hidden');
+            }
             if (typeof window.refreshMfDashboard === 'function') window.refreshMfDashboard();
         }
     }

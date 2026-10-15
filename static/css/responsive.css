@@ -2203,6 +2203,16 @@
         gap: 8px !important;
     }
 
+    /* In explore MF - hide fund dropdown and refresh nav button on mobile; show only on MF dashboard */
+    #mf-header-portfolio-controls[style*="display: none"],
+    #mf-header-portfolio-controls.is-hidden,
+    .mf-shell[data-mf-subview="explore"] #mf-header-portfolio-controls,
+    #tab-mutual-funds[data-mf-subview="explore"] #mf-header-portfolio-controls,
+    .mf-shell[data-mf-subview="explore"] #dashboard-scheme,
+    .mf-shell[data-mf-subview="explore"] #portfolio-refresh {
+        display: none !important;
+    }
+
     #dashboard-scheme {
         flex: 1 1 auto !important;
         min-width: 0 !important;
