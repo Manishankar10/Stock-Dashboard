@@ -1106,9 +1106,22 @@
             }
 
             if (banner) {
-                banner.innerHTML = `<span style="font-size: 11px;">${msg}</span> <button onclick="cancelDrawingTool()" style="background: rgba(0,0,0,0.25); border: none; color: #fff; padding: 1px 6px; border-radius: 5px; cursor: pointer; font-size: 10px; font-weight: 500;">Cancel (Esc)</button>`;
-                banner.style.display = isMobile ? 'none' : 'flex';
-                if (!isMobile) {
+                banner.innerHTML = `<span class="drawing-banner-msg" style="font-size: 11px;">${msg}</span> <button type="button" class="tool-cancel-btn" onclick="if (event) { event.stopPropagation(); event.preventDefault(); } cancelDrawingTool();" title="Cancel drawing (Esc)"><span class="tool-cancel-icon">✕</span><span>Cancel</span></button>`;
+                const cancelBtn = banner.querySelector('.tool-cancel-btn');
+                if (cancelBtn) {
+                    cancelBtn.onclick = function(e) {
+                        if (e) {
+                            e.stopPropagation();
+                            e.preventDefault();
+                        }
+                        cancelDrawingTool();
+                    };
+                }
+                if (isMobile) {
+                    banner.style.setProperty('display', 'none', 'important');
+                } else {
+                    banner.style.removeProperty('display');
+                    banner.style.setProperty('display', 'flex', 'important');
                     banner.style.left = '12px';
                     banner.style.right = 'auto';
                     banner.style.transform = 'none';
@@ -1120,10 +1133,14 @@
 
         function hideDrawingBanner() {
             const banner = document.getElementById('drawingToolBanner');
-            if (banner) banner.style.display = 'none';
+            if (banner) {
+                banner.style.setProperty('display', 'none', 'important');
+            }
 
             const mobileHint = document.getElementById('chartMobileToolHint');
-            if (mobileHint) mobileHint.style.display = 'none';
+            if (mobileHint) {
+                mobileHint.style.setProperty('display', 'none', 'important');
+            }
             const nameEl = document.getElementById('chartNameDisplay');
             if (nameEl) nameEl.classList.remove('hide-on-active-tool');
         }
@@ -1458,7 +1475,7 @@
         }
 
         function handleChartPaneMouseDown(e) {
-            if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn'))) {
+            if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn') || e.target.closest('#drawingToolBanner') || e.target.closest('#chartMobileToolHint') || e.target.closest('.tool-cancel-btn'))) {
                 return;
             }
             if (currentDrawingTool) return;
@@ -1615,11 +1632,17 @@
         }
 
         function handleChartPaneClick(e) {
+            if (e.target && e.target.closest && (e.target.closest('#drawingToolBanner') || e.target.closest('#chartMobileToolHint') || e.target.closest('.tool-cancel-btn') || e.target.closest('button'))) {
+                return;
+            }
             if (!currentDrawingTool) return;
             handleCanvasClick(e);
         }
 
         function handleChartPaneTouchEnd(e) {
+            if (e.target && e.target.closest && (e.target.closest('#drawingToolBanner') || e.target.closest('#chartMobileToolHint') || e.target.closest('.tool-cancel-btn') || e.target.closest('button'))) {
+                return;
+            }
             if (!currentDrawingTool) return;
             e.preventDefault();
             handleCanvasClick(e);
@@ -1674,7 +1697,7 @@
                         drawingPoints.push(pt);
                         const banner = document.getElementById('drawingToolBanner');
                         if (banner) {
-                            const span = banner.querySelector('span');
+                            const span = banner.querySelector('.drawing-banner-msg') || banner.querySelector('span');
                             if (span) span.innerText = 'Click 2nd point to finish';
                         }
                         const mobileHintText = document.getElementById('chartMobileToolHintText');
@@ -3650,6 +3673,11 @@
 
         window.openInHouseChart = openInHouseChart;
         window.closeChartModal = closeChartModal;
+        window.cancelDrawingTool = cancelDrawingTool;
+        window.activateDrawingTool = activateDrawingTool;
+        window.showDrawingBanner = showDrawingBanner;
+        window.hideDrawingBanner = hideDrawingBanner;
+        window.getCurrentDrawingTool = () => currentDrawingTool;
         window.redrawCanvasOverlay = redrawCanvasOverlay;
         window.applyChartTheme = applyChartTheme;
         window.toggleChartPopover = toggleChartPopover;
