@@ -14,9 +14,25 @@
     const number = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—';
     const date = value => {
         if (!value) return '—';
-        if (window.formatAppDate) return window.formatAppDate(value);
-        const parsed = new Date(value + 'T00:00:00');
-        return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        try {
+            let d;
+            if (typeof value === 'string') {
+                const clean = value.split('T')[0];
+                const parts = clean.split('-');
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) {
+                        d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                    } else {
+                        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    }
+                }
+            }
+            if (!d || isNaN(d.getTime())) d = new Date(value);
+            if (isNaN(d.getTime())) return String(value);
+            return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch(e) {
+            return String(value);
+        }
     };
     const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 

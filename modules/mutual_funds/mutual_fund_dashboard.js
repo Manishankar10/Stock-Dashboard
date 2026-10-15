@@ -2,12 +2,29 @@
     const fmtMoney = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }) : '—';
     const fmtNumber = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-IN', { maximumFractionDigits: digits, minimumFractionDigits: digits }) : '—';
     const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
-    const fmtDate = value => {
+    const formatAppropriateChartDate = value => {
         if (!value) return '—';
-        if (window.formatAppDate) return window.formatAppDate(value);
-        const date = new Date(value + 'T00:00:00');
-        return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        try {
+            let d;
+            if (typeof value === 'string') {
+                const clean = value.split('T')[0];
+                const parts = clean.split('-');
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) {
+                        d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                    } else {
+                        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    }
+                }
+            }
+            if (!d || isNaN(d.getTime())) d = new Date(value);
+            if (isNaN(d.getTime())) return String(value);
+            return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch(e) {
+            return String(value);
+        }
     };
+    const fmtDate = value => formatAppropriateChartDate(value);
     const localToday = () => {
         const now = new Date();
         return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
@@ -230,6 +247,143 @@
         return '₹' + n.toFixed(0);
     }
 
+    let perfChartPoints = [];
+    let perfChartXCoords = [];
+    let perfChartYValues = [];
+    let perfChartYInvested = [];
+
+    function showPerformanceHoverPoint(index) {
+        if (!perfChartPoints.length || index < 0 || index >= perfChartPoints.length) return;
+        const pt = perfChartPoints[index];
+        const cx = perfChartXCoords[index];
+        const cyVal = perfChartYValues[index];
+        const cyInv = perfChartYInvested[index];
+
+        const svg = document.getElementById('performance-svg');
+        const container = document.getElementById('performance-chart');
+        const tooltip = document.getElementById('perf-chart-tooltip');
+        if (!svg || !container || !tooltip) return;
+
+        const crosshair = document.getElementById('perf-chart-crosshair');
+        const hVal = document.getElementById('perf-hover-value');
+        const hInv = document.getElementById('perf-hover-invested');
+
+        if (crosshair) {
+            crosshair.setAttribute('x1', cx);
+            crosshair.setAttribute('x2', cx);
+            crosshair.setAttribute('visibility', 'visible');
+        }
+        if (hVal) {
+            hVal.setAttribute('cx', cx);
+            hVal.setAttribute('cy', cyVal);
+            hVal.setAttribute('visibility', 'visible');
+        }
+        if (hInv) {
+            hInv.setAttribute('cx', cx);
+            hInv.setAttribute('cy', cyInv);
+            hInv.setAttribute('visibility', 'visible');
+        }
+
+        const contRect = container.getBoundingClientRect();
+        const svgPoint = svg.createSVGPoint();
+        svgPoint.x = cx;
+        svgPoint.y = cyVal;
+        const screenPoint = svgPoint.matrixTransform(svg.getScreenCTM());
+        const xInCont = screenPoint.x - contRect.left;
+        const yInCont = screenPoint.y - contRect.top;
+
+        const dateEl = document.getElementById('perf-tooltip-date');
+        const valEl = document.getElementById('perf-tooltip-value');
+        const invEl = document.getElementById('perf-tooltip-invested');
+        const pnlEl = document.getElementById('perf-tooltip-pnl');
+
+        const valNum = Number(pt.value) || 0;
+        const invNum = Number(pt.invested) || 0;
+        const pnlNum = valNum - invNum;
+        const pnlPct = invNum > 0 ? ((pnlNum / invNum) * 100).toFixed(2) : '0.00';
+        const pnlSign = pnlNum >= 0 ? '+' : '';
+        const pnlColor = pnlNum >= 0 ? '#10b981' : '#ef4444';
+
+        if (dateEl) dateEl.textContent = formatAppropriateChartDate(pt.date);
+        if (valEl) valEl.textContent = fmtMoney(valNum);
+        if (invEl) invEl.textContent = fmtMoney(invNum);
+        if (pnlEl) {
+            pnlEl.textContent = `${pnlSign}${fmtMoney(pnlNum)} (${pnlSign}${pnlPct}%)`;
+            pnlEl.style.color = pnlColor;
+        }
+
+        tooltip.hidden = false;
+        tooltip.style.display = 'block';
+
+        const tipWidth = tooltip.offsetWidth || 150;
+        const clampedX = Math.max(tipWidth / 2 + 10, Math.min(contRect.width - (tipWidth / 2) - 10, xInCont));
+        tooltip.style.left = clampedX + 'px';
+        tooltip.style.top = Math.max(15, yInCont - 10) + 'px';
+    }
+
+    function hidePerformanceHoverPoint() {
+        const tooltip = document.getElementById('perf-chart-tooltip');
+        if (tooltip) {
+            tooltip.hidden = true;
+            tooltip.style.display = 'none';
+        }
+        const crosshair = document.getElementById('perf-chart-crosshair');
+        const hVal = document.getElementById('perf-hover-value');
+        const hInv = document.getElementById('perf-hover-invested');
+        if (crosshair) crosshair.setAttribute('visibility', 'hidden');
+        if (hVal) hVal.setAttribute('visibility', 'hidden');
+        if (hInv) hInv.setAttribute('visibility', 'hidden');
+    }
+
+    function bindPerformanceHoverEvents() {
+        const svg = document.getElementById('performance-svg');
+        if (!svg || svg._perfHoverBound) return;
+        svg._perfHoverBound = true;
+
+        const getIndexFromEvent = (e) => {
+            if (!perfChartPoints.length || !perfChartXCoords.length) return -1;
+            const pointer = svg.createSVGPoint();
+            pointer.x = e.clientX;
+            pointer.y = e.clientY;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) return -1;
+            const svgX = pointer.matrixTransform(ctm.inverse()).x;
+
+            let closestIdx = 0;
+            let minDist = Math.abs(svgX - perfChartXCoords[0]);
+            for (let i = 1; i < perfChartXCoords.length; i++) {
+                const dist = Math.abs(svgX - perfChartXCoords[i]);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestIdx = i;
+                }
+            }
+            return closestIdx;
+        };
+
+        svg.addEventListener('pointermove', (e) => {
+            const idx = getIndexFromEvent(e);
+            if (idx >= 0) showPerformanceHoverPoint(idx);
+        });
+
+        svg.addEventListener('pointerdown', (e) => {
+            const idx = getIndexFromEvent(e);
+            if (idx >= 0) showPerformanceHoverPoint(idx);
+        });
+
+        svg.addEventListener('pointerleave', (e) => {
+            if (e.pointerType !== 'touch') {
+                hidePerformanceHoverPoint();
+            }
+        });
+
+        document.addEventListener('pointerdown', (e) => {
+            if (!e.target.closest('#performance-chart')) {
+                hidePerformanceHoverPoint();
+            }
+        });
+    }
+
     function drawChart() {
         const range = document.getElementById('performance-range').value;
         const cutoff = rangeStart(range, performance);
@@ -252,6 +406,12 @@
         const innerW = width - left - right, innerH = height - top - bottom;
         const x = index => left + (points.length === 1 ? innerW / 2 : index * innerW / (points.length - 1));
         const y = value => top + innerH - (Number(value) || 0) / max * innerH;
+
+        perfChartPoints = points;
+        perfChartXCoords = points.map((_, index) => x(index));
+        perfChartYValues = points.map(p => y(p.value));
+        perfChartYInvested = points.map(p => y(p.invested));
+
         let markup = '';
         for (let tick = 0; tick <= 4; tick += 1) {
             const amount = max * tick / 4;
@@ -262,14 +422,35 @@
         const valuePath = points.map((point, index) => (index ? 'L' : 'M') + x(index).toFixed(2) + ',' + y(point.value).toFixed(2)).join(' ');
         const investedPath = points.map((point, index) => (index ? 'L' : 'M') + x(index).toFixed(2) + ',' + y(point.invested).toFixed(2)).join(' ');
         markup += '<path class="mf-invested-line" d="' + investedPath + '"></path><path class="mf-value-line" d="' + valuePath + '"></path>';
+        
+        // Vertical crosshair and hover circle markers
+        markup += '<line class="mf-chart-crosshair" id="perf-chart-crosshair" x1="0" y1="' + top + '" x2="0" y2="' + (height - bottom) + '" stroke="var(--text-secondary, #94a3b8)" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.8" visibility="hidden"></line>';
+        markup += '<circle class="mf-chart-hover-point" id="perf-hover-invested" cx="0" cy="0" r="4.5" fill="#3b82f6" stroke="#ffffff" stroke-width="2" visibility="hidden"></circle>';
+        markup += '<circle class="mf-chart-hover-point" id="perf-hover-value" cx="0" cy="0" r="5.5" fill="#10b981" stroke="#ffffff" stroke-width="2" visibility="hidden"></circle>';
+
         const final = points[points.length - 1];
-        markup += '<circle cx="' + x(points.length - 1) + '" cy="' + y(final.value) + '" r="4" fill="#10b981"><title>' + escapeHtml(fmtDate(final.date) + ' · ' + fmtMoney(final.value)) + '</title></circle>';
+        markup += '<circle cx="' + x(points.length - 1) + '" cy="' + y(final.value) + '" r="4.5" fill="#10b981"><title>' + escapeHtml(formatAppropriateChartDate(final.date) + ' · ' + fmtMoney(final.value)) + '</title></circle>';
         svg.innerHTML = markup;
-        document.getElementById('chart-start-date').textContent = fmtDate(points[0].date);
-        document.getElementById('chart-end-date').textContent = fmtDate(points[points.length - 1].date);
+
+        // Display appropriate date formatting across x-axis
+        document.getElementById('chart-start-date').textContent = formatAppropriateChartDate(points[0].date);
+        const midEl = document.getElementById('chart-mid-date');
+        if (midEl) {
+            if (points.length >= 3) {
+                const midIdx = Math.floor(points.length / 2);
+                midEl.textContent = formatAppropriateChartDate(points[midIdx].date);
+                midEl.style.display = 'inline';
+            } else {
+                midEl.style.display = 'none';
+            }
+        }
+        document.getElementById('chart-end-date').textContent = formatAppropriateChartDate(points[points.length - 1].date);
+
         const selectedCode = document.getElementById('dashboard-scheme').value;
         const selectionLabel = selectedCode ? allFundsName(selectedCode) + ' · ' : 'Portfolio · ';
         document.getElementById('performance-subtitle').textContent = selectionLabel + 'value compared with contributions · ' + points.length.toLocaleString('en-IN') + ' AMFI NAV dates';
+
+        bindPerformanceHoverEvents();
     }
 
     async function loadPerformance() {
@@ -707,7 +888,10 @@
     document.getElementById('portfolio-value').setAttribute('title', 'Latest AMFI NAV valuation');
     renderPlans([]);
     document.querySelectorAll('[data-investment-mode]').forEach(button => button.addEventListener('click', () => setInvestmentMode(button.dataset.investmentMode)));
-    if (new URLSearchParams(location.search).has('scheme_code')) setTimeout(openSipModal, 350);
     window.refreshMfDashboard = function() { loadPortfolio(null, false); };
+    window.showPerformanceHoverPoint = showPerformanceHoverPoint;
+    window.hidePerformanceHoverPoint = hidePerformanceHoverPoint;
+    window.drawMfPerformanceChart = drawChart;
+    window.setMfPerformanceData = function(pts) { performance = pts || []; drawChart(); };
     setInvestmentMode('sip');
 })();

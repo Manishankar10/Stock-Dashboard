@@ -25,9 +25,27 @@
 
     function formatDate(value) {
         if (!value) return '—';
-        if (window.formatAppDate) return window.formatAppDate(value);
-        const date = new Date(value + 'T00:00:00');
-        return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        try {
+            if (typeof value === 'string') {
+                const clean = value.split('T')[0];
+                const parts = clean.split('-');
+                if (parts.length === 3) {
+                    let d;
+                    if (parts[0].length === 4) {
+                        d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                    } else {
+                        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    }
+                    if (!isNaN(d.getTime())) {
+                        return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                    }
+                }
+            }
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch (e) {
+            return String(value);
+        }
     }
 
     function formatTime(value) {

@@ -367,6 +367,40 @@ select option {
     .mf-portfolio-summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
     .mf-table-tools select { flex: 1 1 140px; max-width: none; }
     .mf-dashboard-actions { justify-content: flex-start; }
+
+    /* Explore MF KPI Bar in 1 or 2 rows */
+    .mf-explore-kpi-bar {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+        width: 100% !important;
+        margin-top: 6px !important;
+    }
+    .mf-explore-kpi-bar .mf-header-kpi-pill,
+    .mf-explore-kpi-bar .mf-feed-status {
+        flex: 1 1 calc(50% - 6px) !important;
+        width: auto !important;
+        min-width: 0 !important;
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+        box-sizing: border-box !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+    }
+    .mf-explore-kpi-bar .mf-feed-status {
+        min-width: 0 !important;
+    }
+    .mf-explore-kpi-bar .mf-header-kpi-pill span,
+    .mf-explore-kpi-bar .mf-header-kpi-pill strong,
+    .mf-explore-kpi-bar .mf-feed-status strong {
+        font-size: 11px !important;
+    }
 }
 @media (max-width: 560px) {
     .mf-header { align-items: flex-start; }

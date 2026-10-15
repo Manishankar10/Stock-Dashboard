@@ -50,7 +50,39 @@
             <section class="mf-panel mf-performance-panel">
                 <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Portfolio performance</h2><p id="performance-subtitle" style="color: var(--text-secondary); font-size: 12px; margin: 0;">NAV history for your portfolio or a selected scheme.</p></div><div class="mf-panel-tools"><select id="performance-range" aria-label="Performance period"><option value="all">All history</option><option value="1y">1 year</option><option value="6m">6 months</option><option value="1m">1 month</option></select><button class="mf-secondary-button mf-small-button" id="load-performance" type="button">Load history</button></div></div>
                 <div id="performance-message" class="mf-chart-message">Start a SIP or One-Time investment to build your performance history.</div>
-                <div id="performance-chart" class="mf-chart" hidden><div class="mf-chart-legend"><span><i class="mf-legend-value"></i> Portfolio value</span><span><i class="mf-legend-invested"></i> Invested</span></div><svg id="performance-svg" viewBox="0 0 960 300" role="img" aria-label="Mutual fund portfolio value and invested amount over time" preserveAspectRatio="none"></svg><div class="mf-chart-dates"><span id="chart-start-date"></span><span id="chart-end-date"></span></div></div>
+                <div id="performance-chart" class="mf-chart" style="position: relative;" hidden>
+                    <div class="mf-chart-legend">
+                        <span><i class="mf-legend-value"></i> Portfolio value</span>
+                        <span><i class="mf-legend-invested"></i> Invested</span>
+                    </div>
+                    <svg id="performance-svg" viewBox="0 0 960 300" role="img" aria-label="Mutual fund portfolio value and invested amount over time" preserveAspectRatio="none" style="cursor: crosshair; touch-action: none;"></svg>
+                    <div class="mf-chart-dates" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 4px 0; font-size: 11px; color: var(--text-secondary);">
+                        <span id="chart-start-date"></span>
+                        <span id="chart-mid-date" style="display: none;"></span>
+                        <span id="chart-end-date"></span>
+                    </div>
+
+                    <!-- Performance Chart Hover Tooltip (Web and Mobile Responsive) -->
+                    <div id="perf-chart-tooltip" class="mf-chart-tooltip" style="position: absolute; display: none; pointer-events: none; z-index: 10; min-width: 140px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: 0 4px 16px rgba(0,0,0,0.3); transform: translate(-50%, -100%); margin-top: -12px;" role="status" aria-live="polite">
+                        <div id="perf-tooltip-date" style="font-size: 11px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; text-align: left;">—</div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 3px;">
+                            <span style="display: inline-flex; align-items: center; gap: 5px; color: var(--text-secondary); font-size: 11.5px;">
+                                <i style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></i> Value:
+                            </span>
+                            <strong id="perf-tooltip-value" style="color: #10b981; font-size: 12px; font-weight: 700;">₹0</strong>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 3px;">
+                            <span style="display: inline-flex; align-items: center; gap: 5px; color: var(--text-secondary); font-size: 11.5px;">
+                                <i style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; display: inline-block;"></i> Invested:
+                            </span>
+                            <strong id="perf-tooltip-invested" style="color: #3b82f6; font-size: 12px; font-weight: 600;">₹0</strong>
+                        </div>
+                        <div id="perf-tooltip-pnl-row" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border-color); font-size: 11px;">
+                            <span style="color: var(--text-secondary);">Gain / Loss:</span>
+                            <strong id="perf-tooltip-pnl" style="font-weight: 700;">+₹0</strong>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <section class="mf-panel">
