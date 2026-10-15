@@ -528,6 +528,95 @@
                 margin-top: 2px;
             }
         }
+
+        /* Analytics KPI Summary Row - Strict Single-Row 4-Column Layout on Web/Desktop */
+        #tab-dashboard .summary-grid,
+        #overall-summary-mount,
+        #tab-dashboard #overall-summary-mount {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 14px !important;
+            margin-bottom: 20px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        #tab-dashboard .summary-grid .metric-card,
+        #overall-summary-mount .metric-card,
+        #tab-dashboard #overall-summary-mount .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px 16px !important;
+            min-width: 0 !important;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box !important;
+            overflow: hidden;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        #tab-dashboard .summary-grid .metric-card:hover,
+        #overall-summary-mount .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        #tab-dashboard .summary-grid .metric-card .title,
+        #overall-summary-mount .metric-card .title {
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #tab-dashboard .summary-grid .metric-card .value,
+        #overall-summary-mount .metric-card .value {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #tab-dashboard .summary-grid .metric-card .sub-value,
+        #overall-summary-mount .metric-card .sub-value {
+            font-size: 12.5px;
+            font-weight: 500;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Web / Desktop Watchlist Search Bar - 30% of table width */
+        .controls .wl-search-row {
+            width: 30% !important;
+            min-width: 280px;
+            flex: 0 0 30% !important;
+            display: flex;
+            align-items: center;
+        }
+
+        .controls .wl-search-row .autocomplete-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+
+        .controls .wl-search-row .wl-input {
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
         
         /* Touch & Mouse Inner-Scrollable Responsive Table Container */
         .table-responsive-container {

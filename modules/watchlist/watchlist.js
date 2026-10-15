@@ -396,7 +396,6 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'autocomplete-wrapper';
             wrapper.style.width = '100%';
-            wrapper.style.maxWidth = '420px';
 
             const input = document.createElement('input');
             input.type = 'text';
