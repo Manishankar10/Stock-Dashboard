@@ -3040,6 +3040,28 @@
         display: none !important;
     }
 
+    /* Mobile Drawn Tool Action Popup: Hide tool name and divider, show only compact icon buttons */
+    .canvas-obj-title,
+    .canvas-obj-divider {
+        display: none !important;
+    }
+
+    .canvas-object-popup {
+        padding: 4px 6px !important;
+        gap: 5px !important;
+    }
+
+    .canvas-obj-btn {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 13.5px !important;
+    }
+
+    .canvas-obj-color-btn {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
     /* Hide Desktop Close Icon on Mobile */
     .chart-desktop-close-btn {
         display: none !important;

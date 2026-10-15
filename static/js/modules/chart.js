@@ -2274,30 +2274,19 @@
             if (!popup && mainContainer) {
                 popup = document.createElement('div');
                 popup.id = 'canvasObjectPopup';
-                popup.style.cssText = `
-                    position: absolute;
-                    background: #1e222d;
-                    border: 1px solid #363a45;
-                    border-radius: 8px;
-                    padding: 6px 10px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    z-index: 500;
-                    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
-                    font-size: 11px;
-                    color: #d1d4dc;
-                    pointer-events: auto;
-                `;
+                popup.className = 'canvas-object-popup';
                 popup.addEventListener('mousedown', function(evt) { evt.stopPropagation(); });
                 popup.addEventListener('click', function(evt) { evt.stopPropagation(); });
+                popup.addEventListener('touchstart', function(evt) { evt.stopPropagation(); }, { passive: true });
+                popup.addEventListener('touchend', function(evt) { evt.stopPropagation(); });
                 mainContainer.appendChild(popup);
             }
 
             if (popup && mainContainer) {
-                const popupWidth = 270;
-                popup.style.left = Math.max(10, Math.min(x, mainContainer.clientWidth - popupWidth)) + 'px';
-                popup.style.top = (y > 60 ? (y - 48) : (y + 18)) + 'px';
+                const isMobile = window.innerWidth <= 768;
+                const estimatedWidth = isMobile ? 140 : 220;
+                popup.style.left = Math.max(10, Math.min(x - 20, mainContainer.clientWidth - estimatedWidth - 10)) + 'px';
+                popup.style.top = Math.max(10, (y > 55 ? (y - 46) : (y + 16))) + 'px';
 
                 const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
                 const colorFn = obj.kind === 'line' ? `updatePriceLineColorById('${obj.id}', this.value)` : `updateShapeColorById('${obj.id}', this.value)`;
@@ -2306,19 +2295,19 @@
                 const visLabel = obj.hidden ? 'Show' : 'Hide';
 
                 popup.innerHTML = `
-                    <span style="font-weight: 700; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ffffff;" title="${escapeHtml(obj.name)}">${escapeHtml(obj.name)}</span>
-                    <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}" style="width: 20px; height: 20px; border: none; padding: 0; background: transparent; cursor: pointer; border-radius: 4px;" title="Change color">
-                    <button type="button" onclick="${toggleVisFn}" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.08); border: 1px solid #363a45; color: #d1d4dc; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;" title="Toggle visibility">
+                    <span class="canvas-obj-title" title="${escapeHtml(obj.name)}">${escapeHtml(obj.name)}</span>
+                    <span class="canvas-obj-divider"></span>
+                    <label class="canvas-obj-color-btn" title="Change Color" aria-label="Change Color">
+                        <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}">
+                    </label>
+                    <button type="button" class="canvas-obj-btn canvas-obj-vis-btn" onclick="${toggleVisFn}" title="${visLabel} Drawing" aria-label="${visLabel}">
                         <span>${visIcon}</span>
-                        <span>${visLabel}</span>
                     </button>
-                    <button type="button" onclick="${deleteFn}" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(239, 83, 80, 0.18); border: 1px solid #ef5350; color: #ef5350; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;" title="Delete Drawing">
-                        <span>🗑️</span>
-                        <span>Delete</span>
-                    </button>
-                    <button type="button" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; color: #60a5fa; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;" title="Edit Drawing Details">
+                    <button type="button" class="canvas-obj-btn canvas-obj-edit-btn" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" title="Edit Drawing Details" aria-label="Edit">
                         <span>✏️</span>
-                        <span>Edit</span>
+                    </button>
+                    <button type="button" class="canvas-obj-btn canvas-obj-delete-btn" onclick="${deleteFn}" title="Delete Drawing" aria-label="Delete">
+                        <span>🗑️</span>
                     </button>
                 `;
                 popup.style.display = 'flex';
