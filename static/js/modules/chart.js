@@ -3724,12 +3724,12 @@
         window.setActiveToolColor = setActiveToolColor;
         window.setChartInterval = setChartInterval;
         window.setChartType = setChartType;
-        window.setChartRange = setChartRange;
-        window.toggleChartIndicator = toggleChartIndicator;
-        window.setDrawingTool = setDrawingTool;
-        window.deleteSelectedDrawing = deleteSelectedDrawing;
-        window.clearAllChartDrawings = clearAllChartDrawings;
-        window.resetChartZoom = resetChartZoom;
+        window.setChartRange = changeRange;
+        window.toggleChartIndicator = toggleIndicators;
+        window.setDrawingTool = activateDrawingTool;
+        window.deleteSelectedDrawing = deleteCurrentEditDrawing;
+        window.clearAllChartDrawings = clearDrawings;
+        window.resetChartZoom = () => zoomChart(1);
         window.renderFavoriteToolsShortcuts = renderFavoriteToolsShortcuts;
         window.toggleFavoriteTool = toggleFavoriteTool;
         window.executeToolById = executeToolById;

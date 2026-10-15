@@ -382,6 +382,12 @@
                 if (typeof fetchPortfolios === 'function') {
                     fetchPortfolios();
                 }
+            } else if (targetTab === 'plan-calculator') {
+                if (typeof window.loadPlanCalculatorState === 'function') {
+                    window.loadPlanCalculatorState();
+                } else if (typeof window.renderCalculator === 'function') {
+                    window.renderCalculator();
+                }
             }
 
             // 3. Run auth check and notifications in background

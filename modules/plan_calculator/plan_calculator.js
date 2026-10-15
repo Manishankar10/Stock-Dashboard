@@ -711,4 +711,24 @@
     }
     window.loadPlanCalculatorState = loadPlanCalculatorState;
     window.renderCalculator = renderCalculator;
+
+    // Immediately render if on Plan Calculator tab or URL upon script execution
+    const isPlanCalcActive = () => {
+        return window.currentTab === 'plan-calculator' ||
+            window.INITIAL_TAB === 'plan-calculator' ||
+            window.location.pathname === '/plan-calculator' ||
+            document.getElementById('tab-plan-calculator')?.classList.contains('active') ||
+            document.getElementById('tab-plan-calculator')?.style.display === 'block';
+    };
+
+    if (isPlanCalcActive()) {
+        renderCalculator();
+        loadPlanCalculatorState();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (isPlanCalcActive()) {
+            loadPlanCalculatorState();
+        }
+    });
 }());
