@@ -184,12 +184,46 @@
     function renderCashflows() {
         const rows = state.xirr.cashflows;
         return '<div class="pc-field pc-cashflow-field">' +
-            '<span class="pc-field-label">Cash flows</span>' +
-            '<table class="pc-cashflow-table"><thead><tr><th>Date</th><th>Amount</th><th aria-label="Remove row"></th></tr></thead><tbody>' +
-            rows.map((row, index) => '<tr><td><input class="pc-control" type="date" data-cashflow-date="' + index + '" value="' + escapeHtml(row.date) + '"></td><td><input class="pc-control" type="number" step="100" data-cashflow-amount="' + index + '" value="' + escapeHtml(row.amount) + '"></td><td><button class="pc-remove-row" type="button" data-remove-cashflow="' + index + '" aria-label="Remove cash flow">×</button></td></tr>').join('') +
-            '</tbody></table>' +
-            '<button class="pc-add-row" type="button" data-add-cashflow>+ Add cash flow</button>' +
-            '<p class="pc-cashflow-hint" style="font-size: 11.5px; color: #94a3b8; margin-top: 10px; line-height: 1.4;">💡 <strong>Chit Fund / Interim Payout Tip:</strong> If you received an interim payout (e.g., +₹2,54,000) and earned separate returns/interest by reinvesting it, add the extra returns earned as a positive cash flow on your final date.</p>' +
+            '<div class="pc-cf-header-bar">' +
+                '<span class="pc-field-label">Cash flows</span>' +
+                '<span class="pc-cf-badge">Investments: -ve &nbsp;|&nbsp; Returns / Value: +ve</span>' +
+            '</div>' +
+            '<div class="pc-cashflow-table-wrap">' +
+                '<div class="pc-cashflow-row pc-cashflow-head">' +
+                    '<div class="pc-cf-col pc-cf-col-date">Date</div>' +
+                    '<div class="pc-cf-col pc-cf-col-amount">Amount (₹)</div>' +
+                    '<div class="pc-cf-col pc-cf-col-action"></div>' +
+                '</div>' +
+                '<div class="pc-cashflow-body">' +
+                    rows.map((row, index) => {
+                        const amt = Number(row.amount);
+                        const amtClass = amt < 0 ? 'pc-amount-outflow' : (amt > 0 ? 'pc-amount-inflow' : '');
+                        return '<div class="pc-cashflow-row">' +
+                            '<div class="pc-cf-col pc-cf-col-date">' +
+                                '<input class="pc-control pc-cf-date-input" type="date" data-cashflow-date="' + index + '" value="' + escapeHtml(row.date) + '" aria-label="Cash flow date ' + (index + 1) + '">' +
+                            '</div>' +
+                            '<div class="pc-cf-col pc-cf-col-amount">' +
+                                '<div class="pc-cf-amount-wrap">' +
+                                    '<span class="pc-cf-prefix">₹</span>' +
+                                    '<input class="pc-control pc-cf-amount-input ' + amtClass + '" type="number" step="100" data-cashflow-amount="' + index + '" value="' + escapeHtml(row.amount) + '" placeholder="e.g. -100000 or 120000" aria-label="Cash flow amount ' + (index + 1) + '">' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="pc-cf-col pc-cf-col-action">' +
+                                '<button class="pc-remove-row" type="button" data-remove-cashflow="' + index + '" aria-label="Remove cash flow" title="Remove row">' +
+                                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('') +
+                '</div>' +
+            '</div>' +
+            '<div class="pc-cf-actions">' +
+                '<button class="pc-add-row" type="button" data-add-cashflow>' +
+                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>' +
+                    '<span>Add cash flow</span>' +
+                '</button>' +
+            '</div>' +
+            '<p class="pc-cashflow-hint">💡 <strong>Chit Fund / Interim Payout Tip:</strong> If you received an interim payout (e.g., +₹2,54,000) and earned separate returns/interest by reinvesting it, add the extra returns earned as a positive cash flow on your final date.</p>' +
             '</div>';
     }
     function renderInputs() {
@@ -471,18 +505,24 @@
             });
         }
         const pieBase = Math.min(invested, received);
+        const sign = value > 0 ? '+' : '';
+        const headlineText = sign + percent(value * 100);
+        const headlineColor = value > 0 ? 'var(--pc-green-dark)' : (value < 0 ? '#ef4444' : 'var(--pc-text)');
+        const gainLoss = received - invested;
+        const gainLossSign = gainLoss > 0 ? '+' : (gainLoss < 0 ? '-' : '');
 
         return {
-            headline: percent(value * 100),
+            headline: headlineText,
+            headlineColor: headlineColor,
             caption: 'Annualized return from entered cash flows',
             metrics: [
                 ['Total invested', money(invested)],
                 ['Total received', money(received)],
-                ['Net gain / loss', money(received - invested)]
+                ['Net gain / loss', gainLossSign + money(Math.abs(gainLoss)), gainLoss > 0 ? 'positive' : (gainLoss < 0 ? 'negative' : 'neutral')]
             ],
             pie: [
                 { name: received >= invested ? 'Total invested' : 'Total received', value: pieBase, color: palette.invested },
-                { name: received >= invested ? 'Net gain' : 'Net loss', value: Math.abs(received - invested), color: palette.pale }
+                { name: received >= invested ? 'Net gain' : 'Net loss', value: Math.abs(gainLoss), color: received >= invested ? palette.growth : '#ef4444' }
             ],
             series,
             graph: ['invested', 'returns'],
@@ -548,11 +588,14 @@
             offset += ratio * circumference;
             return circle;
         }).join('');
-        const rows = result.metrics.map(row => '<div class="pc-summary-metric"><span>' + escapeHtml(row[0]) + '</span><strong>' + escapeHtml(row[1]) + '</strong></div>').join('');
+        const rows = result.metrics.map(row => {
+            const valStyle = row[2] === 'positive' ? 'color:var(--pc-green-dark);font-weight:700;' : (row[2] === 'negative' ? 'color:#ef4444;font-weight:700;' : '');
+            return '<div class="pc-summary-metric"><span>' + escapeHtml(row[0]) + '</span><strong' + (valStyle ? ' style="' + valStyle + '"' : '') + '>' + escapeHtml(row[1]) + '</strong></div>';
+        }).join('');
         const extraNotice = result.depletionYears != null
             ? '<div class="pc-summary-extra pc-summary-extra-danger">Corpus depleted after <strong>' + escapeHtml(result.depletionYears.toFixed(1)) + ' years</strong> from now.</div>'
             : result.notice ? '<div class="pc-summary-extra">' + escapeHtml(result.notice) + '</div>' : '';
-        elements.summary.innerHTML = '<div class="pc-result-label">' + escapeHtml(result.resultLabel || (active === 'xirr' || active === 'cagr' ? 'Result' : 'Estimated value')) + '</div><div class="pc-result-value">' + escapeHtml(result.headline) + '</div><p class="pc-result-caption">' + escapeHtml(result.caption) + '</p><div class="pc-pie-wrap"><svg class="pc-pie" viewBox="0 0 120 120" aria-label="Breakdown of estimated values"><circle cx="60" cy="60" r="43" fill="none" stroke="var(--pc-hover)" stroke-width="17"></circle>' + circles + '<circle cx="60" cy="60" r="29" fill="var(--pc-card)"></circle></svg><div class="pc-pie-tooltip" hidden></div></div><div class="pc-pie-legend">' + pieValues.map(item => '<span class="pc-legend-item"><i class="pc-legend-swatch" style="background:' + item.color + '"></i>' + escapeHtml(item.name) + '</span>').join('') + '</div><div class="pc-summary-metrics">' + rows + '</div>' + extraNotice;
+        elements.summary.innerHTML = '<div class="pc-result-label">' + escapeHtml(result.resultLabel || (active === 'xirr' || active === 'cagr' ? 'Result' : 'Estimated value')) + '</div><div class="pc-result-value"' + (result.headlineColor ? ' style="color:' + result.headlineColor + ';"' : '') + '>' + escapeHtml(result.headline) + '</div><p class="pc-result-caption">' + escapeHtml(result.caption) + '</p><div class="pc-pie-wrap"><svg class="pc-pie" viewBox="0 0 120 120" aria-label="Breakdown of estimated values"><circle cx="60" cy="60" r="43" fill="none" stroke="var(--pc-hover)" stroke-width="17"></circle>' + circles + '<circle cx="60" cy="60" r="29" fill="var(--pc-card)"></circle></svg><div class="pc-pie-tooltip" hidden></div></div><div class="pc-pie-legend">' + pieValues.map(item => '<span class="pc-legend-item"><i class="pc-legend-swatch" style="background:' + item.color + '"></i>' + escapeHtml(item.name) + '</span>').join('') + '</div><div class="pc-summary-metrics">' + rows + '</div>' + extraNotice;
         const wrap = elements.summary.querySelector('.pc-pie-wrap');
         const tooltip = wrap.querySelector('.pc-pie-tooltip');
         function showPieTooltip(target, event) {
