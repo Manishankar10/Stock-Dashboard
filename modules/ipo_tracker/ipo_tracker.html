@@ -7,9 +7,9 @@
 <div id="tab-ipos" class="tab-content" style="display: none;">
     <main class="page-shell ipo-shell" style="width: 100%; margin: 0; padding: 0;">
         <!-- Selector Bar (Common Header Style as Watchlist & Portfolio) -->
-        <div class="card-container" style="padding: 14px 20px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div class="card-container ipo-header-card" style="padding: 14px 20px; margin-bottom: 20px;">
+            <div class="ipo-header-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div class="ipo-status-filter-wrap" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <span class="tools-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">IPO TRACKER:</span>
                     <div class="portfolio-selector-bar" style="margin-bottom: 0;">
                         <button type="button" class="pf-select-btn active" data-status-filter="all">All Issues (<span id="count-all">—</span>)</button>
@@ -18,7 +18,7 @@
                         <button type="button" class="pf-select-btn" data-status-filter="closed">Recently Closed (<span id="count-closed">0</span>)</button>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div class="ipo-header-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <div class="updated-card" style="padding: 5px 12px; margin: 0; min-width: auto; border-radius: 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 8px;" aria-live="polite">
                         <span class="live-dot"></span>
                         <div style="display: flex; flex-direction: column;">
@@ -40,9 +40,9 @@
                     </label>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <div class="ipo-board-chips-group">
-                            <button type="button" class="ipo-board-chip active" data-board-filter="all">All (<span id="count-board-all">12</span>)</button>
-                            <button type="button" class="ipo-board-chip" data-board-filter="mainboard">Mainboard (<span id="count-board-mainboard">7</span>)</button>
-                            <button type="button" class="ipo-board-chip" data-board-filter="sme">SME (<span id="count-board-sme">4</span>)</button>
+                            <button type="button" class="ipo-board-chip active" data-board-filter="all">All (<span id="count-board-all">—</span>)</button>
+                            <button type="button" class="ipo-board-chip" data-board-filter="mainboard">Mainboard (<span id="count-board-mainboard">—</span>)</button>
+                            <button type="button" class="ipo-board-chip" data-board-filter="sme">SME (<span id="count-board-sme">—</span>)</button>
                         </div>
                         <select id="segment-filter" aria-label="Filter by IPO board" style="display: none;">
                             <option value="all">All boards</option>

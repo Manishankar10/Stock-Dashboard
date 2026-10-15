@@ -108,19 +108,51 @@
             ? '<a class="company-name" href="' + detailUrl + '" target="_blank" rel="noopener noreferrer">' + name + ' ↗</a>'
             : '<span class="company-name">' + name + '</span>';
 
+        function formatAppDate(value) {
+            if (!value) return '';
+            const strVal = String(value).trim();
+            if (/^\d{1,2}\s+[A-Za-z]{3}$/.test(strVal)) {
+                return strVal + ' ' + new Date().getFullYear();
+            }
+            if (/^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}$/.test(strVal)) {
+                return strVal;
+            }
+            try {
+                if (typeof strVal === 'string') {
+                    const clean = strVal.split('T')[0];
+                    const parts = clean.split(/[-/]/);
+                    if (parts.length === 3) {
+                        let d;
+                        if (parts[0].length === 4) {
+                            d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                        } else if (parts[2].length === 4) {
+                            d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                        }
+                        if (d && !isNaN(d.getTime())) {
+                            return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                        }
+                    }
+                }
+                const date = new Date(strVal);
+                return isNaN(date.getTime()) ? strVal : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            } catch (e) {
+                return strVal;
+            }
+        }
+
         let datesText = escapeHtml(ipo.dates || 'Dates not reported');
-        if (ipo.open_date && ipo.close_date && window.formatAppDate) {
-            datesText = escapeHtml(window.formatAppDate(ipo.open_date) + ' to ' + window.formatAppDate(ipo.close_date));
-        } else if (ipo.dates && /^\d{4}-\d{2}-\d{2}\s+to\s+\d{4}-\d{2}-\d{2}$/.test(ipo.dates)) {
+        if (ipo.open_date && ipo.close_date) {
+            datesText = escapeHtml(formatAppDate(ipo.open_date) + ' to ' + formatAppDate(ipo.close_date));
+        } else if (ipo.dates && /^\d{2,4}[-/]\d{2}[-/]\d{2,4}\s+to\s+\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(ipo.dates)) {
             const parts = ipo.dates.split(' to ');
-            datesText = escapeHtml((window.formatAppDate ? window.formatAppDate(parts[0]) : parts[0]) + ' to ' + (window.formatAppDate ? window.formatAppDate(parts[1]) : parts[1]));
+            datesText = escapeHtml(formatAppDate(parts[0]) + ' to ' + formatAppDate(parts[1]));
         }
 
         let secondaryDate = '';
         if (ipo.listing_date) {
-            secondaryDate = '<span class="secondary-line">Lists ' + escapeHtml(window.formatAppDate ? window.formatAppDate(ipo.listing_date) : ipo.listing_date) + '</span>';
+            secondaryDate = '<span class="secondary-line">Lists ' + escapeHtml(formatAppDate(ipo.listing_date)) + '</span>';
         } else if (ipo.allotment_date) {
-            secondaryDate = '<span class="secondary-line">Allotment ' + escapeHtml(window.formatAppDate ? window.formatAppDate(ipo.allotment_date) : ipo.allotment_date) + '</span>';
+            secondaryDate = '<span class="secondary-line">Allotment ' + escapeHtml(formatAppDate(ipo.allotment_date)) + '</span>';
         }
 
         return '<tr data-status="' + group + '" data-segment="' + escapeHtml(classifySegment(segment)) + '" data-name="' + name.toLowerCase() + '">' +
@@ -183,7 +215,19 @@
 
     function setFreshness(data) {
         const rawTime = data.generated_at || data.generated_display;
-        const formattedTime = rawTime ? (window.formatAppDateTime ? window.formatAppDateTime(rawTime) : rawTime) : 'time unavailable';
+        let formattedTime = 'recently';
+        if (rawTime) {
+            try {
+                const dt = new Date(rawTime);
+                if (!isNaN(dt.getTime())) {
+                    formattedTime = dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    formattedTime = rawTime;
+                }
+            } catch (e) {
+                formattedTime = rawTime;
+            }
+        }
         updatedLabel.textContent = 'Provider updated: ' + formattedTime;
         fetchedLabel.textContent = data.is_stale
             ? 'Showing the last successful refresh'
@@ -195,6 +239,40 @@
             : '';
         if (data.provider_url) document.getElementById('provider-link').href = externalUrl(data.provider_url) || 'https://gmptoday.in/';
         if (data.official_ipo_url) document.getElementById('official-link').href = externalUrl(data.official_ipo_url) || 'https://www.nseindia.com/market-data/all-upcoming-issues-ipo';
+    }
+
+    async function tryDirectProviderSync() {
+        try {
+            const resp = await fetch('https://gmptoday.in/api/gmp.json', { cache: 'no-store' });
+            if (!resp.ok) return false;
+            const data = await resp.json();
+            if (!data || !Array.isArray(data.ipos) || !data.ipos.length) return false;
+
+            // Background sync to server to populate server cache
+            fetch('/api/ipos/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).catch(function () {});
+
+            // If local table is not yet loaded, load it from refreshed endpoint
+            if (!ipos.length) {
+                const refreshed = await fetch('/api/ipos', { cache: 'no-store' });
+                if (refreshed.ok) {
+                    const freshData = await refreshed.json();
+                    ipos = Array.isArray(freshData.ipos) ? freshData.ipos : [];
+                    iposLoaded = true;
+                    updateCounts();
+                    setFreshness(freshData);
+                    render();
+                    return true;
+                }
+            }
+            return true;
+        } catch (e) {
+            console.warn('Direct provider sync notice:', e);
+            return false;
+        }
     }
 
     let iposLoaded = false;
@@ -216,13 +294,20 @@
             updateCounts();
             setFreshness(data);
             render();
+
+            if (data.is_stale) {
+                tryDirectProviderSync();
+            }
         } catch (error) {
-            if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="8">' + escapeHtml(error.message || 'IPO data could not be loaded.') + '</td></tr>';
-            updatedLabel.textContent = 'IPO data unavailable';
-            fetchedLabel.textContent = 'Check your connection and refresh';
-            noticeElement.hidden = false;
-            noticeElement.textContent = error.message || 'The IPO feed could not be reached.';
-            liveDot.classList.add('stale');
+            const directSuccess = await tryDirectProviderSync();
+            if (!directSuccess) {
+                if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="8">' + escapeHtml(error.message || 'IPO data could not be loaded.') + '</td></tr>';
+                updatedLabel.textContent = 'IPO data unavailable';
+                fetchedLabel.textContent = 'Check your connection and refresh';
+                noticeElement.hidden = false;
+                noticeElement.textContent = error.message || 'The IPO feed could not be reached.';
+                liveDot.classList.add('stale');
+            }
         } finally {
             refreshButton.disabled = false;
             refreshButton.textContent = '↻ Refresh';

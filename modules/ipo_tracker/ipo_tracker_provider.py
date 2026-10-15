@@ -8,10 +8,17 @@ import re
 import threading
 import time
 
+import json
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from db_store import db as _mongo_db
+
+try:
+    from curl_cffi import requests as cffi_requests
+    _HAS_CURL_CFFI = True
+except ImportError:
+    _HAS_CURL_CFFI = False
 
 
 FEED_URL = os.environ.get("IPO_TRACKER_FEED_URL", "https://gmptoday.in/api/gmp.json")
@@ -26,7 +33,14 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 _HTTP_SESSION = requests.Session()
 _HTTP_SESSION.headers.update({
     "User-Agent": USER_AGENT,
-    "Accept": "application/json, text/plain, */*",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,application/json,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
     "Referer": PROVIDER_PAGE_URL,
 })
 _RETRY_POLICY = Retry(
@@ -46,27 +60,44 @@ _cached_payload = None
 _cached_monotonic = 0.0
 
 
+def _load_fallback_seed():
+    try:
+        seed_path = os.path.join(os.path.dirname(__file__), "seed_ipos.json")
+        if os.path.exists(seed_path):
+            with open(seed_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and isinstance(data.get("ipos"), list) and data["ipos"]:
+                    return data
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Error loading fallback IPO seed: %s", exc)
+    return None
+
+
 def _restore_cache_from_mongo():
     """Restore the last shared feed snapshot so an app restart can serve stale data."""
     global _cached_payload, _cached_monotonic
-    if _mongo_db is None:
-        return
-    try:
-        document = _mongo_db["ipo_tracker_cache"].find_one({"_id": "latest"})
-        payload = document.get("payload") if document else None
-        if not isinstance(payload, dict) or not isinstance(payload.get("ipos"), list):
-            return
-        stored_at = document.get("stored_at")
-        if not isinstance(stored_at, dt.datetime):
-            stored_at = dt.datetime.now(dt.timezone.utc)
-        elif stored_at.tzinfo is None:
-            stored_at = stored_at.replace(tzinfo=dt.timezone.utc)
-        age = max(0.0, (dt.datetime.now(dt.timezone.utc) - stored_at).total_seconds())
-        _cached_payload = payload
-        _cached_monotonic = time.monotonic() - age
-    except Exception:
-        # Live refresh remains available when MongoDB is unavailable.
-        return
+    if _mongo_db is not None:
+        try:
+            document = _mongo_db["ipo_tracker_cache"].find_one({"_id": "latest"})
+            payload = document.get("payload") if document else None
+            if isinstance(payload, dict) and isinstance(payload.get("ipos"), list) and payload["ipos"]:
+                stored_at = document.get("stored_at")
+                if not isinstance(stored_at, dt.datetime):
+                    stored_at = dt.datetime.now(dt.timezone.utc)
+                elif stored_at.tzinfo is None:
+                    stored_at = stored_at.replace(tzinfo=dt.timezone.utc)
+                age = max(0.0, (dt.datetime.now(dt.timezone.utc) - stored_at).total_seconds())
+                _cached_payload = payload
+                _cached_monotonic = time.monotonic() - age
+                return
+        except Exception:
+            pass
+
+    # Fall back to bundled seed if Mongo is empty or unavailable
+    seed = _load_fallback_seed()
+    if seed:
+        _cached_payload = seed
+        _cached_monotonic = time.monotonic() - 7200
 
 
 def _persist_cache_to_mongo(payload):
@@ -318,25 +349,47 @@ def _parse_provider_html(html, sample_items=None):
     return normalized_list
 
 
+def _fetch_url(url, is_json=False):
+    """Fetch URL with curl_cffi Chrome impersonation first, falling back to requests."""
+    if _HAS_CURL_CFFI:
+        try:
+            headers = {"Referer": PROVIDER_PAGE_URL}
+            if is_json:
+                headers["Accept"] = "application/json, text/plain, */*"
+            resp = cffi_requests.get(url, impersonate="chrome124", timeout=REQUEST_TIMEOUT[1], headers=headers)
+            if resp.status_code == 200:
+                return resp
+        except Exception as exc:
+            logging.getLogger(__name__).warning("curl_cffi fetch notice for %s: %s", url, exc)
+
+    try:
+        resp = _HTTP_SESSION.get(url, timeout=REQUEST_TIMEOUT)
+        return resp
+    except Exception as exc:
+        logging.getLogger(__name__).warning("requests fetch notice for %s: %s", url, exc)
+        return None
+
+
 def _fetch_payload():
     json_data = {}
     sample_items = []
-    try:
-        resp_json = _HTTP_SESSION.get(FEED_URL, timeout=REQUEST_TIMEOUT)
-        if resp_json.ok:
-            json_data = resp_json.json()
-            if isinstance(json_data, dict) and isinstance(json_data.get("ipos"), list):
-                sample_items = json_data["ipos"]
-    except Exception as exc:
-        logging.getLogger(__name__).warning("IPO JSON feed fetch notice: %s", exc)
+    resp_json = _fetch_url(FEED_URL, is_json=True)
+    if resp_json and resp_json.status_code == 200:
+        try:
+            data = resp_json.json()
+            if isinstance(data, dict) and isinstance(data.get("ipos"), list):
+                json_data = data
+                sample_items = data["ipos"]
+        except Exception as exc:
+            logging.getLogger(__name__).warning("IPO JSON parse notice: %s", exc)
 
     html_ipos = []
-    try:
-        resp_html = _HTTP_SESSION.get(PROVIDER_PAGE_URL, timeout=REQUEST_TIMEOUT)
-        if resp_html.ok:
+    resp_html = _fetch_url(PROVIDER_PAGE_URL, is_json=False)
+    if resp_html and resp_html.status_code == 200:
+        try:
             html_ipos = _parse_provider_html(resp_html.text, sample_items)
-    except Exception as exc:
-        logging.getLogger(__name__).warning("IPO HTML page fetch notice: %s", exc)
+        except Exception as exc:
+            logging.getLogger(__name__).warning("IPO HTML page parse notice: %s", exc)
 
     if html_ipos:
         ipos = html_ipos
@@ -361,7 +414,7 @@ def _fetch_payload():
 
 
 def get_ipo_data(force_refresh=False):
-    """Return cached normalized data; serve the last good response on outages."""
+    """Return cached normalized data; serve the last good response or bundled seed on outages."""
     global _cached_payload, _cached_monotonic
 
     with _cache_lock:
@@ -383,9 +436,45 @@ def get_ipo_data(force_refresh=False):
             return result
         except IPOFeedError as exc:
             if _cached_payload is None:
-                raise
-            result = copy.deepcopy(_cached_payload)
-            result["is_stale"] = True
-            result["refresh_error"] = str(exc)
-            result["cache_status"] = "stale-fallback"
-            return result
+                seed = _load_fallback_seed()
+                if seed:
+                    _cached_payload = seed
+                    _cached_monotonic = time.monotonic() - 7200
+            if _cached_payload is not None:
+                result = copy.deepcopy(_cached_payload)
+                result["is_stale"] = True
+                result["refresh_error"] = str(exc)
+                result["cache_status"] = "stale-fallback"
+                return result
+            raise
+
+
+def save_synced_ipo_data(json_data):
+    """Save client-synced IPO data to cache and Mongo."""
+    global _cached_payload, _cached_monotonic
+    sample_items = json_data.get("ipos") if isinstance(json_data, dict) else None
+    if not isinstance(sample_items, list) or not sample_items:
+        return {}
+
+    ipos = [normalized for normalized in (normalize_ipo(item) for item in sample_items) if normalized]
+    if not ipos:
+        return {}
+
+    payload = {
+        "ipos": ipos,
+        "generated_at": json_data.get("generated_at") or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "generated_display": json_data.get("generated_display") or "Client direct sync",
+        "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "provider": "IPO GMP Today",
+        "provider_url": PROVIDER_PAGE_URL,
+        "provider_data_url": FEED_URL,
+        "official_ipo_url": OFFICIAL_IPO_URL,
+        "license": "CC BY 4.0",
+        "is_stale": False,
+        "refresh_error": None,
+    }
+    with _cache_lock:
+        _cached_payload = payload
+        _cached_monotonic = time.monotonic()
+        _persist_cache_to_mongo(payload)
+    return payload

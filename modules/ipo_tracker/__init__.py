@@ -5,7 +5,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, render_template, request, send_from_directory
 
-from .ipo_tracker_provider import IPOFeedError, get_ipo_data
+from .ipo_tracker_provider import IPOFeedError, get_ipo_data, save_synced_ipo_data
 
 
 ipo_tracker_bp = Blueprint(
@@ -62,3 +62,16 @@ def ipo_tracker_data():
         return response
     except IPOFeedError as exc:
         return jsonify({"error": str(exc)}), 503
+
+
+@ipo_tracker_bp.post("/api/ipos/sync")
+@_guard
+def ipo_tracker_sync():
+    """Allow direct sync from client browser if server-side network is restricted."""
+    data = request.get_json(silent=True) or {}
+    sample_items = data.get("ipos")
+    if isinstance(sample_items, list) and sample_items:
+        payload = save_synced_ipo_data(data)
+        return jsonify({"status": "ok", "count": len(payload.get("ipos", []))})
+    return jsonify({"error": "Invalid payload"}), 400
+
