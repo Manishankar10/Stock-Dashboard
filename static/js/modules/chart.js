@@ -1168,25 +1168,25 @@
                 mobileMsg = '🟢 Tap to place line';
             } else if (toolType === 'pricerange') {
                 msg = '📏 Price Range: Click 1st, then 2nd point';
-                mobileMsg = '📏 Tap 1st, then 2nd point';
+                mobileMsg = '📏 Drag or tap to draw range';
             } else if (toolType === 'parallelchannel') {
                 msg = '⛓️ Parallel Channel: Click 1st point of baseline';
-                mobileMsg = '⛓️ Tap 1st point of baseline';
+                mobileMsg = '⛓️ Drag or tap baseline';
             } else if (toolType === 'measure') {
                 msg = '📐 Measure: Click 1st point to measure';
-                mobileMsg = '📐 Tap 1st point to measure';
+                mobileMsg = '📐 Drag or tap to measure';
             } else if (toolType === 'fib') {
                 msg = '🌀 Fib Retracement: Click swing low/high point';
-                mobileMsg = '🌀 Tap swing point';
+                mobileMsg = '🌀 Drag or tap swing point';
             } else if (toolType === 'fibext') {
                 msg = '🎯 Trend Fib Extension: Click 1st point (Wave 1 start)';
-                mobileMsg = '🎯 Tap 1st point (Wave start)';
+                mobileMsg = '🎯 Drag or tap Wave 1 start';
             } else if (toolType === 'trendline') {
                 msg = '📐 Trendline: Click 1st, then 2nd point';
-                mobileMsg = '📈 Tap 1st, then 2nd point';
+                mobileMsg = '📈 Drag or tap to draw';
             } else if (toolType === 'rectangle') {
                 msg = '⬜ Rectangle: Click 1st corner, then opposite corner';
-                mobileMsg = '⬛ Tap 1st, then 2nd corner';
+                mobileMsg = '⬛ Drag or tap to draw box';
             } else if (toolType === 'vertical') {
                 msg = '⏱️ Time Line: Click on chart to place';
                 mobileMsg = '🕒 Tap to place line';
@@ -1275,6 +1275,11 @@
         }
 
         function cancelDrawingTool() {
+            if (mobileDrawSession && mobileDrawSession.dragRaf) {
+                cancelAnimationFrame(mobileDrawSession.dragRaf);
+            }
+            mobileDrawSession = null;
+            mobileDrawJustFinished = false;
             currentDrawingTool = null;
             drawingPoints = [];
             tempMousePos = null;
@@ -1318,15 +1323,19 @@
 
             mainContainer.removeEventListener('mousemove', handleChartPaneMouseMove);
             mainContainer.removeEventListener('mousedown', handleChartPaneMouseDown);
-            mainContainer.removeEventListener('touchstart', handleChartPaneMouseDown);
+            mainContainer.removeEventListener('touchstart', onChartTouchStart);
+            mainContainer.removeEventListener('touchmove', onChartTouchMove);
+            mainContainer.removeEventListener('touchend', onChartTouchEnd);
+            mainContainer.removeEventListener('touchcancel', onChartTouchCancel);
             mainContainer.removeEventListener('click', handleChartPaneClick);
-            mainContainer.removeEventListener('touchend', handleChartPaneTouchEnd);
 
             mainContainer.addEventListener('mousemove', handleChartPaneMouseMove);
             mainContainer.addEventListener('mousedown', handleChartPaneMouseDown);
-            mainContainer.addEventListener('touchstart', handleChartPaneMouseDown, { passive: false });
+            mainContainer.addEventListener('touchstart', onChartTouchStart, { passive: false });
+            mainContainer.addEventListener('touchmove', onChartTouchMove, { passive: false });
+            mainContainer.addEventListener('touchend', onChartTouchEnd, { passive: false });
+            mainContainer.addEventListener('touchcancel', onChartTouchCancel, { passive: false });
             mainContainer.addEventListener('click', handleChartPaneClick);
-            mainContainer.addEventListener('touchend', handleChartPaneTouchEnd);
 
             // Listen for user scaling/dragging the price scale or panning the chart
             let isUserDraggingChart = false;
@@ -1447,6 +1456,7 @@
             if (drawingCanvas) {
                 drawingCanvas.style.pointerEvents = enable ? 'auto' : 'none';
                 drawingCanvas.style.cursor = enable ? 'crosshair' : 'default';
+                drawingCanvas.style.touchAction = enable ? 'none' : '';
             }
         }
 
@@ -1875,8 +1885,334 @@
             window.addEventListener('touchend', onWindowDrawingUp);
         }
 
+        let mobileDrawSession = null;
+        let mobileDrawJustFinished = false;
+
+        function handleMobileDrawingTouchStart(e) {
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (!isMobile || !currentDrawingTool) return false;
+
+            if (e.target && e.target.closest && (
+                e.target.closest('#canvasObjectPopup') ||
+                e.target.closest('.chart-popover-wrapper') ||
+                e.target.closest('.chart-popover-menu') ||
+                e.target.closest('#plusActionMenu') ||
+                e.target.closest('.chart-close-btn') ||
+                e.target.closest('#drawingToolBanner') ||
+                e.target.closest('#chartMobileToolHint') ||
+                e.target.closest('.tool-cancel-btn') ||
+                e.target.closest('#chartMobileFavBar') ||
+                e.target.closest('#chartWebFavBar') ||
+                e.target.closest('button')
+            )) {
+                return false;
+            }
+
+            const pt = getChartPointFromEvent(e);
+            if (!pt || pt.price === null || isNaN(pt.price)) return false;
+
+            if (e.cancelable) e.preventDefault();
+            e.stopPropagation();
+
+            mobileDrawSession = {
+                startPt: pt,
+                currentPt: pt,
+                hasMoved: false,
+                dragDistance: 0,
+                startTime: performance.now(),
+                initialPointsCount: drawingPoints.length,
+                dragRaf: null
+            };
+
+            // If starting a 2-point or 3-point tool from scratch, establish anchor point 1 immediately
+            if (drawingPoints.length === 0) {
+                if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle' || currentDrawingTool === 'pricerange' || currentDrawingTool === 'fib' || currentDrawingTool === 'measure' || currentDrawingTool === 'parallelchannel' || currentDrawingTool === 'fibext') {
+                    drawingPoints = [pt];
+                    tempMousePos = pt;
+                    redrawCanvasOverlay();
+                }
+            } else if (drawingPoints.length === 1 || drawingPoints.length === 2) {
+                tempMousePos = pt;
+                redrawCanvasOverlay();
+            }
+
+            return true;
+        }
+
+        function handleMobileDrawingTouchMove(e) {
+            if (!mobileDrawSession || !currentDrawingTool) return;
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (!isMobile) return;
+
+            if (e.cancelable) e.preventDefault();
+            e.stopPropagation();
+
+            const pt = getChartPointFromEvent(e);
+            if (!pt || pt.price === null || isNaN(pt.price)) return;
+
+            const dist = Math.hypot(pt.x - mobileDrawSession.startPt.x, pt.y - mobileDrawSession.startPt.y);
+            mobileDrawSession.currentPt = pt;
+            mobileDrawSession.dragDistance = dist;
+
+            if (dist >= 8) {
+                mobileDrawSession.hasMoved = true;
+            }
+
+            tempMousePos = pt;
+
+            if (!mobileDrawSession.dragRaf) {
+                mobileDrawSession.dragRaf = requestAnimationFrame(() => {
+                    if (mobileDrawSession) mobileDrawSession.dragRaf = null;
+                    redrawCanvasOverlay();
+                });
+            }
+        }
+
+        function handleMobileDrawingTouchEnd(e) {
+            if (!mobileDrawSession || !currentDrawingTool) return false;
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (!isMobile) return false;
+
+            if (e.cancelable) e.preventDefault();
+            e.stopPropagation();
+
+            if (mobileDrawSession.dragRaf) {
+                cancelAnimationFrame(mobileDrawSession.dragRaf);
+                mobileDrawSession.dragRaf = null;
+            }
+
+            const endPt = getChartPointFromEvent(e) || mobileDrawSession.currentPt || mobileDrawSession.startPt;
+            const dist = mobileDrawSession.dragDistance;
+            const hasMoved = mobileDrawSession.hasMoved && (dist >= 12);
+            const initialCount = mobileDrawSession.initialPointsCount;
+            const activeTool = currentDrawingTool;
+
+            mobileDrawSession = null;
+            mobileDrawJustFinished = true;
+            setTimeout(() => { mobileDrawJustFinished = false; }, 350);
+
+            if (!endPt || endPt.price === null || isNaN(endPt.price)) {
+                redrawCanvasOverlay();
+                return true;
+            }
+
+            // 1-Point Tools (Support Click, Vertical, Note)
+            if (activeTool === 'support_click') {
+                addHorizontalLineAtPrice('support', parseFloat(endPt.price.toFixed(2)), activeToolColor || '#10b981', 'Support');
+                cancelDrawingTool();
+                return true;
+            } else if (activeTool === 'vertical') {
+                if (endPt.logical === null || endPt.logical === undefined) return true;
+                const shape = {
+                    id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                    type: 'vertical',
+                    time: endPt.time,
+                    logical: endPt.logical,
+                    futureOffset: endPt.futureOffset || 0,
+                    color: activeToolColor || '#f59e0b'
+                };
+                saveChartShapeForSymbol(currentChartSymbol, shape);
+                cancelDrawingTool();
+                return true;
+            } else if (activeTool === 'note') {
+                if (endPt.logical === null || endPt.logical === undefined) return true;
+                (async () => {
+                    const noteText = await showCustomPrompt({ title: 'Add Chart Note', message: 'Enter text for chart note:', defaultValue: 'Key Support / Target', placeholder: 'e.g. Breakout level' });
+                    if (noteText) {
+                        const shape = {
+                            id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                            type: 'note',
+                            time: endPt.time,
+                            logical: endPt.logical,
+                            futureOffset: endPt.futureOffset || 0,
+                            price: endPt.price,
+                            text: noteText,
+                            color: activeToolColor || '#10b981'
+                        };
+                        saveChartShapeForSymbol(currentChartSymbol, shape);
+                    }
+                    cancelDrawingTool();
+                })();
+                return true;
+            }
+
+            // 2-Point Tools: Trendline, Rectangle, Price Range %, Fib Retracement, Measure
+            if (activeTool === 'trendline' || activeTool === 'rectangle' || activeTool === 'pricerange' || activeTool === 'fib' || activeTool === 'measure') {
+                if (hasMoved || initialCount === 1) {
+                    const pt1 = (drawingPoints.length > 0) ? drawingPoints[0] : endPt;
+                    const pt2 = endPt;
+
+                    if (pt1.logical === null || pt2.logical === null) return true;
+
+                    if (activeTool === 'measure') {
+                        tempMeasureData = {
+                            type: 'measure',
+                            time1: pt1.time,
+                            logical1: pt1.logical,
+                            futureOffset1: pt1.futureOffset || 0,
+                            price1: pt1.price,
+                            time2: pt2.time,
+                            logical2: pt2.logical,
+                            futureOffset2: pt2.futureOffset || 0,
+                            price2: pt2.price,
+                            color: activeToolColor || '#3b82f6',
+                            createdAt: performance.now(),
+                            opacity: 1.0
+                        };
+                        cancelDrawingTool();
+                        startTempMeasureFade();
+                        return true;
+                    }
+
+                    const shape = {
+                        id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                        type: activeTool,
+                        time1: pt1.time,
+                        logical1: pt1.logical,
+                        futureOffset1: pt1.futureOffset || 0,
+                        price1: pt1.price,
+                        time2: pt2.time,
+                        logical2: pt2.logical,
+                        futureOffset2: pt2.futureOffset || 0,
+                        price2: pt2.price,
+                        color: activeToolColor || (activeTool === 'trendline' ? '#3b82f6' : activeTool === 'rectangle' ? '#a855f7' : activeTool === 'fib' ? '#6366f1' : '#10b981'),
+                        fillColor: activeTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null
+                    };
+
+                    saveChartShapeForSymbol(currentChartSymbol, shape);
+                    cancelDrawingTool();
+                    return true;
+                } else {
+                    // Tap point 1
+                    drawingPoints = [endPt];
+                    tempMousePos = null;
+                    const mobileHintText = document.getElementById('chartMobileToolHintText');
+                    if (mobileHintText) {
+                        mobileHintText.innerText = (activeTool === 'measure') ? '📐 Tap or drag 2nd point to measure' : '📈 Tap or drag 2nd point to finish';
+                    }
+                    redrawCanvasOverlay();
+                    return true;
+                }
+            }
+
+            // 3-Point Tools: Parallel Channel, Trend Fib Extension
+            if (activeTool === 'parallelchannel' || activeTool === 'fibext') {
+                if (initialCount === 0) {
+                    if (hasMoved) {
+                        // Dragged stroke 1: baseline created
+                        const pt1 = drawingPoints[0] || endPt;
+                        const pt2 = endPt;
+                        drawingPoints = [pt1, pt2];
+                        tempMousePos = null;
+                        const mobileHintText = document.getElementById('chartMobileToolHintText');
+                        if (mobileHintText) {
+                            mobileHintText.innerText = (activeTool === 'parallelchannel') ? '⛓️ Drag or tap to set channel width' : '🎯 Drag or tap Wave 2 (3rd point)';
+                        }
+                        redrawCanvasOverlay();
+                        return true;
+                    } else {
+                        // Tapped point 1
+                        drawingPoints = [endPt];
+                        tempMousePos = null;
+                        const mobileHintText = document.getElementById('chartMobileToolHintText');
+                        if (mobileHintText) {
+                            mobileHintText.innerText = (activeTool === 'parallelchannel') ? '⛓️ Tap or drag 2nd point of baseline' : '🎯 Tap or drag Wave 1 end';
+                        }
+                        redrawCanvasOverlay();
+                        return true;
+                    }
+                } else if (initialCount === 1) {
+                    // Setting point 2
+                    const pt1 = drawingPoints[0];
+                    const pt2 = endPt;
+                    drawingPoints = [pt1, pt2];
+                    tempMousePos = null;
+                    const mobileHintText = document.getElementById('chartMobileToolHintText');
+                    if (mobileHintText) {
+                        mobileHintText.innerText = (activeTool === 'parallelchannel') ? '⛓️ Drag or tap to set channel width' : '🎯 Drag or tap Wave 2 (3rd point)';
+                    }
+                    redrawCanvasOverlay();
+                    return true;
+                } else if (initialCount === 2) {
+                    // Setting point 3 -> finalize
+                    const pt1 = drawingPoints[0];
+                    const pt2 = drawingPoints[1];
+                    const pt3 = endPt;
+
+                    const shape = {
+                        id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                        type: activeTool,
+                        time1: pt1.time,
+                        logical1: pt1.logical,
+                        futureOffset1: pt1.futureOffset || 0,
+                        price1: pt1.price,
+                        time2: pt2.time,
+                        logical2: pt2.logical,
+                        futureOffset2: pt2.futureOffset || 0,
+                        price2: pt2.price,
+                        time3: pt3.time,
+                        logical3: pt3.logical,
+                        futureOffset3: pt3.futureOffset || 0,
+                        price3: pt3.price,
+                        color: activeToolColor || (activeTool === 'parallelchannel' ? '#3b82f6' : '#a855f7'),
+                        fillColor: (activeTool === 'parallelchannel') ? hexToRgba(activeToolColor || '#3b82f6', 0.12) : null
+                    };
+
+                    saveChartShapeForSymbol(currentChartSymbol, shape);
+                    cancelDrawingTool();
+                    return true;
+                }
+            }
+
+            return true;
+        }
+
+        function handleMobileDrawingTouchCancel(e) {
+            if (mobileDrawSession) {
+                if (mobileDrawSession.dragRaf) {
+                    cancelAnimationFrame(mobileDrawSession.dragRaf);
+                }
+                mobileDrawSession = null;
+                redrawCanvasOverlay();
+            }
+        }
+
+        function onChartTouchStart(e) {
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (isMobile && currentDrawingTool) {
+                const handled = handleMobileDrawingTouchStart(e);
+                if (handled) return;
+            }
+            handleChartPaneMouseDown(e);
+        }
+
+        function onChartTouchMove(e) {
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (isMobile && currentDrawingTool && mobileDrawSession) {
+                handleMobileDrawingTouchMove(e);
+            }
+        }
+
+        function onChartTouchEnd(e) {
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (isMobile && currentDrawingTool && mobileDrawSession) {
+                const handled = handleMobileDrawingTouchEnd(e);
+                if (handled) return;
+            }
+            handleChartPaneTouchEnd(e);
+        }
+
+        function onChartTouchCancel(e) {
+            handleMobileDrawingTouchCancel(e);
+        }
+
         function handleChartPaneClick(e) {
             if (e.target && e.target.closest && (e.target.closest('#drawingToolBanner') || e.target.closest('#chartMobileToolHint') || e.target.closest('.tool-cancel-btn') || e.target.closest('button'))) {
+                return;
+            }
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (isMobile && mobileDrawJustFinished) {
+                mobileDrawJustFinished = false;
                 return;
             }
             if (!currentDrawingTool) return;
@@ -1885,6 +2221,11 @@
 
         function handleChartPaneTouchEnd(e) {
             if (e.target && e.target.closest && (e.target.closest('#drawingToolBanner') || e.target.closest('#chartMobileToolHint') || e.target.closest('.tool-cancel-btn') || e.target.closest('button'))) {
+                return;
+            }
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (isMobile && mobileDrawJustFinished) {
+                mobileDrawJustFinished = false;
                 return;
             }
             if (!currentDrawingTool) return;
