@@ -884,6 +884,11 @@
         font-weight: 600 !important;
     }
 
+    #portfolio-selector-mount .pf-dummy-btn.active .skeleton-box {
+        background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 25%, rgba(16, 185, 129, 0.4) 50%, rgba(16, 185, 129, 0.15) 75%) !important;
+        background-size: 200% 100% !important;
+    }
+
     /* 20% Space Dedicated to Mobile Right Menu */
     .portfolio-mobile-menu-wrapper {
         width: 20% !important;

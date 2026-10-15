@@ -1017,6 +1017,18 @@
             color: white;
             border-color: var(--btn-primary-bg);
         }
+        .pf-dummy-btn {
+            pointer-events: none !important;
+            user-select: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            cursor: default !important;
+        }
+        .pf-dummy-btn.active .skeleton-box {
+            background: linear-gradient(90deg, rgba(255,255,255,0.2) 25%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0.2) 75%);
+            background-size: 200% 100%;
+        }
 
         /* Professional Toast & Custom System Modal Styles */
         #toast-container {

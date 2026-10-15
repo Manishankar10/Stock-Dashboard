@@ -445,9 +445,68 @@
                 }
             }
         }
-        window.triggerPortfolioRefresh = triggerPortfolioRefresh;
+        function renderPortfolioSkeletons() {
+            const selectorMount = document.getElementById('portfolio-selector-mount');
+            if (selectorMount) {
+                selectorMount.innerHTML = `
+                    <button type="button" class="pf-select-btn pf-dummy-btn active" style="pointer-events: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <span>Portfolio 1</span>
+                        <span class="skeleton-box" style="width: 20px; height: 12px; border-radius: 4px;"></span>
+                    </button>
+                    <button type="button" class="pf-select-btn pf-dummy-btn" style="pointer-events: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <span>Portfolio 2</span>
+                        <span class="skeleton-box" style="width: 20px; height: 12px; border-radius: 4px;"></span>
+                    </button>
+                    <button type="button" class="pf-select-btn pf-dummy-btn" style="pointer-events: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <span>Portfolio 3</span>
+                        <span class="skeleton-box" style="width: 20px; height: 12px; border-radius: 4px;"></span>
+                    </button>
+                `;
+            }
+            const viewMount = document.getElementById('portfolio-view-mount');
+            if (viewMount) {
+                viewMount.innerHTML = `
+                    <div class="header-bar">
+                        <h2><span class="skeleton-box" style="width: 140px; height: 22px; border-radius: 6px;"></span></h2>
+                        <div class="actions">
+                            <button disabled style="opacity: 0.6; cursor: default;">+ Add Holding</button>
+                        </div>
+                    </div>
+                    <div class="summary-grid pf-summary-grid">
+                        <div class="metric-card">
+                            <div class="title"><span class="kpi-lbl-full">Invested Amount</span><span class="kpi-lbl-compact">Invested</span></div>
+                            <div class="value" id="pf-summary-invested"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                            <div class="sub-value" style="color:var(--text-secondary);"><span class="skeleton-box" style="width: 50px; height: 12px;"></span></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="title"><span class="kpi-lbl-full">Current Value</span><span class="kpi-lbl-compact">Current Val</span></div>
+                            <div class="value" id="pf-summary-value"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                            <div class="sub-value" style="color:var(--text-secondary);"><span class="skeleton-box" style="width: 65px; height: 12px;"></span></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="title"><span class="kpi-lbl-full">Overall Return (P&L)</span><span class="kpi-lbl-compact">Overall P&L</span></div>
+                            <div class="value" id="pf-summary-pnl"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                            <div class="sub-value" id="pf-summary-pnl-pct"><span class="skeleton-box" style="width: 45px; height: 12px;"></span></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="title"><span class="kpi-lbl-full">Today's Return</span><span class="kpi-lbl-compact">Day P&L</span></div>
+                            <div class="value" id="pf-summary-daypnl"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                            <div class="sub-value" id="pf-summary-daypnl-pct"><span class="skeleton-box" style="width: 45px; height: 12px;"></span></div>
+                        </div>
+                    </div>
+                    <div class="card-container" style="padding: 24px; text-align: center; color: var(--text-secondary); margin-top: 15px;">
+                        <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
+                        Loading portfolio details...
+                    </div>
+                `;
+            }
+        }
+        window.renderPortfolioSkeletons = renderPortfolioSkeletons;
 
         async function fetchPortfolios() {
+            if (!window.portfoliosLoaded) {
+                renderPortfolioSkeletons();
+            }
             const res = await fetch('/api/portfolios');
             portfoliosData = await res.json();
             window.portfoliosLoaded = true;

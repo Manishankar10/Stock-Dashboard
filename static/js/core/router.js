@@ -189,6 +189,7 @@ function switchTab(tabName, pushState = true) {
         }
     } else if (tabName === 'portfolios') {
         if (!window.portfoliosLoaded && typeof fetchPortfolios === 'function') {
+            if (typeof renderPortfolioSkeletons === 'function') renderPortfolioSkeletons();
             fetchPortfolios();
         } else {
             if (typeof renderPortfolios === 'function') renderPortfolios();
