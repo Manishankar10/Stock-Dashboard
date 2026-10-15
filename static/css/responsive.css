@@ -216,20 +216,29 @@
 
     /* Responsive Search Row: Search Bar resized to 90% and Menu Button at right end */
     /* Responsive Search Row: Search Bar occupies 90% space and Menu occupies 10% space */
+    .controls .wl-search-row,
+    #watchlist-view-mount .controls .wl-search-row,
     .wl-search-row {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
         width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
         gap: 6px !important;
     }
 
+    .controls .wl-search-row .autocomplete-wrapper,
+    #watchlist-view-mount .controls .wl-search-row .autocomplete-wrapper,
     .wl-search-row .autocomplete-wrapper {
         flex: 0 0 calc(90% - 6px) !important;
         width: calc(90% - 6px) !important;
         max-width: calc(90% - 6px) !important;
     }
 
+    .controls .wl-search-row .wl-input,
+    #watchlist-view-mount .controls .wl-search-row .wl-input,
     .wl-search-row .wl-input {
         width: 100% !important;
         height: 42px !important;
