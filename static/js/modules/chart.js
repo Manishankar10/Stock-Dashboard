@@ -707,7 +707,7 @@
         }
 
         function clearDrawings() {
-            tempMeasureData = null;
+            clearTempMeasure();
             if (mainSeries && activePriceLines.length > 0) {
                 activePriceLines.forEach(item => {
                     try { mainSeries.removePriceLine(item.lineObj); } catch(e){}
@@ -1064,6 +1064,59 @@
         let tempMousePos = null;
         let drawingCanvas = null;
         let tempMeasureData = null; // Temporary measure scale (TradingView behavior)
+        let tempMeasureAnimFrame = null;
+        let tempMeasureTimer = null;
+
+        function clearTempMeasure() {
+            if (tempMeasureAnimFrame) {
+                cancelAnimationFrame(tempMeasureAnimFrame);
+                tempMeasureAnimFrame = null;
+            }
+            if (tempMeasureTimer) {
+                clearTimeout(tempMeasureTimer);
+                tempMeasureTimer = null;
+            }
+            tempMeasureData = null;
+        }
+
+        function startTempMeasureFade() {
+            if (tempMeasureAnimFrame) {
+                cancelAnimationFrame(tempMeasureAnimFrame);
+                tempMeasureAnimFrame = null;
+            }
+            if (tempMeasureTimer) {
+                clearTimeout(tempMeasureTimer);
+                tempMeasureTimer = null;
+            }
+            if (!tempMeasureData) return;
+
+            tempMeasureData.createdAt = performance.now();
+            tempMeasureData.opacity = 1.0;
+            redrawCanvasOverlay();
+
+            // Measure tool stays fully visible for 2 seconds (0s - 2s),
+            // then slowly fades out from second 2 to second 3 (2s - 3s),
+            // and completely disables/removes at 3 seconds (3000ms).
+            tempMeasureTimer = setTimeout(() => {
+                tempMeasureTimer = null;
+                function animateFade() {
+                    if (!tempMeasureData) return;
+                    const elapsed = performance.now() - tempMeasureData.createdAt;
+                    if (elapsed >= 3000) {
+                        clearTempMeasure();
+                        redrawCanvasOverlay();
+                        return;
+                    }
+                    const progress = Math.min(1, Math.max(0, (elapsed - 2000) / 1000));
+                    // Smooth ease-in-out curve for slow transition
+                    const ease = progress * progress * (3 - 2 * progress);
+                    tempMeasureData.opacity = Math.max(0, 1.0 - ease);
+                    redrawCanvasOverlay();
+                    tempMeasureAnimFrame = requestAnimationFrame(animateFade);
+                }
+                tempMeasureAnimFrame = requestAnimationFrame(animateFade);
+            }, 2000);
+        }
 
         function activateDrawingTool(toolType) {
             if (!mainSeries || !mainChart) {
@@ -1072,6 +1125,8 @@
             }
 
             hideCanvasObjectMenu();
+            clearTempMeasure();
+            redrawCanvasOverlay();
             currentDrawingTool = toolType;
             drawingPoints = [];
             tempMousePos = null;
@@ -1234,7 +1289,7 @@
                 cancelDrawingTool();
                 hideCanvasObjectMenu();
                 if (tempMeasureData) {
-                    tempMeasureData = null;
+                    clearTempMeasure();
                     redrawCanvasOverlay();
                 }
             }
@@ -1908,9 +1963,12 @@
                                 logical2: pt2.logical,
                                 futureOffset2: pt2.futureOffset || 0,
                                 price2: pt2.price,
-                                color: activeToolColor || '#3b82f6'
+                                color: activeToolColor || '#3b82f6',
+                                createdAt: performance.now(),
+                                opacity: 1.0
                             };
                             cancelDrawingTool();
+                            startTempMeasureFade();
                             return;
                         }
 
@@ -1990,7 +2048,7 @@
 
             // Normal Mode: dismiss temporary measure or popup when clicking empty space
             if (tempMeasureData) {
-                tempMeasureData = null;
+                clearTempMeasure();
                 redrawCanvasOverlay();
                 return;
             }
@@ -2484,6 +2542,28 @@
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                     ctx.save();
+
+                    // Measure tool lifetime: full opacity for 0s-2s, smooth fade out for 2s-3s, disabled at 3s
+                    let opacity = 1.0;
+                    if (s.createdAt) {
+                        const elapsed = performance.now() - s.createdAt;
+                        if (elapsed >= 3000) {
+                            ctx.restore();
+                            return;
+                        } else if (elapsed >= 2000) {
+                            const progress = Math.min(1, Math.max(0, (elapsed - 2000) / 1000));
+                            const ease = progress * progress * (3 - 2 * progress);
+                            opacity = Math.max(0, 1.0 - ease);
+                        }
+                    } else if (s.opacity !== undefined) {
+                        opacity = s.opacity;
+                    }
+                    if (opacity <= 0) {
+                        ctx.restore();
+                        return;
+                    }
+                    ctx.globalAlpha = opacity;
+
                     const diff = s.price2 - s.price1;
                     const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
                     const isUp = diff >= 0;
@@ -3104,7 +3184,7 @@
 
         function openInHouseChart(sym) {
             if (!sym) return;
-            tempMeasureData = null;
+            clearTempMeasure();
             currentChartSymbol = sym;
             currentChartRange = '1y';
             try {
