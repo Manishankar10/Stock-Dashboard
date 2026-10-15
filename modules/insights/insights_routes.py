@@ -8,6 +8,7 @@ import re
 import urllib.parse
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
+from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, session, render_template
 from modules.common.auth_utils import login_required
@@ -375,9 +376,12 @@ def get_insights_news_api():
         scope_filter = request.args.get("scope", "all").lower()
         watchlist_param = request.args.get("watchlist", "").strip()
         stock_param = request.args.get("stock", "").strip()
-        limit = min(int(request.args.get("limit", 60)), 100)
+        limit = min(int(request.args.get("limit", 60)), 150)
+        window_param = request.args.get("window", "30d").strip()
+        if window_param not in ["7d", "14d", "30d", "60d", "90d"]:
+            window_param = "30d"
 
-        cache_key = f"news_{category_filter}_{scope_filter}_{watchlist_param}_{stock_param}_{limit}"
+        cache_key = f"news_{category_filter}_{scope_filter}_{watchlist_param}_{stock_param}_{limit}_{window_param}"
         cached_news = news_cache.get(cache_key)
         if cached_news:
             return jsonify(cached_news)
@@ -425,12 +429,12 @@ def get_insights_news_api():
                 query_str = f'({query_str}){cat_suffix}'
 
             encoded = urllib.parse.quote(query_str)
-            rss_url = f"https://news.google.com/rss/search?q={encoded}+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
+            rss_url = f"https://news.google.com/rss/search?q={encoded}+when:{window_param}&hl=en-IN&gl=IN&ceid=IN:en"
             try:
                 resp = requests.get(rss_url, headers=headers, timeout=6)
                 if resp.status_code == 200:
                     root = ET.fromstring(resp.content)
-                    for item in root.findall('.//item')[:limit]:
+                    for item in root.findall('.//item'):
                         title_el = item.find('title')
                         link_el = item.find('link')
                         pub_el = item.find('pubDate')
@@ -589,6 +593,25 @@ def get_insights_news_api():
                         a for a in news_articles 
                         if a.get("tag_type") == "WATCHLIST" or a.get("symbol") in wl_symbols or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in clean_wl
                     ]
+
+        # Strict date sorting (newest articles first)
+        def _parse_article_date(date_str):
+            if not date_str:
+                return datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+            try:
+                dt = parsedate_to_datetime(date_str)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=datetime.timezone.utc)
+                return dt
+            except Exception:
+                try:
+                    return datetime.datetime.fromisoformat(date_str).replace(tzinfo=datetime.timezone.utc)
+                except Exception:
+                    return datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+
+        news_articles.sort(key=lambda a: _parse_article_date(a.get("pub_date")), reverse=True)
+        if limit:
+            news_articles = news_articles[:limit]
 
         res_payload = {"success": True, "articles": news_articles, "total": len(news_articles)}
         news_cache.set(cache_key, res_payload, ttl=300)

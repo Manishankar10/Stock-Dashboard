@@ -200,14 +200,20 @@
             document.body.style.overflow = '';
         }
 
-        let stockNewsState = {
+        const stockNewsState = {
             symbol: '',
             allArticles: [],
             displayedCount: 0,
-            pageSize: 8,
+            pageSize: 15,
             isLoadingMore: false,
             fetchedMax: false
         };
+
+        function getArticleTimestamp(art) {
+            if (!art || !art.pub_date) return 0;
+            const ts = Date.parse(art.pub_date);
+            return isNaN(ts) ? 0 : ts;
+        }
 
         function renderStockNewsCard(art) {
             const escapeHtml = (str) => {
@@ -271,42 +277,26 @@
         }
 
         function updateStockNewsLoadMoreUI() {
-            const footerBtn = document.getElementById('btn-load-more-stock-news');
             const inlineWrap = document.getElementById('stock-news-inline-load-more-wrap');
             const inlineBtn = document.getElementById('btn-inline-load-more-stock-news');
-            const statusEl = document.getElementById('news-modal-count-status');
+            if (!inlineWrap || !inlineBtn) return;
 
             const total = stockNewsState.allArticles.length;
             const shown = stockNewsState.displayedCount;
-
-            if (statusEl) {
-                statusEl.textContent = total > 0 ? `Showing ${shown} of ${total} stories` : '';
-            }
-
             const hasMore = shown < total || !stockNewsState.fetchedMax;
 
-            if (footerBtn) {
-                if (hasMore) {
-                    footerBtn.style.display = 'inline-block';
-                    footerBtn.disabled = stockNewsState.isLoadingMore;
-                    footerBtn.innerHTML = stockNewsState.isLoadingMore ? '⏳ Loading Stories...' : '📥 Load More';
-                } else {
-                    footerBtn.style.display = total > 0 ? 'inline-block' : 'none';
-                    footerBtn.disabled = true;
-                    footerBtn.innerHTML = '✨ All News Loaded';
-                }
-            }
-
-            if (inlineWrap && inlineBtn) {
-                if (hasMore) {
-                    inlineWrap.style.display = 'block';
-                    inlineBtn.disabled = stockNewsState.isLoadingMore;
-                    inlineBtn.innerHTML = stockNewsState.isLoadingMore ? '⏳ Loading More Stories...' : `📥 Load More News Stories (${total - shown} remaining)`;
-                } else {
-                    inlineWrap.style.display = total > 0 ? 'block' : 'none';
-                    inlineBtn.disabled = true;
-                    inlineBtn.innerHTML = `✨ All Latest News Loaded (${total} Stories)`;
-                }
+            if (hasMore) {
+                inlineWrap.style.display = 'block';
+                inlineBtn.disabled = stockNewsState.isLoadingMore;
+                inlineBtn.innerHTML = stockNewsState.isLoadingMore 
+                    ? '⏳ Loading Stories...' 
+                    : '📥 Load More Stories';
+            } else {
+                inlineWrap.style.display = total > 0 ? 'block' : 'none';
+                inlineBtn.disabled = true;
+                inlineBtn.innerHTML = '✨ All Latest News Loaded';
+                inlineBtn.style.opacity = '0.75';
+                inlineBtn.style.cursor = 'default';
             }
         }
 
@@ -319,6 +309,7 @@
 
             if (!append) {
                 container.innerHTML = '';
+                stockNewsState.displayedCount = 0;
             }
 
             const startIndex = stockNewsState.displayedCount;
@@ -330,16 +321,18 @@
 
             stockNewsState.displayedCount = endIndex;
 
-            // Create inline load more wrap at bottom of articles scroll container
-            const inlineWrap = document.createElement('div');
-            inlineWrap.id = 'stock-news-inline-load-more-wrap';
-            inlineWrap.style.cssText = 'text-align: center; padding: 12px 0 6px;';
-            inlineWrap.innerHTML = `
-                <button type="button" id="btn-inline-load-more-stock-news" class="btn-primary" onclick="loadMoreStockNews()" style="font-size: 12.5px; padding: 7px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                    📥 Load More News Stories
-                </button>
-            `;
-            container.appendChild(inlineWrap);
+            const hasMore = stockNewsState.displayedCount < stockNewsState.allArticles.length || !stockNewsState.fetchedMax;
+            if (hasMore || stockNewsState.displayedCount > 0) {
+                const inlineWrap = document.createElement('div');
+                inlineWrap.id = 'stock-news-inline-load-more-wrap';
+                inlineWrap.style.cssText = 'text-align: center; padding: 14px 0 8px; margin-top: 4px;';
+                inlineWrap.innerHTML = `
+                    <button type="button" id="btn-inline-load-more-stock-news" class="btn-primary" onclick="loadMoreStockNews()" style="font-size: 12.5px; padding: 8px 22px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        📥 Load More Stories
+                    </button>
+                `;
+                container.appendChild(inlineWrap);
+            }
 
             updateStockNewsLoadMoreUI();
         }
@@ -351,22 +344,22 @@
 
             const cleanSym = stockNewsState.symbol;
 
-            // 1. If we already have unrendered articles in memory, just render next batch
+            // 1. If we already have unrendered articles in memory, render next 15
             if (stockNewsState.displayedCount < stockNewsState.allArticles.length) {
                 setTimeout(() => {
                     renderNextStockNewsBatch(true);
                     stockNewsState.isLoadingMore = false;
                     updateStockNewsLoadMoreUI();
-                }, 150);
+                }, 100);
                 return;
             }
 
-            // 2. If all local articles are rendered and we haven't fetched max yet, fetch higher limit from API
+            // 2. If all local articles are rendered and haven't fetched max yet, fetch older news archive (window=90d)
             if (!stockNewsState.fetchedMax) {
                 try {
                     const url = cleanSym 
-                        ? `/api/insights/news?stock=${encodeURIComponent(cleanSym)}&scope=all&category=all&limit=100` 
-                        : `/api/insights/news?scope=all&category=all&limit=100`;
+                        ? `/api/insights/news?stock=${encodeURIComponent(cleanSym)}&scope=all&category=all&limit=150&window=90d` 
+                        : `/api/insights/news?scope=all&category=all&limit=150&window=90d`;
                     
                     const res = await fetch(url);
                     const data = await res.json();
@@ -385,33 +378,15 @@
                         });
                     }
 
-                    // Also try fallback endpoint if symbol is specified to pull from multiple news sources
-                    if (cleanSym) {
-                        try {
-                            const fbRes = await fetch(`/api/news/${encodeURIComponent(cleanSym)}`);
-                            const fbData = await fbRes.json();
-                            if (fbData.success && Array.isArray(fbData.articles)) {
-                                fbData.articles.forEach(art => {
-                                    const key = (art.title || '').trim().toLowerCase();
-                                    if (key && !existingTitles.has(key)) {
-                                        existingTitles.add(key);
-                                        stockNewsState.allArticles.push(art);
-                                        added++;
-                                    }
-                                });
-                            }
-                        } catch (e) {
-                            console.warn('Fallback news fetch notice:', e);
-                        }
-                    }
-
+                    // Sort newly merged list strictly by date descending
+                    stockNewsState.allArticles.sort((a, b) => getArticleTimestamp(b) - getArticleTimestamp(a));
                     stockNewsState.fetchedMax = true;
 
                     if (added > 0) {
                         renderNextStockNewsBatch(true);
                     }
                 } catch (e) {
-                    console.warn('Error fetching more stock news:', e);
+                    console.warn('Error fetching older stock news:', e);
                     stockNewsState.fetchedMax = true;
                 }
             }
@@ -425,19 +400,14 @@
             const titleEl = document.getElementById('news-modal-title');
             const subtitleEl = document.getElementById('news-modal-subtitle');
             const container = document.getElementById('news-articles-container');
-            const footerBtn = document.getElementById('btn-load-more-stock-news');
-            const statusEl = document.getElementById('news-modal-count-status');
 
             const cleanSym = symbol ? symbol.trim() : '';
             stockNewsState.symbol = cleanSym;
             stockNewsState.allArticles = [];
             stockNewsState.displayedCount = 0;
-            stockNewsState.pageSize = 8;
+            stockNewsState.pageSize = 15;
             stockNewsState.isLoadingMore = false;
             stockNewsState.fetchedMax = false;
-
-            if (footerBtn) footerBtn.style.display = 'none';
-            if (statusEl) statusEl.textContent = '';
 
             titleEl.innerHTML = cleanSym ? `📰 News for <strong>${cleanSym}</strong>` : `📰 Latest Market News`;
             subtitleEl.innerText = cleanSym ? `Real-time news headlines & coverage for ${cleanSym}` : `Real-time updates for Indian Stock Market & Economy`;
@@ -457,27 +427,36 @@
             };
 
             try {
-                const url = cleanSym 
-                    ? `/api/insights/news?stock=${encodeURIComponent(cleanSym)}&scope=all&category=all&limit=50` 
-                    : `/api/insights/news?scope=all&category=all&limit=50`;
-                let res = await fetch(url);
-                let data = await res.json();
+                const insightsUrl = cleanSym 
+                    ? `/api/insights/news?stock=${encodeURIComponent(cleanSym)}&scope=all&category=all&limit=150` 
+                    : `/api/insights/news?scope=all&category=all&limit=150`;
 
-                // Fallback to /api/news if insights news returned empty
-                if ((!data.success || !data.articles || data.articles.length === 0) && cleanSym) {
-                    try {
-                        const fallbackRes = await fetch(`/api/news/${encodeURIComponent(cleanSym)}`);
-                        const fallbackData = await fallbackRes.json();
-                        if (fallbackData.success && fallbackData.articles && fallbackData.articles.length > 0) {
-                            data = fallbackData;
-                        }
-                    } catch (fbErr) {
-                        console.warn('Fallback news fetch error:', fbErr);
-                    }
+                const fetches = [fetch(insightsUrl).then(r => r.json()).catch(() => ({ success: false, articles: [] }))];
+                if (cleanSym) {
+                    fetches.push(fetch(`/api/news/${encodeURIComponent(cleanSym)}`).then(r => r.json()).catch(() => ({ success: false, articles: [] })));
                 }
 
-                if (data.success && data.articles && data.articles.length > 0) {
-                    stockNewsState.allArticles = data.articles;
+                const results = await Promise.all(fetches);
+                const seenTitles = new Set();
+                const combined = [];
+
+                results.forEach(res => {
+                    if (res && res.success && Array.isArray(res.articles)) {
+                        res.articles.forEach(art => {
+                            const key = (art.title || '').trim().toLowerCase();
+                            if (key && !seenTitles.has(key)) {
+                                seenTitles.add(key);
+                                combined.push(art);
+                            }
+                        });
+                    }
+                });
+
+                // Strict date sorting (newest first)
+                combined.sort((a, b) => getArticleTimestamp(b) - getArticleTimestamp(a));
+                stockNewsState.allArticles = combined;
+
+                if (stockNewsState.allArticles.length > 0) {
                     renderNextStockNewsBatch(false);
                 } else {
                     container.innerHTML = `
@@ -485,8 +464,6 @@
                             📰 No recent news articles found for ${escapeHtml(cleanSym) || 'the market'}.
                         </div>
                     `;
-                    if (footerBtn) footerBtn.style.display = 'none';
-                    if (statusEl) statusEl.textContent = '';
                 }
             } catch(err) {
                 container.innerHTML = `
@@ -494,8 +471,6 @@
                         ❌ Failed to load news updates: ${escapeHtml(err.message)}
                     </div>
                 `;
-                if (footerBtn) footerBtn.style.display = 'none';
-                if (statusEl) statusEl.textContent = '';
             }
         }
 
