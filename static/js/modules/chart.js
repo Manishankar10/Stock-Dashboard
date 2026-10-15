@@ -2648,6 +2648,7 @@
                     autoScale: true,
                     alignLabels: true,
                     entireTextOnly: false,
+                    minimumWidth: 75,
                     scaleMargins: {
                         top: 0.08,
                         bottom: 0.25
@@ -2795,16 +2796,42 @@
                 ...baseChartConfig,
                 width: rsiContainer.clientWidth || 800,
                 height: rsiContainer.clientHeight || 150,
-                rightPriceScale: { borderColor: themeColors.borderColor, scaleMargins: { top: 0.1, bottom: 0.1 } },
+                rightPriceScale: { borderColor: themeColors.borderColor, minimumWidth: 75, scaleMargins: { top: 0.1, bottom: 0.1 } },
                 timeScale: subPaneTimeScaleConfig
             });
 
+            // Helper to align indicator series 1:1 with candle timestamps using Lightweight Charts whitespace items
+            function alignSeriesToCandles(indicatorList, candles) {
+                if (!candles || candles.length === 0) return [];
+                if (!indicatorList || indicatorList.length === 0) return candles.map(c => ({ time: c.time }));
+                const valMap = new Map();
+                indicatorList.forEach(item => {
+                    if (item && item.time !== undefined) {
+                        valMap.set(item.time, item);
+                    }
+                });
+                return candles.map(c => {
+                    const match = valMap.get(c.time);
+                    if (match !== undefined) {
+                        return match;
+                    }
+                    return { time: c.time };
+                });
+            }
+
             rsiSeries = rsiChart.addLineSeries({ color: '#e040fb', lineWidth: 2, title: 'RSI 14' });
-            if (data.rsi) rsiSeries.setData(data.rsi);
+            if (data.rsi && data.candles) {
+                rsiSeries.setData(alignSeriesToCandles(data.rsi, data.candles));
+            } else if (data.rsi) {
+                rsiSeries.setData(data.rsi);
+            }
 
             const rsi70 = rsiChart.addLineSeries({ color: '#ef5350', lineWidth: 1, lineStyle: 2 });
             const rsi30 = rsiChart.addLineSeries({ color: '#26a69a', lineWidth: 1, lineStyle: 2 });
-            if (data.rsi && data.rsi.length > 0) {
+            if (data.candles && data.candles.length > 0) {
+                rsi70.setData(data.candles.map(item => ({ time: item.time, value: 70 })));
+                rsi30.setData(data.candles.map(item => ({ time: item.time, value: 30 })));
+            } else if (data.rsi && data.rsi.length > 0) {
                 rsi70.setData(data.rsi.map(item => ({ time: item.time, value: 70 })));
                 rsi30.setData(data.rsi.map(item => ({ time: item.time, value: 30 })));
             }
@@ -2814,18 +2841,30 @@
                 ...baseChartConfig,
                 width: macdContainer.clientWidth || 800,
                 height: macdContainer.clientHeight || 150,
-                rightPriceScale: { borderColor: themeColors.borderColor, scaleMargins: { top: 0.1, bottom: 0.1 } },
+                rightPriceScale: { borderColor: themeColors.borderColor, minimumWidth: 75, scaleMargins: { top: 0.1, bottom: 0.1 } },
                 timeScale: subPaneTimeScaleConfig
             });
 
             macdHistSeries = macdChart.addHistogramSeries({ title: 'Histogram' });
-            if (data.macd_hist) macdHistSeries.setData(data.macd_hist);
+            if (data.macd_hist && data.candles) {
+                macdHistSeries.setData(alignSeriesToCandles(data.macd_hist, data.candles));
+            } else if (data.macd_hist) {
+                macdHistSeries.setData(data.macd_hist);
+            }
 
             macdLineSeries = macdChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, title: 'MACD' });
-            if (data.macd_line) macdLineSeries.setData(data.macd_line);
+            if (data.macd_line && data.candles) {
+                macdLineSeries.setData(alignSeriesToCandles(data.macd_line, data.candles));
+            } else if (data.macd_line) {
+                macdLineSeries.setData(data.macd_line);
+            }
 
             macdSignalSeries = macdChart.addLineSeries({ color: '#f97316', lineWidth: 2, title: 'Signal' });
-            if (data.macd_signal) macdSignalSeries.setData(data.macd_signal);
+            if (data.macd_signal && data.candles) {
+                macdSignalSeries.setData(alignSeriesToCandles(data.macd_signal, data.candles));
+            } else if (data.macd_signal) {
+                macdSignalSeries.setData(data.macd_signal);
+            }
 
             // Synchronize Visible Logical Range smoothly and bidirectionally across all panes
             function syncTimeScales(sourceChart, targetCharts) {
