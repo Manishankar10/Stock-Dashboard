@@ -449,17 +449,14 @@
             const selectorMount = document.getElementById('portfolio-selector-mount');
             if (selectorMount) {
                 selectorMount.innerHTML = `
-                    <button type="button" class="pf-select-btn pf-dummy-btn active" style="pointer-events: none; display: inline-flex; align-items: center; gap: 6px;">
-                        <span>Portfolio 1</span>
-                        <span class="skeleton-box" style="width: 20px; height: 12px; border-radius: 4px;"></span>
+                    <button type="button" class="pf-select-btn pf-dummy-btn active" style="pointer-events: none; display: inline-flex; align-items: center; justify-content: center; min-width: 60px;">
+                        <span class="skeleton-box" style="width: 50px; height: 13px; border-radius: 4px;"></span>
                     </button>
-                    <button type="button" class="pf-select-btn pf-dummy-btn" style="pointer-events: none; display: inline-flex; align-items: center; gap: 6px;">
-                        <span>Portfolio 2</span>
-                        <span class="skeleton-box" style="width: 20px; height: 12px; border-radius: 4px;"></span>
+                    <button type="button" class="pf-select-btn pf-dummy-btn" style="pointer-events: none; display: inline-flex; align-items: center; justify-content: center; min-width: 75px;">
+                        <span class="skeleton-box" style="width: 65px; height: 13px; border-radius: 4px;"></span>
                     </button>
-                    <button type="button" class="pf-select-btn pf-dummy-btn" style="pointer-events: none; display: inline-flex; align-items: center; gap: 6px;">
-                        <span>Portfolio 3</span>
-                        <span class="skeleton-box" style="width: 20px; height: 12px; border-radius: 4px;"></span>
+                    <button type="button" class="pf-select-btn pf-dummy-btn" style="pointer-events: none; display: inline-flex; align-items: center; justify-content: center; min-width: 65px;">
+                        <span class="skeleton-box" style="width: 55px; height: 13px; border-radius: 4px;"></span>
                     </button>
                 `;
             }
