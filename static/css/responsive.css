@@ -2894,7 +2894,8 @@
     }
 
     /* Mobile Floating Shortcut Toolbar (Refer Image 1) */
-    .chart-mobile-fav-bar {
+    .chart-mobile-fav-bar,
+    #chartMobileFavBar {
         display: flex;
         position: absolute;
         right: 12px;
@@ -2916,7 +2917,8 @@
         touch-action: none !important;
         transition: box-shadow 0.15s ease, transform 0.15s ease;
     }
-    .chart-mobile-fav-bar[style*="display: none"] {
+    .chart-mobile-fav-bar[style*="display: none"],
+    #chartMobileFavBar[style*="display: none"] {
         display: none !important;
     }
     .chart-mobile-fav-bar.is-dragging {
@@ -3242,6 +3244,13 @@
     }
     .chart-topbar {
         flex-wrap: nowrap !important;
+        overflow: visible !important;
+    }
+    .chart-header-right {
+        overflow: visible !important;
+    }
+    .chart-popovers-container {
+        overflow: visible !important;
     }
     .chart-header-left {
         width: auto !important;

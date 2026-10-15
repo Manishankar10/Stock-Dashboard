@@ -1160,11 +1160,13 @@
 
             mainContainer.removeEventListener('mousemove', handleChartPaneMouseMove);
             mainContainer.removeEventListener('mousedown', handleChartPaneMouseDown);
+            mainContainer.removeEventListener('touchstart', handleChartPaneMouseDown);
             mainContainer.removeEventListener('click', handleChartPaneClick);
             mainContainer.removeEventListener('touchend', handleChartPaneTouchEnd);
 
             mainContainer.addEventListener('mousemove', handleChartPaneMouseMove);
             mainContainer.addEventListener('mousedown', handleChartPaneMouseDown);
+            mainContainer.addEventListener('touchstart', handleChartPaneMouseDown, { passive: false });
             mainContainer.addEventListener('click', handleChartPaneClick);
             mainContainer.addEventListener('touchend', handleChartPaneTouchEnd);
 
@@ -1198,7 +1200,14 @@
             mainContainer.addEventListener('pointerdown', (e) => {
                 if (hasOpenChartPopover()) closeAllChartPopovers();
                 if (currentDrawingTool) return;
-                if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) return;
+                if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn'))) return;
+
+                const pt = getChartPointFromEvent(e);
+                if (pt && findShapeOrLineAtPoint(pt.x, pt.y)) {
+                    // Handled by handleChartPaneMouseDown for drawing drag & click
+                    return;
+                }
+
                 isUserDraggingChart = true;
                 window.addEventListener('pointermove', onWindowPointerMove);
                 window.addEventListener('pointerup', onWindowPointerUp);
@@ -1407,6 +1416,8 @@
             return null;
         }
 
+        let activeDrawingDrag = null;
+
         function handleChartPaneMouseMove(e) {
             if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) {
                 if (drawingCanvas) {
@@ -1424,11 +1435,13 @@
                 return;
             }
 
+            if (activeDrawingDrag) return;
+
             const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
             if (drawingCanvas) {
                 if (clickedObj) {
                     drawingCanvas.style.pointerEvents = 'auto';
-                    drawingCanvas.style.cursor = 'pointer';
+                    drawingCanvas.style.cursor = 'grab';
                 } else {
                     drawingCanvas.style.pointerEvents = 'none';
                     drawingCanvas.style.cursor = 'default';
@@ -1437,7 +1450,7 @@
         }
 
         function handleChartPaneMouseDown(e) {
-            if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) {
+            if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn'))) {
                 return;
             }
             if (currentDrawingTool) return;
@@ -1445,13 +1458,152 @@
             if (!pt) return;
 
             const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
-            if (clickedObj) {
-                showCanvasObjectMenu(clickedObj, pt.x, pt.y);
-                e.preventDefault();
-                e.stopPropagation();
-            } else {
+            if (!clickedObj) {
                 hideCanvasObjectMenu();
+                return;
             }
+
+            // Clicked or touched on an existing drawing object
+            if (e.cancelable) e.preventDefault();
+            e.stopPropagation();
+
+            let dragPart = 'body';
+            if (clickedObj.kind === 'shape') {
+                const shapes = getSavedChartShapes(currentChartSymbol);
+                const s = shapes.find(x => x.id === clickedObj.id);
+                if (s && (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange')) {
+                    const timeScale = mainChart.timeScale();
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const y1 = mainSeries.priceToCoordinate(s.price1);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const y2 = mainSeries.priceToCoordinate(s.price2);
+                    if (x1 !== null && y1 !== null && Math.hypot(pt.x - x1, pt.y - y1) < 14) dragPart = 'p1';
+                    else if (x2 !== null && y2 !== null && Math.hypot(pt.x - x2, pt.y - y2) < 14) dragPart = 'p2';
+                }
+            }
+
+            activeDrawingDrag = {
+                target: clickedObj,
+                dragPart: dragPart,
+                startPt: { x: pt.x, y: pt.y, price: pt.price, time: pt.time, logical: pt.logical, futureOffset: pt.futureOffset || 0 },
+                hasMoved: false,
+                initialPrice: clickedObj.kind === 'line' ? (getSavedPriceLines(currentChartSymbol).find(l => l.id === clickedObj.id)?.price || pt.price) : null,
+                initialShape: clickedObj.kind === 'shape' ? JSON.parse(JSON.stringify(getSavedChartShapes(currentChartSymbol).find(s => s.id === clickedObj.id) || {})) : null
+            };
+
+            const onWindowDrawingMove = (moveEvt) => {
+                if (!activeDrawingDrag) return;
+                const curPt = getChartPointFromEvent(moveEvt);
+                if (!curPt) return;
+
+                const dist = Math.hypot(curPt.x - activeDrawingDrag.startPt.x, curPt.y - activeDrawingDrag.startPt.y);
+                if (dist >= 4) {
+                    activeDrawingDrag.hasMoved = true;
+                    hideCanvasObjectMenu();
+                    if (drawingCanvas) drawingCanvas.style.cursor = 'grabbing';
+
+                    if (activeDrawingDrag.target.kind === 'line') {
+                        if (curPt.price !== null && !isNaN(curPt.price)) {
+                            const newPrice = parseFloat(curPt.price.toFixed(2));
+                            const pl = activePriceLines.find(p => p.id === activeDrawingDrag.target.id);
+                            if (pl && pl.lineObj) {
+                                pl.lineObj.applyOptions({
+                                    price: newPrice,
+                                    title: `${pl.data.label || 'Line'}: ₹${newPrice}`
+                                });
+                            }
+                            redrawCanvasOverlay();
+                        }
+                    } else if (activeDrawingDrag.target.kind === 'shape') {
+                        const shapes = getSavedChartShapes(currentChartSymbol);
+                        const s = shapes.find(x => x.id === activeDrawingDrag.target.id);
+                        if (s && curPt.price !== null && !isNaN(curPt.price)) {
+                            const initS = activeDrawingDrag.initialShape;
+                            const dPrice = curPt.price - activeDrawingDrag.startPt.price;
+                            const dLogical = (curPt.logical !== null && activeDrawingDrag.startPt.logical !== null) ? (curPt.logical - activeDrawingDrag.startPt.logical) : 0;
+
+                            if (s.type === 'vertical') {
+                                s.logical = curPt.logical;
+                                s.time = curPt.time;
+                                s.futureOffset = curPt.futureOffset || 0;
+                            } else if (s.type === 'note') {
+                                s.price = parseFloat((initS.price + dPrice).toFixed(2));
+                                s.logical = initS.logical + dLogical;
+                                s.time = curPt.time || s.time;
+                                s.futureOffset = curPt.futureOffset || 0;
+                            } else if (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange') {
+                                if (activeDrawingDrag.dragPart === 'p1') {
+                                    s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    s.logical1 = curPt.logical;
+                                    s.time1 = curPt.time || s.time1;
+                                    s.futureOffset1 = curPt.futureOffset || 0;
+                                } else if (activeDrawingDrag.dragPart === 'p2') {
+                                    s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    s.logical2 = curPt.logical;
+                                    s.time2 = curPt.time || s.time2;
+                                    s.futureOffset2 = curPt.futureOffset || 0;
+                                } else {
+                                    s.price1 = parseFloat((initS.price1 + dPrice).toFixed(2));
+                                    s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
+                                    s.logical1 = initS.logical1 + dLogical;
+                                    s.logical2 = initS.logical2 + dLogical;
+                                }
+                            }
+                            localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                            redrawCanvasOverlay();
+                        }
+                    }
+                }
+            };
+
+            const onWindowDrawingUp = (upEvt) => {
+                window.removeEventListener('mousemove', onWindowDrawingMove);
+                window.removeEventListener('mouseup', onWindowDrawingUp);
+                window.removeEventListener('touchmove', onWindowDrawingMove);
+                window.removeEventListener('touchend', onWindowDrawingUp);
+
+                if (!activeDrawingDrag) return;
+
+                if (activeDrawingDrag.hasMoved) {
+                    if (activeDrawingDrag.target.kind === 'line') {
+                        const finalPt = getChartPointFromEvent(upEvt) || activeDrawingDrag.startPt;
+                        if (finalPt && finalPt.price !== null && !isNaN(finalPt.price)) {
+                            const newPrice = parseFloat(finalPt.price.toFixed(2));
+                            const lines = getSavedPriceLines(currentChartSymbol);
+                            const line = lines.find(x => x.id === activeDrawingDrag.target.id);
+                            if (line) {
+                                line.price = newPrice;
+                                localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                            }
+                            const pl = activePriceLines.find(p => p.id === activeDrawingDrag.target.id);
+                            if (pl && pl.data) {
+                                pl.data.price = newPrice;
+                                if (pl.lineObj) {
+                                    pl.lineObj.applyOptions({
+                                        price: newPrice,
+                                        title: `${pl.data.label || 'Line'}: ₹${newPrice}`
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    renderActiveDrawingsList();
+                    redrawCanvasOverlay();
+                } else {
+                    // Single click: show menu with Hide and Delete options
+                    showCanvasObjectMenu(activeDrawingDrag.target, activeDrawingDrag.startPt.x, activeDrawingDrag.startPt.y);
+                }
+
+                if (drawingCanvas) {
+                    drawingCanvas.style.cursor = 'default';
+                }
+                activeDrawingDrag = null;
+            };
+
+            window.addEventListener('mousemove', onWindowDrawingMove);
+            window.addEventListener('mouseup', onWindowDrawingUp);
+            window.addEventListener('touchmove', onWindowDrawingMove, { passive: false });
+            window.addEventListener('touchend', onWindowDrawingUp);
         }
 
         function handleChartPaneClick(e) {
@@ -1548,11 +1700,8 @@
                 }
             }
 
-            // Normal Mode: Check if user clicked on an existing shape/line to inspect or delete
-            const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
-            if (clickedObj) {
-                showCanvasObjectMenu(clickedObj, pt.x, pt.y);
-            } else {
+            // Normal Mode: dismiss popup when clicking empty space
+            if (!findShapeOrLineAtPoint(pt.x, pt.y)) {
                 hideCanvasObjectMenu();
             }
         }
@@ -1564,25 +1713,27 @@
             // Check price lines first
             const lines = getSavedPriceLines(currentChartSymbol);
             for (let l of lines) {
+                if (l.hidden) continue;
                 const lineY = mainSeries.priceToCoordinate(l.price);
-                if (lineY !== null && Math.abs(y - lineY) < 8) {
-                    return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color };
+                if (lineY !== null && Math.abs(y - lineY) < 10) {
+                    return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color, hidden: !!l.hidden, price: l.price };
                 }
             }
 
             // Check shapes
             const shapes = getSavedChartShapes(currentChartSymbol);
             for (let s of shapes) {
+                if (s.hidden) continue;
                 if (s.type === 'vertical') {
                     const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
-                    if (shapeX !== null && Math.abs(x - shapeX) < 8) {
-                        return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color };
+                    if (shapeX !== null && Math.abs(x - shapeX) < 10) {
+                        return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color, hidden: !!s.hidden, type: s.type };
                     }
                 } else if (s.type === 'note') {
                     const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                     const shapeY = mainSeries.priceToCoordinate(s.price);
-                    if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 30 && Math.abs(y - shapeY) < 20) {
-                        return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color };
+                    if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 35 && Math.abs(y - shapeY) < 22) {
+                        return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color, hidden: !!s.hidden, type: s.type };
                     }
                 } else if (s.type === 'trendline') {
                     const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
@@ -1591,8 +1742,8 @@
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         const dist = distanceToSegment(x, y, x1, y1, x2, y2);
-                        if (dist < 9) {
-                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color };
+                        if (dist < 10) {
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type };
                         }
                     }
                 } else if (s.type === 'rectangle' || s.type === 'pricerange') {
@@ -1602,16 +1753,16 @@
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && y2 !== null) {
                         const startX = x1, endX = (x2 !== null) ? x2 : x1;
-                        const minX = Math.min(startX, endX) - 20, maxX = Math.max(startX, endX) + 20;
-                        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+                        const minX = Math.min(startX, endX) - 15, maxX = Math.max(startX, endX) + 15;
+                        const minY = Math.min(y1, y2) - 8, maxY = Math.max(y1, y2) + 8;
                         if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
                             if (s.type === 'pricerange') {
                                 const diff = s.price2 - s.price1;
                                 const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
                                 const label = `Price Range: ${diff >= 0 ? '+' : ''}₹${diff.toFixed(2)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
-                                return { kind: 'shape', id: s.id, name: label, color: s.color };
+                                return { kind: 'shape', id: s.id, name: label, color: s.color, hidden: !!s.hidden, type: s.type };
                             }
-                            return { kind: 'shape', id: s.id, name: 'Rectangle Zone', color: s.color };
+                            return { kind: 'shape', id: s.id, name: 'Rectangle Zone', color: s.color, hidden: !!s.hidden, type: s.type };
                         }
                     }
                 }
@@ -1654,20 +1805,31 @@
             }
 
             if (popup && mainContainer) {
-                popup.style.left = Math.min(x, mainContainer.clientWidth - 180) + 'px';
-                popup.style.top = Math.max(10, y - 40) + 'px';
+                const popupWidth = 270;
+                popup.style.left = Math.max(10, Math.min(x, mainContainer.clientWidth - popupWidth)) + 'px';
+                popup.style.top = (y > 60 ? (y - 48) : (y + 18)) + 'px';
 
                 const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
                 const colorFn = obj.kind === 'line' ? `updatePriceLineColorById('${obj.id}', this.value)` : `updateShapeColorById('${obj.id}', this.value)`;
                 const toggleVisFn = obj.kind === 'line' ? `togglePriceLineVisibility('${obj.id}'); hideCanvasObjectMenu();` : `toggleShapeVisibility('${obj.id}'); hideCanvasObjectMenu();`;
                 const visIcon = obj.hidden ? '🙈' : '👁️';
+                const visLabel = obj.hidden ? 'Show' : 'Hide';
 
                 popup.innerHTML = `
-                    <span style="font-weight: 700; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(obj.name)}</span>
-                    <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}" style="width: 18px; height: 18px; border: none; padding: 0; background: transparent; cursor: pointer;" title="Change color">
-                    <button onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #60a5fa; padding: 2px 7px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Edit Drawing Details">✏️ Edit</button>
-                    <button onclick="${toggleVisFn}" style="background: rgba(255, 255, 255, 0.08); border: 1px solid #363a45; color: #d1d4dc; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Toggle visibility">${visIcon}</button>
-                    <button onclick="${deleteFn}" style="background: rgba(239, 83, 80, 0.2); border: 1px solid #ef5350; color: #ef5350; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;" title="Delete Item">🗑️</button>
+                    <span style="font-weight: 700; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ffffff;" title="${escapeHtml(obj.name)}">${escapeHtml(obj.name)}</span>
+                    <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}" style="width: 20px; height: 20px; border: none; padding: 0; background: transparent; cursor: pointer; border-radius: 4px;" title="Change color">
+                    <button type="button" onclick="${toggleVisFn}" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.08); border: 1px solid #363a45; color: #d1d4dc; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;" title="Toggle visibility">
+                        <span>${visIcon}</span>
+                        <span>${visLabel}</span>
+                    </button>
+                    <button type="button" onclick="${deleteFn}" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(239, 83, 80, 0.18); border: 1px solid #ef5350; color: #ef5350; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;" title="Delete Drawing">
+                        <span>🗑️</span>
+                        <span>Delete</span>
+                    </button>
+                    <button type="button" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; color: #60a5fa; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;" title="Edit Drawing Details">
+                        <span>✏️</span>
+                        <span>Edit</span>
+                    </button>
                 `;
                 popup.style.display = 'flex';
                 if (drawingCanvas) {
@@ -2041,6 +2203,13 @@
                 }
                 if (macdChart && macdContainer && macdContainer.clientWidth > 0) {
                     macdChart.applyOptions({ width: macdContainer.clientWidth, height: macdContainer.clientHeight });
+                }
+                if (mainChart) {
+                    const range = mainChart.timeScale().getVisibleLogicalRange();
+                    if (range) {
+                        if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(range); } catch(e){}
+                        if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(range); } catch(e){}
+                    }
                 }
                 resizeDrawingCanvas();
             });
@@ -2580,13 +2749,24 @@
             gann2DaySeries = mainChart.addLineSeries({ color: themeColors.gannColor, lineWidth: 2, title: 'Gann 2-Day Low', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.gann_2day) gann2DaySeries.setData(data.gann_2day);
 
+            const subPaneTimeScaleConfig = {
+                visible: false,
+                rightOffset: 12,
+                barSpacing: 9,
+                minBarSpacing: 0.3,
+                fixLeftEdge: false,
+                fixRightEdge: false,
+                lockVisibleTimeRangeOnResize: true,
+                rightBarStaysOnScroll: true
+            };
+
             // RSI Sub-Pane Chart
             rsiChart = LightweightCharts.createChart(rsiContainer, {
                 ...baseChartConfig,
                 width: rsiContainer.clientWidth || 800,
                 height: rsiContainer.clientHeight || 150,
                 rightPriceScale: { borderColor: themeColors.borderColor, scaleMargins: { top: 0.1, bottom: 0.1 } },
-                timeScale: { visible: false }
+                timeScale: subPaneTimeScaleConfig
             });
 
             rsiSeries = rsiChart.addLineSeries({ color: '#e040fb', lineWidth: 2, title: 'RSI 14' });
@@ -2605,7 +2785,7 @@
                 width: macdContainer.clientWidth || 800,
                 height: macdContainer.clientHeight || 150,
                 rightPriceScale: { borderColor: themeColors.borderColor, scaleMargins: { top: 0.1, bottom: 0.1 } },
-                timeScale: { visible: false }
+                timeScale: subPaneTimeScaleConfig
             });
 
             macdHistSeries = macdChart.addHistogramSeries({ title: 'Histogram' });
@@ -2617,16 +2797,33 @@
             macdSignalSeries = macdChart.addLineSeries({ color: '#f97316', lineWidth: 2, title: 'Signal' });
             if (data.macd_signal) macdSignalSeries.setData(data.macd_signal);
 
-            // Synchronize Time Scale across panes smoothly without infinite loops
-            mainChart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
-                if (isSyncingTimeScale || !timeRange) return;
-                isSyncingTimeScale = true;
-                try {
-                    if (rsiChart) rsiChart.timeScale().setVisibleTimeRange(timeRange);
-                    if (macdChart) macdChart.timeScale().setVisibleTimeRange(timeRange);
-                } catch(e){}
-                isSyncingTimeScale = false;
-            });
+            // Synchronize Visible Logical Range smoothly and bidirectionally across all panes
+            function syncTimeScales(sourceChart, targetCharts) {
+                if (!sourceChart) return;
+                sourceChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+                    if (isSyncingTimeScale || !range) return;
+                    isSyncingTimeScale = true;
+                    try {
+                        targetCharts.forEach(target => {
+                            if (target && target.timeScale) {
+                                target.timeScale().setVisibleLogicalRange(range);
+                            }
+                        });
+                    } catch(e) {}
+                    isSyncingTimeScale = false;
+                });
+            }
+
+            syncTimeScales(mainChart, [rsiChart, macdChart]);
+            syncTimeScales(rsiChart, [mainChart, macdChart]);
+            syncTimeScales(macdChart, [mainChart, rsiChart]);
+
+            // Set initial range on sub-panes to match mainChart
+            const initialLogicalRange = mainChart.timeScale().getVisibleLogicalRange();
+            if (initialLogicalRange) {
+                if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(initialLogicalRange); } catch(e){}
+                if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(initialLogicalRange); } catch(e){}
+            }
 
             // Fast O(1) Crosshair & Legend Update
             mainChart.subscribeCrosshairMove(param => {
