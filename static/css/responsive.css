@@ -66,6 +66,17 @@
         padding: 0 12px calc(20px + var(--safe-area-bottom)) 12px !important;
     }
 
+    /* Decreased container background on mobile to differentiate container from content cards (Refer Image) */
+    .card-container {
+        background: #192231 !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    [data-theme="light"] .card-container {
+        background: #f1f5f9 !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    }
+
     .tab-content.active {
         transform: none !important;
     }
@@ -810,10 +821,15 @@
         position: static !important;
         padding: 8px 10px !important;
         margin-bottom: 12px !important;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border-color) !important;
+        background: #192231 !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 12px !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    [data-theme="light"] .portfolio-top-card {
+        background: #f1f5f9 !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
     .portfolio-header-row {
@@ -987,10 +1003,17 @@
         display: none !important;
     }
 
-    /* Decrease padding on card-container in portfolio-view-mount */
+    /* Decrease padding & slightly decrease bg color on card-container in portfolio-view-mount to differentiate from content cards */
     #portfolio-view-mount .card-container {
         padding: 8px 10px !important;
         border-radius: 12px !important;
+        background: #192231 !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    [data-theme="light"] #portfolio-view-mount .card-container {
+        background: #f1f5f9 !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
     /* Portfolio KPI Summary Grid (Sleek 2x2 Grid) */
@@ -1004,6 +1027,14 @@
     .pf-summary-grid .metric-card {
         padding: 12px 14px !important;
         border-radius: 12px !important;
+        background: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    [data-theme="light"] .pf-summary-grid .metric-card {
+        background: #ffffff !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
     .pf-summary-grid .metric-card .title {
@@ -1191,8 +1222,8 @@
     }
 
     .pf-mob-card {
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border-color) !important;
+        background: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 12px !important;
         padding: 12px 14px !important;
         display: flex !important;
@@ -1200,11 +1231,17 @@
         cursor: pointer !important;
         transition: background-color 0.15s ease, border-color 0.15s ease !important;
         -webkit-tap-highlight-color: transparent !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
     }
 
     [data-theme="dark"] .pf-mob-card {
+        background: #1e293b !important;
         border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    [data-theme="light"] .pf-mob-card {
+        background: #ffffff !important;
+        border-color: rgba(0, 0, 0, 0.08) !important;
     }
 
     .pf-mob-card:active {
