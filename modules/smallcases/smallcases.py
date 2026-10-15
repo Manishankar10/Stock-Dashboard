@@ -491,6 +491,7 @@ def list_smallcases():
     total_invested = sum(x['total_invested'] for x in rows)
     current_value = sum(x['current_value'] for x in rows)
     total_pnl = sum(x['total_pnl'] for x in rows)
+    total_realized = sum(x.get('realized_pnl', 0.0) for x in rows)
     day_values = [x for x in rows if x.get('active_positions', 0) > 0 and x.get('today_change') is not None]
     overall_today_change = sum(x['today_change'] for x in day_values) if day_values else None
     overall_previous_value = sum(
@@ -505,6 +506,7 @@ def list_smallcases():
         'partially_exited_smallcases': sum(x['status'] == 'PARTIALLY EXITED' for x in rows),
         'closed_smallcases': sum(x['status'] == 'CLOSED' for x in rows),
         'total_invested': round(total_invested, 2), 'current_value': round(current_value, 2),
+        'realized_pnl': round(total_realized, 2),
         'total_pnl': round(total_pnl, 2), 'return_pct': round(total_pnl / total_invested * 100, 2) if total_invested else 0,
         'today_change': round(overall_today_change, 2) if overall_today_change is not None else None,
         'today_change_pct': round(overall_today_change_pct, 2) if overall_today_change_pct is not None else None,

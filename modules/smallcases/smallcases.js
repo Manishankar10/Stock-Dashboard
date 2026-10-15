@@ -11,6 +11,20 @@
             transactions: { key: 'transaction_date', dir: -1 }
         };
 
+        function getSmallcasePnlColor(val) {
+            if (val === null || val === undefined || val === '') return 'var(--text-secondary)';
+            const n = Number(val);
+            if (isNaN(n) || n === 0) return 'var(--text-secondary)';
+            return n > 0 ? '#10b981' : '#ef4444';
+        }
+
+        function getSmallcasePnlClass(val) {
+            if (val === null || val === undefined || val === '') return 'neutral';
+            const n = Number(val);
+            if (isNaN(n) || n === 0) return 'neutral';
+            return n > 0 ? 'pos' : 'neg';
+        }
+
         function openSmallcaseModal(id) {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
@@ -28,7 +42,7 @@
         async function loadSmallcasesTab() {
             const grid = document.getElementById('smallcase-summary-grid');
             if (grid) {
-                grid.innerHTML = Array(8).fill(0).map(() => `
+                grid.innerHTML = Array(9).fill(0).map(() => `
                     <div class="metric-card" style="padding: 12px 14px;">
                         <span class="skeleton-box" style="width: 75px; height: 11px;"></span>
                         <div style="margin-top: 6px;"><span class="skeleton-box" style="width: 90px; height: 18px;"></span></div>
@@ -94,21 +108,53 @@
             if (!grid) return;
 
             const s = smallcaseSummaryCache;
+
+            const todayColor = getSmallcasePnlColor(s.today_change);
+            const todayClass = getSmallcasePnlClass(s.today_change);
+            const todaySign = (s.today_change || 0) > 0 ? '+' : ((s.today_change || 0) < 0 ? '-' : '');
+            const todayPctSign = (s.today_change_pct || 0) > 0 ? '+' : ((s.today_change_pct || 0) < 0 ? '-' : '');
+            const todayStr = s.today_change == null ? '—' : (isPrivacyMode ? '₹ ••••••' : `${todaySign}₹${Math.abs(s.today_change).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${todayPctSign}${Math.abs(s.today_change_pct || 0).toFixed(2)}%)`);
+
+            const realPnl = s.realized_pnl != null ? s.realized_pnl : 0;
+            const realColor = getSmallcasePnlColor(realPnl);
+            const realClass = getSmallcasePnlClass(realPnl);
+            const realSign = realPnl > 0 ? '+' : (realPnl < 0 ? '-' : '');
+            const realStr = isPrivacyMode ? '₹ ••••••' : `${realSign}₹${Math.abs(realPnl).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+            const totalPnl = s.total_pnl != null ? s.total_pnl : 0;
+            const totalColor = getSmallcasePnlColor(totalPnl);
+            const totalClass = getSmallcasePnlClass(totalPnl);
+            const totalSign = totalPnl > 0 ? '+' : (totalPnl < 0 ? '-' : '');
+            const totalStr = isPrivacyMode ? '₹ ••••••' : `${totalSign}₹${Math.abs(totalPnl).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+            const ret = s.return_pct != null ? s.return_pct : 0;
+            const retColor = getSmallcasePnlColor(ret);
+            const retClass = getSmallcasePnlClass(ret);
+            const retSign = ret > 0 ? '+' : (ret < 0 ? '-' : '');
+            const retStr = `${retSign}${Math.abs(ret).toFixed(2)}%`;
+
+            const xirr = s.overall_xirr;
+            const xirrColor = getSmallcasePnlColor(xirr);
+            const xirrClass = getSmallcasePnlClass(xirr);
+            const xirrSign = (xirr || 0) > 0 ? '+' : ((xirr || 0) < 0 ? '-' : '');
+            const xirrStr = xirr == null ? 'Not Available' : `${xirrSign}${Math.abs(xirr).toFixed(2)}%`;
+
             const items = [
-                ['Total Smallcases', s.total_smallcases || 0, ''],
-                ['Active Positions', s.active_smallcases || 0, ''],
-                ['Total Invested', isPrivacyMode ? '₹ ••••••' : `₹${(s.total_invested || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`, ''],
-                ['Current Value', isPrivacyMode ? '₹ ••••••' : `₹${(s.current_value || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`, ''],
-                ['Total P&L', isPrivacyMode ? '₹ ••••••' : `${(s.total_pnl || 0) >= 0 ? '+' : ''}₹${Math.abs(s.total_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`, (s.total_pnl || 0) >= 0 ? 'pos' : 'neg'],
-                ['Overall Return', `${(s.return_pct || 0) >= 0 ? '+' : ''}${(s.return_pct || 0).toFixed(2)}%`, (s.return_pct || 0) >= 0 ? 'pos' : 'neg'],
-                ['Today\'s Change', s.today_change == null ? '—' : (isPrivacyMode ? '₹ ••••••' : `${s.today_change >= 0 ? '+' : ''}₹${Math.abs(s.today_change).toLocaleString('en-IN', {minimumFractionDigits: 2})} (${(s.today_change_pct || 0) >= 0 ? '+' : ''}${(s.today_change_pct || 0).toFixed(2)}%)`), s.today_change >= 0 ? 'pos' : 'neg'],
-                ['Overall XIRR', s.overall_xirr == null ? 'Not Available' : `${s.overall_xirr >= 0 ? '+' : ''}${s.overall_xirr.toFixed(2)}%`, s.overall_xirr >= 0 ? 'pos' : 'neg']
+                ['Total Smallcases', s.total_smallcases || 0, 'neutral', 'var(--text-primary)'],
+                ['Active Positions', s.active_smallcases || 0, 'neutral', 'var(--text-primary)'],
+                ['Total Invested', isPrivacyMode ? '₹ ••••••' : `₹${(s.total_invested || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 'neutral', 'var(--text-primary)'],
+                ['Current Value', isPrivacyMode ? '₹ ••••••' : `₹${(s.current_value || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 'neutral', 'var(--text-primary)'],
+                ["Today's Change", todayStr, todayClass, todayColor],
+                ['Realized P&L', realStr, realClass, realColor],
+                ['Total P&L', totalStr, totalClass, totalColor],
+                ['Overall Return', retStr, retClass, retColor],
+                ['Overall XIRR', xirrStr, xirrClass, xirrColor]
             ];
 
             grid.innerHTML = items.map(x => `
                 <div class="metric-card" style="padding: 12px 14px;">
                     <div class="title" style="font-size: 11px;">${x[0]}</div>
-                    <div class="value ${x[2]}" style="font-size: 18px; margin-top: 4px;">${x[1]}</div>
+                    <div class="value ${x[2]}" style="font-size: 18px; margin-top: 4px; color: ${x[3]} !important;">${x[1]}</div>
                 </div>
             `).join('');
         }
@@ -144,19 +190,32 @@
             `;
 
             rows.forEach(s => {
-                const isPos = (s.total_pnl || 0) >= 0;
-                const pnlSign = isPos ? '+' : '';
-                const pnlClass = isPos ? 'pos' : 'neg';
+                const todayColor = getSmallcasePnlColor(s.today_change);
+                const todayClass = getSmallcasePnlClass(s.today_change);
+                const todaySign = (s.today_change || 0) > 0 ? '+' : ((s.today_change || 0) < 0 ? '-' : '');
+                const todayPctSign = (s.today_change_pct || 0) > 0 ? '+' : ((s.today_change_pct || 0) < 0 ? '-' : '');
+                const todayStr = s.today_change == null ? '—' : (isPrivacyMode ? '₹ ••••••' : `${todaySign}₹${Math.abs(s.today_change).toLocaleString('en-IN', {minimumFractionDigits:2})}<br><span style="font-size:11px; color:${todayColor} !important;">${todayPctSign}${Math.abs(s.today_change_pct || 0).toFixed(2)}%</span>`);
 
-                const todayPos = (s.today_change || 0) >= 0;
-                const todayClass = todayPos ? 'pos' : 'neg';
-                const todaySign = todayPos ? '+' : '';
+                const pnlColor = getSmallcasePnlColor(s.total_pnl);
+                const pnlSign = (s.total_pnl || 0) > 0 ? '+' : ((s.total_pnl || 0) < 0 ? '-' : '');
+
+                const retColor = getSmallcasePnlColor(s.return_pct);
+                const retClass = getSmallcasePnlClass(s.return_pct);
+                const retSign = (s.return_pct || 0) > 0 ? '+' : ((s.return_pct || 0) < 0 ? '-' : '');
+
+                const realColor = getSmallcasePnlColor(s.realized_pnl);
+                const realSign = (s.realized_pnl || 0) > 0 ? '+' : ((s.realized_pnl || 0) < 0 ? '-' : '');
+                const realStr = s.realized_pnl ? `<div style="font-size:10px; margin-top:2px; color:${realColor} !important;" title="Realized P&L">Realized: ${isPrivacyMode ? '₹ ••••••' : `${realSign}₹${Math.abs(s.realized_pnl).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div>` : '';
+
+                const xirrColor = getSmallcasePnlColor(s.xirr);
+                const xirrClass = getSmallcasePnlClass(s.xirr);
+                const xirrSign = (s.xirr || 0) > 0 ? '+' : ((s.xirr || 0) < 0 ? '-' : '');
+                const xirrStr = s.xirr == null ? '—' : `${xirrSign}${Math.abs(s.xirr).toFixed(2)}%`;
 
                 const statusClass = s.status === 'CLOSED' ? 'badge-st' : s.status === 'PARTIALLY EXITED' ? 'badge-nse' : 'badge-lt';
 
                 const valStr = isPrivacyMode ? '₹ ••••••' : `₹${(s.current_value || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
                 const invStr = isPrivacyMode ? '₹ ••••••' : `₹${(s.total_invested || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
-                const todayStr = s.today_change == null ? '—' : (isPrivacyMode ? '₹ ••••••' : `${todaySign}₹${Math.abs(s.today_change).toLocaleString('en-IN', {minimumFractionDigits:2})}<br><span style="font-size:11px">${todaySign}${(s.today_change_pct || 0).toFixed(2)}%</span>`);
 
                 html += `
                     <tr class="pf-row" onclick="viewSmallcaseDetails('${escapeHtml(s.id)}')" title="Click to view Smallcase details">
@@ -170,9 +229,15 @@
                             <strong>${valStr}</strong>
                             <div class="company-name">Invested ${invStr}</div>
                         </td>
-                        <td class="${todayClass}">${todayStr}</td>
-                        <td class="${pnlClass}"><strong>${pnlSign}${s.return_pct ? s.return_pct.toFixed(2) : 0}%</strong></td>
-                        <td class="${s.xirr >= 0 ? 'pos' : 'neg'}">${s.xirr == null ? '—' : `${s.xirr >= 0 ? '+' : ''}${s.xirr.toFixed(2)}%`}</td>
+                        <td class="${todayClass}" style="color: ${todayColor} !important;">${todayStr}</td>
+                        <td class="${retClass}" style="color: ${retColor} !important;">
+                            <strong>${retSign}${s.return_pct != null ? Math.abs(s.return_pct).toFixed(2) : '0.00'}%</strong>
+                            <div style="font-size: 11px; margin-top: 2px; color: ${pnlColor} !important;">
+                                ${isPrivacyMode ? '₹ ••••••' : `${pnlSign}₹${Math.abs(s.total_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
+                            </div>
+                            ${realStr}
+                        </td>
+                        <td class="${xirrClass}" style="color: ${xirrColor} !important;"><strong>${xirrStr}</strong></td>
                         <td><span class="badge ${statusClass}">${escapeHtml(s.status || 'ACTIVE')}</span></td>
                         <td style="text-align: right;" onclick="event.stopPropagation();">
                             <div style="display: flex; gap: 6px; justify-content: flex-end;">
@@ -289,15 +354,42 @@
 
                 const bodyEl = document.getElementById('scDetailBody');
 
+                const dTodayColor = getSmallcasePnlColor(d.today_change);
+                const dTodayClass = getSmallcasePnlClass(d.today_change);
+                const dTodaySign = (d.today_change || 0) > 0 ? '+' : ((d.today_change || 0) < 0 ? '-' : '');
+                const dTodayPctSign = (d.today_change_pct || 0) > 0 ? '+' : ((d.today_change_pct || 0) < 0 ? '-' : '');
+                const dTodayPctStr = d.today_change_pct != null ? ` (${dTodayPctSign}${Math.abs(d.today_change_pct).toFixed(2)}%)` : '';
+                const dTodayStr = d.today_change == null ? '—' : (isPrivacyMode ? '₹ ••••••' : `${dTodaySign}₹${Math.abs(d.today_change).toLocaleString('en-IN', {minimumFractionDigits:2})}${dTodayPctStr}`);
+
+                const dRealColor = getSmallcasePnlColor(d.realized_pnl);
+                const dRealClass = getSmallcasePnlClass(d.realized_pnl);
+                const dRealSign = (d.realized_pnl || 0) > 0 ? '+' : ((d.realized_pnl || 0) < 0 ? '-' : '');
+                const dRealStr = isPrivacyMode ? '₹ ••••••' : `${dRealSign}₹${Math.abs(d.realized_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+
+                const dTotalColor = getSmallcasePnlColor(d.total_pnl);
+                const dTotalClass = getSmallcasePnlClass(d.total_pnl);
+                const dTotalSign = (d.total_pnl || 0) > 0 ? '+' : ((d.total_pnl || 0) < 0 ? '-' : '');
+                const dTotalStr = isPrivacyMode ? '₹ ••••••' : `${dTotalSign}₹${Math.abs(d.total_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+
+                const dRetColor = getSmallcasePnlColor(d.return_pct);
+                const dRetClass = getSmallcasePnlClass(d.return_pct);
+                const dRetSign = (d.return_pct || 0) > 0 ? '+' : ((d.return_pct || 0) < 0 ? '-' : '');
+                const dRetStr = d.return_pct != null ? `${dRetSign}${Math.abs(d.return_pct).toFixed(2)}%` : '0.00%';
+
+                const dXirrColor = getSmallcasePnlColor(d.xirr);
+                const dXirrClass = getSmallcasePnlClass(d.xirr);
+                const dXirrSign = (d.xirr || 0) > 0 ? '+' : ((d.xirr || 0) < 0 ? '-' : '');
+                const dXirrStr = d.xirr == null ? 'Not Available' : `${dXirrSign}${Math.abs(d.xirr).toFixed(2)}%`;
+
                 let html = `
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px;">
                         <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Total Invested</div><div class="value" style="font-size:16px;">${isPrivacyMode ? '₹ ••••••' : `₹${d.total_invested.toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div></div>
                         <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Current Value</div><div class="value" style="font-size:16px;">${isPrivacyMode ? '₹ ••••••' : `₹${d.current_value.toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div></div>
-                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Today's Change</div><div class="value ${d.today_change >= 0 ? 'pos' : 'neg'}" style="font-size:16px;">${isPrivacyMode ? '₹ ••••••' : `${d.today_change >= 0 ? '+' : ''}₹${Math.abs(d.today_change).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div></div>
-                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Realized P&L</div><div class="value ${d.realized_pnl >= 0 ? 'pos' : 'neg'}" style="font-size:16px;">${isPrivacyMode ? '₹ ••••••' : `${d.realized_pnl >= 0 ? '+' : ''}₹${Math.abs(d.realized_pnl).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div></div>
-                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Total P&L</div><div class="value ${d.total_pnl >= 0 ? 'pos' : 'neg'}" style="font-size:16px;">${isPrivacyMode ? '₹ ••••••' : `${d.total_pnl >= 0 ? '+' : ''}₹${Math.abs(d.total_pnl).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div></div>
-                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Return %</div><div class="value ${d.return_pct >= 0 ? 'pos' : 'neg'}" style="font-size:16px;">${d.return_pct >= 0 ? '+' : ''}${d.return_pct.toFixed(2)}%</div></div>
-                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">XIRR</div><div class="value ${d.xirr >= 0 ? 'pos' : 'neg'}" style="font-size:16px;">${d.xirr == null ? 'N/A' : `${d.xirr >= 0 ? '+' : ''}${d.xirr.toFixed(2)}%`}</div></div>
+                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Today's Change</div><div class="value ${dTodayClass}" style="font-size:16px; color: ${dTodayColor} !important;">${dTodayStr}</div></div>
+                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Realized P&L</div><div class="value ${dRealClass}" style="font-size:16px; color: ${dRealColor} !important;">${dRealStr}</div></div>
+                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Total P&L</div><div class="value ${dTotalClass}" style="font-size:16px; color: ${dTotalColor} !important;">${dTotalStr}</div></div>
+                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">Return %</div><div class="value ${dRetClass}" style="font-size:16px; color: ${dRetColor} !important;">${dRetStr}</div></div>
+                        <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">XIRR</div><div class="value ${dXirrClass}" style="font-size:16px; color: ${dXirrColor} !important;">${dXirrStr}</div></div>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px;">
@@ -328,17 +420,41 @@
                 `;
 
                 holdings.forEach(h => {
-                    const pos = (h.total_pnl || 0) >= 0;
+                    const hPnlColor = getSmallcasePnlColor(h.total_pnl);
+                    const hPnlClass = getSmallcasePnlClass(h.total_pnl);
+                    const hPnlSign = (h.total_pnl || 0) > 0 ? '+' : ((h.total_pnl || 0) < 0 ? '-' : '');
+
+                    const hRetColor = getSmallcasePnlColor(h.return_pct);
+                    const hRetClass = getSmallcasePnlClass(h.return_pct);
+                    const hRetSign = (h.return_pct || 0) > 0 ? '+' : ((h.return_pct || 0) < 0 ? '-' : '');
+
+                    const hRealColor = getSmallcasePnlColor(h.realized_pnl);
+                    const hRealSign = (h.realized_pnl || 0) > 0 ? '+' : ((h.realized_pnl || 0) < 0 ? '-' : '');
+                    const hRealStr = h.realized_pnl ? `<div style="font-size:10px; color:${hRealColor} !important;">Realized: ${isPrivacyMode ? '₹ ••••••' : `${hRealSign}₹${Math.abs(h.realized_pnl).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div>` : '';
+
+                    const hTodayColor = getSmallcasePnlColor(h.today_change);
+                    const hTodaySign = (h.today_change || 0) > 0 ? '+' : ((h.today_change || 0) < 0 ? '-' : '');
+                    const hTodayPctSign = (h.today_change_pct || 0) > 0 ? '+' : ((h.today_change_pct || 0) < 0 ? '-' : '');
+                    const hTodayStr = h.today_change != null ? `<div style="font-size:10px; color:${hTodayColor} !important;">1D: ${hTodaySign}₹${Math.abs(h.today_change).toFixed(2)} (${hTodayPctSign}${Math.abs(h.today_change_pct || 0).toFixed(2)}%)</div>` : '';
+
                     html += `
                         <tr>
                             <td><strong>${escapeHtml(h.stock_name)}</strong><div class="company-name">${escapeHtml(h.symbol)}</div></td>
                             <td>${h.quantity}</td>
                             <td>₹${h.average_buy_price ? h.average_buy_price.toFixed(2) : '-'}</td>
                             <td>${isPrivacyMode ? '₹ ••••••' : `₹${(h.invested || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
-                            <td>₹${h.current_price ? h.current_price.toFixed(2) : '-'}</td>
+                            <td>
+                                ₹${h.current_price ? h.current_price.toFixed(2) : '-'}
+                                ${hTodayStr}
+                            </td>
                             <td>${isPrivacyMode ? '₹ ••••••' : `₹${(h.current_value || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
-                            <td class="${pos ? 'pos' : 'neg'}">${isPrivacyMode ? '₹ ••••••' : `${pos ? '+' : ''}₹${Math.abs(h.total_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
-                            <td class="${pos ? 'pos' : 'neg'}">${pos ? '+' : ''}${h.return_pct ? h.return_pct.toFixed(2) : 0}%</td>
+                            <td class="${hPnlClass}" style="color: ${hPnlColor} !important;">
+                                <strong>${isPrivacyMode ? '₹ ••••••' : `${hPnlSign}₹${Math.abs(h.total_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</strong>
+                                ${hRealStr}
+                            </td>
+                            <td class="${hRetClass}" style="color: ${hRetColor} !important;">
+                                <strong>${hRetSign}${h.return_pct ? Math.abs(h.return_pct).toFixed(2) : '0.00'}%</strong>
+                            </td>
                             <td><span class="badge ${h.status === 'ACTIVE' ? 'badge-lt' : 'badge-st'}">${escapeHtml(h.status)}</span></td>
                             <td style="text-align: right;">
                                 ${h.status === 'ACTIVE' ? `<button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; color:#ef4444; border-color:#fca5a5;" onclick="openSmallcaseExitModal('${escapeHtml(id)}','${escapeHtml(h.symbol)}',${h.quantity},${h.current_price || 0})">🔴 Exit</button>` : ''}

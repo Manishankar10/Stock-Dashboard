@@ -8,3 +8,38 @@
     gap: 16px;
     margin-top: 16px;
 }
+
+/* Metric Cards Financial Colors in Smallcases Module */
+#smallcase-summary-grid .metric-card .value.pos,
+#detailSmallcaseModal .metric-card .value.pos,
+.metric-card .value.pos {
+    color: #10b981 !important;
+}
+
+#smallcase-summary-grid .metric-card .value.neg,
+#detailSmallcaseModal .metric-card .value.neg,
+.metric-card .value.neg {
+    color: #ef4444 !important;
+}
+
+#smallcase-summary-grid .metric-card .value.neutral,
+#detailSmallcaseModal .metric-card .value.neutral,
+.metric-card .value.neutral {
+    color: var(--text-secondary) !important;
+}
+
+/* Smallcase Tables Financial Colors */
+#tab-smallcases table td.pos,
+#detailSmallcaseModal table td.pos {
+    color: #10b981 !important;
+}
+
+#tab-smallcases table td.neg,
+#detailSmallcaseModal table td.neg {
+    color: #ef4444 !important;
+}
+
+#tab-smallcases table td.neutral,
+#detailSmallcaseModal table td.neutral {
+    color: var(--text-secondary) !important;
+}
