@@ -79,20 +79,40 @@
         }
 
         async function deleteAlert(alertId) {
-            if (!await showCustomConfirm({ title: 'Delete Price Alert', message: 'Are you sure you want to delete this price alert?', isDanger: true })) return;
-            const res = await fetch(`/api/alerts/${alertId}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                showToast('Price alert deleted', 'info');
-                userAlertsData = data.alerts_data;
-                updateNotificationBadge();
-                renderNotificationsModalContent();
+            let confirmed = false;
+            try {
+                if (typeof showCustomConfirm === 'function') {
+                    confirmed = await showCustomConfirm({ title: 'Delete Price Alert', message: 'Are you sure you want to delete this price alert?', isDanger: true });
+                } else {
+                    const confirmFn = window.nativeConfirm || window.confirm;
+                    confirmed = confirmFn('Are you sure you want to delete this price alert?');
+                }
+            } catch (e) {
+                const confirmFn = window.nativeConfirm || window.confirm;
+                confirmed = confirmFn('Are you sure you want to delete this price alert?');
+            }
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    if (typeof showToast === 'function') showToast('Price alert deleted', 'info');
+                    userAlertsData = data.alerts_data;
+                    updateNotificationBadge();
+                    renderNotificationsModalContent();
+                } else {
+                    alert(data.error || 'Failed to delete alert');
+                }
+            } catch (err) {
+                console.error('Delete alert error:', err);
             }
         }
 
         async function openNotificationsModal() {
             await fetchAlerts();
-            document.getElementById('notificationsModal').style.display = 'block';
+            const notifModal = document.getElementById('notificationsModal');
+            if (notifModal) notifModal.style.display = 'block';
             switchNotifTab(activeNotifTab);
             fetch('/api/notifications/mark_read', { method: 'POST' }).then(r => r.json()).then(data => {
                 if (data.success) {
@@ -103,26 +123,41 @@
         }
 
         function closeNotificationsModal() {
-            document.getElementById('notificationsModal').style.display = 'none';
+            const notifModal = document.getElementById('notificationsModal');
+            if (notifModal) notifModal.style.display = 'none';
         }
 
         function switchNotifTab(tab) {
             activeNotifTab = tab;
+            const notifModal = document.getElementById('notificationsModal');
+            if (notifModal) notifModal.setAttribute('data-tab', tab);
             const btnNotifs = document.getElementById('notif-tab-btn-notifs');
             const btnAlerts = document.getElementById('notif-tab-btn-alerts');
             const contentNotifs = document.getElementById('notif-tab-content-notifs');
             const contentAlerts = document.getElementById('notif-tab-content-alerts');
 
             if (tab === 'notifs') {
-                btnNotifs.classList.add('active');
-                btnAlerts.classList.remove('active');
-                contentNotifs.style.display = 'block';
-                contentAlerts.style.display = 'none';
+                if (btnNotifs) btnNotifs.classList.add('active');
+                if (btnAlerts) btnAlerts.classList.remove('active');
+                if (contentNotifs) {
+                    contentNotifs.classList.remove('hidden');
+                    contentNotifs.style.setProperty('display', 'flex', 'important');
+                }
+                if (contentAlerts) {
+                    contentAlerts.classList.add('hidden');
+                    contentAlerts.style.setProperty('display', 'none', 'important');
+                }
             } else {
-                btnAlerts.classList.add('active');
-                btnNotifs.classList.remove('active');
-                contentAlerts.style.display = 'block';
-                contentNotifs.style.display = 'none';
+                if (btnAlerts) btnAlerts.classList.add('active');
+                if (btnNotifs) btnNotifs.classList.remove('active');
+                if (contentAlerts) {
+                    contentAlerts.classList.remove('hidden');
+                    contentAlerts.style.setProperty('display', 'flex', 'important');
+                }
+                if (contentNotifs) {
+                    contentNotifs.classList.add('hidden');
+                    contentNotifs.style.setProperty('display', 'none', 'important');
+                }
             }
             renderNotificationsModalContent();
         }
@@ -193,26 +228,61 @@
         }
 
         async function deleteNotification(notifId) {
-            const res = await fetch(`/api/notifications/${notifId}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                userAlertsData = data.alerts_data;
-                updateNotificationBadge();
-                renderNotificationsModalContent();
+            try {
+                const res = await fetch(`/api/notifications/${encodeURIComponent(notifId)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    userAlertsData = data.alerts_data;
+                    updateNotificationBadge();
+                    renderNotificationsModalContent();
+                } else {
+                    alert(data.error || 'Failed to delete notification');
+                }
+            } catch (err) {
+                console.error('Delete notification error:', err);
             }
         }
 
         async function clearAllNotifications() {
-            if (!await showCustomConfirm({ title: 'Clear Notifications', message: 'Are you sure you want to clear all notification history?', isDanger: true })) return;
-            const res = await fetch('/api/notifications/clear_all', { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                showToast('Notification history cleared', 'info');
-                userAlertsData = data.alerts_data;
-                updateNotificationBadge();
-                renderNotificationsModalContent();
+            let confirmed = false;
+            try {
+                if (typeof showCustomConfirm === 'function') {
+                    confirmed = await showCustomConfirm({ title: 'Clear Notifications', message: 'Are you sure you want to clear all notification history?', isDanger: true });
+                } else {
+                    const confirmFn = window.nativeConfirm || window.confirm;
+                    confirmed = confirmFn('Are you sure you want to clear all notification history?');
+                }
+            } catch (e) {
+                const confirmFn = window.nativeConfirm || window.confirm;
+                confirmed = confirmFn('Are you sure you want to clear all notification history?');
+            }
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/notifications/clear_all', { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    if (typeof showToast === 'function') showToast('Notification history cleared', 'info');
+                    userAlertsData = data.alerts_data;
+                    updateNotificationBadge();
+                    renderNotificationsModalContent();
+                } else {
+                    alert(data.error || 'Failed to clear notifications');
+                }
+            } catch (err) {
+                console.error('Clear notifications error:', err);
             }
         }
+
+        window.deleteAlert = deleteAlert;
+        window.deleteNotification = deleteNotification;
+        window.clearAllNotifications = clearAllNotifications;
+        window.switchNotifTab = switchNotifTab;
+        window.openNotificationsModal = openNotificationsModal;
+        window.closeNotificationsModal = closeNotificationsModal;
+        window.renderNotificationsModalContent = renderNotificationsModalContent;
+        window.fetchAlerts = fetchAlerts;
+        window.submitCreateAlert = submitCreateAlert;
 
         window.onclick = function(event) {
             const modal = document.getElementById('chartModal');

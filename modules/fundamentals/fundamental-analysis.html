@@ -2099,6 +2099,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
             <button class="range-btn active" onclick="setChartRange(365)">1Y</button>
             <button class="range-btn" onclick="setChartRange(1095)">3Y</button>
             <button class="range-btn" onclick="setChartRange(1825)">5Y</button>
+            <button class="range-btn" onclick="setChartRange(10000)">ALL</button>
           </div>
         </div>
         <div class="chart-canvas-box" id="chartCanvasBox">
@@ -2606,11 +2607,41 @@ async function switchFundamentalMode(newMode) {
   await loadFundamentals(newMode);
 }
 
-function setChartRange(days) {
+async function setChartRange(days) {
   _chartCurrentDays = days;
   document.querySelectorAll('#chartRangeBtns .range-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.trim() === (days === 30 ? '1M' : days === 90 ? '3M' : days === 180 ? '6M' : days === 365 ? '1Y' : days === 1095 ? '3Y' : '5Y'));
+    btn.classList.toggle('active', btn.textContent.trim() === (
+      days === 30 ? '1M' :
+      days === 90 ? '3M' :
+      days === 180 ? '6M' :
+      days === 365 ? '1Y' :
+      days === 1095 ? '3Y' :
+      days === 1825 ? '5Y' :
+      days >= 3650 ? 'ALL' : ''
+    ));
   });
+
+  // If user selects ALL or 5Y, check if extended historical points are needed
+  if (days >= 1825 && window.companyId) {
+    const priceDs = _chartDatasets.find(d => /price/i.test(d.metric)) || _chartDatasets[0];
+    const valCount = (priceDs?.values || []).length;
+    // If requesting ALL or 5Y and dataset has fewer historical points
+    if (days >= 10000 || valCount < 260) {
+      const fetchDays = days >= 10000 ? 10000 : 1825;
+      try {
+        const resp = await fetch(`/api/fundamentals/chart?company_id=${encodeURIComponent(window.companyId)}&days=${fetchDays}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data.datasets && data.datasets.length) {
+            _chartDatasets = data.datasets;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch extended chart data:', err);
+      }
+    }
+  }
+
   renderScreenerChart(_chartDatasets, days);
 }
 
@@ -2648,7 +2679,7 @@ function renderScreenerChart(datasets, days = _chartCurrentDays) {
   let priceVals = (priceDs?.values || []).map(v => [v[0], parseFloat(v[1])]).filter(v => !isNaN(v[1]));
   if (!priceVals.length) return;
 
-  if (days && priceVals.length > 5) {
+  if (days && days < 10000 && priceVals.length > 5) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const cutoffStr = cutoff.toISOString().slice(0, 10);

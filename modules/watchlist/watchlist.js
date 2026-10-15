@@ -395,7 +395,7 @@
             `;
             mobileMenuBtn.onclick = (e) => {
                 e.stopPropagation();
-                toggleWlMobileMenu();
+                openWlMobileMenuModal();
             };
             searchRow.appendChild(mobileMenuBtn);
             controlsDiv.appendChild(searchRow);
@@ -429,57 +429,6 @@
                 </div>`;
             watchlistFileControls.appendChild(watchlistOverflow);
             controlsDiv.appendChild(watchlistFileControls);
-
-            // Responsive Mobile Menu Drawer
-            const mobileMenuDrawer = document.createElement('div');
-            mobileMenuDrawer.id = 'wl-mobile-menu-drawer';
-            mobileMenuDrawer.className = 'wl-mobile-menu-drawer';
-            mobileMenuDrawer.innerHTML = `
-                <div class="wl-mob-menu-container">
-                    <!-- 1. Sort & Filter -->
-                    <button type="button" class="wl-mob-menu-row" onclick="openWlMobileSortModal(); toggleWlMobileMenu(false);">
-                        <div class="wl-mob-menu-row-left">
-                            <span class="wl-mob-menu-icon">⇄</span>
-                            <span class="wl-mob-menu-label">Sort & Filter</span>
-                        </div>
-                        <span class="wl-mob-menu-tag">Change Sort ▾</span>
-                    </button>
-
-                    <!-- 2. Official Exchange Feeds -->
-                    <button type="button" class="wl-mob-menu-row" onclick="openWatchlistOfficialFeeds('${escapeHtml(activeWatchlistName)}'); toggleWlMobileMenu(false);">
-                        <div class="wl-mob-menu-row-left">
-                            <span class="wl-mob-menu-icon">◉</span>
-                            <span class="wl-mob-menu-label">Official Feeds</span>
-                        </div>
-                        <span class="wl-mob-menu-tag">Announcements ↗</span>
-                    </button>
-
-                    <div class="wl-mob-menu-divider"></div>
-
-                    <!-- 3. Actions Accordion (Collapsible & Expandable with Export, Import, Delete) -->
-                    <div class="wl-mob-accordion">
-                        <button type="button" class="wl-mob-menu-row wl-mob-accordion-btn" onclick="toggleWlMobActionsAccordion(event)">
-                            <div class="wl-mob-menu-row-left">
-                                <span class="wl-mob-menu-icon">⚙️</span>
-                                <span class="wl-mob-menu-label">Watchlist Actions</span>
-                            </div>
-                            <span class="wl-mob-accordion-caret" id="wl-mob-accordion-caret">▸</span>
-                        </button>
-                        <div class="wl-mob-accordion-content" id="wl-mob-actions-content" style="display: none;">
-                            <button type="button" class="wl-mob-sub-btn" onclick="exportActiveWatchlistToTxt(); toggleWlMobileMenu(false);">
-                                <span>📤 Export Watchlist (.txt)</span>
-                            </button>
-                            <button type="button" class="wl-mob-sub-btn" onclick="openWatchlistTxtImportModal(); toggleWlMobileMenu(false);">
-                                <span>📥 Import Watchlist (.txt)</span>
-                            </button>
-                            <button type="button" class="wl-mob-sub-btn danger" onclick="deleteActiveWatchlist(); toggleWlMobileMenu(false);">
-                                <span>🗑️ Delete Watchlist</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            controlsDiv.appendChild(mobileMenuDrawer);
 
             // Table of stocks in active watchlist
             const scrollContainer = document.createElement('div');
@@ -725,47 +674,108 @@
         }
 
         // =========================================================
-        // RESPONSIVE MOBILE MENU & ACCORDION CONTROLLERS
+        // RESPONSIVE MOBILE MENU BOTTOM SHEET
         // =========================================================
-        function toggleWlMobileMenu(forceState) {
-            const drawer = document.getElementById('wl-mobile-menu-drawer');
-            const btn = document.getElementById('wl-mobile-menu-btn');
-            if (!drawer) return;
-            const shouldOpen = forceState !== undefined ? forceState : !drawer.classList.contains('open');
-            if (shouldOpen) {
-                drawer.classList.add('open');
-                if (btn) btn.classList.add('active');
-            } else {
-                drawer.classList.remove('open');
-                if (btn) btn.classList.remove('active');
+        function openWlMobileMenuModal() {
+            let modal = document.getElementById('wlMobileMenuModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'wlMobileMenuModal';
+                modal.className = 'small-modal wl-mobile-menu-sheet';
+                modal.onclick = (e) => { if (e.target === modal) closeWlMobileMenuModal(); };
+                document.body.appendChild(modal);
             }
+
+            const currentWl = activeWatchlistName || 'Watchlist';
+            modal.innerHTML = `
+                <div class="small-modal-content wl-action-sheet-content">
+                    <div class="wl-action-sheet-handle"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 17px;">⚙️</span>
+                            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); font-family: 'Plus Jakarta Sans', sans-serif;">
+                                Watchlist Options (${escapeHtml(currentWl)})
+                            </h3>
+                        </div>
+                        <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1; padding: 2px 6px;" onclick="closeWlMobileMenuModal()">&times;</span>
+                    </div>
+
+                    <div class="wl-action-sheet-list">
+                        <!-- 1. Sort & Filter -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWlMobileSortModal();">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">⇄</span>
+                                <div>
+                                    <div class="wl-sheet-title">Sort & Filter</div>
+                                    <div class="wl-sheet-sub">Change sorting order of stocks</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">›</span>
+                        </div>
+
+                        <!-- 2. Official Feeds -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWatchlistOfficialFeeds('${escapeHtml(currentWl)}');">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">◉</span>
+                                <div>
+                                    <div class="wl-sheet-title">Official Feeds</div>
+                                    <div class="wl-sheet-sub">Exchange corporate announcements</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">↗</span>
+                        </div>
+
+                        <!-- 3. Export Watchlist -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); exportActiveWatchlistToTxt();">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">📤</span>
+                                <div>
+                                    <div class="wl-sheet-title">Export Watchlist (.txt)</div>
+                                    <div class="wl-sheet-sub">Download tickers text file</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">⇩</span>
+                        </div>
+
+                        <!-- 4. Import Watchlist -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWatchlistTxtImportModal();">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">📥</span>
+                                <div>
+                                    <div class="wl-sheet-title">Import Watchlist (.txt)</div>
+                                    <div class="wl-sheet-sub">Upload stock tickers list</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">⇧</span>
+                        </div>
+
+                        <div class="wl-sheet-divider"></div>
+
+                        <!-- 5. Delete Watchlist -->
+                        <div class="wl-sheet-item danger" onclick="closeWlMobileMenuModal(); deleteActiveWatchlist();">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon danger">🗑️</span>
+                                <div>
+                                    <div class="wl-sheet-title danger">Delete Watchlist</div>
+                                    <div class="wl-sheet-sub">Permanently delete "${escapeHtml(currentWl)}"</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron danger">✕</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.style.display = 'flex';
         }
 
-        function toggleWlMobActionsAccordion(event) {
-            if (event) event.stopPropagation();
-            const content = document.getElementById('wl-mob-actions-content');
-            const caret = document.getElementById('wl-mob-accordion-caret');
-            if (!content) return;
-            const isHidden = content.style.display === 'none';
-            if (isHidden) {
-                content.style.display = 'flex';
-                if (caret) caret.innerText = '▾';
-            } else {
-                content.style.display = 'none';
-                if (caret) caret.innerText = '▸';
-            }
+        function closeWlMobileMenuModal() {
+            const modal = document.getElementById('wlMobileMenuModal');
+            if (modal) modal.style.display = 'none';
         }
-        window.toggleWlMobileMenu = toggleWlMobileMenu;
-        window.toggleWlMobActionsAccordion = toggleWlMobActionsAccordion;
-
-        if (!window._wlMobileMenuBound) {
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('#wl-mobile-menu-drawer') && !e.target.closest('#wl-mobile-menu-btn')) {
-                    if (typeof toggleWlMobileMenu === 'function') toggleWlMobileMenu(false);
-                }
-            });
-            window._wlMobileMenuBound = true;
-        }
+        window.openWlMobileMenuModal = openWlMobileMenuModal;
+        window.closeWlMobileMenuModal = closeWlMobileMenuModal;
+        window.toggleWlMobileMenu = openWlMobileMenuModal;
 
         let _wlMenuOpenScrollY = 0;
 
@@ -790,7 +800,7 @@
                     if (btnRect) {
                         const spaceBelow = viewportHeight - btnRect.bottom;
                         const spaceAbove = btnRect.top - 60; // 60px reserved for sticky mobile header
-                        const MENU_CLEARANCE = 190; // Dropdown height is ~180px
+                        const MENU_CLEARANCE = 220; // Dropdown height is ~200px
 
                         // Only flip upwards if it CANNOT fit below AND has more room above
                         if (spaceBelow < MENU_CLEARANCE) {
@@ -818,6 +828,7 @@
                     dropdown.style.marginBottom = '0';
                 }
 
+                dropdown.style.zIndex = '10060';
                 dropdown.style.display = 'block';
                 if (parentTr) parentTr.classList.add('wl-row-menu-open');
                 _wlMenuOpenScrollY = window.scrollY || window.pageYOffset || 0;
@@ -1335,6 +1346,15 @@
                     return;
                 }
 
+                // Strict Rule: Horizontal swipe on watchlist tabs must ONLY scroll watchlist names, NOT switch watchlists.
+                // Next/prev watchlist switching swipe ONLY applies to the content area strictly BELOW the search bar.
+                const isContentBelowSearch = target.closest('.wl-table-container, .wl-table, tbody, tr.pf-row, .empty-watchlist-msg');
+                const isHeaderOrControls = target.closest('.watchlist-top-card, .watchlist-selector-row, #watchlist-selector-mount, .watchlist-tabs-nav, .controls, .wl-search-row, #wl-search-input, .mobile-top-bar, .mobile-bottom-nav');
+                if (!isContentBelowSearch || isHeaderOrControls) {
+                    _wlSwipeCard = null;
+                    return;
+                }
+
                 const t = e.touches[0];
                 _wlSwipeStartX = t.clientX;
                 _wlSwipeStartY = t.clientY;
@@ -1342,7 +1362,7 @@
                 _wlSwipeIsHorizontal = false;
                 _wlSwipeIsVertical = false;
 
-                _wlSwipeCard = document.querySelector('#watchlist-view-mount > .card-container') || document.getElementById('watchlist-view-mount');
+                _wlSwipeCard = document.querySelector('#watchlist-view-mount > .card-container') || document.querySelector('.wl-table-container') || document.getElementById('watchlist-view-mount');
             }, { passive: true });
 
             document.addEventListener('touchmove', (e) => {

@@ -265,148 +265,129 @@
         background: var(--trade-green-glow, rgba(16, 185, 129, 0.15)) !important;
     }
 
-    /* Mobile Menu Drawer (Overlay Card above watchlist content) */
-    .wl-mobile-menu-drawer {
-        display: none;
-        position: absolute !important;
-        top: 100% !important;
-        left: 4px !important;
-        right: 4px !important;
-        width: calc(100% - 8px) !important;
-        margin-top: 2px !important;
-        margin-bottom: 0 !important;
-        z-index: 1050 !important;
-        animation: menuFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* =========================================================
+       WATCHLIST MOBILE MENU BOTTOM SHEET MODAL (Responsive View Only)
+       ========================================================= */
+    .wl-mobile-menu-sheet {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 100040 !important;
+        background: rgba(15, 23, 42, 0.78) !important;
+        backdrop-filter: blur(6px) !important;
+        -webkit-backdrop-filter: blur(6px) !important;
+        align-items: flex-end !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
-    .wl-mobile-menu-drawer.open {
-        display: block !important;
+    .wl-action-sheet-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 20px 20px 0 0 !important;
+        background: var(--bg-card, #1e222d) !important;
+        border: 1px solid var(--border-color, #363a45) !important;
+        border-bottom: none !important;
+        padding: 14px 18px calc(24px + var(--safe-area-bottom, 0px)) 18px !important;
+        max-height: 85vh !important;
+        animation: sheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5) !important;
+        box-sizing: border-box !important;
     }
 
-    @keyframes menuFadeIn {
-        from { opacity: 0; transform: translateY(-6px); }
-        to { opacity: 1; transform: translateY(0); }
+    .wl-action-sheet-handle {
+        width: 38px;
+        height: 4px;
+        background: var(--text-muted);
+        opacity: 0.4;
+        border-radius: 3px;
+        margin: 0 auto 12px auto;
     }
 
-    .wl-mob-menu-container {
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 14px !important;
-        padding: 8px !important;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+    .wl-action-sheet-list {
         display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 6px;
     }
 
-    .wl-mob-menu-row {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        width: 100% !important;
-        padding: 11px 12px !important;
-        border-radius: 9px !important;
-        border: none !important;
-        background: transparent !important;
-        color: var(--text-primary) !important;
-        font-size: 13.5px !important;
-        font-weight: 500 !important;
-        cursor: pointer !important;
-        text-align: left !important;
-        transition: background-color 0.15s ease !important;
-    }
-
-    .wl-mob-menu-row:hover,
-    .wl-mob-menu-row:active {
-        background-color: var(--table-hover-bg) !important;
-    }
-
-    .wl-mob-menu-row-left {
+    .wl-sheet-item {
         display: flex;
         align-items: center;
-        gap: 10px;
+        justify-content: space-between;
+        padding: 11px 14px;
+        border-radius: 12px;
+        cursor: pointer;
+        background: var(--bg-subtle, rgba(255, 255, 255, 0.03));
+        border: 1px solid var(--border-color);
+        transition: background-color 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    .wl-mob-menu-icon {
-        font-size: 15px;
-        width: 18px;
+    .wl-sheet-item:active {
+        background-color: var(--table-hover-bg, rgba(255, 255, 255, 0.08));
+    }
+
+    .wl-sheet-item-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .wl-sheet-icon {
+        font-size: 18px;
+        width: 24px;
         text-align: center;
-        color: var(--tab-active-blue);
+        color: var(--tab-active-blue, #10b981);
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .wl-mob-menu-label {
-        font-size: 13.5px;
+    .wl-sheet-icon.danger {
+        color: #ef4444 !important;
+    }
+
+    .wl-sheet-title {
+        font-size: 14px;
+        font-weight: 600;
         color: var(--text-primary);
-        font-weight: 500;
+        line-height: 1.25;
     }
 
-    .wl-mob-menu-tag {
+    .wl-sheet-title.danger {
+        color: #ef4444 !important;
+    }
+
+    .wl-sheet-sub {
         font-size: 11.5px;
         color: var(--text-muted);
-        font-weight: 500;
+        margin-top: 2px;
     }
 
-    .wl-mob-menu-divider {
+    .wl-sheet-chevron {
+        font-size: 16px;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .wl-sheet-chevron.danger {
+        color: #ef4444 !important;
+        font-size: 14px;
+    }
+
+    .wl-sheet-divider {
         height: 1px;
         background: var(--border-color);
-        margin: 4px 6px;
+        margin: 4px 4px;
     }
 
-    /* Accordion styles for Watchlist Actions */
-    .wl-mob-accordion {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
+    .wl-sheet-item.danger {
+        border-color: rgba(239, 68, 68, 0.25);
+        background: rgba(239, 68, 68, 0.05);
     }
 
-    .wl-mob-accordion-btn {
-        font-weight: 600 !important;
-    }
-
-    .wl-mob-accordion-caret {
-        font-size: 14px;
-        color: var(--text-muted);
-        transition: transform 0.2s ease;
-    }
-
-    .wl-mob-accordion-content {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 4px 0 4px 24px;
-        border-left: 2px solid var(--border-color);
-        margin: 3px 0 5px 16px;
-    }
-
-    .wl-mob-sub-btn {
-        display: flex !important;
-        align-items: center !important;
-        width: 100% !important;
-        padding: 8px 10px !important;
-        border-radius: 7px !important;
-        border: none !important;
-        background: transparent !important;
-        color: var(--text-secondary) !important;
-        font-size: 12.5px !important;
-        font-weight: 500 !important;
-        cursor: pointer !important;
-        text-align: left !important;
-        transition: all 0.15s ease !important;
-    }
-
-    .wl-mob-sub-btn:hover,
-    .wl-mob-sub-btn:active {
-        background-color: var(--table-hover-bg) !important;
-        color: var(--text-primary) !important;
-    }
-
-    .wl-mob-sub-btn.danger {
-        color: var(--trade-red) !important;
-    }
-
-    .wl-mob-sub-btn.danger:hover,
-    .wl-mob-sub-btn.danger:active {
-        background-color: var(--trade-red-glow) !important;
+    .wl-sheet-item.danger:active {
+        background: rgba(239, 68, 68, 0.12);
     }
 
     /* Mobile Stock List Transformation (Table to Sleek Native 2-Column Cards) */
@@ -415,7 +396,9 @@
     }
     #watchlist-view-mount {
         position: relative !important;
-        overflow-x: hidden !important;
+        overflow: visible !important;
+        overflow-x: clip !important;
+        overflow-y: visible !important;
         touch-action: pan-y !important;
     }
     #watchlist-view-mount > .card-container {
@@ -472,21 +455,24 @@
     }
 
     .wl-table tr.pf-row.wl-row-menu-open {
-        z-index: 10000 !important;
+        z-index: 10050 !important;
         position: relative !important;
     }
 
     .wl-table tr.pf-row.wl-row-menu-open .wl-col-actions {
-        z-index: 10004 !important;
+        z-index: 10055 !important;
         position: relative !important;
     }
 
     .wl-table tr.pf-row.wl-row-menu-open .menu-dropdown-content,
     .wl-table .menu-dropdown-content {
-        z-index: 10005 !important;
+        z-index: 10060 !important;
         background: var(--bg-card) !important;
         border: 1px solid var(--border-color) !important;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        min-width: 185px !important;
+        max-height: none !important;
+        overflow: visible !important;
     }
 
     [data-theme="dark"] .wl-table tr.pf-row {
@@ -686,6 +672,7 @@
     .wl-sub-change,
     .wl-mobile-menu-btn,
     .wl-mobile-menu-drawer,
+    .wl-mobile-menu-sheet,
     .wl-mobile-sort-sheet,
     .portfolio-mobile-menu-wrapper,
     .pf-mobile-list-container,
@@ -3077,6 +3064,16 @@
         min-height: 0 !important;
         height: 100% !important;
         overflow: hidden !important;
+    }
+
+    #notif-tab-content-notifs.hidden,
+    #notif-tab-content-alerts.hidden,
+    #notif-tab-content-notifs[style*="display: none"],
+    #notif-tab-content-alerts[style*="display: none"],
+    #notificationsModal:not([data-tab="alerts"]) #notif-tab-content-alerts,
+    #notificationsModal[data-tab="notifs"] #notif-tab-content-alerts,
+    #notificationsModal[data-tab="alerts"] #notif-tab-content-notifs {
+        display: none !important;
     }
 
     #notifications-list-mount,

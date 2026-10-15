@@ -583,7 +583,7 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
         chart_data = []
         if company_id:
             try:
-                ch_res = requests.get(f"https://www.screener.in/api/company/{company_id}/chart/?q=Price-DMA50-DMA200-Volume&days=365", headers=headers, timeout=5)
+                ch_res = requests.get(f"https://www.screener.in/api/company/{company_id}/chart/?q=Price-DMA50-DMA200-Volume&days=1825", headers=headers, timeout=6)
                 if ch_res.status_code == 200:
                     chart_data = ch_res.json().get("datasets", [])
             except Exception:
