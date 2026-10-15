@@ -702,7 +702,7 @@
             },
             'support': {
                 id: 'support',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="#10b981"/></svg>',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="currentColor"/></svg>',
                 title: 'Support Line (Price)',
                 action: () => addHorizontalLinePrompt('support')
             },
@@ -810,31 +810,38 @@
             const webBar = document.getElementById('chartWebFavBar');
             const mobileBar = document.getElementById('chartMobileFavBar');
             const mobileIcons = document.getElementById('mobileFavBarIcons');
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
 
             // Render Web Toolbar (Image 2 - at end of legend row)
             if (webBar) {
-                webBar.innerHTML = '';
-                favs.forEach(id => {
-                    const meta = CHART_TOOL_META[id];
-                    if (!meta) return;
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = `chart-web-fav-btn ${currentDrawingTool === id ? 'active' : ''}`;
-                    btn.setAttribute('data-tool-id', id);
-                    btn.title = meta.title;
-                    btn.innerHTML = meta.icon;
-                    btn.onclick = (e) => {
-                        e.stopPropagation();
-                        executeToolById(id);
-                    };
-                    webBar.appendChild(btn);
-                });
+                if (isMobile) {
+                    webBar.innerHTML = '';
+                    webBar.style.display = 'none';
+                } else {
+                    webBar.style.display = 'flex';
+                    webBar.innerHTML = '';
+                    favs.forEach(id => {
+                        const meta = CHART_TOOL_META[id];
+                        if (!meta) return;
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = `chart-web-fav-btn ${currentDrawingTool === id ? 'active' : ''}`;
+                        btn.setAttribute('data-tool-id', id);
+                        btn.title = meta.title;
+                        btn.innerHTML = meta.icon;
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            executeToolById(id);
+                        };
+                        webBar.appendChild(btn);
+                    });
+                }
             }
 
             // Render Mobile Floating Toolbar (Image 1)
             if (mobileBar && mobileIcons) {
                 mobileIcons.innerHTML = '';
-                if (favs.length === 0) {
+                if (!isMobile || favs.length === 0) {
                     mobileBar.style.display = 'none';
                 } else {
                     mobileBar.style.display = 'flex';
@@ -853,8 +860,8 @@
                         };
                         mobileIcons.appendChild(btn);
                     });
+                    initMobileFavBarDrag();
                 }
-                initMobileFavBarDrag();
             }
 
             updatePopoverToolStars();
@@ -2668,11 +2675,13 @@
             if (bodyContainer && window.ResizeObserver) {
                 chartResizeObserver = new ResizeObserver(() => {
                     resizeChartPanes();
+                    renderFavoriteToolsShortcuts();
                 });
                 chartResizeObserver.observe(bodyContainer);
             } else {
                 window.onresize = function() {
                     resizeChartPanes();
+                    renderFavoriteToolsShortcuts();
                 };
             }
 
