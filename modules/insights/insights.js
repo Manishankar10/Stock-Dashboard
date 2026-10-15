@@ -3,6 +3,31 @@
         let currentNewsCategory = 'all';
         let cachedInsightsArticles = [];
 
+        function openInsightsFundamentals(symbol) {
+            if (!symbol) return;
+            if (typeof window.openFundamentalsModal === 'function') {
+                window.openFundamentalsModal(symbol);
+            } else if (typeof openFundamentalsModal === 'function') {
+                openFundamentalsModal(symbol);
+            }
+        }
+
+        function openInsightsTechnical(symbol) {
+            if (!symbol) return;
+            if (typeof window.openInHouseChart === 'function') {
+                window.openInHouseChart(symbol);
+            } else if (typeof openInHouseChart === 'function') {
+                openInHouseChart(symbol);
+            } else if (typeof window.openChart === 'function') {
+                window.openChart(symbol);
+            } else if (typeof openChart === 'function') {
+                openChart(symbol);
+            }
+        }
+
+        window.openInsightsFundamentals = openInsightsFundamentals;
+        window.openInsightsTechnical = openInsightsTechnical;
+
         async function ensureWatchlistsAndPortfolios() {
             const promises = [];
             if (!window.watchlistsLoaded || !watchlistsData || Object.keys(watchlistsData).length === 0) {
@@ -580,33 +605,33 @@
                 const changeSign = isPos ? '+' : '';
 
                 rowsHtml += `
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 10px 12px;">
+                    <tr class="insights-screener-row" style="border-bottom: 1px solid var(--border-color); cursor: pointer;" title="Click data to view technical chart" onclick="openInsightsTechnical('${escapeHtml(stock.symbol)}');">
+                        <td class="insights-stock-col" style="padding: 10px 12px; cursor: pointer;" title="Click stock name to view fundamentals" onclick="event.stopPropagation(); openInsightsFundamentals('${escapeHtml(stock.symbol)}');">
                             <div style="display: flex; align-items: center; gap: 6px;">
                                 <span class="stock-symbol" style="font-weight: 700; font-size: 13px;">${escapeHtml(displaySym)}</span>
                                 <span class="badge ${exchangeClass}" style="font-size: 9.5px; padding: 1px 4px;">${exchangeLabel}</span>
                             </div>
-                            <div style="font-size: 11px; color: var(--text-secondary); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div class="insights-stock-name" style="font-size: 11px; color: var(--text-secondary); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${escapeHtml(stock.name)}
                             </div>
                         </td>
-                        <td style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 13px;">
+                        <td class="insights-data-col" style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 13px; cursor: pointer;" title="Click data to view technical chart" onclick="event.stopPropagation(); openInsightsTechnical('${escapeHtml(stock.symbol)}');">
                             ₹${stock.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 12.5px;" class="${changeClass}">
+                        <td class="insights-data-col ${changeClass}" style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 12.5px; cursor: pointer;" title="Click data to view technical chart" onclick="event.stopPropagation(); openInsightsTechnical('${escapeHtml(stock.symbol)}');">
                             ${changeSign}${stock.change_pct}%
                         </td>
-                        <td style="padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--text-primary);">
+                        <td class="insights-data-col" style="padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--text-primary); cursor: pointer;" title="Click data to view technical chart" onclick="event.stopPropagation(); openInsightsTechnical('${escapeHtml(stock.symbol)}');">
                             <span style="background: var(--bg-subtle); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border-color); display: inline-block;">
                                 ${escapeHtml(stock.metric)}
                             </span>
                         </td>
-                        <td style="text-align: center; padding: 10px 12px;">
+                        <td style="text-align: center; padding: 10px 12px;" onclick="event.stopPropagation();">
                             <div style="display: flex; gap: 6px; justify-content: center;">
-                                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; border-radius: 4px;" onclick="openChart('${escapeHtml(stock.symbol)}')" title="View Chart">
+                                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; border-radius: 4px;" onclick="event.stopPropagation(); openInsightsTechnical('${escapeHtml(stock.symbol)}')" title="View Technical Chart">
                                     📊 Chart
                                 </button>
-                                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; border-radius: 4px;" onclick="openFundamentalsModal('${escapeHtml(stock.symbol)}')" title="View Fundamentals">
+                                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; border-radius: 4px;" onclick="event.stopPropagation(); openInsightsFundamentals('${escapeHtml(stock.symbol)}')" title="View Fundamentals">
                                     📈 Fundamentals
                                 </button>
                             </div>
@@ -808,22 +833,34 @@
                     thesisMount.innerHTML = '';
                     theses.forEach(t => {
                         const item = document.createElement('div');
+                        item.className = 'insights-thesis-item';
                         item.style.cssText = `
                             background: var(--bg-subtle);
                             border: 1px solid var(--border-color);
                             border-radius: 8px;
                             padding: 10px 12px;
                             font-size: 12px;
+                            cursor: pointer;
+                            transition: background-color 0.15s ease, border-color 0.15s ease;
                         `;
+                        item.title = 'Click data to view technical chart';
+                        item.onclick = (e) => {
+                            if (e.target.closest('.insights-thesis-stock-trigger')) {
+                                e.stopPropagation();
+                                openInsightsFundamentals(t.symbol);
+                            } else {
+                                openInsightsTechnical(t.symbol);
+                            }
+                        };
                         const pnlSign = t.pnl_pct >= 0 ? '+' : '';
                         const pnlColor = t.pnl_pct >= 0 ? '#10b981' : '#ef4444';
 
                         item.innerHTML = `
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <strong style="color: var(--text-primary); font-size: 13px;">${escapeHtml(t.symbol)}</strong>
-                                <span style="color: ${pnlColor}; font-weight: 700;">${pnlSign}${t.pnl_pct}% Return</span>
+                                <strong class="insights-thesis-stock-trigger" style="color: var(--text-primary); font-size: 13px; cursor: pointer;" title="Click stock name to view fundamentals" onclick="event.stopPropagation(); openInsightsFundamentals('${escapeHtml(t.symbol)}');">${escapeHtml(t.symbol)}</strong>
+                                <span style="color: ${pnlColor}; font-weight: 700;" title="Click data to view technical chart">${pnlSign}${t.pnl_pct}% Return</span>
                             </div>
-                            <div style="color: var(--text-secondary); font-style: italic; font-size: 11px;">"${escapeHtml(t.buy_reason)}"</div>
+                            <div style="color: var(--text-secondary); font-style: italic; font-size: 11px;" title="Click data to view technical chart">"${escapeHtml(t.buy_reason)}"</div>
                         `;
                         thesisMount.appendChild(item);
                     });
@@ -1087,9 +1124,10 @@
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
                         <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                            <span class="stock-symbol" style="font-size: 12.5px;">${escapeHtml(cleanDisplaySymbol(art.symbol))}</span>
+                            <span class="stock-symbol insights-news-stock-trigger" style="font-size: 12.5px; cursor: pointer;" title="Click stock name to view fundamentals" onclick="event.stopPropagation(); openInsightsFundamentals('${escapeHtml(art.symbol)}');">${escapeHtml(cleanDisplaySymbol(art.symbol))}</span>
                             <span class="badge ${tagBadgeClass}" style="font-size: 10px;">${art.tag_type}</span>
                             ${catBadge}
+                            <button type="button" class="btn-secondary" style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; line-height: 1.2; display: inline-flex; align-items: center; gap: 3px;" title="Click to view technical chart" onclick="event.stopPropagation(); openInsightsTechnical('${escapeHtml(art.symbol)}');">📊 Chart</button>
                         </div>
                         <span style="font-size: 11px; color: var(--text-secondary);">🕒 ${timeStr}</span>
                     </div>
