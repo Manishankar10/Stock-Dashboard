@@ -325,7 +325,7 @@
             if (hasMore || stockNewsState.displayedCount > 0) {
                 const inlineWrap = document.createElement('div');
                 inlineWrap.id = 'stock-news-inline-load-more-wrap';
-                inlineWrap.style.cssText = 'text-align: center; padding: 14px 0 8px; margin-top: 4px;';
+                inlineWrap.style.cssText = 'text-align: center; padding: 14px 0 16px; margin-top: 4px;';
                 inlineWrap.innerHTML = `
                     <button type="button" id="btn-inline-load-more-stock-news" class="btn-primary" onclick="loadMoreStockNews()" style="font-size: 12.5px; padding: 8px 22px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                         📥 Load More Stories
@@ -420,6 +420,7 @@
             `;
 
             modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
 
             const escapeHtml = (str) => {
                 if (!str) return '';
@@ -475,8 +476,28 @@
         }
 
         function closeStockNewsModal() {
-            document.getElementById('stockNewsModal').style.display = 'none';
+            const modal = document.getElementById('stockNewsModal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
         }
+
+        // Close stock news modal on backdrop click
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('stockNewsModal');
+            if (modal && event.target === modal) {
+                closeStockNewsModal();
+            }
+        });
+
+        // Close stock news modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('stockNewsModal');
+                if (modal && modal.style.display !== 'none' && modal.style.display !== '') {
+                    closeStockNewsModal();
+                }
+            }
+        });
 
         window.openFundamentalsModal = openFundamentalsModal;
         window.closeFundamentalsModal = closeFundamentalsModal;

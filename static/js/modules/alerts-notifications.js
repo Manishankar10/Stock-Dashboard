@@ -293,6 +293,7 @@
             const addHoldingModal = document.getElementById('addHoldingModal');
             const createAlertModal = document.getElementById('createAlertModal');
             const notifModal = document.getElementById('notificationsModal');
+            const stockNewsModal = document.getElementById('stockNewsModal');
 
             if (event.target == modal) closeChartModal();
             if (event.target == editModal) closeEditModal();
@@ -302,6 +303,7 @@
             if (event.target == addHoldingModal) closeAddHoldingModal();
             if (event.target == createAlertModal) closeCreateAlertModal();
             if (event.target == notifModal) closeNotificationsModal();
+            if (event.target == stockNewsModal && window.closeStockNewsModal) closeStockNewsModal();
 
             if (!event.target.closest('.wl-overflow')) closeActionOverflow();
 
@@ -326,6 +328,7 @@
                 closeAddHoldingModal();
                 closeCreateAlertModal();
                 closeNotificationsModal();
+                if (window.closeStockNewsModal) closeStockNewsModal();
                 closeSettingsMenu();
             }
         });

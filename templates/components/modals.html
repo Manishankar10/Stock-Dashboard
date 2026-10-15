@@ -813,27 +813,22 @@
          STOCK NEWS POPUP MODAL
     ========================================================= -->
     <div id="stockNewsModal" class="small-modal">
-        <div class="small-modal-content" style="width: 620px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+        <div class="small-modal-content" style="width: 640px; max-width: 95vw; height: 85vh; max-height: 85vh; display: flex; flex-direction: column; padding: 18px 20px 14px; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px; flex-shrink: 0;">
                 <div>
                     <h3 id="news-modal-title" style="margin: 0; font-size: 18px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
                         📰 Latest Market News
                     </h3>
                     <div id="news-modal-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Fetching real-time updates...</div>
                 </div>
-                <span class="close-btn" onclick="closeStockNewsModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary);">&times;</span>
+                <span class="close-btn" onclick="closeStockNewsModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1; padding: 2px 6px; border-radius: 4px;" title="Close">&times;</span>
             </div>
 
-            <div id="news-articles-container" style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 12px;">
+            <div id="news-articles-container" style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 10px;">
                 <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
                     <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
                     Loading latest news coverage...
                 </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 16px;">
-                <button type="button" class="btn-secondary" onclick="closeStockNewsModal()" style="font-size: 13px; padding: 7px 18px; border-radius: 7px;">Close</button>
             </div>
         </div>
     </div>
