@@ -831,8 +831,13 @@
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 16px;">
-                <button type="button" class="btn-secondary" onclick="closeStockNewsModal()">Close</button>
+            <!-- Modal Footer with Count and Load More Button -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 16px; flex-wrap: wrap; gap: 8px;">
+                <div id="news-modal-count-status" style="font-size: 11.5px; color: var(--text-secondary); font-weight: 500;"></div>
+                <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+                    <button type="button" id="btn-load-more-stock-news" class="btn-primary" onclick="loadMoreStockNews()" style="font-size: 12px; padding: 6px 14px; border-radius: 7px; font-weight: 600; cursor: pointer; display: none;">📥 Load More Stories</button>
+                    <button type="button" class="btn-secondary" onclick="closeStockNewsModal()" style="font-size: 12px; padding: 6px 14px; border-radius: 7px;">Close</button>
+                </div>
             </div>
         </div>
     </div>
