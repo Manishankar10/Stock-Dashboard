@@ -25,6 +25,33 @@
             return n > 0 ? 'pos' : 'neg';
         }
 
+        function formatSmallcaseDate(value) {
+            if (!value && value !== 0) return '-';
+            try {
+                let d;
+                if (typeof value === 'string') {
+                    const clean = value.split('T')[0].trim();
+                    const parts = clean.split('-');
+                    if (parts.length === 3) {
+                        if (parts[0].length === 4) {
+                            d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                        } else {
+                            d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                        }
+                    }
+                }
+                if (!d || isNaN(d.getTime())) d = new Date(value);
+                if (isNaN(d.getTime())) return String(value || '-');
+                const day = String(d.getDate()).padStart(2, '0');
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = months[d.getMonth()];
+                const year = d.getFullYear();
+                return `${day} ${month} ${year}`;
+            } catch (e) {
+                return String(value || '-');
+            }
+        }
+
         function openSmallcaseModal(id) {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
@@ -347,7 +374,7 @@
                 selectedSmallcaseId = id;
                 selectedSmallcaseDetail = d;
                 document.getElementById('scDetailTitle').innerText = d.name;
-                document.getElementById('scDetailSub').innerText = `${d.description || 'No description'} • ${d.status} • XIRR as of ${d.xirr_as_of ? d.xirr_as_of.slice(0,10) : '-'}`;
+                document.getElementById('scDetailSub').innerText = `${d.description || 'No description'} • ${d.status} • XIRR as of ${formatSmallcaseDate(d.xirr_as_of)}`;
 
                 const holdings = sortSmallcaseRows(d.holdings, smallcaseSortState.holdings.key, smallcaseSortState.holdings.dir);
                 const transactions = sortSmallcaseRows(d.transactions, smallcaseSortState.transactions.key, smallcaseSortState.transactions.dir);
