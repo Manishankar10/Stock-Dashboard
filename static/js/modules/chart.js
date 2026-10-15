@@ -1789,7 +1789,8 @@
                             if (s.type === 'pricerange') {
                                 const diff = s.price2 - s.price1;
                                 const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
-                                const label = `Price Range: ${diff >= 0 ? '+' : ''}₹${diff.toFixed(2)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
+                                const sign = diff >= 0 ? '+' : '-';
+                                const label = `Price Range: ${sign}₹${Math.abs(diff).toFixed(2)} (${sign}${Math.abs(pct).toFixed(2)}%)`;
                                 return { kind: 'shape', id: s.id, name: label, color: s.color, hidden: !!s.hidden, type: s.type };
                             }
                             return { kind: 'shape', id: s.id, name: 'Rectangle Zone', color: s.color, hidden: !!s.hidden, type: s.type };
@@ -1982,40 +1983,22 @@
                     ctx.beginPath(); ctx.arc(centerX, y1, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
                     ctx.beginPath(); ctx.arc(centerX, y2, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
 
-                    // 3. Floating Price & Percentage Badge
+                    // 3. Floating Price & Percentage Label (Clean floating text without border or background)
                     const diff = s.price2 - s.price1;
                     const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
-                    const diffSign = diff >= 0 ? '+' : '';
-                    const pctSign = pct >= 0 ? '+' : '';
+                    const sign = diff >= 0 ? '+' : '-';
 
-                    const badgeText = `${diffSign}₹${diff.toFixed(2)} (${pctSign}${pct.toFixed(2)}%)`;
+                    const badgeText = `${sign}₹${Math.abs(diff).toFixed(2)} (${sign}${Math.abs(pct).toFixed(2)}%)`;
 
-                    ctx.font = 'bold 11px monospace';
-                    const textMetrics = ctx.measureText(badgeText);
-                    const badgeW = textMetrics.width + 16;
-                    const badgeH = 22;
-                    const badgeX = Math.max(10, centerX - badgeW / 2);
-                    const badgeY = Math.max(5, topY - badgeH - 6);
-
-                    // Badge Background Pill
-                    ctx.fillStyle = isDark ? '#1e222d' : '#ffffff';
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.5;
-
-                    ctx.beginPath();
-                    if (ctx.roundRect) {
-                        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 5);
-                    } else {
-                        ctx.rect(badgeX, badgeY, badgeW, badgeH);
-                    }
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Badge Text
-                    ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
+                    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.fillStyle = color;
                     ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
+                    ctx.textBaseline = (topY > 16) ? 'bottom' : 'top';
+                    ctx.shadowColor = isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(255, 255, 255, 0.85)';
+                    ctx.shadowBlur = 2;
+
+                    const textY = (topY > 16) ? (topY - 4) : (topY + 4);
+                    ctx.fillText(badgeText, centerX, textY);
 
                     ctx.restore();
                 }
