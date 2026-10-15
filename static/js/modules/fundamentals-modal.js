@@ -219,10 +219,30 @@
 
             modal.style.display = 'block';
 
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            };
+
             try {
-                const url = cleanSym ? `/api/news/${encodeURIComponent(cleanSym)}` : `/api/news`;
-                const res = await fetch(url);
-                const data = await res.json();
+                const url = cleanSym 
+                    ? `/api/insights/news?stock=${encodeURIComponent(cleanSym)}&scope=all&category=all&limit=30` 
+                    : `/api/insights/news?scope=all&category=all&limit=30`;
+                let res = await fetch(url);
+                let data = await res.json();
+
+                // Fallback to /api/news if insights news returned empty
+                if ((!data.success || !data.articles || data.articles.length === 0) && cleanSym) {
+                    try {
+                        const fallbackRes = await fetch(`/api/news/${encodeURIComponent(cleanSym)}`);
+                        const fallbackData = await fallbackRes.json();
+                        if (fallbackData.success && fallbackData.articles && fallbackData.articles.length > 0) {
+                            data = fallbackData;
+                        }
+                    } catch (fbErr) {
+                        console.warn('Fallback news fetch error:', fbErr);
+                    }
+                }
 
                 if (data.success && data.articles && data.articles.length > 0) {
                     container.innerHTML = '';
@@ -248,20 +268,25 @@
                             }
                         };
 
+                        const catBadge = art.category && art.category !== 'GENERAL'
+                            ? `<span style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 10px;">🏷️ ${escapeHtml(art.category)}</span>`
+                            : '';
+
                         card.innerHTML = `
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px;">
                                 <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 14px; color: var(--text-primary); text-decoration: none; line-height: 1.4;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
-                                    ${art.title} ↗
+                                    ${escapeHtml(art.title)} ↗
                                 </a>
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
-                                <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                     <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">
-                                        🏢 ${art.publisher}
+                                        🏢 ${escapeHtml(art.publisher)}
                                     </span>
-                                    <span>🕒 ${timeStr}</span>
+                                    ${catBadge}
+                                    <span>🕒 ${escapeHtml(timeStr)}</span>
                                 </div>
-                                <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="color: #10b981; font-weight: 600; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Read full story →</a>
+                                <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="color: #10b981; font-weight: 600; text-decoration: none; white-space: nowrap;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Read full story →</a>
                             </div>
                         `;
                         container.appendChild(card);
@@ -269,14 +294,14 @@
                 } else {
                     container.innerHTML = `
                         <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                            📰 No recent news articles found for ${cleanSym || 'the market'}.
+                            📰 No recent news articles found for ${escapeHtml(cleanSym) || 'the market'}.
                         </div>
                     `;
                 }
             } catch(err) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 40px; color: #ef4444;">
-                        ❌ Failed to load news updates: ${err.message}
+                        ❌ Failed to load news updates: ${escapeHtml(err.message)}
                     </div>
                 `;
             }

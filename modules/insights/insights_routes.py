@@ -415,10 +415,11 @@ def get_insights_news_api():
         if stock_param and stock_param != "all":
             clean_s = stock_param.replace(".NS", "").replace(".BO", "")
             comp_name = POPULAR_INDIAN_STOCKS.get(clean_s, "")
-            query_str = f'"{clean_s}" OR "{stock_param}" stock news'
             if comp_name:
                 clean_n = comp_name.replace(" Ltd", "").replace(" Limited", "").replace(" Inc", "").strip()
                 query_str = f'"{clean_n}" OR "{clean_s}" stock news'
+            else:
+                query_str = f'"{clean_s}" stock news OR "{clean_s}" share price'
 
             if cat_suffix:
                 query_str = f'({query_str}){cat_suffix}'
@@ -466,7 +467,7 @@ def get_insights_news_api():
                 pass
 
         # 2. General / Multi-Symbol Query Batches
-        if len(news_articles) < limit and target_symbols:
+        if len(news_articles) < limit and (target_symbols or (scope_filter == "all" and not stock_param)):
             clean_queries = []
             for s in target_symbols:
                 c = s.replace(".NS", "").replace(".BO", "")
@@ -566,27 +567,28 @@ def get_insights_news_api():
                 except Exception:
                     pass
 
-        # Final scope cleanup check
-        if scope_filter == "portfolio":
-            clean_pf = {s.replace(".NS", "").replace(".BO", "") for s in pf_symbols}
-            news_articles = [
-                a for a in news_articles 
-                if a.get("tag_type") == "PORTFOLIO" or a.get("symbol") in pf_symbols or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in clean_pf
-            ]
-        elif scope_filter == "watchlist":
-            if watchlist_param and watchlist_param in watchlists:
-                target_wl_syms = set(watchlists[watchlist_param])
-                target_wl_clean = {s.replace(".NS", "").replace(".BO", "") for s in target_wl_syms}
+        # Final scope cleanup check (only when not querying a specific stock)
+        if not (stock_param and stock_param != "all"):
+            if scope_filter == "portfolio":
+                clean_pf = {s.replace(".NS", "").replace(".BO", "") for s in pf_symbols}
                 news_articles = [
                     a for a in news_articles 
-                    if a.get("symbol") in target_wl_syms or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in target_wl_clean
+                    if a.get("tag_type") == "PORTFOLIO" or a.get("symbol") in pf_symbols or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in clean_pf
                 ]
-            else:
-                clean_wl = {s.replace(".NS", "").replace(".BO", "") for s in wl_symbols}
-                news_articles = [
-                    a for a in news_articles 
-                    if a.get("tag_type") == "WATCHLIST" or a.get("symbol") in wl_symbols or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in clean_wl
-                ]
+            elif scope_filter == "watchlist":
+                if watchlist_param and watchlist_param in watchlists:
+                    target_wl_syms = set(watchlists[watchlist_param])
+                    target_wl_clean = {s.replace(".NS", "").replace(".BO", "") for s in target_wl_syms}
+                    news_articles = [
+                        a for a in news_articles 
+                        if a.get("symbol") in target_wl_syms or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in target_wl_clean
+                    ]
+                else:
+                    clean_wl = {s.replace(".NS", "").replace(".BO", "") for s in wl_symbols}
+                    news_articles = [
+                        a for a in news_articles 
+                        if a.get("tag_type") == "WATCHLIST" or a.get("symbol") in wl_symbols or a.get("symbol", "").replace(".NS", "").replace(".BO", "") in clean_wl
+                    ]
 
         res_payload = {"success": True, "articles": news_articles, "total": len(news_articles)}
         news_cache.set(cache_key, res_payload, ttl=300)

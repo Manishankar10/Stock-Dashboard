@@ -1002,21 +1002,21 @@
 
             let articles = cachedInsightsArticles.slice();
 
-            // Scope Strict Filtering
-            if (currentInsightsScope === 'portfolio') {
-                articles = articles.filter(art => art.tag_type === 'PORTFOLIO' || isPortfolioSymbol(art.symbol));
-            } else if (currentInsightsScope === 'watchlist') {
-                if (currentInsightsWatchlist) {
-                    articles = articles.filter(art => isWatchlistSymbol(art.symbol, currentInsightsWatchlist));
-                } else {
-                    articles = articles.filter(art => art.tag_type === 'WATCHLIST' || isWatchlistSymbol(art.symbol));
-                }
-            }
-
-            // Single Stock Specific Filter
+            // If specific stock is selected, filter by that stock; otherwise filter by active scope
             if (stockFilter !== 'all') {
                 const cleanSelected = stockFilter.replace('.NS', '').replace('.BO', '');
                 articles = articles.filter(art => art.symbol === stockFilter || art.symbol?.replace('.NS', '').replace('.BO', '') === cleanSelected);
+            } else {
+                // Scope Strict Filtering for general feeds
+                if (currentInsightsScope === 'portfolio') {
+                    articles = articles.filter(art => art.tag_type === 'PORTFOLIO' || isPortfolioSymbol(art.symbol));
+                } else if (currentInsightsScope === 'watchlist') {
+                    if (currentInsightsWatchlist) {
+                        articles = articles.filter(art => isWatchlistSymbol(art.symbol, currentInsightsWatchlist));
+                    } else {
+                        articles = articles.filter(art => art.tag_type === 'WATCHLIST' || isWatchlistSymbol(art.symbol));
+                    }
+                }
             }
 
             articles.sort((a, b) => {

@@ -4,6 +4,7 @@ import datetime
 import time
 import requests
 import xml.etree.ElementTree as ET
+import urllib.parse
 from urllib.parse import quote_plus
 from flask import Blueprint, request, jsonify, session
 from modules.common.auth_utils import login_required
@@ -190,11 +191,19 @@ class FinancialNewsEngine:
                 else:
                     comp = POPULAR_INDIAN_STOCKS.get(clean_query, "")
                     if comp:
-                        clean_query = f'"{comp.replace(" Ltd", "").replace(" Limited", "").strip()}"'
+                        clean_query = f'"{comp.replace(" Ltd", "").replace(" Limited", "").strip()}" OR "{clean_query}"'
+                    else:
+                        clean_query = f'"{clean_query}" stock news OR "{clean_query}" share price'
 
-            query_str = f"{clean_query} stock news" if raw_sym else clean_query
+            if not raw_sym:
+                query_str = clean_query
+            elif 'stock news' in clean_query or 'share price' in clean_query:
+                query_str = clean_query
+            else:
+                query_str = f"{clean_query} stock news"
+
             encoded_query = urllib.parse.quote(query_str)
-            url = f"https://news.google.com/rss/search?q={encoded_query}+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
+            url = f"https://news.google.com/rss/search?q={encoded_query}+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
 
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
             resp = requests.get(url, headers=headers, timeout=6)
