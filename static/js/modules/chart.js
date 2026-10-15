@@ -360,6 +360,9 @@
                 if (s.type === 'trendline') { name = 'Trendline'; icon = '📈'; }
                 else if (s.type === 'rectangle') { name = 'Rectangle'; icon = '⬛'; }
                 else if (s.type === 'pricerange') { name = 'Price Range & %'; icon = '📏'; }
+                else if (s.type === 'parallelchannel') { name = 'Parallel Channel'; icon = '⛓️'; }
+                else if (s.type === 'fib') { name = 'Fib Retracement'; icon = '🌀'; }
+                else if (s.type === 'fibext') { name = 'Trend Fib Extension'; icon = '🎯'; }
                 else if (s.type === 'vertical') { name = 'Time Line'; icon = '🕒'; }
                 else if (s.type === 'note') { name = `Note: ${s.text || ''}`; icon = '📍'; }
 
@@ -497,6 +500,39 @@
                     if (price2Group) price2Group.style.display = 'block';
                     if (price2Title) price2Title.innerText = 'Target Price (₹)';
                     if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
+                } else if (shape.type === 'parallelchannel') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Parallel Channel</span>`;
+                    if (labelGroup) labelGroup.style.display = 'none';
+
+                    if (price1Group) price1Group.style.display = 'block';
+                    if (price1Title) price1Title.innerText = 'Baseline Start Price (₹)';
+                    if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
+
+                    if (price2Group) price2Group.style.display = 'block';
+                    if (price2Title) price2Title.innerText = 'Baseline End Price (₹)';
+                    if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
+                } else if (shape.type === 'fib') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Fib Retracement</span>`;
+                    if (labelGroup) labelGroup.style.display = 'none';
+
+                    if (price1Group) price1Group.style.display = 'block';
+                    if (price1Title) price1Title.innerText = 'Swing Start Price (₹)';
+                    if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
+
+                    if (price2Group) price2Group.style.display = 'block';
+                    if (price2Title) price2Title.innerText = 'Swing End Price (₹)';
+                    if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
+                } else if (shape.type === 'fibext') {
+                    if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Trend-Based Fib Extension</span>`;
+                    if (labelGroup) labelGroup.style.display = 'none';
+
+                    if (price1Group) price1Group.style.display = 'block';
+                    if (price1Title) price1Title.innerText = 'Wave 1 Start Price (₹)';
+                    if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
+
+                    if (price2Group) price2Group.style.display = 'block';
+                    if (price2Title) price2Title.innerText = 'Wave 1 End Price (₹)';
+                    if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
                 } else if (shape.type === 'vertical') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Time Line Marker</span>`;
                     if (labelGroup) labelGroup.style.display = 'none';
@@ -575,7 +611,7 @@
                         if (priceInput && !isNaN(parseFloat(priceInput.value))) {
                             shape.price = parseFloat(priceInput.value);
                         }
-                    } else if (shape.type === 'trendline' || shape.type === 'rectangle' || shape.type === 'pricerange') {
+                    } else if (shape.type === 'trendline' || shape.type === 'rectangle' || shape.type === 'pricerange' || shape.type === 'parallelchannel' || shape.type === 'fib' || shape.type === 'fibext') {
                         const p1Input = document.getElementById('editDrawingPrice1');
                         const p2Input = document.getElementById('editDrawingPrice2');
                         if (p1Input && !isNaN(parseFloat(p1Input.value))) {
@@ -584,8 +620,8 @@
                         if (p2Input && !isNaN(parseFloat(p2Input.value))) {
                             shape.price2 = parseFloat(p2Input.value);
                         }
-                        if (shape.type === 'rectangle') {
-                            shape.fillColor = hexToRgba(chosenColor, 0.18);
+                        if (shape.type === 'rectangle' || shape.type === 'parallelchannel') {
+                            shape.fillColor = hexToRgba(chosenColor, shape.type === 'rectangle' ? 0.18 : 0.12);
                         }
                     }
                     localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
@@ -671,6 +707,7 @@
         }
 
         function clearDrawings() {
+            tempMeasureData = null;
             if (mainSeries && activePriceLines.length > 0) {
                 activePriceLines.forEach(item => {
                     try { mainSeries.removePriceLine(item.lineObj); } catch(e){}
@@ -729,6 +766,30 @@
                 icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2.5" x2="13" y2="2.5"/><line x1="3" y1="13.5" x2="13" y2="13.5"/><line x1="8" y1="2.5" x2="8" y2="13.5"/><polyline points="5.5,5 8,2.5 10.5,5"/><polyline points="5.5,11 8,13.5 10.5,11"/></svg>',
                 title: 'Price Range %',
                 action: () => activateDrawingTool('pricerange')
+            },
+            'parallelchannel': {
+                id: 'parallelchannel',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="12" x2="14" y2="6"/><line x1="2" y1="7" x2="14" y2="1"/><line x1="2" y1="9.5" x2="14" y2="3.5" stroke-dasharray="2 2" stroke-width="1.2"/></svg>',
+                title: 'Parallel Channel',
+                action: () => activateDrawingTool('parallelchannel')
+            },
+            'measure': {
+                id: 'measure',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><line x1="5" y1="3" x2="5" y2="6"/><line x1="8" y1="3" x2="8" y2="8"/><line x1="11" y1="3" x2="11" y2="6"/></svg>',
+                title: 'Measure (Temp Scale)',
+                action: () => activateDrawingTool('measure')
+            },
+            'fib': {
+                id: 'fib',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="2" x2="14" y2="2"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="2" y1="14" x2="14" y2="14"/><line x1="2" y1="14" x2="14" y2="2" stroke-dasharray="2 2" stroke-width="1"/></svg>',
+                title: 'Fib Retracement',
+                action: () => activateDrawingTool('fib')
+            },
+            'fibext': {
+                id: 'fibext',
+                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><polyline points="2,13 6,5 9,10"/><line x1="9" y1="3" x2="15" y2="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><circle cx="2" cy="13" r="1.2" fill="currentColor"/><circle cx="6" cy="5" r="1.2" fill="currentColor"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/></svg>',
+                title: 'Trend-Based Fib Extension',
+                action: () => activateDrawingTool('fibext')
             },
             'vertical': {
                 id: 'vertical',
@@ -998,10 +1059,11 @@
         // =========================================================
         // ADVANCED CHART DRAWING TOOLS (Trendline, Rectangle, Time Line, Note, Support Click)
         // =========================================================
-        let currentDrawingTool = null; // 'support_click' | 'trendline' | 'rectangle' | 'vertical' | 'note'
+        let currentDrawingTool = null; // 'support_click' | 'trendline' | 'rectangle' | 'vertical' | 'note' | 'parallelchannel' | 'measure' | 'fib' | 'fibext'
         let drawingPoints = [];
         let tempMousePos = null;
         let drawingCanvas = null;
+        let tempMeasureData = null; // Temporary measure scale (TradingView behavior)
 
         function activateDrawingTool(toolType) {
             if (!mainSeries || !mainChart) {
@@ -1020,7 +1082,7 @@
         }
 
         function updateDrawingToolButtonsUI() {
-            const tools = ['support_click', 'support', 'target', 'stoploss', 'trendline', 'rectangle', 'pricerange', 'vertical', 'note'];
+            const tools = ['support_click', 'support', 'target', 'stoploss', 'trendline', 'rectangle', 'pricerange', 'parallelchannel', 'measure', 'fib', 'fibext', 'vertical', 'note'];
             tools.forEach(t => {
                 const btn = document.getElementById(`tool-btn-${t}`);
                 if (btn) {
@@ -1052,6 +1114,18 @@
             } else if (toolType === 'pricerange') {
                 msg = '📏 Price Range: Click 1st, then 2nd point';
                 mobileMsg = '📏 Tap 1st, then 2nd point';
+            } else if (toolType === 'parallelchannel') {
+                msg = '⛓️ Parallel Channel: Click 1st point of baseline';
+                mobileMsg = '⛓️ Tap 1st point of baseline';
+            } else if (toolType === 'measure') {
+                msg = '📐 Measure: Click 1st point to measure';
+                mobileMsg = '📐 Tap 1st point to measure';
+            } else if (toolType === 'fib') {
+                msg = '🌀 Fib Retracement: Click swing low/high point';
+                mobileMsg = '🌀 Tap swing point';
+            } else if (toolType === 'fibext') {
+                msg = '🎯 Trend Fib Extension: Click 1st point (Wave 1 start)';
+                mobileMsg = '🎯 Tap 1st point (Wave start)';
             } else if (toolType === 'trendline') {
                 msg = '📐 Trendline: Click 1st, then 2nd point';
                 mobileMsg = '📈 Tap 1st, then 2nd point';
@@ -1159,6 +1233,10 @@
             if (e.key === 'Escape') {
                 cancelDrawingTool();
                 hideCanvasObjectMenu();
+                if (tempMeasureData) {
+                    tempMeasureData = null;
+                    redrawCanvasOverlay();
+                }
             }
         });
 
@@ -1496,7 +1574,7 @@
             if (clickedObj.kind === 'shape') {
                 const shapes = getSavedChartShapes(currentChartSymbol);
                 const s = shapes.find(x => x.id === clickedObj.id);
-                if (s && (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange')) {
+                if (s && (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange' || s.type === 'fib')) {
                     const timeScale = mainChart.timeScale();
                     const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
@@ -1504,6 +1582,17 @@
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && Math.hypot(pt.x - x1, pt.y - y1) < 14) dragPart = 'p1';
                     else if (x2 !== null && y2 !== null && Math.hypot(pt.x - x2, pt.y - y2) < 14) dragPart = 'p2';
+                } else if (s && (s.type === 'parallelchannel' || s.type === 'fibext')) {
+                    const timeScale = mainChart.timeScale();
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const y1 = mainSeries.priceToCoordinate(s.price1);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const y2 = mainSeries.priceToCoordinate(s.price2);
+                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                    const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
+                    if (x1 !== null && y1 !== null && Math.hypot(pt.x - x1, pt.y - y1) < 14) dragPart = 'p1';
+                    else if (x2 !== null && y2 !== null && Math.hypot(pt.x - x2, pt.y - y2) < 14) dragPart = 'p2';
+                    else if (x3 !== null && y3 !== null && Math.hypot(pt.x - x3, pt.y - y3) < 14) dragPart = 'p3';
                 }
             }
 
@@ -1556,7 +1645,7 @@
                                 s.logical = initS.logical + dLogical;
                                 s.time = curPt.time || s.time;
                                 s.futureOffset = curPt.futureOffset || 0;
-                            } else if (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange') {
+                            } else if (s.type === 'trendline' || s.type === 'rectangle' || s.type === 'pricerange' || s.type === 'fib') {
                                 if (activeDrawingDrag.dragPart === 'p1') {
                                     s.price1 = parseFloat(curPt.price.toFixed(2));
                                     s.logical1 = curPt.logical;
@@ -1572,6 +1661,30 @@
                                     s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
                                     s.logical1 = initS.logical1 + dLogical;
                                     s.logical2 = initS.logical2 + dLogical;
+                                }
+                            } else if (s.type === 'parallelchannel' || s.type === 'fibext') {
+                                if (activeDrawingDrag.dragPart === 'p1') {
+                                    s.price1 = parseFloat(curPt.price.toFixed(2));
+                                    s.logical1 = curPt.logical;
+                                    s.time1 = curPt.time || s.time1;
+                                    s.futureOffset1 = curPt.futureOffset || 0;
+                                } else if (activeDrawingDrag.dragPart === 'p2') {
+                                    s.price2 = parseFloat(curPt.price.toFixed(2));
+                                    s.logical2 = curPt.logical;
+                                    s.time2 = curPt.time || s.time2;
+                                    s.futureOffset2 = curPt.futureOffset || 0;
+                                } else if (activeDrawingDrag.dragPart === 'p3') {
+                                    s.price3 = parseFloat(curPt.price.toFixed(2));
+                                    s.logical3 = curPt.logical;
+                                    s.time3 = curPt.time || s.time3;
+                                    s.futureOffset3 = curPt.futureOffset || 0;
+                                } else {
+                                    s.price1 = parseFloat((initS.price1 + dPrice).toFixed(2));
+                                    s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
+                                    if (initS.price3 !== undefined) s.price3 = parseFloat((initS.price3 + dPrice).toFixed(2));
+                                    s.logical1 = initS.logical1 + dLogical;
+                                    s.logical2 = initS.logical2 + dLogical;
+                                    if (initS.logical3 !== undefined) s.logical3 = initS.logical3 + dLogical;
                                 }
                             }
                             localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
@@ -1691,22 +1804,39 @@
                     }
                     cancelDrawingTool();
                     return;
-                } else if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle' || currentDrawingTool === 'pricerange') {
+                } else if (currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle' || currentDrawingTool === 'pricerange' || currentDrawingTool === 'fib' || currentDrawingTool === 'measure') {
                     if (pt.logical === null || pt.logical === undefined) return;
                     if (drawingPoints.length === 0) {
                         drawingPoints.push(pt);
                         const banner = document.getElementById('drawingToolBanner');
                         if (banner) {
                             const span = banner.querySelector('.drawing-banner-msg') || banner.querySelector('span');
-                            if (span) span.innerText = 'Click 2nd point to finish';
+                            if (span) span.innerText = (currentDrawingTool === 'measure') ? 'Click 2nd point to measure' : 'Click 2nd point to finish';
                         }
                         const mobileHintText = document.getElementById('chartMobileToolHintText');
                         if (mobileHintText) {
-                            mobileHintText.innerText = 'Tap 2nd point to finish';
+                            mobileHintText.innerText = (currentDrawingTool === 'measure') ? 'Tap 2nd point to measure' : 'Tap 2nd point to finish';
                         }
                     } else {
                         const pt1 = drawingPoints[0];
                         const pt2 = pt;
+
+                        if (currentDrawingTool === 'measure') {
+                            tempMeasureData = {
+                                type: 'measure',
+                                time1: pt1.time,
+                                logical1: pt1.logical,
+                                futureOffset1: pt1.futureOffset || 0,
+                                price1: pt1.price,
+                                time2: pt2.time,
+                                logical2: pt2.logical,
+                                futureOffset2: pt2.futureOffset || 0,
+                                price2: pt2.price,
+                                color: activeToolColor || '#3b82f6'
+                            };
+                            cancelDrawingTool();
+                            return;
+                        }
 
                         const shape = {
                             id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
@@ -1719,8 +1849,60 @@
                             logical2: pt2.logical,
                             futureOffset2: pt2.futureOffset || 0,
                             price2: pt2.price,
-                            color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : currentDrawingTool === 'rectangle' ? '#a855f7' : '#10b981'),
+                            color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : currentDrawingTool === 'rectangle' ? '#a855f7' : currentDrawingTool === 'fib' ? '#6366f1' : '#10b981'),
                             fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null
+                        };
+
+                        saveChartShapeForSymbol(currentChartSymbol, shape);
+                        cancelDrawingTool();
+                    }
+                    return;
+                } else if (currentDrawingTool === 'parallelchannel' || currentDrawingTool === 'fibext') {
+                    if (pt.logical === null || pt.logical === undefined) return;
+                    if (drawingPoints.length === 0) {
+                        drawingPoints.push(pt);
+                        const banner = document.getElementById('drawingToolBanner');
+                        if (banner) {
+                            const span = banner.querySelector('.drawing-banner-msg') || banner.querySelector('span');
+                            if (span) span.innerText = (currentDrawingTool === 'parallelchannel') ? 'Click 2nd point to set baseline' : 'Click 2nd point (Wave 1 end)';
+                        }
+                        const mobileHintText = document.getElementById('chartMobileToolHintText');
+                        if (mobileHintText) {
+                            mobileHintText.innerText = (currentDrawingTool === 'parallelchannel') ? 'Tap 2nd point to set baseline' : 'Tap 2nd point (Wave 1 end)';
+                        }
+                    } else if (drawingPoints.length === 1) {
+                        drawingPoints.push(pt);
+                        const banner = document.getElementById('drawingToolBanner');
+                        if (banner) {
+                            const span = banner.querySelector('.drawing-banner-msg') || banner.querySelector('span');
+                            if (span) span.innerText = (currentDrawingTool === 'parallelchannel') ? 'Click 3rd point to set channel width' : 'Click 3rd point (Wave 2 retracement)';
+                        }
+                        const mobileHintText = document.getElementById('chartMobileToolHintText');
+                        if (mobileHintText) {
+                            mobileHintText.innerText = (currentDrawingTool === 'parallelchannel') ? 'Tap 3rd point to set width' : 'Tap 3rd point (Wave 2 retracement)';
+                        }
+                    } else {
+                        const pt1 = drawingPoints[0];
+                        const pt2 = drawingPoints[1];
+                        const pt3 = pt;
+
+                        const shape = {
+                            id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                            type: currentDrawingTool,
+                            time1: pt1.time,
+                            logical1: pt1.logical,
+                            futureOffset1: pt1.futureOffset || 0,
+                            price1: pt1.price,
+                            time2: pt2.time,
+                            logical2: pt2.logical,
+                            futureOffset2: pt2.futureOffset || 0,
+                            price2: pt2.price,
+                            time3: pt3.time,
+                            logical3: pt3.logical,
+                            futureOffset3: pt3.futureOffset || 0,
+                            price3: pt3.price,
+                            color: activeToolColor || (currentDrawingTool === 'parallelchannel' ? '#3b82f6' : '#a855f7'),
+                            fillColor: (currentDrawingTool === 'parallelchannel') ? hexToRgba(activeToolColor || '#3b82f6', 0.12) : null
                         };
 
                         saveChartShapeForSymbol(currentChartSymbol, shape);
@@ -1730,7 +1912,12 @@
                 }
             }
 
-            // Normal Mode: dismiss popup when clicking empty space
+            // Normal Mode: dismiss temporary measure or popup when clicking empty space
+            if (tempMeasureData) {
+                tempMeasureData = null;
+                redrawCanvasOverlay();
+                return;
+            }
             if (!findShapeOrLineAtPoint(pt.x, pt.y)) {
                 hideCanvasObjectMenu();
             }
@@ -1794,6 +1981,58 @@
                                 return { kind: 'shape', id: s.id, name: label, color: s.color, hidden: !!s.hidden, type: s.type };
                             }
                             return { kind: 'shape', id: s.id, name: 'Rectangle Zone', color: s.color, hidden: !!s.hidden, type: s.type };
+                        }
+                    }
+                } else if (s.type === 'fib') {
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const y1 = mainSeries.priceToCoordinate(s.price1);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const y2 = mainSeries.priceToCoordinate(s.price2);
+                    if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        const dist = distanceToSegment(x, y, x1, y1, x2, y2);
+                        const minX = Math.min(x1, x2) - 15, maxX = Math.max(x1, x2) + 90;
+                        const minY = Math.min(y1, y2) - 20, maxY = Math.max(y1, y2) + 20;
+                        if (dist < 12 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
+                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type };
+                        }
+                    }
+                } else if (s.type === 'parallelchannel') {
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const y1 = mainSeries.priceToCoordinate(s.price1);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const y2 = mainSeries.priceToCoordinate(s.price2);
+                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                    const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
+                    if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        let dy = 0;
+                        if (x3 !== null && y3 !== null) {
+                            const baseLineYAtX3 = (x2 !== x1) ? (y1 + (y2 - y1) * ((x3 - x1) / (x2 - x1))) : y1;
+                            dy = y3 - baseLineYAtX3;
+                        }
+                        const dist1 = distanceToSegment(x, y, x1, y1, x2, y2);
+                        const dist2 = distanceToSegment(x, y, x1, y1 + dy, x2, y2 + dy);
+                        const distMid = distanceToSegment(x, y, x1, y1 + dy / 2, x2, y2 + dy / 2);
+                        const minX = Math.min(x1, x2) - 15, maxX = Math.max(x1, x2) + 15;
+                        const minY = Math.min(y1, y2, y1 + dy, y2 + dy) - 10, maxY = Math.max(y1, y2, y1 + dy, y2 + dy) + 10;
+                        if (dist1 < 10 || dist2 < 10 || distMid < 10 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type };
+                        }
+                    }
+                } else if (s.type === 'fibext') {
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const y1 = mainSeries.priceToCoordinate(s.price1);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const y2 = mainSeries.priceToCoordinate(s.price2);
+                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                    const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
+                    if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                        const dist1 = distanceToSegment(x, y, x1, y1, x2, y2);
+                        let dist2 = 999;
+                        if (x3 !== null && y3 !== null) dist2 = distanceToSegment(x, y, x2, y2, x3, y3);
+                        const minX = Math.min(x1, x2, x3 || x2) - 15, maxX = Math.max(x1, x2, x3 || x2) + 160;
+                        const minY = Math.min(y1, y2, y3 || y2) - 30, maxY = Math.max(y1, y2, y3 || y2) + 30;
+                        if (dist1 < 10 || dist2 < 10 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type };
                         }
                     }
                 }
@@ -1892,9 +2131,14 @@
                 });
             }
 
+            // Draw temporary measure if present
+            if (tempMeasureData) {
+                drawSingleShape(ctx, tempMeasureData);
+            }
+
             // Draw active live preview shape if in drawing mode
             if (currentDrawingTool && tempMousePos) {
-                if ((currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle' || currentDrawingTool === 'pricerange') && drawingPoints.length === 1) {
+                if ((currentDrawingTool === 'trendline' || currentDrawingTool === 'rectangle' || currentDrawingTool === 'pricerange' || currentDrawingTool === 'fib' || currentDrawingTool === 'measure') && drawingPoints.length === 1) {
                     const pt1 = drawingPoints[0];
                     const pt2 = tempMousePos;
                     const previewShape = {
@@ -1907,11 +2151,64 @@
                         logical2: pt2.logical,
                         futureOffset2: pt2.futureOffset || 0,
                         price2: pt2.price,
-                        color: activeToolColor || (currentDrawingTool === 'trendline' ? '#60a5fa' : currentDrawingTool === 'rectangle' ? '#c084fc' : '#10b981'),
+                        color: activeToolColor || (currentDrawingTool === 'trendline' ? '#60a5fa' : currentDrawingTool === 'rectangle' ? '#c084fc' : currentDrawingTool === 'fib' ? '#6366f1' : '#10b981'),
                         fillColor: currentDrawingTool === 'rectangle' ? 'rgba(192, 132, 252, 0.25)' : null,
                         isPreview: true
                     };
                     drawSingleShape(ctx, previewShape);
+                } else if (currentDrawingTool === 'parallelchannel') {
+                    if (drawingPoints.length === 1) {
+                        const pt1 = drawingPoints[0];
+                        const pt2 = tempMousePos;
+                        const previewShape = {
+                            type: 'trendline',
+                            time1: pt1.time, logical1: pt1.logical, futureOffset1: pt1.futureOffset || 0, price1: pt1.price,
+                            time2: pt2.time, logical2: pt2.logical, futureOffset2: pt2.futureOffset || 0, price2: pt2.price,
+                            color: activeToolColor || '#3b82f6',
+                            isPreview: true
+                        };
+                        drawSingleShape(ctx, previewShape);
+                    } else if (drawingPoints.length === 2) {
+                        const pt1 = drawingPoints[0];
+                        const pt2 = drawingPoints[1];
+                        const pt3 = tempMousePos;
+                        const previewShape = {
+                            type: 'parallelchannel',
+                            time1: pt1.time, logical1: pt1.logical, futureOffset1: pt1.futureOffset || 0, price1: pt1.price,
+                            time2: pt2.time, logical2: pt2.logical, futureOffset2: pt2.futureOffset || 0, price2: pt2.price,
+                            time3: pt3.time, logical3: pt3.logical, futureOffset3: pt3.futureOffset || 0, price3: pt3.price,
+                            color: activeToolColor || '#3b82f6',
+                            fillColor: hexToRgba(activeToolColor || '#3b82f6', 0.12),
+                            isPreview: true
+                        };
+                        drawSingleShape(ctx, previewShape);
+                    }
+                } else if (currentDrawingTool === 'fibext') {
+                    if (drawingPoints.length === 1) {
+                        const pt1 = drawingPoints[0];
+                        const pt2 = tempMousePos;
+                        const previewShape = {
+                            type: 'trendline',
+                            time1: pt1.time, logical1: pt1.logical, futureOffset1: pt1.futureOffset || 0, price1: pt1.price,
+                            time2: pt2.time, logical2: pt2.logical, futureOffset2: pt2.futureOffset || 0, price2: pt2.price,
+                            color: activeToolColor || '#a855f7',
+                            isPreview: true
+                        };
+                        drawSingleShape(ctx, previewShape);
+                    } else if (drawingPoints.length === 2) {
+                        const pt1 = drawingPoints[0];
+                        const pt2 = drawingPoints[1];
+                        const pt3 = tempMousePos;
+                        const previewShape = {
+                            type: 'fibext',
+                            time1: pt1.time, logical1: pt1.logical, futureOffset1: pt1.futureOffset || 0, price1: pt1.price,
+                            time2: pt2.time, logical2: pt2.logical, futureOffset2: pt2.futureOffset || 0, price2: pt2.price,
+                            time3: pt3.time, logical3: pt3.logical, futureOffset3: pt3.futureOffset || 0, price3: pt3.price,
+                            color: activeToolColor || '#a855f7',
+                            isPreview: true
+                        };
+                        drawSingleShape(ctx, previewShape);
+                    }
                 } else if (currentDrawingTool === 'vertical') {
                     const previewShape = {
                         type: 'vertical',
@@ -1924,6 +2221,14 @@
                     drawSingleShape(ctx, previewShape);
                 }
             }
+        }
+
+        function formatChartVolume(vol) {
+            if (!vol || isNaN(vol)) return '';
+            if (vol >= 10000000) return (vol / 10000000).toFixed(2) + ' Cr';
+            if (vol >= 100000) return (vol / 100000).toFixed(2) + ' L';
+            if (vol >= 1000) return (vol / 1000).toFixed(1) + ' K';
+            return vol.toString();
         }
 
         function drawSingleShape(ctx, s) {
@@ -1999,6 +2304,386 @@
 
                     const textY = (topY > 16) ? (topY - 4) : (topY + 4);
                     ctx.fillText(badgeText, centerX, textY);
+
+                    ctx.restore();
+                }
+            } else if (s.type === 'measure') {
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const y1 = mainSeries.priceToCoordinate(s.price1);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const y2 = mainSeries.priceToCoordinate(s.price2);
+
+                if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                    ctx.save();
+                    const diff = s.price2 - s.price1;
+                    const pct = (s.price1 !== 0) ? (diff / Math.abs(s.price1)) * 100 : 0;
+                    const isUp = diff >= 0;
+                    const color = isUp ? '#10b981' : '#ef5350';
+                    const boxFill = isUp ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 83, 80, 0.16)';
+
+                    const leftX = Math.min(x1, x2);
+                    const rightX = Math.max(x1, x2);
+                    const topY = Math.min(y1, y2);
+                    const bottomY = Math.max(y1, y2);
+                    const width = Math.max(2, rightX - leftX);
+                    const height = Math.max(2, bottomY - topY);
+
+                    // 1. Shaded range box
+                    ctx.fillStyle = boxFill;
+                    ctx.fillRect(leftX, topY, width, height);
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeRect(leftX, topY, width, height);
+                    ctx.setLineDash([]);
+
+                    // 2. Connecting diagonal line
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+
+                    // 3. Handles at ends
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(x2, y2, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+                    // 4. Bar Count & Time calculation
+                    const bars = Math.abs((s.logical2 !== undefined ? s.logical2 : s.logical1) - (s.logical1 || 0));
+                    let daysStr = '';
+                    if (s.time1 && s.time2) {
+                        const t1 = typeof s.time1 === 'number' ? s.time1 * 1000 : new Date(s.time1).getTime();
+                        const t2 = typeof s.time2 === 'number' ? s.time2 * 1000 : new Date(s.time2).getTime();
+                        if (!isNaN(t1) && !isNaN(t2)) {
+                            const diffDays = Math.round(Math.abs(t2 - t1) / (1000 * 60 * 60 * 24));
+                            daysStr = `${diffDays}d`;
+                        }
+                    }
+
+                    // Volume sum in range
+                    let volSum = 0;
+                    if (cachedChartData && cachedChartData.candles && cachedChartData.candles.length > 0) {
+                        const minL = Math.max(0, Math.min(s.logical1, s.logical2 !== undefined ? s.logical2 : s.logical1));
+                        const maxL = Math.min(cachedChartData.candles.length - 1, Math.max(s.logical1, s.logical2 !== undefined ? s.logical2 : s.logical1));
+                        for (let i = minL; i <= maxL; i++) {
+                            if (cachedChartData.candles[i] && cachedChartData.candles[i].volume) {
+                                volSum += cachedChartData.candles[i].volume;
+                            }
+                        }
+                    }
+                    const volStr = volSum > 0 ? formatChartVolume(volSum) : '';
+
+                    // 5. Floating Measure Info Badge
+                    const sign = isUp ? '+' : '-';
+                    const line1 = `${sign}₹${Math.abs(diff).toFixed(2)} (${sign}${Math.abs(pct).toFixed(2)}%)`;
+                    const line2Parts = [];
+                    if (bars > 0) line2Parts.push(`${bars} bars`);
+                    if (daysStr) line2Parts.push(daysStr);
+                    if (volStr) line2Parts.push(`Vol ${volStr}`);
+                    const line2 = line2Parts.join(', ');
+
+                    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    const m1 = ctx.measureText(line1);
+                    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    const m2 = ctx.measureText(line2);
+                    const badgeW = Math.max(m1.width, m2.width) + 20;
+                    const badgeH = line2 ? 38 : 22;
+
+                    const centerX = leftX + width / 2;
+                    const badgeX = Math.max(10, Math.min(drawingCanvas.width - badgeW - 10, centerX - badgeW / 2));
+                    const badgeY = Math.max(10, Math.min(drawingCanvas.height - badgeH - 10, (y2 > y1 ? bottomY + 8 : topY - badgeH - 8)));
+
+                    // Badge Pill Background
+                    ctx.fillStyle = isDark ? 'rgba(30, 34, 45, 0.94)' : 'rgba(255, 255, 255, 0.95)';
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+                    else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Line 1 Text (Price & %)
+                    ctx.fillStyle = color;
+                    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(line1, badgeX + badgeW / 2, badgeY + 5);
+
+                    // Line 2 Text (Bars, Duration, Vol)
+                    if (line2) {
+                        ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
+                        ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                        ctx.fillText(line2, badgeX + badgeW / 2, badgeY + 20);
+                    }
+
+                    ctx.restore();
+                }
+            } else if (s.type === 'parallelchannel') {
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const y1 = mainSeries.priceToCoordinate(s.price1);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const y2 = mainSeries.priceToCoordinate(s.price2);
+
+                if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                    ctx.save();
+                    const color = s.color || '#3b82f6';
+                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                    const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
+
+                    let dy = 0;
+                    if (x3 !== null && y3 !== null) {
+                        const baseLineYAtX3 = (x2 !== x1) ? (y1 + (y2 - y1) * ((x3 - x1) / (x2 - x1))) : y1;
+                        dy = y3 - baseLineYAtX3;
+                    }
+
+                    // Channel Polygon Fill
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.lineTo(x2, y2 + dy);
+                    ctx.lineTo(x1, y1 + dy);
+                    ctx.closePath();
+                    ctx.fillStyle = s.fillColor || hexToRgba(color, 0.12);
+                    ctx.fill();
+
+                    // Baseline
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.8;
+                    if (s.isPreview) ctx.setLineDash([4, 4]);
+                    else ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+
+                    // Parallel Line
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1 + dy);
+                    ctx.lineTo(x2, y2 + dy);
+                    ctx.stroke();
+
+                    // Midline (Median dashed)
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1 + dy / 2);
+                    ctx.lineTo(x2, y2 + dy / 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // TradingView End Circles / Handles
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+
+                    ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(x2, y2, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+                    // Parallel handle
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2 + dy;
+                    ctx.beginPath(); ctx.arc(midX, midY, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+                    ctx.restore();
+                }
+            } else if (s.type === 'fib') {
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const y1 = mainSeries.priceToCoordinate(s.price1);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const y2 = mainSeries.priceToCoordinate(s.price2);
+
+                if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                    ctx.save();
+                    const diff = s.price1 - s.price2; // swing diff
+                    const startX = Math.min(x1, x2);
+                    const endX = Math.max(x1, x2) + 75;
+
+                    const FIB_LEVELS = [
+                        { ratio: 0.0,   label: '0.0 (0%)',     color: '#787b86', fill: null },
+                        { ratio: 0.236, label: '0.236 (23.6%)', color: '#ef5350', fill: 'rgba(239, 83, 80, 0.08)' },
+                        { ratio: 0.382, label: '0.382 (38.2%)', color: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)' },
+                        { ratio: 0.5,   label: '0.5 (50.0%)',   color: '#10b981', fill: 'rgba(16, 185, 129, 0.08)' },
+                        { ratio: 0.618, label: '0.618 (61.8%)', color: '#06b6d4', fill: 'rgba(6, 182, 212, 0.08)' },
+                        { ratio: 0.786, label: '0.786 (78.6%)', color: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.08)' },
+                        { ratio: 1.0,   label: '1.0 (100%)',    color: '#787b86', fill: 'rgba(120, 123, 134, 0.05)' },
+                        { ratio: 1.618, label: '1.618 (161.8%)', color: '#ec4899', fill: 'rgba(236, 72, 153, 0.06)' }
+                    ];
+
+                    // Draw connecting dashed trendline
+                    ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Calculate Y for each level
+                    const levelYs = FIB_LEVELS.map(lvl => {
+                        const p = s.price2 + diff * lvl.ratio;
+                        return {
+                            lvl,
+                            price: p,
+                            y: mainSeries.priceToCoordinate(p)
+                        };
+                    });
+
+                    // 1. Shaded bands between adjacent levels
+                    for (let i = 1; i < levelYs.length; i++) {
+                        const prev = levelYs[i - 1];
+                        const curr = levelYs[i];
+                        if (prev.y !== null && curr.y !== null && curr.lvl.fill) {
+                            const top = Math.min(prev.y, curr.y);
+                            const height = Math.abs(curr.y - prev.y);
+                            ctx.fillStyle = curr.lvl.fill;
+                            ctx.fillRect(startX, top, endX - startX, height);
+                        }
+                    }
+
+                    // 2. Horizontal lines & text labels
+                    levelYs.forEach(item => {
+                        if (item.y === null) return;
+                        const y = item.y;
+                        ctx.strokeStyle = item.lvl.color;
+                        ctx.lineWidth = (item.lvl.ratio === 0.0 || item.lvl.ratio === 0.618 || item.lvl.ratio === 1.0) ? 1.5 : 1;
+                        ctx.beginPath();
+                        ctx.moveTo(startX, y);
+                        ctx.lineTo(endX, y);
+                        ctx.stroke();
+
+                        // Label
+                        const text = `${item.lvl.label} - ₹${item.price.toFixed(2)}`;
+                        ctx.font = '9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                        ctx.fillStyle = item.lvl.color;
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'bottom';
+                        ctx.shadowColor = isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+                        ctx.shadowBlur = 2;
+                        ctx.fillText(text, endX - 4, y - 2);
+                    });
+
+                    // 3. Handles at swing anchor points
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = s.color || '#6366f1';
+                    ctx.lineWidth = 2;
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(x2, y2, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+                    ctx.restore();
+                }
+            } else if (s.type === 'fibext') {
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const y1 = mainSeries.priceToCoordinate(s.price1);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const y2 = mainSeries.priceToCoordinate(s.price2);
+                const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
+
+                if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                    ctx.save();
+                    const color = s.color || '#a855f7';
+
+                    // Wave 1 Line (Trend)
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.6;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+
+                    // Wave 2 Line (Retracement to Point 3)
+                    if (x3 !== null && y3 !== null) {
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1.3;
+                        ctx.setLineDash([4, 4]);
+                        ctx.beginPath();
+                        ctx.moveTo(x2, y2);
+                        ctx.lineTo(x3, y3);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        // Extension Levels from Point 3
+                        const baseDiff = s.price2 - s.price1;
+                        const startX = x3;
+                        const endX = x3 + Math.max(90, Math.abs(x2 - x1) * 1.4);
+
+                        const FIB_EXT_LEVELS = [
+                            { ratio: 0.0,   label: '0.0 (0%)',     color: '#787b86', fill: null },
+                            { ratio: 0.382, label: '0.382 (38.2%)', color: '#f59e0b', fill: 'rgba(245, 158, 11, 0.07)' },
+                            { ratio: 0.618, label: '0.618 (61.8%)', color: '#06b6d4', fill: 'rgba(6, 182, 212, 0.07)' },
+                            { ratio: 1.0,   label: '1.0 (100%)',    color: '#10b981', fill: 'rgba(16, 185, 129, 0.07)' },
+                            { ratio: 1.272, label: '1.272 (127.2%)', color: '#3b82f6', fill: 'rgba(59, 130, 246, 0.07)' },
+                            { ratio: 1.618, label: '1.618 (161.8%)', color: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.07)' },
+                            { ratio: 2.0,   label: '2.0 (200%)',    color: '#ec4899', fill: 'rgba(236, 72, 153, 0.06)' },
+                            { ratio: 2.618, label: '2.618 (261.8%)', color: '#ef4444', fill: 'rgba(239, 68, 68, 0.06)' }
+                        ];
+
+                        const levelYs = FIB_EXT_LEVELS.map(lvl => {
+                            const p = s.price3 + baseDiff * lvl.ratio;
+                            return {
+                                lvl,
+                                price: p,
+                                y: mainSeries.priceToCoordinate(p)
+                            };
+                        });
+
+                        // 1. Shaded bands between adjacent extension levels
+                        for (let i = 1; i < levelYs.length; i++) {
+                            const prev = levelYs[i - 1];
+                            const curr = levelYs[i];
+                            if (prev.y !== null && curr.y !== null && curr.lvl.fill) {
+                                const top = Math.min(prev.y, curr.y);
+                                const height = Math.abs(curr.y - prev.y);
+                                ctx.fillStyle = curr.lvl.fill;
+                                ctx.fillRect(startX, top, endX - startX, height);
+                            }
+                        }
+
+                        // 2. Horizontal extension lines & text labels
+                        levelYs.forEach(item => {
+                            if (item.y === null) return;
+                            const y = item.y;
+                            ctx.strokeStyle = item.lvl.color;
+                            ctx.lineWidth = (item.lvl.ratio === 1.0 || item.lvl.ratio === 1.618) ? 1.5 : 1;
+                            ctx.beginPath();
+                            ctx.moveTo(startX, y);
+                            ctx.lineTo(endX, y);
+                            ctx.stroke();
+
+                            // Label
+                            const text = `${item.lvl.label} - ₹${item.price.toFixed(2)}`;
+                            ctx.font = '9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                            ctx.fillStyle = item.lvl.color;
+                            ctx.textAlign = 'right';
+                            ctx.textBaseline = 'bottom';
+                            ctx.shadowColor = isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+                            ctx.shadowBlur = 2;
+                            ctx.fillText(text, endX - 4, y - 2);
+                        });
+
+                        // Handle 3
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 2;
+                        ctx.shadowBlur = 0;
+                        ctx.beginPath(); ctx.arc(x3, y3, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    }
+
+                    // Handles 1 and 2
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(x2, y2, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
 
                     ctx.restore();
                 }
@@ -2230,6 +2915,7 @@
 
         function openInHouseChart(sym) {
             if (!sym) return;
+            tempMeasureData = null;
             currentChartSymbol = sym;
             currentChartRange = '1y';
             try {
