@@ -87,8 +87,8 @@
                 } else if (evType === 'concall') {
                     const timeStr = escapeHtml(ev.time || ev.badge_text || 'Concall');
                     badgeHtml = `<span class="upcoming-badge concall"><span class="upcoming-badge-icon">📞</span> ${timeStr}</span>`;
-                } else if (evType === 'ballot' || evType === 'agm' || evType === 'egm' || evType === 'meeting') {
-                    badgeHtml = `<span class="upcoming-badge ballot"><span class="upcoming-badge-icon">🗳️</span> ${badgeLabel}</span>`;
+                } else if (evType === 'agm') {
+                    badgeHtml = `<span class="upcoming-badge agm"><span class="upcoming-badge-icon">👥</span> AGM</span>`;
                 } else {
                     badgeHtml = `<span class="upcoming-badge default">${badgeLabel}</span>`;
                 }
@@ -261,6 +261,18 @@
         }
     }
 
+    async function triggerUpcomingRefresh(btnEl) {
+        const btns = document.querySelectorAll('.upcoming-refresh-btn');
+        btns.forEach(b => b.classList.add('refreshing'));
+        try {
+            await loadUpcomingEvents(true);
+        } finally {
+            setTimeout(() => {
+                btns.forEach(b => b.classList.remove('refreshing'));
+            }, 600);
+        }
+    }
+
     // Escape key listener to close modal
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
@@ -275,6 +287,7 @@
     window.openUpcomingEventsModal = openUpcomingEventsModal;
     window.closeUpcomingEventsModal = closeUpcomingEventsModal;
     window.upcomingEventStockClick = upcomingEventStockClick;
+    window.triggerUpcomingRefresh = triggerUpcomingRefresh;
 
     // Auto-init on page ready
     document.addEventListener('DOMContentLoaded', () => {

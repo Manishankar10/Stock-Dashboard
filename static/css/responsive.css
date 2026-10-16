@@ -555,6 +555,7 @@
     }
 
     .wl-table .company-name {
+        display: block !important;
         font-size: 10px !important;
         color: var(--text-secondary) !important;
         white-space: nowrap !important;

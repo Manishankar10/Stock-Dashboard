@@ -1,5 +1,25 @@
 [
   {
+    "symbol": "RELIANCE",
+    "company": "Reliance Industries",
+    "date": "2026-10-21",
+    "date_header": "Wed, 21 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Q2 Financial Results"
+  },
+  {
+    "symbol": "INFY",
+    "company": "Infosys Ltd",
+    "date": "2026-10-21",
+    "date_header": "Wed, 21 Oct",
+    "type": "concall",
+    "badge_text": "5 p.m.",
+    "badge_icon": "📞",
+    "details": "Q2 Earnings Conference Call"
+  },
+  {
     "symbol": "IGI",
     "company": "International Gemological In...",
     "date": "2026-10-21",
@@ -50,14 +70,24 @@
     "details": "Board Meeting for Financial Results"
   },
   {
-    "symbol": "PNGJL",
-    "company": "P N Gadgil Jewe.",
-    "date": "2026-10-23",
-    "date_header": "Fri, 23 Oct",
-    "type": "ballot",
-    "badge_text": "Postal ballot",
-    "badge_icon": "",
-    "details": "Postal Ballot Notice to Shareholders"
+    "symbol": "HDFCBANK",
+    "company": "HDFC Bank",
+    "date": "2026-10-24",
+    "date_header": "Sat, 24 Oct",
+    "type": "agm",
+    "badge_text": "AGM",
+    "badge_icon": "👥",
+    "details": "Annual General Meeting of Shareholders"
+  },
+  {
+    "symbol": "TCS",
+    "company": "Tata Consultancy Services",
+    "date": "2026-10-25",
+    "date_header": "Sun, 25 Oct",
+    "type": "agm",
+    "badge_text": "AGM",
+    "badge_icon": "👥",
+    "details": "Annual General Meeting"
   },
   {
     "symbol": "FIVESTAR",

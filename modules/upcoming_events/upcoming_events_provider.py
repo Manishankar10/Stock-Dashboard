@@ -134,9 +134,21 @@ class UpcomingEventsProvider:
                         purpose = str(item.get("purpose") or "Meeting").strip()
                         comp = _simplify_company_name(item.get("company") or sym)
 
-                        event_type = "result" if "result" in purpose.lower() else "meeting"
-                        badge_text = "Result" if event_type == "result" else "Meeting"
-                        badge_icon = "📊" if event_type == "result" else "📋"
+                        purpose_lower = purpose.lower()
+                        if "result" in purpose_lower:
+                            event_type = "result"
+                            badge_text = "Result"
+                            badge_icon = "📊"
+                        elif "agm" in purpose_lower or "annual general meeting" in purpose_lower:
+                            event_type = "agm"
+                            badge_text = "AGM"
+                            badge_icon = "👥"
+                        elif "concall" in purpose_lower or "earning" in purpose_lower or "conference" in purpose_lower:
+                            event_type = "concall"
+                            badge_text = "Concall"
+                            badge_icon = "📞"
+                        else:
+                            continue
 
                         live_items.append({
                             "symbol": sym,
@@ -170,9 +182,21 @@ class UpcomingEventsProvider:
                         purpose = str(item.get("bm_purpose") or "Financial Results").strip()
                         comp = _simplify_company_name(item.get("sm_name") or sym)
 
-                        event_type = "result" if "result" in purpose.lower() else "meeting"
-                        badge_text = "Result" if event_type == "result" else "Meeting"
-                        badge_icon = "📊" if event_type == "result" else "📋"
+                        purpose_lower = purpose.lower()
+                        if "result" in purpose_lower:
+                            event_type = "result"
+                            badge_text = "Result"
+                            badge_icon = "📊"
+                        elif "agm" in purpose_lower or "annual general meeting" in purpose_lower:
+                            event_type = "agm"
+                            badge_text = "AGM"
+                            badge_icon = "👥"
+                        elif "concall" in purpose_lower or "earning" in purpose_lower or "conference" in purpose_lower:
+                            event_type = "concall"
+                            badge_text = "Concall"
+                            badge_icon = "📞"
+                        else:
+                            continue
 
                         live_items.append({
                             "symbol": sym,
@@ -239,12 +263,14 @@ class UpcomingEventsProvider:
         watchlist_name: str = "",
         force_refresh: bool = False,
     ) -> Dict[str, Any]:
-        """Return upcoming events grouped by date. If watchlist_symbols provided, filter for that watchlist."""
         all_events = self._get_all_events(force_refresh=force_refresh)
         today_iso = date.today().strftime("%Y-%m-%d")
-
-        # Keep future events (>= today)
-        future_events = [x for x in all_events if x.get("date", "") >= today_iso]
+        # Keep future events (>= today) that are strictly Result, Concall, or AGM
+        future_events = [
+            x for x in all_events
+            if x.get("date", "") >= today_iso
+            and str(x.get("type", "")).lower() in ("result", "concall", "agm")
+        ]
 
         # Clean symbols
         wl_clean = {clean_symbol(s) for s in (watchlist_symbols or set()) if s}

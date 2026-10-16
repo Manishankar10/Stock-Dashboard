@@ -89,6 +89,8 @@
                 }
                 
                 if (nameEl && info.name) nameEl.innerText = info.name;
+                const rowEl = document.getElementById(`row-${sym}`);
+                if (rowEl && info.name) rowEl.dataset.companyName = info.name;
                 if (priceEl && info.price !== undefined) {
                     priceEl.innerText = '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2});
                     if (info.change !== undefined) {

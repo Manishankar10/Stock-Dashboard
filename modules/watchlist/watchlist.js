@@ -533,6 +533,33 @@
             officialFeedsBtn.innerHTML = '◉ Official Feeds';
             officialFeedsBtn.onclick = () => openWatchlistOfficialFeeds(activeWatchlistName);
             watchlistFileControls.appendChild(officialFeedsBtn);
+
+            // Watchlist Refresh Button (matching responsive portfolio style)
+            const wlRefreshBtn = document.createElement('button');
+            wlRefreshBtn.type = 'button';
+            wlRefreshBtn.className = 'wl-refresh-btn';
+            wlRefreshBtn.title = 'Refresh Watchlist Quotes';
+            wlRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
+            wlRefreshBtn.innerHTML = `
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+            `;
+            wlRefreshBtn.onclick = async () => {
+                if (wlRefreshBtn.classList.contains('refreshing')) return;
+                wlRefreshBtn.classList.add('refreshing');
+                try {
+                    if (typeof refreshPrices === 'function') {
+                        await refreshPrices({ force_refresh: true });
+                    }
+                } finally {
+                    setTimeout(() => {
+                        wlRefreshBtn.classList.remove('refreshing');
+                    }, 600);
+                }
+            };
+            watchlistFileControls.appendChild(wlRefreshBtn);
+
             const watchlistOverflow = document.createElement('div');
             watchlistOverflow.className = 'wl-overflow';
             watchlistOverflow.id = 'watchlist-overflow-menu';
@@ -561,19 +588,19 @@
 
             const colgroup = document.createElement('colgroup');
             colgroup.innerHTML = `
-                <col class="wl-cg-symbol" style="width: 38%;">
-                <col class="wl-cg-price" style="width: 18%;">
-                <col class="wl-cg-change-amt" style="width: 17%;">
-                <col class="wl-cg-change-pct" style="width: 16%;">
-                <col class="wl-cg-actions" style="width: 11%;">
+                <col class="wl-cg-symbol" style="width: 30%;">
+                <col class="wl-cg-price" style="width: 22%;">
+                <col class="wl-cg-change-amt" style="width: 20%;">
+                <col class="wl-cg-change-pct" style="width: 18%;">
+                <col class="wl-cg-actions" style="width: 10%;">
             `;
             table.appendChild(colgroup);
 
             const thead = document.createElement('thead');
             thead.innerHTML = `
                 <tr>
-                    <th class="wl-col-symbol" style="cursor:pointer; user-select:none;" onclick="toggleWatchlistSort('symbol')" title="Click to sort by Company / Symbol">
-                        <span class="col-lbl-full">Company / Symbol</span><span class="col-lbl-compact">Symbol</span> ${getSortIcon('symbol')}
+                    <th class="wl-col-symbol" style="cursor:pointer; user-select:none;" onclick="toggleWatchlistSort('symbol')" title="Click to sort by Symbol">
+                        <span class="col-lbl-full">Symbol</span><span class="col-lbl-compact">Symbol</span> ${getSortIcon('symbol')}
                     </th>
                     <th class="wl-col-price" style="text-align:right; cursor:pointer; user-select:none;" onclick="toggleWatchlistSort('price')" title="Click to sort by LTP">
                         <span class="col-lbl-full">LTP (₹)</span><span class="col-lbl-compact">LTP</span> ${getSortIcon('price')}
@@ -596,20 +623,24 @@
             } else {
                 symbols.forEach(sym => {
                     const bInfo = getSymbolBadge(sym);
+                    const info = stockPricesData[sym];
+                    const hasData = info && !info.error && info.price !== undefined;
+                    const compName = (hasData && info.name) ? info.name : cleanDisplaySymbol(sym);
 
                     const tr = document.createElement('tr');
                     tr.id = `row-${sym}`;
                     tr.className = 'pf-row';
-                    tr.title = 'Click row to view interactive technical chart';
+                    tr.dataset.symbol = sym;
+                    tr.dataset.companyName = compName;
+                    if (window.innerWidth <= 768) {
+                        tr.title = 'Click row to view interactive technical chart';
+                    }
                     tr.onclick = (e) => {
                         if (e.target.closest('.wl-row-menu-btn') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
                         if (window._wlMenuJustClosed) return;
                         if (typeof openInHouseChart === 'function') openInHouseChart(sym);
                         else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
                     };
-                    
-                    const info = stockPricesData[sym];
-                    const hasData = info && !info.error && info.price !== undefined;
                     const nameHtml = (hasData && info.name) 
                         ? escapeHtml(info.name) 
                         : '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
@@ -1611,4 +1642,66 @@
         } else {
             initWatchlistMobileSwipe();
         }
+
+        // =========================================================
+        // GLOBAL WATCHLIST ROW HOVER TOOLTIP (WEB ONLY)
+        // Shows "Click to view {company name-bold} technical chart"
+        // =========================================================
+        (function initWlRowTooltip() {
+            let wlTooltipEl = document.getElementById('wl-row-tooltip');
+            if (!wlTooltipEl) {
+                wlTooltipEl = document.createElement('div');
+                wlTooltipEl.id = 'wl-row-tooltip';
+                wlTooltipEl.className = 'wl-row-tooltip';
+                document.body.appendChild(wlTooltipEl);
+            }
+
+            document.addEventListener('mouseover', (e) => {
+                if (window.innerWidth <= 768) return; // Strict rule: Web only
+                if (e.target.closest('.wl-row-menu-btn') || e.target.closest('button') || e.target.closest('.menu-dropdown-content') || e.target.closest('.wl-overflow-menu')) {
+                    wlTooltipEl.style.opacity = '0';
+                    return;
+                }
+                const tr = e.target.closest('.wl-table tr.pf-row');
+                if (!tr) return;
+                const sym = tr.dataset.symbol || (tr.id ? tr.id.replace('row-', '') : '');
+                const info = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
+                const compName = tr.dataset.companyName || info.name || cleanDisplaySymbol(sym);
+                wlTooltipEl.innerHTML = `Click to view <b>${escapeHtml(compName)}</b> technical chart`;
+                wlTooltipEl.style.opacity = '1';
+                wlTooltipEl.style.transform = 'translateY(0)';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (window.innerWidth <= 768 || wlTooltipEl.style.opacity !== '1') return;
+                if (e.target.closest('.wl-row-menu-btn') || e.target.closest('button') || e.target.closest('.menu-dropdown-content') || e.target.closest('.wl-overflow-menu')) {
+                    wlTooltipEl.style.opacity = '0';
+                    return;
+                }
+                const pad = 12;
+                let x = e.clientX + pad;
+                let y = e.clientY + pad;
+                const w = wlTooltipEl.offsetWidth || 180;
+                const h = wlTooltipEl.offsetHeight || 30;
+                if (x + w > window.innerWidth - 10) {
+                    x = e.clientX - w - pad;
+                }
+                if (y + h > window.innerHeight - 10) {
+                    y = e.clientY - h - pad;
+                }
+                wlTooltipEl.style.left = `${Math.max(10, x)}px`;
+                wlTooltipEl.style.top = `${Math.max(10, y)}px`;
+            });
+
+            document.addEventListener('mouseout', (e) => {
+                const tr = e.target.closest('.wl-table tr.pf-row');
+                if (tr) {
+                    const related = e.relatedTarget;
+                    if (!related || !related.closest || related.closest('.wl-table tr.pf-row') !== tr) {
+                        wlTooltipEl.style.opacity = '0';
+                        wlTooltipEl.style.transform = 'translateY(4px)';
+                    }
+                }
+            });
+        })();
 

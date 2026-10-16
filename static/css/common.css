@@ -651,6 +651,9 @@
             font-weight: 500;
         }
         /* Watchlist Table - Strict Zero Horizontal Scroll & Proportional Column Fitting */
+        .col-lbl-compact {
+            display: none !important;
+        }
         .wl-table-container {
             width: 100% !important;
             overflow-x: hidden !important;
@@ -671,7 +674,7 @@
         }
         .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(1), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(1),
         .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-symbol, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-symbol {
-            width: 38% !important;
+            width: 30% !important;
             text-align: left;
             overflow: hidden;
         }
@@ -681,7 +684,7 @@
         }
         .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(2), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(2),
         .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-price, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-price {
-            width: 18% !important;
+            width: 22% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
@@ -689,7 +692,7 @@
         }
         .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(3), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(3),
         .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-change-amt, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-change-amt {
-            width: 17% !important;
+            width: 20% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
@@ -697,7 +700,7 @@
         }
         .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(4), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(4),
         .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-change-pct, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-change-pct {
-            width: 16% !important;
+            width: 18% !important;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
@@ -705,9 +708,102 @@
         }
         .wl-table:not(.pf-table):not(.tx-ledger-table) th:nth-child(5), .wl-table:not(.pf-table):not(.tx-ledger-table) td:nth-child(5),
         .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-col-actions, .wl-table:not(.pf-table):not(.tx-ledger-table) .wl-cg-actions {
-            width: 11% !important;
+            width: 10% !important;
             text-align: center;
             overflow: visible !important;
+        }
+
+        /* Web Only: Remove company name from watchlist listing */
+        @media (min-width: 769px) {
+            .wl-table .company-name {
+                display: none !important;
+            }
+        }
+
+        /* Watchlist Refresh Button (Styled identical to responsive portfolio refresh button) */
+        .wl-refresh-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28.5px;
+            height: 28.5px;
+            border-radius: 7px;
+            background: rgba(16, 185, 129, 0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+        }
+
+        :root:not([data-theme="dark"]) .wl-refresh-btn {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.25);
+            color: #059669;
+        }
+
+        .wl-refresh-btn svg {
+            width: 13px;
+            height: 13px;
+            transition: transform 0.2s ease;
+        }
+
+        .wl-refresh-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            transform: translateY(-1px);
+        }
+
+        .wl-refresh-btn:active {
+            transform: scale(0.92);
+            background: rgba(16, 185, 129, 0.25);
+        }
+
+        .wl-refresh-btn.refreshing svg {
+            animation: pf-spin 0.75s linear infinite !important;
+        }
+
+        /* Watchlist Row Hover Tooltip (Web Only) */
+        .wl-row-tooltip {
+            position: fixed;
+            z-index: 10000;
+            pointer-events: none;
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #e2e8f0;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        :root:not([data-theme="dark"]) .wl-row-tooltip {
+            background: rgba(255, 255, 255, 0.96);
+            border-color: rgba(203, 213, 225, 0.9);
+            color: #1e293b;
+            box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .wl-row-tooltip b,
+        .wl-row-tooltip strong {
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        :root:not([data-theme="dark"]) .wl-row-tooltip b,
+        :root:not([data-theme="dark"]) .wl-row-tooltip strong {
+            color: #0f172a;
         }
 
         /* =========================================================

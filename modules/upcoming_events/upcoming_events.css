@@ -2,7 +2,8 @@
 /* Latest Glassy Trendy Design for Upcoming Events Component */
 
 /* ======================================================== */
-/* 75% / 25% Split Screen Layout on Watchlist Page */
+/* ======================================================== */
+/* 70% / 30% Split Screen Layout on Watchlist Page (Web Only) */
 /* ======================================================== */
 .watchlist-split-container {
     display: flex;
@@ -13,17 +14,17 @@
 }
 
 .watchlist-split-main {
-    flex: 0 0 calc(75% - 10px);
-    max-width: calc(75% - 10px);
-    width: calc(75% - 10px);
+    flex: 0 0 calc(70% - 10px);
+    max-width: calc(70% - 10px);
+    width: calc(70% - 10px);
     min-width: 0;
     box-sizing: border-box;
 }
 
 .watchlist-split-sidebar {
-    flex: 0 0 calc(25% - 10px);
-    max-width: calc(25% - 10px);
-    width: calc(25% - 10px);
+    flex: 0 0 calc(30% - 10px);
+    max-width: calc(30% - 10px);
+    width: calc(30% - 10px);
     min-width: 0;
     box-sizing: border-box;
     position: sticky;
@@ -128,6 +129,57 @@
     background: rgba(92, 124, 250, 0.18);
     color: #5c7cfa;
     border-color: #5c7cfa;
+}
+
+/* Refresh Button Styled Identically to Responsive Portfolio Refresh Button */
+.upcoming-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28.5px;
+    height: 28.5px;
+    border-radius: 7px;
+    background: rgba(16, 185, 129, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+:root:not([data-theme="dark"]) .upcoming-refresh-btn {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #059669;
+}
+
+.upcoming-refresh-btn svg {
+    width: 13px;
+    height: 13px;
+    transition: transform 0.2s ease;
+}
+
+.upcoming-refresh-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    transform: translateY(-1px);
+}
+
+.upcoming-refresh-btn:active {
+    transform: scale(0.92);
+    background: rgba(16, 185, 129, 0.25);
+}
+
+@keyframes upcoming-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.upcoming-refresh-btn.refreshing svg {
+    animation: upcoming-spin 0.75s linear infinite !important;
 }
 
 /* Scrollable Events List */
