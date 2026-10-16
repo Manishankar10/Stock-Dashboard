@@ -6,7 +6,7 @@
 
     let upcomingDataCache = null;
     let upcomingActiveWatchlist = '';
-    let upcomingScope = 'watchlist'; // 'watchlist' | 'all'
+    let upcomingScope = 'current'; // 'current' | 'all_watchlists' | 'all_stocks'
     let isFetchingUpcoming = false;
 
     function escapeHtml(str) {
@@ -20,15 +20,37 @@
     }
 
     /**
+     * Spin refresh icons in both web and responsive views while data is loading
+     */
+    function setUpcomingLoading(isLoading) {
+        document.querySelectorAll('.upcoming-refresh-btn').forEach(btn => {
+            btn.classList.toggle('refreshing', !!isLoading);
+        });
+    }
+
+    /**
+     * Sync scope dropdown in both web split-card and responsive mobile modal
+     */
+    function syncUpcomingScopeDropdowns(scopeVal) {
+        const val = scopeVal || upcomingScope;
+        ['upcoming-scope-select', 'upcoming-modal-scope-select'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.value !== val) {
+                el.value = val;
+            }
+        });
+    }
+
+    /**
      * Fetch upcoming events from official API
      */
     async function loadUpcomingEvents(forceRefresh = false) {
         if (isFetchingUpcoming) return;
         isFetchingUpcoming = true;
+        setUpcomingLoading(true);
 
         const currentWl = upcomingActiveWatchlist || (window.activeWatchlistName || '');
-        const isAll = upcomingScope === 'all';
-        const url = `/api/upcoming-events?watchlist=${encodeURIComponent(currentWl)}&all=${isAll ? 1 : 0}&refresh=${forceRefresh ? 1 : 0}`;
+        const url = `/api/upcoming-events?watchlist=${encodeURIComponent(currentWl)}&scope=${encodeURIComponent(upcomingScope)}&refresh=${forceRefresh ? 1 : 0}`;
 
         // Show subtle loader if no cache
         const listEl = document.getElementById('upcoming-events-list');
@@ -65,6 +87,7 @@
             }
         } finally {
             isFetchingUpcoming = false;
+            setUpcomingLoading(false);
         }
     }
 
@@ -122,8 +145,12 @@
         if (!data) return;
 
         const currentWl = upcomingActiveWatchlist || (window.activeWatchlistName || 'Watchlist');
-        const isAll = upcomingScope === 'all';
-        const displayTitle = isAll ? 'All Market Stocks' : currentWl;
+        let displayTitle = currentWl;
+        if (upcomingScope === 'all_stocks') {
+            displayTitle = 'All Stocks';
+        } else if (upcomingScope === 'all_watchlists') {
+            displayTitle = 'All Watchlists';
+        }
 
         // 1. Update Subtitles
         const subTitleEl = document.getElementById('upcoming-active-wl-title');
@@ -132,22 +159,8 @@
         const modalWlEl = document.getElementById('upcoming-modal-wl-name');
         if (modalWlEl) modalWlEl.innerText = `${displayTitle} (${data.total_events || 0})`;
 
-        // 2. Update Scope Buttons (Both Desktop Card & Mobile Modal)
-        const scopeText = isAll ? 'Watchlist' : 'All';
-        const scopeTitle = isAll ? 'Switch to active watchlist' : 'Switch to all market events';
-
-        ['upcoming-scope-label', 'upcoming-modal-scope-label'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.innerText = scopeText;
-        });
-
-        ['upcoming-toggle-scope-btn', 'upcoming-modal-toggle-scope-btn'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.title = scopeTitle;
-                btn.classList.toggle('active-scope-all', isAll);
-            }
-        });
+        // 2. Sync Scope Dropdowns (Both Desktop Card & Mobile Modal)
+        syncUpcomingScopeDropdowns(upcomingScope);
 
         // 3. Update Mobile Badge Counter in Watchlist bar
         const badgeCountEls = document.querySelectorAll('.wl-upcoming-badge-count');
@@ -191,7 +204,7 @@
                         <div class="upcoming-empty-icon">📅</div>
                         <div class="upcoming-empty-title">No upcoming events</div>
                         <p class="upcoming-empty-desc">No Results, AGMs, or Concalls announced for ${displayTitle}.</p>
-                        <button type="button" class="upcoming-view-all-pill" onclick="window.toggleUpcomingScope(true)">
+                        <button type="button" class="upcoming-view-all-pill" onclick="window.setUpcomingScope('all_stocks')">
                             View All Market Events
                         </button>
                     </div>
@@ -202,15 +215,16 @@
 
     /**
      * Entrypoint called whenever watchlist switches or user moves to a watchlist.
-     * Strict Rule (Web & Responsive): When upcoming was clicked 'all', moving to ANY watchlist
-     * must switch scope back to 'watchlist' and load ONLY that watchlist's related upcoming event dates.
+     * Strict Rule (Web & Responsive): When moving to ANY watchlist, reset scope back to
+     * 'current' (Current watchlist) and load ONLY that watchlist's related upcoming event dates.
      */
     function renderUpcomingEvents(watchlistName = null, forceScopeReset = false) {
         const targetWl = watchlistName || window.activeWatchlistName || '';
 
-        // If upcoming was on 'all', moving to any watchlist resets scope back to 'watchlist'
-        if (upcomingScope === 'all' || forceScopeReset) {
-            upcomingScope = 'watchlist';
+        // If upcoming was on 'all_stocks' or 'all_watchlists', moving to any watchlist resets scope back to 'current'
+        if (upcomingScope !== 'current' || forceScopeReset) {
+            upcomingScope = 'current';
+            syncUpcomingScopeDropdowns('current');
             upcomingActiveWatchlist = targetWl;
             upcomingDataCache = null;
             loadUpcomingEvents();
@@ -230,33 +244,17 @@
     }
 
     /**
-     * Toggle Scope (All Market vs Active Watchlist)
+     * Change Upcoming Scope via Dropdown: 'current' | 'all_watchlists' | 'all_stocks'
      */
-    function toggleUpcomingScope(forceAll = false) {
-        if (forceAll) {
-            upcomingScope = 'all';
-        } else {
-            upcomingScope = (upcomingScope === 'all') ? 'watchlist' : 'all';
-        }
+    function setUpcomingScope(newScope) {
+        if (!newScope) return;
+        // Normalize legacy values
+        if (newScope === 'all') newScope = 'all_stocks';
+        if (newScope === 'watchlist') newScope = 'current';
+
+        upcomingScope = newScope;
         upcomingDataCache = null;
-
-        const isAll = upcomingScope === 'all';
-        const scopeText = isAll ? 'Watchlist' : 'All';
-        const scopeTitle = isAll ? 'Switch to active watchlist' : 'Switch to all market events';
-
-        ['upcoming-scope-label', 'upcoming-modal-scope-label'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.innerText = scopeText;
-        });
-
-        ['upcoming-toggle-scope-btn', 'upcoming-modal-toggle-scope-btn'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.title = scopeTitle;
-                btn.classList.toggle('active-scope-all', isAll);
-            }
-        });
-
+        syncUpcomingScopeDropdowns(newScope);
         loadUpcomingEvents();
     }
 
@@ -322,7 +320,8 @@
     // Expose global methods
     window.loadUpcomingEvents = loadUpcomingEvents;
     window.renderUpcomingEvents = renderUpcomingEvents;
-    window.toggleUpcomingScope = toggleUpcomingScope;
+    window.setUpcomingScope = setUpcomingScope;
+    window.toggleUpcomingScope = setUpcomingScope;
     window.openUpcomingEventsModal = openUpcomingEventsModal;
     window.closeUpcomingEventsModal = closeUpcomingEventsModal;
     window.upcomingEventStockClick = upcomingEventStockClick;

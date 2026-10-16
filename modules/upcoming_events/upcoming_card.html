@@ -10,9 +10,13 @@
                 <h3 class="upcoming-header-title">Upcoming</h3>
             </div>
             <div class="upcoming-header-actions">
-                <button type="button" class="upcoming-action-btn" id="upcoming-toggle-scope-btn" onclick="window.toggleUpcomingScope()" title="Toggle Watchlist / All Market">
-                    <span id="upcoming-scope-label">All</span>
-                </button>
+                <div class="upcoming-scope-select-wrap">
+                    <select class="upcoming-scope-select" id="upcoming-scope-select" onchange="window.setUpcomingScope(this.value)" aria-label="Upcoming Events Scope">
+                        <option value="current">Current watchlist</option>
+                        <option value="all_watchlists">All Watchlist</option>
+                        <option value="all_stocks">All Stocks</option>
+                    </select>
+                </div>
                 <button type="button" class="upcoming-refresh-btn" onclick="window.triggerUpcomingRefresh(this)" title="Refresh Upcoming Events" aria-label="Refresh Events">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
@@ -38,7 +42,7 @@
         <div class="upcoming-empty-icon">📅</div>
         <div class="upcoming-empty-title">No upcoming events</div>
         <p class="upcoming-empty-desc" id="upcoming-empty-desc">No Results, AGMs, or Concalls announced for stocks in this watchlist.</p>
-        <button type="button" class="upcoming-view-all-pill" onclick="window.toggleUpcomingScope(true)">
+        <button type="button" class="upcoming-view-all-pill" onclick="window.setUpcomingScope('all_stocks')">
             View All Market Events
         </button>
     </div>

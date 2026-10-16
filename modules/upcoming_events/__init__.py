@@ -83,32 +83,49 @@ def get_upcoming_events_data():
     if _PROVIDER is None:
         return jsonify({"error": "Provider not initialized"}), 500
 
+    scope = str(request.args.get("scope", "")).strip().lower()
     watchlist_name = str(request.args.get("watchlist", "")).strip()
     show_all = str(request.args.get("all", "")).lower() in ("1", "true", "yes")
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
     all_watchlists = _extract_watchlist_symbols()
     target_symbols: Optional[Set[str]] = None
+    display_title = ""
 
-    if watchlist_name and not show_all:
-        target_symbols = all_watchlists.get(watchlist_name)
-        if target_symbols is None:
-            # Check case-insensitive match
-            for name, syms in all_watchlists.items():
-                if name.lower() == watchlist_name.lower():
-                    target_symbols = syms
-                    watchlist_name = name
-                    break
-        if target_symbols is None:
+    if scope == "all_stocks" or show_all:
+        target_symbols = None
+        display_title = "All Stocks"
+    elif scope == "all_watchlists":
+        combined_symbols: Set[str] = set()
+        for sym_set in all_watchlists.values():
+            combined_symbols.update(sym_set)
+        target_symbols = combined_symbols
+        display_title = "All Watchlists"
+    else:
+        # Default: "current" active watchlist
+        if watchlist_name:
+            target_symbols = all_watchlists.get(watchlist_name)
+            if target_symbols is None:
+                # Check case-insensitive match
+                for name, syms in all_watchlists.items():
+                    if name.lower() == watchlist_name.lower():
+                        target_symbols = syms
+                        watchlist_name = name
+                        break
+            if target_symbols is None:
+                target_symbols = set()
+            display_title = watchlist_name
+        else:
+            display_title = "Current Watchlist"
             target_symbols = set()
 
     try:
         data = _PROVIDER.get_upcoming_events(
             watchlist_symbols=target_symbols,
-            watchlist_name=watchlist_name or "All Watchlists",
+            watchlist_name=display_title,
             force_refresh=force_refresh,
         )
-        response = jsonify({"success": True, **data})
+        response = jsonify({"success": True, "scope": scope or ("all_stocks" if show_all else "current"), **data})
         response.headers["Cache-Control"] = "no-store"
         return response
     except Exception as exc:
