@@ -44,8 +44,8 @@
         if (qrState.isFetching) return;
         qrState.isFetching = true;
 
-        const refreshBtn = document.getElementById('qr-refresh-btn');
-        if (refreshBtn) refreshBtn.classList.add('refreshing');
+        const refreshBtns = document.querySelectorAll('.qr-refresh-btn');
+        refreshBtns.forEach(btn => btn.classList.add('refreshing'));
 
         const streamEl = document.getElementById('qr-cards-stream');
         if (!qrState.data && streamEl) {
@@ -88,7 +88,7 @@
             }
         } finally {
             qrState.isFetching = false;
-            if (refreshBtn) refreshBtn.classList.remove('refreshing');
+            refreshBtns.forEach(btn => btn.classList.remove('refreshing'));
         }
     }
 
@@ -104,7 +104,7 @@
         const pdfUrl = item.pdf_url ? escapeHtml(item.pdf_url) : '#';
         const ind = escapeHtml(item.industry || '');
 
-        const quarters = item.quarters || { latest: 'Sep 2026', prev: 'Jun 2026', year_ago: 'Sep 2025' };
+        const quarters = item.quarters || { latest: 'Sep 2024', prev: 'Jun 2024', year_ago: 'Sep 2023' };
 
         const rowsHtml = (item.metrics || []).map(m => {
             const name = escapeHtml(m.name || '');
@@ -191,7 +191,7 @@
         if (!data) return;
 
         // 0. Sync Quarter Title Tag
-        const qLabel = data.quarter_label || data.current_quarter || 'Q2 FY27';
+        const qLabel = data.quarter_label || data.current_quarter || 'Q2 FY25';
         const titleQuarterEl = document.getElementById('qr-title-quarter');
         if (titleQuarterEl) {
             titleQuarterEl.textContent = `(${qLabel})`;

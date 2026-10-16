@@ -4,44 +4,44 @@
     "company": "Tata Consultancy Services",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 3510.0,
-    "mcap_cr": 1270000.0,
-    "pe": 27.5,
-    "date": "2026-10-16",
+    "price": 4125.0,
+    "mcap_cr": 1492500.0,
+    "pe": 30.8,
+    "date": "2024-10-10",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/TCS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 8.0,
+        "yoy_pct": 7.6,
         "latest": "64,259",
         "prev": "62,613",
         "year_ago": "59,692"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 11.0,
-        "latest": "16,731",
-        "prev": "16,048",
-        "year_ago": "15,070"
+        "yoy_pct": 6.9,
+        "latest": "15,488",
+        "prev": "15,048",
+        "year_ago": "14,483"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 12.0,
-        "latest": "12,040",
-        "prev": "11,909",
-        "year_ago": "10,750"
+        "yoy_pct": 5.0,
+        "latest": "11,909",
+        "prev": "12,040",
+        "year_ago": "11,342"
       },
       {
         "name": "EPS",
-        "yoy_pct": 12.0,
-        "latest": "\u20b9 33.25",
-        "prev": "\u20b9 32.88",
-        "year_ago": "\u20b9 29.68"
+        "yoy_pct": 5.0,
+        "latest": "\u20b9 32.88",
+        "prev": "\u20b9 33.25",
+        "year_ago": "\u20b9 31.30"
       }
     ]
   },
@@ -53,12 +53,12 @@
     "price": 1720.0,
     "mcap_cr": 985400.0,
     "pe": 54.2,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BHARTIARTL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -96,90 +96,90 @@
     "company": "Infosys Ltd",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 1910.0,
-    "mcap_cr": 792000.0,
-    "pe": 28.2,
-    "date": "2026-10-16",
+    "price": 1920.0,
+    "mcap_cr": 796500.0,
+    "pe": 29.5,
+    "date": "2024-10-17",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/INFY_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 7.0,
+        "yoy_pct": 5.1,
         "latest": "40,986",
         "prev": "39,315",
-        "year_ago": "38,318"
+        "year_ago": "38,994"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 9.0,
-        "latest": "9,840",
-        "prev": "9,410",
-        "year_ago": "9,028"
+        "yoy_pct": 4.5,
+        "latest": "8,649",
+        "prev": "8,288",
+        "year_ago": "8,274"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 10.0,
+        "yoy_pct": 4.7,
         "latest": "6,506",
         "prev": "6,368",
-        "year_ago": "5,915"
+        "year_ago": "6,212"
       },
       {
         "name": "EPS",
-        "yoy_pct": 10.0,
-        "latest": "\u20b9 15.68",
-        "prev": "\u20b9 15.34",
-        "year_ago": "\u20b9 14.25"
+        "yoy_pct": 4.7,
+        "latest": "\u20b9 15.70",
+        "prev": "\u20b9 15.35",
+        "year_ago": "\u20b9 15.00"
       }
     ]
   },
   {
     "symbol": "AXISBANK",
     "company": "Axis Bank",
-    "industry": "Private Sector Bank",
+    "industry": "Banks - Private Sector",
     "exchange": "NSE",
     "price": 1180.0,
-    "mcap_cr": 364900.0,
+    "mcap_cr": 365200.0,
     "pe": 13.9,
-    "date": "2026-10-16",
+    "date": "2024-10-17",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/AXISBANK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 17.0,
-        "latest": "37,100",
-        "prev": "35,848",
-        "year_ago": "31,660"
+        "yoy_pct": 9.5,
+        "latest": "13,490",
+        "prev": "13,448",
+        "year_ago": "12,315"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 11.0,
-        "latest": "14,200",
-        "prev": "13,500",
-        "year_ago": "12,800"
+        "yoy_pct": 24.1,
+        "latest": "10,712",
+        "prev": "10,105",
+        "year_ago": "8,632"
       },
       {
         "name": "Net profit",
         "yoy_pct": 18.0,
-        "latest": "6,917",
+        "latest": "6,918",
         "prev": "6,035",
-        "year_ago": "5,863"
+        "year_ago": "5,864"
       },
       {
         "name": "EPS",
-        "yoy_pct": 18.0,
-        "latest": "\u20b9 22.40",
-        "prev": "\u20b9 19.54",
-        "year_ago": "\u20b9 18.99"
+        "yoy_pct": 17.5,
+        "latest": "\u20b9 22.38",
+        "prev": "\u20b9 19.55",
+        "year_ago": "\u20b9 19.04"
       }
     ]
   },
@@ -191,12 +191,12 @@
     "price": 995.0,
     "mcap_cr": 243300.0,
     "pe": 34.2,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/JSWSTEEL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -237,12 +237,12 @@
     "price": 268.0,
     "mcap_cr": 236700.0,
     "pe": 240.5,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ZOMATO_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -283,12 +283,12 @@
     "price": 2380.0,
     "mcap_cr": 229500.0,
     "pe": 72.8,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/NESTLEIND_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -329,12 +329,12 @@
     "price": 4920.0,
     "mcap_cr": 134800.0,
     "pe": 31.7,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/EICHERMOT_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -375,12 +375,12 @@
     "price": 1450.0,
     "mcap_cr": 121800.0,
     "pe": 34.5,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/CHOLAFIN_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -421,12 +421,12 @@
     "price": 142.5,
     "mcap_cr": 118600.0,
     "pe": 68.2,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BAJAJHFL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -462,46 +462,46 @@
   {
     "symbol": "DIXON",
     "company": "Dixon Technologies",
-    "industry": "Consumer Durables & Electronics",
+    "industry": "Electronics - Component & Equipment",
     "exchange": "NSE",
-    "price": 15120.0,
-    "mcap_cr": 90450.0,
-    "pe": 138.2,
-    "date": "2026-10-16",
+    "price": 14650.0,
+    "mcap_cr": 87600.0,
+    "pe": 115.0,
+    "date": "2024-10-24",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/DIXON_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 133.0,
+        "yoy_pct": 133.3,
         "latest": "11,534",
-        "prev": "6,588",
+        "prev": "6,580",
         "year_ago": "4,943"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 122.0,
-        "latest": "442",
+        "yoy_pct": 114.1,
+        "latest": "426",
         "prev": "256",
         "year_ago": "199"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 265.0,
+        "yoy_pct": 264.6,
         "latest": "412",
         "prev": "134",
         "year_ago": "113"
       },
       {
         "name": "EPS",
-        "yoy_pct": 265.0,
-        "latest": "\u20b9 68.80",
-        "prev": "\u20b9 22.38",
-        "year_ago": "\u20b9 18.87"
+        "yoy_pct": 262.2,
+        "latest": "\u20b9 68.67",
+        "prev": "\u20b9 22.35",
+        "year_ago": "\u20b9 18.96"
       }
     ]
   },
@@ -513,12 +513,12 @@
     "price": 4790.0,
     "mcap_cr": 64800.0,
     "pe": 82.5,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BSE_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -559,12 +559,12 @@
     "price": 1780.0,
     "mcap_cr": 58900.0,
     "pe": 88.5,
-    "date": "2026-10-16",
+    "date": "2024-10-16",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/VOLTAS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -599,47 +599,47 @@
   },
   {
     "symbol": "COFORGE",
-    "company": "Coforge Limited",
+    "company": "Coforge Ltd",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 7920.0,
-    "mcap_cr": 52600.0,
-    "pe": 58.2,
-    "date": "2026-10-16",
+    "price": 7250.0,
+    "mcap_cr": 44800.0,
+    "pe": 49.0,
+    "date": "2024-10-22",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/COFORGE_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 34.0,
-        "latest": "3,061",
-        "prev": "2,400",
+        "yoy_pct": 34.5,
+        "latest": "3,062",
+        "prev": "2,401",
         "year_ago": "2,276"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 34.0,
-        "latest": "518",
-        "prev": "388",
-        "year_ago": "386"
+        "yoy_pct": 27.8,
+        "latest": "488",
+        "prev": "378",
+        "year_ago": "382"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 17.0,
-        "latest": "212",
+        "yoy_pct": 24.0,
+        "latest": "255",
         "prev": "133",
-        "year_ago": "181"
+        "year_ago": "206"
       },
       {
         "name": "EPS",
-        "yoy_pct": 17.0,
-        "latest": "\u20b9 31.90",
-        "prev": "\u20b9 20.01",
-        "year_ago": "\u20b9 27.24"
+        "yoy_pct": 24.0,
+        "latest": "\u20b9 38.60",
+        "prev": "\u20b9 21.40",
+        "year_ago": "\u20b9 31.13"
       }
     ]
   },
@@ -651,12 +651,12 @@
     "price": 198.5,
     "mcap_cr": 48500.0,
     "pe": 11.2,
-    "date": "2026-10-16",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/FEDERALBNK_16102026132028_FBL_BM_Outcome_Q2_S.pdf",
+    "date": "2024-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/FEDERALBNK_16102024132028_FBL_BM_Outcome_Q2_S.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -697,12 +697,12 @@
     "price": 685.0,
     "mcap_cr": 2465.0,
     "pe": 38.0,
-    "date": "2026-10-16",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/SOLARA_16102026133129_SE_Outcome_Signed.pdf",
+    "date": "2024-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/SOLARA_16102024133129_SE_Outcome_Signed.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -743,12 +743,12 @@
     "price": 7320.0,
     "mcap_cr": 453100.0,
     "pe": 29.2,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BAJFINANCE_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -789,12 +789,12 @@
     "price": 12850.0,
     "mcap_cr": 403900.0,
     "pe": 27.4,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/MARUTI_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -835,12 +835,12 @@
     "price": 11450.0,
     "mcap_cr": 330600.0,
     "pe": 44.5,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ULTRACEMCO_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -881,12 +881,12 @@
     "price": 1420.0,
     "mcap_cr": 306700.0,
     "pe": 32.8,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ADANIPORTS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -924,44 +924,44 @@
     "company": "Wipro Ltd",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 540.0,
-    "mcap_cr": 290000.0,
-    "pe": 22.0,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/WIPRO_15102026.pdf",
+    "price": 530.0,
+    "mcap_cr": 277200.0,
+    "pe": 24.5,
+    "date": "2024-10-17",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/WIPRO_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 2.5,
-        "latest": "22300",
-        "prev": "21964",
-        "year_ago": "21756"
+        "yoy_pct": -1.0,
+        "latest": "22,302",
+        "prev": "21,964",
+        "year_ago": "22,516"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 5.0,
-        "latest": "4150",
-        "prev": "4020",
-        "year_ago": "3952"
+        "yoy_pct": 3.4,
+        "latest": "3,732",
+        "prev": "3,612",
+        "year_ago": "3,610"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 6.2,
-        "latest": "3209",
-        "prev": "3003",
-        "year_ago": "3022"
+        "yoy_pct": 21.2,
+        "latest": "3,209",
+        "prev": "3,003",
+        "year_ago": "2,646"
       },
       {
         "name": "EPS",
-        "yoy_pct": 6.2,
-        "latest": "\u20b9 6.13",
+        "yoy_pct": 21.3,
+        "latest": "\u20b9 6.14",
         "prev": "\u20b9 5.74",
-        "year_ago": "\u20b9 5.77"
+        "year_ago": "\u20b9 5.06"
       }
     ]
   },
@@ -971,43 +971,43 @@
     "industry": "Automobiles - 2 & 3 Wheelers",
     "exchange": "NSE",
     "price": 10250.0,
-    "mcap_cr": 286700.0,
-    "pe": 36.4,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/BAJAJAUTO_Outcome_Q2.pdf",
+    "mcap_cr": 286000.0,
+    "pe": 34.5,
+    "date": "2024-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/BAJAJ_AUTO_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 22.0,
+        "yoy_pct": 21.8,
         "latest": "13,127",
         "prev": "11,928",
         "year_ago": "10,777"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 24.0,
-        "latest": "2,652",
+        "yoy_pct": 24.4,
+        "latest": "2,653",
         "prev": "2,415",
         "year_ago": "2,133"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 9.0,
+        "yoy_pct": 9.2,
         "latest": "2,005",
         "prev": "1,988",
         "year_ago": "1,836"
       },
       {
         "name": "EPS",
-        "yoy_pct": 9.0,
+        "yoy_pct": 10.6,
         "latest": "\u20b9 71.80",
-        "prev": "\u20b9 71.19",
-        "year_ago": "\u20b9 65.75"
+        "prev": "\u20b9 70.80",
+        "year_ago": "\u20b9 64.90"
       }
     ]
   },
@@ -1019,12 +1019,12 @@
     "price": 288.0,
     "mcap_cr": 210500.0,
     "pe": 47.8,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BEL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1062,44 +1062,44 @@
     "company": "LTIMindtree",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 6120.0,
-    "mcap_cr": 181200.0,
-    "pe": 39.4,
-    "date": "2026-10-15",
+    "price": 6050.0,
+    "mcap_cr": 179200.0,
+    "pe": 37.8,
+    "date": "2024-10-17",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/LTIM_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 6.0,
-        "latest": "9,433",
-        "prev": "9,142",
-        "year_ago": "8,905"
+        "yoy_pct": 10.2,
+        "latest": "10,394",
+        "prev": "9,842",
+        "year_ago": "9,431"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 6.0,
-        "latest": "1,710",
-        "prev": "1,610",
-        "year_ago": "1,610"
+        "yoy_pct": 9.4,
+        "latest": "1,652",
+        "prev": "1,478",
+        "year_ago": "1,510"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 8.0,
-        "latest": "1,251",
-        "prev": "1,134",
+        "yoy_pct": 18.8,
+        "latest": "1,381",
+        "prev": "1,255",
         "year_ago": "1,162"
       },
       {
         "name": "EPS",
-        "yoy_pct": 8.0,
-        "latest": "\u20b9 42.20",
-        "prev": "\u20b9 38.25",
-        "year_ago": "\u20b9 39.20"
+        "yoy_pct": 18.8,
+        "latest": "\u20b9 46.65",
+        "prev": "\u20b9 42.38",
+        "year_ago": "\u20b9 39.26"
       }
     ]
   },
@@ -1108,30 +1108,30 @@
     "company": "Tech Mahindra",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 1690.0,
-    "mcap_cr": 165400.0,
-    "pe": 49.3,
-    "date": "2026-10-15",
+    "price": 1710.0,
+    "mcap_cr": 167500.0,
+    "pe": 48.0,
+    "date": "2024-10-19",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/TECHM_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 3.0,
+        "yoy_pct": 3.5,
         "latest": "13,313",
-        "prev": "13,005",
+        "prev": "13,006",
         "year_ago": "12,864"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 64.0,
+        "yoy_pct": 63.9,
         "latest": "1,750",
-        "prev": "1,564",
-        "year_ago": "1,070"
+        "prev": "1,565",
+        "year_ago": "1,068"
       },
       {
         "name": "Net profit",
@@ -1142,56 +1142,56 @@
       },
       {
         "name": "EPS",
-        "yoy_pct": 153.0,
+        "yoy_pct": 152.2,
         "latest": "\u20b9 14.10",
-        "prev": "\u20b9 9.60",
-        "year_ago": "\u20b9 5.57"
+        "prev": "\u20b9 9.62",
+        "year_ago": "\u20b9 5.59"
       }
     ]
   },
   {
     "symbol": "POLYCAB",
     "company": "Polycab India",
-    "industry": "Capital Goods - Electrical",
+    "industry": "Cables - Electricals",
     "exchange": "NSE",
-    "price": 6890.0,
-    "mcap_cr": 103500.0,
-    "pe": 54.1,
-    "date": "2026-10-15",
+    "price": 6850.0,
+    "mcap_cr": 102900.0,
+    "pe": 54.5,
+    "date": "2024-10-17",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/POLYCAB_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 30.0,
+        "yoy_pct": 30.3,
         "latest": "5,498",
         "prev": "4,698",
         "year_ago": "4,218"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 15.0,
-        "latest": "698",
-        "prev": "597",
+        "yoy_pct": 3.8,
+        "latest": "632",
+        "prev": "595",
         "year_ago": "609"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 2.0,
-        "latest": "440",
+        "yoy_pct": 3.7,
+        "latest": "445",
         "prev": "401",
-        "year_ago": "430"
+        "year_ago": "429"
       },
       {
         "name": "EPS",
-        "yoy_pct": 2.0,
-        "latest": "\u20b9 29.30",
+        "yoy_pct": 3.5,
+        "latest": "\u20b9 29.60",
         "prev": "\u20b9 26.70",
-        "year_ago": "\u20b9 28.63"
+        "year_ago": "\u20b9 28.60"
       }
     ]
   },
@@ -1203,12 +1203,12 @@
     "price": 7180.0,
     "mcap_cr": 103200.0,
     "pe": 84.1,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/APOLLOHOSP_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1246,44 +1246,44 @@
     "company": "Persistent Systems",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 5646.0,
-    "mcap_cr": 89067.0,
-    "pe": 47.7,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/PERSISTENT_15102026_Q2_Results.pdf",
+    "price": 5420.0,
+    "mcap_cr": 83450.0,
+    "pe": 65.0,
+    "date": "2024-10-22",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/PERSISTENT_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 30.0,
-        "latest": "4,664",
-        "prev": "4,303",
-        "year_ago": "3,581"
+        "yoy_pct": 20.1,
+        "latest": "2,897",
+        "prev": "2,737",
+        "year_ago": "2,412"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": -7.0,
-        "latest": "633",
-        "prev": "697",
-        "year_ago": "683"
+        "yoy_pct": 23.5,
+        "latest": "468",
+        "prev": "415",
+        "year_ago": "379"
       },
       {
         "name": "Net profit",
-        "yoy_pct": -25.0,
-        "latest": "352",
-        "prev": "483",
-        "year_ago": "471"
+        "yoy_pct": 23.4,
+        "latest": "325",
+        "prev": "306",
+        "year_ago": "263"
       },
       {
         "name": "EPS",
-        "yoy_pct": -26.0,
-        "latest": "\u20b9 22.28",
-        "prev": "\u20b9 30.62",
-        "year_ago": "\u20b9 30.15"
+        "yoy_pct": 23.4,
+        "latest": "\u20b9 21.05",
+        "prev": "\u20b9 19.85",
+        "year_ago": "\u20b9 17.06"
       }
     ]
   },
@@ -1295,12 +1295,12 @@
     "price": 1960.0,
     "mcap_cr": 78700.0,
     "pe": 16.9,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/MUTHOOTFIN_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1341,12 +1341,12 @@
     "price": 72.0,
     "mcap_cr": 51200.0,
     "pe": 17.5,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/IDFCFIRSTB_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1387,12 +1387,12 @@
     "price": 1890.0,
     "mcap_cr": 50700.0,
     "pe": 84.2,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ASTRAL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1433,12 +1433,12 @@
     "price": 2720.0,
     "mcap_cr": 37100.0,
     "pe": 45.8,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/DEEPAKNTR_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1479,12 +1479,12 @@
     "price": 1580.0,
     "mcap_cr": 33020.0,
     "pe": 64.2,
-    "date": "2026-10-15",
+    "date": "2024-10-15",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/CDSL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1520,46 +1520,46 @@
   {
     "symbol": "ANGELONE",
     "company": "Angel One",
-    "industry": "Stockbroking & Allied",
+    "industry": "Finance - Broking & NBFC",
     "exchange": "NSE",
-    "price": 304.0,
-    "mcap_cr": 27758.0,
-    "pe": 24.0,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/ANGELONE_15102026_Q2_Results.pdf",
+    "price": 2840.0,
+    "mcap_cr": 25600.0,
+    "pe": 21.2,
+    "date": "2024-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/ANGELONE_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 19.0,
-        "latest": "1,427",
-        "prev": "1,430",
-        "year_ago": "1,202"
+        "yoy_pct": 44.5,
+        "latest": "1,515",
+        "prev": "1,405",
+        "year_ago": "1,048"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 53.0,
-        "latest": "636",
-        "prev": "485",
-        "year_ago": "415"
+        "yoy_pct": 40.5,
+        "latest": "572",
+        "prev": "418",
+        "year_ago": "407"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 58.0,
-        "latest": "335",
-        "prev": "231",
-        "year_ago": "212"
+        "yoy_pct": 39.3,
+        "latest": "423",
+        "prev": "293",
+        "year_ago": "304"
       },
       {
         "name": "EPS",
-        "yoy_pct": 57.0,
-        "latest": "\u20b9 3.66",
-        "prev": "\u20b9 2.53",
-        "year_ago": "\u20b9 2.33"
+        "yoy_pct": 29.2,
+        "latest": "\u20b9 46.98",
+        "prev": "\u20b9 32.55",
+        "year_ago": "\u20b9 36.35"
       }
     ]
   },
@@ -1571,12 +1571,12 @@
     "price": 1890.0,
     "mcap_cr": 20950.0,
     "pe": 29.4,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/CYIENT_15102026_Q2_Outcome.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/CYIENT_15102024_Q2_Outcome.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1617,17 +1617,17 @@
     "price": 2780.0,
     "mcap_cr": 15720.0,
     "pe": 112.5,
-    "date": "2026-10-15",
+    "date": "2024-10-19",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/NETWEB_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 73.0,
+        "yoy_pct": 73.1,
         "latest": "251",
         "prev": "153",
         "year_ago": "145"
@@ -1641,14 +1641,14 @@
       },
       {
         "name": "Net profit",
-        "yoy_pct": 73.0,
+        "yoy_pct": 73.3,
         "latest": "26",
         "prev": "15",
         "year_ago": "15"
       },
       {
         "name": "EPS",
-        "yoy_pct": 73.0,
+        "yoy_pct": 73.6,
         "latest": "\u20b9 4.60",
         "prev": "\u20b9 2.65",
         "year_ago": "\u20b9 2.65"
@@ -1663,12 +1663,12 @@
     "price": 51.2,
     "mcap_cr": 13428.0,
     "pe": 8.5,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/SOUTHBANK_15102026_Q2_Results.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/SOUTHBANK_15102024_Q2_Results.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1709,12 +1709,12 @@
     "price": 335.0,
     "mcap_cr": 10060.0,
     "pe": 33.0,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/TRIL_15102026_Q2_Results.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/TRIL_15102024_Q2_Results.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1755,12 +1755,12 @@
     "price": 1380.0,
     "mcap_cr": 8600.0,
     "pe": 26.5,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/ROUTE_15102026.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/ROUTE_15102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1801,12 +1801,12 @@
     "price": 410.0,
     "mcap_cr": 3850.0,
     "pe": 32.0,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/ASTRAMICRO_15102026.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/ASTRAMICRO_15102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1847,12 +1847,12 @@
     "price": 1420.0,
     "mcap_cr": 1380.0,
     "pe": 31.5,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/BETADRUGS_15102026_Q2_Outcome.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/BETADRUGS_15102024_Q2_Outcome.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1893,12 +1893,12 @@
     "price": 445.0,
     "mcap_cr": 890.0,
     "pe": 9.2,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/ANDHRAPAP_15102026.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/ANDHRAPAP_15102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1939,12 +1939,12 @@
     "price": 385.0,
     "mcap_cr": 320.0,
     "pe": 16.8,
-    "date": "2026-10-15",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/MANGALAM_15102026.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/MANGALAM_15102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -1985,12 +1985,12 @@
     "price": 18.5,
     "mcap_cr": 48.0,
     "pe": 14.2,
-    "date": "2026-10-15",
-    "pdf_url": "https://www.bseindia.com/xml-data/corpfiling/AttachLive/SHREEKARTHIK_15102026.pdf",
+    "date": "2024-10-15",
+    "pdf_url": "https://www.bseindia.com/xml-data/corpfiling/AttachLive/SHREEKARTHIK_15102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2031,87 +2031,87 @@
     "price": 2740.0,
     "mcap_cr": 1854000.0,
     "pe": 25.8,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/RELIANCE_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 5.0,
-        "latest": "240,357",
-        "prev": "236,217",
-        "year_ago": "228,910"
+        "yoy_pct": 0.2,
+        "latest": "2,35,481",
+        "prev": "2,36,217",
+        "year_ago": "2,34,956"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 4.0,
-        "latest": "43,934",
-        "prev": "42,748",
-        "year_ago": "42,250"
+        "yoy_pct": -2.0,
+        "latest": "39,058",
+        "prev": "38,765",
+        "year_ago": "39,850"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 6.0,
-        "latest": "19,323",
-        "prev": "17,445",
-        "year_ago": "18,228"
+        "yoy_pct": -4.8,
+        "latest": "16,563",
+        "prev": "15,138",
+        "year_ago": "17,394"
       },
       {
         "name": "EPS",
-        "yoy_pct": 6.0,
-        "latest": "\u20b9 28.58",
-        "prev": "\u20b9 25.80",
-        "year_ago": "\u20b9 26.96"
+        "yoy_pct": -4.8,
+        "latest": "\u20b9 24.50",
+        "prev": "\u20b9 22.38",
+        "year_ago": "\u20b9 25.72"
       }
     ]
   },
   {
     "symbol": "HDFCBANK",
     "company": "HDFC Bank",
-    "industry": "Private Sector Bank",
+    "industry": "Banks - Private Sector",
     "exchange": "NSE",
-    "price": 1680.0,
-    "mcap_cr": 1280000.0,
-    "pe": 18.9,
-    "date": "2026-10-14",
+    "price": 1690.0,
+    "mcap_cr": 1285000.0,
+    "pe": 18.8,
+    "date": "2024-10-19",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/HDFCBANK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 24.0,
-        "latest": "85,500",
-        "prev": "83,700",
-        "year_ago": "68,900"
+        "yoy_pct": 10.0,
+        "latest": "30,110",
+        "prev": "29,840",
+        "year_ago": "27,380"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 22.0,
-        "latest": "24,200",
-        "prev": "23,500",
-        "year_ago": "19,800"
+        "yoy_pct": 7.6,
+        "latest": "23,450",
+        "prev": "22,890",
+        "year_ago": "21,800"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 17.0,
-        "latest": "16,820",
-        "prev": "16,170",
-        "year_ago": "14,380"
+        "yoy_pct": 5.3,
+        "latest": "16,821",
+        "prev": "16,175",
+        "year_ago": "15,976"
       },
       {
         "name": "EPS",
-        "yoy_pct": 17.0,
+        "yoy_pct": 4.5,
         "latest": "\u20b9 22.10",
-        "prev": "\u20b9 21.25",
-        "year_ago": "\u20b9 18.90"
+        "prev": "\u20b9 21.28",
+        "year_ago": "\u20b9 21.15"
       }
     ]
   },
@@ -2123,12 +2123,12 @@
     "price": 1260.0,
     "mcap_cr": 884500.0,
     "pe": 18.2,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ICICIBANK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2169,12 +2169,12 @@
     "price": 820.0,
     "mcap_cr": 731800.0,
     "pe": 10.6,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/SBIN_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2212,41 +2212,41 @@
     "company": "HCL Technologies",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 1860.0,
-    "mcap_cr": 504700.0,
-    "pe": 28.9,
-    "date": "2026-10-14",
+    "price": 1845.0,
+    "mcap_cr": 500600.0,
+    "pe": 28.2,
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/HCLTECH_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 8.0,
+        "yoy_pct": 8.2,
         "latest": "28,862",
         "prev": "28,057",
         "year_ago": "26,672"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 11.0,
-        "latest": "6,210",
-        "prev": "5,900",
-        "year_ago": "5,600"
+        "yoy_pct": 8.7,
+        "latest": "5,362",
+        "prev": "4,795",
+        "year_ago": "4,934"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 11.0,
+        "yoy_pct": 10.5,
         "latest": "4,235",
         "prev": "4,257",
         "year_ago": "3,832"
       },
       {
         "name": "EPS",
-        "yoy_pct": 11.0,
+        "yoy_pct": 10.5,
         "latest": "\u20b9 15.60",
         "prev": "\u20b9 15.68",
         "year_ago": "\u20b9 14.12"
@@ -2261,12 +2261,12 @@
     "price": 1910.0,
     "mcap_cr": 458200.0,
     "pe": 41.2,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/SUNPHARMA_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2307,12 +2307,12 @@
     "price": 425.0,
     "mcap_cr": 412100.0,
     "pe": 18.9,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/NTPC_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2353,12 +2353,12 @@
     "price": 930.0,
     "mcap_cr": 345000.0,
     "pe": 11.2,
-    "date": "2026-10-14",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/TATAMOTORS_14102026.pdf",
+    "date": "2024-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/TATAMOTORS_14102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2399,12 +2399,12 @@
     "price": 3500.0,
     "mcap_cr": 310000.0,
     "pe": 82.5,
-    "date": "2026-10-14",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/TITAN_14102026.pdf",
+    "date": "2024-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/TITAN_14102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2445,12 +2445,12 @@
     "price": 495.0,
     "mcap_cr": 305000.0,
     "pe": 8.1,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/COALINDIA_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2491,12 +2491,12 @@
     "price": 4480.0,
     "mcap_cr": 299600.0,
     "pe": 38.6,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/HAL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2537,12 +2537,12 @@
     "price": 8150.0,
     "mcap_cr": 289600.0,
     "pe": 168.4,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/TRENT_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2583,12 +2583,12 @@
     "price": 5850.0,
     "mcap_cr": 155300.0,
     "pe": 88.5,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/DIVISLAB_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2629,12 +2629,12 @@
     "price": 5740.0,
     "mcap_cr": 138300.0,
     "pe": 62.1,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BRITANNIA_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2670,46 +2670,46 @@
   {
     "symbol": "HAVELLS",
     "company": "Havells India",
-    "industry": "Consumer Durables & Electronics",
+    "industry": "Consumer Electricals",
     "exchange": "NSE",
     "price": 1820.0,
-    "mcap_cr": 114100.0,
-    "pe": 78.4,
-    "date": "2026-10-14",
+    "mcap_cr": 114200.0,
+    "pe": 72.8,
+    "date": "2024-10-17",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/HAVELLS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 16.0,
-        "latest": "4,539",
-        "prev": "5,798",
-        "year_ago": "3,900"
+        "yoy_pct": 16.5,
+        "latest": "4,533",
+        "prev": "5,807",
+        "year_ago": "3,891"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": -1.0,
+        "yoy_pct": -0.5,
         "latest": "371",
-        "prev": "576",
+        "prev": "438",
         "year_ago": "373"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 8.0,
+        "yoy_pct": 7.6,
         "latest": "268",
-        "prev": "408",
+        "prev": "407",
         "year_ago": "249"
       },
       {
         "name": "EPS",
-        "yoy_pct": 8.0,
-        "latest": "\u20b9 4.30",
-        "prev": "\u20b9 6.55",
-        "year_ago": "\u20b9 4.00"
+        "yoy_pct": 7.8,
+        "latest": "\u20b9 4.28",
+        "prev": "\u20b9 6.49",
+        "year_ago": "\u20b9 3.97"
       }
     ]
   },
@@ -2718,44 +2718,44 @@
     "company": "L&T Technology Services",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 5120.0,
-    "mcap_cr": 54100.0,
-    "pe": 38.6,
-    "date": "2026-10-14",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/LTTS_14102026_Q2_Outcome.pdf",
+    "price": 5230.0,
+    "mcap_cr": 55400.0,
+    "pe": 42.0,
+    "date": "2024-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/LTTS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 10.0,
-        "latest": "2,570",
-        "prev": "2,460",
-        "year_ago": "2,336"
+        "yoy_pct": 7.8,
+        "latest": "2,573",
+        "prev": "2,462",
+        "year_ago": "2,387"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 8.0,
-        "latest": "462",
-        "prev": "445",
-        "year_ago": "428"
+        "yoy_pct": 3.2,
+        "latest": "439",
+        "prev": "416",
+        "year_ago": "425"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 9.0,
+        "yoy_pct": 1.9,
         "latest": "320",
-        "prev": "313",
-        "year_ago": "294"
+        "prev": "314",
+        "year_ago": "314"
       },
       {
         "name": "EPS",
-        "yoy_pct": 9.0,
-        "latest": "\u20b9 30.25",
-        "prev": "\u20b9 29.60",
-        "year_ago": "\u20b9 27.80"
+        "yoy_pct": 1.9,
+        "latest": "\u20b9 30.20",
+        "prev": "\u20b9 29.65",
+        "year_ago": "\u20b9 29.65"
       }
     ]
   },
@@ -2767,12 +2767,12 @@
     "price": 645.0,
     "mcap_cr": 48100.0,
     "pe": 26.8,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/AUBANK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2813,12 +2813,12 @@
     "price": 1650.0,
     "mcap_cr": 45200.0,
     "pe": 69.1,
-    "date": "2026-10-14",
+    "date": "2024-10-14",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/KPITTECH_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2853,47 +2853,47 @@
   },
   {
     "symbol": "CLEAN",
-    "company": "Clean Science and Tech.",
-    "industry": "Chemicals - Specialty",
+    "company": "Clean Science & Technology",
+    "industry": "Speciality Chemicals",
     "exchange": "NSE",
-    "price": 1420.0,
-    "mcap_cr": 15090.0,
-    "pe": 54.3,
-    "date": "2026-10-14",
+    "price": 1410.0,
+    "mcap_cr": 14980.0,
+    "pe": 58.2,
+    "date": "2024-10-26",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/CLEAN_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 31.0,
+        "yoy_pct": 31.5,
         "latest": "238",
         "prev": "224",
         "year_ago": "181"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 32.0,
-        "latest": "98",
-        "prev": "89",
-        "year_ago": "74"
+        "yoy_pct": 23.7,
+        "latest": "94",
+        "prev": "92",
+        "year_ago": "76"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 27.0,
-        "latest": "66",
-        "prev": "61",
+        "yoy_pct": 13.5,
+        "latest": "59",
+        "prev": "66",
         "year_ago": "52"
       },
       {
         "name": "EPS",
-        "yoy_pct": 27.0,
-        "latest": "\u20b9 6.20",
-        "prev": "\u20b9 5.73",
-        "year_ago": "\u20b9 4.88"
+        "yoy_pct": 13.5,
+        "latest": "\u20b9 5.55",
+        "prev": "\u20b9 6.21",
+        "year_ago": "\u20b9 4.89"
       }
     ]
   },
@@ -2905,12 +2905,12 @@
     "price": 675.0,
     "mcap_cr": 7450.0,
     "pe": 29.4,
-    "date": "2026-10-14",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/CENTURYPLY_14102026.pdf",
+    "date": "2024-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/CENTURYPLY_14102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2951,12 +2951,12 @@
     "price": 295.0,
     "mcap_cr": 480.0,
     "pe": 8.4,
-    "date": "2026-10-14",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/SESHAPAPER_14102026.pdf",
+    "date": "2024-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/SESHAPAPER_14102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -2997,12 +2997,12 @@
     "price": 42.0,
     "mcap_cr": 82.0,
     "pe": 19.5,
-    "date": "2026-10-14",
-    "pdf_url": "https://www.bseindia.com/xml-data/corpfiling/AttachLive/INVICTA_14102026.pdf",
+    "date": "2024-10-14",
+    "pdf_url": "https://www.bseindia.com/xml-data/corpfiling/AttachLive/INVICTA_14102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3043,12 +3043,12 @@
     "price": 3650.0,
     "mcap_cr": 501800.0,
     "pe": 36.1,
-    "date": "2026-10-13",
+    "date": "2024-10-13",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/LT_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3089,12 +3089,12 @@
     "price": 335.0,
     "mcap_cr": 311500.0,
     "pe": 19.8,
-    "date": "2026-10-13",
+    "date": "2024-10-13",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/POWERGRID_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3135,12 +3135,12 @@
     "price": 1540.0,
     "mcap_cr": 124300.0,
     "pe": 26.5,
-    "date": "2026-10-13",
+    "date": "2024-10-13",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/CIPLA_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3181,12 +3181,12 @@
     "price": 3050.0,
     "mcap_cr": 57800.0,
     "pe": 34.6,
-    "date": "2026-10-13",
+    "date": "2024-10-13",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/MPHASIS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3224,44 +3224,44 @@
     "company": "Tata Elxsi",
     "industry": "Computers - Software & Consulting",
     "exchange": "NSE",
-    "price": 7650.0,
-    "mcap_cr": 47650.0,
-    "pe": 54.0,
-    "date": "2026-10-13",
+    "price": 7560.0,
+    "mcap_cr": 47080.0,
+    "pe": 58.0,
+    "date": "2024-10-10",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/TATAELXSI_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 8.0,
+        "yoy_pct": 8.3,
         "latest": "955",
         "prev": "926",
-        "year_ago": "884"
+        "year_ago": "882"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 6.0,
-        "latest": "268",
-        "prev": "263",
+        "yoy_pct": 5.4,
+        "latest": "267",
+        "prev": "258",
         "year_ago": "253"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 5.0,
+        "yoy_pct": 14.7,
         "latest": "229",
-        "prev": "221",
-        "year_ago": "218"
+        "prev": "184",
+        "year_ago": "200"
       },
       {
         "name": "EPS",
-        "yoy_pct": 5.0,
-        "latest": "\u20b9 36.75",
-        "prev": "\u20b9 35.48",
-        "year_ago": "\u20b9 35.00"
+        "yoy_pct": 14.7,
+        "latest": "\u20b9 36.85",
+        "prev": "\u20b9 29.58",
+        "year_ago": "\u20b9 32.12"
       }
     ]
   },
@@ -3273,12 +3273,12 @@
     "price": 180.0,
     "mcap_cr": 970.0,
     "pe": 7.1,
-    "date": "2026-10-13",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/GICHSGFIN_13102026.pdf",
+    "date": "2024-10-13",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/GICHSGFIN_13102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3319,12 +3319,12 @@
     "price": 490.0,
     "mcap_cr": 612000.0,
     "pe": 28.5,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ITC_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3360,46 +3360,46 @@
   {
     "symbol": "KOTAKBANK",
     "company": "Kotak Mahindra Bank",
-    "industry": "Private Sector Bank",
+    "industry": "Banks - Private Sector",
     "exchange": "NSE",
-    "price": 1890.0,
-    "mcap_cr": 375800.0,
-    "pe": 21.3,
-    "date": "2026-10-12",
+    "price": 1780.0,
+    "mcap_cr": 354000.0,
+    "pe": 19.5,
+    "date": "2024-10-19",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/KOTAKBANK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 15.0,
-        "latest": "22,400",
-        "prev": "21,800",
-        "year_ago": "19,500"
+        "yoy_pct": 11.5,
+        "latest": "7,020",
+        "prev": "6,842",
+        "year_ago": "6,297"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 13.0,
-        "latest": "9,800",
-        "prev": "9,500",
-        "year_ago": "8,700"
+        "yoy_pct": 11.1,
+        "latest": "5,120",
+        "prev": "4,980",
+        "year_ago": "4,610"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 14.0,
-        "latest": "5,040",
-        "prev": "4,850",
-        "year_ago": "4,423"
+        "yoy_pct": 4.8,
+        "latest": "3,344",
+        "prev": "3,191",
+        "year_ago": "3,191"
       },
       {
         "name": "EPS",
-        "yoy_pct": 14.0,
-        "latest": "\u20b9 25.30",
-        "prev": "\u20b9 24.35",
-        "year_ago": "\u20b9 22.20"
+        "yoy_pct": 4.8,
+        "latest": "\u20b9 16.82",
+        "prev": "\u20b9 16.05",
+        "year_ago": "\u20b9 16.05"
       }
     ]
   },
@@ -3411,12 +3411,12 @@
     "price": 290.0,
     "mcap_cr": 364800.0,
     "pe": 8.7,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ONGC_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3457,12 +3457,12 @@
     "price": 4120.0,
     "mcap_cr": 268100.0,
     "pe": 96.4,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/DMART_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3503,12 +3503,12 @@
     "price": 725.0,
     "mcap_cr": 162900.0,
     "pe": 14.5,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/HINDALCO_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3549,12 +3549,12 @@
     "price": 1280.0,
     "mcap_cr": 130900.0,
     "pe": 64.5,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/GODREJCP_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3595,12 +3595,12 @@
     "price": 6680.0,
     "mcap_cr": 111500.0,
     "pe": 19.8,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/DRREDDY_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3641,12 +3641,12 @@
     "price": 4210.0,
     "mcap_cr": 84900.0,
     "pe": 38.2,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/MAZDOCK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3687,12 +3687,12 @@
     "price": 5420.0,
     "mcap_cr": 34600.0,
     "pe": 128.5,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/KAYNES_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3733,12 +3733,12 @@
     "price": 182.0,
     "mcap_cr": 29300.0,
     "pe": 10.4,
-    "date": "2026-10-12",
+    "date": "2024-10-12",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BANDHANBNK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3774,46 +3774,46 @@
   {
     "symbol": "ROLEXRINGS",
     "company": "Rolex Rings",
-    "industry": "Auto Components & Equipments",
+    "industry": "Auto Ancillaries",
     "exchange": "NSE",
-    "price": 2420.0,
-    "mcap_cr": 6590.0,
-    "pe": 32.4,
-    "date": "2026-10-12",
+    "price": 2240.0,
+    "mcap_cr": 6090.0,
+    "pe": 32.1,
+    "date": "2024-10-28",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ROLEXRINGS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
         "name": "Sales",
-        "yoy_pct": 9.0,
-        "latest": "324",
-        "prev": "310",
-        "year_ago": "298"
+        "yoy_pct": -2.0,
+        "latest": "289",
+        "prev": "285",
+        "year_ago": "295"
       },
       {
         "name": "EBIDT",
-        "yoy_pct": 15.0,
-        "latest": "68",
-        "prev": "62",
-        "year_ago": "59"
+        "yoy_pct": -4.7,
+        "latest": "61",
+        "prev": "60",
+        "year_ago": "64"
       },
       {
         "name": "Net profit",
-        "yoy_pct": 21.0,
-        "latest": "46",
-        "prev": "42",
-        "year_ago": "38"
+        "yoy_pct": -8.9,
+        "latest": "41",
+        "prev": "40",
+        "year_ago": "45"
       },
       {
         "name": "EPS",
-        "yoy_pct": 21.0,
-        "latest": "\u20b9 16.90",
-        "prev": "\u20b9 15.43",
-        "year_ago": "\u20b9 13.96"
+        "yoy_pct": -8.9,
+        "latest": "\u20b9 15.05",
+        "prev": "\u20b9 14.68",
+        "year_ago": "\u20b9 16.52"
       }
     ]
   },
@@ -3825,12 +3825,12 @@
     "price": 22.1,
     "mcap_cr": 1240.0,
     "pe": 28.5,
-    "date": "2026-10-12",
-    "pdf_url": "https://nsearchives.nseindia.com/corporate/SUBEX_12102026.pdf",
+    "date": "2024-10-12",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/SUBEX_12102024.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3871,12 +3871,12 @@
     "price": 2720.0,
     "mcap_cr": 639100.0,
     "pe": 58.4,
-    "date": "2026-10-11",
+    "date": "2024-10-11",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/HINDUNILVR_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3917,12 +3917,12 @@
     "price": 158.0,
     "mcap_cr": 197200.0,
     "pe": 48.0,
-    "date": "2026-10-11",
+    "date": "2024-10-11",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/TATASTEEL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -3963,12 +3963,12 @@
     "price": 1640.0,
     "mcap_cr": 43100.0,
     "pe": 48.7,
-    "date": "2026-10-11",
+    "date": "2024-10-11",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/COCHINSHIP_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4009,12 +4009,12 @@
     "price": 6340.0,
     "mcap_cr": 32330.0,
     "pe": 88.0,
-    "date": "2026-10-11",
+    "date": "2024-10-11",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/MCX_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4055,12 +4055,12 @@
     "price": 12400.0,
     "mcap_cr": 24900.0,
     "pe": 35.8,
-    "date": "2026-10-11",
+    "date": "2024-10-11",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/TVSHLTD_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4101,12 +4101,12 @@
     "price": 4920.0,
     "mcap_cr": 15080.0,
     "pe": 38.6,
-    "date": "2026-10-11",
+    "date": "2024-10-11",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/FINEORG_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4147,12 +4147,12 @@
     "price": 4650.0,
     "mcap_cr": 22890.0,
     "pe": 54.1,
-    "date": "2026-10-10",
+    "date": "2024-10-10",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/CAMS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4193,12 +4193,12 @@
     "price": 185.0,
     "mcap_cr": 4200.0,
     "pe": 22.8,
-    "date": "2026-10-10",
+    "date": "2024-10-10",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/BELRISE_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4239,12 +4239,12 @@
     "price": 980.0,
     "mcap_cr": 3150.0,
     "pe": 24.1,
-    "date": "2026-10-10",
+    "date": "2024-10-10",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/GOODLUCK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4285,12 +4285,12 @@
     "price": 2840.0,
     "mcap_cr": 15900.0,
     "pe": 78.4,
-    "date": "2026-10-09",
+    "date": "2024-10-09",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/DATAPATTNS_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4331,12 +4331,12 @@
     "price": 540.0,
     "mcap_cr": 2520.0,
     "pe": 16.4,
-    "date": "2026-10-09",
+    "date": "2024-10-09",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/SIYSIL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4377,12 +4377,12 @@
     "price": 1420.0,
     "mcap_cr": 1530.0,
     "pe": 24.5,
-    "date": "2026-10-09",
+    "date": "2024-10-09",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/KML_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4423,12 +4423,12 @@
     "price": 820.0,
     "mcap_cr": 2720.0,
     "pe": 38.4,
-    "date": "2026-10-08",
+    "date": "2024-10-08",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/MOLDTKPAC_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4469,12 +4469,12 @@
     "price": 32.0,
     "mcap_cr": 840.0,
     "pe": 34.0,
-    "date": "2026-10-08",
+    "date": "2024-10-08",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/HARDWYN_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4515,12 +4515,12 @@
     "price": 82.0,
     "mcap_cr": 420.0,
     "pe": 18.2,
-    "date": "2026-10-08",
+    "date": "2024-10-08",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/GNRL_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4561,12 +4561,12 @@
     "price": 640.0,
     "mcap_cr": 530.0,
     "pe": 16.8,
-    "date": "2026-10-06",
+    "date": "2024-10-06",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/TITANBIO_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4607,12 +4607,12 @@
     "price": 95.0,
     "mcap_cr": 280.0,
     "pe": 14.8,
-    "date": "2026-10-06",
+    "date": "2024-10-06",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/GALAXY_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4653,12 +4653,12 @@
     "price": 98.0,
     "mcap_cr": 145.0,
     "pe": 14.2,
-    "date": "2026-10-03",
+    "date": "2024-10-03",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ANI_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4699,12 +4699,12 @@
     "price": 14.0,
     "mcap_cr": 45.0,
     "pe": 11.2,
-    "date": "2026-10-03",
+    "date": "2024-10-03",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/MEENAKSHI_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4745,12 +4745,12 @@
     "price": 165.0,
     "mcap_cr": 82.0,
     "pe": 12.4,
-    "date": "2026-10-01",
+    "date": "2024-10-01",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/ONECLICK_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
@@ -4791,12 +4791,12 @@
     "price": 54.0,
     "mcap_cr": 42.0,
     "pe": 10.5,
-    "date": "2026-10-01",
+    "date": "2024-10-01",
     "pdf_url": "https://nsearchives.nseindia.com/corporate/JOJO_Outcome_Q2.pdf",
     "quarters": {
-      "latest": "Sep 2026",
-      "prev": "Jun 2026",
-      "year_ago": "Sep 2025"
+      "latest": "Sep 2024",
+      "prev": "Jun 2024",
+      "year_ago": "Sep 2023"
     },
     "metrics": [
       {
