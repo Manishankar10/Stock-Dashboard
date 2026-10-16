@@ -48,6 +48,7 @@
                 { key: 'company', label: 'Company' },
                 { key: 'ex_date_display', label: 'Ex date ⇣' },
                 { key: 'div_type', label: 'Div type' },
+                { key: 'amount', label: 'Amount (₹)' },
                 { key: 'percent', label: 'Percent' }
             ]
         }
@@ -100,7 +101,10 @@
 
     async function loadCorporateActions(forceRefresh = false) {
         const refreshBtn = document.getElementById('corp-btn-refresh');
-        if (refreshBtn && forceRefresh) refreshBtn.classList.add('loading');
+        if (refreshBtn && forceRefresh) {
+            refreshBtn.classList.add('refreshing');
+            refreshBtn.classList.add('loading');
+        }
 
         try {
             const url = `/api/corporate-actions${forceRefresh ? '?refresh=true' : ''}`;
@@ -115,17 +119,23 @@
         } catch (err) {
             console.error('Failed to load corporate actions:', err);
         } finally {
-            if (refreshBtn) refreshBtn.classList.remove('loading');
+            if (refreshBtn) {
+                setTimeout(() => {
+                    refreshBtn.classList.remove('refreshing');
+                    refreshBtn.classList.remove('loading');
+                }, 500);
+            }
         }
     }
 
     function updateTabCounters() {
         if (!window.corpState.data || !window.corpState.data.tabs) return;
         const tabs = window.corpState.data.tabs;
+        const isWeb = window.innerWidth > 768;
         Object.keys(TAB_CONFIGS).forEach(tabKey => {
             const counterEl = document.getElementById(`corp-count-${tabKey}`);
             if (counterEl && tabs[tabKey] && tabs[tabKey].counts) {
-                const count = tabKey === 'dividend' ? tabs[tabKey].counts.total : tabs[tabKey].counts.upcoming;
+                const count = (tabKey === 'dividend' && !isWeb) ? tabs[tabKey].counts.total : tabs[tabKey].counts.upcoming;
                 counterEl.textContent = count;
             }
         });
@@ -189,7 +199,8 @@
         if (!theadEl) return;
         let html = '<tr>';
         columns.forEach(col => {
-            html += `<th>${col.label}</th>`;
+            const extraClass = col.key === 'amount' ? ' class="corp-col-amount"' : '';
+            html += `<th${extraClass}>${col.label}</th>`;
         });
         html += '</tr>';
         theadEl.innerHTML = html;
@@ -250,7 +261,10 @@
         } else if (tabKey === 'dividend') {
             cellsHtml += `<td>${item.ex_date_display || item.ex_date || '-'}</td>`;
             cellsHtml += `<td><span class="corp-div-type">${item.div_type || 'Interim'}</span></td>`;
-            cellsHtml += `<td><span class="corp-val-highlight">${item.percent ? Number(item.percent).toFixed(2) : '-'}</span></td>`;
+            const rawAmt = item.amount !== undefined ? item.amount : (item.percent ? (Number(item.percent) * 0.1).toFixed(2) : '-');
+            const amtDisplay = (rawAmt !== '-' && !isNaN(Number(rawAmt))) ? `₹${Number(rawAmt).toFixed(2)}` : (rawAmt || '-');
+            cellsHtml += `<td class="corp-col-amount"><span class="corp-val-highlight">${amtDisplay}</span></td>`;
+            cellsHtml += `<td><span class="corp-val-highlight">${item.percent ? Number(item.percent).toFixed(2) + '%' : '-'}</span></td>`;
         }
 
         return `<tr>${cellsHtml}</tr>`;
@@ -306,7 +320,9 @@
         renderTableHead(pastHeadEl, tabConfig.columns);
 
         // 4. Handle Dividend Rule vs Remaining Tabs
-        // User rule: "except dividend remaining show past 2 months records in the bottom with collapse. show only upcoming data first"
+        // User rule: "in dividend also show upcoming announcements only and show last two months data in seperate table and put scroller for tables."
+        // Applicable to web only (isWeb). On mobile responsive (<=768px), keep original single table behavior for dividend.
+        const isWeb = window.innerWidth > 768;
         const pastCardEl = document.getElementById('corp-past-section');
         const upcomingTitleEl = document.getElementById('corp-upcoming-title');
         const upcomingBadgeEl = document.getElementById('corp-upcoming-badge');
@@ -315,9 +331,10 @@
         const pastTbodyEl = document.getElementById('corp-past-tbody');
         const pastBadgeEl = document.getElementById('corp-past-badge');
         const pastEmptyEl = document.getElementById('corp-past-empty');
+        const pastHeadingEl = document.getElementById('corp-past-heading');
 
-        if (tabKey === 'dividend') {
-            // For dividend: Show all records directly in main table without collapse
+        if (!isWeb && tabKey === 'dividend') {
+            // Mobile Responsive Design: Show all dividend records in single main table without collapse
             if (pastCardEl) pastCardEl.style.display = 'none';
             if (upcomingTitleEl) upcomingTitleEl.textContent = 'Dividend Announcements';
             if (upcomingBadgeEl) upcomingBadgeEl.textContent = `${filtered.length} announcements`;
@@ -335,11 +352,20 @@
                 }
             }
         } else {
-            // For Bonus, Rights, Split, Buy back:
-            // Upcoming first, and past 2 months in bottom collapsible card
+            // Web (all tabs, including dividend) & Mobile (Bonus, Rights, Split, Buy back):
+            // Show upcoming only in top table, and past 2 months in separate collapsible table
             if (pastCardEl) pastCardEl.style.display = 'block';
-            if (upcomingTitleEl) upcomingTitleEl.textContent = `Upcoming ${tabConfig.title}`;
-            if (upcomingBadgeEl) upcomingBadgeEl.textContent = `${upcomingItems.length} upcoming`;
+            if (upcomingTitleEl) {
+                upcomingTitleEl.textContent = tabKey === 'dividend' ? 'Upcoming Dividends' : `Upcoming ${tabConfig.title}`;
+            }
+            if (upcomingBadgeEl) {
+                upcomingBadgeEl.textContent = `${upcomingItems.length} upcoming`;
+            }
+            if (pastHeadingEl) {
+                pastHeadingEl.textContent = tabKey === 'dividend' 
+                    ? 'Past Dividends (Last 2 Months)' 
+                    : `Past ${tabConfig.title} Actions (Last 2 Months)`;
+            }
 
             // Upcoming table
             if (upcomingItems.length === 0) {
@@ -355,7 +381,7 @@
                 }
             }
 
-            // Past section
+            // Past table
             if (pastBadgeEl) pastBadgeEl.textContent = pastItems.length;
             if (pastItems.length === 0) {
                 if (pastTbodyEl) pastTbodyEl.innerHTML = '';
@@ -378,6 +404,12 @@
     window.clearCorpSearch = clearCorpSearch;
     window.toggleCorpPastSection = toggleCorpPastSection;
     window.openStockOrChart = openStockOrChart;
+
+    // Viewport resize listener for responsive / web adaptations
+    window.addEventListener('resize', () => {
+        updateTabCounters();
+        renderCorporateActions();
+    });
 
     // Load data when DOM is ready
     document.addEventListener('DOMContentLoaded', () => {

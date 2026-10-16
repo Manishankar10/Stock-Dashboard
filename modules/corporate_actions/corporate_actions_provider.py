@@ -264,9 +264,11 @@ class CorporateActionsProvider:
                 m_amt = re.search(r"R[se]\.?\s*([\d\.]+)", subj, re.I)
                 if m_amt:
                     amt = float(m_amt.group(1))
+                    amount_str = f"{amt:.2f}"
                     pct = (amt / face_val) * 100 if face_val > 0 else amt
                     percent_str = f"{pct:.2f}"
                 else:
+                    amount_str = "1.00"
                     percent_str = "10.00"
 
                 key = (symbol, iso_date)
@@ -277,6 +279,7 @@ class CorporateActionsProvider:
                         "ex_date": iso_date,
                         "ex_date_display": display_date,
                         "div_type": div_type,
+                        "amount": amount_str,
                         "percent": percent_str,
                     })
                     existing_keys["dividend"].add(key)
@@ -317,6 +320,7 @@ class CorporateActionsProvider:
                 div_type = "Special" if "special" in subj_lower else ("Final" if "final" in subj_lower else "Interim")
                 m_amt = re.search(r"R[se]\.?\s*-?\s*([\d\.]+)", subj, re.I)
                 amt = float(m_amt.group(1)) if m_amt else 0.0
+                amount_str = f"{amt:.2f}" if amt > 0 else "1.00"
                 percent_str = f"{(amt / 10.0) * 100:.2f}" if amt > 0 else "10.00"
                 key = (symbol, iso_date)
                 if key not in existing_keys["dividend"]:
@@ -326,6 +330,7 @@ class CorporateActionsProvider:
                         "ex_date": iso_date,
                         "ex_date_display": display_date,
                         "div_type": div_type,
+                        "amount": amount_str,
                         "percent": percent_str,
                     })
                     existing_keys["dividend"].add(key)
@@ -385,6 +390,13 @@ class CorporateActionsProvider:
                 item["is_past_2m"] = is_past_2m
                 item["in_portfolio"] = sym in portfolio_clean
                 item["in_watchlist"] = sym in watchlist_clean
+
+                if tab_name == "dividend" and "amount" not in item:
+                    try:
+                        pct_f = float(item.get("percent") or 10.0)
+                        item["amount"] = f"{(pct_f * 0.1):.2f}"
+                    except Exception:
+                        item["amount"] = "1.00"
 
             # Sort:
             # For upcoming: Ex-date ascending (soonest event first)

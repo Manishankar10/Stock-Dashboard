@@ -7,8 +7,10 @@
             <p class="corp-subtitle">Official stock exchange announcements from NSE & BSE</p>
         </div>
         <div class="corp-header-actions">
-            <button type="button" class="corp-btn-refresh" id="corp-btn-refresh" onclick="refreshCorporateActions(true)" title="Fetch live data from NSE & BSE">
-                <span class="corp-refresh-icon">🔄</span>
+            <button type="button" class="corp-btn-refresh corp-refresh-btn" id="corp-btn-refresh" onclick="refreshCorporateActions(true)" title="Fetch live data from NSE & BSE" aria-label="Refresh Corporate Actions">
+                <svg class="corp-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
                 <span class="corp-refresh-text">Refresh Data</span>
             </button>
         </div>
@@ -91,7 +93,7 @@
             <button type="button" class="corp-past-header" id="corp-past-header" onclick="toggleCorpPastSection()" aria-expanded="false">
                 <div class="corp-past-header-left">
                     <span class="corp-past-chevron" id="corp-past-chevron">▶</span>
-                    <span class="corp-past-heading">Past Actions (Last 2 Months)</span>
+                    <span class="corp-past-heading" id="corp-past-heading">Past Actions (Last 2 Months)</span>
                     <span class="corp-past-count-badge" id="corp-past-badge">0</span>
                 </div>
                 <div class="corp-past-header-right">

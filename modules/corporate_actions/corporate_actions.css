@@ -41,41 +41,127 @@
     margin: 0;
 }
 
-.corp-btn-refresh {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    background: var(--bg-card, #ffffff);
-    color: var(--text-primary, #334155);
-    border: 1px solid var(--border-color, #e2e8f0);
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-[data-theme="dark"] .corp-btn-refresh {
-    background: var(--bg-card, #1e222d);
-    color: #cbd5e1;
-    border-color: var(--border-color, #2a2e39);
-}
-
-.corp-btn-refresh:hover {
-    background: var(--table-hover-bg, #f1f5f9);
-    color: var(--text-primary);
-    border-color: #5c7cfa;
-}
-
-.corp-btn-refresh.loading .corp-refresh-icon {
-    display: inline-block;
-    animation: corp-spin 1s linear infinite;
+/* Refresh Button Base & Spin Animation */
+.corp-refresh-svg {
+    transition: transform 0.2s ease;
 }
 
 @keyframes corp-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+.corp-btn-refresh.loading svg,
+.corp-btn-refresh.refreshing svg,
+.corp-refresh-btn.loading svg,
+.corp-refresh-btn.refreshing svg {
+    animation: pf-spin 0.75s linear infinite !important;
+}
+
+/* Web Only (min-width: 769px): Refresh button identical to portfolio in responsive design */
+@media (min-width: 769px) {
+    .corp-btn-refresh,
+    .corp-refresh-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 28.5px !important;
+        height: 28.5px !important;
+        min-width: 28.5px !important;
+        min-height: 28.5px !important;
+        border-radius: 7px !important;
+        background: rgba(16, 185, 129, 0.12) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        color: #10b981 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        padding: 0 !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+    }
+
+    :root:not([data-theme="dark"]) .corp-btn-refresh,
+    :root:not([data-theme="dark"]) .corp-refresh-btn {
+        background: rgba(16, 185, 129, 0.1) !important;
+        border-color: rgba(16, 185, 129, 0.25) !important;
+        color: #059669 !important;
+    }
+
+    .corp-btn-refresh svg,
+    .corp-refresh-btn svg {
+        width: 13px !important;
+        height: 13px !important;
+        color: inherit !important;
+    }
+
+    .corp-btn-refresh:hover,
+    .corp-refresh-btn:hover {
+        background: rgba(16, 185, 129, 0.2) !important;
+        border-color: #10b981 !important;
+        transform: translateY(-1px);
+    }
+
+    .corp-btn-refresh:active,
+    .corp-refresh-btn:active {
+        transform: scale(0.92) !important;
+        background: rgba(16, 185, 129, 0.25) !important;
+    }
+
+    .corp-refresh-text {
+        display: none !important;
+    }
+
+    /* Web Only: Remove symbols from all corporate actions */
+    .corp-symbol-badge {
+        display: none !important;
+    }
+
+    /* Web Only: Scroller for tables with sticky header */
+    .corp-table-responsive {
+        max-height: 440px !important;
+        overflow-y: auto !important;
+        overflow-x: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: rgba(92, 124, 250, 0.4) transparent !important;
+        border-radius: 8px !important;
+    }
+
+    [data-theme="dark"] .corp-table-responsive {
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent !important;
+    }
+
+    .corp-table-responsive::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .corp-table-responsive::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .corp-table-responsive::-webkit-scrollbar-thumb {
+        background: rgba(92, 124, 250, 0.35);
+        border-radius: 4px;
+    }
+    [data-theme="dark"] .corp-table-responsive::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.18);
+    }
+
+    .corp-table thead th {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 2 !important;
+        background: var(--bg-card, #ffffff) !important;
+        box-shadow: 0 1px 0 var(--border-color, #e2e8f0);
+    }
+    [data-theme="dark"] .corp-table thead th {
+        background: var(--bg-card, #131722) !important;
+        box-shadow: 0 1px 0 var(--border-color, #2a2e39);
+    }
+
+    /* Web Only: Amount column displayed */
+    .corp-col-amount {
+        display: table-cell !important;
+    }
 }
 
 /* Primary Category Tabs */
@@ -626,9 +712,30 @@
         font-size: 12px;
     }
 
-    .corp-btn-refresh {
-        padding: 6px 10px;
-        font-size: 12px;
+    .corp-btn-refresh,
+    .corp-refresh-btn {
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        border-radius: 8px !important;
+        background: var(--bg-card, #ffffff);
+        border: 1px solid var(--border-color, #e2e8f0);
+        color: var(--text-primary, #334155);
+        width: auto !important;
+        height: auto !important;
+    }
+
+    [data-theme="dark"] .corp-btn-refresh,
+    [data-theme="dark"] .corp-refresh-btn {
+        background: var(--bg-card, #1e222d);
+        color: #cbd5e1;
+        border-color: var(--border-color, #2a2e39);
+    }
+
+    .corp-refresh-text {
+        display: inline !important;
     }
 
     .corp-tabs-bar {
@@ -685,7 +792,17 @@
     .corp-table-responsive {
         width: 100%;
         max-width: 100%;
-        overflow-x: auto;
+        overflow-x: auto !important;
+        overflow-y: visible !important;
+        max-height: none !important;
+    }
+
+    .corp-table thead th {
+        position: static !important;
+    }
+
+    .corp-col-amount {
+        display: none !important;
     }
 
     .corp-table {
@@ -703,7 +820,8 @@
     }
 
     .corp-symbol-badge {
-        font-size: 10px;
+        display: inline-block !important;
+        font-size: 10px !important;
     }
 
     .corp-past-card {

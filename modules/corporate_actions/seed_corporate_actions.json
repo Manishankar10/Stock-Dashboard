@@ -414,6 +414,7 @@
       "ex_date": "2026-10-24",
       "ex_date_display": "24 October 2026",
       "div_type": "Interim 2",
+      "amount": "10.00",
       "percent": "1000.00"
     },
     {
@@ -422,6 +423,7 @@
       "ex_date": "2026-10-23",
       "ex_date_display": "23 October 2026",
       "div_type": "Interim",
+      "amount": "2.00",
       "percent": "20.00"
     },
     {
@@ -430,6 +432,7 @@
       "ex_date": "2026-10-23",
       "ex_date_display": "23 October 2026",
       "div_type": "Interim",
+      "amount": "7.00",
       "percent": "70.00"
     },
     {
@@ -438,6 +441,7 @@
       "ex_date": "2026-10-23",
       "ex_date_display": "23 October 2026",
       "div_type": "Interim 3",
+      "amount": "1.15",
       "percent": "11.50"
     },
     {
@@ -446,6 +450,7 @@
       "ex_date": "2026-10-22",
       "ex_date_display": "22 October 2026",
       "div_type": "Interim 2",
+      "amount": "14.00",
       "percent": "140.00"
     },
     {
@@ -454,6 +459,7 @@
       "ex_date": "2026-10-22",
       "ex_date_display": "22 October 2026",
       "div_type": "Interim 1",
+      "amount": "6.50",
       "percent": "650.00"
     },
     {
@@ -462,6 +468,7 @@
       "ex_date": "2026-10-21",
       "ex_date_display": "21 October 2026",
       "div_type": "Interim",
+      "amount": "3.00",
       "percent": "30.00"
     },
     {
@@ -470,6 +477,7 @@
       "ex_date": "2026-10-21",
       "ex_date_display": "21 October 2026",
       "div_type": "Interim",
+      "amount": "5.00",
       "percent": "50.00"
     },
     {
@@ -478,6 +486,7 @@
       "ex_date": "2026-10-21",
       "ex_date_display": "21 October 2026",
       "div_type": "Interim",
+      "amount": "30.00",
       "percent": "3000.00"
     },
     {
@@ -486,6 +495,7 @@
       "ex_date": "2026-10-16",
       "ex_date_display": "16 October 2026",
       "div_type": "Interim 3",
+      "amount": "12.00",
       "percent": "600.00"
     },
     {
@@ -494,6 +504,7 @@
       "ex_date": "2026-10-16",
       "ex_date_display": "16 October 2026",
       "div_type": "Special",
+      "amount": "21.00",
       "percent": "420.00"
     },
     {
@@ -502,6 +513,7 @@
       "ex_date": "2026-10-16",
       "ex_date_display": "16 October 2026",
       "div_type": "Interim",
+      "amount": "2.00",
       "percent": "20.00"
     },
     {
@@ -510,6 +522,7 @@
       "ex_date": "2026-10-15",
       "ex_date_display": "15 October 2026",
       "div_type": "Final",
+      "amount": "2.27",
       "percent": "2.27"
     },
     {
@@ -518,6 +531,7 @@
       "ex_date": "2026-10-15",
       "ex_date_display": "15 October 2026",
       "div_type": "Final",
+      "amount": "2.12",
       "percent": "2.12"
     },
     {
@@ -526,7 +540,71 @@
       "ex_date": "2026-10-15",
       "ex_date_display": "15 October 2026",
       "div_type": "Final",
+      "amount": "2.19",
       "percent": "2.19"
+    },
+    {
+      "company": "Infosys",
+      "symbol": "INFY",
+      "ex_date": "2026-10-06",
+      "ex_date_display": "6 October 2026",
+      "div_type": "Interim",
+      "amount": "21.00",
+      "percent": "420.00"
+    },
+    {
+      "company": "Vedanta",
+      "symbol": "VEDL",
+      "ex_date": "2026-09-24",
+      "ex_date_display": "24 September 2026",
+      "div_type": "Interim 3",
+      "amount": "20.00",
+      "percent": "2000.00"
+    },
+    {
+      "company": "Reliance Industries",
+      "symbol": "RELIANCE",
+      "ex_date": "2026-09-19",
+      "ex_date_display": "19 September 2026",
+      "div_type": "Final",
+      "amount": "10.00",
+      "percent": "100.00"
+    },
+    {
+      "company": "ITC Limited",
+      "symbol": "ITC",
+      "ex_date": "2026-09-12",
+      "ex_date_display": "12 September 2026",
+      "div_type": "Final",
+      "amount": "7.50",
+      "percent": "750.00"
+    },
+    {
+      "company": "Bharat Petroleum",
+      "symbol": "BPCL",
+      "ex_date": "2026-09-05",
+      "ex_date_display": "5 September 2026",
+      "div_type": "Interim",
+      "amount": "10.50",
+      "percent": "105.00"
+    },
+    {
+      "company": "Tata Consultancy",
+      "symbol": "TCS",
+      "ex_date": "2026-08-28",
+      "ex_date_display": "28 August 2026",
+      "div_type": "Interim 1",
+      "amount": "10.00",
+      "percent": "1000.00"
+    },
+    {
+      "company": "HDFC Bank",
+      "symbol": "HDFCBANK",
+      "ex_date": "2026-08-20",
+      "ex_date_display": "20 August 2026",
+      "div_type": "Final",
+      "amount": "19.50",
+      "percent": "1950.00"
     }
   ]
 }
