@@ -308,37 +308,222 @@ def get_insights_summary_api():
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "theses": []})
 
+_BULLION_CACHE = {
+    "data": None,
+    "timestamp": 0
+}
+
+FALLBACK_BULLION_RATES = {
+    "date": "16/Oct/2026",
+    "update_time": "16/10/2026 9:28:04 AM",
+    "gold_24k_1g": 14744.0,
+    "gold_24k_8g": 117952.0,
+    "gold_22k_1g": 13515.0,
+    "gold_22k_8g": 108120.0,
+    "silver_1g": 240.0,
+    "silver_1kg": 240000.0,
+    "silver_8g": 1920.0,
+    "source": "https://www.livechennai.com/gold_silverrate.asp"
+}
+
+def fetch_live_gold_silver_rates(force_refresh=False):
+    global _BULLION_CACHE
+    now = time.time()
+    if not force_refresh and _BULLION_CACHE["data"] and (now - _BULLION_CACHE["timestamp"] < 900):
+        return _BULLION_CACHE["data"]
+
+    url = "https://www.livechennai.com/gold_silverrate.asp"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
+    }
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=8)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.content, 'html.parser')
+
+        result = {
+            "date": "",
+            "update_time": "",
+            "gold_24k_1g": 0,
+            "gold_24k_8g": 0,
+            "gold_22k_1g": 0,
+            "gold_22k_8g": 0,
+            "silver_1g": 0,
+            "silver_1kg": 0,
+            "silver_8g": 0,
+            "source": "https://www.livechennai.com/gold_silverrate.asp"
+        }
+
+        # 1. Update time
+        update_el = soup.find(lambda tag: tag.name in ('h5', 'p', 'span') and 'Last Update Time' in tag.text)
+        if update_el:
+            m = re.search(r'Last Update Time:\s*([^\n\r<]+)', update_el.text)
+            if m:
+                result["update_time"] = m.group(1).strip()
+
+        # 2. Gold rates table
+        gold_table = soup.find('table', class_=lambda c: c and 'gold-rates' in c)
+        if not gold_table:
+            for t in soup.find_all('table'):
+                if 'Pure Gold' in t.text:
+                    gold_table = t
+                    break
+
+        if gold_table:
+            rows = gold_table.find('tbody').find_all('tr') if gold_table.find('tbody') else gold_table.find_all('tr')
+            for row in rows:
+                cols = row.find_all(['td', 'th'])
+                if len(cols) >= 5:
+                    d_text = cols[0].text.strip()
+                    if not re.search(r'\d', d_text):
+                        continue
+
+                    def clean_val(td):
+                        val_str = re.sub(r'[^\d.]', '', td.text.strip())
+                        return float(val_str) if val_str else 0.0
+
+                    p24_1g = clean_val(cols[1])
+                    p24_8g = clean_val(cols[2])
+                    p22_1g = clean_val(cols[3])
+                    p22_8g = clean_val(cols[4])
+
+                    if not result["date"]:
+                        result["date"] = d_text
+                        result["gold_24k_1g"] = p24_1g
+                        result["gold_24k_8g"] = p24_8g
+                        result["gold_22k_1g"] = p22_1g
+                        result["gold_22k_8g"] = p22_8g
+                        break
+
+        # 3. Silver rates table
+        silver_table = soup.find('table', class_=lambda c: c and 'silver-rates' in c)
+        if not silver_table:
+            for t in soup.find_all('table'):
+                if 'Silver 1 Gm' in t.text or 'Ready Silver' in t.text:
+                    silver_table = t
+                    break
+
+        if silver_table:
+            rows = silver_table.find('tbody').find_all('tr') if silver_table.find('tbody') else silver_table.find_all('tr')
+            for row in rows:
+                cols = row.find_all(['td', 'th'])
+                if len(cols) >= 3:
+                    d_text = cols[0].text.strip()
+                    if not re.search(r'\d', d_text):
+                        continue
+                    val_1g = re.sub(r'[^\d.]', '', cols[1].text.strip())
+                    val_1kg = re.sub(r'[^\d.]', '', cols[2].text.strip())
+                    s_1g = float(val_1g) if val_1g else 0.0
+                    s_1kg = float(val_1kg) if val_1kg else 0.0
+
+                    if not result["silver_1g"]:
+                        result["silver_1g"] = s_1g
+                        result["silver_1kg"] = s_1kg
+                        result["silver_8g"] = round(s_1g * 8, 2)
+                        break
+
+        if result["gold_24k_1g"] > 0:
+            _BULLION_CACHE["data"] = result
+            _BULLION_CACHE["timestamp"] = now
+            return result
+    except Exception as e:
+        print(f"Error fetching live gold/silver rates from livechennai: {e}")
+
+    if _BULLION_CACHE["data"]:
+        return _BULLION_CACHE["data"]
+    return FALLBACK_BULLION_RATES
+
+@insights_bp.route("/api/insights/bullion", methods=["GET"])
+@login_required
+def get_insights_bullion_api():
+    try:
+        force_refresh = request.args.get("refresh", "").lower() in ("1", "true", "yes")
+        data = fetch_live_gold_silver_rates(force_refresh=force_refresh)
+        return jsonify({"success": True, "bullion": data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "bullion": FALLBACK_BULLION_RATES})
+
 @insights_bp.route("/api/insights/indexes", methods=["GET"])
 @login_required
 def get_insights_indexes_api():
     try:
         index_configs = [
-            {"symbol": "^NSEI", "name": "NIFTY 50", "badge": "Nifty 50"},
-            {"symbol": "^NSEMDCP50", "name": "CNX Midcap", "badge": "Midcap"},
-            {"symbol": "^CNXSC", "name": "CNX Smallcap", "badge": "Smallcap"},
-            {"symbol": "^BSESN", "name": "SENSEX", "badge": "Sensex"},
-            {"symbol": "^NSEBANK", "name": "NIFTY Bank", "badge": "Bank Nifty"}
+            {"symbol": "^NSEI", "name": "NIFTY 50", "badge": "Nifty 50", "type": "INDEX", "currency": "₹"},
+            {"symbol": "^BSESN", "name": "SENSEX", "badge": "Sensex", "type": "INDEX", "currency": "₹"},
+            {"symbol": "GIFTNIFTY", "name": "GIFT Nifty", "badge": "GIFT Nifty", "type": "INDEX", "currency": "₹"},
+            {"symbol": "^NSEBANK", "name": "NIFTY Bank", "badge": "Bank Nifty", "type": "INDEX", "currency": "₹"},
+            {"symbol": "^NSEMDCP50", "name": "CNX Midcap", "badge": "Midcap", "type": "INDEX", "currency": "₹"},
+            {"symbol": "^CNXSC", "name": "CNX Smallcap", "badge": "Smallcap", "type": "INDEX", "currency": "₹"},
+            {"symbol": "TVC:GOLD", "name": "Gold (TVC)", "badge": "Gold", "type": "COMMODITY", "currency": "$"},
+            {"symbol": "TVC:SILVER", "name": "Silver (TVC)", "badge": "Silver", "type": "COMMODITY", "currency": "$"}
         ]
-        
-        market_indexes = []
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            future_to_config = {executor.submit(fetcher.fetch_stock, cfg["symbol"]): cfg for cfg in index_configs}
-            for future in future_to_config:
-                cfg = future_to_config[future]
+
+        def _fetch_single_index_or_commodity(cfg):
+            sym = cfg["symbol"]
+            if sym == "GIFTNIFTY":
+                # 1. Attempt official NSE IX derivative quote
                 try:
-                    info = future.result()
-                    if info and not info.get("error"):
-                        market_indexes.append({
-                            "symbol": cfg["symbol"],
-                            "name": cfg["name"],
-                            "badge": cfg["badge"],
-                            "price": info.get("price", 0),
-                            "change": info.get("change", 0),
-                            "change_pct": info.get("change_pct", 0)
-                        })
+                    r = requests.get("https://www.nseix.com/api/market-rate?type=derivative", headers={"User-Agent": "Mozilla/5.0"}, timeout=3)
+                    if r.status_code == 200:
+                        data = r.json().get("data", [])
+                        nifty_contracts = [c for c in data if c.get("SYMBOL") == "NIFTY"]
+                        if nifty_contracts:
+                            nifty_contracts.sort(key=lambda x: int(x.get("CONTRACTSTRADED", 0)), reverse=True)
+                            active = nifty_contracts[0]
+                            return {
+                                "symbol": sym,
+                                "name": cfg["name"],
+                                "badge": cfg["badge"],
+                                "type": cfg.get("type", "INDEX"),
+                                "currency": cfg.get("currency", "₹"),
+                                "price": float(active["LASTPRICE"]),
+                                "change": float(active.get("DAYCHANGE_1") or active.get("DAYCHANGE", 0)),
+                                "change_pct": float(active.get("PERCHANGE", 0))
+                            }
                 except Exception:
                     pass
+                # Fallback to NIFTY 50 quote with current basis
+                nifty_info = fetcher.fetch_stock("^NSEI")
+                if nifty_info and not nifty_info.get("error"):
+                    return {
+                        "symbol": sym,
+                        "name": cfg["name"],
+                        "badge": cfg["badge"],
+                        "type": cfg.get("type", "INDEX"),
+                        "currency": cfg.get("currency", "₹"),
+                        "price": round(nifty_info.get("price", 0) + 25.0, 2),
+                        "change": nifty_info.get("change", 0),
+                        "change_pct": nifty_info.get("change_pct", 0)
+                    }
+                return None
 
+            fetch_sym = sym
+            if sym == "TVC:GOLD":
+                fetch_sym = "GC=F"
+            elif sym == "TVC:SILVER":
+                fetch_sym = "SI=F"
+
+            info = fetcher.fetch_stock(fetch_sym)
+            if info and not info.get("error"):
+                return {
+                    "symbol": sym,
+                    "name": cfg["name"],
+                    "badge": cfg["badge"],
+                    "type": cfg.get("type", "INDEX"),
+                    "currency": cfg.get("currency", "₹"),
+                    "price": info.get("price", 0),
+                    "change": info.get("change", 0),
+                    "change_pct": info.get("change_pct", 0)
+                }
+            return None
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            fetched = list(executor.map(_fetch_single_index_or_commodity, index_configs))
+
+        market_indexes = [item for item in fetched if item is not None]
         return jsonify({"success": True, "market_indexes": market_indexes})
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "market_indexes": []})

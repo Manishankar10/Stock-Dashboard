@@ -65,10 +65,11 @@ POPULAR_MARKET_INDEXES = [
     {"symbol": "^CNXIT", "name": "NIFTY IT Index", "exchange": "INDEX", "aliases": ["NIFTYIT", "NIFTY IT"]},
     {"symbol": "^BSESN", "name": "S&P BSE SENSEX Index", "exchange": "INDEX", "aliases": ["SENSEX", "BSESN", "BSE SENSEX"]},
     {"symbol": "^CRSMID", "name": "NIFTY Midcap 100 Index", "exchange": "INDEX", "aliases": ["MIDCAP", "NIFTY MIDCAP"]},
-    {"symbol": "GOLDBEES.NS", "name": "Nippon India ETF Gold BeES (₹)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLDBEES", "GOLD BEES", "GOLD ETF"]},
-    {"symbol": "GC=F", "name": "Gold Futures (USD)", "exchange": "COMMODITY", "aliases": ["GOLD FUTURES", "GOLD USD"]},
-    {"symbol": "SILVERBEES.NS", "name": "Nippon India ETF Silver BeES (₹)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVERBEES", "SILVER BEES", "SILVER ETF"]},
-    {"symbol": "SI=F", "name": "Silver Futures (USD)", "exchange": "COMMODITY", "aliases": ["SILVER FUTURES", "SILVER USD"]},
+    {"symbol": "GIFTNIFTY", "name": "GIFT Nifty Index", "exchange": "INDEX", "aliases": ["GIFTNIFTY", "GIFT NIFTY", "GIFT NIFTY INDEX", "NSEIX:NIFTY1!"]},
+    {"symbol": "GOLDBEES.NS", "name": "Nippon India ETF Gold BeES (₹)", "exchange": "COMMODITY", "aliases": ["GOLDBEES", "GOLD BEES", "GOLD ETF"]},
+    {"symbol": "GC=F", "name": "Gold Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLD FUTURES", "GOLD USD", "TVC:GOLD", "GOLD CFD", "GOLD(COMMODITY CFD TVC)"]},
+    {"symbol": "SILVERBEES.NS", "name": "Nippon India ETF Silver BeES (₹)", "exchange": "COMMODITY", "aliases": ["SILVERBEES", "SILVER BEES", "SILVER ETF"]},
+    {"symbol": "SI=F", "name": "Silver Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVER FUTURES", "SILVER USD", "TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)"]},
     {"symbol": "CL=F", "name": "Crude Oil Futures (USD)", "exchange": "COMMODITY", "aliases": ["CRUDE", "CRUDE OIL", "CRUDEOIL"]},
     {"symbol": "^GSPC", "name": "S&P 500 Index (US)", "exchange": "INDEX", "aliases": ["SP500", "S&P 500", "S&P500"]},
     {"symbol": "^IXIC", "name": "NASDAQ Composite Index (US)", "exchange": "INDEX", "aliases": ["NASDAQ", "NASDAQ 100", "NASDAQ100"]}
@@ -79,6 +80,14 @@ def format_financial_symbol(raw_symbol):
         return ""
     sym = raw_symbol.strip().upper()
     
+    # Direct TVC and GIFT alias remappings for in-house chart
+    if sym in ("TVC:GOLD", "GOLD CFD", "GOLD(COMMODITY CFD TVC)"):
+        return "GC=F"
+    if sym in ("TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)"):
+        return "SI=F"
+    if sym in ("GIFTNIFTY", "GIFT NIFTY", "NSEIX:NIFTY1!"):
+        return "^NSEI"
+
     # Check direct index / commodity alias matches
     for idx_item in POPULAR_MARKET_INDEXES:
         if sym == idx_item["symbol"].upper():

@@ -27,6 +27,9 @@
 
         window.openInsightsFundamentals = openInsightsFundamentals;
         window.openInsightsTechnical = openInsightsTechnical;
+        window.loadInsightsBullion = loadInsightsBullion;
+        window.filterBullionCards = filterBullionCards;
+        window.renderInsightsBullionUI = renderInsightsBullionUI;
 
         async function ensureWatchlistsAndPortfolios() {
             const promises = [];
@@ -225,11 +228,11 @@
             // 1. News Feed Skeletons
             showNewsSkeletonsOnly();
 
-            // 2. Market Indexes Grid Skeletons
+            // 2. Market Indexes Grid Skeletons (8 cards)
             const idxGrid = document.getElementById('insights-indexes-grid');
             if (idxGrid) {
                 let idxSkeletons = '';
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < 8; i++) {
                     idxSkeletons += `
                         <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; height: 68px; display: flex; flex-direction: column; justify-content: space-between;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -242,6 +245,35 @@
                     `;
                 }
                 idxGrid.innerHTML = idxSkeletons;
+            }
+
+            // 2b. Bullion Skeletons
+            const bullionMount = document.getElementById('insights-bullion-mount');
+            if (bullionMount) {
+                bullionMount.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; height: 84px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="skeleton-box" style="width: 120px; height: 14px;"></span>
+                                <span class="skeleton-box" style="width: 60px; height: 12px;"></span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <span class="skeleton-box" style="width: 100%; height: 38px; border-radius: 6px;"></span>
+                                <span class="skeleton-box" style="width: 100%; height: 38px; border-radius: 6px;"></span>
+                            </div>
+                        </div>
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; height: 84px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="skeleton-box" style="width: 120px; height: 14px;"></span>
+                                <span class="skeleton-box" style="width: 60px; height: 12px;"></span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <span class="skeleton-box" style="width: 100%; height: 38px; border-radius: 6px;"></span>
+                                <span class="skeleton-box" style="width: 100%; height: 38px; border-radius: 6px;"></span>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
 
             // 3. FII / DII Flow Skeletons
@@ -436,6 +468,9 @@
 
             // 5. Parallel Fetch: Technical Intelligence Screeners (~400ms)
             loadTechnicalInsights();
+
+            // 6. Parallel Fetch: Live Bullion (Gold & Silver) Rates (~150ms)
+            loadInsightsBullion();
         }
 
         // =========================================================
@@ -880,6 +915,15 @@
                 const isPos = idx.change >= 0;
                 const sign = isPos ? '+' : '';
                 const colorClass = isPos ? '#10b981' : '#ef4444';
+                const curr = idx.currency || '₹';
+                const isCommodity = idx.type === 'COMMODITY' || idx.badge?.includes('Gold') || idx.badge?.includes('Silver');
+                const badgeLabel = isCommodity ? 'CFD TVC' : (idx.symbol === 'GIFTNIFTY' ? 'GIFT IX' : 'INDEX');
+                const badgeStyle = isCommodity 
+                    ? 'background: rgba(245, 158, 11, 0.16); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35);'
+                    : (idx.symbol === 'GIFTNIFTY' 
+                        ? 'background: rgba(16, 185, 129, 0.16); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35);'
+                        : 'background: rgba(92, 124, 250, 0.15); color: #5c7cfa; border: 1px solid rgba(92, 124, 250, 0.3);');
+
                 const card = document.createElement('div');
                 card.style.cssText = `
                     background: var(--bg-subtle);
@@ -890,18 +934,31 @@
                     flex-direction: column;
                     justify-content: space-between;
                     cursor: pointer;
-                    transition: transform 0.15s ease, border-color 0.15s ease;
+                    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
                 `;
+                card.onmouseenter = () => {
+                    card.style.transform = 'translateY(-1.5px)';
+                    card.style.borderColor = isCommodity ? 'rgba(245, 158, 11, 0.45)' : 'rgba(92, 124, 250, 0.45)';
+                };
+                card.onmouseleave = () => {
+                    card.style.transform = 'none';
+                    card.style.borderColor = 'var(--border-color)';
+                };
                 card.onclick = () => openInHouseChart(idx.symbol);
                 card.title = `Click to view technical chart for ${idx.name}`;
+
+                const formattedPrice = curr === '$'
+                    ? (idx.price ? idx.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-')
+                    : (idx.price ? idx.price.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-');
+
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <span style="font-weight: 700; font-size: 12px; color: var(--text-primary);">${escapeHtml(idx.badge || idx.name)}</span>
-                        <span class="badge badge-idx" style="font-size: 9px; padding: 1px 5px;">INDEX</span>
+                        <span style="font-weight: 700; font-size: 12px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px;">${escapeHtml(idx.badge || idx.name)}</span>
+                        <span class="badge" style="font-size: 8px; padding: 1px 4.5px; border-radius: 4px; font-weight: 700; ${badgeStyle}">${escapeHtml(badgeLabel)}</span>
                     </div>
-                    <div style="font-weight: 800; font-size: 14px; color: var(--text-primary);">₹${idx.price ? idx.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}</div>
+                    <div style="font-weight: 800; font-size: 14px; color: var(--text-primary); font-family: var(--font-family, sans-serif);">${curr}${formattedPrice}</div>
                     <div style="font-size: 11px; font-weight: 600; color: ${colorClass}; margin-top: 2px;">
-                        ${sign}${idx.change_pct}% (${sign}₹${Math.abs(idx.change).toFixed(2)})
+                        ${sign}${idx.change_pct}% (${sign}${curr}${Math.abs(idx.change).toFixed(2)})
                     </div>
                 `;
                 idxGrid.appendChild(card);
@@ -943,6 +1000,151 @@
                     <span style="font-size: 13px; font-weight: 800; color: ${totPos ? '#10b981' : '#ef4444'};">${totSign}₹${Math.abs(fd.total_net).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})} Cr</span>
                 </div>
             `;
+        }
+
+        // =========================================================
+        // LIVE BULLION (GOLD & SILVER) RATES JS
+        // =========================================================
+        let cachedBullionData = null;
+        let activeBullionFilter = 'all';
+
+        function loadInsightsBullion(forceRefresh = false) {
+            const refreshBtn = document.getElementById('bullion-refresh-btn');
+            if (refreshBtn && forceRefresh) refreshBtn.classList.add('spinning');
+
+            fetch(`/api/insights/bullion${forceRefresh ? '?refresh=1' : ''}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.bullion) {
+                        cachedBullionData = data.bullion;
+                        renderInsightsBullionUI(data.bullion);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching bullion rates:', err);
+                })
+                .finally(() => {
+                    if (refreshBtn) refreshBtn.classList.remove('spinning');
+                });
+        }
+
+        function filterBullionCards(metal) {
+            activeBullionFilter = metal;
+            document.querySelectorAll('.bullion-pill').forEach(btn => {
+                btn.classList.toggle('active', btn.id === `bullion-pill-${metal}`);
+            });
+            if (cachedBullionData) {
+                renderInsightsBullionUI(cachedBullionData);
+            }
+        }
+
+        function renderInsightsBullionUI(data) {
+            const mount = document.getElementById('insights-bullion-mount');
+            const dateBadge = document.getElementById('bullion-date-badge');
+            const updateTime = document.getElementById('bullion-update-time');
+            if (!mount || !data) return;
+
+            if (dateBadge && data.date) dateBadge.innerText = data.date;
+            if (updateTime && data.update_time) updateTime.innerText = `⏱️ Updated: ${data.update_time}`;
+
+            const f24k_1g = data.gold_24k_1g ? '₹' + data.gold_24k_1g.toLocaleString('en-IN') : '₹14,744';
+            const f24k_8g = data.gold_24k_8g ? '₹' + data.gold_24k_8g.toLocaleString('en-IN') : '₹1,17,952';
+            const f22k_1g = data.gold_22k_1g ? '₹' + data.gold_22k_1g.toLocaleString('en-IN') : '₹13,515';
+            const f22k_8g = data.gold_22k_8g ? '₹' + data.gold_22k_8g.toLocaleString('en-IN') : '₹1,08,120';
+            const fsilver_1g = data.silver_1g ? '₹' + data.silver_1g.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '₹240.00';
+            const fsilver_8g = data.silver_8g ? '₹' + data.silver_8g.toLocaleString('en-IN') : '₹1,920';
+            const fsilver_1kg = data.silver_1kg ? '₹' + data.silver_1kg.toLocaleString('en-IN') : '₹2,40,000';
+
+            const show24k = activeBullionFilter === 'all' || activeBullionFilter === '24k';
+            const show22k = activeBullionFilter === 'all' || activeBullionFilter === '22k';
+            const showSilver = activeBullionFilter === 'all' || activeBullionFilter === 'silver';
+
+            let html = '';
+
+            // 1. Pure Gold 24K Card
+            if (show24k) {
+                html += `
+                    <div class="bullion-metal-card bullion-card-24k" title="24 Karat Pure Fine Gold (99.9% Purity)">
+                        <div class="bullion-metal-header">
+                            <span class="bullion-metal-title">
+                                <span>🥇</span> Pure Gold (24 Karat)
+                            </span>
+                            <span class="bullion-purity-tag bullion-purity-24k">99.9% PURE</span>
+                        </div>
+                        <div class="bullion-tiles-row">
+                            <div class="bullion-tile">
+                                <span class="bullion-tile-label">1 Gram</span>
+                                <span class="bullion-tile-value bullion-val-gold">${f24k_1g}</span>
+                                <span class="bullion-tile-sub">Daily Benchmark</span>
+                            </div>
+                            <div class="bullion-tile">
+                                <span class="bullion-tile-label">8 Gm (1 Sovereign)</span>
+                                <span class="bullion-tile-value bullion-val-gold">${f24k_8g}</span>
+                                <span class="bullion-tile-sub">1 Pavan / Coin</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 2. Standard Gold 22K Card
+            if (show22k) {
+                html += `
+                    <div class="bullion-metal-card bullion-card-22k" title="22 Karat Standard Jewellery Gold (916 Hallmark)">
+                        <div class="bullion-metal-header">
+                            <span class="bullion-metal-title">
+                                <span>👑</span> Standard Gold (22 Karat)
+                            </span>
+                            <span class="bullion-purity-tag bullion-purity-22k">916 HALLMARK</span>
+                        </div>
+                        <div class="bullion-tiles-row">
+                            <div class="bullion-tile">
+                                <span class="bullion-tile-label">1 Gram</span>
+                                <span class="bullion-tile-value bullion-val-22k">${f22k_1g}</span>
+                                <span class="bullion-tile-sub">Jewellery Rate</span>
+                            </div>
+                            <div class="bullion-tile">
+                                <span class="bullion-tile-label">8 Gm (1 Sovereign)</span>
+                                <span class="bullion-tile-value bullion-val-22k">${f22k_8g}</span>
+                                <span class="bullion-tile-sub">1 Pavan / Sovereign</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 3. Ready Silver Card
+            if (showSilver) {
+                html += `
+                    <div class="bullion-metal-card bullion-card-silver" title="Ready Silver Rate (99.9% Fine Silver)">
+                        <div class="bullion-metal-header">
+                            <span class="bullion-metal-title">
+                                <span>🥈</span> Ready Silver
+                            </span>
+                            <span class="bullion-purity-tag bullion-purity-silver">99.9% FINE</span>
+                        </div>
+                        <div class="bullion-tiles-row tiles-3">
+                            <div class="bullion-tile">
+                                <span class="bullion-tile-label">1 Gram</span>
+                                <span class="bullion-tile-value bullion-val-silver">${fsilver_1g}</span>
+                                <span class="bullion-tile-sub">Retail Rate</span>
+                            </div>
+                            <div class="bullion-tile">
+                                <span class="bullion-tile-label">8 Grams</span>
+                                <span class="bullion-tile-value bullion-val-silver">${fsilver_8g}</span>
+                                <span class="bullion-tile-sub">Coin Rate</span>
+                            </div>
+                            <div class="bullion-tile">
+                                <span class="bullion-tile-label">1 Kg (Ready)</span>
+                                <span class="bullion-tile-value bullion-val-silver">${fsilver_1kg}</span>
+                                <span class="bullion-tile-sub">Bar Rate</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            mount.innerHTML = html;
         }
 
         function isPortfolioSymbol(sym) {

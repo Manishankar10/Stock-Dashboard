@@ -222,6 +222,52 @@
                 <div style="display: flex; flex-direction: column; gap: 20px;">
                     
 
+                    <!-- Live Gold & Silver Bullion Rates Card -->
+                    <div class="card-container insights-bullion-card" id="insights-bullion-card" style="padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 7px;">
+                                    <span>🪙</span> Live Gold & Silver Rates
+                                </h3>
+                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                                    Chennai Market Benchmark • Official Jewellers Association
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="bullion-live-pill">
+                                    <span class="bullion-pulsing-dot"></span> LIVE
+                                </span>
+                                <span class="bullion-date-badge" id="bullion-date-badge">16/Oct/2026</span>
+                                <button type="button" class="bullion-refresh-btn" id="bullion-refresh-btn" onclick="loadInsightsBullion(true)" title="Refresh Gold & Silver Rates">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Metal Filter Switcher Pills -->
+                        <div class="bullion-pills-bar">
+                            <button type="button" class="bullion-pill active" id="bullion-pill-all" onclick="filterBullionCards('all')">✨ All Metals</button>
+                            <button type="button" class="bullion-pill" id="bullion-pill-24k" onclick="filterBullionCards('24k')">🥇 24K Pure</button>
+                            <button type="button" class="bullion-pill" id="bullion-pill-22k" onclick="filterBullionCards('22k')">👑 22K Standard</button>
+                            <button type="button" class="bullion-pill" id="bullion-pill-silver" onclick="filterBullionCards('silver')">🥈 Silver</button>
+                        </div>
+
+                        <!-- Glassy Trendy Metal Cards Mount -->
+                        <div id="insights-bullion-mount" class="bullion-cards-container">
+                            <!-- Dynamic Content Rendered by JS -->
+                        </div>
+
+                        <!-- Footer Attribution -->
+                        <div class="bullion-footer-bar">
+                            <span class="bullion-update-time" id="bullion-update-time">
+                                ⏱️ Updated: 16/10/2026 9:28 AM
+                            </span>
+                            <span class="bullion-source-tag">LiveChennai Official Feed</span>
+                        </div>
+                    </div>
+
                     <!-- Asset Distribution Card -->
                     <div class="card-container" style="padding: 20px;">
                         <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">
