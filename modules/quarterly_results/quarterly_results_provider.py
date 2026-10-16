@@ -296,6 +296,8 @@ class QuarterlyResultsProvider:
 
         if q_sort == "sales_growth":
             filtered.sort(key=lambda x: _get_metric_yoy(x, "Sales"), reverse=True)
+        elif q_sort in ("eps_growth", "eps"):
+            filtered.sort(key=lambda x: _get_metric_yoy(x, "EPS"), reverse=True)
         elif q_sort == "turnaround":
             filtered.sort(key=lambda x: _get_metric_yoy(x, "Net profit"), reverse=True)
         elif q_sort == "ttm_pe":
