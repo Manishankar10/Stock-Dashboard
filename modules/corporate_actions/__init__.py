@@ -39,34 +39,55 @@ def _extract_user_symbols() -> Dict[str, Set[str]]:
     portfolio_symbols: Set[str] = set()
     watchlist_symbols: Set[str] = set()
 
-    if not _LOAD_DATA:
-        return {"portfolio": portfolio_symbols, "watchlist": watchlist_symbols}
-
     username = session.get("username")
     if not username:
         return {"portfolio": portfolio_symbols, "watchlist": watchlist_symbols}
 
-    try:
-        user_data = _LOAD_DATA(username) or {}
-        # Portfolios
-        portfolios = user_data.get("portfolios") or {}
-        for holdings in portfolios.values():
-            if isinstance(holdings, list):
-                for item in holdings:
-                    if isinstance(item, dict) and item.get("symbol"):
-                        portfolio_symbols.add(clean_symbol(item["symbol"]))
+    if _LOAD_DATA:
+        try:
+            user_data = _LOAD_DATA(username) or {}
+            # Watchlists can be nested under "watchlists" or provided directly at top-level
+            if isinstance(user_data, dict) and "watchlists" in user_data and isinstance(user_data["watchlists"], dict):
+                watchlists = user_data["watchlists"]
+            elif isinstance(user_data, dict):
+                watchlists = user_data
+            else:
+                watchlists = {}
 
-        # Watchlists
-        watchlists = user_data.get("watchlists") or {}
-        for sym_list in watchlists.values():
-            if isinstance(sym_list, list):
-                for sym in sym_list:
-                    if isinstance(sym, str):
-                        watchlist_symbols.add(clean_symbol(sym))
-                    elif isinstance(sym, dict) and sym.get("symbol"):
-                        watchlist_symbols.add(clean_symbol(sym["symbol"]))
-    except Exception:
-        pass
+            for wl_name, items in watchlists.items():
+                if wl_name in ("portfolios", "alerts", "transactions", "smallcases"):
+                    continue
+                if isinstance(items, list):
+                    for sym in items:
+                        if isinstance(sym, str):
+                            watchlist_symbols.add(clean_symbol(sym))
+                        elif isinstance(sym, dict) and sym.get("symbol"):
+                            watchlist_symbols.add(clean_symbol(sym["symbol"]))
+
+            # Portfolios from user_data if present
+            portfolios = user_data.get("portfolios") or {}
+            for holdings in portfolios.values():
+                if isinstance(holdings, list):
+                    for item in holdings:
+                        if isinstance(item, dict) and item.get("symbol"):
+                            portfolio_symbols.add(clean_symbol(item["symbol"]))
+        except Exception:
+            pass
+
+    # Direct fallback for portfolios via modules.portfolio.portfolio_routes
+    if not portfolio_symbols and username:
+        try:
+            from modules.portfolio.portfolio_routes import load_portfolios
+            pf_data = load_portfolios(username) or {}
+            for holdings in pf_data.values():
+                if isinstance(holdings, list):
+                    for item in holdings:
+                        if isinstance(item, dict) and item.get("symbol"):
+                            portfolio_symbols.add(clean_symbol(item["symbol"]))
+                        elif isinstance(item, str):
+                            portfolio_symbols.add(clean_symbol(item))
+        except Exception:
+            pass
 
     return {"portfolio": portfolio_symbols, "watchlist": watchlist_symbols}
 

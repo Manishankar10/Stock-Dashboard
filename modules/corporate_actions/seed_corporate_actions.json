@@ -1,6 +1,20 @@
 {
   "bonus": [
     {
+      "company": "Reliance Industries",
+      "symbol": "RELIANCE",
+      "ex_date": "2026-10-28",
+      "ex_date_display": "28 October 2026",
+      "ratio": "1:1"
+    },
+    {
+      "company": "Tata Consultancy Services",
+      "symbol": "TCS",
+      "ex_date": "2026-10-30",
+      "ex_date_display": "30 October 2026",
+      "ratio": "1:1"
+    },
+    {
       "company": "Titan Biotech",
       "symbol": "TITANBIO",
       "ex_date": "2026-10-23",
@@ -79,6 +93,22 @@
     }
   ],
   "rights": [
+    {
+      "company": "Tata Consultancy Services",
+      "symbol": "TCS",
+      "ex_date": "2026-10-31",
+      "ex_date_display": "31 October 2026",
+      "premium": "0.00",
+      "ratio": "1:5"
+    },
+    {
+      "company": "Infosys",
+      "symbol": "INFY",
+      "ex_date": "2026-11-05",
+      "ex_date_display": "5 November 2026",
+      "premium": "0.00",
+      "ratio": "1:10"
+    },
     {
       "company": "L&T Finance",
       "symbol": "LTF",
@@ -201,6 +231,22 @@
     }
   ],
   "split": [
+    {
+      "company": "Reliance Industries",
+      "symbol": "RELIANCE",
+      "ex_date": "2026-11-12",
+      "ex_date_display": "12 November 2026",
+      "old_fv": "10.00",
+      "new_fv": "5.00"
+    },
+    {
+      "company": "Infosys",
+      "symbol": "INFY",
+      "ex_date": "2026-11-18",
+      "ex_date_display": "18 November 2026",
+      "old_fv": "5.00",
+      "new_fv": "2.00"
+    },
     {
       "company": "Knowledge Marine",
       "symbol": "KML",

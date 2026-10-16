@@ -68,17 +68,29 @@
         return String(sym).replace(/\.(NS|BO)$/i, '').trim().toUpperCase();
     }
 
-    // Extract live user symbols from frontend global stores if present
+    // Extract live user symbols from frontend global stores or API payload
     function getLiveClientSymbols() {
         const portfolioSymbols = new Set();
         const watchlistSymbols = new Set();
 
         try {
+            // Check symbols returned directly by backend
+            if (window.corpState.data && window.corpState.data.user_symbols) {
+                const us = window.corpState.data.user_symbols;
+                if (Array.isArray(us.portfolio)) {
+                    us.portfolio.forEach(s => portfolioSymbols.add(cleanSymbol(s)));
+                }
+                if (Array.isArray(us.watchlist)) {
+                    us.watchlist.forEach(s => watchlistSymbols.add(cleanSymbol(s)));
+                }
+            }
+
             if (window.portfoliosData && typeof window.portfoliosData === 'object') {
                 Object.values(window.portfoliosData).forEach(holdings => {
                     if (Array.isArray(holdings)) {
                         holdings.forEach(h => {
-                            if (h && h.symbol) portfolioSymbols.add(cleanSymbol(h.symbol));
+                            const sym = typeof h === 'string' ? h : (h && (h.symbol || h.ticker));
+                            if (sym) portfolioSymbols.add(cleanSymbol(sym));
                         });
                     }
                 });
@@ -88,12 +100,29 @@
                 Object.values(window.watchlistsData).forEach(items => {
                     if (Array.isArray(items)) {
                         items.forEach(item => {
-                            const sym = typeof item === 'string' ? item : (item && item.symbol);
+                            const sym = typeof item === 'string' ? item : (item && (item.symbol || item.ticker));
                             if (sym) watchlistSymbols.add(cleanSymbol(sym));
                         });
                     }
                 });
             }
+
+            try {
+                const cachedWl = localStorage.getItem('cd_cached_watchlists') || localStorage.getItem('watchlistsData');
+                if (cachedWl) {
+                    const parsed = JSON.parse(cachedWl);
+                    if (parsed && typeof parsed === 'object') {
+                        Object.values(parsed).forEach(items => {
+                            if (Array.isArray(items)) {
+                                items.forEach(item => {
+                                    const sym = typeof item === 'string' ? item : (item && (item.symbol || item.ticker));
+                                    if (sym) watchlistSymbols.add(cleanSymbol(sym));
+                                });
+                            }
+                        });
+                    }
+                }
+            } catch (_) {}
         } catch (_) {}
 
         return { portfolioSymbols, watchlistSymbols };
@@ -132,10 +161,27 @@
         if (!window.corpState.data || !window.corpState.data.tabs) return;
         const tabs = window.corpState.data.tabs;
         const isWeb = window.innerWidth > 768;
+        const { portfolioSymbols, watchlistSymbols } = getLiveClientSymbols();
+        const filter = window.corpState.activeFilter || 'all';
+
         Object.keys(TAB_CONFIGS).forEach(tabKey => {
             const counterEl = document.getElementById(`corp-count-${tabKey}`);
-            if (counterEl && tabs[tabKey] && tabs[tabKey].counts) {
-                const count = (tabKey === 'dividend' && !isWeb) ? tabs[tabKey].counts.total : tabs[tabKey].counts.upcoming;
+            if (counterEl && tabs[tabKey]) {
+                let items = (tabs[tabKey].all || []).map(item => {
+                    const sym = cleanSymbol(item.symbol);
+                    const inPf = item.in_portfolio || portfolioSymbols.has(sym);
+                    const inWl = item.in_watchlist || watchlistSymbols.has(sym);
+                    return { ...item, in_portfolio: inPf, in_watchlist: inWl };
+                });
+                if (filter === 'portfolio') {
+                    items = items.filter(x => x.in_portfolio);
+                } else if (filter === 'watchlist') {
+                    items = items.filter(x => x.in_watchlist);
+                }
+
+                const count = (tabKey === 'dividend' && !isWeb) 
+                    ? items.length 
+                    : items.filter(x => x.is_upcoming).length;
                 counterEl.textContent = count;
             }
         });
@@ -162,6 +208,7 @@
             pill.classList.toggle('active', isActive);
         });
 
+        updateTabCounters();
         renderCorporateActions();
     }
 
@@ -372,7 +419,13 @@
                 if (tbodyEl) tbodyEl.innerHTML = '';
                 if (emptyEl) {
                     emptyEl.style.display = 'block';
-                    emptyEl.querySelector('.corp-empty-title').textContent = `No upcoming ${tabConfig.title} actions`;
+                    let emptyMsg = `No upcoming ${tabConfig.title} actions`;
+                    if (filter === 'portfolio') {
+                        emptyMsg = `No upcoming ${tabConfig.title} actions for your Portfolio stocks`;
+                    } else if (filter === 'watchlist') {
+                        emptyMsg = `No upcoming ${tabConfig.title} actions for your Watchlist stocks`;
+                    }
+                    emptyEl.querySelector('.corp-empty-title').textContent = emptyMsg;
                 }
             } else {
                 if (emptyEl) emptyEl.style.display = 'none';
@@ -385,7 +438,17 @@
             if (pastBadgeEl) pastBadgeEl.textContent = pastItems.length;
             if (pastItems.length === 0) {
                 if (pastTbodyEl) pastTbodyEl.innerHTML = '';
-                if (pastEmptyEl) pastEmptyEl.style.display = 'block';
+                if (pastEmptyEl) {
+                    pastEmptyEl.style.display = 'block';
+                    let pastEmptyMsg = 'No records in the last 2 months';
+                    if (filter === 'portfolio') {
+                        pastEmptyMsg = 'No past actions in the last 2 months for your Portfolio stocks';
+                    } else if (filter === 'watchlist') {
+                        pastEmptyMsg = 'No past actions in the last 2 months for your Watchlist stocks';
+                    }
+                    const titleNode = pastEmptyEl.querySelector('.corp-empty-title');
+                    if (titleNode) titleNode.textContent = pastEmptyMsg;
+                }
             } else {
                 if (pastEmptyEl) pastEmptyEl.style.display = 'none';
                 if (pastTbodyEl) {

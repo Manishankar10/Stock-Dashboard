@@ -47,15 +47,16 @@
 }
 
 @keyframes corp-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .corp-btn-refresh.loading svg,
 .corp-btn-refresh.refreshing svg,
 .corp-refresh-btn.loading svg,
 .corp-refresh-btn.refreshing svg {
-    animation: pf-spin 0.75s linear infinite !important;
+    animation: corp-spin 0.75s linear infinite !important;
+    transform-origin: center center !important;
 }
 
 /* Web Only (min-width: 769px): Refresh button identical to portfolio in responsive design */
@@ -76,9 +77,10 @@
         border: 1px solid rgba(16, 185, 129, 0.3) !important;
         color: #10b981 !important;
         cursor: pointer !important;
-        transition: all 0.2s ease !important;
+        transition: background 0.2s ease, border-color 0.2s ease !important;
         padding: 0 !important;
         box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+        transform: none !important;
     }
 
     :root:not([data-theme="dark"]) .corp-btn-refresh,
@@ -93,18 +95,19 @@
         width: 13px !important;
         height: 13px !important;
         color: inherit !important;
+        transform-origin: center center !important;
     }
 
     .corp-btn-refresh:hover,
     .corp-refresh-btn:hover {
         background: rgba(16, 185, 129, 0.2) !important;
         border-color: #10b981 !important;
-        transform: translateY(-1px);
+        transform: none !important;
     }
 
     .corp-btn-refresh:active,
     .corp-refresh-btn:active {
-        transform: scale(0.92) !important;
+        transform: none !important;
         background: rgba(16, 185, 129, 0.25) !important;
     }
 
