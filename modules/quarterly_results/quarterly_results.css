@@ -1650,17 +1650,145 @@
     padding: 4px 10px;
 }
 
-/* Web Only Rule: Remove Tools/Latest results breadcrumb */
+/* Bottom Size Bar & How Many to Show Options */
+.qr-bottom-size-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 10px;
+}
+
+.qr-page-size-pills-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qr-size-pills-group {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+}
+
+:root:not([data-theme="dark"]) .qr-size-pills-group {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.qr-size-pill {
+    padding: 5px 11px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:root:not([data-theme="dark"]) .qr-size-pill {
+    color: #475569;
+}
+
+.qr-size-pill:hover:not(.active) {
+    color: var(--text-primary, #ffffff);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+:root:not([data-theme="dark"]) .qr-size-pill:hover:not(.active) {
+    color: #0f172a;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.qr-size-pill.active {
+    background: #5c7cfa !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    box-shadow: 0 1px 6px rgba(92, 124, 250, 0.35);
+}
+
+.qr-size-pill:active {
+    transform: scale(0.94);
+}
+
+/* Web Only Rule: Remove Tools/Latest results breadcrumb & hide bottom size bar on desktop */
 @media (min-width: 769px) {
     .qr-breadcrumb {
         display: none !important;
     }
+    .qr-bottom-size-bar {
+        display: none !important;
+    }
 }
 
-/* Responsive Rule: Hide pagination controls on mobile / tablet <= 768px */
+/* Responsive Rule: Mobile Pagination & How Many to Show Controls (<= 768px) */
 @media (max-width: 768px) {
-    .qr-pagination-toolbar,
+    /* Hide top pagination toolbar on mobile to save prime viewport space */
+    .qr-pagination-toolbar {
+        display: none !important;
+    }
+
+    /* Show bottom pagination card on mobile with size pills and page nav */
     .qr-pagination-bottom {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        margin-top: 16px;
+        margin-bottom: 24px;
+        padding: 14px 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    :root:not([data-theme="dark"]) .qr-pagination-bottom {
+        background: rgba(0, 0, 0, 0.02);
+        border-color: rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    }
+
+    .qr-bottom-size-bar {
+        display: flex !important;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    :root:not([data-theme="dark"]) .qr-bottom-size-bar {
+        border-bottom-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .qr-pagination-nav {
+        width: 100%;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .qr-page-btn {
+        min-width: 32px;
+        height: 32px;
+        font-size: 12px;
+        padding: 0 8px;
+    }
+
+    .qr-bottom-summary {
         display: none !important;
     }
 }

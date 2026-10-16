@@ -90,8 +90,25 @@
                 </div>
             </div>
 
-            <!-- Web Pagination Bottom Controls (Shown when "No filter" is chosen) -->
+            <!-- Pagination Bottom Controls (Shown when "No filter" is chosen) -->
             <div class="qr-pagination-bottom" id="qr-pagination-bottom" style="display: none;">
+                <!-- Bottom Size Bar: How Many to Show Options & Summary (Mobile-first, responsive) -->
+                <div class="qr-bottom-size-bar" id="qr-bottom-size-bar">
+                    <div class="qr-pagination-info qr-bottom-info" id="qr-bottom-pagination-info">
+                        Showing <span id="qr-bottom-page-start">1</span>–<span id="qr-bottom-page-end">10</span> of <span id="qr-bottom-page-total">0</span> market stocks
+                    </div>
+                    <div class="qr-page-size-pills-wrap">
+                        <span class="qr-page-size-label">Show:</span>
+                        <div class="qr-size-pills-group" role="group" aria-label="Results per page">
+                            <button type="button" class="qr-size-pill active" data-size="10" onclick="window.setQrPageSize(10)">10</button>
+                            <button type="button" class="qr-size-pill" data-size="20" onclick="window.setQrPageSize(20)">20</button>
+                            <button type="button" class="qr-size-pill" data-size="50" onclick="window.setQrPageSize(50)">50</button>
+                            <button type="button" class="qr-size-pill" data-size="all" onclick="window.setQrPageSize('all')">All</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page Navigation Controls -->
                 <div class="qr-pagination-nav" id="qr-pagination-nav"></div>
             </div>
 

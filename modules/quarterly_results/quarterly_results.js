@@ -262,20 +262,30 @@
 
         if (emptyEl) emptyEl.style.display = 'none';
 
-        // Check if watchlist scope is 'all' ("No filter")
+        // Check if pagination should be enabled:
+        // Web: active when "No filter" (overall market)
+        // Mobile: active at bottom of listing (as requested: "give pagination and how many to show options in bottom of listing in quarterly results in mobile")
+        const isWeb = window.innerWidth > 768;
         const isNoFilter = qrState.watchlist === 'all';
+        const enablePagination = isNoFilter || !isWeb;
 
         let pagedResults = allResults;
         let startIndex = 0;
         let endIndex = total;
 
-        if (isNoFilter) {
-            if (paginationToolbar) paginationToolbar.style.display = 'flex';
+        if (enablePagination) {
+            if (paginationToolbar) paginationToolbar.style.display = isWeb ? 'flex' : 'none';
             if (paginationBottom) paginationBottom.style.display = 'flex';
 
             // Sync select element
             const selectEl = document.getElementById('qr-page-size-select');
             if (selectEl) selectEl.value = String(qrState.pageSize);
+
+            // Sync size pills in bottom bar
+            document.querySelectorAll('.qr-size-pill').forEach(pill => {
+                const pSize = pill.getAttribute('data-size');
+                pill.classList.toggle('active', String(pSize) === String(qrState.pageSize));
+            });
 
             if (qrState.pageSize === 'all') {
                 pagedResults = allResults;
@@ -301,8 +311,15 @@
             if (startEl) startEl.innerText = total > 0 ? (startIndex + 1) : 0;
             if (endEl) endEl.innerText = endIndex;
             if (totalEl) totalEl.innerText = total;
+
+            const bStartEl = document.getElementById('qr-bottom-page-start');
+            const bEndEl = document.getElementById('qr-bottom-page-end');
+            const bTotalEl = document.getElementById('qr-bottom-page-total');
+            if (bStartEl) bStartEl.innerText = total > 0 ? (startIndex + 1) : 0;
+            if (bEndEl) bEndEl.innerText = endIndex;
+            if (bTotalEl) bTotalEl.innerText = total;
         } else {
-            // Specific portfolio or watchlist: show directly without pagination
+            // Specific portfolio or watchlist on Web: show directly without pagination
             if (paginationToolbar) paginationToolbar.style.display = 'none';
             if (paginationBottom) paginationBottom.style.display = 'none';
             pagedResults = allResults;
