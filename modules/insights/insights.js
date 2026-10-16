@@ -846,7 +846,7 @@
                     </div>
                     <div>
                         <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
-                            <span>🪙 Commodities & Gold (${dist.commodities.count})</span>
+                            <span>🟡 Commodities & Gold (${dist.commodities.count})</span>
                             <span>${dist.commodities.pct}%</span>
                         </div>
                         <div style="width: 100%; background: var(--bg-subtle); height: 8px; border-radius: 4px; overflow: hidden;">
@@ -1123,7 +1123,7 @@
                             </span>
                             <span class="bullion-purity-tag bullion-purity-silver">99.9% FINE</span>
                         </div>
-                        <div class="bullion-tiles-row tiles-3">
+                        <div class="bullion-tiles-row">
                             <div class="bullion-tile">
                                 <span class="bullion-tile-label">1 Gram</span>
                                 <span class="bullion-tile-value bullion-val-silver">${fsilver_1g}</span>
@@ -1134,11 +1134,13 @@
                                 <span class="bullion-tile-value bullion-val-silver">${fsilver_8g}</span>
                                 <span class="bullion-tile-sub">Coin Rate</span>
                             </div>
-                            <div class="bullion-tile">
-                                <span class="bullion-tile-label">1 Kg (Ready)</span>
-                                <span class="bullion-tile-value bullion-val-silver">${fsilver_1kg}</span>
-                                <span class="bullion-tile-sub">Bar Rate</span>
+                        </div>
+                        <div class="bullion-tile bullion-tile-full">
+                            <div style="display: flex; flex-direction: column; min-width: 0;">
+                                <span class="bullion-tile-label">1 Kg (Ready Silver)</span>
+                                <span class="bullion-tile-sub">Wholesale Bar Benchmark</span>
                             </div>
+                            <span class="bullion-tile-value bullion-val-silver" style="font-size: 14.5px; flex-shrink: 0;">${fsilver_1kg}</span>
                         </div>
                     </div>
                 `;

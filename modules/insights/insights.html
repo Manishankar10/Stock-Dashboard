@@ -163,11 +163,11 @@
             </div>
 
             <!-- Insights Two-Column Layout -->
-            <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px;" class="insights-grid">
+            <div class="insights-grid">
                 
                 <!-- Left Column: Live Aggregated News Cards -->
                 <div style="display: flex; flex-direction: column; gap: 14px;">
-                    <div class="insights-news-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 8px; background: var(--bg-card); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-color); min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                    <div class="insights-news-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; row-gap: 8px; column-gap: 12px; background: var(--bg-card); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-color); min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex-shrink: 1;">
                             <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;">
                                 📰 Live Stock News <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
@@ -223,17 +223,29 @@
                     
 
                     <!-- Live Gold & Silver Bullion Rates Card -->
-                    <div class="card-container insights-bullion-card" id="insights-bullion-card" style="padding: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                            <div>
-                                <h3 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 7px;">
-                                    <span>🪙</span> Live Gold & Silver Rates
+                    <div class="card-container insights-bullion-card" id="insights-bullion-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                            <div style="min-width: 0; flex: 1 1 auto;">
+                                <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="9.5" fill="url(#goldCoinGrad)" stroke="#d97706" stroke-width="1.5"/>
+                                        <circle cx="12" cy="12" r="7" stroke="#fbbf24" stroke-width="1" stroke-dasharray="2.5 1.5" fill="none"/>
+                                        <text x="12" y="15.5" font-size="10.5" font-weight="bold" fill="#78350f" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">₹</text>
+                                        <defs>
+                                            <linearGradient id="goldCoinGrad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                                                <stop stop-color="#fef08a"/>
+                                                <stop offset="0.5" stop-color="#f59e0b"/>
+                                                <stop offset="1" stop-color="#b45309"/>
+                                            </linearGradient>
+                                        </defs>
+                                    </svg>
+                                    <span>Live Gold &amp; Silver Rates</span>
                                 </h3>
-                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
-                                    Chennai Market Benchmark • Official Jewellers Association
+                                <div style="font-size: 10.5px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    Chennai Benchmark • Jewellers Association
                                 </div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
                                 <span class="bullion-live-pill">
                                     <span class="bullion-pulsing-dot"></span> LIVE
                                 </span>
@@ -248,9 +260,9 @@
 
                         <!-- Metal Filter Switcher Pills -->
                         <div class="bullion-pills-bar">
-                            <button type="button" class="bullion-pill active" id="bullion-pill-all" onclick="filterBullionCards('all')">✨ All Metals</button>
-                            <button type="button" class="bullion-pill" id="bullion-pill-24k" onclick="filterBullionCards('24k')">🥇 24K Pure</button>
-                            <button type="button" class="bullion-pill" id="bullion-pill-22k" onclick="filterBullionCards('22k')">👑 22K Standard</button>
+                            <button type="button" class="bullion-pill active" id="bullion-pill-all" onclick="filterBullionCards('all')">✨ All</button>
+                            <button type="button" class="bullion-pill" id="bullion-pill-24k" onclick="filterBullionCards('24k')">🥇 24K</button>
+                            <button type="button" class="bullion-pill" id="bullion-pill-22k" onclick="filterBullionCards('22k')">👑 22K</button>
                             <button type="button" class="bullion-pill" id="bullion-pill-silver" onclick="filterBullionCards('silver')">🥈 Silver</button>
                         </div>
 
@@ -264,7 +276,7 @@
                             <span class="bullion-update-time" id="bullion-update-time">
                                 ⏱️ Updated: 16/10/2026 9:28 AM
                             </span>
-                            <span class="bullion-source-tag">LiveChennai Official Feed</span>
+                            <span class="bullion-source-tag">LiveChennai Feed</span>
                         </div>
                     </div>
 
