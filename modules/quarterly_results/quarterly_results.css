@@ -48,6 +48,14 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
+.qr-title-desktop {
+    display: inline;
+}
+
+.qr-title-mobile {
+    display: none;
+}
+
 :root:not([data-theme="dark"]) .qr-page-title {
     color: #0f172a;
 }
@@ -400,6 +408,20 @@
 @keyframes qr-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+@keyframes qr-btn-drop-rise {
+    0% { transform: translateY(0); }
+    30% { transform: translateY(3.5px) scale(0.95); }
+    70% { transform: translateY(-1px); }
+    100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes qr-stream-drop-rise {
+    0% { transform: translateY(0); }
+    35% { transform: translateY(8px); }
+    75% { transform: translateY(-2px); }
+    100% { transform: translateY(0); }
 }
 
 .qr-refresh-btn.refreshing svg {
@@ -1254,11 +1276,25 @@
         display: inline-flex;
     }
 
+    .qr-title-desktop {
+        display: none !important;
+    }
+
+    .qr-title-mobile {
+        display: inline !important;
+    }
+
+    #tab-quarterly-results {
+        margin-top: -12px !important;
+        padding-top: 0 !important;
+    }
+
     /* Mobile Header Layout & Typography (matching other pages) */
     .qr-top-bar {
         align-items: center !important;
         justify-content: space-between !important;
-        margin-bottom: 12px !important;
+        margin-top: 0 !important;
+        margin-bottom: 8px !important;
         gap: 8px !important;
     }
 
@@ -1316,6 +1352,7 @@
         padding: 0 !important;
         margin: 0 !important;
         box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+        transition: transform 0.12s ease !important;
     }
 
     :root:not([data-theme="dark"]) .qr-top-refresh-btn {
@@ -1324,10 +1361,24 @@
         color: #059669 !important;
     }
 
+    .qr-top-refresh-btn:active {
+        transform: translateY(3px) scale(0.94) !important;
+        transition: transform 0.08s ease !important;
+    }
+
+    .qr-top-refresh-btn.refreshing {
+        animation: qr-btn-drop-rise 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) !important;
+    }
+
+    /* Pull-to-refresh drop and bounce effect on cards stream */
+    .qr-cards-stream.refreshing-drop {
+        animation: qr-stream-drop-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    }
+
     /* Controls card reset to eliminate massive empty space bug */
     .qr-controls-card {
-        padding: 12px 14px !important;
-        margin-bottom: 14px !important;
+        padding: 8px 10px !important;
+        margin-bottom: 10px !important;
         height: auto !important;
         min-height: 0 !important;
     }
@@ -1335,7 +1386,7 @@
     .qr-controls-row {
         flex-direction: column !important;
         align-items: stretch !important;
-        gap: 10px !important;
+        gap: 8px !important;
         height: auto !important;
         min-height: 0 !important;
     }
@@ -1344,7 +1395,7 @@
         flex: 0 0 auto !important;
         height: auto !important;
         min-height: 0 !important;
-        gap: 6px !important;
+        gap: 4px !important;
         width: 100% !important;
         max-width: 100% !important;
     }
@@ -1358,15 +1409,14 @@
     }
 
     .qr-search-input {
-        height: 38px !important;
-        padding: 8px 34px 8px 38px !important;
+        height: 36px !important;
+        padding: 6px 34px 6px 36px !important;
         font-size: 13px !important;
         box-sizing: border-box !important;
     }
 
     .qr-results-counter {
-        font-size: 12px !important;
-        margin-top: 2px !important;
+        display: none !important;
     }
 
     /* Date row: Hide duplicate refresh button to eliminate overlap */

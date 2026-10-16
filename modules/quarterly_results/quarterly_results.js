@@ -48,6 +48,14 @@
         refreshBtns.forEach(btn => btn.classList.add('refreshing'));
 
         const streamEl = document.getElementById('qr-cards-stream');
+        if (streamEl) {
+            streamEl.classList.remove('refreshing-drop');
+            void streamEl.offsetWidth;
+            streamEl.classList.add('refreshing-drop');
+            setTimeout(() => {
+                if (streamEl) streamEl.classList.remove('refreshing-drop');
+            }, 600);
+        }
         if (!qrState.data && streamEl) {
             streamEl.innerHTML = `
                 <div class="qr-card-skeleton"><div class="qr-skeleton-header"></div><div class="qr-skeleton-table"></div></div>
