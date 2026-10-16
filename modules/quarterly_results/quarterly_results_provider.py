@@ -315,8 +315,8 @@ class QuarterlyResultsProvider:
             "available_industries": available_industries,
             "available_dates": available_dates,
             "portfolio_symbols": sorted(list(portfolio_clean)),
-            "current_quarter": "Q2 FY25",
-            "quarter_label": "Q2 FY25",
+            "current_quarter": "Q2 FY27",
+            "quarter_label": "Q2 FY27",
             "active_filters": {
                 "search": search,
                 "industry": industry,

@@ -112,7 +112,7 @@
         const pdfUrl = item.pdf_url ? escapeHtml(item.pdf_url) : '#';
         const ind = escapeHtml(item.industry || '');
 
-        const quarters = item.quarters || { latest: 'Sep 2024', prev: 'Jun 2024', year_ago: 'Sep 2023' };
+        const quarters = item.quarters || { latest: 'Sep 2026', prev: 'Jun 2026', year_ago: 'Sep 2025' };
 
         const rowsHtml = (item.metrics || []).map(m => {
             const name = escapeHtml(m.name || '');
@@ -199,7 +199,7 @@
         if (!data) return;
 
         // 0. Sync Quarter Title Tag
-        const qLabel = data.quarter_label || data.current_quarter || 'Q2 FY25';
+        const qLabel = data.quarter_label || data.current_quarter || 'Q2 FY27';
         const titleQuarterEl = document.getElementById('qr-title-quarter');
         if (titleQuarterEl) {
             titleQuarterEl.textContent = `(${qLabel})`;
@@ -516,7 +516,7 @@
         if (!navEl) return;
 
         const isAllActive = !qrState.date;
-        const qLabel = (qrState.data && (qrState.data.quarter_label || qrState.data.current_quarter)) || 'Q2';
+        const qLabel = (qrState.data && (qrState.data.quarter_label || qrState.data.current_quarter)) || 'Q2 FY27';
         let html = `
             <button type="button" class="qr-date-pill ${isAllActive ? 'active' : ''}" data-date="" onclick="window.setQrDateFilter('')" title="Show all results for this quarter">
                 All ${escapeHtml(qLabel)} Results
