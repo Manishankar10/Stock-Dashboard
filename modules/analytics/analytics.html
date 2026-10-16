@@ -44,4 +44,102 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ========================================================= -->
+            <!-- PORTFOLIO ANALYSER COMPONENT (Institutional Glassy Design) -->
+            <!-- ========================================================= -->
+            <div class="portfolio-analyser-card" id="portfolio-analyser-section">
+                <!-- Section Header: Title + Portfolio Dropdown Selector -->
+                <div class="pa-header-row">
+                    <div class="pa-title-wrap">
+                        <div class="pa-badge">PORTFOLIO INTELLIGENCE</div>
+                        <h2 class="pa-title">
+                            <span class="pa-title-icon">📊</span>
+                            <span>Portfolio Analyser</span>
+                        </h2>
+                    </div>
+                    <div class="pa-portfolio-selector-wrap" id="pa-portfolio-selector-container">
+                        <!-- Populated dynamically: Dropdown if > 1 portfolio, single badge if 1 portfolio -->
+                    </div>
+                </div>
+
+                <!-- 3 Analysis Tabs: Market | Sector | Top Holdings -->
+                <div class="pa-tabs-container">
+                    <div class="pa-tabs-bar" role="tablist">
+                        <button type="button" class="pa-tab-btn active" id="pa-tab-market" data-tab="market" onclick="window.switchPaTab('market')">
+                            <span class="pa-tab-icon">🏷️</span> Market
+                        </button>
+                        <button type="button" class="pa-tab-btn" id="pa-tab-sector" data-tab="sector" onclick="window.switchPaTab('sector')">
+                            <span class="pa-tab-icon">🏢</span> Sector
+                        </button>
+                        <button type="button" class="pa-tab-btn" id="pa-tab-top-holdings" data-tab="top-holdings" onclick="window.switchPaTab('top-holdings')">
+                            <span class="pa-tab-icon">⭐</span> Top Holdings
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Value & P&L Summary Banner Card -->
+                <div class="pa-summary-banner">
+                    <div class="pa-summary-main">
+                        <div class="pa-summary-val-row">
+                            <span class="pa-current-val" id="pa-total-current-val">₹0</span>
+                            <button type="button" class="pa-eye-toggle-btn" id="pa-eye-toggle" onclick="window.togglePaPrivacy()" title="Toggle Privacy Mode" aria-label="Toggle Privacy">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="pa-overall-pnl-row" id="pa-overall-pnl-wrap">
+                            <span class="pa-pnl-arrow" id="pa-pnl-arrow">↓</span>
+                            <span class="pa-pnl-label" id="pa-pnl-label">Overall Loss</span>
+                            <span class="pa-pnl-amt" id="pa-overall-pnl-amt">-₹0.00</span>
+                            <span class="pa-pnl-pct" id="pa-overall-pnl-pct">(-0.00%)</span>
+                        </div>
+                    </div>
+                    <div class="pa-summary-sub-grid">
+                        <div class="pa-sub-item">
+                            <div class="pa-sub-label">Invested Value</div>
+                            <div class="pa-sub-val" id="pa-invested-val">₹0</div>
+                        </div>
+                        <div class="pa-sub-item">
+                            <div class="pa-sub-label" id="pa-day-pnl-label">Today's Return</div>
+                            <div class="pa-sub-val pa-day-pnl-val" id="pa-day-pnl-val">₹0.00 (0.00%)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Mount Area: Donut Chart + Breakdown Table -->
+                <div class="pa-analysis-content" id="pa-analysis-mount">
+                    <!-- Populated dynamically: Donut Chart & Legend + Breakdown Table -->
+                </div>
+            </div>
+
+            <!-- Modal Popup / Mobile Bottom Sheet for Category Breakdown Details -->
+            <div class="pa-modal-overlay" id="pa-details-modal" style="display: none;" onclick="window.closePaModal(event)">
+                <div class="pa-modal-sheet" onclick="event.stopPropagation()">
+                    <div class="pa-sheet-handle"></div>
+                    <div class="pa-modal-header">
+                        <div class="pa-modal-title-wrap">
+                            <h3 class="pa-modal-title" id="pa-modal-title">Category</h3>
+                            <div class="pa-modal-subtitle" id="pa-modal-subtitle">0 Stocks · ₹0 · 0%</div>
+                        </div>
+                        <button type="button" class="pa-modal-close-btn" onclick="window.closePaModal()" aria-label="Close">✕</button>
+                    </div>
+                    <div class="pa-modal-body">
+                        <table class="pa-modal-table">
+                            <thead>
+                                <tr>
+                                    <th class="pa-th-company">Company</th>
+                                    <th class="pa-th-mktval">Mkt Value/Weightage</th>
+                                    <th class="pa-th-pnl">Total G/L</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pa-modal-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
