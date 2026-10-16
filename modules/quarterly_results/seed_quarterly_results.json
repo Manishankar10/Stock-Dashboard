@@ -1,0 +1,692 @@
+[
+  {
+    "symbol": "ANGELONE",
+    "company": "Angel One",
+    "industry": "Stockbroking & Allied",
+    "exchange": "NSE",
+    "price": 304.0,
+    "mcap_cr": 27758.0,
+    "pe": 24.0,
+    "date": "2026-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/ANGELONE_15102026_Q2_Results.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 19.0,
+        "latest": "1,427",
+        "prev": "1,430",
+        "year_ago": "1,202"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 53.0,
+        "latest": "636",
+        "prev": "485",
+        "year_ago": "415"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 58.0,
+        "latest": "335",
+        "prev": "231",
+        "year_ago": "212"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 57.0,
+        "latest": "₹ 3.66",
+        "prev": "₹ 2.53",
+        "year_ago": "₹ 2.33"
+      }
+    ]
+  },
+  {
+    "symbol": "PERSISTENT",
+    "company": "Persistent Systems",
+    "industry": "Computers - Software & Consulting",
+    "exchange": "NSE",
+    "price": 5646.0,
+    "mcap_cr": 89067.0,
+    "pe": 47.7,
+    "date": "2026-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/PERSISTENT_15102026_Q2_Results.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 30.0,
+        "latest": "4,664",
+        "prev": "4,303",
+        "year_ago": "3,581"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": -7.0,
+        "latest": "633",
+        "prev": "697",
+        "year_ago": "683"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": -25.0,
+        "latest": "352",
+        "prev": "483",
+        "year_ago": "471"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": -26.0,
+        "latest": "₹ 22.28",
+        "prev": "₹ 30.62",
+        "year_ago": "₹ 30.15"
+      }
+    ]
+  },
+  {
+    "symbol": "SOUTHBANK",
+    "company": "South Ind.Bank",
+    "industry": "Private Sector Bank",
+    "exchange": "NSE",
+    "price": 51.2,
+    "mcap_cr": 13428.0,
+    "pe": 8.5,
+    "date": "2026-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/SOUTHBANK_15102026_Q2_Results.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 16.0,
+        "latest": "2,796",
+        "prev": "2,628",
+        "year_ago": "2,407"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 15.0,
+        "latest": "1,785",
+        "prev": "1,731",
+        "year_ago": "1,555"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 21.0,
+        "latest": "426",
+        "prev": "378",
+        "year_ago": "351"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 22.0,
+        "latest": "₹ 1.63",
+        "prev": "₹ 1.44",
+        "year_ago": "₹ 1.34"
+      }
+    ]
+  },
+  {
+    "symbol": "TRIL",
+    "company": "T R I L",
+    "industry": "Heavy Electrical Equipment",
+    "exchange": "NSE",
+    "price": 335.0,
+    "mcap_cr": 10060.0,
+    "pe": 33.0,
+    "date": "2026-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/TRIL_15102026_Q2_Results.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 61.0,
+        "latest": "739",
+        "prev": "572",
+        "year_ago": "460"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 150.0,
+        "latest": "129",
+        "prev": "93.3",
+        "year_ago": "51.5"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 135.0,
+        "latest": "81.4",
+        "prev": "64.3",
+        "year_ago": "37.4"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 135.0,
+        "latest": "₹ 2.66",
+        "prev": "₹ 2.05",
+        "year_ago": "₹ 1.13"
+      }
+    ]
+  },
+  {
+    "symbol": "TCS",
+    "company": "Tata Consultancy Services",
+    "industry": "Computers - Software & Consulting",
+    "exchange": "NSE",
+    "price": 3510.0,
+    "mcap_cr": 1270000.0,
+    "pe": 27.5,
+    "date": "2026-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/TCS_Outcome_Q2.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 8.0,
+        "latest": "64,259",
+        "prev": "62,613",
+        "year_ago": "59,692"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 11.0,
+        "latest": "16,731",
+        "prev": "16,048",
+        "year_ago": "15,070"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 12.0,
+        "latest": "12,040",
+        "prev": "11,909",
+        "year_ago": "10,750"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 12.0,
+        "latest": "₹ 33.25",
+        "prev": "₹ 32.88",
+        "year_ago": "₹ 29.68"
+      }
+    ]
+  },
+  {
+    "symbol": "INFY",
+    "company": "Infosys Ltd",
+    "industry": "Computers - Software & Consulting",
+    "exchange": "NSE",
+    "price": 1910.0,
+    "mcap_cr": 792000.0,
+    "pe": 28.2,
+    "date": "2026-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/INFY_Outcome_Q2.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 7.0,
+        "latest": "40,986",
+        "prev": "39,315",
+        "year_ago": "38,318"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 9.0,
+        "latest": "9,840",
+        "prev": "9,410",
+        "year_ago": "9,028"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 10.0,
+        "latest": "6,506",
+        "prev": "6,368",
+        "year_ago": "5,915"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 10.0,
+        "latest": "₹ 15.68",
+        "prev": "₹ 15.34",
+        "year_ago": "₹ 14.25"
+      }
+    ]
+  },
+  {
+    "symbol": "RELIANCE",
+    "company": "Reliance Industries",
+    "industry": "Energy & Power",
+    "exchange": "NSE",
+    "price": 2740.0,
+    "mcap_cr": 1854000.0,
+    "pe": 25.8,
+    "date": "2026-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/RELIANCE_Outcome_Q2.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 5.0,
+        "latest": "240,357",
+        "prev": "236,217",
+        "year_ago": "228,910"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 4.0,
+        "latest": "43,934",
+        "prev": "42,748",
+        "year_ago": "42,250"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 6.0,
+        "latest": "19,323",
+        "prev": "17,445",
+        "year_ago": "18,228"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 6.0,
+        "latest": "₹ 28.58",
+        "prev": "₹ 25.80",
+        "year_ago": "₹ 26.96"
+      }
+    ]
+  },
+  {
+    "symbol": "FEDERALBNK",
+    "company": "Federal Bank",
+    "industry": "Private Sector Bank",
+    "exchange": "NSE",
+    "price": 198.5,
+    "mcap_cr": 48500.0,
+    "pe": 11.2,
+    "date": "2026-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/FEDERALBNK_16102026132028_FBL_BM_Outcome_Q2_S.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 18.0,
+        "latest": "6,720",
+        "prev": "6,480",
+        "year_ago": "5,695"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 14.0,
+        "latest": "1,540",
+        "prev": "1,485",
+        "year_ago": "1,350"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 11.0,
+        "latest": "1,010",
+        "prev": "953",
+        "year_ago": "910"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 11.0,
+        "latest": "₹ 4.15",
+        "prev": "₹ 3.92",
+        "year_ago": "₹ 3.74"
+      }
+    ]
+  },
+  {
+    "symbol": "HDFCBANK",
+    "company": "HDFC Bank",
+    "industry": "Private Sector Bank",
+    "exchange": "NSE",
+    "price": 1680.0,
+    "mcap_cr": 1280000.0,
+    "pe": 18.9,
+    "date": "2026-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/HDFCBANK_Outcome_Q2.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 24.0,
+        "latest": "85,500",
+        "prev": "83,700",
+        "year_ago": "68,900"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 22.0,
+        "latest": "24,200",
+        "prev": "23,500",
+        "year_ago": "19,800"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 17.0,
+        "latest": "16,820",
+        "prev": "16,170",
+        "year_ago": "14,380"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 17.0,
+        "latest": "₹ 22.10",
+        "prev": "₹ 21.25",
+        "year_ago": "₹ 18.90"
+      }
+    ]
+  },
+  {
+    "symbol": "SOLARA",
+    "company": "Solara Active Pharma",
+    "industry": "Pharmaceuticals & Healthcare",
+    "exchange": "NSE",
+    "price": 685.0,
+    "mcap_cr": 2465.0,
+    "pe": 38.0,
+    "date": "2026-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/SOLARA_16102026133129_SE_Outcome_Signed.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 12.0,
+        "latest": "410",
+        "prev": "388",
+        "year_ago": "366"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 35.0,
+        "latest": "65",
+        "prev": "54",
+        "year_ago": "48"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 120.0,
+        "latest": "22",
+        "prev": "12",
+        "year_ago": "10"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 120.0,
+        "latest": "₹ 6.10",
+        "prev": "₹ 3.33",
+        "year_ago": "₹ 2.78"
+      }
+    ]
+  },
+  {
+    "symbol": "BETADRUGS",
+    "company": "Beta Drugs Ltd",
+    "industry": "Pharmaceuticals & Healthcare",
+    "exchange": "NSE",
+    "price": 1420.0,
+    "mcap_cr": 1380.0,
+    "pe": 31.5,
+    "date": "2026-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/BETADRUGS_15102026_Q2_Outcome.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 28.0,
+        "latest": "82",
+        "prev": "75",
+        "year_ago": "64"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 31.0,
+        "latest": "21",
+        "prev": "19",
+        "year_ago": "16"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 38.0,
+        "latest": "15.2",
+        "prev": "13.5",
+        "year_ago": "11.0"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 38.0,
+        "latest": "₹ 15.80",
+        "prev": "₹ 14.03",
+        "year_ago": "₹ 11.45"
+      }
+    ]
+  },
+  {
+    "symbol": "CYIENT",
+    "company": "Cyient",
+    "industry": "Computers - Software & Consulting",
+    "exchange": "NSE",
+    "price": 1890.0,
+    "mcap_cr": 20950.0,
+    "pe": 29.4,
+    "date": "2026-10-15",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/CYIENT_15102026_Q2_Outcome.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 14.0,
+        "latest": "1,870",
+        "prev": "1,780",
+        "year_ago": "1,640"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 18.0,
+        "latest": "312",
+        "prev": "285",
+        "year_ago": "264"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 16.0,
+        "latest": "178",
+        "prev": "162",
+        "year_ago": "153"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 16.0,
+        "latest": "₹ 16.10",
+        "prev": "₹ 14.65",
+        "year_ago": "₹ 13.84"
+      }
+    ]
+  },
+  {
+    "symbol": "LTTS",
+    "company": "L&T Technology Services",
+    "industry": "Computers - Software & Consulting",
+    "exchange": "NSE",
+    "price": 5120.0,
+    "mcap_cr": 54100.0,
+    "pe": 38.6,
+    "date": "2026-10-14",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/LTTS_14102026_Q2_Outcome.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 10.0,
+        "latest": "2,570",
+        "prev": "2,460",
+        "year_ago": "2,336"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 8.0,
+        "latest": "462",
+        "prev": "445",
+        "year_ago": "428"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 9.0,
+        "latest": "320",
+        "prev": "313",
+        "year_ago": "294"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 9.0,
+        "latest": "₹ 30.25",
+        "prev": "₹ 29.60",
+        "year_ago": "₹ 27.80"
+      }
+    ]
+  },
+  {
+    "symbol": "BAJAJHFL",
+    "company": "Bajaj Housing Finance",
+    "industry": "Financial Services",
+    "exchange": "NSE",
+    "price": 142.5,
+    "mcap_cr": 118600.0,
+    "pe": 68.2,
+    "date": "2026-10-16",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/BAJAJHFL_Outcome_Q2.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 26.0,
+        "latest": "2,410",
+        "prev": "2,240",
+        "year_ago": "1,912"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 22.0,
+        "latest": "1,890",
+        "prev": "1,760",
+        "year_ago": "1,548"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 21.0,
+        "latest": "545",
+        "prev": "483",
+        "year_ago": "450"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 21.0,
+        "latest": "₹ 0.65",
+        "prev": "₹ 0.58",
+        "year_ago": "₹ 0.54"
+      }
+    ]
+  },
+  {
+    "symbol": "TATAELXSI",
+    "company": "Tata Elxsi",
+    "industry": "Computers - Software & Consulting",
+    "exchange": "NSE",
+    "price": 7650.0,
+    "mcap_cr": 47650.0,
+    "pe": 54.0,
+    "date": "2026-10-13",
+    "pdf_url": "https://nsearchives.nseindia.com/corporate/TATAELXSI_Outcome_Q2.pdf",
+    "quarters": {
+      "latest": "Sep 2026",
+      "prev": "Jun 2026",
+      "year_ago": "Sep 2025"
+    },
+    "metrics": [
+      {
+        "name": "Sales",
+        "yoy_pct": 8.0,
+        "latest": "955",
+        "prev": "926",
+        "year_ago": "884"
+      },
+      {
+        "name": "EBIDT",
+        "yoy_pct": 6.0,
+        "latest": "268",
+        "prev": "263",
+        "year_ago": "253"
+      },
+      {
+        "name": "Net profit",
+        "yoy_pct": 5.0,
+        "latest": "229",
+        "prev": "221",
+        "year_ago": "218"
+      },
+      {
+        "name": "EPS",
+        "yoy_pct": 5.0,
+        "latest": "₹ 36.75",
+        "prev": "₹ 35.48",
+        "year_ago": "₹ 35.00"
+      }
+    ]
+  }
+]

@@ -1,0 +1,442 @@
+<!-- modules/quarterly_results/quarterly_results.html -->
+<!-- Latest Quarterly Results View Component (Web & Responsive Glassy Design) -->
+
+<div id="tab-quarterly-results" class="tab-content" style="display: none;">
+    <!-- Top Breadcrumb & Mobile Filter Header -->
+    <div class="qr-top-bar">
+        <div>
+            <div class="qr-breadcrumb">
+                <span>Tools</span> <span class="qr-breadcrumb-sep">/</span> <span class="qr-breadcrumb-active">Latest results</span>
+            </div>
+            <h1 class="qr-page-title">Latest quarterly results</h1>
+        </div>
+        <!-- Responsive Mobile Filter Trigger -->
+        <button type="button" class="qr-mobile-filter-trigger" onclick="window.openQrMobileFilter()" title="Filter Results">
+            <span class="qr-filter-icon">⚡</span> Filter
+            <span class="qr-filter-badge-pill" id="qr-mobile-active-filter-badge" style="display: none;">0</span>
+        </button>
+    </div>
+
+    <!-- Quick Search & Date Navigation Bar -->
+    <div class="card-container qr-controls-card">
+        <div class="qr-controls-row">
+            <!-- Search & Count -->
+            <div class="qr-search-wrapper">
+                <div class="qr-search-box">
+                    <span class="qr-search-icon">🔍</span>
+                    <input type="text" id="qr-search-input" class="qr-search-input" placeholder="Search a company (e.g. Angel One, Persistent, TCS)..." oninput="window.handleQrSearch(this.value)">
+                    <button type="button" class="qr-search-clear-btn" id="qr-search-clear" onclick="window.clearQrSearch()" style="display: none;" title="Clear Search">✕</button>
+                </div>
+                <div class="qr-results-counter" id="qr-results-counter">
+                    <span class="qr-counter-bold" id="qr-filtered-count">0</span> results
+                    <span class="qr-counter-total" id="qr-total-count">(0 total)</span>
+                </div>
+            </div>
+
+            <!-- Date Selector Row -->
+            <div class="qr-dates-wrapper">
+                <div class="qr-dates-list" id="qr-dates-list">
+                    <button type="button" class="qr-date-pill active" data-date="" onclick="window.setQrDateFilter('')">All Recent</button>
+                    <!-- Dates populated dynamically from provider -->
+                </div>
+                <button type="button" class="qr-refresh-btn" onclick="window.loadQuarterlyResults(true)" title="Refresh Results from Official Exchange">
+                    🔄
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Split Screen Layout: Stream (Left) + Filter Sidebar (Right) -->
+    <div class="qr-split-container">
+        <!-- Main Results Stream (Left 73% Web, 100% Mobile) -->
+        <main class="qr-stream-container">
+            <!-- Results Cards Mount -->
+            <div class="qr-cards-stream" id="qr-cards-stream">
+                <!-- Skeleton Loader -->
+                <div class="qr-card-skeleton">
+                    <div class="qr-skeleton-header"></div>
+                    <div class="qr-skeleton-table"></div>
+                </div>
+                <div class="qr-card-skeleton">
+                    <div class="qr-skeleton-header"></div>
+                    <div class="qr-skeleton-table"></div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="qr-empty-state" id="qr-empty-state" style="display: none;">
+                <div class="qr-empty-icon">📊</div>
+                <h3 class="qr-empty-title">No quarterly results found</h3>
+                <p class="qr-empty-desc">No corporate earnings match your active filters or search query.</p>
+                <button type="button" class="qr-btn-reset-filters" onclick="window.clearAllQrFilters()">
+                    Reset All Filters
+                </button>
+            </div>
+
+            <!-- Bottom Counter Note -->
+            <div class="qr-bottom-summary" id="qr-bottom-summary">
+                <span id="qr-bottom-count-text">0 results</span>
+            </div>
+        </main>
+
+        <!-- Desktop Filter Sidebar (Right 27% Web, Hidden on Mobile <= 992px) -->
+        <aside class="qr-filter-sidebar" id="qr-filter-sidebar">
+            <div class="qr-sidebar-card">
+                <!-- Filter Header -->
+                <div class="qr-filter-header">
+                    <div class="qr-filter-header-left">
+                        <span class="qr-filter-icon">⚡</span>
+                        <h3 class="qr-filter-title">Filter</h3>
+                    </div>
+                    <button type="button" class="qr-clear-btn" onclick="window.clearAllQrFilters()">
+                        ✖ CLEAR ALL
+                    </button>
+                </div>
+
+                <!-- 1. By Industry -->
+                <div class="qr-filter-section open">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>By Industry</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <input type="text" class="qr-industry-search-input" id="qr-industry-search" placeholder="Search industries..." oninput="window.filterIndustryList(this.value, 'desktop')">
+                        <div class="qr-industry-list" id="qr-industry-list-desktop">
+                            <label class="qr-radio-item active">
+                                <input type="radio" name="qr-industry-desktop" value="all" checked onchange="window.setQrIndustryFilter('all')">
+                                <span class="qr-radio-label">All industries</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. By Market Cap -->
+                <div class="qr-filter-section open">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>By Market Cap</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <div class="qr-options-list">
+                            <label class="qr-radio-item active">
+                                <input type="radio" name="qr-mcap-desktop" value="all" checked onchange="window.setQrMcapTier('all')">
+                                <span class="qr-radio-label">All</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-mcap-desktop" value="0-50" onchange="window.setQrMcapTier('0-50')">
+                                <span class="qr-radio-label">0 - 50 Cr</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-mcap-desktop" value="50-500" onchange="window.setQrMcapTier('50-500')">
+                                <span class="qr-radio-label">50 - 500 Cr</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-mcap-desktop" value="500-5000" onchange="window.setQrMcapTier('500-5000')">
+                                <span class="qr-radio-label">500 - 5,000 Cr</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-mcap-desktop" value=">5000" onchange="window.setQrMcapTier('>5000')">
+                                <span class="qr-radio-label">> 5,000 Cr</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                        </div>
+                        <!-- Custom Min/Max Input Box -->
+                        <div class="qr-custom-mcap-box">
+                            <input type="number" id="qr-mcap-min-desktop" class="qr-mcap-input" placeholder="Min">
+                            <input type="number" id="qr-mcap-max-desktop" class="qr-mcap-input" placeholder="Max">
+                            <button type="button" class="qr-mcap-go-btn" onclick="window.applyCustomMcap('desktop')">GO</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. By Sorting -->
+                <div class="qr-filter-section open">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>By Sorting</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <div class="qr-options-list">
+                            <label class="qr-radio-item active">
+                                <input type="radio" name="qr-sort-desktop" value="latest" checked onchange="window.setQrSorting('latest')">
+                                <span class="qr-radio-label">Latest</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-sort-desktop" value="sales_growth" onchange="window.setQrSorting('sales_growth')">
+                                <span class="qr-radio-label">Sales Growth</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-sort-desktop" value="turnaround" onchange="window.setQrSorting('turnaround')">
+                                <span class="qr-radio-label">Turnaround</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-sort-desktop" value="ttm_pe" onchange="window.setQrSorting('ttm_pe')">
+                                <span class="qr-radio-label">TTM PE</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-sort-desktop" value="qtr_pe" onchange="window.setQrSorting('qtr_pe')">
+                                <span class="qr-radio-label">Qtr PE</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. By Exchange -->
+                <div class="qr-filter-section open">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>By Exchange</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <div class="qr-options-list">
+                            <label class="qr-radio-item active">
+                                <input type="radio" name="qr-exchange-desktop" value="all" checked onchange="window.setQrExchange('all')">
+                                <span class="qr-radio-label">All</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-exchange-desktop" value="bse" onchange="window.setQrExchange('bse')">
+                                <span class="qr-radio-label">BSE</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-exchange-desktop" value="nse" onchange="window.setQrExchange('nse')">
+                                <span class="qr-radio-label">NSE</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-exchange-desktop" value="sme" onchange="window.setQrExchange('sme')">
+                                <span class="qr-radio-label">SME</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-exchange-desktop" value="non sme" onchange="window.setQrExchange('non sme')">
+                                <span class="qr-radio-label">Non SME</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. By Watchlist -->
+                <div class="qr-filter-section open">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>By Watchlist</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <div class="qr-options-list" id="qr-watchlist-options-desktop">
+                            <label class="qr-radio-item active">
+                                <input type="radio" name="qr-watchlist-desktop" value="all" checked onchange="window.setQrWatchlistScope('all')">
+                                <span class="qr-radio-label">No Filter</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-watchlist-desktop" value="any" onchange="window.setQrWatchlistScope('any')">
+                                <span class="qr-radio-label">In any watchlist</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <!-- Watchlists populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<!-- Responsive Glassy Filter Bottom Sheet Modal (Mobile / Tablet <= 992px) -->
+<div id="qrMobileFilterModal" class="qr-glass-modal" style="display: none;" onclick="if(event.target === this) window.closeQrMobileFilter()">
+    <div class="qr-modal-sheet">
+        <div class="qr-modal-drag-bar"></div>
+        <div class="qr-modal-header">
+            <div class="qr-modal-header-left">
+                <span class="qr-filter-icon">⚡</span>
+                <h3 class="qr-modal-title">Filter Results</h3>
+            </div>
+            <div class="qr-modal-header-right">
+                <button type="button" class="qr-clear-btn" onclick="window.clearAllQrFilters()">
+                    ✖ Clear All
+                </button>
+                <button type="button" class="qr-modal-close-btn" onclick="window.closeQrMobileFilter()" aria-label="Close">
+                    ✕
+                </button>
+            </div>
+        </div>
+
+        <div class="qr-modal-scroll" id="qr-modal-filter-body">
+            <!-- 1. By Industry -->
+            <div class="qr-filter-section open">
+                <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                    <span>By Industry</span>
+                    <span class="qr-accordion-arrow">▾</span>
+                </div>
+                <div class="qr-filter-section-content">
+                    <input type="text" class="qr-industry-search-input" id="qr-industry-search-mobile" placeholder="Search industries..." oninput="window.filterIndustryList(this.value, 'mobile')">
+                    <div class="qr-industry-list" id="qr-industry-list-mobile">
+                        <label class="qr-radio-item active">
+                            <input type="radio" name="qr-industry-mobile" value="all" checked onchange="window.setQrIndustryFilter('all')">
+                            <span class="qr-radio-label">All industries</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. By Market Cap -->
+            <div class="qr-filter-section open">
+                <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                    <span>By Market Cap</span>
+                    <span class="qr-accordion-arrow">▾</span>
+                </div>
+                <div class="qr-filter-section-content">
+                    <div class="qr-options-list">
+                        <label class="qr-radio-item active">
+                            <input type="radio" name="qr-mcap-mobile" value="all" checked onchange="window.setQrMcapTier('all')">
+                            <span class="qr-radio-label">All</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-mcap-mobile" value="0-50" onchange="window.setQrMcapTier('0-50')">
+                            <span class="qr-radio-label">0 - 50 Cr</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-mcap-mobile" value="50-500" onchange="window.setQrMcapTier('50-500')">
+                            <span class="qr-radio-label">50 - 500 Cr</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-mcap-mobile" value="500-5000" onchange="window.setQrMcapTier('500-5000')">
+                            <span class="qr-radio-label">500 - 5,000 Cr</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-mcap-mobile" value=">5000" onchange="window.setQrMcapTier('>5000')">
+                            <span class="qr-radio-label">> 5,000 Cr</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                    </div>
+                    <div class="qr-custom-mcap-box">
+                        <input type="number" id="qr-mcap-min-mobile" class="qr-mcap-input" placeholder="Min">
+                        <input type="number" id="qr-mcap-max-mobile" class="qr-mcap-input" placeholder="Max">
+                        <button type="button" class="qr-mcap-go-btn" onclick="window.applyCustomMcap('mobile')">GO</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. By Sorting -->
+            <div class="qr-filter-section open">
+                <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                    <span>By Sorting</span>
+                    <span class="qr-accordion-arrow">▾</span>
+                </div>
+                <div class="qr-filter-section-content">
+                    <div class="qr-options-list">
+                        <label class="qr-radio-item active">
+                            <input type="radio" name="qr-sort-mobile" value="latest" checked onchange="window.setQrSorting('latest')">
+                            <span class="qr-radio-label">Latest</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-sort-mobile" value="sales_growth" onchange="window.setQrSorting('sales_growth')">
+                            <span class="qr-radio-label">Sales Growth</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-sort-mobile" value="turnaround" onchange="window.setQrSorting('turnaround')">
+                            <span class="qr-radio-label">Turnaround</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-sort-mobile" value="ttm_pe" onchange="window.setQrSorting('ttm_pe')">
+                            <span class="qr-radio-label">TTM PE</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-sort-mobile" value="qtr_pe" onchange="window.setQrSorting('qtr_pe')">
+                            <span class="qr-radio-label">Qtr PE</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. By Exchange -->
+            <div class="qr-filter-section open">
+                <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                    <span>By Exchange</span>
+                    <span class="qr-accordion-arrow">▾</span>
+                </div>
+                <div class="qr-filter-section-content">
+                    <div class="qr-options-list">
+                        <label class="qr-radio-item active">
+                            <input type="radio" name="qr-exchange-mobile" value="all" checked onchange="window.setQrExchange('all')">
+                            <span class="qr-radio-label">All</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-exchange-mobile" value="bse" onchange="window.setQrExchange('bse')">
+                            <span class="qr-radio-label">BSE</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-exchange-mobile" value="nse" onchange="window.setQrExchange('nse')">
+                            <span class="qr-radio-label">NSE</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-exchange-mobile" value="sme" onchange="window.setQrExchange('sme')">
+                            <span class="qr-radio-label">SME</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-exchange-mobile" value="non sme" onchange="window.setQrExchange('non sme')">
+                            <span class="qr-radio-label">Non SME</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. By Watchlist -->
+            <div class="qr-filter-section open">
+                <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                    <span>By Watchlist</span>
+                    <span class="qr-accordion-arrow">▾</span>
+                </div>
+                <div class="qr-filter-section-content">
+                    <div class="qr-options-list" id="qr-watchlist-options-mobile">
+                        <label class="qr-radio-item active">
+                            <input type="radio" name="qr-watchlist-mobile" value="all" checked onchange="window.setQrWatchlistScope('all')">
+                            <span class="qr-radio-label">No Filter</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                        <label class="qr-radio-item">
+                            <input type="radio" name="qr-watchlist-mobile" value="any" onchange="window.setQrWatchlistScope('any')">
+                            <span class="qr-radio-label">In any watchlist</span>
+                            <span class="qr-check-icon">✓</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="qr-modal-footer">
+            <button type="button" class="qr-apply-btn" onclick="window.closeQrMobileFilter()">
+                Apply Filters
+            </button>
+        </div>
+    </div>
+</div>
