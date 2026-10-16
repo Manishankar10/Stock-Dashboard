@@ -146,6 +146,7 @@ class QuarterlyResultsProvider:
         exchange: str = "all",
         watchlist_scope: str = "all",
         user_watchlists: Optional[Dict[str, Set[str]]] = None,
+        portfolio_symbols: Optional[Set[str]] = None,
         date_filter: str = "",
         force_refresh: bool = False,
     ) -> Dict[str, Any]:
@@ -186,6 +187,8 @@ class QuarterlyResultsProvider:
         for syms in user_watchlists.values():
             all_user_symbols.update(syms)
 
+        portfolio_clean: Set[str] = {clean_symbol(s) for s in (portfolio_symbols or set()) if s}
+
         q_search = search.strip().lower()
         q_ind = industry.strip().lower()
         q_exch = exchange.strip().lower()
@@ -199,6 +202,9 @@ class QuarterlyResultsProvider:
             exch = str(item.get("exchange") or "NSE").lower()
             mcap = float(item.get("mcap_cr") or 0)
             item_date = item.get("date", "")
+
+            in_pf = sym in portfolio_clean
+            in_wl = sym in all_user_symbols
 
             # Search Filter
             if q_search:
@@ -226,7 +232,20 @@ class QuarterlyResultsProvider:
 
             # Market Cap Tier Filter
             if q_mcap and q_mcap != "all":
-                if q_mcap == "0-50" and not (0 <= mcap <= 50):
+                if q_mcap == "0-100" and not (0 <= mcap <= 100):
+                    continue
+                elif q_mcap == "100-500" and not (100 < mcap <= 500):
+                    continue
+                elif q_mcap == "500-1000" and not (500 < mcap <= 1000):
+                    continue
+                elif q_mcap == "1000-5000" and not (1000 < mcap <= 5000):
+                    continue
+                elif q_mcap in ("5000-10000", "5000 - 10000") and not (5000 < mcap <= 10000):
+                    continue
+                elif q_mcap == ">10000" and not (mcap > 10000):
+                    continue
+                # Backwards compatible tiers
+                elif q_mcap == "0-50" and not (0 <= mcap <= 50):
                     continue
                 elif q_mcap == "50-500" and not (50 < mcap <= 500):
                     continue
@@ -241,10 +260,13 @@ class QuarterlyResultsProvider:
             if max_mcap is not None and mcap > max_mcap:
                 continue
 
-            # Watchlist Filter
-            if watchlist_scope and watchlist_scope != "all" and watchlist_scope != "no filter":
-                if watchlist_scope in ("any", "in any watchlist"):
-                    if sym not in all_user_symbols:
+            # Watchlist / Portfolio Filter
+            if watchlist_scope and watchlist_scope not in ("all", "no filter"):
+                if watchlist_scope in ("portfolio", "in portfolio"):
+                    if not in_pf:
+                        continue
+                elif watchlist_scope in ("any", "in any watchlist"):
+                    if not in_wl:
                         continue
                 else:
                     target_wl_syms = user_watchlists.get(watchlist_scope)
@@ -257,7 +279,10 @@ class QuarterlyResultsProvider:
                     if not target_wl_syms or sym not in target_wl_syms:
                         continue
 
-            filtered.append(item)
+            item_copy = dict(item)
+            item_copy["in_portfolio"] = in_pf
+            item_copy["in_watchlist"] = in_wl
+            filtered.append(item_copy)
 
         # 3. Sorting
         def _get_metric_yoy(item: Dict[str, Any], metric_name: str) -> float:
@@ -287,6 +312,7 @@ class QuarterlyResultsProvider:
             "market_total": len(all_items),
             "available_industries": available_industries,
             "available_dates": available_dates,
+            "portfolio_symbols": sorted(list(portfolio_clean)),
             "active_filters": {
                 "search": search,
                 "industry": industry,

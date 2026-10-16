@@ -12,13 +12,20 @@
         max_mcap: null,
         sorting: 'latest',
         exchange: 'all',
-        watchlist: 'all',
+        watchlist: 'portfolio', // DEFAULT IS PORTFOLIO
         date: '',
         data: null,
-        isFetching: false
+        isFetching: false,
+        pageSize: 10,
+        currentPage: 1
     };
 
     let searchDebounceTimer = null;
+
+    function cleanSymbol(sym) {
+        if (!sym) return '';
+        return String(sym).trim().toUpperCase().replace(/\.NS$|\.BO$/, '');
+    }
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -37,6 +44,9 @@
         if (qrState.isFetching) return;
         qrState.isFetching = true;
 
+        const refreshBtn = document.getElementById('qr-refresh-btn');
+        if (refreshBtn) refreshBtn.classList.add('refreshing');
+
         const streamEl = document.getElementById('qr-cards-stream');
         if (!qrState.data && streamEl) {
             streamEl.innerHTML = `
@@ -53,7 +63,7 @@
         if (qrState.max_mcap !== null && qrState.max_mcap !== undefined && qrState.max_mcap !== '') params.set('max_mcap', qrState.max_mcap);
         if (qrState.sorting) params.set('sorting', qrState.sorting);
         if (qrState.exchange && qrState.exchange !== 'all') params.set('exchange', qrState.exchange);
-        if (qrState.watchlist && qrState.watchlist !== 'all') params.set('watchlist', qrState.watchlist);
+        if (qrState.watchlist) params.set('watchlist', qrState.watchlist);
         if (qrState.date) params.set('date', qrState.date);
         if (forceRefresh) params.set('refresh', '1');
 
@@ -62,6 +72,7 @@
             if (!res.ok) throw new Error(`HTTP error ${res.status}`);
             const data = await res.json();
             qrState.data = data;
+            qrState.currentPage = 1;
             renderQuarterlyResultsUI(data);
         } catch (err) {
             console.error('Failed to load quarterly results:', err);
@@ -77,6 +88,7 @@
             }
         } finally {
             qrState.isFetching = false;
+            if (refreshBtn) refreshBtn.classList.remove('refreshing');
         }
     }
 
@@ -179,27 +191,12 @@
         // 1. Counters
         const count = data.total_count || 0;
         const total = data.market_total || 0;
-        const filteredCountEl = document.getElementById('qr-filtered-count');
         const totalCountEl = document.getElementById('qr-total-count');
-        const bottomCountEl = document.getElementById('qr-bottom-count-text');
 
-        if (filteredCountEl) filteredCountEl.innerText = count;
         if (totalCountEl) totalCountEl.innerText = `(${total} total)`;
-        if (bottomCountEl) bottomCountEl.innerText = `${count} results`;
 
-        // 2. Render Cards Stream
-        const streamEl = document.getElementById('qr-cards-stream');
-        const emptyEl = document.getElementById('qr-empty-state');
-
-        if (count > 0 && streamEl) {
-            streamEl.innerHTML = data.results.map(item => buildResultCardHtml(item)).join('');
-            streamEl.style.display = 'flex';
-            if (emptyEl) emptyEl.style.display = 'none';
-        } else if (streamEl) {
-            streamEl.innerHTML = '';
-            streamEl.style.display = 'none';
-            if (emptyEl) emptyEl.style.display = 'block';
-        }
+        // 2. Render Cards Stream with Pagination support
+        renderCurrentResultsStream();
 
         // 3. Render Dates Navigation
         renderDatesNav(data.available_dates || []);
@@ -215,6 +212,157 @@
 
         // 7. Sync Radio Selections
         syncRadioUI();
+    }
+
+    /**
+     * Render current results stream with pagination if No Filter is chosen
+     */
+    function renderCurrentResultsStream() {
+        if (!qrState.data) return;
+
+        const allResults = qrState.data.results || [];
+        const total = allResults.length;
+        const streamEl = document.getElementById('qr-cards-stream');
+        const emptyEl = document.getElementById('qr-empty-state');
+        const paginationToolbar = document.getElementById('qr-pagination-toolbar');
+        const paginationBottom = document.getElementById('qr-pagination-bottom');
+        const filteredCountEl = document.getElementById('qr-filtered-count');
+        const bottomCountEl = document.getElementById('qr-bottom-count-text');
+
+        if (filteredCountEl) filteredCountEl.innerText = total;
+        if (bottomCountEl) bottomCountEl.innerText = `${total} results`;
+
+        if (total === 0) {
+            if (streamEl) {
+                streamEl.innerHTML = '';
+                streamEl.style.display = 'none';
+            }
+            if (emptyEl) emptyEl.style.display = 'block';
+            if (paginationToolbar) paginationToolbar.style.display = 'none';
+            if (paginationBottom) paginationBottom.style.display = 'none';
+            return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        // Check if watchlist scope is 'all' ("No filter")
+        const isNoFilter = qrState.watchlist === 'all';
+
+        let pagedResults = allResults;
+        let startIndex = 0;
+        let endIndex = total;
+
+        if (isNoFilter) {
+            if (paginationToolbar) paginationToolbar.style.display = 'flex';
+            if (paginationBottom) paginationBottom.style.display = 'flex';
+
+            // Sync select element
+            const selectEl = document.getElementById('qr-page-size-select');
+            if (selectEl) selectEl.value = String(qrState.pageSize);
+
+            if (qrState.pageSize === 'all') {
+                pagedResults = allResults;
+                startIndex = 0;
+                endIndex = total;
+                renderPaginationNav(1, 1, total);
+            } else {
+                const pageSize = Number(qrState.pageSize) || 10;
+                const totalPages = Math.ceil(total / pageSize) || 1;
+                if (qrState.currentPage > totalPages) qrState.currentPage = totalPages;
+                if (qrState.currentPage < 1) qrState.currentPage = 1;
+
+                startIndex = (qrState.currentPage - 1) * pageSize;
+                endIndex = Math.min(startIndex + pageSize, total);
+                pagedResults = allResults.slice(startIndex, endIndex);
+
+                renderPaginationNav(qrState.currentPage, totalPages, total);
+            }
+
+            const startEl = document.getElementById('qr-page-start');
+            const endEl = document.getElementById('qr-page-end');
+            const totalEl = document.getElementById('qr-page-total');
+            if (startEl) startEl.innerText = total > 0 ? (startIndex + 1) : 0;
+            if (endEl) endEl.innerText = endIndex;
+            if (totalEl) totalEl.innerText = total;
+        } else {
+            // Specific portfolio or watchlist: show directly without pagination
+            if (paginationToolbar) paginationToolbar.style.display = 'none';
+            if (paginationBottom) paginationBottom.style.display = 'none';
+            pagedResults = allResults;
+        }
+
+        if (streamEl) {
+            streamEl.innerHTML = pagedResults.map(item => buildResultCardHtml(item)).join('');
+            streamEl.style.display = 'flex';
+        }
+    }
+
+    /**
+     * Render bottom pagination navigation controls
+     */
+    function renderPaginationNav(currentPage, totalPages, total) {
+        const navEl = document.getElementById('qr-pagination-nav');
+        if (!navEl) return;
+
+        if (totalPages <= 1) {
+            navEl.innerHTML = `<span class="qr-page-static-info">Showing all ${total} results</span>`;
+            return;
+        }
+
+        let html = '';
+
+        // Previous button
+        const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+        html += `
+            <button type="button" class="qr-page-btn qr-page-prev ${prevDisabled}" ${prevDisabled ? 'disabled' : ''} onclick="window.setQrPage(${currentPage - 1})" title="Previous Page">
+                ‹ Prev
+            </button>
+        `;
+
+        // Page numbers
+        for (let p = 1; p <= totalPages; p++) {
+            if (totalPages > 7) {
+                if (p > 1 && p < currentPage - 2) {
+                    if (p === 2) html += '<span class="qr-page-dots">…</span>';
+                    continue;
+                }
+                if (p < totalPages && p > currentPage + 2) {
+                    if (p === totalPages - 1) html += '<span class="qr-page-dots">…</span>';
+                    continue;
+                }
+            }
+            const isActive = p === currentPage;
+            html += `
+                <button type="button" class="qr-page-btn qr-page-num ${isActive ? 'active' : ''}" onclick="window.setQrPage(${p})">
+                    ${p}
+                </button>
+            `;
+        }
+
+        // Next button
+        const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+        html += `
+            <button type="button" class="qr-page-btn qr-page-next ${nextDisabled}" ${nextDisabled ? 'disabled' : ''} onclick="window.setQrPage(${currentPage + 1})" title="Next Page">
+                Next ›
+            </button>
+        `;
+
+        navEl.innerHTML = html;
+    }
+
+    function setQrPage(pageNum) {
+        qrState.currentPage = Number(pageNum) || 1;
+        renderCurrentResultsStream();
+        const topEl = document.querySelector('.qr-controls-card');
+        if (topEl) {
+            topEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function setQrPageSize(size) {
+        qrState.pageSize = size === 'all' ? 'all' : Number(size);
+        qrState.currentPage = 1;
+        renderCurrentResultsStream();
     }
 
     /**
@@ -284,12 +432,18 @@
             if (!containerEl) return;
 
             const isAll = qrState.watchlist === 'all';
+            const isPf = qrState.watchlist === 'portfolio';
             const isAny = qrState.watchlist === 'any';
 
             let html = `
                 <label class="qr-radio-item ${isAll ? 'active' : ''}">
                     <input type="radio" name="qr-watchlist-${source}" value="all" ${isAll ? 'checked' : ''} onchange="window.setQrWatchlistScope('all')">
-                    <span class="qr-radio-label">No Filter</span>
+                    <span class="qr-radio-label">No filter</span>
+                    <span class="qr-check-icon">✓</span>
+                </label>
+                <label class="qr-radio-item ${isPf ? 'active' : ''}">
+                    <input type="radio" name="qr-watchlist-${source}" value="portfolio" ${isPf ? 'checked' : ''} onchange="window.setQrWatchlistScope('portfolio')">
+                    <span class="qr-radio-label">In portfolio</span>
                     <span class="qr-check-icon">✓</span>
                 </label>
                 <label class="qr-radio-item ${isAny ? 'active' : ''}">
@@ -421,12 +575,14 @@
     }
 
     function setQrWatchlistScope(scope) {
-        qrState.watchlist = scope || 'all';
+        qrState.watchlist = scope || 'portfolio';
+        qrState.currentPage = 1;
         loadQuarterlyResults();
     }
 
     function setQrDateFilter(d) {
         qrState.date = d || '';
+        qrState.currentPage = 1;
         loadQuarterlyResults();
     }
 
@@ -438,8 +594,10 @@
         qrState.max_mcap = null;
         qrState.sorting = 'latest';
         qrState.exchange = 'all';
-        qrState.watchlist = 'all';
+        qrState.watchlist = 'portfolio';
         qrState.date = '';
+        qrState.currentPage = 1;
+        qrState.pageSize = 10;
 
         const searchInput = document.getElementById('qr-search-input');
         if (searchInput) searchInput.value = '';
@@ -526,6 +684,8 @@
     window.openQrMobileFilter = openQrMobileFilter;
     window.closeQrMobileFilter = closeQrMobileFilter;
     window.openStockChart = openStockChart;
+    window.setQrPage = setQrPage;
+    window.setQrPageSize = setQrPageSize;
     window.qrState = qrState;
 
     // Auto-init on DOMContentLoaded if starting on quarterly-results tab

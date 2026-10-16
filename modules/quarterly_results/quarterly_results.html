@@ -39,8 +39,10 @@
                     <button type="button" class="qr-date-pill active" data-date="" onclick="window.setQrDateFilter('')">All Recent</button>
                     <!-- Dates populated dynamically from provider -->
                 </div>
-                <button type="button" class="qr-refresh-btn" onclick="window.loadQuarterlyResults(true)" title="Refresh Results from Official Exchange">
-                    🔄
+                <button type="button" class="qr-refresh-btn" id="qr-refresh-btn" onclick="window.loadQuarterlyResults(true)" title="Refresh Results from Official Exchange" aria-label="Refresh Results">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
                 </button>
             </div>
         </div>
@@ -50,6 +52,22 @@
     <div class="qr-split-container">
         <!-- Main Results Stream (Left 73% Web, 100% Mobile) -->
         <main class="qr-stream-container">
+            <!-- Web Pagination Toolbar (Shown when "No filter" is chosen) -->
+            <div class="qr-pagination-toolbar" id="qr-pagination-toolbar" style="display: none;">
+                <div class="qr-pagination-info" id="qr-pagination-info">
+                    Showing <span id="qr-page-start">1</span>–<span id="qr-page-end">10</span> of <span id="qr-page-total">0</span> market stocks
+                </div>
+                <div class="qr-page-size-wrapper">
+                    <label for="qr-page-size-select" class="qr-page-size-label">Show:</label>
+                    <select id="qr-page-size-select" class="qr-page-size-select" onchange="window.setQrPageSize(this.value)">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- Results Cards Mount -->
             <div class="qr-cards-stream" id="qr-cards-stream">
                 <!-- Skeleton Loader -->
@@ -61,6 +79,11 @@
                     <div class="qr-skeleton-header"></div>
                     <div class="qr-skeleton-table"></div>
                 </div>
+            </div>
+
+            <!-- Web Pagination Bottom Controls (Shown when "No filter" is chosen) -->
+            <div class="qr-pagination-bottom" id="qr-pagination-bottom" style="display: none;">
+                <div class="qr-pagination-nav" id="qr-pagination-nav"></div>
             </div>
 
             <!-- Empty State -->
@@ -93,29 +116,38 @@
                     </button>
                 </div>
 
-                <!-- 1. By Industry -->
+                <!-- 1. By watchlist/portfolio -->
                 <div class="qr-filter-section open">
                     <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
-                        <span>By Industry</span>
+                        <span>By watchlist/portfolio</span>
                         <span class="qr-accordion-arrow">▾</span>
                     </div>
                     <div class="qr-filter-section-content">
-                        <input type="text" class="qr-industry-search-input" id="qr-industry-search" placeholder="Search industries..." oninput="window.filterIndustryList(this.value, 'desktop')">
-                        <div class="qr-industry-list" id="qr-industry-list-desktop">
-                            <label class="qr-radio-item active">
-                                <input type="radio" name="qr-industry-desktop" value="all" checked onchange="window.setQrIndustryFilter('all')">
-                                <span class="qr-radio-label">All industries</span>
+                        <div class="qr-options-list" id="qr-watchlist-options-desktop">
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-watchlist-desktop" value="all" onchange="window.setQrWatchlistScope('all')">
+                                <span class="qr-radio-label">No filter</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
-                            <!-- Populated dynamically -->
+                            <label class="qr-radio-item active">
+                                <input type="radio" name="qr-watchlist-desktop" value="portfolio" checked onchange="window.setQrWatchlistScope('portfolio')">
+                                <span class="qr-radio-label">In portfolio</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-watchlist-desktop" value="any" onchange="window.setQrWatchlistScope('any')">
+                                <span class="qr-radio-label">In any watchlist</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <!-- Watchlists populated dynamically -->
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. By Market Cap -->
+                <!-- 2. By market cap -->
                 <div class="qr-filter-section open">
                     <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
-                        <span>By Market Cap</span>
+                        <span>By market cap</span>
                         <span class="qr-accordion-arrow">▾</span>
                     </div>
                     <div class="qr-filter-section-content">
@@ -126,23 +158,33 @@
                                 <span class="qr-check-icon">✓</span>
                             </label>
                             <label class="qr-radio-item">
-                                <input type="radio" name="qr-mcap-desktop" value="0-50" onchange="window.setQrMcapTier('0-50')">
-                                <span class="qr-radio-label">0 - 50 Cr</span>
+                                <input type="radio" name="qr-mcap-desktop" value="0-100" onchange="window.setQrMcapTier('0-100')">
+                                <span class="qr-radio-label">0 - 100</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
                             <label class="qr-radio-item">
-                                <input type="radio" name="qr-mcap-desktop" value="50-500" onchange="window.setQrMcapTier('50-500')">
-                                <span class="qr-radio-label">50 - 500 Cr</span>
+                                <input type="radio" name="qr-mcap-desktop" value="100-500" onchange="window.setQrMcapTier('100-500')">
+                                <span class="qr-radio-label">100 - 500</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
                             <label class="qr-radio-item">
-                                <input type="radio" name="qr-mcap-desktop" value="500-5000" onchange="window.setQrMcapTier('500-5000')">
-                                <span class="qr-radio-label">500 - 5,000 Cr</span>
+                                <input type="radio" name="qr-mcap-desktop" value="500-1000" onchange="window.setQrMcapTier('500-1000')">
+                                <span class="qr-radio-label">500 - 1,000</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
                             <label class="qr-radio-item">
-                                <input type="radio" name="qr-mcap-desktop" value=">5000" onchange="window.setQrMcapTier('>5000')">
-                                <span class="qr-radio-label">> 5,000 Cr</span>
+                                <input type="radio" name="qr-mcap-desktop" value="1000-5000" onchange="window.setQrMcapTier('1000-5000')">
+                                <span class="qr-radio-label">1,000 - 5,000</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-mcap-desktop" value="5000-10000" onchange="window.setQrMcapTier('5000-10000')">
+                                <span class="qr-radio-label">5,000 - 10,000</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <label class="qr-radio-item">
+                                <input type="radio" name="qr-mcap-desktop" value=">10000" onchange="window.setQrMcapTier('>10000')">
+                                <span class="qr-radio-label">> 10,000</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
                         </div>
@@ -155,10 +197,10 @@
                     </div>
                 </div>
 
-                <!-- 3. By Sorting -->
+                <!-- 3. By sorting -->
                 <div class="qr-filter-section open">
                     <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
-                        <span>By Sorting</span>
+                        <span>By sorting</span>
                         <span class="qr-accordion-arrow">▾</span>
                     </div>
                     <div class="qr-filter-section-content">
@@ -192,10 +234,29 @@
                     </div>
                 </div>
 
-                <!-- 4. By Exchange -->
+                <!-- 4. By industry -->
                 <div class="qr-filter-section open">
                     <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
-                        <span>By Exchange</span>
+                        <span>By industry</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <input type="text" class="qr-industry-search-input" id="qr-industry-search" placeholder="Search industries..." oninput="window.filterIndustryList(this.value, 'desktop')">
+                        <div class="qr-industry-list" id="qr-industry-list-desktop">
+                            <label class="qr-radio-item active">
+                                <input type="radio" name="qr-industry-desktop" value="all" checked onchange="window.setQrIndustryFilter('all')">
+                                <span class="qr-radio-label">All industries</span>
+                                <span class="qr-check-icon">✓</span>
+                            </label>
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. By exchange -->
+                <div class="qr-filter-section open">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>By exchange</span>
                         <span class="qr-accordion-arrow">▾</span>
                     </div>
                     <div class="qr-filter-section-content">
@@ -225,29 +286,6 @@
                                 <span class="qr-radio-label">Non SME</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5. By Watchlist -->
-                <div class="qr-filter-section open">
-                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
-                        <span>By Watchlist</span>
-                        <span class="qr-accordion-arrow">▾</span>
-                    </div>
-                    <div class="qr-filter-section-content">
-                        <div class="qr-options-list" id="qr-watchlist-options-desktop">
-                            <label class="qr-radio-item active">
-                                <input type="radio" name="qr-watchlist-desktop" value="all" checked onchange="window.setQrWatchlistScope('all')">
-                                <span class="qr-radio-label">No Filter</span>
-                                <span class="qr-check-icon">✓</span>
-                            </label>
-                            <label class="qr-radio-item">
-                                <input type="radio" name="qr-watchlist-desktop" value="any" onchange="window.setQrWatchlistScope('any')">
-                                <span class="qr-radio-label">In any watchlist</span>
-                                <span class="qr-check-icon">✓</span>
-                            </label>
-                            <!-- Watchlists populated dynamically -->
                         </div>
                     </div>
                 </div>

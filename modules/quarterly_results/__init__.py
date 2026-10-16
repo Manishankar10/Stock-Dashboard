@@ -2,7 +2,7 @@
 
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set, Tuple
 
 from flask import Blueprint, jsonify, render_template, request, send_from_directory, session
 
@@ -33,37 +33,58 @@ def _guard(view):
     return wrapper
 
 
-def _extract_user_watchlists() -> Dict[str, Set[str]]:
-    result: Dict[str, Set[str]] = {}
-    if not _LOAD_DATA:
-        return result
+def _extract_user_symbols() -> Tuple[Dict[str, Set[str]], Set[str]]:
+    """Extract current user's watchlists and portfolio symbols."""
+    watchlists_result: Dict[str, Set[str]] = {}
+    portfolio_symbols: Set[str] = set()
 
     username = session.get("username")
-    if not username:
-        return result
+    if _LOAD_DATA and username:
+        try:
+            user_data = _LOAD_DATA(username) or {}
+            # Watchlists
+            if isinstance(user_data, dict) and "watchlists" in user_data and isinstance(user_data["watchlists"], dict):
+                watchlists = user_data["watchlists"]
+            elif isinstance(user_data, dict):
+                watchlists = user_data
+            else:
+                watchlists = {}
 
-    try:
-        user_data = _LOAD_DATA(username) or {}
-        if isinstance(user_data, dict) and "watchlists" in user_data and isinstance(user_data["watchlists"], dict):
-            watchlists = user_data["watchlists"]
-        elif isinstance(user_data, dict):
-            watchlists = user_data
-        else:
-            watchlists = {}
+            for wl_name, items in watchlists.items():
+                if wl_name in ("portfolios", "alerts", "transactions", "smallcases"):
+                    continue
+                symbols_set = set()
+                if isinstance(items, list):
+                    for sym in items:
+                        if isinstance(sym, str):
+                            symbols_set.add(clean_symbol(sym))
+                        elif isinstance(sym, dict) and sym.get("symbol"):
+                            symbols_set.add(clean_symbol(sym["symbol"]))
+                watchlists_result[wl_name] = symbols_set
 
-        for wl_name, items in watchlists.items():
-            symbols_set = set()
-            if isinstance(items, list):
-                for sym in items:
-                    if isinstance(sym, str):
-                        symbols_set.add(clean_symbol(sym))
-                    elif isinstance(sym, dict) and sym.get("symbol"):
-                        symbols_set.add(clean_symbol(sym["symbol"]))
-            result[wl_name] = symbols_set
-    except Exception:
-        pass
+            # Portfolios
+            portfolios = user_data.get("portfolios") or {}
+            for holdings in portfolios.values():
+                if isinstance(holdings, list):
+                    for item in holdings:
+                        if isinstance(item, dict) and item.get("symbol"):
+                            portfolio_symbols.add(clean_symbol(item["symbol"]))
+        except Exception:
+            pass
 
-    return result
+    if not portfolio_symbols and username:
+        try:
+            from modules.portfolio.portfolio_routes import load_portfolios
+            pf_data = load_portfolios(username) or {}
+            for holdings in pf_data.values():
+                if isinstance(holdings, list):
+                    for item in holdings:
+                        if isinstance(item, dict) and item.get("symbol"):
+                            portfolio_symbols.add(clean_symbol(item["symbol"]))
+        except Exception:
+            pass
+
+    return watchlists_result, portfolio_symbols
 
 
 @quarterly_results_bp.get("/quarterly-results")
@@ -93,7 +114,7 @@ def get_quarterly_results_data():
     mcap_tier = str(request.args.get("mcap_tier", "")).strip()
     sorting = str(request.args.get("sorting", "latest")).strip()
     exchange = str(request.args.get("exchange", "all")).strip()
-    watchlist = str(request.args.get("watchlist", "all")).strip()
+    watchlist = str(request.args.get("watchlist", "portfolio")).strip()
     date_val = str(request.args.get("date", "")).strip()
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
@@ -107,7 +128,7 @@ def get_quarterly_results_data():
     except (ValueError, TypeError):
         pass
 
-    user_watchlists = _extract_user_watchlists()
+    user_watchlists, portfolio_symbols = _extract_user_symbols()
 
     try:
         data = _PROVIDER.get_quarterly_results(
@@ -120,6 +141,7 @@ def get_quarterly_results_data():
             exchange=exchange,
             watchlist_scope=watchlist,
             user_watchlists=user_watchlists,
+            portfolio_symbols=portfolio_symbols,
             date_filter=date_val,
             force_refresh=force_refresh,
         )
