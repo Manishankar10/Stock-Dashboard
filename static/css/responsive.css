@@ -410,6 +410,45 @@
         background: rgba(239, 68, 68, 0.12);
     }
 
+    /* Collapsible Actions in Mobile Watchlist Options Modal */
+    .wl-sheet-collapsible-trigger {
+        user-select: none;
+    }
+
+    .wl-actions-chevron {
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        display: inline-block;
+        font-size: 17px;
+    }
+
+    .wl-actions-collapsible-content {
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 2px;
+        margin-left: 8px;
+        padding-left: 10px;
+        border-left: 2px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .wl-actions-collapsible-content.expanded {
+        display: flex;
+    }
+
+    .wl-sub-sheet-item {
+        background: var(--bg-card, rgba(255, 255, 255, 0.02));
+        padding: 10px 13px;
+    }
+
+    .wl-sub-sheet-item .wl-sheet-title {
+        font-size: 13.5px;
+    }
+
+    .wl-sub-sheet-item .wl-sheet-sub {
+        font-size: 11px;
+    }
+
     /* Mobile Stock List Transformation (Table to Sleek Native 2-Column Cards) */
     #tab-watchlists {
         overflow: visible !important;

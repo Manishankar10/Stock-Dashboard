@@ -889,42 +889,55 @@
                             <span class="wl-sheet-chevron">↗</span>
                         </div>
 
-                        <!-- 3. Export Watchlist -->
-                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); exportActiveWatchlistToTxt();">
+                        <!-- 4. Actions (Collapsible: Export, Import, Delete) -->
+                        <div class="wl-sheet-item wl-sheet-collapsible-trigger" id="wl-actions-collapse-trigger" onclick="toggleWlActionsCollapse(event)">
                             <div class="wl-sheet-item-left">
-                                <span class="wl-sheet-icon">📤</span>
+                                <span class="wl-sheet-icon">⚡</span>
                                 <div>
-                                    <div class="wl-sheet-title">Export Watchlist (.txt)</div>
-                                    <div class="wl-sheet-sub">Download tickers text file</div>
+                                    <div class="wl-sheet-title">Actions</div>
+                                    <div class="wl-sheet-sub">Export, Import, Delete watchlist</div>
                                 </div>
                             </div>
-                            <span class="wl-sheet-chevron">⇩</span>
+                            <span class="wl-sheet-chevron wl-actions-chevron" id="wl-actions-chevron">›</span>
                         </div>
 
-                        <!-- 4. Import Watchlist -->
-                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWatchlistTxtImportModal();">
-                            <div class="wl-sheet-item-left">
-                                <span class="wl-sheet-icon">📥</span>
-                                <div>
-                                    <div class="wl-sheet-title">Import Watchlist (.txt)</div>
-                                    <div class="wl-sheet-sub">Upload stock tickers list</div>
+                        <!-- Collapsible Content (Default is collapsed) -->
+                        <div class="wl-actions-collapsible-content" id="wl-actions-collapsible-content" style="display: none;">
+                            <!-- Export Watchlist -->
+                            <div class="wl-sheet-item wl-sub-sheet-item" onclick="closeWlMobileMenuModal(); exportActiveWatchlistToTxt();">
+                                <div class="wl-sheet-item-left">
+                                    <span class="wl-sheet-icon">📤</span>
+                                    <div>
+                                        <div class="wl-sheet-title">Export Watchlist (.txt)</div>
+                                        <div class="wl-sheet-sub">Download tickers text file</div>
+                                    </div>
                                 </div>
+                                <span class="wl-sheet-chevron">⇩</span>
                             </div>
-                            <span class="wl-sheet-chevron">⇧</span>
-                        </div>
 
-                        <div class="wl-sheet-divider"></div>
-
-                        <!-- 5. Delete Watchlist -->
-                        <div class="wl-sheet-item danger" onclick="closeWlMobileMenuModal(); deleteActiveWatchlist();">
-                            <div class="wl-sheet-item-left">
-                                <span class="wl-sheet-icon danger">🗑️</span>
-                                <div>
-                                    <div class="wl-sheet-title danger">Delete Watchlist</div>
-                                    <div class="wl-sheet-sub">Permanently delete "${escapeHtml(currentWl)}"</div>
+                            <!-- Import Watchlist -->
+                            <div class="wl-sheet-item wl-sub-sheet-item" onclick="closeWlMobileMenuModal(); openWatchlistTxtImportModal();">
+                                <div class="wl-sheet-item-left">
+                                    <span class="wl-sheet-icon">📥</span>
+                                    <div>
+                                        <div class="wl-sheet-title">Import Watchlist (.txt)</div>
+                                        <div class="wl-sheet-sub">Upload stock tickers list</div>
+                                    </div>
                                 </div>
+                                <span class="wl-sheet-chevron">⇧</span>
                             </div>
-                            <span class="wl-sheet-chevron danger">✕</span>
+
+                            <!-- Delete Watchlist -->
+                            <div class="wl-sheet-item wl-sub-sheet-item danger" onclick="closeWlMobileMenuModal(); deleteActiveWatchlist();">
+                                <div class="wl-sheet-item-left">
+                                    <span class="wl-sheet-icon danger">🗑️</span>
+                                    <div>
+                                        <div class="wl-sheet-title danger">Delete Watchlist</div>
+                                        <div class="wl-sheet-sub">Permanently delete "${escapeHtml(currentWl)}"</div>
+                                    </div>
+                                </div>
+                                <span class="wl-sheet-chevron danger">✕</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -937,9 +950,32 @@
             const modal = document.getElementById('wlMobileMenuModal');
             if (modal) modal.style.display = 'none';
         }
+
+        function toggleWlActionsCollapse(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const content = document.getElementById('wl-actions-collapsible-content');
+            const chevron = document.getElementById('wl-actions-chevron');
+            const trigger = document.getElementById('wl-actions-collapse-trigger');
+            if (!content) return;
+            const isHidden = (content.style.display === 'none' || getComputedStyle(content).display === 'none');
+            if (isHidden) {
+                content.style.display = 'flex';
+                if (chevron) chevron.style.transform = 'rotate(90deg)';
+                if (trigger) trigger.classList.add('wl-actions-expanded');
+            } else {
+                content.style.display = 'none';
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+                if (trigger) trigger.classList.remove('wl-actions-expanded');
+            }
+        }
+
         window.openWlMobileMenuModal = openWlMobileMenuModal;
         window.closeWlMobileMenuModal = closeWlMobileMenuModal;
         window.toggleWlMobileMenu = openWlMobileMenuModal;
+        window.toggleWlActionsCollapse = toggleWlActionsCollapse;
 
         let _wlMenuOpenScrollY = 0;
 
