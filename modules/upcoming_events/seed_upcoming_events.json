@@ -1,0 +1,272 @@
+[
+  {
+    "symbol": "IGI",
+    "company": "International Gemological In...",
+    "date": "2026-10-21",
+    "date_header": "Wed, 21 Oct",
+    "type": "concall",
+    "badge_text": "5 p.m.",
+    "badge_icon": "📞",
+    "details": "Q2 FY27 Earnings Call"
+  },
+  {
+    "symbol": "IGI",
+    "company": "International Gemological I...",
+    "date": "2026-10-21",
+    "date_header": "Wed, 21 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "CYIENT",
+    "company": "Cyient",
+    "date": "2026-10-22",
+    "date_header": "Thu, 22 Oct",
+    "type": "concall",
+    "badge_text": "5 p.m.",
+    "badge_icon": "📞",
+    "details": "Q2 FY27 Earnings Conference Call"
+  },
+  {
+    "symbol": "BETADRUGS",
+    "company": "Beta Drugs Ltd",
+    "date": "2026-10-22",
+    "date_header": "Thu, 22 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "CYIENT",
+    "company": "Cyient",
+    "date": "2026-10-22",
+    "date_header": "Thu, 22 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "PNGJL",
+    "company": "P N Gadgil Jewe.",
+    "date": "2026-10-23",
+    "date_header": "Fri, 23 Oct",
+    "type": "ballot",
+    "badge_text": "Postal ballot",
+    "badge_icon": "",
+    "details": "Postal Ballot Notice to Shareholders"
+  },
+  {
+    "symbol": "FIVESTAR",
+    "company": "Five-Star Bus.Fi",
+    "date": "2026-10-26",
+    "date_header": "Mon, 26 Oct",
+    "type": "concall",
+    "badge_text": "5:30 p.m.",
+    "badge_icon": "📞",
+    "details": "Earnings Conference Call"
+  },
+  {
+    "symbol": "FIVESTAR",
+    "company": "Five-Star Bus.Fi",
+    "date": "2026-10-26",
+    "date_header": "Mon, 26 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "KFINTECH",
+    "company": "KFin Technolog.",
+    "date": "2026-10-26",
+    "date_header": "Mon, 26 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "KFINTECH",
+    "company": "KFin Technolog.",
+    "date": "2026-10-27",
+    "date_header": "Tue, 27 Oct",
+    "type": "concall",
+    "badge_text": "11 a.m.",
+    "badge_icon": "📞",
+    "details": "Q2 FY27 Earnings Call"
+  },
+  {
+    "symbol": "ANANTRAJ",
+    "company": "Anant Raj",
+    "date": "2026-10-28",
+    "date_header": "Wed, 28 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "CHOLAFIN",
+    "company": "Cholaman.Inv.&Fn",
+    "date": "2026-10-28",
+    "date_header": "Wed, 28 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "KPITTECH",
+    "company": "KPIT Technologi.",
+    "date": "2026-10-28",
+    "date_header": "Wed, 28 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "CAMS",
+    "company": "Cams Services",
+    "date": "2026-10-29",
+    "date_header": "Thu, 29 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "CAMS",
+    "company": "Cams Services",
+    "date": "2026-10-30",
+    "date_header": "Fri, 30 Oct",
+    "type": "concall",
+    "badge_text": "11 a.m.",
+    "badge_icon": "📞",
+    "details": "Q2 FY27 Earnings Conference Call"
+  },
+  {
+    "symbol": "ARE&M",
+    "company": "Amara Raja Ener.",
+    "date": "2026-11-02",
+    "date_header": "Mon, 2 Nov",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "ARE&M",
+    "company": "Amara Raja Ener.",
+    "date": "2026-11-03",
+    "date_header": "Tue, 3 Nov",
+    "type": "concall",
+    "badge_text": "4 p.m.",
+    "badge_icon": "📞",
+    "details": "Q2 FY27 Earnings Call"
+  },
+  {
+    "symbol": "HDFCBANK",
+    "company": "HDFC Bank",
+    "date": "2026-10-17",
+    "date_header": "Sat, 17 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Quarterly Results"
+  },
+  {
+    "symbol": "ICICIBANK",
+    "company": "ICICI Bank",
+    "date": "2026-10-17",
+    "date_header": "Sat, 17 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Quarterly Results"
+  },
+  {
+    "symbol": "AXISBANK",
+    "company": "Axis Bank",
+    "date": "2026-10-17",
+    "date_header": "Sat, 17 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Quarterly Results"
+  },
+  {
+    "symbol": "RELIANCE",
+    "company": "Reliance Industries",
+    "date": "2026-10-19",
+    "date_header": "Mon, 19 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Financial Results & Media Release"
+  },
+  {
+    "symbol": "RELIANCE",
+    "company": "Reliance Industries",
+    "date": "2026-10-19",
+    "date_header": "Mon, 19 Oct",
+    "type": "concall",
+    "badge_text": "6:30 p.m.",
+    "badge_icon": "📞",
+    "details": "Earnings Conference Call"
+  },
+  {
+    "symbol": "INFY",
+    "company": "Infosys",
+    "date": "2026-10-28",
+    "date_header": "Wed, 28 Oct",
+    "type": "concall",
+    "badge_text": "6 p.m.",
+    "badge_icon": "📞",
+    "details": "Analyst & Earnings Call"
+  },
+  {
+    "symbol": "TCS",
+    "company": "Tata Consultancy",
+    "date": "2026-10-24",
+    "date_header": "Sat, 24 Oct",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Dividend & Results"
+  },
+  {
+    "symbol": "TATAMOTORS",
+    "company": "Tata Motors",
+    "date": "2026-11-03",
+    "date_header": "Tue, 3 Nov",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Financial Results"
+  },
+  {
+    "symbol": "SBIN",
+    "company": "State Bank of India",
+    "date": "2026-11-04",
+    "date_header": "Wed, 4 Nov",
+    "type": "result",
+    "badge_text": "Result",
+    "badge_icon": "📊",
+    "details": "Board Meeting for Q2 Financial Results"
+  },
+  {
+    "symbol": "SBIN",
+    "company": "State Bank of India",
+    "date": "2026-11-04",
+    "date_header": "Wed, 4 Nov",
+    "type": "concall",
+    "badge_text": "5 p.m.",
+    "badge_icon": "📞",
+    "details": "Earnings Conference Call"
+  }
+]

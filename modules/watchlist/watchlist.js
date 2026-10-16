@@ -788,6 +788,10 @@
             if (typeof initWatchlistMobileSwipe === 'function') {
                 initWatchlistMobileSwipe();
             }
+
+            if (typeof window.renderUpcomingEvents === 'function') {
+                window.renderUpcomingEvents(activeWatchlistName);
+            }
         }
 
         // =========================================================
@@ -830,7 +834,19 @@
                             <span class="wl-sheet-chevron">›</span>
                         </div>
 
-                        <!-- 2. Official Feeds -->
+                        <!-- 2. Upcoming Events -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); if (typeof window.openUpcomingEventsModal === 'function') window.openUpcomingEventsModal();">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">📅</span>
+                                <div>
+                                    <div class="wl-sheet-title">Upcoming Events</div>
+                                    <div class="wl-sheet-sub">Results, AGM, Concalls</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">›</span>
+                        </div>
+
+                        <!-- 3. Official Feeds -->
                         <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWatchlistOfficialFeeds('${escapeHtml(currentWl)}');">
                             <div class="wl-sheet-item-left">
                                 <span class="wl-sheet-icon">◉</span>

@@ -1,0 +1,29 @@
+<!-- modules/upcoming_events/upcoming_modal.html -->
+<!-- Responsive Glassy Popup Modal Bottom Sheet for Upcoming Events -->
+
+<div id="upcomingEventsModal" class="upcoming-glass-modal" style="display: none;" onclick="if(event.target === this) window.closeUpcomingEventsModal()">
+    <div class="upcoming-modal-sheet">
+        <div class="upcoming-modal-drag-bar"></div>
+        <div class="upcoming-modal-header">
+            <div class="upcoming-modal-header-left">
+                <span class="upcoming-modal-icon">📅</span>
+                <div>
+                    <h3 class="upcoming-modal-title">Upcoming</h3>
+                    <div class="upcoming-modal-subtitle" id="upcoming-modal-wl-name">Core Watchlist</div>
+                </div>
+            </div>
+            <div class="upcoming-modal-header-right">
+                <button type="button" class="upcoming-action-btn" onclick="window.loadUpcomingEvents(true)" title="Refresh">
+                    🔄
+                </button>
+                <button type="button" class="upcoming-modal-close-btn" onclick="window.closeUpcomingEventsModal()" aria-label="Close">
+                    ✕
+                </button>
+            </div>
+        </div>
+
+        <div class="upcoming-modal-scroll" id="upcoming-modal-list">
+            <!-- Populated dynamically on modal open -->
+        </div>
+    </div>
+</div>

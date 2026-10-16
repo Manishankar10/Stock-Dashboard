@@ -7,11 +7,26 @@
                         <div class="portfolio-selector-bar watchlist-tabs-nav" id="watchlist-selector-mount" style="margin-bottom: 0;"></div>
                         <div class="watchlist-create-action"><button onclick="openCreateWatchlistModal()">+ Create Watchlist</button></div>
                     </div>
+                    <!-- Mobile Quick Upcoming Button (Shown only on responsive mobile) -->
+                    <button type="button" class="wl-upcoming-trigger-btn" onclick="window.openUpcomingEventsModal()" title="View Upcoming Results, AGM & Concalls">
+                        📅 Upcoming <span class="wl-upcoming-badge-count" style="display: none;">0</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Active Watchlist View -->
-            <div id="watchlist-view-mount">
-                <div class="loading">Loading watchlist details...</div>
+            <!-- 75% / 25% Screen Split Container -->
+            <div class="watchlist-split-container">
+                <!-- 75% Main Watchlist Table & Controls -->
+                <div class="watchlist-split-main" id="watchlist-view-mount">
+                    <div class="loading">Loading watchlist details...</div>
+                </div>
+
+                <!-- 25% Sticky Upcoming Events Panel (Web only; popup modal on mobile) -->
+                <div class="watchlist-split-sidebar" id="watchlist-upcoming-mount">
+                    {% include 'upcoming_events/upcoming_card.html' %}
+                </div>
             </div>
+
+            <!-- Responsive Glassy Popup Modal (Mobile Bottom Sheet) -->
+            {% include 'upcoming_events/upcoming_modal.html' %}
         </div>

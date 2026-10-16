@@ -1,0 +1,43 @@
+<!-- modules/upcoming_events/upcoming_card.html -->
+<!-- Standalone Glassy Upcoming Events Side Panel Card (25% Split Screen) -->
+
+<div class="upcoming-events-card" id="upcoming-events-card">
+    <!-- Header Block -->
+    <div class="upcoming-header-wrapper">
+        <div class="upcoming-header-top">
+            <div class="upcoming-title-left">
+                <span class="upcoming-header-icon" aria-hidden="true">📅</span>
+                <h3 class="upcoming-header-title">Upcoming</h3>
+            </div>
+            <div class="upcoming-header-actions">
+                <button type="button" class="upcoming-action-btn" id="upcoming-toggle-scope-btn" onclick="window.toggleUpcomingScope()" title="Toggle Watchlist / All Market">
+                    <span id="upcoming-scope-label">All</span>
+                </button>
+                <button type="button" class="upcoming-action-btn" onclick="window.loadUpcomingEvents(true)" title="Refresh from NSE">
+                    🔄
+                </button>
+            </div>
+        </div>
+        <div class="upcoming-subtitle" id="upcoming-active-wl-title">Core Watchlist</div>
+    </div>
+
+    <!-- Scrollable Events List -->
+    <div class="upcoming-events-list" id="upcoming-events-list">
+        <!-- Date Groups populated dynamically by upcoming_events.js -->
+        <div class="upcoming-skeleton-loader">
+            <div class="upcoming-skeleton-date"></div>
+            <div class="upcoming-skeleton-row"></div>
+            <div class="upcoming-skeleton-row"></div>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="upcoming-empty-container" id="upcoming-empty-container" style="display: none;">
+        <div class="upcoming-empty-icon">📅</div>
+        <div class="upcoming-empty-title">No upcoming events</div>
+        <p class="upcoming-empty-desc" id="upcoming-empty-desc">No Results, AGMs, or Concalls announced for stocks in this watchlist.</p>
+        <button type="button" class="upcoming-view-all-pill" onclick="window.toggleUpcomingScope(true)">
+            View All Market Events
+        </button>
+    </div>
+</div>

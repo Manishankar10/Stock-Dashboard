@@ -1,0 +1,518 @@
+/* modules/upcoming_events/upcoming_events.css */
+/* Latest Glassy Trendy Design for Upcoming Events Component */
+
+/* ======================================================== */
+/* 75% / 25% Split Screen Layout on Watchlist Page */
+/* ======================================================== */
+.watchlist-split-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.watchlist-split-main {
+    flex: 0 0 calc(75% - 10px);
+    max-width: calc(75% - 10px);
+    width: calc(75% - 10px);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.watchlist-split-sidebar {
+    flex: 0 0 calc(25% - 10px);
+    max-width: calc(25% - 10px);
+    width: calc(25% - 10px);
+    min-width: 0;
+    box-sizing: border-box;
+    position: sticky;
+    top: 15px;
+    max-height: calc(100vh - 80px);
+}
+
+/* ======================================================== */
+/* Glassy Card Component (Web Desktop Side Panel) */
+/* ======================================================== */
+.upcoming-events-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 18px;
+    color: var(--text-primary, #ffffff);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+:root:not([data-theme="dark"]) .upcoming-events-card {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    color: #0f172a;
+}
+
+/* Header */
+.upcoming-header-wrapper {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+:root:not([data-theme="dark"]) .upcoming-header-wrapper {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.upcoming-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.upcoming-title-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.upcoming-header-icon {
+    font-size: 18px;
+}
+
+.upcoming-header-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: inherit;
+    letter-spacing: -0.02em;
+}
+
+.upcoming-subtitle {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary, #94a3b8);
+    margin-top: 3px;
+}
+
+.upcoming-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.upcoming-action-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary, #cbd5e1);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+:root:not([data-theme="dark"]) .upcoming-action-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #475569;
+}
+
+.upcoming-action-btn:hover {
+    background: rgba(92, 124, 250, 0.18);
+    color: #5c7cfa;
+    border-color: #5c7cfa;
+}
+
+/* Scrollable Events List */
+.upcoming-events-list {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    flex-grow: 1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(92, 124, 250, 0.3) transparent;
+}
+
+.upcoming-events-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.upcoming-events-list::-webkit-scrollbar-thumb {
+    background: rgba(92, 124, 250, 0.3);
+    border-radius: 4px;
+}
+
+/* Date Groups */
+.upcoming-date-group {
+    margin-bottom: 14px;
+}
+
+.upcoming-date-header {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+    margin: 10px 0 6px 2px;
+    letter-spacing: 0.01em;
+}
+
+.upcoming-group-items {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+:root:not([data-theme="dark"]) .upcoming-group-items {
+    background: rgba(248, 250, 252, 0.75);
+    border-color: rgba(226, 232, 240, 0.8);
+}
+
+/* Event Row */
+.upcoming-event-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 10px;
+    transition: background 0.15s ease;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+:root:not([data-theme="dark"]) .upcoming-event-row {
+    border-bottom-color: rgba(0, 0, 0, 0.03);
+}
+
+.upcoming-event-row:last-child {
+    border-bottom: none;
+}
+
+.upcoming-event-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+:root:not([data-theme="dark"]) .upcoming-event-row:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.upcoming-company-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+}
+
+.upcoming-company-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+:root:not([data-theme="dark"]) .upcoming-company-name {
+    color: #0f172a;
+}
+
+.upcoming-company-name:hover {
+    color: #5c7cfa;
+}
+
+.upcoming-link-icon {
+    color: #5c7cfa;
+    font-size: 12px;
+    opacity: 0.8;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.upcoming-link-icon:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* Badges (Trendy Glassy Style) */
+.upcoming-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.01em;
+}
+
+/* Result Badge */
+.upcoming-badge.result {
+    background: rgba(30, 64, 175, 0.35);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    color: #60a5fa;
+}
+
+:root:not([data-theme="dark"]) .upcoming-badge.result {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.25);
+    color: #2563eb;
+}
+
+/* Concall Badge */
+.upcoming-badge.concall {
+    background: rgba(30, 58, 138, 0.4);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: #93c5fd;
+}
+
+:root:not([data-theme="dark"]) .upcoming-badge.concall {
+    background: rgba(37, 99, 235, 0.12);
+    border-color: rgba(37, 99, 235, 0.25);
+    color: #1d4ed8;
+}
+
+/* Postal Ballot / AGM Badge */
+.upcoming-badge.ballot,
+.upcoming-badge.agm,
+.upcoming-badge.meeting {
+    background: rgba(88, 28, 135, 0.35);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: #c084fc;
+}
+
+:root:not([data-theme="dark"]) .upcoming-badge.ballot,
+:root:not([data-theme="dark"]) .upcoming-badge.agm,
+:root:not([data-theme="dark"]) .upcoming-badge.meeting {
+    background: rgba(147, 51, 234, 0.1);
+    border-color: rgba(147, 51, 234, 0.22);
+    color: #7e22ce;
+}
+
+.upcoming-badge-icon {
+    font-size: 11px;
+    line-height: 1;
+}
+
+/* Empty State */
+.upcoming-empty-container {
+    padding: 30px 16px;
+    text-align: center;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.upcoming-empty-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    opacity: 0.6;
+}
+
+.upcoming-empty-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.upcoming-empty-desc {
+    font-size: 12px;
+    margin: 0 0 14px 0;
+    line-height: 1.4;
+}
+
+.upcoming-view-all-pill {
+    background: #5c7cfa;
+    color: #ffffff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(92, 124, 250, 0.35);
+    transition: all 0.2s ease;
+}
+
+.upcoming-view-all-pill:hover {
+    background: #4c6ef5;
+    transform: translateY(-1px);
+}
+
+/* Mobile Trigger Button in Watchlist Header */
+.wl-upcoming-trigger-btn {
+    display: none; /* Shown only on responsive mobile */
+    align-items: center;
+    gap: 6px;
+    background: rgba(92, 124, 250, 0.12);
+    border: 1px solid rgba(92, 124, 250, 0.3);
+    color: #5c7cfa;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.wl-upcoming-trigger-btn:hover {
+    background: rgba(92, 124, 250, 0.22);
+}
+
+.wl-upcoming-badge-count {
+    background: #5c7cfa;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+}
+
+/* ======================================================== */
+/* Responsive Glassy Popup Modal (Mobile Bottom Sheet) */
+/* ======================================================== */
+.upcoming-glass-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10050;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: upcoming-fade-in 0.2s ease-out;
+}
+
+@keyframes upcoming-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.upcoming-modal-sheet {
+    background: var(--bg-card, #131722);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 600px;
+    max-height: 85vh;
+    padding: 16px 18px 24px 18px;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    animation: upcoming-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes upcoming-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.upcoming-modal-drag-bar {
+    width: 36px;
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 auto 12px auto;
+}
+
+.upcoming-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 12px;
+}
+
+.upcoming-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.upcoming-modal-icon {
+    font-size: 22px;
+}
+
+.upcoming-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary, #ffffff);
+}
+
+.upcoming-modal-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+    font-weight: 500;
+}
+
+.upcoming-modal-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.upcoming-modal-close-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: var(--text-secondary, #94a3b8);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.upcoming-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+.upcoming-modal-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-grow: 1;
+    max-height: calc(85vh - 100px);
+    padding-right: 2px;
+}
+
+/* ======================================================== */
+/* Responsive Breakpoint (Tablet & Mobile <= 992px) */
+/* ======================================================== */
+@media (max-width: 992px) {
+    .watchlist-split-container {
+        display: block;
+    }
+
+    .watchlist-split-main {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .watchlist-split-sidebar {
+        display: none !important; /* Hidden inline; accessed via modal popup */
+    }
+
+    .wl-upcoming-trigger-btn {
+        display: inline-flex;
+    }
+}
