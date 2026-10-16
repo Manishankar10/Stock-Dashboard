@@ -54,6 +54,7 @@ from modules.ipo_tracker import ipo_tracker_bp, init_ipo_tracker
 from modules.mutual_funds import mutual_funds_bp, init_mutual_funds
 from modules.plan_calculator import plan_calculator_bp, init_plan_calculator
 from modules.official_feeds import official_feeds_bp, init_official_feeds
+from modules.corporate_actions import corporate_actions_bp, init_corporate_actions
 
 # Initialize Flask Application
 app = Flask(__name__)
@@ -84,6 +85,7 @@ init_ipo_tracker(login_required)
 init_mutual_funds(login_required, BASE_DATA_DIR)
 init_plan_calculator(login_required, BASE_DATA_DIR)
 init_official_feeds(login_required, load_data)
+init_corporate_actions(login_required, load_data, BASE_DATA_DIR)
 
 # Register Feature Blueprints
 app.register_blueprint(auth_admin_bp)
@@ -101,6 +103,7 @@ app.register_blueprint(ipo_tracker_bp)
 app.register_blueprint(mutual_funds_bp)
 app.register_blueprint(plan_calculator_bp)
 app.register_blueprint(official_feeds_bp)
+app.register_blueprint(corporate_actions_bp)
 
 # Static Asset Serving for Modules
 @app.route("/modules/<path:filename>")

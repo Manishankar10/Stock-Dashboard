@@ -17,7 +17,8 @@ const AppRouter = {
         'mutual-funds': '/mutual-funds',
         'mutual-fund-detail': '/mutual-funds',
         'ipos': '/ipos',
-        'plan-calculator': '/plan-calculator'
+        'plan-calculator': '/plan-calculator',
+        'corporate-actions': '/corporate-actions'
     },
 
     reverseMap: {
@@ -30,7 +31,8 @@ const AppRouter = {
         '/mutual-funds': 'mutual-funds',
         '/mutual-funds/dashboard': 'mutual-funds',
         '/ipos': 'ipos',
-        '/plan-calculator': 'plan-calculator'
+        '/plan-calculator': 'plan-calculator',
+        '/corporate-actions': 'corporate-actions'
     },
 
     init() {
@@ -97,6 +99,7 @@ const AppRouter = {
 function switchTab(tabName, pushState = true) {
     if (!tabName) tabName = 'watchlists';
     currentTab = tabName;
+    window.currentTab = tabName;
 
     // 1. Update navigation items active state in sidebar and buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -109,7 +112,7 @@ function switchTab(tabName, pushState = true) {
     if (sidebarNavEl) sidebarNavEl.classList.add('active');
 
     // Highlight parent Tools button if a tool tab is active
-    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator'].includes(tabName);
+    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator', 'corporate-actions'].includes(tabName);
     const toolsTrigger = document.getElementById('sidebar-nav-tools');
     if (toolsTrigger) {
         toolsTrigger.classList.toggle('active', isTool);
@@ -208,6 +211,9 @@ function switchTab(tabName, pushState = true) {
     } else if (tabName === 'plan-calculator') {
         if (typeof window.loadPlanCalculatorState === 'function') window.loadPlanCalculatorState();
         else if (typeof window.renderCalculator === 'function') window.renderCalculator();
+    } else if (tabName === 'corporate-actions') {
+        if (typeof window.loadCorporateActions === 'function') window.loadCorporateActions();
+        else if (typeof window.renderCorporateActions === 'function') window.renderCorporateActions();
     }
 
     // 5. Automatically close tools submenu and mobile drawer if open

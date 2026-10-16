@@ -1,0 +1,120 @@
+<!-- modules/corporate_actions/corporate_actions.html -->
+<div id="tab-corporate-actions" class="tab-content corporate-actions-container" style="display: none;">
+    <!-- Top Header & Banner -->
+    <div class="corp-header-row">
+        <div class="corp-header-info">
+            <h1 class="corp-main-title">Corporate Actions</h1>
+            <p class="corp-subtitle">Official stock exchange announcements from NSE & BSE</p>
+        </div>
+        <div class="corp-header-actions">
+            <button type="button" class="corp-btn-refresh" id="corp-btn-refresh" onclick="refreshCorporateActions(true)" title="Fetch live data from NSE & BSE">
+                <span class="corp-refresh-icon">🔄</span>
+                <span class="corp-refresh-text">Refresh Data</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs Bar -->
+    <div class="corp-tabs-bar" role="tablist" aria-label="Corporate Action Categories">
+        <button type="button" class="corp-tab-btn active" data-tab="bonus" onclick="switchCorpTab('bonus')">
+            <span class="corp-tab-label">Bonus</span>
+            <span class="corp-tab-count" id="corp-count-bonus">0</span>
+        </button>
+        <button type="button" class="corp-tab-btn" data-tab="rights" onclick="switchCorpTab('rights')">
+            <span class="corp-tab-label">Rights</span>
+            <span class="corp-tab-count" id="corp-count-rights">0</span>
+        </button>
+        <button type="button" class="corp-tab-btn" data-tab="split" onclick="switchCorpTab('split')">
+            <span class="corp-tab-label">Split</span>
+            <span class="corp-tab-count" id="corp-count-split">0</span>
+        </button>
+        <button type="button" class="corp-tab-btn" data-tab="buyback" onclick="switchCorpTab('buyback')">
+            <span class="corp-tab-label">Buy back</span>
+            <span class="corp-tab-count" id="corp-count-buyback">0</span>
+        </button>
+        <button type="button" class="corp-tab-btn" data-tab="dividend" onclick="switchCorpTab('dividend')">
+            <span class="corp-tab-label">Dividend</span>
+            <span class="corp-tab-count" id="corp-count-dividend">0</span>
+        </button>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="corp-toolbar">
+        <div class="corp-filter-group" role="group" aria-label="Filter stocks">
+            <button type="button" class="corp-filter-pill active" data-filter="all" onclick="setCorpFilter('all')">
+                All stocks
+            </button>
+            <button type="button" class="corp-filter-pill" data-filter="portfolio" onclick="setCorpFilter('portfolio')">
+                Portfolio
+            </button>
+            <button type="button" class="corp-filter-pill" data-filter="watchlist" onclick="setCorpFilter('watchlist')">
+                Watchlist
+            </button>
+        </div>
+
+        <div class="corp-search-box">
+            <span class="corp-search-icon">🔍</span>
+            <input type="text" id="corp-search-input" class="corp-search-input" placeholder="SEARCH" oninput="handleCorpSearch(this.value)" autocomplete="off" spellcheck="false" aria-label="Search corporate actions">
+            <button type="button" id="corp-search-clear" class="corp-search-clear" onclick="clearCorpSearch()" style="display: none;" title="Clear search">✕</button>
+        </div>
+    </div>
+
+    <!-- Active Content Area -->
+    <div class="corp-view-content" id="corp-view-content">
+        <!-- Upcoming Section -->
+        <div class="corp-section-block" id="corp-upcoming-section">
+            <div class="corp-section-header">
+                <h3 class="corp-section-title" id="corp-upcoming-title">Upcoming Actions</h3>
+                <span class="corp-section-tag" id="corp-upcoming-badge">0 events</span>
+            </div>
+
+            <div class="corp-table-responsive">
+                <table class="corp-table" id="corp-upcoming-table">
+                    <thead id="corp-table-head">
+                        <!-- Populated dynamically based on active tab -->
+                    </thead>
+                    <tbody id="corp-upcoming-tbody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="corp-empty-state" id="corp-upcoming-empty" style="display: none;">
+                <div class="corp-empty-icon">📂</div>
+                <div class="corp-empty-title">No upcoming corporate actions found</div>
+                <div class="corp-empty-desc">There are no upcoming announcements matching the current filter.</div>
+            </div>
+        </div>
+
+        <!-- Collapsible Past Actions Section (for Bonus, Rights, Split, Buy back) -->
+        <div class="corp-past-card" id="corp-past-section">
+            <button type="button" class="corp-past-header" id="corp-past-header" onclick="toggleCorpPastSection()" aria-expanded="false">
+                <div class="corp-past-header-left">
+                    <span class="corp-past-chevron" id="corp-past-chevron">▶</span>
+                    <span class="corp-past-heading">Past Actions (Last 2 Months)</span>
+                    <span class="corp-past-count-badge" id="corp-past-badge">0</span>
+                </div>
+                <div class="corp-past-header-right">
+                    <span class="corp-past-toggle-hint" id="corp-past-hint">Click to expand</span>
+                </div>
+            </button>
+
+            <div class="corp-past-body" id="corp-past-body" style="display: none;">
+                <div class="corp-table-responsive">
+                    <table class="corp-table" id="corp-past-table">
+                        <thead id="corp-past-table-head">
+                            <!-- Cloned from main table head -->
+                        </thead>
+                        <tbody id="corp-past-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="corp-empty-state" id="corp-past-empty" style="display: none;">
+                    <div class="corp-empty-desc">No past actions recorded in the last 2 months for this filter.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

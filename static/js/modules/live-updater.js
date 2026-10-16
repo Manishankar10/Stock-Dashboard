@@ -368,6 +368,7 @@
             else if (pathname === '/mutual-funds' || pathname === '/mutual-funds/dashboard') targetTab = 'mutual-funds';
             else if (pathname === '/ipos') targetTab = 'ipos';
             else if (pathname === '/plan-calculator') targetTab = 'plan-calculator';
+            else if (pathname === '/corporate-actions') targetTab = 'corporate-actions';
             else if (pathname === '/' || pathname === '/watchlists') targetTab = 'watchlists';
 
             // 1. Immediately activate target tab so UI is interactive instantly (0ms)
@@ -387,6 +388,10 @@
                     window.loadPlanCalculatorState();
                 } else if (typeof window.renderCalculator === 'function') {
                     window.renderCalculator();
+                }
+            } else if (targetTab === 'corporate-actions') {
+                if (typeof window.loadCorporateActions === 'function') {
+                    window.loadCorporateActions();
                 }
             }
 
