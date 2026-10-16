@@ -44,6 +44,19 @@
     color: #0f172a;
 }
 
+.qr-title-quarter {
+    display: inline-block;
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #10b981;
+    margin-left: 6px;
+    letter-spacing: -0.01em;
+}
+
+:root:not([data-theme="dark"]) .qr-title-quarter {
+    color: #059669;
+}
+
 /* Mobile Filter Trigger Button */
 .qr-mobile-filter-trigger {
     display: none; /* Shown on screens <= 992px */
