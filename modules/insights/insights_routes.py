@@ -500,13 +500,7 @@ def get_insights_indexes_api():
                     }
                 return None
 
-            fetch_sym = sym
-            if sym == "TVC:GOLD":
-                fetch_sym = "GC=F"
-            elif sym == "TVC:SILVER":
-                fetch_sym = "SI=F"
-
-            info = fetcher.fetch_stock(fetch_sym)
+            info = fetcher.fetch_stock(sym)
             if info and not info.get("error"):
                 return {
                     "symbol": sym,

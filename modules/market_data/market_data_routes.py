@@ -157,6 +157,11 @@ def get_chart_history():
         return jsonify({"error": "Symbol is required"}), 400
 
     symbol = format_financial_symbol(raw_symbol)
+    fetch_sym = symbol
+    if symbol == "TVC:GOLD":
+        fetch_sym = "GC=F"
+    elif symbol == "TVC:SILVER":
+        fetch_sym = "SI=F"
 
     interval_map = {
         '5m': '5m',
@@ -188,7 +193,7 @@ def get_chart_history():
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
     for host in hosts:
-        url = f'https://{host}/v8/finance/chart/{symbol}?interval={interval}&range={time_range}&includePrePost=true&includeAdjustedClose=true'
+        url = f'https://{host}/v8/finance/chart/{fetch_sym}?interval={interval}&range={time_range}&includePrePost=true&includeAdjustedClose=true'
         try:
             r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
@@ -396,6 +401,16 @@ def get_chart_history():
                 volume_ma.append({'time': vol_times[i], 'value': round(v_sum / period)})
             else:
                 volume_ma.append({'time': vol_times[i], 'value': round(v_sum / (i + 1))})
+
+    if symbol in ("TVC:GOLD", "TVC:SILVER"):
+        name = "Gold Commodity CFD (TVC / USD)" if symbol == "TVC:GOLD" else "Silver Commodity CFD (TVC / USD)"
+        tvc_quote = fetcher.fetch_stock(symbol)
+        if tvc_quote and not tvc_quote.get("error") and candles:
+            live_p = tvc_quote.get("price")
+            if live_p:
+                candles[-1]["close"] = live_p
+                candles[-1]["high"] = max(candles[-1]["high"], live_p)
+                candles[-1]["low"] = min(candles[-1]["low"], live_p)
 
     ind = calculate_indicators(candles)
     

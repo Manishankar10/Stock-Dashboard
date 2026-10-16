@@ -67,9 +67,9 @@ POPULAR_MARKET_INDEXES = [
     {"symbol": "^CRSMID", "name": "NIFTY Midcap 100 Index", "exchange": "INDEX", "aliases": ["MIDCAP", "NIFTY MIDCAP"]},
     {"symbol": "GIFTNIFTY", "name": "GIFT Nifty Index", "exchange": "INDEX", "aliases": ["GIFTNIFTY", "GIFT NIFTY", "GIFT NIFTY INDEX", "NSEIX:NIFTY1!"]},
     {"symbol": "GOLDBEES.NS", "name": "Nippon India ETF Gold BeES (₹)", "exchange": "COMMODITY", "aliases": ["GOLDBEES", "GOLD BEES", "GOLD ETF"]},
-    {"symbol": "GC=F", "name": "Gold Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLD FUTURES", "GOLD USD", "TVC:GOLD", "GOLD CFD", "GOLD(COMMODITY CFD TVC)"]},
+    {"symbol": "TVC:GOLD", "name": "Gold Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLD SPOT", "GOLD USD", "TVC:GOLD", "GOLD CFD", "GOLD(COMMODITY CFD TVC)", "GC=F"]},
     {"symbol": "SILVERBEES.NS", "name": "Nippon India ETF Silver BeES (₹)", "exchange": "COMMODITY", "aliases": ["SILVERBEES", "SILVER BEES", "SILVER ETF"]},
-    {"symbol": "SI=F", "name": "Silver Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVER FUTURES", "SILVER USD", "TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)"]},
+    {"symbol": "TVC:SILVER", "name": "Silver Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVER SPOT", "SILVER USD", "TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)", "SI=F"]},
     {"symbol": "CL=F", "name": "Crude Oil Futures (USD)", "exchange": "COMMODITY", "aliases": ["CRUDE", "CRUDE OIL", "CRUDEOIL"]},
     {"symbol": "^GSPC", "name": "S&P 500 Index (US)", "exchange": "INDEX", "aliases": ["SP500", "S&P 500", "S&P500"]},
     {"symbol": "^IXIC", "name": "NASDAQ Composite Index (US)", "exchange": "INDEX", "aliases": ["NASDAQ", "NASDAQ 100", "NASDAQ100"]}
@@ -80,11 +80,11 @@ def format_financial_symbol(raw_symbol):
         return ""
     sym = raw_symbol.strip().upper()
     
-    # Direct TVC and GIFT alias remappings for in-house chart
+    # Direct TVC and GIFT alias remappings
     if sym in ("TVC:GOLD", "GOLD CFD", "GOLD(COMMODITY CFD TVC)"):
-        return "GC=F"
+        return "TVC:GOLD"
     if sym in ("TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)"):
-        return "SI=F"
+        return "TVC:SILVER"
     if sym in ("GIFTNIFTY", "GIFT NIFTY", "NSEIX:NIFTY1!"):
         return "^NSEI"
 
@@ -171,11 +171,65 @@ class StockFetcher:
         except Exception:
             self.crumb = None
 
+    def _fetch_tvc_commodity(self, symbol):
+        try:
+            url = "https://scanner.tradingview.com/cfd/scan"
+            payload = {
+                "symbols": {"tickers": ["TVC:GOLD", "TVC:SILVER"]},
+                "columns": ["close", "change", "change_abs", "open", "high", "low", "description"]
+            }
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            r = requests.post(url, json=payload, headers=headers, timeout=4)
+            if r.status_code == 200:
+                target_entry = None
+                for row in r.json().get("data", []):
+                    ticker = row.get("s")
+                    vals = row.get("d", [])
+                    if ticker and len(vals) >= 3 and vals[0] is not None:
+                        is_gold = (ticker == "TVC:GOLD")
+                        price = round(float(vals[0]), 2)
+                        change_amt = round(float(vals[2] or 0), 2)
+                        change_pct = round(float(vals[1] or 0), 2)
+                        prev_close = round(price - change_amt, 2)
+                        entry = {
+                            "symbol": ticker,
+                            "name": "Gold Commodity CFD (TVC / USD)" if is_gold else "Silver Commodity CFD (TVC / USD)",
+                            "price": price,
+                            "change": change_amt,
+                            "change_pct": change_pct,
+                            "previous_close": prev_close,
+                            "mcap_cr": "N/A"
+                        }
+                        stock_cache.set(ticker, entry, ttl=15)
+                        if ticker == symbol:
+                            target_entry = entry
+                if target_entry:
+                    return target_entry
+        except Exception:
+            pass
+        return None
+
     def fetch_stock(self, symbol, use_cache=True):
         if use_cache:
             cached = stock_cache.get(symbol)
             if cached:
                 return cached
+
+        # Live Spot TradingView CFD Commodity Interceptor for Gold & Silver
+        if symbol in ("TVC:GOLD", "TVC:SILVER"):
+            tvc_quote = self._fetch_tvc_commodity(symbol)
+            if tvc_quote:
+                return tvc_quote
+            # Fallback to futures if TVC scanner unavailable
+            fallback_sym = "GC=F" if symbol == "TVC:GOLD" else "SI=F"
+            fallback_data = self.fetch_stock(fallback_sym, use_cache=False)
+            if fallback_data and not fallback_data.get("error"):
+                fallback_data = dict(fallback_data)
+                fallback_data["symbol"] = symbol
+                fallback_data["name"] = "Gold Commodity CFD (TVC / USD)" if symbol == "TVC:GOLD" else "Silver Commodity CFD (TVC / USD)"
+                if use_cache:
+                    stock_cache.set(symbol, fallback_data, ttl=15)
+                return fallback_data
 
         t_now = int(time.time())
         hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']
