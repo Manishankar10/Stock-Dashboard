@@ -55,6 +55,8 @@
         }
         window.fetchWatchlists = fetchWatchlists;
 
+        let draggedWatchlistName = null;
+
         async function saveWatchlistOrder(orderedNames) {
             try {
                 const response = await fetch('/api/watchlists/order', {
@@ -65,24 +67,48 @@
                 const data = await response.json();
                 if (!response.ok || !data.success) throw new Error(data.error || 'Could not save watchlist order');
                 watchlistsData = data.watchlists;
+                try {
+                    localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
+                } catch(e) {}
                 renderWatchlists();
             } catch (error) {
                 showToast(error.message || 'Could not save watchlist order', 'error');
                 await fetchWatchlists();
             }
         }
+        window.saveWatchlistOrder = saveWatchlistOrder;
 
-        function moveWatchlist(sourceName, targetName) {
+        function moveWatchlist(sourceName, targetName, position = 'auto') {
+            const isWeb = window.innerWidth > 768;
+            if (!isWeb) return;
+
             const names = Object.keys(watchlistsData || {});
             const sourceIndex = names.indexOf(sourceName);
             const targetIndex = names.indexOf(targetName);
             if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
+
+            // Remove source from current position
             names.splice(sourceIndex, 1);
-            names.splice(sourceIndex < targetIndex ? targetIndex - 1 : targetIndex, 0, sourceName);
+            const newTargetIndex = names.indexOf(targetName);
+
+            let insertIndex;
+            if (position === 'before') {
+                insertIndex = newTargetIndex;
+            } else if (position === 'after') {
+                insertIndex = newTargetIndex + 1;
+            } else {
+                insertIndex = (sourceIndex < targetIndex) ? (newTargetIndex + 1) : newTargetIndex;
+            }
+
+            names.splice(insertIndex, 0, sourceName);
             watchlistsData = Object.fromEntries(names.map(name => [name, watchlistsData[name]]));
+            try {
+                localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
+            } catch(e) {}
             renderWatchlists();
             saveWatchlistOrder(names);
         }
+        window.moveWatchlist = moveWatchlist;
 
         function toggleActionOverflow(event, menuId) {
             if (event) event.stopPropagation();
@@ -179,6 +205,9 @@
                 if (data.success) {
                     showToast(`Watchlist "${nameToDelete}" deleted successfully`, 'info');
                     watchlistsData = data.watchlists;
+                    try {
+                        localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
+                    } catch(e) {}
                     const names = Object.keys(watchlistsData);
                     if (activeWatchlistName === nameToDelete) {
                         activeWatchlistName = names.length > 0 ? names[0] : '';
@@ -298,29 +327,76 @@
                 if (wlNames.length === 0) {
                     selectorMount.innerHTML = '<span style="color:var(--text-secondary); font-size:13px;">No watchlists created yet.</span>';
                 } else {
+                    const isWeb = window.innerWidth > 768;
                     wlNames.forEach(name => {
                         const btn = document.createElement('button');
                         btn.className = `pf-select-btn ${name === activeWatchlistName ? 'active' : ''}`;
                         btn.innerText = name;
-                        btn.draggable = true;
                         btn.dataset.watchlistName = name;
                         btn.onclick = () => selectWatchlist(name);
-                        btn.ondragstart = event => {
-                            event.dataTransfer.setData('text/plain', name);
-                            event.dataTransfer.effectAllowed = 'move';
-                            btn.classList.add('selector-dragging');
-                        };
-                        btn.ondragend = () => {
-                            btn.classList.remove('selector-dragging');
-                            selectorMount.querySelectorAll('.selector-drop-target').forEach(item => item.classList.remove('selector-drop-target'));
-                        };
-                        btn.ondragover = event => { event.preventDefault(); btn.classList.add('selector-drop-target'); };
-                        btn.ondragleave = () => btn.classList.remove('selector-drop-target');
-                        btn.ondrop = event => {
-                            event.preventDefault();
-                            btn.classList.remove('selector-drop-target');
-                            moveWatchlist(event.dataTransfer.getData('text/plain'), name);
-                        };
+
+                        // Drag and drop reordering: web only
+                        if (isWeb) {
+                            btn.draggable = true;
+                            btn.ondragstart = event => {
+                                draggedWatchlistName = name;
+                                if (event.dataTransfer) {
+                                    try {
+                                        event.dataTransfer.setData('text/plain', name);
+                                    } catch (e) {}
+                                    event.dataTransfer.effectAllowed = 'move';
+                                }
+                                btn.classList.add('selector-dragging');
+                            };
+                            btn.ondragend = () => {
+                                draggedWatchlistName = null;
+                                btn.classList.remove('selector-dragging');
+                                selectorMount.querySelectorAll('.pf-select-btn').forEach(item => {
+                                    item.classList.remove('selector-dragging', 'selector-drop-before', 'selector-drop-after', 'selector-drop-target');
+                                });
+                            };
+                            btn.ondragover = event => {
+                                event.preventDefault();
+                                if (event.dataTransfer) {
+                                    event.dataTransfer.dropEffect = 'move';
+                                }
+                                const rect = btn.getBoundingClientRect();
+                                const isLeftHalf = (event.clientX - rect.left) < (rect.width / 2);
+                                btn.classList.remove('selector-drop-before', 'selector-drop-after', 'selector-drop-target');
+                                if (isLeftHalf) {
+                                    btn.classList.add('selector-drop-before');
+                                } else {
+                                    btn.classList.add('selector-drop-after');
+                                }
+                            };
+                            btn.ondragleave = () => {
+                                btn.classList.remove('selector-drop-before', 'selector-drop-after', 'selector-drop-target');
+                            };
+                            btn.ondrop = event => {
+                                event.preventDefault();
+                                const rect = btn.getBoundingClientRect();
+                                const isLeftHalf = (event.clientX - rect.left) < (rect.width / 2);
+                                const dropPosition = isLeftHalf ? 'before' : 'after';
+                                selectorMount.querySelectorAll('.pf-select-btn').forEach(item => {
+                                    item.classList.remove('selector-dragging', 'selector-drop-before', 'selector-drop-after', 'selector-drop-target');
+                                });
+                                let sourceName = '';
+                                try {
+                                    if (event.dataTransfer) {
+                                        sourceName = event.dataTransfer.getData('text/plain');
+                                    }
+                                } catch (e) {}
+                                if (!sourceName) {
+                                    sourceName = draggedWatchlistName;
+                                }
+                                if (sourceName && sourceName !== name) {
+                                    moveWatchlist(sourceName, name, dropPosition);
+                                }
+                                draggedWatchlistName = null;
+                            };
+                        } else {
+                            btn.draggable = false;
+                        }
                         selectorMount.appendChild(btn);
                     });
                     const addTabBtn = document.createElement('button');
@@ -1014,6 +1090,9 @@
                 closeCreateWatchlistModal();
                 showToast(`Created watchlist "${name}"`, 'success');
                 watchlistsData = data.watchlists;
+                try {
+                    localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
+                } catch(e) {}
                 activeWatchlistName = name;
                 renderWatchlists();
                 refreshPrices();

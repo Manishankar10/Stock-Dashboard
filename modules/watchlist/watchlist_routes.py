@@ -1,14 +1,19 @@
 import os
 import re
+import json
 import datetime
 import urllib.parse
-from flask import Blueprint, request, jsonify, session, render_template
+from flask import Blueprint, request, jsonify, session, render_template, Response
 from modules.common.auth_utils import login_required
 from modules.common.data_paths import BASE_DATA_DIR, DATA_FILE, USER_DATA_DIR
 from modules.common.market_fetcher import resolve_watchlist_symbol, fetcher, stock_cache
 from db_store import load_user_doc_db, save_user_doc_db
 
 watchlist_bp = Blueprint("watchlist_api", __name__)
+
+
+def json_ordered(data, status=200):
+    return Response(json.dumps(data, ensure_ascii=False), status=status, mimetype="application/json")
 
 
 @watchlist_bp.route("/watchlists", methods=["GET"])
@@ -79,7 +84,7 @@ def save_data(data, username=None):
 @watchlist_bp.route("/api/watchlists", methods=["GET"])
 @login_required
 def get_watchlists():
-    return jsonify(load_data())
+    return json_ordered(load_data())
 
 @watchlist_bp.route("/api/watchlists/order", methods=["PUT"])
 @login_required
@@ -89,12 +94,25 @@ def reorder_watchlists():
     names = payload.get("names")
     if not isinstance(names, list) or any(not isinstance(name, str) for name in names):
         return jsonify({"success": False, "error": "A watchlist name order is required."}), 400
-    if len(names) != len(data) or len(set(names)) != len(names) or set(names) != set(data):
+
+    reordered = {}
+    seen = set()
+    for name in names:
+        target_key = find_watchlist_key(data, name)
+        if target_key and target_key in data and target_key not in seen:
+            seen.add(target_key)
+            reordered[target_key] = data[target_key]
+
+    # Preserve any watchlists that weren't in the payload
+    for k, v in data.items():
+        if k not in seen:
+            reordered[k] = v
+
+    if not reordered and data:
         return jsonify({"success": False, "error": "The supplied watchlist order does not match this account's watchlists."}), 400
 
-    reordered = {name: data[name] for name in names}
     save_data(reordered)
-    return jsonify({"success": True, "watchlists": reordered})
+    return json_ordered({"success": True, "watchlists": reordered})
 
 @watchlist_bp.route("/api/watchlists", methods=["POST"])
 @login_required
@@ -111,7 +129,7 @@ def create_watchlist():
     clean_name = re.sub(r"\s+", " ", str(name)).strip()
     data[clean_name] = []
     save_data(data)
-    return jsonify({"success": True, "watchlists": data})
+    return json_ordered({"success": True, "watchlists": data})
 
 @watchlist_bp.route("/api/watchlists/<name>", methods=["DELETE"])
 @login_required
@@ -121,7 +139,7 @@ def delete_watchlist(name):
     if target_key and target_key in data:
         del data[target_key]
         save_data(data)
-    return jsonify({"success": True, "watchlists": data})
+    return json_ordered({"success": True, "watchlists": data})
 
 
 @watchlist_bp.route("/api/watchlists/<name>/stocks", methods=["POST"])
@@ -155,7 +173,7 @@ def add_stock(name):
         data[target_key].append(resolved_symbol)
         save_data(data)
 
-    return jsonify({"success": True, "symbol": resolved_symbol, "exchange": exchange, "watchlists": data})
+    return json_ordered({"success": True, "symbol": resolved_symbol, "exchange": exchange, "watchlists": data})
 
 
 @watchlist_bp.route("/api/watchlists/<name>/stocks/import-txt", methods=["POST"])
@@ -256,4 +274,4 @@ def remove_stock(name, symbol):
 
         save_data(data)
 
-    return jsonify({"success": True, "watchlists": data})
+    return json_ordered({"success": True, "watchlists": data})

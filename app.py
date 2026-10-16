@@ -58,6 +58,10 @@ from modules.official_feeds import official_feeds_bp, init_official_feeds
 # Initialize Flask Application
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
+try:
+    app.json.sort_keys = False
+except AttributeError:
+    app.config["JSON_SORT_KEYS"] = False
 
 # Configure Jinja Template Loader (templates/, modules/, and project root)
 app.jinja_loader = jinja2.ChoiceLoader([
