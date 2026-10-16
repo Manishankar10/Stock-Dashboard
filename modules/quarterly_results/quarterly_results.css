@@ -501,12 +501,17 @@
 }
 
 .qr-company-name:hover {
-    color: #5c7cfa;
+    color: #10b981;
+    text-decoration: underline;
+}
+
+:root:not([data-theme="dark"]) .qr-company-name:hover {
+    color: #059669;
 }
 
 .qr-ext-icon {
     font-size: 13px;
-    color: #5c7cfa;
+    color: #10b981;
     opacity: 0.8;
 }
 
@@ -570,6 +575,48 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
+}
+
+/* Interactive Clickable Price Stat Item */
+.qr-stat-price-clickable {
+    cursor: pointer;
+    transition: all 0.18s ease;
+    padding: 3px 8px;
+    margin: -3px -4px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+}
+
+.qr-stat-price-clickable:hover {
+    background: rgba(92, 124, 250, 0.12);
+    border-color: rgba(92, 124, 250, 0.3);
+}
+
+.qr-stat-price-clickable:hover .qr-stat-val {
+    color: #5c7cfa;
+    text-decoration: underline;
+}
+
+:root:not([data-theme="dark"]) .qr-stat-price-clickable:hover {
+    background: rgba(92, 124, 250, 0.08);
+    border-color: rgba(92, 124, 250, 0.25);
+}
+
+:root:not([data-theme="dark"]) .qr-stat-price-clickable:hover .qr-stat-val {
+    color: #3b82f6;
+}
+
+.qr-price-chart-glyph {
+    font-size: 11px;
+    opacity: 0.75;
+    margin-left: 3px;
+    display: inline-block;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.qr-stat-price-clickable:hover .qr-price-chart-glyph {
+    transform: scale(1.18);
+    opacity: 1;
 }
 
 .qr-stat-label {

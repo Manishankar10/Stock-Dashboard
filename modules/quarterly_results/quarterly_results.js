@@ -140,14 +140,16 @@
             <div class="qr-result-card" data-symbol="${sym}">
                 <div class="qr-card-header">
                     <div class="qr-company-left">
-                        <span class="qr-company-name" onclick="window.openStockChart('${sym}')" title="Click to view interactive chart">
+                        <span class="qr-company-name" onclick="window.openStockFundamentals('${sym}')" title="Click to view fundamentals for ${comp}">
                             ${comp} <span class="qr-ext-icon">↗</span>
                         </span>
                         ${item.pdf_url ? `<a href="${pdfUrl}" target="_blank" rel="noopener noreferrer" class="qr-pdf-link" title="Download Exchange PDF Filing">PDF <span class="qr-pdf-icon">📄</span></a>` : ''}
                         ${ind ? `<span class="qr-industry-pill">${ind}</span>` : ''}
                     </div>
                     <div class="qr-key-stats">
-                        <span class="qr-stat-item"><span class="qr-stat-label">Price</span> <span class="qr-stat-val">${price}</span></span>
+                        <span class="qr-stat-item qr-stat-price-clickable" onclick="window.openStockChart('${sym}')" title="Click to view technical chart for ${comp}">
+                            <span class="qr-stat-label">Price</span> <span class="qr-stat-val qr-stat-price-val">${price} <span class="qr-price-chart-glyph">📈</span></span>
+                        </span>
                         <span class="qr-stat-sep">•</span>
                         <span class="qr-stat-item"><span class="qr-stat-label">M.Cap</span> <span class="qr-stat-val">${mcap}</span></span>
                         <span class="qr-stat-sep">•</span>
@@ -783,12 +785,25 @@
         document.body.style.overflow = '';
     }
 
+    function openStockFundamentals(symbol) {
+        if (!symbol) return;
+        const clean = cleanSymbol(symbol);
+        if (typeof window.openFundamentalsModal === 'function') {
+            window.openFundamentalsModal(clean);
+        } else if (typeof openFundamentalsModal === 'function') {
+            openFundamentalsModal(clean);
+        }
+    }
+
     function openStockChart(symbol) {
         if (!symbol) return;
+        const clean = cleanSymbol(symbol);
         if (typeof window.openInHouseChart === 'function') {
-            window.openInHouseChart(symbol);
+            window.openInHouseChart(clean);
         } else if (typeof openInHouseChart === 'function') {
-            openInHouseChart(symbol);
+            openInHouseChart(clean);
+        } else if (typeof window.openChart === 'function') {
+            window.openChart(clean);
         }
     }
 
@@ -815,6 +830,7 @@
     window.filterIndustryList = filterIndustryList;
     window.openQrMobileFilter = openQrMobileFilter;
     window.closeQrMobileFilter = closeQrMobileFilter;
+    window.openStockFundamentals = openStockFundamentals;
     window.openStockChart = openStockChart;
     window.setQrPage = setQrPage;
     window.setQrPageSize = setQrPageSize;
