@@ -2723,6 +2723,24 @@
         box-sizing: border-box !important;
     }
 
+    .insights-top-cards > * {
+        margin-bottom: 0 !important;
+    }
+
+    .insights-mobile-bullion-slot {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 0 !important;
+    }
+
+    .insights-desktop-bullion-slot {
+        display: none !important;
+    }
+
+    #mobile-bullion-slot #insights-bullion-card {
+        margin-bottom: 0 !important;
+    }
+
     #insights-indexes-grid {
         display: grid !important;
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;

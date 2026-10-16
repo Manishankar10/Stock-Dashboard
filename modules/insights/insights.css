@@ -30,6 +30,16 @@
     }
 }
 
+/* Dynamic bullion slot containers for seamless mobile reordering */
+.insights-mobile-bullion-slot {
+    display: none !important;
+}
+
+.insights-desktop-bullion-slot {
+    display: block;
+    width: 100%;
+}
+
 /* =========================================================
    LIVE GOLD & SILVER BULLION RATES (GLASSY & TRENDY)
    ========================================================= */
@@ -408,6 +418,20 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    .insights-mobile-bullion-slot {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 0 !important;
+    }
+
+    .insights-desktop-bullion-slot {
+        display: none !important;
+    }
+
+    #mobile-bullion-slot #insights-bullion-card {
+        margin-bottom: 0 !important;
+    }
+
     .bullion-tiles-row.tiles-3 {
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 6px;

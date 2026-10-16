@@ -25,11 +25,38 @@
             }
         }
 
+        function syncInsightsBullionSlot() {
+            const card = document.getElementById('insights-bullion-card');
+            const mobileSlot = document.getElementById('mobile-bullion-slot');
+            const desktopSlot = document.getElementById('desktop-bullion-slot');
+            if (!card || !mobileSlot || !desktopSlot) return;
+
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                if (card.parentElement !== mobileSlot) {
+                    mobileSlot.appendChild(card);
+                }
+            } else {
+                if (card.parentElement !== desktopSlot) {
+                    desktopSlot.appendChild(card);
+                }
+            }
+        }
+
         window.openInsightsFundamentals = openInsightsFundamentals;
         window.openInsightsTechnical = openInsightsTechnical;
         window.loadInsightsBullion = loadInsightsBullion;
         window.filterBullionCards = filterBullionCards;
         window.renderInsightsBullionUI = renderInsightsBullionUI;
+        window.syncInsightsBullionSlot = syncInsightsBullionSlot;
+
+        window.addEventListener('resize', syncInsightsBullionSlot);
+        window.addEventListener('orientationchange', syncInsightsBullionSlot);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', syncInsightsBullionSlot);
+        } else {
+            syncInsightsBullionSlot();
+        }
 
         async function ensureWatchlistsAndPortfolios() {
             const promises = [];
@@ -348,6 +375,7 @@
         }
 
         async function loadInsightsTab(scope = null) {
+            syncInsightsBullionSlot();
             await ensureWatchlistsAndPortfolios();
 
             const isScopeChange = (scope !== null);
