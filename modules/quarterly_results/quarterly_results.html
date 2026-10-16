@@ -35,10 +35,12 @@
 
             <!-- Date Selector Row -->
             <div class="qr-dates-wrapper">
+                <button type="button" class="qr-date-nav-btn qr-date-nav-prev" id="qr-date-prev" onclick="window.scrollQrDates(-1)" title="Scroll earlier dates" aria-label="Scroll left">‹</button>
                 <div class="qr-dates-list" id="qr-dates-list">
                     <button type="button" class="qr-date-pill active" data-date="" onclick="window.setQrDateFilter('')">All Recent</button>
                     <!-- Dates populated dynamically from provider -->
                 </div>
+                <button type="button" class="qr-date-nav-btn qr-date-nav-next" id="qr-date-next" onclick="window.scrollQrDates(1)" title="Scroll later dates" aria-label="Scroll right">›</button>
                 <button type="button" class="qr-refresh-btn" id="qr-refresh-btn" onclick="window.loadQuarterlyResults(true)" title="Refresh Results from Official Exchange" aria-label="Refresh Results">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>

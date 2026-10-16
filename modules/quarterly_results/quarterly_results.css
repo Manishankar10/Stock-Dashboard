@@ -202,14 +202,63 @@
 .qr-dates-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
-    overflow-x: auto;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
     max-width: 100%;
-    scrollbar-width: none;
+    position: relative;
 }
 
-.qr-dates-wrapper::-webkit-scrollbar {
-    display: none;
+.qr-date-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+    transition: all 0.18s ease;
+    user-select: none;
+    margin-bottom: 4px;
+}
+
+.qr-date-nav-btn:hover:not(:disabled) {
+    background: rgba(92, 124, 250, 0.18);
+    color: #5c7cfa;
+    border-color: rgba(92, 124, 250, 0.4);
+    transform: translateY(-0.5px);
+}
+
+.qr-date-nav-btn:active:not(:disabled) {
+    transform: scale(0.92);
+}
+
+.qr-date-nav-btn:disabled,
+.qr-date-nav-btn.disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+:root:not([data-theme="dark"]) .qr-date-nav-btn {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+
+:root:not([data-theme="dark"]) .qr-date-nav-btn:hover:not(:disabled) {
+    background: #e0e7ff;
+    color: #4338ca;
+    border-color: #a5b4fc;
 }
 
 .qr-dates-list {
@@ -217,6 +266,51 @@
     align-items: center;
     gap: 6px;
     flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-width: 0;
+    flex: 1 1 auto;
+    padding: 2px 2px 6px 2px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(92, 124, 250, 0.45) rgba(255, 255, 255, 0.04) !important;
+}
+
+.qr-dates-list::-webkit-scrollbar {
+    height: 5px;
+}
+
+.qr-dates-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+    margin: 0 4px;
+}
+
+.qr-dates-list::-webkit-scrollbar-thumb {
+    background: rgba(92, 124, 250, 0.4);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.qr-dates-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(92, 124, 250, 0.75);
+}
+
+:root:not([data-theme="dark"]) .qr-dates-list {
+    scrollbar-color: rgba(92, 124, 250, 0.4) rgba(0, 0, 0, 0.04) !important;
+}
+
+:root:not([data-theme="dark"]) .qr-dates-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+:root:not([data-theme="dark"]) .qr-dates-list::-webkit-scrollbar-thumb {
+    background: rgba(92, 124, 250, 0.4);
+}
+
+:root:not([data-theme="dark"]) .qr-dates-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(92, 124, 250, 0.7);
 }
 
 .qr-date-pill {
@@ -229,7 +323,8 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.18s ease;
-    white-space: nowrap;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
 }
 
 :root:not([data-theme="dark"]) .qr-date-pill {
@@ -268,6 +363,7 @@
     padding: 0;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
     flex-shrink: 0;
+    margin-bottom: 4px;
 }
 
 :root:not([data-theme="dark"]) .qr-refresh-btn {
@@ -1120,11 +1216,15 @@
 
     .qr-dates-wrapper {
         width: 100%;
-        overflow-x: auto;
+        min-width: 0;
     }
 }
 
 @media (max-width: 600px) {
+    .qr-date-nav-btn {
+        display: none !important;
+    }
+
     .qr-table {
         min-width: 440px !important;
     }

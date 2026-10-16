@@ -373,6 +373,115 @@
     }
 
     /**
+     * Smoothly scroll horizontal date pills
+     */
+    function scrollQrDates(direction) {
+        const list = document.getElementById('qr-dates-list');
+        if (!list) return;
+        const scrollAmount = Math.max(180, Math.floor(list.clientWidth * 0.6));
+        list.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+    }
+
+    /**
+     * Update disabled / opacity state of left and right date scroll buttons
+     */
+    function updateQrDateNavButtons() {
+        const list = document.getElementById('qr-dates-list');
+        const prevBtn = document.getElementById('qr-date-prev');
+        const nextBtn = document.getElementById('qr-date-next');
+        if (!list) return;
+
+        const hasOverflow = list.scrollWidth > list.clientWidth + 2;
+        if (prevBtn) {
+            if (!hasOverflow) {
+                prevBtn.style.opacity = '0.25';
+                prevBtn.disabled = true;
+            } else {
+                const atStart = list.scrollLeft <= 2;
+                prevBtn.disabled = atStart;
+                prevBtn.style.opacity = atStart ? '0.25' : '1';
+            }
+        }
+        if (nextBtn) {
+            if (!hasOverflow) {
+                nextBtn.style.opacity = '0.25';
+                nextBtn.disabled = true;
+            } else {
+                const atEnd = list.scrollLeft + list.clientWidth >= list.scrollWidth - 4;
+                nextBtn.disabled = atEnd;
+                nextBtn.style.opacity = atEnd ? '0.25' : '1';
+            }
+        }
+    }
+
+    /**
+     * Bind mouse wheel, drag-to-scroll, and scroll listeners
+     */
+    function initQrDatesScroll() {
+        const list = document.getElementById('qr-dates-list');
+        if (!list || list.dataset.scrollBound) return;
+        list.dataset.scrollBound = 'true';
+
+        // Mouse wheel horizontal scroll
+        list.addEventListener('wheel', function(e) {
+            if (list.scrollWidth > list.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                e.preventDefault();
+                list.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+
+        // Scroll listener to update nav arrows
+        list.addEventListener('scroll', function() {
+            updateQrDateNavButtons();
+        }, { passive: true });
+
+        // Mouse drag-to-scroll support
+        let isDown = false;
+        let startX = 0;
+        let scrollStart = 0;
+        let hasDragged = false;
+
+        list.addEventListener('mousedown', function(e) {
+            if (e.button !== 0) return;
+            isDown = true;
+            hasDragged = false;
+            startX = e.pageX - list.offsetLeft;
+            scrollStart = list.scrollLeft;
+        });
+
+        window.addEventListener('mouseup', function() {
+            if (isDown) {
+                isDown = false;
+                list.style.cursor = '';
+            }
+        });
+
+        list.addEventListener('mousemove', function(e) {
+            if (!isDown) return;
+            const x = e.pageX - list.offsetLeft;
+            const walk = (x - startX);
+            if (Math.abs(walk) > 4) {
+                hasDragged = true;
+                list.style.cursor = 'grabbing';
+                list.scrollLeft = scrollStart - walk;
+            }
+        });
+
+        // Prevent accidental pill click after dragging
+        list.addEventListener('click', function(e) {
+            if (hasDragged) {
+                e.preventDefault();
+                e.stopPropagation();
+                hasDragged = false;
+            }
+        }, true);
+
+        window.addEventListener('resize', function() {
+            updateQrDateNavButtons();
+        }, { passive: true });
+    }
+
+    /**
      * Render horizontal date pills
      */
     function renderDatesNav(dates) {
@@ -397,6 +506,21 @@
         });
 
         navEl.innerHTML = html;
+
+        initQrDatesScroll();
+
+        // Auto-scroll active pill smoothly into view
+        requestAnimationFrame(() => {
+            const activePill = navEl.querySelector('.qr-date-pill.active');
+            if (activePill) {
+                const pillLeft = activePill.offsetLeft;
+                const pillWidth = activePill.offsetWidth;
+                const navWidth = navEl.clientWidth;
+                const targetScroll = pillLeft - (navWidth / 2) + (pillWidth / 2);
+                navEl.scrollTo({ left: Math.max(0, targetScroll), behavior: 'smooth' });
+            }
+            updateQrDateNavButtons();
+        });
     }
 
     /**
@@ -694,6 +818,9 @@
     window.openStockChart = openStockChart;
     window.setQrPage = setQrPage;
     window.setQrPageSize = setQrPageSize;
+    window.scrollQrDates = scrollQrDates;
+    window.updateQrDateNavButtons = updateQrDateNavButtons;
+    window.initQrDatesScroll = initQrDatesScroll;
     window.qrState = qrState;
 
     // Auto-init on DOMContentLoaded if starting on quarterly-results tab
