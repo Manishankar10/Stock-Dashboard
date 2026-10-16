@@ -640,8 +640,12 @@
         async function checkAuthAndLoadUserInfo() {
             try {
                 const res = await fetch('/api/user_info');
+                if (res.status === 401) {
+                    window.location.replace('/login');
+                    return;
+                }
                 const data = await res.json();
-                if (data.logged_in) {
+                if (data && data.logged_in) {
                     const userEl = document.getElementById('header-username');
                     const mobileUserEl = document.getElementById('mobile-header-username');
                     const roleBadge = document.getElementById('sidebar-user-role-badge');
@@ -665,17 +669,22 @@
                             window.renderFavoriteToolsShortcuts();
                         }
                     }
-                } else {
-                    window.location.href = '/login';
+                } else if (data && data.logged_in === false) {
+                    window.location.replace('/login');
                 }
             } catch(e) {
-                console.error('Auth check failed:', e);
+                console.warn('Auth check network warning (preserving active session):', e);
             }
         }
 
         async function logoutUser() {
-            await fetch('/api/logout');
-            window.location.href = '/login';
+            try {
+                await fetch('/api/logout');
+            } catch(e) {
+                console.error('Logout error:', e);
+            } finally {
+                window.location.replace('/login');
+            }
         }
 
         // Global Brand Animated Loader Component Generator

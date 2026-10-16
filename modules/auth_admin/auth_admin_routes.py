@@ -68,6 +68,7 @@ def api_login():
         log_login_event(username, "Failed (Bad Credentials)")
         return jsonify({"error": "Invalid username or password"}), 401
 
+    session.permanent = True
     session["username"] = username
 
     # Update login stats
@@ -117,6 +118,7 @@ def api_register():
     _get_user_dependencies()["load_data"](safe_username)
     _get_user_dependencies()["load_portfolios"](safe_username)
 
+    session.permanent = True
     session["username"] = safe_username
     log_login_event(safe_username, "Registered & Logged In")
     return jsonify({"success": True, "message": "Registration successful!", "username": safe_username, "is_admin": is_admin})

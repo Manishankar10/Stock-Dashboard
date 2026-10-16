@@ -943,7 +943,7 @@
     }
 
     async function moduleLogout() {
-        try { await fetch('/api/logout', { method: 'POST' }); } finally { window.location.href = '/login'; }
+        try { await fetch('/api/logout', { method: 'POST' }); } finally { window.location.replace('/login'); }
     }
 
     document.addEventListener('click', function(event) {

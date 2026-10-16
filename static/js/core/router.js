@@ -37,6 +37,96 @@ const AppRouter = {
         '/quarterly-results': 'quarterly-results'
     },
 
+    closeAnyOpenModalOrDrawer() {
+        let dismissed = false;
+
+        // 1. System modal dialog
+        const customModalOverlay = document.getElementById('customModalOverlay');
+        if (customModalOverlay && (customModalOverlay.style.display === 'flex' || window.getComputedStyle(customModalOverlay).display === 'flex')) {
+            customModalOverlay.style.setProperty('display', 'none', 'important');
+            dismissed = true;
+        }
+
+        // 2. Analyser detail modal / sheet
+        const analyserModal = document.getElementById('analyserDetailModal');
+        if (analyserModal && analyserModal.classList.contains('show')) {
+            if (typeof window.closeAnalyserModal === 'function') {
+                window.closeAnalyserModal();
+            } else {
+                analyserModal.classList.remove('show');
+            }
+            dismissed = true;
+        }
+
+        // 3. Stock Detail Chart Modal
+        const chartModal = document.getElementById('chart-modal') || document.getElementById('chartModal');
+        if (chartModal && (chartModal.classList.contains('show') || chartModal.style.display === 'block')) {
+            if (typeof window.closeChartModal === 'function') {
+                window.closeChartModal();
+            } else {
+                chartModal.classList.remove('show');
+                chartModal.style.display = 'none';
+            }
+            dismissed = true;
+        }
+
+        // 4. Fundamentals Modal
+        const fundModal = document.getElementById('fundamentals-modal');
+        if (fundModal && (fundModal.classList.contains('show') || fundModal.style.display === 'block')) {
+            if (typeof window.closeFundamentalsModal === 'function') {
+                window.closeFundamentalsModal();
+            } else {
+                fundModal.classList.remove('show');
+                fundModal.style.display = 'none';
+            }
+            dismissed = true;
+        }
+
+        // 5. Holding Details Modal
+        const holdingModal = document.getElementById('holdingDetailModal') || document.getElementById('holding-details-modal');
+        if (holdingModal && (holdingModal.classList.contains('show') || holdingModal.style.display === 'block')) {
+            if (typeof window.closeHoldingDetailsModal === 'function') {
+                window.closeHoldingDetailsModal();
+            } else {
+                holdingModal.classList.remove('show');
+                holdingModal.style.display = 'none';
+            }
+            dismissed = true;
+        }
+
+        // 6. Generic Smallcase / MF / Bootstrap Modals
+        document.querySelectorAll('.small-modal.show, .mf-modal.show, .modal.show').forEach(m => {
+            m.classList.remove('show');
+            m.style.display = 'none';
+            dismissed = true;
+        });
+
+        // 7. Mobile Sidebar Drawer
+        const mobileSidebar = document.getElementById('mobile-sidebar');
+        const sidebar = document.querySelector('.sidebar');
+        if (document.body.classList.contains('mobile-menu-open') || (mobileSidebar && mobileSidebar.classList.contains('open')) || (sidebar && sidebar.classList.contains('mobile-open'))) {
+            if (typeof window.closeMobileSidebarOnSelect === 'function') {
+                window.closeMobileSidebarOnSelect();
+            }
+            document.body.classList.remove('mobile-menu-open');
+            if (mobileSidebar) mobileSidebar.classList.remove('open');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            dismissed = true;
+        }
+
+        // 8. Open Dropdown menus (actions, upcoming, etc.)
+        const openDropdowns = document.querySelectorAll('.upcoming-dropdown-menu.show, .action-dropdown-menu.show, .menu-dropdown-wrapper.active');
+        if (openDropdowns.length > 0) {
+            openDropdowns.forEach(d => {
+                d.classList.remove('show');
+                d.classList.remove('active');
+            });
+            dismissed = true;
+        }
+
+        return dismissed;
+    },
+
     init() {
         // Intercept clicks on links that have data-spa-route or internal sidebar links
         document.addEventListener('click', (e) => {
@@ -67,8 +157,39 @@ const AppRouter = {
             }
         });
 
-        // Listen for browser Back / Forward buttons
+        // Establish root history barrier to prevent accidental exit from the app or back-navigation to login
+        const initialTab = window.INITIAL_TAB || this.reverseMap[window.location.pathname] || 'watchlists';
+        const initialPath = window.location.pathname === '/' ? '/watchlists' : window.location.pathname;
+
+        try {
+            window.history.replaceState({ tab: initialTab, isBarrier: true }, '', initialPath);
+            window.history.pushState({ tab: initialTab, isAppActive: true }, '', initialPath);
+        } catch (e) {}
+
+        // Listen for browser Back / Forward buttons & swipe navigation
         window.addEventListener('popstate', (event) => {
+            // Priority 1: If any modal, sheet, drawer, or dropdown is open, dismiss it and maintain current route
+            if (this.closeAnyOpenModalOrDrawer()) {
+                window.history.pushState({ tab: currentTab, isAppActive: true }, '', window.location.pathname);
+                return;
+            }
+
+            // Priority 2: If we hit the root barrier or empty state, prevent exiting the app
+            if (!event.state || event.state.isBarrier) {
+                if (currentTab !== 'watchlists') {
+                    // Navigate to primary watchlists hub first
+                    switchTab('watchlists', true);
+                } else {
+                    // Stay securely inside Capital Desk and re-arm barrier
+                    window.history.pushState({ tab: 'watchlists', isAppActive: true }, '', '/watchlists');
+                    if (typeof showToast === 'function') {
+                        showToast('App exit prevented • Session active for 24 hours', 'info', 1800);
+                    }
+                }
+                return;
+            }
+
+            // Priority 3: Normal SPA back/forward tab switching
             if (event.state && event.state.tab) {
                 switchTab(event.state.tab, false);
             } else {
@@ -158,7 +279,7 @@ function switchTab(tabName, pushState = true) {
             if (currentCode) routePath = '/mutual-funds/fund/' + encodeURIComponent(currentCode);
         }
         if (window.location.pathname !== routePath) {
-            window.history.pushState({ tab: tabName }, '', routePath);
+            window.history.pushState({ tab: tabName, isAppActive: true }, '', routePath);
         }
     }
 

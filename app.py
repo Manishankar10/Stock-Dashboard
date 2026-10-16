@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 import jinja2
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 
@@ -61,6 +62,25 @@ from modules.quarterly_results import quarterly_results_bp, init_quarterly_resul
 # Initialize Flask Application
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=1)
+app.config["SESSION_REFRESH_EACH_REQUEST"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.permanent_session_lifetime = timedelta(days=1)
+
+@app.before_request
+def make_session_permanent():
+    if "username" in session:
+        session.permanent = True
+
+@app.after_request
+def add_auth_cache_control(response):
+    if request.path in ["/login", "/register", "/logout"]:
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 try:
     app.json.sort_keys = False
 except AttributeError:

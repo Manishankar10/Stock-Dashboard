@@ -273,7 +273,7 @@
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    window.location.href = '/';
+                    window.location.replace('/');
                 } else {
                     errDiv.innerText = data.error || 'Login failed. Please check credentials.';
                     errDiv.style.display = 'block';
@@ -286,6 +286,23 @@
                 submitBtn.innerHTML = '<span>Sign In</span> ➔';
             }
         }
+
+        // Active Session Guard: prevent authenticated users from viewing or navigating back to login
+        async function checkAlreadyLoggedIn() {
+            try {
+                const res = await fetch('/api/user_info');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.logged_in) {
+                        window.location.replace('/');
+                    }
+                }
+            } catch (e) {}
+        }
+        checkAlreadyLoggedIn();
+        window.addEventListener('pageshow', () => {
+            checkAlreadyLoggedIn();
+        });
     </script>
 </body>
 </html>

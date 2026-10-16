@@ -24,7 +24,7 @@
                 const res = await fetch('/api/watchlists');
                 if (!res.ok) {
                     if (res.status === 401) {
-                        window.location.href = '/login';
+                        window.location.replace('/login');
                         return;
                     }
                     throw new Error('Watchlists API error: ' + res.status);
