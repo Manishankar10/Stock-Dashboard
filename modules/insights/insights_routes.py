@@ -463,43 +463,6 @@ def get_insights_indexes_api():
 
         def _fetch_single_index_or_commodity(cfg):
             sym = cfg["symbol"]
-            if sym == "GIFTNIFTY":
-                # 1. Attempt official NSE IX derivative quote
-                try:
-                    r = requests.get("https://www.nseix.com/api/market-rate?type=derivative", headers={"User-Agent": "Mozilla/5.0"}, timeout=3)
-                    if r.status_code == 200:
-                        data = r.json().get("data", [])
-                        nifty_contracts = [c for c in data if c.get("SYMBOL") == "NIFTY"]
-                        if nifty_contracts:
-                            nifty_contracts.sort(key=lambda x: int(x.get("CONTRACTSTRADED", 0)), reverse=True)
-                            active = nifty_contracts[0]
-                            return {
-                                "symbol": sym,
-                                "name": cfg["name"],
-                                "badge": cfg["badge"],
-                                "type": cfg.get("type", "INDEX"),
-                                "currency": cfg.get("currency", "₹"),
-                                "price": float(active["LASTPRICE"]),
-                                "change": float(active.get("DAYCHANGE_1") or active.get("DAYCHANGE", 0)),
-                                "change_pct": float(active.get("PERCHANGE", 0))
-                            }
-                except Exception:
-                    pass
-                # Fallback to NIFTY 50 quote with current basis
-                nifty_info = fetcher.fetch_stock("^NSEI")
-                if nifty_info and not nifty_info.get("error"):
-                    return {
-                        "symbol": sym,
-                        "name": cfg["name"],
-                        "badge": cfg["badge"],
-                        "type": cfg.get("type", "INDEX"),
-                        "currency": cfg.get("currency", "₹"),
-                        "price": round(nifty_info.get("price", 0) + 25.0, 2),
-                        "change": nifty_info.get("change", 0),
-                        "change_pct": nifty_info.get("change_pct", 0)
-                    }
-                return None
-
             info = fetcher.fetch_stock(sym)
             if info and not info.get("error"):
                 return {

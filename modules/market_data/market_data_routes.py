@@ -162,6 +162,8 @@ def get_chart_history():
         fetch_sym = "GC=F"
     elif symbol == "TVC:SILVER":
         fetch_sym = "SI=F"
+    elif symbol == "GIFTNIFTY":
+        fetch_sym = "^NSEI"
 
     interval_map = {
         '5m': '5m',
@@ -407,6 +409,15 @@ def get_chart_history():
         tvc_quote = fetcher.fetch_stock(symbol)
         if tvc_quote and not tvc_quote.get("error") and candles:
             live_p = tvc_quote.get("price")
+            if live_p:
+                candles[-1]["close"] = live_p
+                candles[-1]["high"] = max(candles[-1]["high"], live_p)
+                candles[-1]["low"] = min(candles[-1]["low"], live_p)
+    elif symbol == "GIFTNIFTY":
+        name = "GIFT Nifty Index"
+        gift_quote = fetcher.fetch_stock("GIFTNIFTY")
+        if gift_quote and not gift_quote.get("error") and candles:
+            live_p = gift_quote.get("price")
             if live_p:
                 candles[-1]["close"] = live_p
                 candles[-1]["high"] = max(candles[-1]["high"], live_p)

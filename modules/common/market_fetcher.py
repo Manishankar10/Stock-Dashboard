@@ -86,7 +86,7 @@ def format_financial_symbol(raw_symbol):
     if sym in ("TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)"):
         return "TVC:SILVER"
     if sym in ("GIFTNIFTY", "GIFT NIFTY", "NSEIX:NIFTY1!"):
-        return "^NSEI"
+        return "GIFTNIFTY"
 
     # Check direct index / commodity alias matches
     for idx_item in POPULAR_MARKET_INDEXES:
@@ -209,6 +209,82 @@ class StockFetcher:
             pass
         return None
 
+    def _fetch_gift_nifty(self):
+        # 1. Primary: High-speed TradingView Global Scanner for live GIFT Nifty futures
+        try:
+            url = "https://scanner.tradingview.com/global/scan"
+            payload = {
+                "symbols": {"tickers": ["NSEIX:NIFTY1!"]},
+                "columns": ["close", "change", "change_abs", "open", "high", "low", "description", "volume"]
+            }
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            r = requests.post(url, json=payload, headers=headers, timeout=4)
+            if r.status_code == 200:
+                data = r.json().get("data", [])
+                if data and len(data) > 0:
+                    vals = data[0].get("d", [])
+                    if len(vals) >= 3 and vals[0] is not None:
+                        price = round(float(vals[0]), 2)
+                        change_pct = round(float(vals[1] or 0), 2)
+                        change_amt = round(float(vals[2] or 0), 2)
+                        prev_close = round(price - change_amt, 2)
+                        entry = {
+                            "symbol": "GIFTNIFTY",
+                            "name": "GIFT Nifty Index",
+                            "price": price,
+                            "change": change_amt,
+                            "change_pct": change_pct,
+                            "previous_close": prev_close,
+                            "mcap_cr": "N/A"
+                        }
+                        stock_cache.set("GIFTNIFTY", entry, ttl=15)
+                        return entry
+        except Exception:
+            pass
+
+        # 2. Secondary: Official NSE IX Derivative API
+        try:
+            r = requests.get("https://www.nseix.com/api/market-rate?type=derivative", headers={"User-Agent": "Mozilla/5.0"}, timeout=3)
+            if r.status_code == 200:
+                data = r.json().get("data", [])
+                nifty_contracts = [c for c in data if c.get("SYMBOL") == "NIFTY"]
+                if nifty_contracts:
+                    nifty_contracts.sort(key=lambda x: int(x.get("CONTRACTSTRADED", 0)), reverse=True)
+                    active = nifty_contracts[0]
+                    price = float(active["LASTPRICE"])
+                    change_amt = float(active.get("DAYCHANGE_1") or active.get("DAYCHANGE", 0))
+                    change_pct = float(active.get("PERCHANGE", 0))
+                    entry = {
+                        "symbol": "GIFTNIFTY",
+                        "name": "GIFT Nifty Index",
+                        "price": price,
+                        "change": change_amt,
+                        "change_pct": change_pct,
+                        "previous_close": round(price - change_amt, 2),
+                        "mcap_cr": "N/A"
+                    }
+                    stock_cache.set("GIFTNIFTY", entry, ttl=15)
+                    return entry
+        except Exception:
+            pass
+
+        # 3. Tertiary fallback: NIFTY 50 quote
+        nifty_info = self.fetch_stock("^NSEI", use_cache=True)
+        if nifty_info and not nifty_info.get("error"):
+            entry = {
+                "symbol": "GIFTNIFTY",
+                "name": "GIFT Nifty Index",
+                "price": nifty_info.get("price", 0),
+                "change": nifty_info.get("change", 0),
+                "change_pct": nifty_info.get("change_pct", 0),
+                "previous_close": nifty_info.get("previous_close", 0),
+                "mcap_cr": "N/A"
+            }
+            stock_cache.set("GIFTNIFTY", entry, ttl=15)
+            return entry
+
+        return None
+
     def fetch_stock(self, symbol, use_cache=True):
         if use_cache:
             cached = stock_cache.get(symbol)
@@ -230,6 +306,12 @@ class StockFetcher:
                 if use_cache:
                     stock_cache.set(symbol, fallback_data, ttl=15)
                 return fallback_data
+
+        # Live GIFT Nifty Index Futures Interceptor
+        if symbol == "GIFTNIFTY":
+            gift_quote = self._fetch_gift_nifty()
+            if gift_quote:
+                return gift_quote
 
         t_now = int(time.time())
         hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']
