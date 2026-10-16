@@ -169,8 +169,19 @@
 }
 
 .upcoming-refresh-btn:active {
-    transform: scale(0.92);
-    background: rgba(16, 185, 129, 0.25);
+    transform: translateY(3px) scale(0.92) !important;
+    background: rgba(16, 185, 129, 0.25) !important;
+}
+
+@keyframes upcoming-drop-rise {
+    0% { transform: translateY(0); }
+    30% { transform: translateY(3.5px) scale(0.95); }
+    70% { transform: translateY(-1px); }
+    100% { transform: translateY(0) scale(1); }
+}
+
+.upcoming-refresh-btn.refreshing {
+    animation: upcoming-drop-rise 0.45s ease-out !important;
 }
 
 @keyframes upcoming-spin {
@@ -485,19 +496,31 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 10px;
+    padding-bottom: 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 12px;
+    gap: 8px;
+}
+
+:root:not([data-theme="dark"]) .upcoming-modal-header {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
 }
 
 .upcoming-modal-header-left {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.upcoming-modal-title-wrap {
+    min-width: 0;
 }
 
 .upcoming-modal-icon {
     font-size: 22px;
+    flex-shrink: 0;
 }
 
 .upcoming-modal-title {
@@ -505,18 +528,84 @@
     font-weight: 700;
     margin: 0;
     color: var(--text-primary, #ffffff);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+:root:not([data-theme="dark"]) .upcoming-modal-title {
+    color: #0f172a;
 }
 
 .upcoming-modal-subtitle {
-    font-size: 12px;
+    font-size: 12.5px;
     color: var(--text-secondary, #94a3b8);
     font-weight: 500;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+:root:not([data-theme="dark"]) .upcoming-modal-subtitle {
+    color: #64748b;
 }
 
 .upcoming-modal-header-right {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Glassy Switcher Pill Button for Mobile */
+.upcoming-modal-scope-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 5px 12px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    color: #e2e8f0 !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+:root:not([data-theme="dark"]) .upcoming-modal-scope-btn {
+    background: rgba(15, 23, 42, 0.06) !important;
+    border-color: rgba(15, 23, 42, 0.12) !important;
+    color: #1e293b !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.upcoming-modal-scope-btn:hover {
+    background: rgba(92, 124, 250, 0.2) !important;
+    border-color: #5c7cfa !important;
+    color: #5c7cfa !important;
+    transform: translateY(-0.5px) !important;
+}
+
+.upcoming-modal-scope-btn:active {
+    transform: translateY(2px) scale(0.95) !important;
+}
+
+.upcoming-modal-scope-btn.active-scope-all {
+    background: rgba(92, 124, 250, 0.16) !important;
+    border-color: rgba(92, 124, 250, 0.35) !important;
+    color: #5c7cfa !important;
+}
+
+:root:not([data-theme="dark"]) .upcoming-modal-scope-btn.active-scope-all {
+    background: rgba(92, 124, 250, 0.12) !important;
+    border-color: rgba(92, 124, 250, 0.3) !important;
+    color: #4361ee !important;
 }
 
 .upcoming-modal-close-btn {

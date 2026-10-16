@@ -132,15 +132,22 @@
         const modalWlEl = document.getElementById('upcoming-modal-wl-name');
         if (modalWlEl) modalWlEl.innerText = `${displayTitle} (${data.total_events || 0})`;
 
-        // 2. Update Scope Button
-        const scopeBtn = document.getElementById('upcoming-scope-label');
-        if (scopeBtn) {
-            scopeBtn.innerText = isAll ? 'Watchlist' : 'All';
-            const btnParent = document.getElementById('upcoming-toggle-scope-btn');
-            if (btnParent) {
-                btnParent.title = isAll ? 'Switch to active watchlist' : 'Switch to all market events';
+        // 2. Update Scope Buttons (Both Desktop Card & Mobile Modal)
+        const scopeText = isAll ? 'Watchlist' : 'All';
+        const scopeTitle = isAll ? 'Switch to active watchlist' : 'Switch to all market events';
+
+        ['upcoming-scope-label', 'upcoming-modal-scope-label'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = scopeText;
+        });
+
+        ['upcoming-toggle-scope-btn', 'upcoming-modal-toggle-scope-btn'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.title = scopeTitle;
+                btn.classList.toggle('active-scope-all', isAll);
             }
-        }
+        });
 
         // 3. Update Mobile Badge Counter in Watchlist bar
         const badgeCountEls = document.querySelectorAll('.wl-upcoming-badge-count');
@@ -218,6 +225,24 @@
         } else {
             upcomingScope = (upcomingScope === 'all') ? 'watchlist' : 'all';
         }
+
+        const isAll = upcomingScope === 'all';
+        const scopeText = isAll ? 'Watchlist' : 'All';
+        const scopeTitle = isAll ? 'Switch to active watchlist' : 'Switch to all market events';
+
+        ['upcoming-scope-label', 'upcoming-modal-scope-label'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = scopeText;
+        });
+
+        ['upcoming-toggle-scope-btn', 'upcoming-modal-toggle-scope-btn'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.title = scopeTitle;
+                btn.classList.toggle('active-scope-all', isAll);
+            }
+        });
+
         loadUpcomingEvents();
     }
 
