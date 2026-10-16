@@ -242,11 +242,36 @@
         }
     }
 
+    function formatCorpDateHtml(rawDateDisplay, rawDate) {
+        const full = rawDateDisplay || rawDate || '-';
+        if (full === '-') return '-';
+
+        let compact = full;
+        const m = full.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+        if (m) {
+            const day = m[1];
+            const mon = m[2].slice(0, 3);
+            const yr = m[3].slice(-2);
+            compact = `${day}-${mon}-${yr}`;
+        } else {
+            const iso = full.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (iso) {
+                const yr = iso[1].slice(-2);
+                const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const mon = monthNames[parseInt(iso[2], 10) - 1] || iso[2];
+                const day = parseInt(iso[3], 10);
+                compact = `${day}-${mon}-${yr}`;
+            }
+        }
+        return `<span class="corp-date-full">${full}</span><span class="corp-date-compact">${compact}</span>`;
+    }
+
     function renderTableHead(theadEl, columns) {
         if (!theadEl) return;
         let html = '<tr>';
         columns.forEach(col => {
-            const extraClass = col.key === 'amount' ? ' class="corp-col-amount"' : '';
+            const keyClass = `corp-col-${col.key.replace(/_/g, '-')}`;
+            const extraClass = col.key === 'amount' ? ` class="${keyClass} corp-col-amount"` : ` class="${keyClass}"`;
             html += `<th${extraClass}>${col.label}</th>`;
         });
         html += '</tr>';
@@ -286,32 +311,34 @@
             </div>
         `;
 
-        let cellsHtml = `<td>${companyHtml}</td>`;
+        const dateHtml = formatCorpDateHtml(item.ex_date_display, item.ex_date);
+        let cellsHtml = `<td class="corp-col-company">${companyHtml}</td>`;
 
         if (tabKey === 'bonus') {
-            cellsHtml += `<td>${item.ex_date_display || item.ex_date || '-'}</td>`;
-            cellsHtml += `<td><span class="corp-val-highlight">${item.ratio || '-'}</span></td>`;
+            cellsHtml += `<td class="corp-col-ex-date-display">${dateHtml}</td>`;
+            cellsHtml += `<td class="corp-col-ratio"><span class="corp-val-highlight">${item.ratio || '-'}</span></td>`;
         } else if (tabKey === 'rights') {
-            cellsHtml += `<td>${item.ex_date_display || item.ex_date || '-'}</td>`;
-            cellsHtml += `<td>${item.premium ? Number(item.premium).toFixed(2) : '0.00'}</td>`;
-            cellsHtml += `<td><span class="corp-val-highlight">${item.ratio || '-'}</span></td>`;
+            cellsHtml += `<td class="corp-col-ex-date-display">${dateHtml}</td>`;
+            cellsHtml += `<td class="corp-col-premium">${item.premium ? Number(item.premium).toFixed(2) : '0.00'}</td>`;
+            cellsHtml += `<td class="corp-col-ratio"><span class="corp-val-highlight">${item.ratio || '-'}</span></td>`;
         } else if (tabKey === 'split') {
-            cellsHtml += `<td>${item.ex_date_display || item.ex_date || '-'}</td>`;
-            cellsHtml += `<td>${item.old_fv ? Number(item.old_fv).toFixed(2) : '-'}</td>`;
-            cellsHtml += `<td><span class="corp-val-highlight">${item.new_fv ? Number(item.new_fv).toFixed(2) : '-'}</span></td>`;
+            cellsHtml += `<td class="corp-col-ex-date-display">${dateHtml}</td>`;
+            cellsHtml += `<td class="corp-col-old-fv">${item.old_fv ? Number(item.old_fv).toFixed(2) : '-'}</td>`;
+            cellsHtml += `<td class="corp-col-new-fv"><span class="corp-val-highlight">${item.new_fv ? Number(item.new_fv).toFixed(2) : '-'}</span></td>`;
         } else if (tabKey === 'buyback') {
-            cellsHtml += `<td>${item.ex_date_display || item.ex_date || '-'}</td>`;
-            cellsHtml += `<td>${item.end_date_display || item.end_date || '-'}</td>`;
-            cellsHtml += `<td><span class="corp-offer-type">${item.offer_type || 'Tender Offer'}</span></td>`;
-            cellsHtml += `<td>${item.max_price && Number(item.max_price) > 0 ? Number(item.max_price).toFixed(2) : '-'}</td>`;
-            cellsHtml += `<td><span class="corp-val-highlight">${item.amount_cr && Number(item.amount_cr) > 0 ? Number(item.amount_cr).toFixed(2) : '-'}</span></td>`;
+            const endDateHtml = formatCorpDateHtml(item.end_date_display, item.end_date);
+            cellsHtml += `<td class="corp-col-ex-date-display">${dateHtml}</td>`;
+            cellsHtml += `<td class="corp-col-end-date-display">${endDateHtml}</td>`;
+            cellsHtml += `<td class="corp-col-offer-type"><span class="corp-offer-type">${item.offer_type || 'Tender Offer'}</span></td>`;
+            cellsHtml += `<td class="corp-col-max-price">${item.max_price && Number(item.max_price) > 0 ? Number(item.max_price).toFixed(2) : '-'}</td>`;
+            cellsHtml += `<td class="corp-col-amount-cr"><span class="corp-val-highlight">${item.amount_cr && Number(item.amount_cr) > 0 ? Number(item.amount_cr).toFixed(2) : '-'}</span></td>`;
         } else if (tabKey === 'dividend') {
-            cellsHtml += `<td>${item.ex_date_display || item.ex_date || '-'}</td>`;
-            cellsHtml += `<td><span class="corp-div-type">${item.div_type || 'Interim'}</span></td>`;
+            cellsHtml += `<td class="corp-col-ex-date-display">${dateHtml}</td>`;
+            cellsHtml += `<td class="corp-col-div-type"><span class="corp-div-type">${item.div_type || 'Interim'}</span></td>`;
             const rawAmt = item.amount !== undefined ? item.amount : (item.percent ? (Number(item.percent) * 0.1).toFixed(2) : '-');
             const amtDisplay = (rawAmt !== '-' && !isNaN(Number(rawAmt))) ? `₹${Number(rawAmt).toFixed(2)}` : (rawAmt || '-');
             cellsHtml += `<td class="corp-col-amount"><span class="corp-val-highlight">${amtDisplay}</span></td>`;
-            cellsHtml += `<td><span class="corp-val-highlight">${item.percent ? Number(item.percent).toFixed(2) + '%' : '-'}</span></td>`;
+            cellsHtml += `<td class="corp-col-percent"><span class="corp-val-highlight">${item.percent ? Number(item.percent).toFixed(2) + '%' : '-'}</span></td>`;
         }
 
         return `<tr>${cellsHtml}</tr>`;
@@ -365,6 +392,13 @@
         const pastHeadEl = document.getElementById('corp-past-table-head');
         renderTableHead(headEl, tabConfig.columns);
         renderTableHead(pastHeadEl, tabConfig.columns);
+
+        const upcomingTableEl = document.getElementById('corp-upcoming-table');
+        if (upcomingTableEl) upcomingTableEl.setAttribute('data-tab', tabKey);
+        const pastTableEl = document.getElementById('corp-past-table');
+        if (pastTableEl) pastTableEl.setAttribute('data-tab', tabKey);
+        const rootContainer = document.getElementById('tab-corporate-actions');
+        if (rootContainer) rootContainer.setAttribute('data-active-tab', tabKey);
 
         // 4. Handle Dividend Rule vs Remaining Tabs
         // User rule: "in dividend also show upcoming announcements only and show last two months data in seperate table and put scroller for tables."
