@@ -1586,7 +1586,7 @@
             border: 1px solid #363a45 !important;
             border-radius: 8px !important;
             padding: 4px 8px !important;
-            display: flex !important;
+            display: none;
             align-items: center !important;
             gap: 6px !important;
             z-index: 500 !important;

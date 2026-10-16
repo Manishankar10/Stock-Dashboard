@@ -70,12 +70,25 @@
         }
 
         function handleChartPointerOrClick(e) {
-            if (!hasOpenChartPopover()) return;
-            // Keep popovers open when interacting with controls inside a popover wrapper
-            if (e.target && e.target.closest && e.target.closest('.chart-popover-wrapper')) {
-                return;
+            if (hasOpenChartPopover()) {
+                // Keep popovers open when interacting with controls inside a popover wrapper
+                if (e.target && e.target.closest && e.target.closest('.chart-popover-wrapper')) {
+                    return;
+                }
+                closeAllChartPopovers();
             }
-            closeAllChartPopovers();
+
+            // On mobile view only: close drawing action popup if user taps outside
+            if (window.innerWidth <= 768) {
+                const objPopup = document.getElementById('canvasObjectPopup');
+                if (objPopup && objPopup.style.display === 'flex') {
+                    if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('#drawingCanvas') || e.target.closest('#mainChartPane'))) {
+                        // Managed inside chart pane/drawing interactions
+                    } else {
+                        hideCanvasObjectMenu();
+                    }
+                }
+            }
         }
 
         // Global capture listeners so any chart tap, canvas touch, or outside click closes popovers immediately
@@ -1637,6 +1650,13 @@
             if (e.cancelable) e.preventDefault();
             e.stopPropagation();
 
+            const isMobile = window.innerWidth <= 768;
+            const existingPopup = document.getElementById('canvasObjectPopup');
+            let wasPopupOpenForThis = false;
+            if (isMobile && existingPopup && existingPopup.style.display === 'flex' && existingPopup.dataset.activeObjId === String(clickedObj.id)) {
+                wasPopupOpenForThis = true;
+            }
+
             const now = Date.now();
             if (lastDrawingClickId === clickedObj.id && (now - lastDrawingClickTime) < 350) {
                 lastDrawingClickTime = 0;
@@ -1653,6 +1673,7 @@
             activeDrawingDrag = {
                 target: clickedObj,
                 dragPart: dragPart,
+                wasPopupOpenForThis: wasPopupOpenForThis,
                 startPt: { x: pt.x, y: pt.y, price: pt.price, time: pt.time, logical: pt.logical, futureOffset: pt.futureOffset || 0 },
                 hasMoved: false,
                 initialPrice: clickedObj.kind === 'line' ? (getSavedPriceLines(currentChartSymbol).find(l => l.id === clickedObj.id)?.price || pt.price) : null,
@@ -1869,8 +1890,13 @@
                     renderActiveDrawingsList();
                     redrawCanvasOverlay();
                 } else {
-                    // Single click: show menu with Hide and Delete options
-                    showCanvasObjectMenu(activeDrawingDrag.target, activeDrawingDrag.startPt.x, activeDrawingDrag.startPt.y);
+                    const isMobile = window.innerWidth <= 768;
+                    if (isMobile && activeDrawingDrag.wasPopupOpenForThis) {
+                        hideCanvasObjectMenu();
+                    } else {
+                        // Single click: show menu with Hide and Delete options
+                        showCanvasObjectMenu(activeDrawingDrag.target, activeDrawingDrag.startPt.x, activeDrawingDrag.startPt.y);
+                    }
                 }
 
                 if (drawingCanvas) {
@@ -2628,9 +2654,12 @@
                 const estimatedWidth = isMobile ? 140 : 220;
                 popup.style.left = Math.max(10, Math.min(x - 20, mainContainer.clientWidth - estimatedWidth - 10)) + 'px';
                 popup.style.top = Math.max(10, (y > 55 ? (y - 46) : (y + 16))) + 'px';
+                popup.dataset.activeObjId = String(obj.id);
 
                 const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
-                const colorFn = obj.kind === 'line' ? `updatePriceLineColorById('${obj.id}', this.value)` : `updateShapeColorById('${obj.id}', this.value)`;
+                const colorFn = obj.kind === 'line'
+                    ? (isMobile ? `updatePriceLineColorById('${obj.id}', this.value); hideCanvasObjectMenu();` : `updatePriceLineColorById('${obj.id}', this.value)`)
+                    : (isMobile ? `updateShapeColorById('${obj.id}', this.value); hideCanvasObjectMenu();` : `updateShapeColorById('${obj.id}', this.value)`);
                 const toggleVisFn = obj.kind === 'line' ? `togglePriceLineVisibility('${obj.id}'); hideCanvasObjectMenu();` : `toggleShapeVisibility('${obj.id}'); hideCanvasObjectMenu();`;
                 const visIcon = obj.hidden ? '🙈' : '👁️';
                 const visLabel = obj.hidden ? 'Show' : 'Hide';
@@ -2651,7 +2680,23 @@
                         <span>🗑️</span>
                     </button>
                 `;
-                popup.style.display = 'flex';
+
+                // Responsive mobile view only: after taking any action from the popup, close the popup immediately
+                if (isMobile) {
+                    const colorInput = popup.querySelector('input[type="color"]');
+                    if (colorInput) {
+                        colorInput.addEventListener('change', () => {
+                            hideCanvasObjectMenu();
+                        });
+                    }
+                    popup.querySelectorAll('button').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            hideCanvasObjectMenu();
+                        });
+                    });
+                }
+
+                popup.style.setProperty('display', 'flex', 'important');
                 if (drawingCanvas) {
                     drawingCanvas.style.pointerEvents = 'auto';
                 }
@@ -2660,7 +2705,10 @@
 
         function hideCanvasObjectMenu() {
             const popup = document.getElementById('canvasObjectPopup');
-            if (popup) popup.style.display = 'none';
+            if (popup) {
+                popup.style.setProperty('display', 'none', 'important');
+                popup.dataset.activeObjId = '';
+            }
         }
 
         function redrawCanvasOverlay() {
