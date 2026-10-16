@@ -273,16 +273,16 @@ class UpcomingEventsProvider:
         ]
 
         # Clean symbols
-        wl_clean = {clean_symbol(s) for s in (watchlist_symbols or set()) if s}
+        wl_clean = {clean_symbol(s) for s in watchlist_symbols} if watchlist_symbols is not None else None
 
-        # If a specific watchlist is requested with symbols, filter items
+        # If a specific watchlist is requested (watchlist_symbols is not None), filter items
         filtered_events = []
-        if wl_clean:
+        if wl_clean is not None:
             for ev in future_events:
                 if clean_symbol(ev.get("symbol")) in wl_clean:
                     filtered_events.append(ev)
         else:
-            # Fallback: if no symbols provided or all requested, use all future events
+            # Fallback: if no symbols filter provided (all requested), use all future events
             filtered_events = list(future_events)
 
         # Sort chronologically: date ascending
@@ -313,6 +313,6 @@ class UpcomingEventsProvider:
             "market_total": len(future_events),
             "meta": {
                 "today": today_iso,
-                "symbols_count": len(wl_clean),
+                "symbols_count": len(wl_clean) if wl_clean is not None else 0,
             },
         }

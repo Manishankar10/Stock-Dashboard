@@ -99,6 +99,8 @@ def get_upcoming_events_data():
                     target_symbols = syms
                     watchlist_name = name
                     break
+        if target_symbols is None:
+            target_symbols = set()
 
     try:
         data = _PROVIDER.get_upcoming_events(

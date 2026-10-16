@@ -201,12 +201,25 @@
     }
 
     /**
-     * Entrypoint called whenever watchlist switches
+     * Entrypoint called whenever watchlist switches or user moves to a watchlist.
+     * Strict Rule (Web & Responsive): When upcoming was clicked 'all', moving to ANY watchlist
+     * must switch scope back to 'watchlist' and load ONLY that watchlist's related upcoming event dates.
      */
-    function renderUpcomingEvents(watchlistName = null) {
+    function renderUpcomingEvents(watchlistName = null, forceScopeReset = false) {
         const targetWl = watchlistName || window.activeWatchlistName || '';
+
+        // If upcoming was on 'all', moving to any watchlist resets scope back to 'watchlist'
+        if (upcomingScope === 'all' || forceScopeReset) {
+            upcomingScope = 'watchlist';
+            upcomingActiveWatchlist = targetWl;
+            upcomingDataCache = null;
+            loadUpcomingEvents();
+            return;
+        }
+
         if (targetWl && targetWl !== upcomingActiveWatchlist) {
             upcomingActiveWatchlist = targetWl;
+            upcomingDataCache = null;
             loadUpcomingEvents();
         } else if (!upcomingDataCache) {
             upcomingActiveWatchlist = targetWl;
@@ -225,6 +238,7 @@
         } else {
             upcomingScope = (upcomingScope === 'all') ? 'watchlist' : 'all';
         }
+        upcomingDataCache = null;
 
         const isAll = upcomingScope === 'all';
         const scopeText = isAll ? 'Watchlist' : 'All';

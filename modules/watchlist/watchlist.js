@@ -124,11 +124,23 @@
         }
 
         function selectWatchlist(name) {
+            const isSame = (activeWatchlistName === name);
             activeWatchlistName = name;
+
+            // Strict Rule (Web & Responsive): moving to any watchlist must load only that watchlist's upcoming events
+            if (typeof window.renderUpcomingEvents === 'function') {
+                window.renderUpcomingEvents(name, true);
+            }
+
+            if (isSame) {
+                // Already on this watchlist: avoid redundant re-render or re-scrolling tabs
+                return;
+            }
+
             renderWatchlists();
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
             if (window.innerWidth <= 768 && typeof scrollActiveWatchlistTabIntoView === 'function') {
-                scrollActiveWatchlistTabIntoView(name);
+                scrollActiveWatchlistTabIntoView(name, true);
             }
             if (typeof refreshPrices === 'function') {
                 refreshPrices().then(() => {
@@ -313,21 +325,31 @@
             // 1. Render Selector Bar
             const selectorMount = document.getElementById('watchlist-selector-mount');
             if (selectorMount) {
-                selectorMount.innerHTML = '';
-                if (!selectorMount.dataset.wheelBound) {
-                    selectorMount.addEventListener('wheel', event => {
-                        if (selectorMount.scrollWidth > selectorMount.clientWidth && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
-                            selectorMount.scrollLeft += event.deltaY;
-                            event.preventDefault();
-                        }
-                    }, { passive: false });
-                    selectorMount.dataset.wheelBound = 'true';
-                }
                 const wlNames = Object.keys(watchlistsData);
                 if (wlNames.length === 0) {
                     selectorMount.innerHTML = '<span style="color:var(--text-secondary); font-size:13px;">No watchlists created yet.</span>';
                 } else {
                     const isWeb = window.innerWidth > 768;
+                    const existingButtons = Array.from(selectorMount.querySelectorAll('.pf-select-btn'));
+                    const existingNames = existingButtons.map(b => b.dataset.watchlistName);
+                    const isMatching = (existingNames.length === wlNames.length) && existingNames.every((n, i) => n === wlNames[i]);
+
+                    if (isMatching && selectorMount.querySelector('.wl-add-tab-btn')) {
+                        // Watchlist tabs exist and match: just update active class without destroying DOM or resetting scroll
+                        existingButtons.forEach(btn => {
+                            btn.classList.toggle('active', btn.dataset.watchlistName === activeWatchlistName);
+                        });
+                    } else {
+                        selectorMount.innerHTML = '';
+                        if (!selectorMount.dataset.wheelBound) {
+                            selectorMount.addEventListener('wheel', event => {
+                                if (selectorMount.scrollWidth > selectorMount.clientWidth && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+                                    selectorMount.scrollLeft += event.deltaY;
+                                    event.preventDefault();
+                                }
+                            }, { passive: false });
+                            selectorMount.dataset.wheelBound = 'true';
+                        }
                     wlNames.forEach(name => {
                         const btn = document.createElement('button');
                         btn.className = `pf-select-btn ${name === activeWatchlistName ? 'active' : ''}`;
@@ -408,8 +430,9 @@
                     addTabBtn.onclick = () => openCreateWatchlistModal();
                     selectorMount.appendChild(addTabBtn);
 
-                    if (window.innerWidth <= 768 && typeof scrollActiveWatchlistTabIntoView === 'function') {
-                        scrollActiveWatchlistTabIntoView(activeWatchlistName);
+                        if (!isWeb && typeof scrollActiveWatchlistTabIntoView === 'function') {
+                            scrollActiveWatchlistTabIntoView(activeWatchlistName, false);
+                        }
                     }
                 }
             }
@@ -1441,7 +1464,7 @@
         let _wlSwipeCard = null;
         let _isWlTransitioning = false;
 
-        function scrollActiveWatchlistTabIntoView(name) {
+        function scrollActiveWatchlistTabIntoView(name, smooth = true) {
             const targetName = name || activeWatchlistName;
             if (window.innerWidth > 768 || !targetName) return;
             requestAnimationFrame(() => {
@@ -1450,7 +1473,14 @@
                 const buttons = Array.from(selectorMount.querySelectorAll('button'));
                 const activeBtn = buttons.find(b => b.dataset.watchlistName === targetName) || selectorMount.querySelector('.pf-select-btn.active');
                 if (activeBtn) {
-                    activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    const mountRect = selectorMount.getBoundingClientRect();
+                    const btnRect = activeBtn.getBoundingClientRect();
+                    const buffer = 16;
+                    // If button is already comfortably visible, do NOT scroll or animate
+                    const isVisible = (btnRect.left >= (mountRect.left + buffer) && btnRect.right <= (mountRect.right - buffer));
+                    if (!isVisible) {
+                        activeBtn.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'nearest', inline: 'center' });
+                    }
                 }
             });
         }
