@@ -410,9 +410,9 @@
     transform: translateY(-1px);
 }
 
-/* Mobile Trigger Button in Watchlist Header */
+/* Mobile Trigger Button in Watchlist Header (Hidden) */
 .wl-upcoming-trigger-btn {
-    display: none; /* Shown only on responsive mobile */
+    display: none !important;
     align-items: center;
     gap: 6px;
     background: rgba(92, 124, 250, 0.12);
@@ -651,9 +651,5 @@
 
     .watchlist-split-sidebar {
         display: none !important; /* Hidden inline; accessed via modal popup */
-    }
-
-    .wl-upcoming-trigger-btn {
-        display: inline-flex;
     }
 }
