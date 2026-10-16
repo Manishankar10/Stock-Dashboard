@@ -47,8 +47,8 @@
             columns: [
                 { key: 'company', label: 'Company' },
                 { key: 'ex_date_display', label: 'Ex date ⇣' },
-                { key: 'div_type', label: 'Div type' },
                 { key: 'amount', label: 'Amount (₹)' },
+                { key: 'div_type', label: 'Div type' },
                 { key: 'percent', label: 'Percent' }
             ]
         }
@@ -179,9 +179,7 @@
                     items = items.filter(x => x.in_watchlist);
                 }
 
-                const count = (tabKey === 'dividend' && !isWeb) 
-                    ? items.length 
-                    : items.filter(x => x.is_upcoming).length;
+                const count = items.filter(x => x.is_upcoming).length;
                 counterEl.textContent = count;
             }
         });
@@ -334,10 +332,10 @@
             cellsHtml += `<td class="corp-col-amount-cr"><span class="corp-val-highlight">${item.amount_cr && Number(item.amount_cr) > 0 ? Number(item.amount_cr).toFixed(2) : '-'}</span></td>`;
         } else if (tabKey === 'dividend') {
             cellsHtml += `<td class="corp-col-ex-date-display">${dateHtml}</td>`;
-            cellsHtml += `<td class="corp-col-div-type"><span class="corp-div-type">${item.div_type || 'Interim'}</span></td>`;
             const rawAmt = item.amount !== undefined ? item.amount : (item.percent ? (Number(item.percent) * 0.1).toFixed(2) : '-');
             const amtDisplay = (rawAmt !== '-' && !isNaN(Number(rawAmt))) ? `₹${Number(rawAmt).toFixed(2)}` : (rawAmt || '-');
             cellsHtml += `<td class="corp-col-amount"><span class="corp-val-highlight">${amtDisplay}</span></td>`;
+            cellsHtml += `<td class="corp-col-div-type"><span class="corp-div-type">${item.div_type || 'Interim'}</span></td>`;
             cellsHtml += `<td class="corp-col-percent"><span class="corp-val-highlight">${item.percent ? Number(item.percent).toFixed(2) + '%' : '-'}</span></td>`;
         }
 
@@ -400,10 +398,7 @@
         const rootContainer = document.getElementById('tab-corporate-actions');
         if (rootContainer) rootContainer.setAttribute('data-active-tab', tabKey);
 
-        // 4. Handle Dividend Rule vs Remaining Tabs
-        // User rule: "in dividend also show upcoming announcements only and show last two months data in seperate table and put scroller for tables."
-        // Applicable to web only (isWeb). On mobile responsive (<=768px), keep original single table behavior for dividend.
-        const isWeb = window.innerWidth > 768;
+        // 4. Render Upcoming Actions and Past Actions (Last 2 Months)
         const pastCardEl = document.getElementById('corp-past-section');
         const upcomingTitleEl = document.getElementById('corp-upcoming-title');
         const upcomingBadgeEl = document.getElementById('corp-upcoming-badge');
@@ -414,80 +409,58 @@
         const pastEmptyEl = document.getElementById('corp-past-empty');
         const pastHeadingEl = document.getElementById('corp-past-heading');
 
-        if (!isWeb && tabKey === 'dividend') {
-            // Mobile Responsive Design: Show all dividend records in single main table without collapse
-            if (pastCardEl) pastCardEl.style.display = 'none';
-            if (upcomingTitleEl) upcomingTitleEl.textContent = 'Dividend Announcements';
-            if (upcomingBadgeEl) upcomingBadgeEl.textContent = `${filtered.length} announcements`;
+        if (pastCardEl) pastCardEl.style.display = 'block';
+        if (upcomingTitleEl) {
+            upcomingTitleEl.textContent = tabKey === 'dividend' ? 'Upcoming Dividends' : `Upcoming ${tabConfig.title}`;
+        }
+        if (upcomingBadgeEl) {
+            upcomingBadgeEl.textContent = `${upcomingItems.length} upcoming`;
+        }
+        if (pastHeadingEl) {
+            pastHeadingEl.textContent = tabKey === 'dividend' 
+                ? 'Past Dividends (Last 2 Months)' 
+                : `Past ${tabConfig.title} Actions (Last 2 Months)`;
+        }
 
-            if (filtered.length === 0) {
-                if (tbodyEl) tbodyEl.innerHTML = '';
-                if (emptyEl) {
-                    emptyEl.style.display = 'block';
-                    emptyEl.querySelector('.corp-empty-title').textContent = 'No dividend announcements found';
+        // Upcoming table
+        if (upcomingItems.length === 0) {
+            if (tbodyEl) tbodyEl.innerHTML = '';
+            if (emptyEl) {
+                emptyEl.style.display = 'block';
+                let emptyMsg = `No upcoming ${tabConfig.title} actions`;
+                if (filter === 'portfolio') {
+                    emptyMsg = `No upcoming ${tabConfig.title} actions for your Portfolio stocks`;
+                } else if (filter === 'watchlist') {
+                    emptyMsg = `No upcoming ${tabConfig.title} actions for your Watchlist stocks`;
                 }
-            } else {
-                if (emptyEl) emptyEl.style.display = 'none';
-                if (tbodyEl) {
-                    tbodyEl.innerHTML = filtered.map(item => renderRow(item, tabKey)).join('');
-                }
+                emptyEl.querySelector('.corp-empty-title').textContent = emptyMsg;
             }
         } else {
-            // Web (all tabs, including dividend) & Mobile (Bonus, Rights, Split, Buy back):
-            // Show upcoming only in top table, and past 2 months in separate collapsible table
-            if (pastCardEl) pastCardEl.style.display = 'block';
-            if (upcomingTitleEl) {
-                upcomingTitleEl.textContent = tabKey === 'dividend' ? 'Upcoming Dividends' : `Upcoming ${tabConfig.title}`;
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (tbodyEl) {
+                tbodyEl.innerHTML = upcomingItems.map(item => renderRow(item, tabKey)).join('');
             }
-            if (upcomingBadgeEl) {
-                upcomingBadgeEl.textContent = `${upcomingItems.length} upcoming`;
-            }
-            if (pastHeadingEl) {
-                pastHeadingEl.textContent = tabKey === 'dividend' 
-                    ? 'Past Dividends (Last 2 Months)' 
-                    : `Past ${tabConfig.title} Actions (Last 2 Months)`;
-            }
+        }
 
-            // Upcoming table
-            if (upcomingItems.length === 0) {
-                if (tbodyEl) tbodyEl.innerHTML = '';
-                if (emptyEl) {
-                    emptyEl.style.display = 'block';
-                    let emptyMsg = `No upcoming ${tabConfig.title} actions`;
-                    if (filter === 'portfolio') {
-                        emptyMsg = `No upcoming ${tabConfig.title} actions for your Portfolio stocks`;
-                    } else if (filter === 'watchlist') {
-                        emptyMsg = `No upcoming ${tabConfig.title} actions for your Watchlist stocks`;
-                    }
-                    emptyEl.querySelector('.corp-empty-title').textContent = emptyMsg;
+        // Past table
+        if (pastBadgeEl) pastBadgeEl.textContent = pastItems.length;
+        if (pastItems.length === 0) {
+            if (pastTbodyEl) pastTbodyEl.innerHTML = '';
+            if (pastEmptyEl) {
+                pastEmptyEl.style.display = 'block';
+                let pastEmptyMsg = 'No records in the last 2 months';
+                if (filter === 'portfolio') {
+                    pastEmptyMsg = 'No past actions in the last 2 months for your Portfolio stocks';
+                } else if (filter === 'watchlist') {
+                    pastEmptyMsg = 'No past actions in the last 2 months for your Watchlist stocks';
                 }
-            } else {
-                if (emptyEl) emptyEl.style.display = 'none';
-                if (tbodyEl) {
-                    tbodyEl.innerHTML = upcomingItems.map(item => renderRow(item, tabKey)).join('');
-                }
+                const titleNode = pastEmptyEl.querySelector('.corp-empty-title');
+                if (titleNode) titleNode.textContent = pastEmptyMsg;
             }
-
-            // Past table
-            if (pastBadgeEl) pastBadgeEl.textContent = pastItems.length;
-            if (pastItems.length === 0) {
-                if (pastTbodyEl) pastTbodyEl.innerHTML = '';
-                if (pastEmptyEl) {
-                    pastEmptyEl.style.display = 'block';
-                    let pastEmptyMsg = 'No records in the last 2 months';
-                    if (filter === 'portfolio') {
-                        pastEmptyMsg = 'No past actions in the last 2 months for your Portfolio stocks';
-                    } else if (filter === 'watchlist') {
-                        pastEmptyMsg = 'No past actions in the last 2 months for your Watchlist stocks';
-                    }
-                    const titleNode = pastEmptyEl.querySelector('.corp-empty-title');
-                    if (titleNode) titleNode.textContent = pastEmptyMsg;
-                }
-            } else {
-                if (pastEmptyEl) pastEmptyEl.style.display = 'none';
-                if (pastTbodyEl) {
-                    pastTbodyEl.innerHTML = pastItems.map(item => renderRow(item, tabKey)).join('');
-                }
+        } else {
+            if (pastEmptyEl) pastEmptyEl.style.display = 'none';
+            if (pastTbodyEl) {
+                pastTbodyEl.innerHTML = pastItems.map(item => renderRow(item, tabKey)).join('');
             }
         }
     }

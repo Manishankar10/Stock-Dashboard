@@ -955,6 +955,40 @@
         width: 20% !important;
     }
 
+    /* Dividend Tab 5-column Distribution on Mobile: Company | Ex date ⇣ | Amount (₹) | Div type | Percent */
+    .corp-table[data-tab="dividend"] .corp-col-company {
+        width: 32% !important;
+        text-align: left !important;
+    }
+    .corp-table[data-tab="dividend"] .corp-col-ex-date-display {
+        width: 22% !important;
+        text-align: left !important;
+    }
+    .corp-table[data-tab="dividend"] .corp-col-amount {
+        display: table-cell !important;
+        width: 17% !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+    }
+    .corp-table[data-tab="dividend"] .corp-col-div-type {
+        width: 15% !important;
+        text-align: right !important;
+    }
+    .corp-table[data-tab="dividend"] .corp-col-percent {
+        width: 14% !important;
+        text-align: right !important;
+    }
+    .corp-table[data-tab="dividend"] .corp-div-type {
+        font-size: 9.5px !important;
+        padding: 1.5px 3.5px !important;
+        line-height: 1.1 !important;
+    }
+    .corp-table[data-tab="dividend"] th,
+    .corp-table[data-tab="dividend"] td {
+        padding: 7px 2px !important;
+        font-size: 11px !important;
+    }
+
     /* Company Cell & Symbol Removal on Mobile */
     .corp-company-cell {
         display: flex !important;
