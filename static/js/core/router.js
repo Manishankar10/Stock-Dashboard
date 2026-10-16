@@ -19,7 +19,8 @@ const AppRouter = {
         'ipos': '/ipos',
         'plan-calculator': '/plan-calculator',
         'corporate-actions': '/corporate-actions',
-        'quarterly-results': '/quarterly-results'
+        'quarterly-results': '/quarterly-results',
+        'transactions': '/transactions'
     },
 
     reverseMap: {
@@ -34,7 +35,8 @@ const AppRouter = {
         '/ipos': 'ipos',
         '/plan-calculator': 'plan-calculator',
         '/corporate-actions': 'corporate-actions',
-        '/quarterly-results': 'quarterly-results'
+        '/quarterly-results': 'quarterly-results',
+        '/transactions': 'transactions'
     },
 
     closeAnyOpenModalOrDrawer() {
@@ -235,7 +237,7 @@ function switchTab(tabName, pushState = true) {
     if (sidebarNavEl) sidebarNavEl.classList.add('active');
 
     // Highlight parent Tools button if a tool tab is active
-    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator', 'corporate-actions', 'quarterly-results'].includes(tabName);
+    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator', 'corporate-actions', 'quarterly-results', 'transactions'].includes(tabName);
     const toolsTrigger = document.getElementById('sidebar-nav-tools');
     if (toolsTrigger) {
         toolsTrigger.classList.toggle('active', isTool);
@@ -339,6 +341,8 @@ function switchTab(tabName, pushState = true) {
         else if (typeof window.renderCorporateActions === 'function') window.renderCorporateActions();
     } else if (tabName === 'quarterly-results') {
         if (typeof window.loadQuarterlyResults === 'function') window.loadQuarterlyResults();
+    } else if (tabName === 'transactions') {
+        if (typeof window.loadTransactionsModule === 'function') window.loadTransactionsModule();
     }
 
     // 5. Automatically close tools submenu and mobile drawer if open

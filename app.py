@@ -58,6 +58,7 @@ from modules.official_feeds import official_feeds_bp, init_official_feeds
 from modules.corporate_actions import corporate_actions_bp, init_corporate_actions
 from modules.upcoming_events import upcoming_events_bp, init_upcoming_events
 from modules.quarterly_results import quarterly_results_bp, init_quarterly_results
+from modules.transactions import transactions_bp, init_transactions
 
 # Initialize Flask Application
 app = Flask(__name__)
@@ -110,6 +111,7 @@ init_official_feeds(login_required, load_data)
 init_corporate_actions(login_required, load_data, BASE_DATA_DIR)
 init_upcoming_events(login_required, load_data, BASE_DATA_DIR)
 init_quarterly_results(login_required, load_data, BASE_DATA_DIR)
+init_transactions(login_required, load_data, BASE_DATA_DIR)
 
 # Register Feature Blueprints
 app.register_blueprint(auth_admin_bp)
@@ -130,6 +132,7 @@ app.register_blueprint(official_feeds_bp)
 app.register_blueprint(corporate_actions_bp)
 app.register_blueprint(upcoming_events_bp)
 app.register_blueprint(quarterly_results_bp)
+app.register_blueprint(transactions_bp)
 
 # Static Asset Serving for Modules
 @app.route("/modules/<path:filename>")
@@ -171,6 +174,11 @@ def smallcases_page():
 @login_required
 def quarterly_results_page():
     return render_template("index.html", initial_tab="quarterly-results")
+
+@app.route("/transactions")
+@login_required
+def transactions_page():
+    return render_template("index.html", initial_tab="transactions")
 
 @app.route("/login", endpoint="login_page")
 def login_page():

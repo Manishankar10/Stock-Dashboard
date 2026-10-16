@@ -1,0 +1,217 @@
+<!-- modules/transactions/transactions.html -->
+<div id="tab-transactions" class="tab-content transactions-container" style="display: none;">
+    <!-- Top Header & Banner -->
+    <div class="tx-header-row">
+        <div class="tx-header-info">
+            <div class="tx-badge-label">OFFICIAL EXCHANGE DISCLOSURES</div>
+            <h1 class="tx-main-title">Transactions</h1>
+            <p class="tx-subtitle">Official institutional Block Deals, Bulk Deals & Insider Disclosures from NSE & BSE</p>
+        </div>
+        <div class="tx-header-actions">
+            <span class="tx-updated-tag" id="tx-last-updated-tag">🕒 Updated just now</span>
+            <button type="button" class="tx-btn-action tx-btn-export" onclick="exportTransactionsCSV()" title="Export filtered deals to CSV">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Export CSV</span>
+            </button>
+            <button type="button" class="tx-btn-action tx-btn-refresh" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Fetch live deals from official exchange endpoints">
+                <svg class="tx-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+                <span class="tx-refresh-text">Refresh</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Summary KPI Statistics Cards -->
+    <div class="tx-kpi-grid">
+        <div class="tx-kpi-card">
+            <div class="tx-kpi-top">
+                <span class="tx-kpi-label">TOTAL DEALS</span>
+                <span class="tx-kpi-icon">📋</span>
+            </div>
+            <div class="tx-kpi-value" id="tx-kpi-total-deals">0</div>
+            <div class="tx-kpi-sub" id="tx-kpi-deals-breakdown">Across active filters</div>
+        </div>
+
+        <div class="tx-kpi-card tx-kpi-buy">
+            <div class="tx-kpi-top">
+                <span class="tx-kpi-label">BUY VOLUME</span>
+                <span class="tx-kpi-icon tx-icon-buy">🟢</span>
+            </div>
+            <div class="tx-kpi-value text-buy" id="tx-kpi-buy-val">₹0.00 Cr</div>
+            <div class="tx-kpi-sub" id="tx-kpi-buy-count">0 Buy Deals</div>
+        </div>
+
+        <div class="tx-kpi-card tx-kpi-sell">
+            <div class="tx-kpi-top">
+                <span class="tx-kpi-label">SELL VOLUME</span>
+                <span class="tx-kpi-icon tx-icon-sell">🔴</span>
+            </div>
+            <div class="tx-kpi-value text-sell" id="tx-kpi-sell-val">₹0.00 Cr</div>
+            <div class="tx-kpi-sub" id="tx-kpi-sell-count">0 Sell Deals</div>
+        </div>
+
+        <div class="tx-kpi-card tx-kpi-net">
+            <div class="tx-kpi-top">
+                <span class="tx-kpi-label">NET INSTITUTIONAL FLOW</span>
+                <span class="tx-kpi-icon" id="tx-kpi-net-icon">⚖️</span>
+            </div>
+            <div class="tx-kpi-value" id="tx-kpi-net-val">₹0.00 Cr</div>
+            <div class="tx-kpi-sub" id="tx-kpi-net-direction">Buy vs Sell balance</div>
+        </div>
+    </div>
+
+    <!-- Deal Category Tabs Bar (Block Deals / Bulk Deals / Insider Deals) -->
+    <div class="tx-tabs-bar" role="tablist" aria-label="Transaction Deal Categories">
+        <button type="button" class="tx-tab-btn active" id="tx-tab-block" data-tab="block" onclick="switchTxTab('block')">
+            <span class="tx-tab-icon">🏢</span>
+            <span class="tx-tab-label">Block Deals</span>
+            <span class="tx-tab-badge" id="tx-count-block">0</span>
+        </button>
+        <button type="button" class="tx-tab-btn" id="tx-tab-bulk" data-tab="bulk" onclick="switchTxTab('bulk')">
+            <span class="tx-tab-icon">📦</span>
+            <span class="tx-tab-label">Bulk Deals</span>
+            <span class="tx-tab-badge" id="tx-count-bulk">0</span>
+        </button>
+        <button type="button" class="tx-tab-btn" id="tx-tab-insider" data-tab="insider" onclick="switchTxTab('insider')">
+            <span class="tx-tab-icon">🕵️</span>
+            <span class="tx-tab-label">Insider Deals</span>
+            <span class="tx-tab-badge" id="tx-count-insider">0</span>
+        </button>
+    </div>
+
+    <!-- Filter & Controls Toolbar -->
+    <div class="tx-toolbar">
+        <!-- 1. Scope Filter (All / Portfolio / Watchlist) -->
+        <div class="tx-filter-block">
+            <span class="tx-filter-label">SCOPE</span>
+            <div class="tx-pill-group" role="group" aria-label="Stock Scope">
+                <button type="button" class="tx-pill-btn active" data-scope="all" onclick="setTxScope('all')">
+                    All Stocks
+                </button>
+                <button type="button" class="tx-pill-btn" data-scope="portfolio" onclick="setTxScope('portfolio')">
+                    Portfolio
+                </button>
+                <button type="button" class="tx-pill-btn" data-scope="watchlist" onclick="setTxScope('watchlist')">
+                    Watchlist
+                </button>
+            </div>
+            <!-- Specific Watchlist Dropdown (shown when Watchlist is selected) -->
+            <div class="tx-watchlist-dropdown-wrapper" id="tx-watchlist-dropdown-wrapper" style="display: none;">
+                <select id="tx-watchlist-select" class="tx-select" onchange="handleTxWatchlistChange(this.value)" aria-label="Select Specific Watchlist">
+                    <option value="watchlist">All Watchlists</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2. Date Picker Filter -->
+        <div class="tx-filter-block tx-date-filter-block">
+            <span class="tx-filter-label">DATE RANGE</span>
+            <div class="tx-pill-group tx-date-preset-pills">
+                <button type="button" class="tx-pill-btn active" data-preset="all" onclick="setTxDatePreset('all')">All Dates</button>
+                <button type="button" class="tx-pill-btn" data-preset="today" onclick="setTxDatePreset('today')">Today</button>
+                <button type="button" class="tx-pill-btn" data-preset="7d" onclick="setTxDatePreset('7d')">7 Days</button>
+                <button type="button" class="tx-pill-btn" data-preset="30d" onclick="setTxDatePreset('30d')">30 Days</button>
+                <button type="button" class="tx-pill-btn" data-preset="custom" onclick="setTxDatePreset('custom')">Custom</button>
+            </div>
+            
+            <!-- Date Picker Inputs -->
+            <div class="tx-date-inputs-container" id="tx-date-inputs-container">
+                <div class="tx-date-input-group">
+                    <label for="tx-date-from">From</label>
+                    <input type="date" id="tx-date-from" class="tx-date-picker" onchange="handleTxDateInputChange()">
+                </div>
+                <div class="tx-date-input-group">
+                    <label for="tx-date-to">To</label>
+                    <input type="date" id="tx-date-to" class="tx-date-picker" onchange="handleTxDateInputChange()">
+                </div>
+                <button type="button" class="tx-btn-apply-date" onclick="applyTxDateFilter()" title="Apply date filter">Apply</button>
+                <button type="button" class="tx-btn-clear-date" onclick="clearTxDateFilter()" title="Clear date filter">✕</button>
+            </div>
+        </div>
+
+        <!-- 3. Direction Filter (Buy / Sell) -->
+        <div class="tx-filter-block">
+            <span class="tx-filter-label">DIRECTION</span>
+            <div class="tx-pill-group" role="group" aria-label="Deal Direction">
+                <button type="button" class="tx-pill-btn active" data-action="all" onclick="setTxAction('all')">All</button>
+                <button type="button" class="tx-pill-btn tx-pill-buy" data-action="buy" onclick="setTxAction('buy')">🟢 Buy</button>
+                <button type="button" class="tx-pill-btn tx-pill-sell" data-action="sell" onclick="setTxAction('sell')">🔴 Sell</button>
+            </div>
+        </div>
+
+        <!-- 4. Search Filter Input -->
+        <div class="tx-search-block">
+            <span class="tx-search-icon">🔍</span>
+            <input type="text" id="tx-search-input" class="tx-search-input" placeholder="Search by stock, company, or client..." oninput="handleTxSearch(this.value)" autocomplete="off" spellcheck="false" aria-label="Search transactions">
+            <button type="button" id="tx-search-clear" class="tx-search-clear" onclick="clearTxSearch()" style="display: none;" title="Clear search">✕</button>
+        </div>
+    </div>
+
+    <!-- Active Deals Display Area -->
+    <div class="tx-content-wrapper" id="tx-content-wrapper">
+        <!-- Interactive Desktop Deals Table -->
+        <div class="tx-table-container desktop-only-view">
+            <table class="tx-data-table" id="tx-data-table">
+                <thead>
+                    <tr>
+                        <th class="th-date" onclick="handleTxSort('date')">Date & Time <span class="sort-indicator" id="sort-ind-date">▼</span></th>
+                        <th class="th-stock" onclick="handleTxSort('symbol')">Stock & Company <span class="sort-indicator" id="sort-ind-symbol"></span></th>
+                        <th class="th-client" id="tx-th-client">Client / Party Name</th>
+                        <th class="th-category" id="tx-th-category">Category</th>
+                        <th class="th-action text-center">Direction</th>
+                        <th class="th-qty text-right" onclick="handleTxSort('quantity')">Quantity <span class="sort-indicator" id="sort-ind-quantity"></span></th>
+                        <th class="th-price text-right" onclick="handleTxSort('price')">Avg Price <span class="sort-indicator" id="sort-ind-price"></span></th>
+                        <th class="th-value text-right" onclick="handleTxSort('value')">Total Value (₹) <span class="sort-indicator" id="sort-ind-value"></span></th>
+                        <th class="th-source text-center">Source</th>
+                    </tr>
+                </thead>
+                <tbody id="tx-table-tbody">
+                    <!-- Populated dynamically via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Responsive Cards List (<= 768px) -->
+        <div class="tx-mobile-cards-list mobile-only-view" id="tx-mobile-cards-list">
+            <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- Loading State -->
+        <div class="tx-loader-container" id="tx-loader-container" style="display: none;">
+            <!-- Rendered via createBrandLoaderHTML -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="tx-empty-state" id="tx-empty-state" style="display: none;">
+            <div class="tx-empty-icon">📂</div>
+            <div class="tx-empty-title">No transactions found</div>
+            <div class="tx-empty-desc" id="tx-empty-desc">There are no deals matching your selected scope, date range, or search criteria.</div>
+            <button type="button" class="tx-btn-reset-filters" onclick="resetAllTxFilters()">Reset All Filters</button>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="tx-pagination-bar" id="tx-pagination-bar">
+            <div class="tx-pagination-info" id="tx-pagination-info">Showing 0 of 0 deals</div>
+            <div class="tx-pagination-controls">
+                <div class="tx-per-page-wrapper">
+                    <span>Show:</span>
+                    <select id="tx-per-page-select" class="tx-per-page-select" onchange="handleTxPerPageChange(this.value)">
+                        <option value="15">15</option>
+                        <option value="30" selected>30</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
+                <div class="tx-page-buttons" id="tx-page-buttons">
+                    <!-- Generated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

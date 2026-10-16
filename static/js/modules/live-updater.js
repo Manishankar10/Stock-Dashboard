@@ -371,6 +371,8 @@
             else if (pathname === '/ipos') targetTab = 'ipos';
             else if (pathname === '/plan-calculator') targetTab = 'plan-calculator';
             else if (pathname === '/corporate-actions') targetTab = 'corporate-actions';
+            else if (pathname === '/quarterly-results') targetTab = 'quarterly-results';
+            else if (pathname === '/transactions') targetTab = 'transactions';
             else if (pathname === '/' || pathname === '/watchlists') targetTab = 'watchlists';
 
             // 1. Immediately activate target tab so UI is interactive instantly (0ms)
@@ -394,6 +396,14 @@
             } else if (targetTab === 'corporate-actions') {
                 if (typeof window.loadCorporateActions === 'function') {
                     window.loadCorporateActions();
+                }
+            } else if (targetTab === 'quarterly-results') {
+                if (typeof window.loadQuarterlyResults === 'function') {
+                    window.loadQuarterlyResults();
+                }
+            } else if (targetTab === 'transactions') {
+                if (typeof window.loadTransactionsModule === 'function') {
+                    window.loadTransactionsModule();
                 }
             }
 
