@@ -2595,8 +2595,12 @@ async function toggleSplitSchedule(btn) {
 }
 
 async function switchFundamentalMode(newMode) {
+  if (newMode === 'consolidated' && window._lastFundamentalsData && window._lastFundamentalsData.has_consolidated === false) {
+    return;
+  }
   if (currentFundamentalMode === newMode && window._lastFundamentalsData) return;
   currentFundamentalMode = newMode;
+  window.currentFundamentalMode = newMode;
 
   // Sync button active classes
   document.querySelectorAll('.mode-switch-btn').forEach(btn => {
@@ -2937,8 +2941,13 @@ function hideModeSwitchLoader() {
   const pill = document.getElementById('modeSwitchPill');
   if (pill) pill.style.display = 'none';
 
+  const hasCons = window._lastFundamentalsData ? (window._lastFundamentalsData.has_consolidated !== false) : true;
   document.querySelectorAll('.mode-switch-btn').forEach(btn => {
-    btn.disabled = false;
+    if (btn.id.toLowerCase().includes('consolidated') && !hasCons) {
+      btn.disabled = true;
+    } else {
+      btn.disabled = false;
+    }
     if (btn.dataset.origText) {
       btn.textContent = btn.dataset.origText;
       delete btn.dataset.origText;
@@ -2961,8 +2970,45 @@ async function loadFundamentals(mode = currentFundamentalMode) {
     const res = await fetch(`/api/fundamentals?symbol=${encodeURIComponent(symbol)}&mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Unable to fetch fundamentals');
+
+    function hasSecValues(sec) {
+      if (!sec || !sec.columns || !sec.columns.length || !sec.rows || !sec.rows.length) return false;
+      return sec.rows.some(r => r.values && r.values.length > 0);
+    }
+
+    // If initial load or requesting consolidated, check if consolidated has results:
+    if (mode === 'consolidated') {
+      const hasConsolidatedRows = hasSecValues(data.quarters) || hasSecValues(data.profit_loss);
+      const isConsolidatedValid = data.has_consolidated !== false && data.mode !== 'standalone' && hasConsolidatedRows;
+
+      if (!isConsolidatedValid) {
+        console.log(`[Fundamentals] No consolidated results found for ${symbol}. Automatically switching to standalone.`);
+        currentFundamentalMode = 'standalone';
+        window.currentFundamentalMode = 'standalone';
+
+        // If returned data is already standalone and populated, render it directly
+        if (data.mode === 'standalone' && hasConsolidatedRows) {
+          render(data);
+          return;
+        }
+
+        // Otherwise fetch standalone data
+        return await loadFundamentals('standalone');
+      }
+    }
+
     render(data);
   } catch (e) {
+    if (mode === 'consolidated') {
+      try {
+        console.warn(`[Fundamentals] Consolidated fetch failed for ${symbol}, attempting standalone fallback:`, e);
+        currentFundamentalMode = 'standalone';
+        window.currentFundamentalMode = 'standalone';
+        return await loadFundamentals('standalone');
+      } catch (err2) {
+        e = err2;
+      }
+    }
     if (isInitial) {
       document.getElementById('error').style.display = 'block';
       document.getElementById('error').innerHTML = `<strong>Error:</strong> ${esc(e.message)}`;
@@ -2986,6 +3032,7 @@ function render(d) {
   window.companyId = d.company_id || '';
   window.warehouseId = d.warehouse_id || '';
   window.currentFundamentalMode = d.mode || currentFundamentalMode;
+  currentFundamentalMode = window.currentFundamentalMode;
 
   document.getElementById('companyTitle').textContent = c.name || symbol;
   document.getElementById('companySub').textContent = `${symbol} · Screener.in Direct Replica`;
@@ -3006,9 +3053,13 @@ function render(d) {
   if (d.has_consolidated === false) {
     document.getElementById('btnWebConsolidated').disabled = true;
     document.getElementById('btnMobConsolidated').disabled = true;
+    document.getElementById('btnWebConsolidated').title = 'Consolidated figures not available for this company';
+    document.getElementById('btnMobConsolidated').title = 'Consolidated figures not available for this company';
   } else {
     document.getElementById('btnWebConsolidated').disabled = false;
     document.getElementById('btnMobConsolidated').disabled = false;
+    document.getElementById('btnWebConsolidated').removeAttribute('title');
+    document.getElementById('btnMobConsolidated').removeAttribute('title');
   }
 
   // Update Section Subtitles with mode

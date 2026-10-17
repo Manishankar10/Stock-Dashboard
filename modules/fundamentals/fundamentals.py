@@ -386,9 +386,38 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
         h1 = soup.find("h1")
         name = h1.text.strip() if h1 else base_sym
 
-        actual_mode = "consolidated" if "/consolidated/" in final_url else "standalone"
-        has_consolidated = bool("/consolidated/" in r.text or soup.find("a", href=lambda h: h and "/consolidated/" in h))
+        # Accurate detection of Consolidated vs Standalone availability
+        subs = [p.get_text().strip().lower() for p in soup.select("section#quarters p.sub, section#profit-loss p.sub, section#balance-sheet p.sub, section#cash-flow p.sub")]
+        has_cons_sub = any("consolidated" in s for s in subs)
+        has_view_standalone = bool(
+            soup.find("a", string=re.compile(r"View Standalone", re.I)) or
+            soup.find("a", href=lambda h: h and "/company/" in h and ("#quarters" in h or "#profit-loss" in h) and "/consolidated/" not in h)
+        )
+        has_view_consolidated = bool(
+            soup.find("a", string=re.compile(r"View Consolidated", re.I)) or
+            soup.find("a", href=lambda h: h and "/consolidated/" in h and ("#quarters" in h or "#profit-loss" in h))
+        )
+
+        is_actually_consolidated = has_cons_sub or has_view_standalone
+        has_consolidated = is_actually_consolidated or has_view_consolidated
         has_standalone = True
+
+        if req_mode == "consolidated":
+            if not is_actually_consolidated or not has_consolidated:
+                actual_mode = "standalone"
+                has_consolidated = False
+                if "/consolidated/" in final_url:
+                    try:
+                        std_res = requests.get(f"https://www.screener.in/company/{base_sym}/", headers=headers, timeout=8)
+                        if std_res.status_code == 200:
+                            soup = BeautifulSoup(std_res.text, "html.parser")
+                            final_url = f"https://www.screener.in/company/{base_sym}/"
+                    except Exception:
+                        pass
+            else:
+                actual_mode = "consolidated"
+        else:
+            actual_mode = "standalone"
 
         c_info = soup.find("div", id="company-info") or {}
         company_id = c_info.get("data-company-id")
@@ -503,6 +532,34 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
         cf = parse_sec("cash-flow")
         fin_ratios = parse_sec("ratios")
         sh = parse_sec("shareholding")
+
+        def _has_sec_results(sec_data):
+            if not sec_data:
+                return False
+            cols = sec_data.get("columns") or []
+            rows = sec_data.get("rows") or []
+            if not cols or not rows:
+                return False
+            return any(bool(r.get("values")) for r in rows)
+
+        # Fallback: if consolidated mode was requested and active, but has 0 valid results in quarters and pnl, switch to standalone
+        if actual_mode == "consolidated" and not _has_sec_results(quarters) and not _has_sec_results(pnl):
+            try:
+                std_url = f"https://www.screener.in/company/{base_sym}/"
+                std_res = requests.get(std_url, headers=headers, timeout=8)
+                if std_res.status_code == 200:
+                    soup = BeautifulSoup(std_res.text, "html.parser")
+                    final_url = std_url
+                    actual_mode = "standalone"
+                    has_consolidated = False
+                    quarters = parse_sec("quarters")
+                    pnl = parse_sec("profit-loss")
+                    bs = parse_sec("balance-sheet")
+                    cf = parse_sec("cash-flow")
+                    fin_ratios = parse_sec("ratios")
+                    sh = parse_sec("shareholding")
+            except Exception:
+                pass
 
         # Peer comparison table from Screener API
         peers_data = {"columns": [], "rows": []}
@@ -1151,6 +1208,8 @@ def fundamentals():
         cleaned_scr = _clean(screener_data)
         with _fundamentals_cache_lock:
             _fundamentals_cache[cache_key] = (time.time(), cleaned_scr)
+            if screener_data.get("mode") == "standalone":
+                _fundamentals_cache[f"{symbol}:standalone"] = (time.time(), cleaned_scr)
         return jsonify(cleaned_scr)
 
     modules = [
