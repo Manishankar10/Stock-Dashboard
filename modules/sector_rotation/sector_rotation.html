@@ -9,11 +9,10 @@
         </div>
         <div class="sr-header-actions">
             <span class="sr-updated-tag" id="sr-last-updated-tag">🕒 Updated just now</span>
-            <button type="button" class="sr-btn-action sr-btn-refresh" id="sr-btn-refresh" onclick="refreshSectorRotationData(true)" title="Fetch live sector updates from NSE India">
-                <svg class="sr-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="sr-refresh-btn" id="sr-btn-refresh" onclick="refreshSectorRotationData(true)" title="Fetch live sector updates from NSE India" aria-label="Refresh Sector Rotation">
+                <svg class="sr-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
-                <span class="sr-refresh-text">Refresh</span>
             </button>
         </div>
     </div>
@@ -178,22 +177,53 @@
     <!-- VIEW 3: Multi-Frequency Matrix -->
     <div id="sr-view-matrix" class="sr-view-container" style="display: none;">
         <div class="sr-matrix-card">
+            <div class="sr-matrix-card-header">
+                <div class="sr-matrix-header-left">
+                    <span class="sr-matrix-card-title">Multi-Frequency Sector Performance Matrix</span>
+                    <span class="sr-matrix-card-subtitle">Real-time returns, institutional momentum quadrant, market breadth & valuation across 7 timeframes</span>
+                </div>
+                <div class="sr-matrix-header-right">
+                    <span class="sr-matrix-active-badge" id="sr-matrix-active-freq-badge">Benchmark Timeframe: 1M</span>
+                </div>
+            </div>
             <div class="sr-table-responsive">
                 <table class="sr-table" id="sr-matrix-table">
                     <thead>
                         <tr>
-                            <th class="text-left">SECTOR</th>
-                            <th class="text-center">QUADRANT</th>
-                            <th class="text-right">1 DAY</th>
-                            <th class="text-right">1 WEEK</th>
-                            <th class="text-right">1 MONTH</th>
-                            <th class="text-right">3 MONTHS</th>
-                            <th class="text-right">6 MONTHS</th>
-                            <th class="text-right">1 YEAR</th>
-                            <th class="text-right">YTD</th>
-                            <th class="text-center">BREADTH</th>
-                            <th class="text-center">P/E</th>
-                            <th class="text-center">ACTIONS</th>
+                            <th class="text-left sr-sortable-th" onclick="handleMatrixSort('name')">
+                                SECTOR <span class="sr-sort-icon" id="sr-sort-icon-name"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" onclick="handleMatrixSort('quadrant')">
+                                QUADRANT <span class="sr-sort-icon" id="sr-sort-icon-quadrant"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" id="sr-th-1D" onclick="handleMatrixSort('1D')">
+                                1 DAY <span class="sr-sort-icon" id="sr-sort-icon-1D"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" id="sr-th-1W" onclick="handleMatrixSort('1W')">
+                                1 WEEK <span class="sr-sort-icon" id="sr-sort-icon-1W"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" id="sr-th-1M" onclick="handleMatrixSort('1M')">
+                                1 MONTH <span class="sr-sort-icon" id="sr-sort-icon-1M"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" id="sr-th-3M" onclick="handleMatrixSort('3M')">
+                                3 MONTHS <span class="sr-sort-icon" id="sr-sort-icon-3M"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" id="sr-th-6M" onclick="handleMatrixSort('6M')">
+                                6 MONTHS <span class="sr-sort-icon" id="sr-sort-icon-6M"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" id="sr-th-1Y" onclick="handleMatrixSort('1Y')">
+                                1 YEAR <span class="sr-sort-icon" id="sr-sort-icon-1Y"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" id="sr-th-YTD" onclick="handleMatrixSort('YTD')">
+                                YTD <span class="sr-sort-icon" id="sr-sort-icon-YTD"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" onclick="handleMatrixSort('breadth')">
+                                BREADTH <span class="sr-sort-icon" id="sr-sort-icon-breadth"></span>
+                            </th>
+                            <th class="text-center sr-sortable-th" onclick="handleMatrixSort('pe')">
+                                P/E <span class="sr-sort-icon" id="sr-sort-icon-pe"></span>
+                            </th>
+                            <th class="text-center">ACTION</th>
                         </tr>
                     </thead>
                     <tbody id="sr-matrix-tbody">

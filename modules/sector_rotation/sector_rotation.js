@@ -22,7 +22,9 @@
         quadrantCounts: {},
         lastUpdatedText: 'Just now',
         isLoading: false,
-        selectedSectorId: null
+        selectedSectorId: null,
+        matrixSortField: '1M',    // 'name' | 'quadrant' | '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'breadth' | 'pe'
+        matrixSortDir: 'desc'     // 'asc' | 'desc'
     };
 
     window.srState = state;
@@ -442,54 +444,175 @@
         const tbody = document.getElementById('sr-matrix-tbody');
         if (!tbody) return;
 
-        if (state.filteredSectors.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" class="text-center" style="padding: 30px; color: var(--sr-text-secondary);">No sectors found.</td></tr>';
+        // 1. Update Benchmark Timeframe Badge in Card Header
+        const badgeEl = document.getElementById('sr-matrix-active-freq-badge');
+        if (badgeEl) {
+            badgeEl.innerHTML = `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981; box-shadow:0 0 6px #10b981;"></span> Active Benchmark: <strong>${state.frequency}</strong>`;
+        }
+
+        // 2. Update Column Sort Icons & Highlight Active Benchmark Column Header
+        const allFields = ['name', 'quadrant', '1D', '1W', '1M', '3M', '6M', '1Y', 'YTD', 'breadth', 'pe'];
+        const freqs = ['1D', '1W', '1M', '3M', '6M', '1Y', 'YTD'];
+
+        allFields.forEach(f => {
+            const iconEl = document.getElementById(`sr-sort-icon-${f}`);
+            const thEl = document.getElementById(`sr-th-${f}`) || iconEl?.closest('th');
+            if (iconEl) {
+                if (state.matrixSortField === f) {
+                    iconEl.innerText = state.matrixSortDir === 'desc' ? ' ▼' : ' ▲';
+                    iconEl.classList.add('active');
+                    if (thEl) thEl.classList.add('sr-th-sorted');
+                } else {
+                    iconEl.innerText = ' ⇅';
+                    iconEl.classList.remove('active');
+                    if (thEl) thEl.classList.remove('sr-th-sorted');
+                }
+            }
+        });
+
+        freqs.forEach(f => {
+            const th = document.getElementById(`sr-th-${f}`);
+            if (th) {
+                th.classList.toggle('sr-th-active-freq', f === state.frequency);
+            }
+        });
+
+        // 3. Check for empty state
+        if (!state.filteredSectors || state.filteredSectors.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="12" class="text-center" style="padding: 48px 16px; color: var(--sr-text-secondary);">
+                        <div style="font-size: 28px; margin-bottom: 8px;">🔍</div>
+                        <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">No Sectors Match Current Criteria</div>
+                        <div style="font-size: 12px; opacity: 0.8;">Try clearing the search query or selecting a different quadrant.</div>
+                    </td>
+                </tr>`;
             return;
         }
 
-        const freqs = ['1D', '1W', '1M', '3M', '6M', '1Y', 'YTD'];
+        // 4. Sort Sectors
+        const sortField = state.matrixSortField || '1M';
+        const sortDir = state.matrixSortDir || 'desc';
+        const multiplier = sortDir === 'asc' ? 1 : -1;
 
+        const list = [...state.filteredSectors];
+        list.sort((a, b) => {
+            if (sortField === 'name') {
+                return multiplier * (a.name || '').localeCompare(b.name || '');
+            } else if (sortField === 'quadrant') {
+                const quadOrder = { leading: 4, improving: 3, weakening: 2, lagging: 1 };
+                const rA = quadOrder[a.quadrant] || 0;
+                const rB = quadOrder[b.quadrant] || 0;
+                return multiplier * (rA - rB);
+            } else if (sortField === 'breadth') {
+                const bA = (a.breadth && typeof a.breadth.advance_pct === 'number') ? a.breadth.advance_pct : 0;
+                const bB = (b.breadth && typeof b.breadth.advance_pct === 'number') ? b.breadth.advance_pct : 0;
+                return multiplier * (bA - bB);
+            } else if (sortField === 'pe') {
+                const peA = parseFloat(a.valuation?.pe) || 0;
+                const peB = parseFloat(b.valuation?.pe) || 0;
+                return multiplier * (peA - peB);
+            } else if (freqs.includes(sortField)) {
+                const retA = (a.returns && typeof a.returns[sortField] === 'number') ? a.returns[sortField] : -9999;
+                const retB = (b.returns && typeof b.returns[sortField] === 'number') ? b.returns[sortField] : -9999;
+                return multiplier * (retA - retB);
+            }
+            return 0;
+        });
+
+        // 5. Heatmap Class Helper
         function getHeatClass(val) {
-            if (val > 5) return 'heat-strong-pos';
-            if (val > 0) return 'heat-pos';
-            if (val < -5) return 'heat-strong-neg';
-            return 'heat-neg';
+            if (val >= 5.0) return 'heat-strong-pos';
+            if (val > 0.0) return 'heat-pos';
+            if (val === 0.0) return 'heat-zero';
+            if (val > -5.0) return 'heat-neg';
+            return 'heat-strong-neg';
         }
 
+        // 6. Build Rows
         let html = '';
-        state.filteredSectors.forEach((sec, idx) => {
+        list.forEach((sec) => {
             const rets = sec.returns || {};
             let freqCells = '';
 
             freqs.forEach(f => {
-                const val = rets[f] || 0.0;
-                const sign = val >= 0 ? '+' : '';
+                const val = (typeof rets[f] === 'number') ? rets[f] : 0.0;
+                const sign = val > 0 ? '+' : '';
                 const hClass = getHeatClass(val);
-                freqCells += `<td class="text-right sr-heat-cell ${hClass}">${sign}${val.toFixed(2)}%</td>`;
+                const isActiveFreq = (f === state.frequency);
+                freqCells += `
+                <td class="text-center sr-matrix-cell ${isActiveFreq ? 'sr-cell-active-freq' : ''}">
+                    <span class="sr-matrix-pill ${hClass}" title="${escapeHtml(sec.name)} ${f} Return: ${sign}${val.toFixed(2)}%">
+                        ${sign}${val.toFixed(2)}%
+                    </span>
+                </td>`;
             });
 
+            // Quadrant badge
+            const qKey = (sec.quadrant || 'leading').toLowerCase();
+            const qLabel = sec.quadrant_label || (sec.quadrant ? sec.quadrant.toUpperCase() : 'LEADING');
+
+            // Breadth data
+            const adv = sec.breadth?.advances ?? 0;
+            const dec = sec.breadth?.declines ?? 0;
+            const advPct = sec.breadth?.advance_pct ?? (adv + dec > 0 ? (adv / (adv + dec)) * 100 : 50);
+
+            // PE data
+            const peVal = sec.valuation?.pe ? `${sec.valuation.pe}x` : '—';
+
+            // Constituents count
+            const stockCount = (sec.constituents || []).length;
+
             html += `
-            <tr onclick="openSectorConstituents('${sec.id}')" style="cursor: pointer;">
-                <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 18px;">${sec.icon}</span>
-                        <div>
-                            <div style="font-weight: 700; font-family: 'Plus Jakarta Sans';">${escapeHtml(sec.name)}</div>
-                            <div style="font-size: 11px; color: var(--sr-text-secondary);">${escapeHtml(sec.category)}</div>
+            <tr class="sr-matrix-row" onclick="openSectorConstituents('${sec.id}')" title="Click to view holdings of ${escapeHtml(sec.name)}">
+                <td class="sr-sector-cell">
+                    <div class="sr-sector-identity">
+                        <div class="sr-sector-icon-box">
+                            <span>${sec.icon || '📈'}</span>
+                        </div>
+                        <div class="sr-sector-names-group">
+                            <div class="sr-sector-name" title="${escapeHtml(sec.name)}">${escapeHtml(sec.name)}</div>
+                            <div class="sr-sector-meta-row">
+                                <span class="sr-sector-category">${escapeHtml(sec.category || 'Index')}</span>
+                                <span class="sr-sector-meta-sep">•</span>
+                                <span class="sr-sector-constituents-count">${stockCount} Stocks</span>
+                            </div>
                         </div>
                     </div>
                 </td>
-                <td class="text-center">
-                    <span class="sr-card-quadrant-badge" style="background: rgba(16, 185, 129, 0.1); color: ${sec.quadrant_color}; border: 1px solid ${sec.quadrant_color}40;">
-                        ${sec.quadrant_label}
+                <td class="text-center sr-matrix-cell">
+                    <span class="sr-quadrant-badge sr-quad-${qKey}">
+                        <span class="sr-quadrant-dot"></span>
+                        ${qLabel}
                     </span>
                 </td>
                 ${freqCells}
-                <td class="text-center" style="font-weight: 600;">${sec.breadth.ratio_display}</td>
-                <td class="text-center" style="font-weight: 600;">${sec.valuation.pe}</td>
-                <td class="text-center">
-                    <button type="button" class="sr-btn-chart-sm" onclick="event.stopPropagation(); openSectorConstituents('${sec.id}')">
-                        Constituents ➔
+                <td class="text-center sr-matrix-cell">
+                    <div class="sr-breadth-cell">
+                        <div class="sr-breadth-pills-row">
+                            <span class="sr-breadth-chip sr-breadth-adv" title="${adv} Advancing Stocks">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg>
+                                ${adv}
+                            </span>
+                            <span class="sr-breadth-chip sr-breadth-dec" title="${dec} Declining Stocks">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
+                                ${dec}
+                            </span>
+                        </div>
+                        <div class="sr-breadth-bar" title="Breadth: ${advPct.toFixed(0)}% Advances">
+                            <div class="sr-breadth-bar-fill" style="width: ${advPct}%;"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="text-center sr-matrix-cell">
+                    <span class="sr-pe-badge" title="P/E Ratio: ${peVal}">
+                        ${peVal}
+                    </span>
+                </td>
+                <td class="text-center sr-matrix-cell sr-action-cell">
+                    <button type="button" class="sr-btn-constituents-pill" onclick="event.stopPropagation(); openSectorConstituents('${sec.id}')" title="Inspect constituent holdings">
+                        <span>Holdings</span>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                 </td>
             </tr>`;
@@ -640,6 +763,17 @@
         });
 
         renderAllViews();
+    };
+
+    window.handleMatrixSort = function (field) {
+        if (!field) return;
+        if (state.matrixSortField === field) {
+            state.matrixSortDir = state.matrixSortDir === 'desc' ? 'asc' : 'desc';
+        } else {
+            state.matrixSortField = field;
+            state.matrixSortDir = (field === 'name' || field === 'quadrant') ? 'asc' : 'desc';
+        }
+        renderMatrix();
     };
 
     window.filterSectorQuadrant = function (quad) {

@@ -108,6 +108,50 @@
     transform: translateY(-1px);
 }
 
+/* Common Glassy Refresh Button (Matching Portfolio / Corporate Actions / Upcoming Events / Transactions) */
+.sr-refresh-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28.5px !important;
+    height: 28.5px !important;
+    min-width: 28.5px !important;
+    min-height: 28.5px !important;
+    border-radius: 7px !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #10b981 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+}
+
+[data-theme="light"] .sr-refresh-btn,
+:root:not([data-theme="dark"]) .sr-refresh-btn {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    color: #059669 !important;
+}
+
+.sr-refresh-btn:hover {
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: #10b981 !important;
+    transform: translateY(-1px);
+}
+
+.sr-refresh-btn:active {
+    transform: translateY(2px) scale(0.92) !important;
+    background: rgba(16, 185, 129, 0.25) !important;
+}
+
+.sr-refresh-svg {
+    transition: transform 0.3s ease;
+    display: block;
+}
+
 .sr-refresh-svg.spinning {
     animation: sr-spin 0.8s linear infinite;
 }
@@ -683,28 +727,81 @@
     text-decoration: underline;
 }
 
-/* 8. VIEW 3: Multi-Frequency Table */
+/* 8. VIEW 3: Multi-Frequency Heatmap Matrix */
 .sr-matrix-card {
     background: var(--sr-bg-card);
     border: 1px solid var(--sr-border);
     border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.sr-matrix-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--sr-border);
+    background: var(--sr-bg-card);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.sr-matrix-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sr-matrix-card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--sr-text-primary);
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+    letter-spacing: -0.01em;
+}
+
+.sr-matrix-card-subtitle {
+    font-size: 12px;
+    color: var(--sr-text-secondary);
+}
+
+.sr-matrix-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sr-matrix-active-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
 }
 
 .sr-table-responsive {
     width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sr-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 13px;
     text-align: left;
 }
 
 .sr-table th {
-    padding: 12px 16px;
+    padding: 11px 12px;
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.06em;
@@ -712,17 +809,357 @@
     background: var(--sr-bg-body);
     border-bottom: 1px solid var(--sr-border);
     white-space: nowrap;
+    text-transform: uppercase;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+.sr-sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sr-sortable-th:hover {
+    color: var(--sr-text-primary);
+    background: rgba(148, 163, 184, 0.08);
+}
+
+.sr-sort-icon {
+    display: inline-block;
+    font-size: 10px;
+    margin-left: 3px;
+    opacity: 0.4;
+    transition: opacity 0.15s ease;
+}
+
+.sr-sort-icon.active {
+    opacity: 1;
+    color: #10b981;
+}
+
+.sr-th-sorted {
+    color: #10b981 !important;
+}
+
+.sr-th-active-freq {
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: #10b981 !important;
+    border-bottom: 2px solid #10b981 !important;
+    box-shadow: inset 0 -1px 0 #10b981;
 }
 
 .sr-table td {
-    padding: 12px 16px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--sr-border);
     color: var(--sr-text-primary);
     vertical-align: middle;
 }
 
-.sr-table tr:hover td {
-    background: rgba(16, 185, 129, 0.03);
+.sr-matrix-row {
+    transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sr-matrix-row:hover td {
+    background: rgba(16, 185, 129, 0.04);
+}
+
+.sr-cell-active-freq {
+    background: rgba(16, 185, 129, 0.025);
+}
+
+/* Sector Identity Column */
+.sr-sector-cell {
+    min-width: 220px;
+    max-width: 260px;
+    white-space: nowrap;
+}
+
+.sr-sector-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sr-sector-icon-box {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 9px;
+    background: var(--sr-bg-body);
+    border: 1px solid var(--sr-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.sr-sector-names-group {
+    overflow: hidden;
+    min-width: 0;
+}
+
+.sr-sector-name {
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sr-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.01em;
+}
+
+.sr-sector-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--sr-text-secondary);
+    margin-top: 1px;
+}
+
+.sr-sector-category {
+    font-weight: 600;
+}
+
+.sr-sector-meta-sep {
+    opacity: 0.4;
+}
+
+.sr-sector-constituents-count {
+    font-weight: 500;
+}
+
+/* Quadrant Badges */
+.sr-quadrant-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+.sr-quadrant-dot {
+    width: 5.5px;
+    height: 5.5px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.sr-quad-leading {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.28);
+}
+.sr-quad-leading .sr-quadrant-dot { background: #10b981; box-shadow: 0 0 5px #10b981; }
+
+.sr-quad-weakening {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.28);
+}
+.sr-quad-weakening .sr-quadrant-dot { background: #f59e0b; box-shadow: 0 0 5px #f59e0b; }
+
+.sr-quad-lagging {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.28);
+}
+.sr-quad-lagging .sr-quadrant-dot { background: #ef4444; box-shadow: 0 0 5px #ef4444; }
+
+.sr-quad-improving {
+    background: rgba(6, 182, 212, 0.12);
+    color: #06b6d4;
+    border: 1px solid rgba(6, 182, 212, 0.28);
+}
+.sr-quad-improving .sr-quadrant-dot { background: #06b6d4; box-shadow: 0 0 5px #06b6d4; }
+
+/* Heatmap Return Pills */
+.sr-matrix-cell {
+    padding: 8px 6px !important;
+}
+
+.sr-matrix-pill {
+    display: inline-block;
+    min-width: 68px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+    letter-spacing: -0.01em;
+    box-sizing: border-box;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sr-matrix-row:hover .sr-matrix-pill {
+    transform: scale(1.02);
+}
+
+.heat-strong-pos {
+    background: rgba(16, 185, 129, 0.22);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    font-weight: 800;
+}
+
+.heat-pos {
+    background: rgba(16, 185, 129, 0.10);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.heat-zero {
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--sr-text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.heat-neg {
+    background: rgba(239, 68, 68, 0.10);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.heat-strong-neg {
+    background: rgba(239, 68, 68, 0.22);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    font-weight: 800;
+}
+
+/* Light Theme Heatmap Contrast Boost */
+[data-theme="light"] .heat-strong-pos,
+:root:not([data-theme="dark"]) .heat-strong-pos {
+    background: rgba(16, 185, 129, 0.16);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+[data-theme="light"] .heat-pos,
+:root:not([data-theme="dark"]) .heat-pos {
+    background: rgba(16, 185, 129, 0.08);
+    color: #059669;
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+[data-theme="light"] .heat-neg,
+:root:not([data-theme="dark"]) .heat-neg {
+    background: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="light"] .heat-strong-neg,
+:root:not([data-theme="dark"]) .heat-strong-neg {
+    background: rgba(239, 68, 68, 0.16);
+    color: #b91c1c;
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* Market Breadth Cell */
+.sr-breadth-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 78px;
+    margin: 0 auto;
+}
+
+.sr-breadth-pills-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 4px;
+}
+
+.sr-breadth-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+.sr-breadth-adv {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.sr-breadth-dec {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.sr-breadth-bar {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.35);
+    overflow: hidden;
+    display: flex;
+}
+
+.sr-breadth-bar-fill {
+    height: 100%;
+    background: #10b981;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+/* Valuation P/E Badge */
+.sr-pe-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+    color: var(--sr-text-primary);
+    background: var(--sr-bg-body);
+    border: 1px solid var(--sr-border);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Action Button */
+.sr-btn-constituents-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.08);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+.sr-btn-constituents-pill:hover {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(16, 185, 129, 0.25);
 }
 
 .text-left { text-align: left; }
@@ -730,17 +1167,6 @@
 .text-right { text-align: right; }
 .text-buy { color: #10b981; }
 .text-sell { color: #ef4444; }
-
-.sr-heat-cell {
-    font-family: 'Plus Jakarta Sans', var(--font-sans);
-    font-weight: 700;
-    font-size: 12px;
-}
-
-.heat-strong-pos { color: #10b981; font-weight: 800; }
-.heat-pos { color: #34d399; }
-.heat-neg { color: #f87171; }
-.heat-strong-neg { color: #ef4444; font-weight: 800; }
 
 /* 9. VIEW 4: Economic Cycle View */
 .sr-cycle-layout {
@@ -1054,5 +1480,17 @@
     .sr-modal-content {
         width: 100vw;
         max-width: 100vw;
+    }
+
+    .sr-matrix-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 12px 14px;
+        gap: 8px;
+    }
+
+    .sr-sector-cell {
+        min-width: 190px;
+        max-width: 210px;
     }
 }
