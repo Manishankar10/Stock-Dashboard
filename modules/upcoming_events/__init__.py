@@ -67,6 +67,47 @@ def _extract_watchlist_symbols(target_watchlist: Optional[str] = None) -> Dict[s
     return result
 
 
+def _extract_portfolio_symbols() -> Set[str]:
+    """Extract all distinct portfolio symbols for the current user."""
+    portfolio_symbols: Set[str] = set()
+    username = session.get("username")
+    if not username:
+        return portfolio_symbols
+
+    if _LOAD_DATA:
+        try:
+            user_data = _LOAD_DATA(username) or {}
+            portfolios = user_data.get("portfolios") or {}
+            if isinstance(portfolios, dict):
+                for holdings in portfolios.values():
+                    if isinstance(holdings, list):
+                        for item in holdings:
+                            if isinstance(item, dict) and item.get("symbol"):
+                                portfolio_symbols.add(clean_symbol(item["symbol"]))
+                            elif isinstance(item, str):
+                                portfolio_symbols.add(clean_symbol(item))
+        except Exception:
+            pass
+
+    # Direct fallback for portfolios via modules.portfolio.portfolio_routes
+    if not portfolio_symbols and username:
+        try:
+            from modules.portfolio.portfolio_routes import load_portfolios
+            pf_data = load_portfolios(username) or {}
+            if isinstance(pf_data, dict):
+                for holdings in pf_data.values():
+                    if isinstance(holdings, list):
+                        for item in holdings:
+                            if isinstance(item, dict) and item.get("symbol"):
+                                portfolio_symbols.add(clean_symbol(item["symbol"]))
+                            elif isinstance(item, str):
+                                portfolio_symbols.add(clean_symbol(item))
+        except Exception:
+            pass
+
+    return portfolio_symbols
+
+
 @upcoming_events_bp.get("/upcoming-events.css")
 def upcoming_events_stylesheet():
     return send_from_directory(_MODULE_DIR, "upcoming_events.css", mimetype="text/css")
@@ -101,6 +142,9 @@ def get_upcoming_events_data():
             combined_symbols.update(sym_set)
         target_symbols = combined_symbols
         display_title = "All Watchlists"
+    elif scope in ("all_portfolios", "portfolio", "portfolios"):
+        target_symbols = _extract_portfolio_symbols()
+        display_title = "All Portfolio"
     else:
         # Default: "current" active watchlist
         if watchlist_name:

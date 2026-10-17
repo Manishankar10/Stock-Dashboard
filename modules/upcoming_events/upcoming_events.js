@@ -6,7 +6,7 @@
 
     let upcomingDataCache = null;
     let upcomingActiveWatchlist = '';
-    let upcomingScope = 'current'; // 'current' | 'all_watchlists' | 'all_stocks'
+    let upcomingScope = 'current'; // 'current' | 'all_watchlists' | 'all_portfolios' | 'all_stocks'
     let isFetchingUpcoming = false;
 
     function escapeHtml(str) {
@@ -150,6 +150,8 @@
             displayTitle = 'All Stocks';
         } else if (upcomingScope === 'all_watchlists') {
             displayTitle = 'All Watchlists';
+        } else if (upcomingScope === 'all_portfolios' || upcomingScope === 'portfolio') {
+            displayTitle = 'All Portfolio';
         }
 
         // 1. Update Subtitles
@@ -251,6 +253,7 @@
         // Normalize legacy values
         if (newScope === 'all') newScope = 'all_stocks';
         if (newScope === 'watchlist') newScope = 'current';
+        if (newScope === 'portfolio' || newScope === 'portfolios') newScope = 'all_portfolios';
 
         upcomingScope = newScope;
         upcomingDataCache = null;

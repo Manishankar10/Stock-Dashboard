@@ -137,8 +137,8 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    width: 110px;
-    max-width: 110px;
+    width: 116px;
+    max-width: 120px;
 }
 
 :root:not([data-theme="dark"]) .upcoming-scope-select {
