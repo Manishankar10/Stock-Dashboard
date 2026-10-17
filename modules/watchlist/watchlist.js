@@ -320,6 +320,39 @@
             return { label: 'NSE', class: 'badge-nse' };
         }
 
+        async function triggerWatchlistRefresh(btnEl) {
+            if (window._isWlRefreshing) return;
+            window._isWlRefreshing = true;
+
+            const btns = document.querySelectorAll('.wl-refresh-btn, .wl-mobile-refresh-btn');
+            btns.forEach(b => b.classList.add('refreshing'));
+            if (btnEl) btnEl.classList.add('refreshing');
+
+            const wlTable = document.querySelector('#watchlist-view-mount table, #watchlist-table-mount table, .watchlist-container, #tab-watchlists table');
+            if (wlTable) {
+                wlTable.style.opacity = '0.65';
+                wlTable.style.transition = 'opacity 0.2s ease';
+            }
+
+            try {
+                if (typeof refreshPrices === 'function') {
+                    await refreshPrices({ force_refresh: true });
+                }
+            } catch (err) {
+                console.warn('Watchlist refresh error:', err);
+            } finally {
+                setTimeout(() => {
+                    btns.forEach(b => b.classList.remove('refreshing'));
+                    if (btnEl) btnEl.classList.remove('refreshing');
+                    if (wlTable) {
+                        wlTable.style.opacity = '1';
+                    }
+                    window._isWlRefreshing = false;
+                }, 400);
+            }
+        }
+        window.triggerWatchlistRefresh = triggerWatchlistRefresh;
+
         function renderWatchlists() {
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
             // 1. Render Selector Bar
@@ -519,6 +552,20 @@
             wrapper.appendChild(dropdown);
             searchRow.appendChild(wrapper);
 
+            // Mobile Refresh Button (glassy button matching portfolio style)
+            const mobRefreshBtn = document.createElement('button');
+            mobRefreshBtn.type = 'button';
+            mobRefreshBtn.className = 'wl-refresh-btn wl-mobile-refresh-btn';
+            mobRefreshBtn.title = 'Refresh Watchlist Quotes';
+            mobRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
+            mobRefreshBtn.innerHTML = `
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+            `;
+            mobRefreshBtn.onclick = () => triggerWatchlistRefresh(mobRefreshBtn);
+            searchRow.appendChild(mobRefreshBtn);
+
             // Responsive Mobile Menu Button (Placed at right end of search bar)
             const mobileMenuBtn = document.createElement('button');
             mobileMenuBtn.type = 'button';
@@ -568,19 +615,7 @@
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
             `;
-            wlRefreshBtn.onclick = async () => {
-                if (wlRefreshBtn.classList.contains('refreshing')) return;
-                wlRefreshBtn.classList.add('refreshing');
-                try {
-                    if (typeof refreshPrices === 'function') {
-                        await refreshPrices({ force_refresh: true });
-                    }
-                } finally {
-                    setTimeout(() => {
-                        wlRefreshBtn.classList.remove('refreshing');
-                    }, 600);
-                }
-            };
+            wlRefreshBtn.onclick = () => triggerWatchlistRefresh(wlRefreshBtn);
             watchlistFileControls.appendChild(wlRefreshBtn);
 
             const watchlistOverflow = document.createElement('div');
@@ -876,6 +911,18 @@
                     </div>
 
                     <div class="wl-action-sheet-list">
+                        <!-- 0. Refresh Quotes -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); triggerWatchlistRefresh();">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">🔄</span>
+                                <div>
+                                    <div class="wl-sheet-title">Refresh Quotes</div>
+                                    <div class="wl-sheet-sub">Fetch latest market prices</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">›</span>
+                        </div>
+
                         <!-- 1. Sort & Filter -->
                         <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWlMobileSortModal();">
                             <div class="wl-sheet-item-left">

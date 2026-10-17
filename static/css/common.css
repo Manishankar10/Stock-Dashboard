@@ -720,8 +720,15 @@
             }
         }
 
-        /* Watchlist Refresh Button (Styled identical to responsive portfolio refresh button) */
-        .wl-refresh-btn {
+        /* Universal Refresh Animation */
+        @keyframes pf-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Watchlist & Portfolio Refresh Buttons */
+        .wl-refresh-btn,
+        .pf-refresh-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -739,30 +746,37 @@
             box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
         }
 
-        :root:not([data-theme="dark"]) .wl-refresh-btn {
+        :root:not([data-theme="dark"]) .wl-refresh-btn,
+        :root:not([data-theme="dark"]) .pf-refresh-btn {
             background: rgba(16, 185, 129, 0.1);
             border-color: rgba(16, 185, 129, 0.25);
             color: #059669;
         }
 
-        .wl-refresh-btn svg {
+        .wl-refresh-btn svg,
+        .pf-refresh-btn svg {
             width: 13px;
             height: 13px;
             transition: transform 0.2s ease;
         }
 
-        .wl-refresh-btn:hover {
+        .wl-refresh-btn:hover,
+        .pf-refresh-btn:hover {
             background: rgba(16, 185, 129, 0.2);
             border-color: #10b981;
             transform: translateY(-1px);
         }
 
-        .wl-refresh-btn:active {
+        .wl-refresh-btn:active,
+        .pf-refresh-btn:active {
             transform: scale(0.92);
             background: rgba(16, 185, 129, 0.25);
         }
 
-        .wl-refresh-btn.refreshing svg {
+        .wl-refresh-btn.refreshing svg,
+        .wl-refresh-btn.spinning svg,
+        .pf-refresh-btn.refreshing svg,
+        .pf-refresh-btn.spinning svg {
             animation: pf-spin 0.75s linear infinite !important;
         }
 

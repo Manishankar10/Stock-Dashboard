@@ -243,9 +243,10 @@
     .controls .wl-search-row .autocomplete-wrapper,
     #watchlist-view-mount .controls .wl-search-row .autocomplete-wrapper,
     .wl-search-row .autocomplete-wrapper {
-        flex: 0 0 calc(90% - 6px) !important;
-        width: calc(90% - 6px) !important;
-        max-width: calc(90% - 6px) !important;
+        flex: 1 1 auto !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
     }
 
     .controls .wl-search-row .wl-input,
@@ -258,15 +259,59 @@
         padding: 8px 14px !important;
     }
 
-    /* Menu Icon Button at Right End: 10% Space */
+    /* Mobile Refresh Button matching portfolio style */
+    .wl-mobile-refresh-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 38px !important;
+        width: 38px !important;
+        max-width: 38px !important;
+        min-width: 38px !important;
+        height: 42px !important;
+        border-radius: 10px !important;
+        background: rgba(16, 185, 129, 0.12) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        color: #10b981 !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        padding: 0 !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+    }
+
+    :root:not([data-theme="dark"]) .wl-mobile-refresh-btn {
+        background: rgba(16, 185, 129, 0.1) !important;
+        border-color: rgba(16, 185, 129, 0.25) !important;
+        color: #059669 !important;
+    }
+
+    .wl-mobile-refresh-btn:active {
+        transform: scale(0.92) !important;
+        background: rgba(16, 185, 129, 0.25) !important;
+    }
+
+    .wl-mobile-refresh-btn svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+
+    .wl-mobile-refresh-btn.refreshing svg,
+    .wl-mobile-refresh-btn.spinning svg {
+        animation: pf-spin 0.75s linear infinite !important;
+    }
+
+    /* Menu Icon Button at Right End */
     .wl-mobile-menu-btn {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        flex: 0 0 10% !important;
-        width: 10% !important;
-        max-width: 10% !important;
-        min-width: 34px !important;
+        flex: 0 0 38px !important;
+        width: 38px !important;
+        max-width: 38px !important;
+        min-width: 38px !important;
         height: 42px !important;
         border-radius: 10px !important;
         background: var(--bg-card) !important;
@@ -737,7 +782,7 @@
     .portfolio-mobile-menu-wrapper,
     .pf-mobile-list-container,
     .pf-mob-bottom-bar,
-    .pf-refresh-btn,
+    .wl-mobile-refresh-btn,
     #mobile-active-name-badge {
         display: none !important;
     }
