@@ -76,6 +76,12 @@
         renderKPIs();
         renderQuadrantFilterBadges();
 
+        // Tails toggle button only belongs to RRG Quadrant Map
+        const tailsBtn = document.getElementById('sr-btn-tails-toggle');
+        if (tailsBtn) {
+            tailsBtn.style.display = (state.view === 'rrg') ? 'inline-flex' : 'none';
+        }
+
         if (state.view === 'rrg') {
             renderRRG();
         } else if (state.view === 'leaderboard') {
@@ -761,6 +767,11 @@
             const el = document.getElementById(`sr-view-${v}`);
             if (el) el.style.display = (v === view) ? 'block' : 'none';
         });
+
+        const tailsBtn = document.getElementById('sr-btn-tails-toggle');
+        if (tailsBtn) {
+            tailsBtn.style.display = (view === 'rrg') ? 'inline-flex' : 'none';
+        }
 
         renderAllViews();
     };
