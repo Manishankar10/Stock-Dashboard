@@ -757,6 +757,15 @@
 
 /* Desktop Defaults for Mobile-Only Watchlist & Portfolio Elements (Web version untouched) */
 @media (min-width: 769px) {
+    .wl-table:not(.pf-table):not(.tx-ledger-table) td.wl-col-price,
+    .wl-table:not(.pf-table):not(.tx-ledger-table) td.wl-col-price .wl-price-val,
+    .wl-table:not(.pf-table):not(.tx-ledger-table) td.wl-col-change-amt,
+    #watchlist-view-mount .wl-table td.wl-col-price,
+    #watchlist-view-mount .wl-table td.wl-col-price .wl-price-val,
+    #watchlist-view-mount .wl-table td.wl-col-change-amt {
+        color: var(--text-primary) !important;
+        font-weight: 500 !important;
+    }
     .wl-table .wl-col-actions .btn-secondary,
     .wl-table .wl-col-actions .wl-row-menu-btn {
         font-size: 12px !important;

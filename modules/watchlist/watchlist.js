@@ -709,8 +709,9 @@
                         ? (info.change >= 0 ? 'pos' : 'neg') 
                         : '';
                     const sign = (hasData && info.change !== undefined && info.change >= 0) ? '+' : '';
+                    const amtSign = (hasData && info.change !== undefined) ? (info.change >= 0 ? '+' : '-') : '';
                     const changeAmtHtml = (hasData && info.change !== undefined)
-                        ? `${sign}₹${Math.abs(info.change).toFixed(2)}`
+                        ? `${amtSign}₹${Math.abs(info.change).toFixed(2)}`
                         : '<span class="skeleton-box" style="width: 50px; height: 14px;"></span>';
                     const changePctHtml = (hasData && info.change_pct !== undefined)
                         ? `${sign}${info.change_pct.toFixed(2)}%`

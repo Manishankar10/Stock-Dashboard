@@ -101,8 +101,9 @@
                 
                 if (info.change !== undefined) {
                     const sign = info.change >= 0 ? '+' : '';
+                    const amtSign = info.change >= 0 ? '+' : '-';
                     if (changeAmtEl) {
-                        changeAmtEl.innerText = `${sign}₹${Math.abs(info.change).toFixed(2)}`;
+                        changeAmtEl.innerText = `${amtSign}₹${Math.abs(info.change).toFixed(2)}`;
                         changeAmtEl.classList.remove('pos', 'neg');
                         changeAmtEl.classList.add(info.change >= 0 ? 'pos' : 'neg');
                     }

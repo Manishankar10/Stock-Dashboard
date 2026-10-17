@@ -713,10 +713,19 @@
             overflow: visible !important;
         }
 
-        /* Web Only: Remove company name from watchlist listing */
+        /* Web Only: In watchlist, color differentiation is ONLY for change% column; LTP and change amount use standard text color */
         @media (min-width: 769px) {
             .wl-table .company-name {
                 display: none !important;
+            }
+            .wl-table:not(.pf-table):not(.tx-ledger-table) td.wl-col-price,
+            .wl-table:not(.pf-table):not(.tx-ledger-table) td.wl-col-price .wl-price-val,
+            .wl-table:not(.pf-table):not(.tx-ledger-table) td.wl-col-change-amt,
+            #watchlist-view-mount .wl-table td.wl-col-price,
+            #watchlist-view-mount .wl-table td.wl-col-price .wl-price-val,
+            #watchlist-view-mount .wl-table td.wl-col-change-amt {
+                color: var(--text-primary) !important;
+                font-weight: 500 !important;
             }
         }
 
