@@ -575,11 +575,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 24px;
+    padding: 16px 22px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: #1e293b;
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
 }
 
 [data-theme="light"] .pa-modal-header {
+    background: #ffffff;
     border-bottom-color: #f1f5f9;
 }
 
@@ -643,13 +648,25 @@
 .pa-modal-body {
     padding: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     max-height: calc(85vh - 80px);
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overscroll-behavior: contain;
 }
 
 .pa-modal-table {
     width: 100% !important;
     min-width: 0 !important;
-    border-collapse: collapse;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.pa-modal-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 15;
 }
 
 .pa-modal-table th,
@@ -658,24 +675,27 @@
 }
 
 .pa-modal-table th {
-    background: rgba(15, 23, 42, 0.5);
+    background: #1e293b !important;
     color: #94a3b8;
     font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding: 12px 20px;
+    padding: 11px 20px;
     text-align: left;
     position: sticky;
     top: 0;
-    z-index: 2;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 15;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
 }
 
 [data-theme="light"] .pa-modal-table th {
-    background: #f8fafc;
+    background: #f8fafc !important;
     color: #64748b;
     border-bottom-color: #e2e8f0;
+    box-shadow: 0 1px 0 #e2e8f0;
 }
 
 .pa-modal-table th.pa-th-mktval,
