@@ -111,11 +111,7 @@ def _get_feed_response():
     symbols = []
 
     # Check scopes
-    if target_lower in ["all watchlists", "all_watchlists", "all_watchlist", "__all_watchlists__"]:
-        symbols = all_wl_symbols
-        selected_target = "All Watchlists"
-        target_scope = "all_watchlists"
-    elif target_lower in ["portfolio", "all portfolios", "all_portfolios", "__portfolio__"]:
+    if target_lower in ["portfolio", "all portfolios", "all_portfolios", "__portfolio__"]:
         symbols = all_pf_symbols
         selected_target = "Portfolio"
         target_scope = "portfolio"
@@ -139,25 +135,19 @@ def _get_feed_response():
             symbols = _extract_symbols_from_list(watchlists.get(matched_wl, []))
             selected_target = matched_wl
             target_scope = "watchlist"
-        elif not raw_target:
-            if watchlists:
-                first_wl = list(watchlists.keys())[0]
-                symbols = _extract_symbols_from_list(watchlists.get(first_wl, []))
-                selected_target = first_wl
-                target_scope = "watchlist"
-            elif portfolios:
-                symbols = all_pf_symbols
-                selected_target = "Portfolio"
-                target_scope = "portfolio"
-            else:
-                symbols = []
-                selected_target = "All Watchlists"
-                target_scope = "all_watchlists"
+        elif watchlists:
+            first_wl = list(watchlists.keys())[0]
+            symbols = _extract_symbols_from_list(watchlists.get(first_wl, []))
+            selected_target = first_wl
+            target_scope = "watchlist"
+        elif portfolios:
+            symbols = all_pf_symbols
+            selected_target = "Portfolio"
+            target_scope = "portfolio"
         else:
-            # Fallback to All Watchlists
-            symbols = all_wl_symbols
-            selected_target = "All Watchlists"
-            target_scope = "all_watchlists"
+            symbols = []
+            selected_target = ""
+            target_scope = "none"
 
     try:
         page = max(1, int(request.args.get("page", "1")))

@@ -17,7 +17,7 @@
 
     function getDisplayTitle(val) {
         if (!val || val === 'All Watchlists' || val.toLowerCase() === 'all watchlists' || val.toLowerCase() === 'all_watchlists') {
-            return 'All Watchlists';
+            return '';
         }
         if (val === 'Portfolio' || val.toLowerCase() === 'portfolio' || val.toLowerCase() === 'all portfolios') {
             return 'Portfolio';
@@ -41,14 +41,23 @@
             pfs = Object.keys(window.portfoliosData);
         }
 
-        const effectiveVal = targetVal || currentWatchlist || 'All Watchlists';
+        let effectiveVal = targetVal || currentWatchlist;
+        if (!effectiveVal || effectiveVal === 'All Watchlists' || effectiveVal.toLowerCase() === 'all watchlists' || effectiveVal.toLowerCase() === 'all_watchlists') {
+            const activeFromDom = document.querySelector('#watchlist-selector-mount .pf-select-btn.active')?.dataset.watchlistName;
+            if (activeFromDom && wls && wls.includes(activeFromDom)) {
+                effectiveVal = activeFromDom;
+            } else if (wls && wls.length > 0) {
+                effectiveVal = wls[0];
+            } else if (pfs && pfs.length > 0) {
+                effectiveVal = 'Portfolio';
+            } else {
+                effectiveVal = '';
+            }
+        }
+
         let optionsHtml = '';
 
-        // 1. All Watchlists Option
-        const isAllWl = (effectiveVal === 'All Watchlists');
-        optionsHtml += `<option value="All Watchlists" ${isAllWl ? 'selected' : ''}>📁 All Watchlists</option>`;
-
-        // 2. Individual Watchlists
+        // 1. Individual Watchlists
         if (wls && wls.length > 0) {
             optionsHtml += `<optgroup label="Watchlists">`;
             wls.forEach(wl => {
@@ -58,7 +67,7 @@
             optionsHtml += `</optgroup>`;
         }
 
-        // 3. Portfolio Options
+        // 2. Portfolio Options
         optionsHtml += `<optgroup label="Portfolio">`;
         const isPf = (effectiveVal === 'Portfolio');
         optionsHtml += `<option value="Portfolio" ${isPf ? 'selected' : ''}>💼 Portfolio (All)</option>`;
@@ -98,7 +107,7 @@
                 <div class="of-toolbar">
                     <span class="of-category">Company Update</span>
                     <label class="of-filter-label" for="of-watchlist">Watchlist</label>
-                    <select id="of-watchlist" class="of-select"><option value="All Watchlists">📁 All Watchlists</option></select>
+                    <select id="of-watchlist" class="of-select"></select>
                     <label class="of-filter-label" for="of-stock">Stock</label>
                     <select id="of-stock" class="of-select"><option value="">All stocks</option></select>
                     <label class="of-filter-label" for="of-subcategory">Subcategory</label>
@@ -157,7 +166,18 @@
     }
 
     window.openWatchlistOfficialFeeds = function (watchlistName) {
-        currentWatchlist = watchlistName || 'All Watchlists';
+        let initialWl = watchlistName;
+        if (!initialWl || initialWl === 'All Watchlists' || initialWl.toLowerCase() === 'all watchlists' || initialWl.toLowerCase() === 'all_watchlists') {
+            const activeFromDom = document.querySelector('#watchlist-selector-mount .pf-select-btn.active')?.dataset.watchlistName;
+            if (activeFromDom) {
+                initialWl = activeFromDom;
+            } else if (window.watchlistsData && Object.keys(window.watchlistsData).length > 0) {
+                initialWl = Object.keys(window.watchlistsData)[0];
+            } else {
+                initialWl = '';
+            }
+        }
+        currentWatchlist = initialWl;
         currentPage = 1;
         currentSubcategory = '';
         loadedItems = [];
@@ -275,7 +295,7 @@
         loading = true;
         let scopeMsg = 'this watchlist';
         if (currentWatchlist.toLowerCase().includes('portfolio')) scopeMsg = 'your portfolio';
-        else if (currentWatchlist === 'All Watchlists') scopeMsg = 'all watchlists';
+        else if (currentWatchlist) scopeMsg = `"${currentWatchlist}"`;
         if (loadedItems.length) renderItems([]);
         else feed.innerHTML = `<div class="of-loading"><span class="of-spinner"></span>Loading official exchange announcements for ${scopeMsg}…</div>`;
         const refreshButton = modal.querySelector('#of-refresh');
@@ -303,7 +323,7 @@
             hasMore = Boolean(data.has_more);
             renderItems(data.items);
             const isPf = currentWatchlist.toLowerCase().includes('portfolio');
-            const countSuffix = isPf ? 'portfolio stocks' : (currentWatchlist === 'All Watchlists' ? 'watchlist stocks' : 'stocks');
+            const countSuffix = isPf ? 'portfolio stocks' : 'stocks';
             modal.querySelector('#of-count').textContent = `${loadedItems.length} loaded\n${currentSymbol || `${data.symbols_count || 0} ${countSuffix}`}`;
             if (data.failed_symbols) modal.querySelector('#of-count').title = `${data.failed_symbols} exchange queries did not return data.`;
         } catch (error) {
