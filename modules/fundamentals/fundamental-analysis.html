@@ -44,22 +44,58 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 * { box-sizing: border-box; }
-html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; }
+html {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg-body);
   color: var(--text-primary);
   padding: 16px;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
-.container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.container { width: 100%; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px 20px;
   box-shadow: var(--shadow-sm);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@keyframes pf-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.wl-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28.5px;
+  height: 28.5px;
+  border-radius: 7px;
+  background: rgba(16, 185, 129, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.wl-refresh-btn.refreshing svg {
+  animation: pf-spin 0.75s linear infinite !important;
 }
 /* Duplicate header card is hidden on both web & mobile (info and actions are in popup modal top bar) */
 .card.header {
@@ -117,9 +153,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 /* Financial Tables */
 .sec-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .sec-title { font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-.sec-sub { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
-.table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; }
-.table { width: 100%; border-collapse: collapse; table-layout: auto; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; max-width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
 .table th, .table td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid var(--border-color); text-align: right; white-space: nowrap; }
 .table th:first-child, .table td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 1; font-weight: 600; color: var(--text-primary); }
 .table th { background: var(--table-header-bg); color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
@@ -2030,7 +2064,11 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
       <span style="font-size: 11px; color: var(--text-secondary);" id="lastUpdated">Updating...</span>
-      <button class="btn" onclick="loadFundamentals()">↻ Refresh</button>
+      <button class="wl-refresh-btn" id="internal-refresh-btn" onclick="this.classList.add('refreshing'); loadFundamentals().finally(() => this.classList.remove('refreshing'))" title="Refresh Fundamentals" aria-label="Refresh Fundamentals">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+      </button>
       <a class="btn primary" id="screenerBtn" href="#" target="_blank" rel="noopener noreferrer">Screener.in ↗</a>
     </div>
   </div>
@@ -2446,8 +2484,9 @@ function renderScreenerTable(section, secId) {
     return `<div class="empty-state">No financial statement data available</div>`;
   }
 
-  // Standard chronological ordering (older to newer)
-  const colIndices = cols.map((_, i) => i);
+  // On web (> 768px), show latest period first (reverse chronological order); on mobile, keep standard chronological
+  const isWeb = window.innerWidth > 768;
+  const colIndices = isWeb ? cols.map((_, i) => i).reverse() : cols.map((_, i) => i);
   const headerHtml = `<thead><tr><th>Particulars</th>${colIndices.map(i => `<th>${esc(cols[i])}</th>`).join('')}</tr></thead>`;
   
   const bodyHtml = rows.map((r, rowIdx) => {
@@ -2480,6 +2519,9 @@ function renderPeersTable(peers) {
     return `<div class="empty-state">No peer comparison data available for this industry</div>`;
   }
 
+  const isWeb = window.innerWidth > 768;
+  const displayRows = (isWeb && rows.length > 1) ? rows.slice(1) : rows;
+
   const headerHtml = `<thead><tr>
     <th class="col-sno">S.No</th>
     <th class="col-peer-name">Name</th>
@@ -2487,7 +2529,7 @@ function renderPeersTable(peers) {
   </tr></thead>`;
 
   let snoCount = 1;
-  const bodyHtml = rows.map((r) => {
+  const bodyHtml = displayRows.map((r) => {
     const pName = r.name || '—';
     const isMedian = pName.trim().toLowerCase().startsWith('median');
     const isCurrent = !isMedian && (symbol.toUpperCase().includes(pName.toUpperCase()) || pName.toUpperCase().includes(symbol.replace(/\.(NS|BO)$/i, '').toUpperCase()));
@@ -3035,7 +3077,7 @@ function render(d) {
   currentFundamentalMode = window.currentFundamentalMode;
 
   document.getElementById('companyTitle').textContent = c.name || symbol;
-  document.getElementById('companySub').textContent = `${symbol} · Screener.in Direct Replica`;
+  document.getElementById('companySub').textContent = symbol;
   document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   document.getElementById('screenerBtn').href = `https://www.screener.in/company/${encodeURIComponent(baseSym)}/`;
 
@@ -3194,6 +3236,42 @@ function render(d) {
   }
 }
 
+function formatConcallQuarter(qStr) {
+  if (!qStr) return '';
+  if (/\(Q[1-4]\s*FY\d+\)/i.test(qStr)) return qStr;
+  const m = String(qStr).match(/([a-zA-Z]+)\s+(\d{2,4})/);
+  if (m) {
+    const monthName = m[1].toLowerCase().slice(0, 3);
+    let yr = parseInt(m[2], 10);
+    if (yr < 100) yr += 2000;
+    const monthMap = {
+      jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+      jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+    };
+    const monNum = monthMap[monthName];
+    if (monNum) {
+      let qNum = '';
+      let fyYr = yr;
+      if (monNum >= 1 && monNum <= 3) {
+        qNum = 'Q3';
+        fyYr = yr % 100;
+      } else if (monNum >= 4 && monNum <= 6) {
+        qNum = 'Q4';
+        fyYr = yr % 100;
+      } else if (monNum >= 7 && monNum <= 9) {
+        qNum = 'Q1';
+        fyYr = (yr + 1) % 100;
+      } else {
+        qNum = 'Q2';
+        fyYr = (yr + 1) % 100;
+      }
+      const fyStr = 'FY' + String(fyYr).padStart(2, '0');
+      return `${qStr} (${qNum} ${fyStr})`;
+    }
+  }
+  return qStr;
+}
+
 window.renderConcallsList = function(concalls, showAll) {
   const concallsEl = document.getElementById('concallsContainer');
   if (!concallsEl) return;
@@ -3207,7 +3285,7 @@ window.renderConcallsList = function(concalls, showAll) {
     <div class="concall-item">
       <div class="concall-quarter">
         <span style="font-size: 13px;">📅</span>
-        <span>${esc(c.quarter)}</span>
+        <span>${esc(formatConcallQuarter(c.quarter))}</span>
       </div>
       <div class="concall-actions">
         ${c.transcript ? `<button type="button" class="concall-chip concall-ai" onclick="openConcallAiByIndex(${idx})">✨ AI Summary</button>` : ''}
@@ -3239,7 +3317,7 @@ let _currentAiMarkdown = '';
 function openConcallAiByIndex(idx) {
   const item = window._visibleConcalls?.[idx];
   if (!item || !item.transcript) return;
-  openConcallAiSummary(item.quarter, item.transcript);
+  openConcallAiSummary(formatConcallQuarter(item.quarter), item.transcript);
 }
 
 async function openConcallAiSummary(quarter, transcriptUrl) {

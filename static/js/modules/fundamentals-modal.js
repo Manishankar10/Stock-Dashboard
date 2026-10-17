@@ -47,7 +47,7 @@
                 webNameEl.textContent = safeSymbol;
             }
             if (subtitle) {
-                subtitle.textContent = `${safeSymbol} · SCREENER.IN DIRECT REPLICA`;
+                subtitle.textContent = cleanSym;
             }
             if (updatedEl) {
                 updatedEl.textContent = 'Updating...';
@@ -75,8 +75,8 @@
             document.body.style.overflow = 'hidden';
 
             frame.onload = () => {
-                if (subtitle && !subtitle.textContent.includes('SCREENER.IN DIRECT REPLICA')) {
-                    subtitle.textContent = `${safeSymbol} · SCREENER.IN DIRECT REPLICA`;
+                if (subtitle) {
+                    subtitle.textContent = cleanSym;
                 }
             };
 
@@ -95,8 +95,11 @@
                         const subEl = document.getElementById('fundamentals-modal-subtitle');
                         const uEl = document.getElementById('fundamentals-modal-updated');
                         const scrEl = document.getElementById('fundamentals-modal-screener-btn');
+                        const rBtnEl = document.getElementById('fundamentals-modal-refresh-btn');
+                        if (rBtnEl) rBtnEl.classList.remove('refreshing');
 
                         const dispSymbol = retSym || _currentModalSymbol;
+                        const cleanDispSym = String(dispSymbol).replace(/\.(NS|BO)$/i, '').toUpperCase();
 
                         if (nEl && name) {
                             nEl.textContent = name;
@@ -105,7 +108,7 @@
                             wNameEl.textContent = name;
                         }
                         if (subEl) {
-                            subEl.textContent = `${dispSymbol} · SCREENER.IN DIRECT REPLICA`;
+                            subEl.textContent = cleanDispSym;
                         }
                         if (uEl) {
                             uEl.textContent = updatedAt || ('Updated ' + new Date().toLocaleTimeString());
@@ -163,6 +166,11 @@
         function refreshFundamentalsModal() {
             const frame = document.getElementById('fundamentalsFrame');
             if (!frame) return;
+            const rBtn = document.getElementById('fundamentals-modal-refresh-btn');
+            if (rBtn) {
+                rBtn.classList.add('refreshing');
+                setTimeout(() => rBtn.classList.remove('refreshing'), 1200);
+            }
             const uEl = document.getElementById('fundamentals-modal-updated');
             if (uEl) uEl.textContent = 'Updating...';
             try {
