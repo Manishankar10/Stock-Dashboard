@@ -65,7 +65,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
-.container { width: 100%; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
+.container { width: 100%; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -129,6 +129,11 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 10px;
 }
+@media (min-width: 1100px) {
+  .ratios-grid {
+    grid-template-columns: repeat(9, 1fr);
+  }
+}
 .ratio-card {
   background: var(--bg-subtle);
   border: 1px solid var(--border-color);
@@ -154,13 +159,39 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 /* Financial Tables */
 .sec-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .sec-title { font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-.table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; max-width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; width: 100%; max-width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
+.table { width: 100%; min-width: 100%; border-collapse: collapse; }
 .table th, .table td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid var(--border-color); text-align: right; white-space: nowrap; }
 .table th:first-child, .table td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 1; font-weight: 600; color: var(--text-primary); }
 .table th { background: var(--table-header-bg); color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
 .table tr:hover td { background: var(--table-hover-bg); }
 .table tr.highlight td { background: rgba(16, 185, 129, 0.08); font-weight: 700; }
 .table tr.highlight td:first-child { color: var(--accent); }
+
+/* Peer Comparison Table Desktop Full-Width & Spacing */
+.peers-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+.peers-table th, .peers-table td {
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.peers-table th.col-sno, .peers-table td.col-sno {
+  width: 50px;
+  min-width: 46px;
+  text-align: center;
+}
+.peers-table th.col-peer-name, .peers-table td.col-peer-name {
+  text-align: left;
+  min-width: 150px;
+}
+.peers-table th:not(.col-sno):not(.col-peer-name),
+.peers-table td:not(.col-sno):not(.col-peer-name) {
+  text-align: right;
+}
 
 /* Compounded Growth Ratios Grid */
 .growth-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
