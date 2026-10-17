@@ -324,6 +324,7 @@
             svgHtml += `
             <g class="sr-bubble-group" data-sector-id="${sec.id}" cursor="pointer"
                onmouseenter="window.showSectorTooltip(event, '${sec.id}')"
+               onmousemove="window.showSectorTooltip(event, '${sec.id}')"
                onmouseleave="window.hideSectorTooltip()"
                onclick="window.openSectorConstituents('${sec.id}')">
                 <circle cx="${bx}" cy="${by}" r="${radius + 5}" fill="${sec.quadrant_color}" opacity="0.18" class="sr-bubble-halo" />
@@ -336,7 +337,7 @@
         svg.innerHTML = svgHtml;
     }
 
-    // Tooltip Engine
+    // Tooltip Engine with Dynamic Flipping & Container Boundary Clamping
     window.showSectorTooltip = function (e, sectorId) {
         const sec = state.sectors.find(s => s.id === sectorId);
         if (!sec) return;
@@ -345,33 +346,72 @@
         const wrapper = document.getElementById('sr-rrg-canvas-wrapper');
         if (!tooltip || !wrapper) return;
 
-        const retSign = sec.selected_return >= 0 ? '+' : '';
-        const alphaSign = sec.selected_alpha >= 0 ? '+' : '';
+        const retSign = (sec.selected_return || 0) >= 0 ? '+' : '';
+        const alphaSign = (sec.selected_alpha || 0) >= 0 ? '+' : '';
 
         tooltip.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
-                <span style="font-weight: 800; font-size: 13px; font-family: 'Plus Jakarta Sans';">${sec.icon} ${sec.name}</span>
-                <span style="font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: ${sec.quadrant_color}; color: #fff;">${sec.quadrant_label.toUpperCase()}</span>
+            <div class="sr-tooltip-header">
+                <span class="sr-tooltip-title">${sec.icon || '🏛️'} ${escapeHtml(sec.name)}</span>
+                <span class="sr-tooltip-badge" style="background: ${sec.quadrant_color};">${escapeHtml(sec.quadrant_label.toUpperCase())}</span>
             </div>
-            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">${sec.category} • Phase: ${sec.cycle_phase}</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; background: rgba(255,255,255,0.06); padding: 8px; border-radius: 6px; margin-bottom: 8px;">
-                <div><strong>Return (${state.frequency}):</strong> <span style="color: ${sec.selected_return >= 0 ? '#10b981' : '#ef4444'}">${retSign}${sec.selected_return.toFixed(2)}%</span></div>
-                <div><strong>Alpha:</strong> <span style="color: ${sec.selected_alpha >= 0 ? '#10b981' : '#ef4444'}">${alphaSign}${sec.selected_alpha.toFixed(2)}%</span></div>
+            <div class="sr-tooltip-sub">${escapeHtml(sec.category)} • Phase: ${escapeHtml(sec.cycle_phase)}</div>
+            <div class="sr-tooltip-stats-grid">
+                <div><strong>Return (${state.frequency}):</strong> <span class="${(sec.selected_return || 0) >= 0 ? 'text-buy' : 'text-sell'}">${retSign}${Number(sec.selected_return || 0).toFixed(2)}%</span></div>
+                <div><strong>Alpha:</strong> <span class="${(sec.selected_alpha || 0) >= 0 ? 'text-buy' : 'text-sell'}">${alphaSign}${Number(sec.selected_alpha || 0).toFixed(2)}%</span></div>
                 <div><strong>RS-Ratio:</strong> ${sec.rs_ratio}</div>
                 <div><strong>RS-Momentum:</strong> ${sec.rs_momentum}</div>
-                <div><strong>P/E Ratio:</strong> ${sec.valuation.pe}</div>
-                <div><strong>Breadth:</strong> ${sec.breadth.ratio_display}</div>
+                <div><strong>P/E Ratio:</strong> ${sec.valuation?.pe ?? '—'}</div>
+                <div><strong>Breadth:</strong> ${sec.breadth?.ratio_display ?? '—'}</div>
             </div>
-            <div style="font-size: 10px; color: #38bdf8; text-align: center; font-weight: 700;">Click bubble to view constituents ➔</div>
+            <div class="sr-tooltip-cta">Click bubble to view constituents ➔</div>
         `;
 
+        // Render hidden first to get accurate bounding dimensions
+        tooltip.style.visibility = 'hidden';
+        tooltip.style.display = 'block';
+        tooltip.style.transform = 'none';
+
+        const tipWidth = tooltip.offsetWidth || 280;
+        const tipHeight = tooltip.offsetHeight || 170;
         const rect = wrapper.getBoundingClientRect();
+        const wrapperWidth = wrapper.clientWidth;
+        const wrapperHeight = wrapper.clientHeight;
+
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        tooltip.style.left = `${mouseX}px`;
-        tooltip.style.top = `${mouseY}px`;
-        tooltip.style.display = 'block';
+        // Vertical Positioning:
+        // Try placing above cursor (mouseY - tipHeight - 16).
+        // If not enough room at the top (i.e. < 12px), flip below cursor (mouseY + 24).
+        let top;
+        if (mouseY - tipHeight - 16 >= 12) {
+            top = mouseY - tipHeight - 16;
+        } else {
+            top = mouseY + 24;
+        }
+
+        // Clamp vertically so tooltip never overflows bottom or top
+        if (top + tipHeight > wrapperHeight - 12) {
+            top = Math.max(12, wrapperHeight - tipHeight - 12);
+        }
+        if (top < 12) {
+            top = 12;
+        }
+
+        // Horizontal Positioning:
+        // Center horizontally on mouse cursor
+        let left = mouseX - (tipWidth / 2);
+
+        // Clamp horizontally so tooltip never overflows left or right margins
+        if (left < 12) {
+            left = 12;
+        } else if (left + tipWidth > wrapperWidth - 12) {
+            left = wrapperWidth - tipWidth - 12;
+        }
+
+        tooltip.style.left = `${Math.round(left)}px`;
+        tooltip.style.top = `${Math.round(top)}px`;
+        tooltip.style.visibility = 'visible';
     };
 
     window.hideSectorTooltip = function () {
