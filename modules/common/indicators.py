@@ -200,6 +200,117 @@ def calculate_indicators(candles):
                         'text': 'SELL'
                     })
 
+    # ── BS Donchian Channel with Super B (B/S) ──
+    donchian_upper = []
+    donchian_middle = []
+    donchian_lower = []
+    donchian_buy = []
+    donchian_super_buy = []
+    donchian_sell = []
+    donchian_signals = []
+
+    donchian_length = 20
+    vol_avg_length = 20
+
+    if n >= donchian_length:
+        eligible_for_super_b = False
+        highs = [c['high'] for c in candles]
+        lows = [c['low'] for c in candles]
+        opens = [c['open'] for c in candles]
+        vols = [float(c.get('volume') or 0) for c in candles]
+
+        for i in range(donchian_length - 1, n):
+            win_highs = highs[i - donchian_length + 1 : i + 1]
+            win_lows = lows[i - donchian_length + 1 : i + 1]
+            up_band = max(win_highs)
+            dn_band = min(win_lows)
+            mid_band = (up_band + dn_band) / 2.0
+
+            time_val = times[i]
+            donchian_upper.append({'time': time_val, 'value': round(up_band, 2)})
+            donchian_middle.append({'time': time_val, 'value': round(mid_band, 2)})
+            donchian_lower.append({'time': time_val, 'value': round(dn_band, 2)})
+
+            c_open = opens[i]
+            c_high = highs[i]
+            c_low = lows[i]
+            c_close = closes[i]
+            c_vol = vols[i]
+
+            is_green = c_close > c_open
+            is_red = c_close < c_open
+
+            # Touching condition: band value falls within candle's high-low range
+            touching_up = (c_high >= up_band - 0.01) and (c_low <= up_band + 0.01)
+            touching_dn = (c_high >= dn_band - 0.01) and (c_low <= dn_band + 0.01)
+            touching_mid = (c_high >= mid_band - 0.01) and (c_low <= mid_band + 0.01)
+
+            # Volume condition: volume > 20-period volume SMA
+            win_vols = vols[i - vol_avg_length + 1 : i + 1]
+            avg_vol = sum(win_vols) / float(vol_avg_length)
+            above_avg_vol = c_vol > avg_vol
+
+            # Base signal conditions
+            buy_condition = is_green and touching_up
+            sell_condition = is_red and touching_mid and above_avg_vol
+
+            # Super B Logic
+            if touching_dn or touching_mid:
+                eligible_for_super_b = True
+
+            super_b_condition = buy_condition and eligible_for_super_b
+            regular_b_condition = buy_condition and not eligible_for_super_b
+
+            if super_b_condition:
+                eligible_for_super_b = False
+
+            if regular_b_condition:
+                donchian_buy.append({
+                    'time': time_val,
+                    'position': 'belowBar',
+                    'color': '#2962ff',
+                    'shape': 'arrowUp',
+                    'text': 'B',
+                    'size': 1
+                })
+                donchian_signals.append({
+                    'time': time_val,
+                    'type': 'buy',
+                    'label': 'B',
+                    'price': c_close
+                })
+            elif super_b_condition:
+                donchian_super_buy.append({
+                    'time': time_val,
+                    'position': 'belowBar',
+                    'color': '#ffc300',
+                    'shape': 'arrowUp',
+                    'text': 'SB',
+                    'size': 2
+                })
+                donchian_signals.append({
+                    'time': time_val,
+                    'type': 'super_buy',
+                    'label': 'SB',
+                    'price': c_close
+                })
+
+            if sell_condition:
+                donchian_sell.append({
+                    'time': time_val,
+                    'position': 'aboveBar',
+                    'color': '#ef5350',
+                    'shape': 'arrowDown',
+                    'text': 'S',
+                    'size': 1
+                })
+                donchian_signals.append({
+                    'time': time_val,
+                    'type': 'sell',
+                    'label': 'S',
+                    'price': c_close
+                })
+
     return {
         'sma20': sma20,
         'sma50': sma50,
@@ -214,6 +325,13 @@ def calculate_indicators(candles):
         'cdrider': cdrider,
         'cdrider_buy': cdrider_buy,
         'cdrider_sell': cdrider_sell,
+        'donchian_upper': donchian_upper,
+        'donchian_middle': donchian_middle,
+        'donchian_lower': donchian_lower,
+        'donchian_buy': donchian_buy,
+        'donchian_super_buy': donchian_super_buy,
+        'donchian_sell': donchian_sell,
+        'donchian_signals': donchian_signals,
         'macd_line': macd_line,
         'macd_signal': macd_signal,
         'macd_hist': macd_hist,

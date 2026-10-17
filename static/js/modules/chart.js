@@ -30,6 +30,10 @@
         // Indicator Series
         var cdRiderSeries = null;
         var cachedCdRiderMarkers = [];
+        var donchianUpperSeries = null;
+        var donchianMiddleSeries = null;
+        var donchianLowerSeries = null;
+        var cachedBsDonchianMarkers = [];
         var sma50Series = null;
         var sma200Series = null;
         var ema9Series = null;
@@ -119,7 +123,7 @@
                 const saved = localStorage.getItem('capital_desk_chart_indicators');
                 if (saved) {
                     const prefs = JSON.parse(saved);
-                    const keys = ['chkCdRider', 'chkVolume', 'chkVolumeMa', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
+                    const keys = ['chkCdRider', 'chkBsDonchian', 'chkVolume', 'chkVolumeMa', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
                     keys.forEach(k => {
                         const el = document.getElementById(k);
                         if (el && prefs[k] !== undefined) {
@@ -3464,6 +3468,9 @@
             addSeriesToMap(data.volume, 'vol');
             addSeriesToMap(data.volume_ma, 'vol_ma');
             addSeriesToMap(data.cdrider, 'cdrider');
+            addSeriesToMap(data.donchian_upper, 'donchian_upper');
+            addSeriesToMap(data.donchian_middle, 'donchian_middle');
+            addSeriesToMap(data.donchian_lower, 'donchian_lower');
             addSeriesToMap(data.sma50, 'sma50');
             addSeriesToMap(data.sma200, 'sma200');
             addSeriesToMap(data.ema9, 'ema9');
@@ -4083,6 +4090,26 @@
             if (data.cdrider_buy) allMarkers.push(...data.cdrider_buy);
             if (data.cdrider_sell) allMarkers.push(...data.cdrider_sell);
             cachedCdRiderMarkers = allMarkers.sort((a, b) => (typeof a.time === 'number' && typeof b.time === 'number' ? a.time - b.time : 0));
+
+            // BS Donchian Channel (Upper, Middle, Lower bands and B / SB / S signals)
+            donchianUpperSeries = mainChart.addLineSeries({ color: '#22c55e', lineWidth: 1, title: 'Donchian Upper', visible: false, autoscaleInfoProvider: indicatorAutoscaleInfo });
+            if (data.donchian_upper) donchianUpperSeries.setData(data.donchian_upper);
+
+            donchianMiddleSeries = mainChart.addLineSeries({ color: '#f97316', lineWidth: 1, title: 'Donchian Middle', visible: false, autoscaleInfoProvider: indicatorAutoscaleInfo });
+            if (data.donchian_middle) donchianMiddleSeries.setData(data.donchian_middle);
+
+            donchianLowerSeries = mainChart.addLineSeries({ color: '#ef5350', lineWidth: 1, title: 'Donchian Lower', visible: false, autoscaleInfoProvider: indicatorAutoscaleInfo });
+            if (data.donchian_lower) donchianLowerSeries.setData(data.donchian_lower);
+
+            const donchianMarkers = [];
+            if (data.donchian_buy) donchianMarkers.push(...data.donchian_buy);
+            if (data.donchian_super_buy) donchianMarkers.push(...data.donchian_super_buy);
+            if (data.donchian_sell) donchianMarkers.push(...data.donchian_sell);
+            cachedBsDonchianMarkers = donchianMarkers.sort((a, b) => {
+                const ta = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() || 0);
+                const tb = typeof b.time === 'number' ? b.time : (new Date(b.time).getTime() || 0);
+                return ta - tb;
+            });
 
             sma50Series = mainChart.addLineSeries({ color: '#ff6d00', lineWidth: 2, title: '50 DMA', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.sma50) sma50Series.setData(data.sma50);
@@ -4907,6 +4934,18 @@
             const elCdRider = document.getElementById('legCdRider');
             if (elCdRider) elCdRider.innerText = (rec && rec.cdrider !== undefined) ? '₹' + rec.cdrider.toFixed(2) : '-';
 
+            const elDonchian = document.getElementById('legBsDonchian');
+            if (elDonchian) {
+                if (rec && rec.donchian_upper !== undefined) {
+                    const u = rec.donchian_upper.toFixed(2);
+                    const m = rec.donchian_middle !== undefined ? rec.donchian_middle.toFixed(2) : '-';
+                    const l = rec.donchian_lower !== undefined ? rec.donchian_lower.toFixed(2) : '-';
+                    elDonchian.innerHTML = `<span style="color:#22c55e">U: ₹${u}</span> <span style="color:#f97316">M: ₹${m}</span> <span style="color:#ef5350">L: ₹${l}</span>`;
+                } else {
+                    elDonchian.innerText = '-';
+                }
+            }
+
             const elSma50 = document.getElementById('legSma50');
             if (elSma50) elSma50.innerText = (rec && rec.sma50 !== undefined) ? '₹' + rec.sma50.toFixed(2) : '-';
             
@@ -4927,6 +4966,7 @@
             if (!volumeSeries) return;
 
             const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false;
+            const showBsDonchian = document.getElementById('chkBsDonchian') ? document.getElementById('chkBsDonchian').checked : false;
             const showVol = document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true;
             const showVolMa = document.getElementById('chkVolumeMa') ? document.getElementById('chkVolumeMa').checked : true;
             const showSma50 = document.getElementById('chkSma50') ? document.getElementById('chkSma50').checked : false;
@@ -4939,6 +4979,7 @@
             try {
                 localStorage.setItem('capital_desk_chart_indicators', JSON.stringify({
                     chkCdRider: showCdRider,
+                    chkBsDonchian: showBsDonchian,
                     chkVolume: showVol,
                     chkVolumeMa: showVolMa,
                     chkSma50: showSma50,
@@ -4951,8 +4992,24 @@
             } catch(e){}
 
             if (cdRiderSeries) cdRiderSeries.applyOptions({ visible: showCdRider });
+            if (donchianUpperSeries) donchianUpperSeries.applyOptions({ visible: showBsDonchian });
+            if (donchianMiddleSeries) donchianMiddleSeries.applyOptions({ visible: showBsDonchian });
+            if (donchianLowerSeries) donchianLowerSeries.applyOptions({ visible: showBsDonchian });
+
             if (mainSeries) {
-                mainSeries.setMarkers(showCdRider ? cachedCdRiderMarkers : []);
+                const combinedMarkers = [];
+                if (showCdRider && cachedCdRiderMarkers && cachedCdRiderMarkers.length > 0) {
+                    combinedMarkers.push(...cachedCdRiderMarkers);
+                }
+                if (showBsDonchian && cachedBsDonchianMarkers && cachedBsDonchianMarkers.length > 0) {
+                    combinedMarkers.push(...cachedBsDonchianMarkers);
+                }
+                combinedMarkers.sort((a, b) => {
+                    const ta = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() || 0);
+                    const tb = typeof b.time === 'number' ? b.time : (new Date(b.time).getTime() || 0);
+                    return ta - tb;
+                });
+                mainSeries.setMarkers(combinedMarkers);
             }
             volumeSeries.applyOptions({ visible: showVol });
             if (volumeMaSeries) volumeMaSeries.applyOptions({ visible: showVol && showVolMa });
@@ -4963,6 +5020,9 @@
 
             if (document.getElementById('legCdRiderGroup')) {
                 document.getElementById('legCdRiderGroup').style.display = showCdRider ? 'inline' : 'none';
+            }
+            if (document.getElementById('legBsDonchianGroup')) {
+                document.getElementById('legBsDonchianGroup').style.display = showBsDonchian ? 'inline' : 'none';
             }
 
             if (document.getElementById('legVolGroup')) {
@@ -4978,7 +5038,7 @@
             document.getElementById('macdChartPane').style.display = showMacd ? 'block' : 'none';
             document.getElementById('legMacdGroup').style.display = showMacd ? 'inline-block' : 'none';
 
-            document.getElementById('legSmaGroup').style.display = (showCdRider || showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
+            document.getElementById('legSmaGroup').style.display = (showCdRider || showBsDonchian || showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
 
             resizeChartPanes();
         }

@@ -301,6 +301,7 @@ def get_chart_history():
             existing_c['high'] = max(existing_c['high'], high_val)
             existing_c['low'] = min(existing_c['low'], low_val)
             existing_c['close'] = close_val
+            existing_c['volume'] = existing_c.get('volume', 0) + vol_val
             
             existing_v['value'] += vol_val
             is_up = existing_c['close'] >= existing_c['open']
@@ -313,7 +314,8 @@ def get_chart_history():
                 'open': open_val,
                 'high': high_val,
                 'low': low_val,
-                'close': close_val
+                'close': close_val,
+                'volume': vol_val
             })
             volume_data.append({
                 'time': time_val,
@@ -348,6 +350,7 @@ def get_chart_history():
             existing_c['high'] = max(existing_c['high'], reg_price_val, meta.get('regularMarketDayHigh') or reg_price_val)
             existing_c['low'] = min(existing_c['low'], reg_price_val, meta.get('regularMarketDayLow') or reg_price_val)
             existing_c['close'] = reg_price_val
+            existing_c['volume'] = int(meta.get('regularMarketVolume') or existing_c.get('volume', 0))
             is_up = existing_c['close'] >= existing_c['open']
             existing_v['color'] = '#26a69a' if is_up else '#ef5350'
         else:
@@ -363,7 +366,8 @@ def get_chart_history():
                 'open': reg_open_val,
                 'high': max(reg_high_val, reg_open_val, reg_price_val),
                 'low': min(reg_low_val, reg_open_val, reg_price_val),
-                'close': reg_price_val
+                'close': reg_price_val,
+                'volume': int(meta.get('regularMarketVolume') or 0)
             })
             volume_data.append({
                 'time': reg_time_val,
@@ -444,6 +448,13 @@ def get_chart_history():
         'cdrider': ind.get('cdrider', []),
         'cdrider_buy': ind.get('cdrider_buy', []),
         'cdrider_sell': ind.get('cdrider_sell', []),
+        'donchian_upper': ind.get('donchian_upper', []),
+        'donchian_middle': ind.get('donchian_middle', []),
+        'donchian_lower': ind.get('donchian_lower', []),
+        'donchian_buy': ind.get('donchian_buy', []),
+        'donchian_super_buy': ind.get('donchian_super_buy', []),
+        'donchian_sell': ind.get('donchian_sell', []),
+        'donchian_signals': ind.get('donchian_signals', []),
         'macd_line': ind['macd_line'],
         'macd_signal': ind['macd_signal'],
         'macd_hist': ind['macd_hist'],
