@@ -1,6 +1,8 @@
 """Quarterly results data provider.
-Fetches official corporate results from SEBI / BSE / NSE XBRL filings,
-caches them in a live JSON store, and updates periodically every 1 hour.
+Parses latest quarterly results from https://www.screener.in/results/latest/
+page by page, updates local JSON store, and updates every 15 minutes when the page loads
+or when the refresh button is clicked. Stops parser immediately when an existing record is encountered.
+Does not parse during server initialization.
 """
 
 from __future__ import annotations
@@ -11,31 +13,26 @@ import os
 import re
 import threading
 import time
-import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-_SEED_FILE = Path(__file__).resolve().parent / "seed_quarterly_results.json"
-CACHE_TTL_SECONDS = 3600  # 1 hour cache interval
-
+CACHE_TTL_SECONDS = 900  # 15 minutes
+SCREENER_LATEST_URL = "https://www.screener.in/results/latest/"
 HTTP_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ),
-    "Accept": "application/json, text/plain, */*",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.nseindia.com/companies-listing/corporate-filings-financial-results",
+    "Referer": "https://www.screener.in/",
 }
-
-NSE_FINANCIAL_RESULTS_API = "https://www.nseindia.com/api/corporates-financial-results"
-NSE_ANNOUNCEMENTS_API = "https://www.nseindia.com/api/corporate-announcements"
 
 
 def clean_symbol(sym: Optional[str]) -> str:
@@ -46,15 +43,53 @@ def clean_symbol(sym: Optional[str]) -> str:
     return s
 
 
+def clean_num(val_str: Any) -> Optional[float]:
+    if val_str is None:
+        return None
+    cleaned = str(val_str).replace(",", "").replace("%", "").replace("₹", "").strip()
+    cleaned = re.sub(r"[^\d.-]", "", cleaned)
+    try:
+        if "." in cleaned:
+            return float(cleaned)
+        return int(cleaned) if cleaned else None
+    except Exception:
+        return None
+
+
+def infer_industry(symbol: str, company_name: str) -> str:
+    name = (company_name or "").lower()
+    sym = (symbol or "").upper()
+
+    if any(k in name for k in ["bank", "gramin", "co-op"]):
+        return "Banking"
+    if any(k in name for k in ["finance", "finvest", "leasing", "capital", "holding", "invest", "wealth", "credit"]):
+        return "Finance"
+    if any(k in name for k in ["software", "infotech", "tech", "technologies", "systems", "digital", "cyber"]):
+        return "IT - Software"
+    if any(k in name for k in ["pharma", "laboratories", "lifesciences", "drugs", "healthcare", "health", "bio"]):
+        return "Pharma"
+    if any(k in name for k in ["chemical", "petrochem", "organics", "pigments", "fertilizer"]):
+        return "Chemicals"
+    if any(k in name for k in ["textile", "spintex", "yarn", "fabrics", "cotton", "apparel", "silk", "garment", "denim"]):
+        return "Textiles"
+    if any(k in name for k in ["steel", "metal", "tubes", "iron", "pipes", "alloys", "copper", "aluminum", "zinc"]):
+        return "Steel & Metals"
+    if any(k in name for k in ["motor", "auto", "automotive", "tyres", "gears", "wheels"]):
+        return "Auto"
+    if any(k in name for k in ["power", "energy", "solar", "wind", "electricity", "hydro"]):
+        return "Power"
+    if any(k in name for k in ["oil", "gas", "petroleum", "refinery", "refineries"]):
+        return "Oil & Gas"
+    if any(k in name for k in ["infra", "construction", "engineering", "projects", "build", "realty", "estate", "properties", "housing"]):
+        return "Infrastructure"
+    if any(k in name for k in ["foods", "beverages", "tea", "coffee", "sugar", "breweries", "distilleries", "dairy", "agro"]):
+        return "FMCG - Food & Agro"
+
+    return "Other"
+
+
 def calculate_quarters(ref_date: Optional[date] = None) -> Dict[str, str]:
-    """Calculate the previous quarter based on current date.
-    
-    Indian Financial Year (April 1 - March 31):
-    - Jan, Feb, Mar (Q4): Previous reported quarter is Q3 (ended Dec 31).
-    - Apr, May, Jun (Q1): Previous reported quarter is Q4 (ended Mar 31).
-    - Jul, Aug, Sep (Q2): Previous reported quarter is Q1 (ended Jun 30).
-    - Oct, Nov, Dec (Q3): Previous reported quarter is Q2 (ended Sep 30).
-    """
+    """Calculate reporting quarter labels."""
     d = ref_date or date.today()
     y = d.year
     m = d.month
@@ -98,54 +133,6 @@ def calculate_quarters(ref_date: Optional[date] = None) -> Dict[str, str]:
     }
 
 
-def _format_cr(val: Optional[float]) -> str:
-    if val is None:
-        return "—"
-    try:
-        fval = float(val)
-        if abs(fval) >= 10_000_000:
-            cr = fval / 10_000_000.0
-        elif abs(fval) >= 100_000:
-            cr = fval / 100.0
-        else:
-            cr = fval
-        if abs(cr) >= 100:
-            return f"{cr:,.0f}"
-        else:
-            return f"{cr:,.1f}"
-    except Exception:
-        return "—"
-
-
-def _format_eps(val: Optional[float]) -> str:
-    if val is None:
-        return "—"
-    try:
-        fval = float(val)
-        return f"₹ {fval:.2f}"
-    except Exception:
-        return "—"
-
-
-def _calc_pct(cur: Optional[float], base: Optional[float]) -> float:
-    if cur is None or base is None or base == 0:
-        return 0.0
-    try:
-        return round(((cur - base) / abs(base)) * 100.0, 1)
-    except Exception:
-        return 0.0
-
-
-def _parse_float(val: Any) -> Optional[float]:
-    if val is None:
-        return None
-    try:
-        cleaned = re.sub(r"[^\d\.\-]", "", str(val))
-        return float(cleaned) if cleaned else None
-    except Exception:
-        return None
-
-
 class QuarterlyResultsProvider:
     def __init__(self, data_dir: str = "."):
         self.data_dir = data_dir
@@ -154,63 +141,74 @@ class QuarterlyResultsProvider:
         self._last_fetch_time: float = 0
         self._is_updating: bool = False
 
-        self._session = requests.Session()
-        self._session.headers.update(HTTP_HEADERS)
-
-        # Primary dynamic JSON file store in user_data/
+        self._session_file = os.path.join(data_dir, "user_data", "screener_session.json")
         self._live_file = os.path.join(data_dir, "user_data", "quarterly_results_live.json")
         self._cache_file = os.path.join(data_dir, "user_data", "quarterly_results_cache.json")
 
-        # Load initial cached results from disk
+        # Load existing disk cache if available (NO PARSING ON INIT)
         cached = self._load_disk_cache()
         if cached:
             self._cache_data = cached
+            logger.info(f"QuarterlyResults: Loaded {len(cached)} existing records from disk cache.")
+        else:
+            logger.info("QuarterlyResults: Initialized without cache. Parsing will start upon page load.")
 
-        # Start 1-hour background updater daemon
-        self._stop_event = threading.Event()
-        self._bg_thread = threading.Thread(target=self._hourly_updater_loop, daemon=True, name="QuarterlyResultsUpdater")
-        self._bg_thread.start()
+    def _get_screener_session(self) -> requests.Session:
+        """Create an authenticated requests session for Screener.in."""
+        s = requests.Session()
+        s.headers.update(HTTP_HEADERS)
 
-    def _hourly_updater_loop(self):
-        """Background thread that triggers an update from official sources every 1 hour."""
-        # Initial run if no cache or cache older than 1 hour
-        now = time.time()
-        if not self._cache_data or (now - self._last_fetch_time >= CACHE_TTL_SECONDS):
-            time.sleep(2)  # Short delay on startup
+        # Check existing session cookies
+        if os.path.exists(self._session_file):
             try:
-                self.refresh_from_official_sources()
+                with open(self._session_file, "r", encoding="utf-8") as f:
+                    cookies = json.load(f)
+                for k, v in cookies.items():
+                    s.cookies.set(k, v, domain=".screener.in")
+                r = s.get(SCREENER_LATEST_URL, allow_redirects=False, timeout=8)
+                if r.status_code == 200:
+                    return s
             except Exception as e:
-                logger.warning(f"Initial XBRL update exception: {e}")
+                logger.warning(f"Failed to use stored session: {e}")
 
-        while not self._stop_event.is_set():
-            # Wait 3600 seconds (1 hour)
-            self._stop_event.wait(CACHE_TTL_SECONDS)
-            if self._stop_event.is_set():
-                break
-            try:
-                logger.info("QuarterlyResults: Running scheduled 1-hour official XBRL update...")
-                self.refresh_from_official_sources()
-            except Exception as e:
-                logger.warning(f"QuarterlyResults hourly update error: {e}")
+        # Need re-login via headless Selenium
+        logger.info("Screener session expired or missing. Re-authenticating via headless browser...")
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.common.by import By
+            from webdriver_manager.chrome import ChromeDriverManager
 
-    def _load_seed(self) -> List[Dict[str, Any]]:
-        """Load base seed items, ensuring quarters are dynamically updated to the current reporting quarter."""
-        q_info = calculate_quarters()
-        if _SEED_FILE.exists():
+            opts = Options()
+            opts.add_argument("--headless=new")
+            opts.add_argument("--window-size=1920,1080")
+            opts.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+            srv = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=srv, options=opts)
             try:
-                with open(_SEED_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, list):
-                        for item in data:
-                            item["quarters"] = {
-                                "latest": q_info["latest"],
-                                "prev": q_info["prev"],
-                                "year_ago": q_info["year_ago"],
-                            }
-                        return data
-            except Exception as e:
-                logger.warning(f"Error loading seed_quarterly_results.json: {e}")
-        return []
+                driver.get("https://www.screener.in/login/")
+                time.sleep(1)
+                driver.find_element(By.ID, "id_username").send_keys("capitaldesk.feed@gmail.com")
+                driver.find_element(By.ID, "id_password").send_keys("BlueHorizon*9842")
+                driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+                time.sleep(2)
+
+                cookies = driver.get_cookies()
+                cookie_dict = {c["name"]: c["value"] for c in cookies}
+                os.makedirs(os.path.dirname(self._session_file), exist_ok=True)
+                with open(self._session_file, "w", encoding="utf-8") as f:
+                    json.dump(cookie_dict, f, indent=2)
+
+                for k, v in cookie_dict.items():
+                    s.cookies.set(k, v, domain=".screener.in")
+            finally:
+                driver.quit()
+        except Exception as e:
+            logger.error(f"Failed to authenticate with Screener: {e}")
+
+        return s
 
     def _load_disk_cache(self) -> Optional[List[Dict[str, Any]]]:
         """Load from the primary JSON store (user_data/quarterly_results_live.json)."""
@@ -223,6 +221,7 @@ class QuarterlyResultsProvider:
                         self._last_fetch_time = payload["time"]
                         return payload["data"]
                     elif isinstance(payload, list):
+                        self._last_fetch_time = os.path.getmtime(target)
                         return payload
             except Exception as e:
                 logger.warning(f"Error reading disk cache {target}: {e}")
@@ -257,303 +256,224 @@ class QuarterlyResultsProvider:
                     os.rename(tmp_file, self._live_file)
             else:
                 os.rename(tmp_file, self._live_file)
+
+            # Also mirror to brain artifact directory if active
+            artifact_dir = r"C:\Users\DELL\.gemini\antigravity\brain\d8a2a5cf-e561-4304-947c-0ef08d36af53"
+            if os.path.exists(artifact_dir):
+                artifact_file = os.path.join(artifact_dir, "quarterly_results_latest.json")
+                try:
+                    with open(artifact_file, "w", encoding="utf-8") as f:
+                        json.dump(payload, f, indent=2)
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"Error saving to {self._live_file}: {e}")
 
-    def fetch_live_filings(self) -> Dict[str, Dict[str, Any]]:
-        """Fetch latest announcements from NSE and map PDF attachment URLs by symbol."""
-        filings_by_symbol = {}
-        try:
-            r = self._session.get(f"{NSE_ANNOUNCEMENTS_API}?index=equities", timeout=8)
-            if r.status_code == 200:
-                items = r.json()
-                if isinstance(items, list):
-                    for item in items:
-                        sym = clean_symbol(item.get("symbol"))
-                        if not sym:
-                            continue
-                        desc = str(item.get("desc") or "")
-                        pdf = item.get("attchmntFile")
-                        an_dt = item.get("an_dt")
-                        if pdf and ("result" in desc.lower() or "board meeting" in desc.lower() or "financial" in desc.lower()):
-                            filings_by_symbol[sym] = {
-                                "pdf_url": pdf,
-                                "an_dt": an_dt,
-                                "desc": desc,
-                            }
-        except Exception as e:
-            logger.info(f"Live filings fetch: {e}")
-
-        return filings_by_symbol
-
-    def _parse_single_xbrl(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Download and parse a single official SEBI / BSE / NSE XBRL XML file."""
-        xbrl_url = item.get("xbrl")
-        sym = clean_symbol(item.get("symbol"))
-        if not xbrl_url or not sym:
+    def _parse_card(self, table: Any, header_div: Any) -> Optional[Dict[str, Any]]:
+        """Parse a single company quarterly card from Screener HTML."""
+        comp_a = header_div.find("a", href=lambda h: h and "/company/" in h and "/source/" not in h)
+        if not comp_a:
             return None
+        company_name = comp_a.get_text(strip=True)
+        comp_href = comp_a.get("href", "")
 
-        try:
-            res = self._session.get(xbrl_url, timeout=10)
-            if res.status_code != 200:
-                return None
+        m_sym = re.search(r"/company/([^/]+)/", comp_href)
+        symbol = m_sym.group(1).upper() if m_sym else company_name.upper().replace(" ", "")
+        is_consolidated = "consolidated" in comp_href
 
-            root = ET.fromstring(res.content)
-            sales = None
-            expenses = None
-            pat = None
-            eps = None
-            ebitda = None
+        pdf_a = header_div.find("a", href=lambda h: h and "/source/quarter/" in h)
+        pdf_link = f"https://www.screener.in{pdf_a.get('href')}" if pdf_a else None
 
-            for child in root:
-                tag = child.tag.split("}")[-1]
-                c_ref = child.attrib.get("contextRef", "")
+        price = None
+        market_cap = None
+        pe = None
 
-                # Focus on the quarter ended context (OneD is standard SEBI XBRL tag)
-                if c_ref in ("OneD", "QuarterEnded", "CurrentQuarter"):
-                    text_val = (child.text or "").strip()
-                    if not text_val:
-                        continue
-                    try:
-                        f_val = float(text_val)
-                    except ValueError:
-                        continue
+        for span in header_div.find_all("span", class_="sub"):
+            txt = span.get_text(separator=" ", strip=True)
+            if "Price" in txt:
+                strong = span.find("span", class_="strong")
+                if strong:
+                    price = clean_num(strong.get_text(strip=True))
+            elif "M.Cap" in txt:
+                strong = span.find("span", class_="strong")
+                if strong:
+                    market_cap = clean_num(strong.get_text(strip=True))
+            elif "PE" in txt:
+                strong = span.find("span", class_="strong")
+                if strong:
+                    pe = clean_num(strong.get_text(strip=True))
 
-                    if tag in ("RevenueFromOperations", "IncomeOfBank", "InterestEarned", "Income"):
-                        if sales is None or tag == "RevenueFromOperations":
-                            sales = f_val
-                    elif tag in ("Expenses", "OperatingExpenses"):
-                        expenses = f_val
-                    elif tag in ("ProfitLossForPeriod", "ProfitLossForThePeriod", "ProfitLossFromOrdinaryActivitiesAfterTax", "ProfitLossForPeriodFromContinuingOperations"):
-                        if pat is None or tag == "ProfitLossForPeriod":
-                            pat = f_val
-                    elif tag in ("OperatingProfitBeforeProvisionAndContingencies", "OperatingProfit"):
-                        ebitda = f_val
-                    elif any(k in tag for k in ["BasicEarningsLossPerShare", "BasicEarningsPerShare"]):
-                        if eps is None or "ContinuingAndDiscontinued" in tag:
-                            eps = f_val
+        th_cells = [th.get_text(strip=True) for th in table.find_all("th")]
+        latest_q = th_cells[2] if len(th_cells) > 2 else ""
+        prev_q = th_cells[3] if len(th_cells) > 3 else ""
+        year_ago_q = th_cells[4] if len(th_cells) > 4 else ""
 
-            if sales is None and pat is None:
-                return None
+        metrics = []
+        rows = table.find("tbody").find_all("tr") if table.find("tbody") else table.find_all("tr")
 
-            if ebitda is None:
-                if sales is not None and expenses is not None:
-                    ebitda = sales - expenses
-                elif pat is not None:
-                    ebitda = pat * 1.3  # Reasonable proxy if expenses absent
+        for row in rows:
+            cells = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
+            if not cells or len(cells) < 3:
+                continue
+            row_label = cells[0].strip()
+            yoy_str = cells[1].strip() if len(cells) > 1 else ""
+            latest_val = clean_num(cells[2]) if len(cells) > 2 else None
+            prev_val = clean_num(cells[3]) if len(cells) > 3 else None
+            year_ago_val = clean_num(cells[4]) if len(cells) > 4 else None
 
-            # Extract broadcast / filing date
-            filing_date_raw = item.get("filingDate") or item.get("broadCastDate") or ""
-            date_iso = ""
-            for fmt in ("%d-%b-%Y %H:%M:%S", "%d-%b-%Y %H:%M", "%d-%b-%Y", "%Y-%m-%d"):
-                try:
-                    dt = datetime.strptime(filing_date_raw.strip(), fmt)
-                    date_iso = dt.strftime("%Y-%m-%d")
-                    break
-                except ValueError:
-                    continue
-            if not date_iso:
-                date_iso = date.today().strftime("%Y-%m-%d")
+            is_down = "⇩" in yoy_str or "-" in yoy_str
+            yoy_num = clean_num(yoy_str)
+            if isinstance(yoy_num, (int, float)):
+                if is_down and yoy_num > 0:
+                    yoy_num = -yoy_num
+            elif yoy_num is None:
+                yoy_num = 0.0
 
-            return {
-                "symbol": sym,
-                "company": item.get("companyName") or sym,
-                "sales": sales,
-                "ebitda": ebitda,
-                "pat": pat,
-                "eps": eps,
-                "date": date_iso,
-                "xbrl_url": xbrl_url,
-                "pdf_url": item.get("resultDetailedDataLink") or "",
-                "source": "Official XBRL",
-            }
-        except Exception as e:
-            logger.debug(f"Error parsing XBRL for {sym}: {e}")
-            return None
+            metrics.append({
+                "name": row_label,
+                "latest": f"{latest_val:,.2f}".rstrip("0").rstrip(".") if isinstance(latest_val, float) else (str(latest_val) if latest_val is not None else "—"),
+                "prev": f"{prev_val:,.2f}".rstrip("0").rstrip(".") if isinstance(prev_val, float) else (str(prev_val) if prev_val is not None else "—"),
+                "year_ago": f"{year_ago_val:,.2f}".rstrip("0").rstrip(".") if isinstance(year_ago_val, float) else (str(year_ago_val) if year_ago_val is not None else "—"),
+                "yoy_pct": float(yoy_num) if isinstance(yoy_num, (int, float)) else 0.0,
+                "yoy_display": yoy_str,
+            })
 
-    def fetch_official_xbrl_results(self, max_items: int = 100) -> List[Dict[str, Any]]:
-        """Fetch quarterly results list from official exchange and concurrently parse XBRL XML files."""
-        parsed_results = []
-        try:
-            r = self._session.get(f"{NSE_FINANCIAL_RESULTS_API}?index=equities&period=Quarterly", timeout=12)
-            if r.status_code == 200:
-                raw_items = r.json()
-                if isinstance(raw_items, list):
-                    xbrl_candidates = [
-                        it for it in raw_items
-                        if it.get("xbrl") and str(it.get("xbrl")).endswith(".xml")
-                    ][:max_items]
+        industry = infer_industry(symbol, company_name)
+        exchange = "BSE" if symbol.isdigit() else "NSE"
 
-                    with ThreadPoolExecutor(max_workers=8) as executor:
-                        futures = [executor.submit(self._parse_single_xbrl, it) for it in xbrl_candidates]
-                        for f in as_completed(futures):
-                            res = f.result()
-                            if res:
-                                parsed_results.append(res)
-        except Exception as e:
-            logger.info(f"Official XBRL API fetch error: {e}")
+        return {
+            "symbol": symbol,
+            "company": company_name,
+            "industry": industry,
+            "exchange": exchange,
+            "screener_url": f"https://www.screener.in{comp_href}",
+            "pdf_url": pdf_link,
+            "is_consolidated": is_consolidated,
+            "price": price,
+            "mcap_cr": market_cap,
+            "pe": pe,
+            "quarters": {
+                "latest": latest_q,
+                "prev": prev_q,
+                "year_ago": year_ago_q,
+            },
+            "metrics": metrics,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "source": "Screener.in",
+        }
 
-        return parsed_results
-
-    def refresh_from_official_sources(self) -> List[Dict[str, Any]]:
-        """Fetch fresh official XBRL filings, calculate dynamic quarters, update JSON store, and return records."""
+    def refresh_from_screener(self) -> List[Dict[str, Any]]:
+        """Fetch records page by page from Screener.in.
+        Update those if not exists. If any record exists, STOP parser immediately.
+        """
         with self._lock:
             if self._is_updating:
-                return list(self._cache_data or self._load_seed())
+                return list(self._cache_data or [])
             self._is_updating = True
 
         try:
-            logger.info("Refreshing quarterly results from Official SEBI / BSE / NSE XBRL filings...")
-            q_info = calculate_quarters()
+            logger.info("Starting page-by-page parse from https://www.screener.in/results/latest/...")
+            session = self._get_screener_session()
 
-            # 1. Start from seed or existing disk cache as baseline
-            base_items = self._load_disk_cache() or self._load_seed()
-            items_by_sym = {clean_symbol(item.get("symbol")): dict(item) for item in base_items}
+            # Existing records & keys
+            existing_records = list(self._cache_data or self._load_disk_cache() or [])
+            existing_keys: Set[Tuple[str, str]] = set()
+            for r in existing_records:
+                sym = clean_symbol(r.get("symbol"))
+                latest_q = str(r.get("quarters", {}).get("latest") or r.get("latest_quarter") or "").strip().lower()
+                if sym:
+                    existing_keys.add((sym, latest_q))
 
-            # 2. Fetch official live XBRL filings
-            xbrl_records = self.fetch_official_xbrl_results(max_items=80)
-            live_filings = self.fetch_live_filings()
+            new_records: List[Dict[str, Any]] = []
+            page = 1
+            hit_existing = False
 
-            # 3. Merge XBRL results into the records
-            for rec in xbrl_records:
-                sym = clean_symbol(rec["symbol"])
-                existing = items_by_sym.get(sym)
+            while True:
+                url = f"{SCREENER_LATEST_URL}?p={page}"
+                logger.info(f"Screener parser: fetching page {page} ({url})...")
+                try:
+                    resp = session.get(url, timeout=12)
+                except Exception as e:
+                    logger.warning(f"Error requesting {url}: {e}")
+                    break
 
-                if existing:
-                    # Update existing record with verified official XBRL numbers
-                    existing["date"] = rec["date"]
-                    existing["xbrl_url"] = rec["xbrl_url"]
-                    existing["source"] = "Official XBRL"
-                    if rec["pdf_url"]:
-                        existing["pdf_url"] = rec["pdf_url"]
-                    elif sym in live_filings and live_filings[sym].get("pdf_url"):
-                        existing["pdf_url"] = live_filings[sym]["pdf_url"]
+                if resp.status_code != 200:
+                    logger.warning(f"Failed to fetch {url}: HTTP {resp.status_code}")
+                    break
 
-                    existing["quarters"] = {
-                        "latest": q_info["latest"],
-                        "prev": q_info["prev"],
-                        "year_ago": q_info["year_ago"],
-                    }
+                soup = BeautifulSoup(resp.text, "html.parser")
+                tables = soup.find_all("table")
+                if not tables:
+                    logger.info(f"No tables on page {page}. Ending pagination.")
+                    break
 
-                    # Recompute metrics with live XBRL numbers
-                    updated_metrics = []
-                    for m in existing.get("metrics") or []:
-                        m_name = m.get("name")
-                        prev_num = _parse_float(m.get("prev"))
-                        year_ago_num = _parse_float(m.get("year_ago"))
+                page_new_count = 0
+                for table in tables:
+                    parent_div = table.parent
+                    header_div = parent_div.find_previous_sibling()
+                    if not header_div:
+                        continue
+                    card = self._parse_card(table, header_div)
+                    if not card:
+                        continue
 
-                        if m_name == "Sales" and rec["sales"] is not None:
-                            sales_str = _format_cr(rec["sales"])
-                            sales_num = _parse_float(sales_str)
-                            updated_metrics.append({
-                                "name": "Sales",
-                                "latest": sales_str,
-                                "prev": m.get("prev", "—"),
-                                "year_ago": m.get("year_ago", "—"),
-                                "yoy_pct": _calc_pct(sales_num, year_ago_num),
-                            })
-                        elif m_name == "EBIDT" and rec["ebitda"] is not None:
-                            eb_str = _format_cr(rec["ebitda"])
-                            eb_num = _parse_float(eb_str)
-                            updated_metrics.append({
-                                "name": "EBIDT",
-                                "latest": eb_str,
-                                "prev": m.get("prev", "—"),
-                                "year_ago": m.get("year_ago", "—"),
-                                "yoy_pct": _calc_pct(eb_num, year_ago_num),
-                            })
-                        elif m_name == "Net profit" and rec["pat"] is not None:
-                            pat_str = _format_cr(rec["pat"])
-                            pat_num = _parse_float(pat_str)
-                            updated_metrics.append({
-                                "name": "Net profit",
-                                "latest": pat_str,
-                                "prev": m.get("prev", "—"),
-                                "year_ago": m.get("year_ago", "—"),
-                                "yoy_pct": _calc_pct(pat_num, year_ago_num),
-                            })
-                        elif m_name == "EPS" and rec["eps"] is not None:
-                            eps_str = _format_eps(rec["eps"])
-                            eps_num = rec["eps"]
-                            updated_metrics.append({
-                                "name": "EPS",
-                                "latest": eps_str,
-                                "prev": m.get("prev", "—"),
-                                "year_ago": m.get("year_ago", "—"),
-                                "yoy_pct": _calc_pct(eps_num, year_ago_num),
-                            })
-                        else:
-                            updated_metrics.append(m)
-                    existing["metrics"] = updated_metrics
-                else:
-                    # Brand new company declared results in this earnings season
-                    new_item = {
-                        "symbol": sym,
-                        "company": rec["company"],
-                        "industry": "Other",
-                        "exchange": "NSE",
-                        "price": 100.0,
-                        "mcap_cr": 1000.0,
-                        "pe": 20.0,
-                        "date": rec["date"],
-                        "pdf_url": rec["pdf_url"] or (live_filings.get(sym, {}).get("pdf_url") or ""),
-                        "xbrl_url": rec["xbrl_url"],
-                        "source": "Official XBRL",
-                        "quarters": {
-                            "latest": q_info["latest"],
-                            "prev": q_info["prev"],
-                            "year_ago": q_info["year_ago"],
-                        },
-                        "metrics": [
-                            {"name": "Sales", "latest": _format_cr(rec["sales"]), "prev": "—", "year_ago": "—", "yoy_pct": 0.0},
-                            {"name": "EBIDT", "latest": _format_cr(rec["ebitda"]), "prev": "—", "year_ago": "—", "yoy_pct": 0.0},
-                            {"name": "Net profit", "latest": _format_cr(rec["pat"]), "prev": "—", "year_ago": "—", "yoy_pct": 0.0},
-                            {"name": "EPS", "latest": _format_eps(rec["eps"]), "prev": "—", "year_ago": "—", "yoy_pct": 0.0},
-                        ],
-                    }
-                    items_by_sym[sym] = new_item
+                    sym = clean_symbol(card["symbol"])
+                    latest_q = str(card["quarters"]["latest"]).strip().lower()
+                    key = (sym, latest_q)
 
-            # 4. Attach live official PDF links to any other items
-            for sym, item in items_by_sym.items():
-                if sym in live_filings and live_filings[sym].get("pdf_url") and not item.get("pdf_url"):
-                    item["pdf_url"] = live_filings[sym]["pdf_url"]
-                # Ensure all items carry dynamically computed quarters
-                item["quarters"] = {
-                    "latest": q_info["latest"],
-                    "prev": q_info["prev"],
-                    "year_ago": q_info["year_ago"],
-                }
+                    # Stopping condition: if record already exists in JSON store, STOP PARSER!
+                    if key in existing_keys:
+                        logger.info(f"Record {sym} ({card['quarters']['latest']}) already exists. STOPPING PARSER.")
+                        hit_existing = True
+                        break
+                    else:
+                        new_records.append(card)
+                        existing_keys.add(key)
+                        page_new_count += 1
 
-            updated_data = list(items_by_sym.values())
+                if hit_existing:
+                    logger.info(f"Existing record detected on page {page}. Halting further page requests.")
+                    break
+
+                # Check if next page exists
+                paginator = soup.find("p", class_="paginator")
+                has_next = False
+                if paginator:
+                    for a in paginator.find_all("a", href=True):
+                        if f"?p={page + 1}" in a["href"]:
+                            has_next = True
+                            break
+
+                if not has_next or page >= 25:
+                    logger.info(f"No more pages found after page {page}.")
+                    break
+
+                page += 1
+                time.sleep(0.3)
+
+            # Merge new records into existing store
+            if new_records:
+                logger.info(f"Found {len(new_records)} new/updated company records.")
+                # Deduplicate: new records take priority
+                new_key_set = {(clean_symbol(n["symbol"]), str(n["quarters"]["latest"]).strip().lower()) for n in new_records}
+                all_records = new_records + [
+                    r for r in existing_records
+                    if (clean_symbol(r.get("symbol")), str(r.get("quarters", {}).get("latest") or "").strip().lower()) not in new_key_set
+                ]
+            else:
+                logger.info("No new records found. All latest results are up-to-date.")
+                all_records = existing_records
 
             with self._lock:
-                self._cache_data = updated_data
+                self._cache_data = all_records
                 self._last_fetch_time = time.time()
-                self._save_disk_cache(updated_data)
+                self._save_disk_cache(all_records)
 
-            logger.info(f"Official XBRL update finished: {len(updated_data)} records saved to JSON store.")
-            return updated_data
+            logger.info(f"Screener update complete. Total records stored: {len(all_records)}.")
+            return all_records
         finally:
             with self._lock:
                 self._is_updating = False
-
-    def _get_all_results(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
-        now = time.time()
-        needs_fetch = force_refresh or self._cache_data is None or (now - self._last_fetch_time > CACHE_TTL_SECONDS)
-
-        if needs_fetch:
-            if force_refresh:
-                return self.refresh_from_official_sources()
-            else:
-                cached = self._load_disk_cache()
-                if cached and (now - self._last_fetch_time < CACHE_TTL_SECONDS):
-                    with self._lock:
-                        self._cache_data = cached
-                    return cached
-                else:
-                    return self.refresh_from_official_sources()
-
-        return list(self._cache_data or self._load_seed())
 
     def get_quarterly_results(
         self,
@@ -570,10 +490,30 @@ class QuarterlyResultsProvider:
         date_filter: str = "",
         force_refresh: bool = False,
     ) -> Dict[str, Any]:
-        all_items = self._get_all_results(force_refresh=force_refresh)
+        """Serve quarterly results.
+        Triggers Screener parser if:
+        - Page is loading and cache is missing / empty
+        - 15 minutes have passed since last update
+        - Refresh button is clicked (force_refresh = True)
+        """
+        now = time.time()
+        needs_parse = False
+
+        if force_refresh:
+            needs_parse = True
+        elif not self._cache_data or len(self._cache_data) == 0:
+            needs_parse = True
+        elif (now - self._last_fetch_time) >= CACHE_TTL_SECONDS:
+            needs_parse = True
+
+        if needs_parse:
+            all_items = self.refresh_from_screener()
+        else:
+            all_items = list(self._cache_data or [])
+
         q_info = calculate_quarters()
 
-        # 1. Collect metadata from all items (industry list with counts, available dates)
+        # 1. Collect metadata
         industry_counts: Dict[str, int] = {}
         dates_set: Set[str] = set()
 

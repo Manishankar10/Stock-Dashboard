@@ -154,7 +154,7 @@
                             ${comp} <span class="qr-ext-icon">↗</span>
                         </span>
                         ${item.pdf_url ? `<a href="${pdfUrl}" target="_blank" rel="noopener noreferrer" class="qr-pdf-link" title="Download Exchange PDF Filing">PDF <span class="qr-pdf-icon">📄</span></a>` : ''}
-                        ${xbrlUrl ? `<a href="${xbrlUrl}" target="_blank" rel="noopener noreferrer" class="qr-xbrl-link" title="View Official SEBI / BSE XBRL XML">XBRL <span class="qr-xbrl-icon">📑</span></a>` : ''}
+                        ${item.screener_url ? `<a href="${escapeHtml(item.screener_url)}" target="_blank" rel="noopener noreferrer" class="qr-xbrl-link" title="View on Screener.in">Screener <span class="qr-xbrl-icon">🔗</span></a>` : (xbrlUrl ? `<a href="${xbrlUrl}" target="_blank" rel="noopener noreferrer" class="qr-xbrl-link" title="View Official SEBI / BSE XBRL XML">XBRL <span class="qr-xbrl-icon">📑</span></a>` : '')}
                         ${ind ? `<span class="qr-industry-pill">${ind}</span>` : ''}
                     </div>
                     <div class="qr-key-stats">
