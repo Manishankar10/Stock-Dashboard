@@ -377,7 +377,7 @@
     align-items: start;
 }
 
-/* Chart Card & Legend */
+/* Chart Card */
 .pa-chart-card {
     background: rgba(30, 41, 59, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.06);
@@ -385,7 +385,8 @@
     padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    justify-content: center;
 }
 
 [data-theme="light"] .pa-chart-card {
@@ -427,74 +428,6 @@
 
 [data-theme="light"] .pa-chart-center-main {
     color: #0f172a;
-}
-
-/* Custom Legend */
-.pa-legend-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 220px;
-    overflow-y: auto;
-    padding-right: 4px;
-    scrollbar-width: thin;
-}
-
-.pa-legend-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    padding: 6px 10px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.02);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.pa-legend-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-}
-
-[data-theme="light"] .pa-legend-item {
-    background: #ffffff;
-    border: 1px solid #f1f5f9;
-}
-
-[data-theme="light"] .pa-legend-item:hover {
-    background: #f1f5f9;
-}
-
-.pa-legend-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.pa-legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.pa-legend-pct {
-    font-weight: 700;
-    color: #f1f5f9;
-    min-width: 38px;
-}
-
-[data-theme="light"] .pa-legend-pct {
-    color: #0f172a;
-}
-
-.pa-legend-label {
-    color: #94a3b8;
-    font-weight: 500;
-}
-
-[data-theme="light"] .pa-legend-label {
-    color: #475569;
 }
 
 /* --- Breakdown Table --- */

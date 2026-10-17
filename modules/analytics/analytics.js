@@ -707,7 +707,7 @@
             // Render Layout: Chart Card (Left) + Table Card (Right)
             mountEl.innerHTML = `
                 <div class="pa-analysis-grid">
-                    <!-- Left: Donut Chart & Legend -->
+                    <!-- Left: Donut Chart -->
                     <div class="pa-chart-card">
                         <div class="pa-chart-canvas-box">
                             <canvas id="paDonutChart"></canvas>
@@ -715,18 +715,6 @@
                                 <div class="pa-chart-center-sub">${escapeHtml(tab.toUpperCase().replace('-', ' '))}</div>
                                 <div class="pa-chart-center-main">${categories.length} Types</div>
                             </div>
-                        </div>
-                        <div class="pa-legend-list">
-                            ${categories.map(c => `
-                                <div class="pa-legend-item" onclick="window.openPaDetailsModal('${escapeHtml(c.key)}')">
-                                    <div class="pa-legend-left">
-                                        <span class="pa-legend-dot" style="background-color: ${c.color};"></span>
-                                        <span class="pa-legend-pct">${Math.round(c.weightage)}%</span>
-                                        <span class="pa-legend-label">${escapeHtml(c.name)}</span>
-                                    </div>
-                                    <span class="pa-row-chevron">›</span>
-                                </div>
-                            `).join('')}
                         </div>
                     </div>
 
