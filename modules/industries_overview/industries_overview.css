@@ -1,0 +1,577 @@
+/* =========================================================
+   CAPITAL DESK - INDUSTRIES OVERVIEW STYLES
+   Location: modules/industries_overview/industries_overview.css
+   ========================================================= */
+
+.ind-overview-container {
+    width: 100%;
+    padding: 8px 16px 32px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    color: var(--text-primary, #f1f5f9);
+}
+
+/* 1. Header Panel */
+.ind-header-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-color, #2a2e39);
+}
+
+.ind-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ind-title-icon {
+    font-size: 24px;
+}
+
+.ind-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary, #f8fafc);
+    letter-spacing: -0.3px;
+}
+
+.ind-badge-count {
+    background: rgba(16, 185, 129, 0.14);
+    color: #10b981;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ind-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary, #94a3b8);
+    margin-top: 4px;
+}
+
+.ind-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ind-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.ind-search-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 13px;
+    color: var(--text-secondary, #94a3b8);
+    pointer-events: none;
+}
+
+.ind-search-box input {
+    background: var(--bg-card, #1e222d);
+    border: 1px solid var(--border-color, #2a2e39);
+    color: var(--text-primary, #f8fafc);
+    padding: 7px 30px 7px 32px;
+    border-radius: 6px;
+    font-size: 13px;
+    width: 250px;
+    transition: all 0.2s;
+}
+
+.ind-search-box input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    width: 290px;
+}
+
+#indClearSearchBtn {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.ind-action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-ind-action {
+    background: var(--bg-card, #1e222d);
+    border: 1px solid var(--border-color, #2a2e39);
+    color: var(--text-primary, #f8fafc);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.btn-ind-action:hover {
+    background: var(--bg-subtle, #2a2e39);
+    border-color: #3b82f6;
+}
+
+.btn-ind-refresh:hover {
+    border-color: #10b981;
+    color: #10b981;
+}
+
+/* 2. Macro Sector Filter Pills */
+.ind-macro-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    scrollbar-width: thin;
+}
+
+.ind-macro-filter-bar::-webkit-scrollbar {
+    height: 4px;
+}
+.ind-macro-filter-bar::-webkit-scrollbar-thumb {
+    background: var(--border-color, #2a2e39);
+    border-radius: 4px;
+}
+
+.macro-pill {
+    background: var(--bg-card, #1e222d);
+    border: 1px solid var(--border-color, #2a2e39);
+    color: var(--text-secondary, #94a3b8);
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.macro-pill:hover {
+    color: var(--text-primary, #f8fafc);
+    border-color: #3b82f6;
+}
+
+.macro-pill.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #10b981;
+    font-weight: 700;
+}
+
+/* 3. Table Meta Info Bar */
+.ind-table-meta-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12.5px;
+    color: var(--text-secondary, #94a3b8);
+    margin-bottom: 10px;
+}
+
+.ind-table-tip {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+/* 4. Tables Styling */
+.ind-table-responsive-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border-color, #2a2e39);
+    border-radius: 8px;
+    background: var(--bg-card, #131722);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.ind-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.ind-table thead {
+    background: var(--bg-subtle, #1e222d);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.ind-table th {
+    padding: 10px 12px;
+    font-weight: 700;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary, #94a3b8);
+    border-bottom: 1px solid var(--border-color, #2a2e39);
+    user-select: none;
+}
+
+.ind-table th.th-sortable {
+    cursor: pointer;
+}
+.ind-table th.th-sortable:hover {
+    color: #3b82f6;
+}
+
+.ind-table th .sort-icon {
+    display: inline-block;
+    width: 12px;
+    font-size: 10px;
+    color: #10b981;
+    margin-left: 3px;
+}
+
+.ind-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(42, 46, 57, 0.5);
+    color: var(--text-primary, #f1f5f9);
+}
+
+.ind-table tbody tr {
+    transition: background 0.1s ease;
+}
+
+.ind-table tbody tr:hover {
+    background: var(--bg-hover, rgba(59, 130, 246, 0.08));
+}
+
+.ind-table td.th-num, .ind-table th.th-num {
+    text-align: right;
+    font-family: monospace;
+}
+
+.ind-table td.th-sno, .ind-table th.th-sno {
+    width: 45px;
+    text-align: center;
+    color: var(--text-secondary, #64748b);
+    font-weight: 600;
+}
+
+.ind-table th.th-center, .ind-table td.th-center {
+    text-align: center;
+}
+
+/* Industry Name Clickable Link */
+.ind-link-cell {
+    font-weight: 700;
+    color: #38bdf8;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ind-link-cell:hover {
+    color: #10b981;
+    text-decoration: underline;
+}
+
+.ind-tag-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color, #2a2e39);
+    color: var(--text-secondary, #cbd5e1);
+}
+
+/* Color Val Badges */
+.val-pos {
+    color: #10b981 !important;
+    font-weight: 700;
+}
+.val-neg {
+    color: #ef4444 !important;
+    font-weight: 700;
+}
+.val-neutral {
+    color: var(--text-secondary, #94a3b8);
+}
+
+/* 5. Breadcrumb Navigation (Refer Image 2) */
+.ind-breadcrumb-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-card, #131722);
+    border: 1px solid var(--border-color, #2a2e39);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    font-size: 13.5px;
+}
+
+.bc-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #38bdf8;
+    cursor: pointer;
+    font-weight: 600;
+    transition: color 0.15s;
+}
+
+.bc-item:hover {
+    color: #10b981;
+    text-decoration: underline;
+}
+
+.bc-sep {
+    color: var(--text-secondary, #64748b);
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.bc-current {
+    color: var(--text-primary, #f8fafc) !important;
+    cursor: default;
+    text-decoration: none !important;
+}
+
+.bc-icon {
+    font-size: 14px;
+}
+
+/* 6. Industry Detail Banner */
+.ind-detail-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+    border: 1px solid var(--border-color, #2a2e39);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+}
+
+.btn-back-overview {
+    background: transparent;
+    border: 1px solid #3b82f6;
+    color: #38bdf8;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: all 0.15s;
+}
+
+.btn-back-overview:hover {
+    background: rgba(59, 130, 246, 0.15);
+    color: #ffffff;
+}
+
+.ind-detail-title {
+    margin: 4px 0 2px;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-primary, #f8fafc);
+}
+
+.ind-detail-codes {
+    font-size: 11.5px;
+    color: var(--text-secondary, #94a3b8);
+    font-family: monospace;
+}
+
+.ind-banner-stats {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.ind-b-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.ind-bs-lbl {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary, #94a3b8);
+    letter-spacing: 0.3px;
+}
+
+.ind-bs-val {
+    font-size: 15px;
+    font-weight: 800;
+    font-family: monospace;
+    color: var(--text-primary, #f8fafc);
+    margin-top: 2px;
+}
+
+/* 7. Stocks Table Toolbar */
+.ind-stocks-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.ind-stocks-count-info {
+    font-size: 13px;
+    color: var(--text-primary, #f1f5f9);
+}
+
+.ind-stocks-search input {
+    background: var(--bg-card, #1e222d);
+    border: 1px solid var(--border-color, #2a2e39);
+    color: var(--text-primary, #f8fafc);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    width: 220px;
+}
+
+.ind-stocks-search input:focus {
+    outline: none;
+    border-color: #10b981;
+}
+
+/* 8. Action Buttons in Stocks Table */
+.stk-action-btn {
+    background: var(--bg-subtle, #1e222d);
+    border: 1px solid var(--border-color, #2a2e39);
+    color: var(--text-primary, #f8fafc);
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    margin-right: 4px;
+    transition: all 0.15s;
+}
+
+.stk-action-btn:hover {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+
+.stk-action-chart:hover {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+}
+
+/* Spinner */
+.ind-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(16, 185, 129, 0.2);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: indSpin 0.8s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes indSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Light Theme Overrides */
+[data-theme="light"] .ind-overview-container {
+    color: #0f172a;
+}
+[data-theme="light"] .ind-header-panel,
+[data-theme="light"] .ind-table-responsive-wrapper,
+[data-theme="light"] .ind-breadcrumb-nav,
+[data-theme="light"] .ind-detail-banner {
+    border-color: #e2e8f0;
+}
+[data-theme="light"] .ind-table-responsive-wrapper,
+[data-theme="light"] .ind-breadcrumb-nav {
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+[data-theme="light"] .ind-table thead {
+    background: #f8fafc;
+}
+[data-theme="light"] .ind-table th {
+    color: #64748b;
+    border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .ind-table td {
+    color: #1e293b;
+    border-bottom-color: #f1f5f9;
+}
+[data-theme="light"] .ind-table tbody tr:hover {
+    background: #f1f5f9;
+}
+[data-theme="light"] .ind-search-box input,
+[data-theme="light"] .btn-ind-action,
+[data-theme="light"] .macro-pill,
+[data-theme="light"] .ind-stocks-search input,
+[data-theme="light"] .stk-action-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+[data-theme="light"] .ind-tag-pill {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #475569;
+}
+[data-theme="light"] .ind-detail-banner {
+    background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .ind-overview-container {
+        padding: 6px 10px 24px;
+    }
+    .ind-title {
+        font-size: 18px;
+    }
+    .ind-search-box input {
+        width: 100%;
+    }
+    .ind-search-box input:focus {
+        width: 100%;
+    }
+    .ind-banner-stats {
+        gap: 12px;
+        justify-content: flex-start;
+    }
+    .ind-b-stat {
+        align-items: flex-start;
+    }
+}

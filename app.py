@@ -61,6 +61,7 @@ from modules.quarterly_results import quarterly_results_bp, init_quarterly_resul
 from modules.transactions import transactions_bp, init_transactions
 from modules.sector_rotation import sector_rotation_bp, init_sector_rotation
 from modules.broker_research import broker_research_bp, init_broker_research
+from modules.industries_overview import industries_overview_bp, init_industries_overview
 
 # Initialize Flask Application
 app = Flask(__name__)
@@ -116,6 +117,7 @@ init_quarterly_results(login_required, load_data, BASE_DATA_DIR)
 init_transactions(login_required, load_data, BASE_DATA_DIR)
 init_sector_rotation(login_required, load_data, BASE_DATA_DIR)
 init_broker_research(login_required, load_data)
+init_industries_overview(login_required, load_data, BASE_DATA_DIR)
 
 # Register Feature Blueprints
 app.register_blueprint(auth_admin_bp)
@@ -139,6 +141,7 @@ app.register_blueprint(quarterly_results_bp)
 app.register_blueprint(transactions_bp)
 app.register_blueprint(sector_rotation_bp)
 app.register_blueprint(broker_research_bp)
+app.register_blueprint(industries_overview_bp)
 
 # Static Asset Serving for Modules
 @app.route("/modules/<path:filename>")
@@ -190,6 +193,11 @@ def transactions_page():
 @login_required
 def sector_rotation_page():
     return render_template("index.html", initial_tab="sector-rotation")
+
+@app.route("/industries-overview")
+@login_required
+def industries_overview_page():
+    return render_template("index.html", initial_tab="industries-overview")
 
 @app.route("/login", endpoint="login_page")
 def login_page():

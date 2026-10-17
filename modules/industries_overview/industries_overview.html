@@ -1,0 +1,196 @@
+<!-- =========================================================
+     CAPITAL DESK - INDUSTRIES OVERVIEW (SEBI/NSE 4-TIER HIERARCHY)
+     Location: modules/industries_overview/industries_overview.html
+     ========================================================= -->
+<div id="tab-industries-overview" class="tab-content" style="display: none;">
+    <div class="ind-overview-container">
+        
+        <!-- 1. Header & Summary Row -->
+        <div class="ind-header-panel">
+            <div class="ind-header-left">
+                <div class="ind-title-row">
+                    <span class="ind-title-icon">🏭</span>
+                    <h2 class="ind-title">Industries Overview</h2>
+                    <span class="ind-badge-count" id="indTotalCountBadge">188 Industries</span>
+                </div>
+                <div class="ind-subtitle">
+                    Comparision of important ratios & valuations across different industries with SEBI/NSE 4-tier classification.
+                </div>
+            </div>
+
+            <div class="ind-header-right">
+                <div class="ind-search-box">
+                    <span class="ind-search-icon">🔍</span>
+                    <input type="text" id="indSearchInput" placeholder="Search industry, sector, group..." oninput="handleIndustrySearch(this.value)">
+                    <button type="button" id="indClearSearchBtn" onclick="clearIndustrySearch()" style="display: none;">✕</button>
+                </div>
+                <div class="ind-action-buttons">
+                    <button type="button" class="btn-ind-action" onclick="exportIndustriesToCsv()" title="Export Industries to CSV">
+                        📥 Export CSV
+                    </button>
+                    <button type="button" class="btn-ind-action btn-ind-refresh" onclick="refreshIndustriesData()" title="Refresh Industry Data">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Macro-Economic Sector Quick Filter Pills -->
+        <div class="ind-macro-filter-bar" id="indMacroFilterBar">
+            <button type="button" class="macro-pill active" data-macro="ALL" onclick="filterByMacroSector('ALL', this)">
+                🌐 All Sectors (188)
+            </button>
+            <!-- Injected dynamically via JS -->
+        </div>
+
+        <!-- =========================================================
+             VIEW A: INDUSTRIES DIRECTORY TABLE
+        ========================================================= -->
+        <div id="indTableView" class="ind-view-section">
+            <div class="ind-table-meta-bar">
+                <div class="ind-table-info">
+                    Showing <strong id="indShowingCount">188</strong> industries
+                    <span id="indFilterLabel" style="display: none; color: #10b981; margin-left: 6px;"></span>
+                </div>
+                <div class="ind-table-tip">
+                    💡 Click on any industry to view its related stocks & corporate earnings. Click column headers to sort.
+                </div>
+            </div>
+
+            <div class="ind-table-responsive-wrapper">
+                <table class="ind-table" id="indMasterTable">
+                    <thead>
+                        <tr>
+                            <th class="th-sortable th-sno" onclick="sortIndustries('sno')">S.No. <span class="sort-icon" id="sort-ind-sno"></span></th>
+                            <th class="th-sortable th-name" onclick="sortIndustries('name')">Industry <span class="sort-icon" id="sort-ind-name">▲</span></th>
+                            <th class="th-sortable th-macro" onclick="sortIndustries('macro_name')">Macro Sector <span class="sort-icon" id="sort-ind-macro_name"></span></th>
+                            <th class="th-sortable th-sector" onclick="sortIndustries('sector_name')">Sector <span class="sort-icon" id="sort-ind-sector_name"></span></th>
+                            <th class="th-sortable th-group" onclick="sortIndustries('industry_group_name')">Industry Group <span class="sort-icon" id="sort-ind-industry_group_name"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('company_count')">No. of Co. <span class="sort-icon" id="sort-ind-company_count"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('total_market_cap')">Total M.Cap (₹ Cr) <span class="sort-icon" id="sort-ind-total_market_cap"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('median_market_cap')">Median M.Cap (₹ Cr) <span class="sort-icon" id="sort-ind-median_market_cap"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('median_pe')">Median P/E <span class="sort-icon" id="sort-ind-median_pe"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('sales_growth')">Sales Growth <span class="sort-icon" id="sort-ind-sales_growth"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('opm')">OPM <span class="sort-icon" id="sort-ind-opm"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('wtd_roce')">Wtd. Avg ROCE <span class="sort-icon" id="sort-ind-wtd_roce"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('return_1y')">Median 1Y Return <span class="sort-icon" id="sort-ind-return_1y"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="indMasterTableBody">
+                        <tr>
+                            <td colspan="13" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                <div class="ind-spinner"></div>
+                                <div style="margin-top: 10px;">Loading Industries Overview...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             VIEW B: STOCKS DRILL-DOWN VIEW (REFER IMAGE 1 & 2)
+        ========================================================= -->
+        <div id="indStocksView" class="ind-view-section" style="display: none;">
+            
+            <!-- Breadcrumbs matching Image 2 exactly -->
+            <div class="ind-breadcrumb-nav" id="indBreadcrumbNav">
+                <span class="bc-item bc-root" onclick="closeIndustryStocksView()">
+                    <span class="bc-icon">▦</span> Industries
+                </span>
+                <span class="bc-sep">/</span>
+                <span class="bc-item" id="bcMacro" onclick="filterByMacroFromBreadcrumb()">
+                    <span class="bc-icon">🌐</span> <span id="bcMacroName">-</span>
+                </span>
+                <span class="bc-sep">/</span>
+                <span class="bc-item" id="bcSector">
+                    <span class="bc-icon">◔</span> <span id="bcSectorName">-</span>
+                </span>
+                <span class="bc-sep">/</span>
+                <span class="bc-item" id="bcGroup">
+                    <span class="bc-icon">📈</span> <span id="bcGroupName">-</span>
+                </span>
+                <span class="bc-sep">/</span>
+                <span class="bc-item bc-current" id="bcIndustry">
+                    <span class="bc-icon">⚒️</span> <strong id="bcIndustryName">-</strong>
+                </span>
+            </div>
+
+            <!-- Industry Banner Card -->
+            <div class="ind-detail-banner">
+                <div class="ind-banner-left">
+                    <button type="button" class="btn-back-overview" onclick="closeIndustryStocksView()">
+                        ← Back to Industries Overview
+                    </button>
+                    <h2 class="ind-detail-title" id="indDetailTitle">-</h2>
+                    <div class="ind-detail-codes" id="indDetailCodes">-</div>
+                </div>
+
+                <div class="ind-banner-stats" id="indBannerStats">
+                    <div class="ind-b-stat">
+                        <span class="ind-bs-lbl">Companies</span>
+                        <strong class="ind-bs-val" id="indStatCompanies">-</strong>
+                    </div>
+                    <div class="ind-b-stat">
+                        <span class="ind-bs-lbl">Total M.Cap</span>
+                        <strong class="ind-bs-val" id="indStatMCap">-</strong>
+                    </div>
+                    <div class="ind-b-stat">
+                        <span class="ind-bs-lbl">Median P/E</span>
+                        <strong class="ind-bs-val" id="indStatPE">-</strong>
+                    </div>
+                    <div class="ind-b-stat">
+                        <span class="ind-bs-lbl">Avg ROCE</span>
+                        <strong class="ind-bs-val" id="indStatROCE">-</strong>
+                    </div>
+                    <div class="ind-b-stat">
+                        <span class="ind-bs-lbl">1Y Return</span>
+                        <strong class="ind-bs-val" id="indStat1Y">-</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stocks Table Toolbar -->
+            <div class="ind-stocks-toolbar">
+                <div class="ind-stocks-count-info">
+                    Showing <strong id="indStockShowingCount">0</strong> related companies in <span id="indStockHeadingName" style="color:#10b981; font-weight:700;">-</span>
+                </div>
+                <div class="ind-stocks-search">
+                    <input type="text" id="indStockFilterInput" placeholder="Filter companies in this industry..." oninput="handleStockFilter(this.value)">
+                </div>
+            </div>
+
+            <!-- Stocks Table matching Image 1 -->
+            <div class="ind-table-responsive-wrapper">
+                <table class="ind-table ind-stocks-table" id="indStocksTable">
+                    <thead>
+                        <tr>
+                            <th class="th-sortable th-sno" onclick="sortStocks('sno')">S.No. <span class="sort-icon" id="sort-stk-sno"></span></th>
+                            <th class="th-sortable th-company" onclick="sortStocks('name')">Company <span class="sort-icon" id="sort-stk-name"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('cmp')">CMP (₹) <span class="sort-icon" id="sort-stk-cmp"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('pe')">P/E <span class="sort-icon" id="sort-stk-pe"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('mar_cap')">Mar Cap (₹ Cr.) <span class="sort-icon" id="sort-stk-mar_cap">▼</span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('div_yield')">Div Yld % <span class="sort-icon" id="sort-stk-div_yield"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('np_qtr')">NP Qtr (₹ Cr.) <span class="sort-icon" id="sort-stk-np_qtr"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('qtr_profit_var')">Qtr Profit Var % <span class="sort-icon" id="sort-stk-qtr_profit_var"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('sales_qtr')">Sales Qtr (₹ Cr.) <span class="sort-icon" id="sort-stk-sales_qtr"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('qtr_sales_var')">Qtr Sales Var % <span class="sort-icon" id="sort-stk-qtr_sales_var"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('roce')">ROCE % <span class="sort-icon" id="sort-stk-roce"></span></th>
+                            <th class="th-center" style="width: 110px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="indStocksTableBody">
+                        <tr>
+                            <td colspan="12" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                <div class="ind-spinner"></div>
+                                <div style="margin-top: 10px;">Loading related stocks...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+</div>

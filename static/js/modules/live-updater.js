@@ -375,6 +375,7 @@
             else if (pathname === '/quarterly-results') targetTab = 'quarterly-results';
             else if (pathname === '/transactions') targetTab = 'transactions';
             else if (pathname === '/sector-rotation') targetTab = 'sector-rotation';
+            else if (pathname === '/industries-overview') targetTab = 'industries-overview';
             else if (pathname === '/' || pathname === '/watchlists') targetTab = 'watchlists';
 
             // 1. Immediately activate target tab so UI is interactive instantly (0ms)
@@ -410,6 +411,10 @@
             } else if (targetTab === 'sector-rotation') {
                 if (typeof window.loadSectorRotationModule === 'function') {
                     window.loadSectorRotationModule();
+                }
+            } else if (targetTab === 'industries-overview') {
+                if (typeof window.loadIndustriesOverviewModule === 'function') {
+                    window.loadIndustriesOverviewModule();
                 }
             }
 
