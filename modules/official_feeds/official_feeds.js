@@ -15,6 +15,69 @@
         }[char]));
     }
 
+    function getDisplayTitle(val) {
+        if (!val || val === 'All Watchlists' || val.toLowerCase() === 'all watchlists' || val.toLowerCase() === 'all_watchlists') {
+            return 'All Watchlists';
+        }
+        if (val === 'Portfolio' || val.toLowerCase() === 'portfolio' || val.toLowerCase() === 'all portfolios') {
+            return 'Portfolio';
+        }
+        if (typeof val === 'string' && val.startsWith('portfolio:')) {
+            return val.replace('portfolio:', '').trim() + ' (Portfolio)';
+        }
+        return val;
+    }
+
+    function populateWatchlistSelect(modal, targetVal, watchlistsList, portfoliosList) {
+        const watchlistSelect = modal.querySelector('#of-watchlist');
+        if (!watchlistSelect) return;
+
+        let wls = watchlistsList;
+        if (!wls && window.watchlistsData) {
+            wls = Object.keys(window.watchlistsData);
+        }
+        let pfs = portfoliosList;
+        if (!pfs && window.portfoliosData) {
+            pfs = Object.keys(window.portfoliosData);
+        }
+
+        const effectiveVal = targetVal || currentWatchlist || 'All Watchlists';
+        let optionsHtml = '';
+
+        // 1. All Watchlists Option
+        const isAllWl = (effectiveVal === 'All Watchlists');
+        optionsHtml += `<option value="All Watchlists" ${isAllWl ? 'selected' : ''}>📁 All Watchlists</option>`;
+
+        // 2. Individual Watchlists
+        if (wls && wls.length > 0) {
+            optionsHtml += `<optgroup label="Watchlists">`;
+            wls.forEach(wl => {
+                const isSel = effectiveVal === wl ? 'selected' : '';
+                optionsHtml += `<option value="${esc(wl)}" ${isSel}>${esc(wl)}</option>`;
+            });
+            optionsHtml += `</optgroup>`;
+        }
+
+        // 3. Portfolio Options
+        optionsHtml += `<optgroup label="Portfolio">`;
+        const isPf = (effectiveVal === 'Portfolio');
+        optionsHtml += `<option value="Portfolio" ${isPf ? 'selected' : ''}>💼 Portfolio (All)</option>`;
+        if (pfs && pfs.length > 0) {
+            pfs.forEach(pf => {
+                const pfVal = `portfolio:${pf}`;
+                const isSel = effectiveVal === pfVal ? 'selected' : '';
+                optionsHtml += `<option value="${esc(pfVal)}" ${isSel}>💼 ${esc(pf)}</option>`;
+            });
+        }
+        optionsHtml += `</optgroup>`;
+
+        watchlistSelect.innerHTML = optionsHtml;
+        watchlistSelect.value = effectiveVal;
+        currentWatchlist = watchlistSelect.value || effectiveVal;
+        const titleEl = modal.querySelector('#of-watchlist-title');
+        if (titleEl) titleEl.textContent = getDisplayTitle(currentWatchlist);
+    }
+
     function ensureModal() {
         let overlay = document.getElementById('watchlistOfficialFeedsModal');
         if (overlay) return overlay;
@@ -35,7 +98,7 @@
                 <div class="of-toolbar">
                     <span class="of-category">Company Update</span>
                     <label class="of-filter-label" for="of-watchlist">Watchlist</label>
-                    <select id="of-watchlist" class="of-select"><option value="">Current watchlist</option></select>
+                    <select id="of-watchlist" class="of-select"><option value="All Watchlists">📁 All Watchlists</option></select>
                     <label class="of-filter-label" for="of-stock">Stock</label>
                     <select id="of-stock" class="of-select"><option value="">All stocks</option></select>
                     <label class="of-filter-label" for="of-subcategory">Subcategory</label>
@@ -46,6 +109,8 @@
                 <div class="of-source-note">Filings link to official exchange pages. AI summaries send the linked public filing to Google Gemini when requested.</div>
             </section>`;
         document.body.appendChild(overlay);
+        populateWatchlistSelect(overlay, currentWatchlist);
+
         overlay.addEventListener('click', event => {
             if (event.target === overlay) closeWatchlistOfficialFeeds();
         });
@@ -73,7 +138,7 @@
             loadedItems = [];
             knownSubcategories = new Set();
             hasMore = true;
-            overlay.querySelector('#of-watchlist-title').textContent = currentWatchlist;
+            overlay.querySelector('#of-watchlist-title').textContent = getDisplayTitle(currentWatchlist);
             overlay.querySelector('#of-stock').value = '';
             overlay.querySelector('#of-subcategory').value = '';
             loadPage();
@@ -92,20 +157,16 @@
     }
 
     window.openWatchlistOfficialFeeds = function (watchlistName) {
-        if (!watchlistName) return;
-        currentWatchlist = watchlistName;
+        currentWatchlist = watchlistName || 'All Watchlists';
         currentPage = 1;
         currentSubcategory = '';
         loadedItems = [];
         knownSubcategories = new Set();
         hasMore = true;
         const modal = ensureModal();
-        modal.querySelector('#of-watchlist-title').textContent = watchlistName;
+        populateWatchlistSelect(modal, currentWatchlist);
         currentSymbol = '';
         modal.querySelector('#of-stock').value = '';
-        const watchlistSelect = modal.querySelector('#of-watchlist');
-        watchlistSelect.innerHTML = `<option value="${esc(watchlistName)}">${esc(watchlistName)}</option>`;
-        watchlistSelect.value = watchlistName;
         modal.querySelector('#of-subcategory').value = '';
         modal.classList.add('is-open');
         document.body.classList.add('of-modal-open');
@@ -212,8 +273,11 @@
         const feed = modal.querySelector('#of-feed');
         if (loading) return;
         loading = true;
+        let scopeMsg = 'this watchlist';
+        if (currentWatchlist.toLowerCase().includes('portfolio')) scopeMsg = 'your portfolio';
+        else if (currentWatchlist === 'All Watchlists') scopeMsg = 'all watchlists';
         if (loadedItems.length) renderItems([]);
-        else feed.innerHTML = '<div class="of-loading"><span class="of-spinner"></span>Loading official exchange announcements for this watchlist…</div>';
+        else feed.innerHTML = `<div class="of-loading"><span class="of-spinner"></span>Loading official exchange announcements for ${scopeMsg}…</div>`;
         const refreshButton = modal.querySelector('#of-refresh');
         refreshButton.style.display = 'none';
         let loadError = '';
@@ -228,9 +292,8 @@
 
             const select = modal.querySelector('#of-subcategory');
             const selected = currentSubcategory;
-            const watchlistSelect = modal.querySelector('#of-watchlist');
-            watchlistSelect.innerHTML = (data.watchlists || [currentWatchlist]).map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
-            watchlistSelect.value = currentWatchlist;
+            populateWatchlistSelect(modal, data.watchlist || currentWatchlist, data.watchlists, data.portfolios);
+
             const stockSelect = modal.querySelector('#of-stock');
             stockSelect.innerHTML = '<option value="">All stocks</option>' + (data.stocks || []).map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
             stockSelect.value = currentSymbol;
@@ -239,7 +302,9 @@
             select.value = selected;
             hasMore = Boolean(data.has_more);
             renderItems(data.items);
-            modal.querySelector('#of-count').textContent = `${loadedItems.length} loaded\n${currentSymbol || `${data.symbols_count || 0} watchlist stocks`}`;
+            const isPf = currentWatchlist.toLowerCase().includes('portfolio');
+            const countSuffix = isPf ? 'portfolio stocks' : (currentWatchlist === 'All Watchlists' ? 'watchlist stocks' : 'stocks');
+            modal.querySelector('#of-count').textContent = `${loadedItems.length} loaded\n${currentSymbol || `${data.symbols_count || 0} ${countSuffix}`}`;
             if (data.failed_symbols) modal.querySelector('#of-count').title = `${data.failed_symbols} exchange queries did not return data.`;
         } catch (error) {
             loadError = error.message || 'Could not load official feeds.';

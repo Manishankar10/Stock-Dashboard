@@ -102,7 +102,17 @@
                 return pfSyms;
             } else if (currentInsightsScope === 'watchlist') {
                 const wlSyms = new Set();
-                if (currentInsightsWatchlist && watchlistsData && watchlistsData[currentInsightsWatchlist]) {
+                if (currentInsightsWatchlist === 'ALL') {
+                    Object.values(watchlistsData || {}).forEach(arr => {
+                        (arr || []).forEach(s => {
+                            if (s) {
+                                wlSyms.add(s);
+                                if (typeof cleanDisplaySymbol === 'function') wlSyms.add(cleanDisplaySymbol(s));
+                                wlSyms.add(s.replace('.NS', '').replace('.BO', ''));
+                            }
+                        });
+                    });
+                } else if (currentInsightsWatchlist && watchlistsData && watchlistsData[currentInsightsWatchlist]) {
                     watchlistsData[currentInsightsWatchlist].forEach(s => {
                         if (s) {
                             wlSyms.add(s);
@@ -138,11 +148,26 @@
                 return;
             }
 
-            if (!currentInsightsWatchlist || !watchlistsData[currentInsightsWatchlist]) {
-                currentInsightsWatchlist = names[0];
+            if (!currentInsightsWatchlist) {
+                currentInsightsWatchlist = 'ALL';
             }
 
-            let html = '';
+            // Total distinct stocks across all watchlists
+            const allWlSymbolsSet = new Set();
+            names.forEach(n => (watchlistsData[n] || []).forEach(s => allWlSymbolsSet.add(s)));
+            const isAllWl = currentInsightsWatchlist === 'ALL';
+            const allBtnClass = isAllWl ? 'btn-primary' : 'btn-secondary';
+            const allActiveStyle = isAllWl ? 'background: var(--accent-color, #10b981); color: #fff; border-color: var(--accent-color, #10b981);' : '';
+
+            let html = `
+                <button type="button" class="${allBtnClass}" onclick="selectInsightsWatchlist('ALL')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; ${allActiveStyle}">
+                    <span>📁 All Watchlists</span>
+                    <span style="font-size: 10px; font-weight: 700; background: ${isAllWl ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)'}; color: ${isAllWl ? '#fff' : 'var(--text-secondary)'}; padding: 1px 6px; border-radius: 10px;">
+                        ${allWlSymbolsSet.size}
+                    </span>
+                </button>
+            `;
+
             names.forEach(name => {
                 const count = (watchlistsData[name] || []).length;
                 const isActive = name === currentInsightsWatchlist;
@@ -174,8 +199,10 @@
             const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
             const stockParam = stockFilter !== 'all' ? `&stock=${encodeURIComponent(stockFilter)}` : '';
 
+            const wlQuery = currentInsightsWatchlist && currentInsightsWatchlist !== 'ALL' ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
+
             try {
-                const res = await fetch(`/api/insights/news?scope=watchlist&watchlist=${encodeURIComponent(currentInsightsWatchlist)}${stockParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`);
+                const res = await fetch(`/api/insights/news?scope=watchlist${wlQuery}${stockParam}&category=${encodeURIComponent(currentNewsCategory)}&limit=30`);
                 const data = await res.json();
                 if (data.success) {
                     cachedInsightsArticles = data.articles || [];
@@ -189,7 +216,7 @@
                 if (feedEl) feedEl.innerHTML = `<div style="padding: 20px; color: #ef4444;">Failed to load news: ${escapeHtml(err.message)}</div>`;
             }
 
-            fetch(`/api/insights/summary?scope=watchlist&watchlist=${encodeURIComponent(currentInsightsWatchlist)}`)
+            fetch(`/api/insights/summary?scope=watchlist${wlQuery}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) renderInsightsSummaryUI(data);
@@ -393,15 +420,15 @@
             if (currentInsightsScope === 'watchlist') {
                 if (wlContainer) wlContainer.style.display = 'flex';
                 const names = Object.keys(watchlistsData || {});
-                if (!currentInsightsWatchlist || !watchlistsData[currentInsightsWatchlist]) {
-                    currentInsightsWatchlist = names.length > 0 ? names[0] : '';
+                if (!currentInsightsWatchlist || (currentInsightsWatchlist !== 'ALL' && !watchlistsData[currentInsightsWatchlist])) {
+                    currentInsightsWatchlist = 'ALL';
                 }
                 renderInsightsWatchlistPills();
             } else {
                 if (wlContainer) wlContainer.style.display = 'none';
             }
 
-            const wlParam = currentInsightsScope === 'watchlist' && currentInsightsWatchlist ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
+            const wlParam = currentInsightsScope === 'watchlist' && currentInsightsWatchlist && currentInsightsWatchlist !== 'ALL' ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
 
             if (isScopeChange) {
                 showNewsSkeletonsOnly();
