@@ -36,7 +36,10 @@
         showLoadingState(true);
 
         const refreshBtn = document.getElementById('tx-btn-refresh');
-        if (refreshBtn) refreshBtn.classList.add('spinning');
+        if (refreshBtn) {
+            refreshBtn.classList.add('spinning');
+            refreshBtn.classList.add('refreshing');
+        }
 
         try {
             const params = new URLSearchParams({
@@ -79,7 +82,10 @@
         } finally {
             state.isLoading = false;
             showLoadingState(false);
-            if (refreshBtn) refreshBtn.classList.remove('spinning');
+            if (refreshBtn) {
+                refreshBtn.classList.remove('spinning');
+                refreshBtn.classList.remove('refreshing');
+            }
         }
     }
 
@@ -98,6 +104,15 @@
 
     function applyClientFiltersAndSort() {
         let list = [...state.deals];
+
+        // Promoter Buying filter: strictly official promoter/promoter group acquisitions
+        if (state.dealType === 'promoter') {
+            list = list.filter(d =>
+                (d.deal_type === 'insider' || !d.deal_type) &&
+                (d.person_category || '').toLowerCase().includes('promoter') &&
+                (d.action || '').toUpperCase() === 'BUY'
+            );
+        }
 
         // Search text filter
         if (state.searchQuery) {
@@ -173,23 +188,37 @@
         const blockBadge = document.getElementById('tx-count-block');
         const bulkBadge = document.getElementById('tx-count-bulk');
         const insiderBadge = document.getElementById('tx-count-insider');
+        const promoterBadge = document.getElementById('tx-count-promoter');
 
         if (blockBadge) blockBadge.innerText = counts.block || 0;
         if (bulkBadge) bulkBadge.innerText = counts.bulk || 0;
         if (insiderBadge) insiderBadge.innerText = counts.insider || 0;
+        if (promoterBadge) promoterBadge.innerText = counts.promoter || 0;
 
         document.querySelectorAll('.tx-tab-btn').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-tab') === state.dealType);
         });
 
-        // Dynamic column header adjustments for Insider vs Block/Bulk
+        // Dynamic column header adjustments for Promoter Buying vs Insider vs Block/Bulk
         const thClient = document.getElementById('tx-th-client');
         const thCategory = document.getElementById('tx-th-category');
         if (thClient) {
-            thClient.innerText = state.dealType === 'insider' ? 'Acquirer / Disposer' : 'Client / Institutional Party';
+            if (state.dealType === 'promoter') {
+                thClient.innerText = 'Promoter / Buyer';
+            } else if (state.dealType === 'insider') {
+                thClient.innerText = 'Acquirer / Disposer';
+            } else {
+                thClient.innerText = 'Client / Institutional Party';
+            }
         }
         if (thCategory) {
-            thCategory.innerText = state.dealType === 'insider' ? 'Relationship / Role' : 'Category / Mode';
+            if (state.dealType === 'promoter') {
+                thCategory.innerText = 'Promoter Category / Mode';
+            } else if (state.dealType === 'insider') {
+                thCategory.innerText = 'Relationship / Role';
+            } else {
+                thCategory.innerText = 'Category / Mode';
+            }
         }
     }
 
@@ -233,6 +262,9 @@
             const actionClass = isBuy ? 'tx-action-buy' : 'tx-action-sell';
             const actionText = isBuy ? '+ BUY' : '- SELL';
             const valClass = isBuy ? 'text-buy' : 'text-sell';
+            const isPromoter = (deal.person_category || '').toLowerCase().includes('promoter') || state.dealType === 'promoter';
+            const catBadgeClass = isPromoter ? 'tx-category-badge tx-badge-promoter' : 'tx-category-badge';
+            const catIcon = isPromoter ? '👑 ' : '';
             const filingLink = deal.filing_url
                 ? `<a href="${deal.filing_url}" target="_blank" rel="noopener noreferrer" class="tx-source-link" title="Open official XBRL filing">Filing ↗</a>`
                 : `<span style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(deal.source || 'NSE')}</span>`;
@@ -255,8 +287,8 @@
                     ${escapeHtml(deal.client_name || 'Undisclosed Client')}
                 </td>
                 <td>
-                    <span class="tx-category-badge" title="${escapeHtml(deal.mode || '')}">
-                        ${escapeHtml(deal.person_category || deal.mode || 'Market Trade')}
+                    <span class="${catBadgeClass}" title="${escapeHtml(deal.mode || '')}">
+                        ${catIcon}${escapeHtml(deal.person_category || deal.mode || 'Market Trade')}
                     </span>
                 </td>
                 <td class="text-center">
@@ -299,6 +331,9 @@
             const actionClass = isBuy ? 'tx-action-buy' : 'tx-action-sell';
             const actionText = isBuy ? '+ BUY' : '- SELL';
             const valClass = isBuy ? 'text-buy' : 'text-sell';
+            const isPromoter = (deal.person_category || '').toLowerCase().includes('promoter') || state.dealType === 'promoter';
+            const catBadgeClass = isPromoter ? 'tx-category-badge tx-badge-promoter' : 'tx-category-badge';
+            const catIcon = isPromoter ? '👑 ' : '';
 
             html += `
             <div class="tx-card-item" onclick="window.openTxStockChart('${deal.symbol}')">
@@ -319,7 +354,7 @@
                     <span class="tx-card-client-name" title="${escapeHtml(deal.client_name || '')}">
                         ${escapeHtml(deal.client_name || 'Undisclosed Client')}
                     </span>
-                    <span class="tx-category-badge">${escapeHtml(deal.person_category || deal.mode || 'Market Trade')}</span>
+                    <span class="${catBadgeClass}">${catIcon}${escapeHtml(deal.person_category || deal.mode || 'Market Trade')}</span>
                 </div>
 
                 <div class="tx-card-stats-grid">

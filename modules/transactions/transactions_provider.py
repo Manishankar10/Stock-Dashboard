@@ -351,6 +351,14 @@ class TransactionsProvider:
         deal_type_lower = str(deal_type or "all").lower().strip()
         if deal_type_lower in ("block", "bulk", "insider"):
             deals = [d for d in deals if d.get("deal_type") == deal_type_lower]
+        elif deal_type_lower in ("promoter", "promoter_buying", "promoter-buying", "promoterbuying"):
+            deals = [
+                {**d, "deal_type_label": "Promoter Buying"}
+                for d in deals
+                if d.get("deal_type") == "insider"
+                and "promoter" in str(d.get("person_category", "")).lower()
+                and str(d.get("action", "")).upper() == "BUY"
+            ]
 
         # 2. Filter by Scope (Portfolio / Watchlist / All)
         scope_lower = str(scope or "all").lower().strip()
@@ -420,6 +428,12 @@ class TransactionsProvider:
             "block": sum(1 for d in all_for_tabs if d.get("deal_type") == "block"),
             "bulk": sum(1 for d in all_for_tabs if d.get("deal_type") == "bulk"),
             "insider": sum(1 for d in all_for_tabs if d.get("deal_type") == "insider"),
+            "promoter": sum(
+                1 for d in all_for_tabs
+                if d.get("deal_type") == "insider"
+                and "promoter" in str(d.get("person_category", "")).lower()
+                and str(d.get("action", "")).upper() == "BUY"
+            ),
             "all": len(all_for_tabs),
         }
 

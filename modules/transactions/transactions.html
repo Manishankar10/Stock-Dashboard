@@ -17,11 +17,10 @@
                 </svg>
                 <span>Export CSV</span>
             </button>
-            <button type="button" class="tx-btn-action tx-btn-refresh" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Fetch live deals from official exchange endpoints">
-                <svg class="tx-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="tx-refresh-btn" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Fetch live deals from official exchange endpoints" aria-label="Refresh Transactions">
+                <svg class="tx-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
-                <span class="tx-refresh-text">Refresh</span>
             </button>
         </div>
     </div>
@@ -65,7 +64,7 @@
         </div>
     </div>
 
-    <!-- Deal Category Tabs Bar (Block Deals / Bulk Deals / Insider Deals) -->
+    <!-- Deal Category Tabs Bar (Block Deals / Bulk Deals / Insider Deals / Promoter Buying) -->
     <div class="tx-tabs-bar" role="tablist" aria-label="Transaction Deal Categories">
         <button type="button" class="tx-tab-btn active" id="tx-tab-block" data-tab="block" onclick="switchTxTab('block')">
             <span class="tx-tab-icon">🏢</span>
@@ -81,6 +80,11 @@
             <span class="tx-tab-icon">🕵️</span>
             <span class="tx-tab-label">Insider Deals</span>
             <span class="tx-tab-badge" id="tx-count-insider">0</span>
+        </button>
+        <button type="button" class="tx-tab-btn" id="tx-tab-promoter" data-tab="promoter" onclick="switchTxTab('promoter')">
+            <span class="tx-tab-icon">👑</span>
+            <span class="tx-tab-label">Promoter Buying</span>
+            <span class="tx-tab-badge" id="tx-count-promoter">0</span>
         </button>
     </div>
 
