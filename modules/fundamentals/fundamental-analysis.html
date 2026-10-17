@@ -211,6 +211,33 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   border-right: 1px solid var(--border-color);
   box-shadow: 3px 0 8px -2px rgba(0, 0, 0, 0.35);
   cursor: default;
+  white-space: normal;
+  line-height: 1.35;
+}
+.metric-title-main {
+  display: inline-block;
+  font-weight: 600;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+.metric-title-sub {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.25;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .metric-title-sub {
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+}
+.table tr.highlight td:first-child .metric-title-sub {
+  color: var(--accent);
+  opacity: 0.85;
 }
 [data-theme="light"] .table th:first-child,
 [data-theme="light"] .table td:first-child {
@@ -2621,13 +2648,26 @@ function renderScreenerTable(section, secId) {
   const headerHtml = `<thead><tr><th>Particulars</th>${colIndices.map(i => `<th>${esc(cols[i])}</th>`).join('')}</tr></thead>`;
   
   const bodyHtml = rows.map((r, rowIdx) => {
-    const lbl = r.label || '';
-    const isHighlight = /operating profit|net profit|cash from operating|total liabilities|total assets|roce %/i.test(lbl);
+    const rawLbl = r.label || '';
+    const isHighlight = /operating profit|net profit|cash from operating|total liabilities|total assets|roce %|cfo\/ebitda/i.test(rawLbl);
     
+    // Check if label has a multi-line title or subtitle (e.g. CFO/EBITDA on line 1, explanation on line 2)
+    let formattedLabel = '';
+    const cleanLbl = String(rawLbl).trim();
+    const parts = cleanLbl.split(/\n+/).map(p => p.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      formattedLabel = `<span class="metric-title-main">${esc(parts[0])}</span><span class="metric-title-sub">${esc(parts.slice(1).join(' '))}</span>`;
+    } else if (cleanLbl.includes('Share of operating profit')) {
+      const idx = cleanLbl.indexOf('Share of operating profit');
+      formattedLabel = `<span class="metric-title-main">${esc(cleanLbl.slice(0, idx).trim())}</span><span class="metric-title-sub">${esc(cleanLbl.slice(idx).trim())}</span>`;
+    } else {
+      formattedLabel = `<span class="metric-title-main">${esc(cleanLbl)}</span>`;
+    }
+
     let btnHtml = '';
     if (r.expandable) {
       btnHtml = `<button class="split-expand-btn" type="button" 
-        data-sched-name="${esc(r.schedule_name || lbl)}" 
+        data-sched-name="${esc(r.schedule_name || rawLbl)}" 
         data-sched-sec="${esc(r.schedule_section || secId || '')}" 
         data-sched-type="${esc(r.schedule_type || 'schedule')}"
         data-row-id="${secId}-${rowIdx}"
@@ -2635,7 +2675,7 @@ function renderScreenerTable(section, secId) {
     }
 
     return `<tr class="${isHighlight ? 'highlight' : ''}" id="row-${secId}-${rowIdx}">
-      <td>${esc(lbl)}${btnHtml}</td>
+      <td>${formattedLabel}${btnHtml}</td>
       ${colIndices.map(i => `<td>${r.values?.[i] != null && r.values?.[i] !== '' ? esc(r.values[i]) : '—'}</td>`).join('')}
     </tr>`;
   }).join('');
