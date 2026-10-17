@@ -229,6 +229,8 @@
     padding: 4px;
     border-radius: 10px;
     border: 1px solid var(--sr-border);
+    flex-wrap: wrap;
+    overflow-x: visible;
 }
 
 .sr-freq-btn {
@@ -241,6 +243,8 @@
     border-radius: 7px;
     cursor: pointer;
     transition: all 0.15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .sr-freq-btn:hover {
@@ -1701,17 +1705,77 @@
     .sr-freq-toolbar {
         flex-direction: column;
         align-items: stretch;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .sr-freq-left {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        overflow: hidden;
+    }
+
+    .sr-freq-label {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
     }
 
     .sr-freq-pills {
-        overflow-x: auto;
         width: 100%;
-        padding-bottom: 4px;
+        max-width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        box-sizing: border-box;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+        padding: 5px 6px;
+        gap: 6px;
+    }
+
+    .sr-freq-pills::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .sr-freq-pills::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .sr-freq-pills::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.4);
+        border-radius: 9999px;
+    }
+
+    .sr-freq-pills::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.6);
     }
 
     .sr-freq-btn {
-        padding: 6px 10px;
+        flex: 0 0 auto !important;
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 6px 12px;
         font-size: 11px;
+    }
+
+    .sr-freq-right {
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
     }
 
     .sr-kpi-grid {
@@ -1763,3 +1827,14 @@
         max-width: 210px;
     }
 }
+
+/* Web / Desktop Frequency Styling (Explicitly NO scrollbar) */
+@media (min-width: 769px) {
+    .sr-freq-pills {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        flex-wrap: wrap !important;
+        max-width: 100% !important;
+    }
+}
+

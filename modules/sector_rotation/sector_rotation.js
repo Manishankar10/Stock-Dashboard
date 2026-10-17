@@ -128,7 +128,13 @@
 
         // Sync active frequency pill
         document.querySelectorAll('.sr-freq-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.getAttribute('data-freq') === state.frequency);
+            const isActive = btn.getAttribute('data-freq') === state.frequency;
+            btn.classList.toggle('active', isActive);
+            if (isActive && window.innerWidth <= 768) {
+                try {
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } catch (e) {}
+            }
         });
     }
 
@@ -819,6 +825,15 @@
     window.setSectorFrequency = function (freq) {
         if (state.frequency === freq) return;
         state.frequency = freq;
+        document.querySelectorAll('.sr-freq-btn').forEach(btn => {
+            const isActive = btn.getAttribute('data-freq') === freq;
+            btn.classList.toggle('active', isActive);
+            if (isActive && window.innerWidth <= 768) {
+                try {
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } catch (e) {}
+            }
+        });
         fetchSectorRotation(false);
     };
 
