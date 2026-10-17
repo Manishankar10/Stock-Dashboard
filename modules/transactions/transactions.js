@@ -200,23 +200,27 @@
         });
 
         // Dynamic column header adjustments for Promoter Buying vs Insider vs Block/Bulk
+        const thClientText = document.getElementById('tx-th-client-text');
         const thClient = document.getElementById('tx-th-client');
         const thCategory = document.getElementById('tx-th-category');
-        if (thClient) {
+        const targetClientEl = thClientText || thClient;
+        if (targetClientEl) {
             if (state.dealType === 'promoter') {
-                thClient.innerText = 'Promoter / Buyer';
+                targetClientEl.innerText = 'Promoter / Buyer';
             } else if (state.dealType === 'insider') {
-                thClient.innerText = 'Acquirer / Disposer';
+                targetClientEl.innerText = 'Acquirer / Disposer';
             } else {
-                thClient.innerText = 'Client / Institutional Party';
+                targetClientEl.innerText = 'Client / Institutional Party';
             }
         }
         if (thCategory) {
             if (state.dealType === 'promoter') {
-                thCategory.innerText = 'Promoter Category / Mode';
+                thCategory.style.display = 'none';
             } else if (state.dealType === 'insider') {
+                thCategory.style.display = '';
                 thCategory.innerText = 'Relationship / Role';
             } else {
+                thCategory.style.display = '';
                 thCategory.innerText = 'Category / Mode';
             }
         }
@@ -269,6 +273,32 @@
                 ? `<a href="${deal.filing_url}" target="_blank" rel="noopener noreferrer" class="tx-source-link" title="Open official XBRL filing">Filing ↗</a>`
                 : `<span style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(deal.source || 'NSE')}</span>`;
 
+            const isPromoterTab = (state.dealType === 'promoter');
+            let clientColHtml = '';
+            let categoryColHtml = '';
+
+            if (isPromoterTab) {
+                clientColHtml = `
+                <td class="tx-client-cell" title="${escapeHtml(deal.client_name || '')}">
+                    <div class="tx-client-name">${escapeHtml(deal.client_name || 'Undisclosed Client')}</div>
+                    <div class="tx-client-sub">
+                        <span class="${catBadgeClass}">${catIcon}${escapeHtml(deal.person_category || 'Promoter')}</span>
+                    </div>
+                </td>`;
+                categoryColHtml = '';
+            } else {
+                clientColHtml = `
+                <td class="tx-client-cell" title="${escapeHtml(deal.client_name || '')}">
+                    <div class="tx-client-name">${escapeHtml(deal.client_name || 'Undisclosed Client')}</div>
+                </td>`;
+                categoryColHtml = `
+                <td>
+                    <span class="${catBadgeClass}" title="${escapeHtml(deal.mode || '')}">
+                        ${catIcon}${escapeHtml(deal.person_category || deal.mode || 'Market Trade')}
+                    </span>
+                </td>`;
+            }
+
             html += `
             <tr>
                 <td class="tx-date-cell">
@@ -283,25 +313,19 @@
                         <span class="tx-stock-name" title="${escapeHtml(deal.company || '')}">${escapeHtml(deal.company || deal.symbol)}</span>
                     </div>
                 </td>
-                <td class="tx-client-cell" title="${escapeHtml(deal.client_name || '')}">
-                    ${escapeHtml(deal.client_name || 'Undisclosed Client')}
-                </td>
-                <td>
-                    <span class="${catBadgeClass}" title="${escapeHtml(deal.mode || '')}">
-                        ${catIcon}${escapeHtml(deal.person_category || deal.mode || 'Market Trade')}
-                    </span>
-                </td>
+                ${clientColHtml}
+                ${categoryColHtml}
                 <td class="text-center">
                     <span class="tx-action-pill ${actionClass}">${actionText}</span>
                 </td>
-                <td class="text-right" style="font-family: 'Plus Jakarta Sans', var(--font-sans); font-weight: 600;">
-                    ${deal.quantity ? deal.quantity.toLocaleString() : '-'}
+                <td class="text-right tx-val-cell ${valClass}" title="₹${deal.value ? deal.value.toLocaleString() : '0'}">
+                    ${deal.value_formatted || '₹0.00'}
                 </td>
                 <td class="text-right" style="font-family: 'Plus Jakarta Sans', var(--font-sans); font-weight: 600;">
                     ₹${deal.price ? deal.price.toFixed(2) : '0.00'}
                 </td>
-                <td class="text-right tx-val-cell ${valClass}" title="₹${deal.value ? deal.value.toLocaleString() : '0'}">
-                    ${deal.value_formatted || '₹0.00'}
+                <td class="text-right" style="font-family: 'Plus Jakarta Sans', var(--font-sans); font-weight: 600;">
+                    ${deal.quantity ? deal.quantity.toLocaleString() : '-'}
                 </td>
                 <td class="text-center">
                     ${filingLink}
@@ -359,16 +383,16 @@
 
                 <div class="tx-card-stats-grid">
                     <div class="tx-card-stat-box">
-                        <span class="tx-card-stat-label">QUANTITY</span>
-                        <span class="tx-card-stat-val">${deal.quantity ? deal.quantity.toLocaleString() : '-'}</span>
+                        <span class="tx-card-stat-label">TOTAL VALUE</span>
+                        <span class="tx-card-stat-val ${valClass}">${deal.value_formatted || '₹0.00'}</span>
                     </div>
                     <div class="tx-card-stat-box">
                         <span class="tx-card-stat-label">AVG PRICE</span>
                         <span class="tx-card-stat-val">₹${deal.price ? deal.price.toFixed(2) : '0.00'}</span>
                     </div>
                     <div class="tx-card-stat-box">
-                        <span class="tx-card-stat-label">TOTAL VALUE</span>
-                        <span class="tx-card-stat-val ${valClass}">${deal.value_formatted || '₹0.00'}</span>
+                        <span class="tx-card-stat-label">QUANTITY</span>
+                        <span class="tx-card-stat-val">${deal.quantity ? deal.quantity.toLocaleString() : '-'}</span>
                     </div>
                 </div>
             </div>`;
@@ -431,7 +455,7 @@
     }
 
     function updateSortIndicators() {
-        ['date', 'symbol', 'quantity', 'price', 'value'].forEach(field => {
+        ['date', 'symbol', 'client_name', 'quantity', 'price', 'value'].forEach(field => {
             const ind = document.getElementById(`sort-ind-${field}`);
             if (ind) {
                 if (state.sortField === field) {
@@ -596,7 +620,7 @@
             state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
         } else {
             state.sortField = field;
-            state.sortDir = 'desc';
+            state.sortDir = (field === 'symbol' || field === 'client_name') ? 'asc' : 'desc';
         }
         renderView();
     };

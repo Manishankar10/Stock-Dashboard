@@ -165,12 +165,12 @@
                     <tr>
                         <th class="th-date" onclick="handleTxSort('date')">Date & Time <span class="sort-indicator" id="sort-ind-date">▼</span></th>
                         <th class="th-stock" onclick="handleTxSort('symbol')">Stock & Company <span class="sort-indicator" id="sort-ind-symbol"></span></th>
-                        <th class="th-client" id="tx-th-client">Client / Party Name</th>
+                        <th class="th-client" id="tx-th-client" onclick="handleTxSort('client_name')"><span id="tx-th-client-text">Client / Party Name</span> <span class="sort-indicator" id="sort-ind-client_name"></span></th>
                         <th class="th-category" id="tx-th-category">Category</th>
                         <th class="th-action text-center">Direction</th>
-                        <th class="th-qty text-right" onclick="handleTxSort('quantity')">Quantity <span class="sort-indicator" id="sort-ind-quantity"></span></th>
-                        <th class="th-price text-right" onclick="handleTxSort('price')">Avg Price <span class="sort-indicator" id="sort-ind-price"></span></th>
                         <th class="th-value text-right" onclick="handleTxSort('value')">Total Value (₹) <span class="sort-indicator" id="sort-ind-value"></span></th>
+                        <th class="th-price text-right" onclick="handleTxSort('price')">Avg Price <span class="sort-indicator" id="sort-ind-price"></span></th>
+                        <th class="th-qty text-right" onclick="handleTxSort('quantity')">Quantity <span class="sort-indicator" id="sort-ind-quantity"></span></th>
                         <th class="th-source text-center">Source</th>
                     </tr>
                 </thead>
