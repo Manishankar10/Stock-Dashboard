@@ -457,8 +457,8 @@
         }
 
         // 2. Update Column Sort Icons & Highlight Active Benchmark Column Header
-        const allFields = ['name', 'quadrant', '1D', '1W', '1M', '3M', '6M', '1Y', 'YTD', 'breadth', 'pe'];
-        const freqs = ['1D', '1W', '1M', '3M', '6M', '1Y', 'YTD'];
+        const freqs = ['1D', '1W', '1M', '3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y', 'ALL', 'YTD'];
+        const allFields = ['name', 'quadrant', ...freqs, 'breadth', 'pe'];
 
         allFields.forEach(f => {
             const iconEl = document.getElementById(`sr-sort-icon-${f}`);
@@ -487,7 +487,7 @@
         if (!state.filteredSectors || state.filteredSectors.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="12" class="text-center" style="padding: 48px 16px; color: var(--sr-text-secondary);">
+                    <td colspan="17" class="text-center" style="padding: 48px 16px; color: var(--sr-text-secondary);">
                         <div style="font-size: 28px; margin-bottom: 8px;">🔍</div>
                         <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">No Sectors Match Current Criteria</div>
                         <div style="font-size: 12px; opacity: 0.8;">Try clearing the search query or selecting a different quadrant.</div>
@@ -667,7 +667,14 @@
         const sec = state.sectors.find(s => s.id === sectorId);
         if (!sec) return;
 
-        const modal = document.getElementById('sr-constituents-modal');
+        let modal = document.getElementById('sr-constituents-modal');
+        if (!modal) return;
+
+        // Move to document.body so position:fixed is 100% viewport-relative and never scrolled away
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+
         const titleEl = document.getElementById('sr-modal-title');
         const subEl = document.getElementById('sr-modal-sub');
         const iconEl = document.getElementById('sr-modal-icon');
@@ -675,52 +682,90 @@
         const tbody = document.getElementById('sr-constituents-tbody');
 
         if (titleEl) titleEl.innerText = sec.name;
-        if (subEl) subEl.innerText = `${sec.category} • Index: ${sec.last_price.toLocaleString()}`;
-        if (iconEl) iconEl.innerText = sec.icon;
+        if (subEl) subEl.innerText = `${sec.category || 'Index'} • Index: ₹${Number(sec.last_price || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        if (iconEl) iconEl.innerText = sec.icon || '🏛️';
 
         if (statsBar) {
             const retSign = sec.selected_return >= 0 ? '+' : '';
             const alphaSign = sec.selected_alpha >= 0 ? '+' : '';
+            const adv = sec.breadth?.advances ?? 0;
+            const dec = sec.breadth?.declines ?? 0;
+            const breadthStr = (adv + dec > 0) ? `${adv} Adv / ${dec} Dec` : '—';
+            const peVal = sec.valuation?.pe ? `${sec.valuation.pe}x` : '—';
+            const constituentsCount = (sec.constituents || []).length;
+            const totalWeight = (sec.constituents || []).reduce((acc, cur) => acc + (cur.weight || 0), 0);
+
             statsBar.innerHTML = `
                 <div class="sr-modal-stat-box">
+                    <span class="sr-modal-stat-label">INDEX LEVEL</span>
+                    <span class="sr-modal-stat-val">₹${Number(sec.last_price || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                </div>
+                <div class="sr-modal-stat-box">
                     <span class="sr-modal-stat-label">${state.frequency} RETURN</span>
-                    <span class="sr-modal-stat-val ${sec.selected_return >= 0 ? 'text-buy' : 'text-sell'}">${retSign}${sec.selected_return.toFixed(2)}%</span>
+                    <span class="sr-modal-stat-val ${sec.selected_return >= 0 ? 'text-buy' : 'text-sell'}">${retSign}${Number(sec.selected_return || 0).toFixed(2)}%</span>
                 </div>
                 <div class="sr-modal-stat-box">
                     <span class="sr-modal-stat-label">ALPHA VS NIFTY</span>
-                    <span class="sr-modal-stat-val ${sec.selected_alpha >= 0 ? 'text-buy' : 'text-sell'}">${alphaSign}${sec.selected_alpha.toFixed(2)}%</span>
+                    <span class="sr-modal-stat-val ${sec.selected_alpha >= 0 ? 'text-buy' : 'text-sell'}">${alphaSign}${Number(sec.selected_alpha || 0).toFixed(2)}%</span>
                 </div>
                 <div class="sr-modal-stat-box">
                     <span class="sr-modal-stat-label">P/E RATIO</span>
-                    <span class="sr-modal-stat-val">${sec.valuation.pe}</span>
+                    <span class="sr-modal-stat-val">${peVal}</span>
+                </div>
+                <div class="sr-modal-stat-box">
+                    <span class="sr-modal-stat-label">MARKET BREADTH</span>
+                    <span class="sr-modal-stat-val">${breadthStr}</span>
+                </div>
+                <div class="sr-modal-stat-box">
+                    <span class="sr-modal-stat-label">HOLDINGS COVERAGE</span>
+                    <span class="sr-modal-stat-val">${constituentsCount} Stocks (${totalWeight.toFixed(1)}%)</span>
                 </div>
             `;
         }
 
         if (tbody) {
-            const list = sec.constituents || [];
+            const list = [...(sec.constituents || [])];
+            // Sort by weight descending
+            list.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+            const maxWeight = Math.max(...list.map(c => c.weight || 0), 1);
             let html = '';
-            list.forEach(c => {
+            list.forEach((c, idx) => {
+                const w = (typeof c.weight === 'number') ? c.weight : 0;
+                const pctOfMax = Math.min(100, Math.round((w / maxWeight) * 100));
+                const capTier = c.cap || 'LargeCap';
+                let capBadgeCls = 'sr-cap-large';
+                if (/mid/i.test(capTier)) capBadgeCls = 'sr-cap-mid';
+                else if (/small/i.test(capTier)) capBadgeCls = 'sr-cap-small';
+
                 html += `
-                <tr>
+                <tr class="sr-constituent-row">
+                    <td class="text-center" style="color: var(--sr-text-secondary); font-weight: 700; font-size: 11px;">
+                        ${idx + 1}
+                    </td>
                     <td>
-                        <span style="font-weight: 800; font-family: 'Plus Jakarta Sans'; color: #10b981; cursor: pointer;" onclick="openSectorStockChart('${c.symbol}')">
-                            ${escapeHtml(c.symbol)}
+                        <div class="sr-stock-sym-group" onclick="openSectorStockChart('${c.symbol}')" title="Click to view interactive chart for ${escapeHtml(c.symbol)}">
+                            <span class="sr-stock-sym-text">${escapeHtml(c.symbol)}</span>
+                            <span class="sr-stock-exchange-badge">NSE</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="sr-stock-company-name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>
+                    </td>
+                    <td class="text-center">
+                        <span class="sr-cap-badge ${capBadgeCls}">
+                            ${escapeHtml(capTier)}
                         </span>
                     </td>
                     <td>
-                        <span style="font-weight: 600;">${escapeHtml(c.name)}</span>
+                        <div class="sr-weight-cell-group">
+                            <span class="sr-weight-num">${w > 0 ? w.toFixed(1) + '%' : '—'}</span>
+                            <div class="sr-weight-track" title="Index weight: ${w.toFixed(1)}%">
+                                <div class="sr-weight-fill" style="width: ${pctOfMax}%;"></div>
+                            </div>
+                        </div>
                     </td>
                     <td class="text-center">
-                        <span style="font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: var(--sr-bg-body); border: 1px solid var(--sr-border);">
-                            ${escapeHtml(c.cap || 'LargeCap')}
-                        </span>
-                    </td>
-                    <td class="text-right" style="font-weight: 700;">
-                        ${c.weight ? c.weight.toFixed(1) + '%' : '-'}
-                    </td>
-                    <td class="text-center">
-                        <button type="button" class="sr-btn-chart-sm" onclick="openSectorStockChart('${c.symbol}')">
+                        <button type="button" class="sr-btn-chart-sm" onclick="openSectorStockChart('${c.symbol}')" title="Open chart for ${escapeHtml(c.symbol)}">
                             Chart ↗
                         </button>
                     </td>
@@ -729,7 +774,14 @@
             tbody.innerHTML = html;
         }
 
-        if (modal) modal.style.display = 'flex';
+        // Show centralized modal
+        modal.style.display = 'flex';
+
+        // Always scroll modal content to the top so starting data is immediately visible
+        const modalBody = modal.querySelector('.sr-modal-body');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
     };
 
     window.closeSectorConstituentsModal = function (e) {
@@ -737,6 +789,19 @@
         const modal = document.getElementById('sr-constituents-modal');
         if (modal) modal.style.display = 'none';
     };
+
+    // Support ESC key to close modal
+    if (!window._srConstituentsEscBound) {
+        window._srConstituentsEscBound = true;
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('sr-constituents-modal');
+                if (modal && modal.style.display === 'flex') {
+                    window.closeSectorConstituentsModal();
+                }
+            }
+        });
+    }
 
     window.openSectorStockChart = function (symbol) {
         if (!symbol) return;

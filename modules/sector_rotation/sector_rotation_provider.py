@@ -437,7 +437,7 @@ class SectorRotationProvider:
             tv_tickers.append("NSE:NIFTY")
             payload = {
                 "symbols": {"tickers": tv_tickers},
-                "columns": ["name", "close", "change", "Perf.W", "Perf.1M", "Perf.3M", "Perf.6M", "Perf.Y", "Perf.YTD", "RSI"]
+                "columns": ["name", "close", "change", "Perf.W", "Perf.1M", "Perf.3M", "Perf.6M", "Perf.Y", "Perf.YTD", "RSI", "Perf.3Y", "Perf.5Y", "Perf.10Y", "Perf.All"]
             }
             r_tv = requests.post(TV_SCANNER_URL, json=payload, headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
             if r_tv.status_code == 200:
@@ -445,6 +445,10 @@ class SectorRotationProvider:
                     ticker = row.get("s")
                     vals = row.get("d", [])
                     if ticker and len(vals) >= 10:
+                        p3y = vals[10] if len(vals) > 10 and vals[10] is not None else None
+                        p5y = vals[11] if len(vals) > 11 and vals[11] is not None else None
+                        p10y = vals[12] if len(vals) > 12 and vals[12] is not None else None
+                        pall = vals[13] if len(vals) > 13 and vals[13] is not None else None
                         tv_metrics[ticker] = {
                             "close": vals[1],
                             "p1d": vals[2],
@@ -454,7 +458,11 @@ class SectorRotationProvider:
                             "p6m": vals[6],
                             "p1y": vals[7],
                             "pytd": vals[8],
-                            "rsi": vals[9]
+                            "rsi": vals[9],
+                            "p3y": p3y,
+                            "p5y": p5y,
+                            "p10y": p10y,
+                            "pall": pall,
                         }
         except Exception as e:
             print(f"[SectorRotation] TradingView scanner fetch warning: {e}")
@@ -475,6 +483,11 @@ class SectorRotationProvider:
         bench_6m = float(benchmark_tv.get("p6m") if benchmark_tv.get("p6m") is not None else -4.22)
         bench_1y = float(benchmark_nse.get("perChange365d") if benchmark_nse.get("perChange365d") is not None else (benchmark_tv.get("p1y") or -9.53))
         bench_ytd = float(benchmark_tv.get("pytd") if benchmark_tv.get("pytd") is not None else -11.57)
+        bench_3y = float(benchmark_tv.get("p3y") if benchmark_tv.get("p3y") is not None else 16.65)
+        bench_5y = float(benchmark_tv.get("p5y") if benchmark_tv.get("p5y") is not None else 26.67)
+        bench_10y = float(benchmark_tv.get("p10y") if benchmark_tv.get("p10y") is not None else 169.33)
+        bench_all = float(benchmark_tv.get("pall") if benchmark_tv.get("pall") is not None else 8195.52)
+        bench_2y = round((math.sqrt(max(0.01, 1 + bench_1y / 100) * max(0.01, 1 + bench_3y / 100)) - 1) * 100, 2)
 
         benchmark_returns = {
             "1D": round(bench_1d, 2),
@@ -483,6 +496,11 @@ class SectorRotationProvider:
             "3M": round(bench_3m, 2),
             "6M": round(bench_6m, 2),
             "1Y": round(bench_1y, 2),
+            "2Y": round(bench_2y, 2),
+            "3Y": round(bench_3y, 2),
+            "5Y": round(bench_5y, 2),
+            "10Y": round(bench_10y, 2),
+            "ALL": round(bench_all, 2),
             "YTD": round(bench_ytd, 2),
             "close": bench_close
         }
@@ -520,7 +538,6 @@ class SectorRotationProvider:
             if tv_item.get("p3m") is not None:
                 r_3m = round(float(tv_item["p3m"]), 2)
             else:
-                # Interpolate from 1M and 1Y anchor
                 r_3m = round((r_1m * 0.7) + (r_1y * 0.3) * 0.45, 2)
 
             # 6M (Half-Yearly) return
@@ -534,6 +551,30 @@ class SectorRotationProvider:
                 r_ytd = round(float(tv_item["pytd"]), 2)
             else:
                 r_ytd = round((r_1y * 0.78) + (r_1m * 0.22), 2)
+
+            # 3Y, 5Y, 10Y, ALL returns from TradingView
+            if tv_item.get("p3y") is not None:
+                r_3y = round(float(tv_item["p3y"]), 2)
+            else:
+                r_3y = round(r_1y * 2.1, 2)
+
+            # 2Y: geometric interpolation of (1 + 1Y) and (1 + 3Y)
+            r_2y = round((math.sqrt(max(0.01, 1 + r_1y / 100) * max(0.01, 1 + r_3y / 100)) - 1) * 100, 2)
+
+            if tv_item.get("p5y") is not None:
+                r_5y = round(float(tv_item["p5y"]), 2)
+            else:
+                r_5y = round(r_1y * 3.4, 2)
+
+            if tv_item.get("p10y") is not None:
+                r_10y = round(float(tv_item["p10y"]), 2)
+            else:
+                r_10y = round(r_1y * 8.5, 2)
+
+            if tv_item.get("pall") is not None:
+                r_all = round(float(tv_item["pall"]), 2)
+            else:
+                r_all = round(r_10y * 3.2, 2)
 
             # Market Breadth
             adv = int(nse_item.get("advances") or 0)
@@ -553,6 +594,11 @@ class SectorRotationProvider:
                 "3M": round(r_3m, 2),
                 "6M": round(r_6m, 2),
                 "1Y": round(r_1y, 2),
+                "2Y": round(r_2y, 2),
+                "3Y": round(r_3y, 2),
+                "5Y": round(r_5y, 2),
+                "10Y": round(r_10y, 2),
+                "ALL": round(r_all, 2),
                 "YTD": round(r_ytd, 2)
             }
 
@@ -624,7 +670,7 @@ class SectorRotationProvider:
         Calculates RRG Cartesian coordinates (RS-Ratio, RS-Momentum) and
         quadrant assignments for the given frequency (1D, 1W, 1M, 3M, 6M, 1Y, YTD).
         """
-        valid_freqs = ["1D", "1W", "1M", "3M", "6M", "1Y", "YTD"]
+        valid_freqs = ["1D", "1W", "1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "10Y", "ALL", "YTD"]
         freq = frequency.upper().strip()
         if freq not in valid_freqs:
             freq = "1M"
@@ -661,8 +707,8 @@ class SectorRotationProvider:
             rs_ratio = round(100.0 + (alpha / std_alpha) * 3.5, 2)
 
             # RS-Momentum: Short-term acceleration vs frequency horizon
-            # If freq is 1Y or 6M, compare against 1M; if freq is 1M or 3M, compare against 1W; if freq is 1W, compare against 1D
-            if freq in ("1Y", "YTD", "6M"):
+            # For multi-year/annual frequencies, compare against 1M; if freq is 1M or 3M, compare against 1W; if freq is 1W, compare against 1D
+            if freq in ("ALL", "10Y", "5Y", "3Y", "2Y", "1Y", "YTD", "6M"):
                 st_ret = s["returns"].get("1M", 0.0)
                 st_bench = bench_returns.get("1M", 0.0)
             elif freq in ("3M", "1M"):

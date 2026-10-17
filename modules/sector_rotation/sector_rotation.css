@@ -940,7 +940,32 @@
     background: rgba(16, 185, 129, 0.025);
 }
 
-/* Sector Identity Column */
+/* Sector Identity Column (Static / Sticky Pinned on Left) */
+#sr-matrix-table th.sr-th-sector,
+#sr-matrix-table th:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 15 !important;
+    background: var(--sr-bg-body) !important;
+    border-right: 2px solid var(--sr-border) !important;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.06);
+}
+
+#sr-matrix-table td.sr-sector-cell,
+#sr-matrix-table td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 10 !important;
+    background: var(--sr-bg-card) !important;
+    border-right: 2px solid var(--sr-border) !important;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.06);
+}
+
+#sr-matrix-table tr.sr-matrix-row:hover td.sr-sector-cell,
+#sr-matrix-table tr.sr-matrix-row:hover td:first-child {
+    background: var(--sr-bg-card) !important;
+}
+
 .sr-sector-cell {
     min-width: 220px;
     max-width: 260px;
@@ -1376,40 +1401,60 @@
     border-radius: 4px;
 }
 
-/* 10. Modal / Slide-Out Drawer for Constituents */
+/* 10. Centralized Modal Dialog for Constituents / Holdings */
 .sr-modal-overlay {
     position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(4px);
-    z-index: 1000;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 99999;
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
 }
 
 .sr-modal-content {
     background: var(--sr-bg-card);
-    width: 600px;
-    max-width: 90vw;
-    height: 100%;
-    border-left: 1px solid var(--sr-border);
+    width: 920px;
+    max-width: min(920px, 95vw);
+    max-height: 88vh;
+    border-radius: 16px;
+    border: 1px solid var(--sr-border);
     display: flex;
     flex-direction: column;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25);
-    animation: sr-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    animation: sr-modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    position: relative;
 }
 
-@keyframes sr-slide-in {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
+@keyframes sr-modal-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 .sr-modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
+    padding: 18px 24px;
     border-bottom: 1px solid var(--sr-border);
+    background: var(--sr-bg-card);
+    flex-shrink: 0;
 }
 
 .sr-modal-title-group {
@@ -1420,6 +1465,7 @@
 
 .sr-modal-icon {
     font-size: 28px;
+    line-height: 1;
 }
 
 .sr-modal-title {
@@ -1427,11 +1473,13 @@
     font-size: 18px;
     font-weight: 800;
     margin: 0;
+    color: var(--sr-text-primary);
 }
 
 .sr-modal-sub {
     font-size: 12px;
     color: var(--sr-text-secondary);
+    font-weight: 500;
 }
 
 .sr-modal-close {
@@ -1440,47 +1488,173 @@
     font-size: 18px;
     color: var(--sr-text-secondary);
     cursor: pointer;
-    padding: 6px;
-    border-radius: 6px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .sr-modal-close:hover {
     color: var(--sr-text-primary);
+    background: rgba(148, 163, 184, 0.15);
 }
 
 .sr-modal-body {
     padding: 20px 24px;
     overflow-y: auto;
     flex: 1;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sr-modal-stats-bar {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
     margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+    .sr-modal-stats-bar {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 550px) {
+    .sr-modal-stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .sr-modal-stat-box {
     background: var(--sr-bg-body);
     border: 1px solid var(--sr-border);
-    padding: 12px;
+    padding: 10px 8px;
     border-radius: 10px;
     text-align: center;
 }
 
 .sr-modal-stat-label {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 800;
     color: var(--sr-text-secondary);
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .sr-modal-stat-val {
     font-family: 'Plus Jakarta Sans', var(--font-sans);
-    font-size: 15px;
+    font-size: 13.5px;
     font-weight: 800;
+    color: var(--sr-text-primary);
+}
+
+.sr-constituent-row {
+    transition: background 0.15s ease;
+}
+
+.sr-constituent-row:hover td {
+    background: rgba(16, 185, 129, 0.04);
+}
+
+.sr-stock-sym-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.sr-stock-sym-text {
+    font-weight: 800;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+    color: #10b981;
+    font-size: 13px;
+    transition: color 0.15s ease;
+}
+
+.sr-stock-sym-group:hover .sr-stock-sym-text {
+    color: #059669;
+    text-decoration: underline;
+}
+
+.sr-stock-exchange-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--sr-text-secondary);
+}
+
+.sr-stock-company-name {
+    font-weight: 600;
+    font-size: 12.5px;
+    color: var(--sr-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+.sr-cap-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+    letter-spacing: 0.02em;
+}
+
+.sr-cap-large {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.sr-cap-mid {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.sr-cap-small {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.sr-weight-cell-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.sr-weight-num {
+    font-weight: 700;
+    font-size: 12.5px;
+    min-width: 48px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--sr-text-primary);
+}
+
+.sr-weight-track {
+    flex: 1;
+    height: 6px;
+    background: var(--sr-border);
+    border-radius: 9999px;
+    overflow: hidden;
+    max-width: 110px;
+}
+
+.sr-weight-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #06b6d4);
+    border-radius: 9999px;
+    transition: width 0.3s ease;
 }
 
 .sr-btn-chart-sm {
@@ -1566,9 +1740,15 @@
         min-height: 400px;
     }
 
+    .sr-modal-overlay {
+        padding: 10px;
+    }
+
     .sr-modal-content {
-        width: 100vw;
-        max-width: 100vw;
+        width: 96vw;
+        max-width: 96vw;
+        max-height: 90vh;
+        border-radius: 12px;
     }
 
     .sr-matrix-card-header {
