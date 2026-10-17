@@ -732,11 +732,15 @@
                                 ${categories.map(c => {
                                     const pnlPos = c.pnlPct >= 0;
                                     const sign = pnlPos ? '+' : '';
+                                    const pctDisplay = c.weightage > 0 && c.weightage < 1 
+                                        ? `${c.weightage.toFixed(1)}%` 
+                                        : `${Math.round(c.weightage)}%`;
                                     return `
                                         <tr onclick="window.openPaDetailsModal('${escapeHtml(c.key)}')">
                                             <td>
                                                 <div class="pa-row-name-wrap">
                                                     <span class="pa-row-dot" style="background-color: ${c.color};"></span>
+                                                    <span class="pa-row-pct">${pctDisplay}</span>
                                                     <span class="pa-row-name">${escapeHtml(c.name)}</span>
                                                     <span class="pa-row-count">(${c.items.length})</span>
                                                 </div>
