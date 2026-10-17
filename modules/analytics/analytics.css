@@ -663,29 +663,31 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 10000;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 0;
     animation: paFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .pa-modal-sheet {
     background: #1e293b;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 20px;
+    border-radius: 18px;
     width: 100%;
-    max-width: 600px;
+    max-width: 520px;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
     overflow: hidden;
-    animation: paScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: paScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme="light"] .pa-modal-sheet {
@@ -1023,16 +1025,21 @@
 
     /* Modal behaves as a Bottom Sheet on Mobile */
     .pa-modal-overlay {
-        padding: 0;
-        align-items: flex-end;
+        padding: 0 !important;
+        align-items: flex-end !important;
     }
 
     .pa-modal-sheet {
-        max-width: 100%;
-        max-height: 80vh;
-        border-radius: 20px 20px 0 0;
-        border-bottom: none;
-        animation: paSlideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 80vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        border-bottom: none !important;
+        animation: paSlideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
     .pa-sheet-handle {

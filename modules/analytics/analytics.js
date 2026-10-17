@@ -736,7 +736,7 @@
                                         ? `${c.weightage.toFixed(1)}%` 
                                         : `${Math.round(c.weightage)}%`;
                                     return `
-                                        <tr onclick="window.openPaDetailsModal('${escapeHtml(c.key)}')">
+                                        <tr onclick="window.openPaDetailsModal('${escapeHtml(c.key)}', event)">
                                             <td>
                                                 <div class="pa-row-name-wrap">
                                                     <span class="pa-row-dot" style="background-color: ${c.color};"></span>
@@ -813,7 +813,7 @@
                         if (elements && elements.length > 0) {
                             const idx = elements[0].index;
                             if (categories[idx]) {
-                                window.openPaDetailsModal(categories[idx].key);
+                                window.openPaDetailsModal(categories[idx].key, event.native || event);
                             }
                         }
                     }
@@ -823,8 +823,10 @@
 
         /**
          * Open Details Breakdown Modal / Mobile Bottom Sheet Popup
+         * On Web: Positioned right where the cursor is
+         * On Mobile: Bottom Sheet sliding up from the bottom
          */
-        function openPaDetailsModal(categoryKey) {
+        function openPaDetailsModal(categoryKey, clickEvt) {
             if (!paState.lastAnalysisData) return;
             const category = paState.lastAnalysisData.find(c => c.key === categoryKey);
             if (!category) return;
@@ -834,6 +836,11 @@
             const subEl = document.getElementById('pa-modal-subtitle');
             const tbody = document.getElementById('pa-modal-table-body');
             if (!modal || !titleEl || !tbody) return;
+
+            // Ensure modal overlay is at document.body level so viewport coordinates are clean
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
 
             titleEl.innerText = category.name;
             if (subEl) {
@@ -868,7 +875,73 @@
                 `;
             }).join('');
 
-            modal.style.display = 'flex';
+            const isMobile = window.innerWidth <= 768;
+            const sheet = modal.querySelector('.pa-modal-sheet');
+
+            if (isMobile) {
+                modal.style.setProperty('display', 'flex', 'important');
+                if (sheet) {
+                    sheet.style.position = '';
+                    sheet.style.left = '';
+                    sheet.style.top = '';
+                    sheet.style.transform = '';
+                    sheet.style.transformOrigin = '';
+                    sheet.style.width = '';
+                    sheet.style.maxWidth = '';
+                    sheet.style.maxHeight = '';
+                    sheet.style.margin = '';
+                }
+            } else {
+                modal.style.setProperty('display', 'block', 'important');
+                if (sheet) {
+                    sheet.style.position = 'absolute';
+                    sheet.style.width = '500px';
+                    sheet.style.maxWidth = 'calc(100vw - 32px)';
+                    sheet.style.maxHeight = 'min(440px, calc(100vh - 40px))';
+                    sheet.style.margin = '0';
+
+                    // Extract click / cursor coordinates
+                    let cursorX = window.innerWidth / 2;
+                    let cursorY = window.innerHeight / 2;
+
+                    if (clickEvt) {
+                        if (typeof clickEvt.clientX === 'number') {
+                            cursorX = clickEvt.clientX;
+                            cursorY = clickEvt.clientY;
+                        } else if (clickEvt.nativeEvent && typeof clickEvt.nativeEvent.clientX === 'number') {
+                            cursorX = clickEvt.nativeEvent.clientX;
+                            cursorY = clickEvt.nativeEvent.clientY;
+                        } else if (clickEvt.touches && clickEvt.touches[0]) {
+                            cursorX = clickEvt.touches[0].clientX;
+                            cursorY = clickEvt.touches[0].clientY;
+                        }
+                    }
+
+                    const sheetW = sheet.offsetWidth || 500;
+                    const sheetH = sheet.offsetHeight || 280;
+                    const vw = window.innerWidth;
+                    const vh = window.innerHeight;
+
+                    // Align horizontally near cursor, clamped inside viewport
+                    let left = cursorX - sheetW / 2;
+                    if (left + sheetW > vw - 20) left = vw - sheetW - 20;
+                    if (left < 20) left = 20;
+
+                    // Align vertically near cursor (below cursor if room, above if overflowing bottom)
+                    let top = cursorY + 12;
+                    if (top + sheetH > vh - 20) {
+                        top = cursorY - sheetH - 12;
+                    }
+                    if (top < 20) {
+                        top = Math.max(20, Math.min(cursorY - sheetH / 2, vh - sheetH - 20));
+                    }
+
+                    sheet.style.left = `${Math.round(left)}px`;
+                    sheet.style.top = `${Math.round(top)}px`;
+                    sheet.style.transformOrigin = `${Math.round(cursorX - left)}px ${Math.round(cursorY - top)}px`;
+                }
+            }
+
             document.body.style.overflow = 'hidden';
         }
 
@@ -876,9 +949,12 @@
          * Close Details Breakdown Modal
          */
         function closePaModal(event) {
+            if (event && event.target && event.target !== document.getElementById('pa-details-modal') && !event.target.classList.contains('pa-modal-close-btn')) {
+                return;
+            }
             const modal = document.getElementById('pa-details-modal');
             if (modal) {
-                modal.style.display = 'none';
+                modal.style.setProperty('display', 'none', 'important');
                 document.body.style.overflow = '';
             }
         }
