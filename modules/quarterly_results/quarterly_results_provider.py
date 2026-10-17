@@ -153,6 +153,44 @@ class QuarterlyResultsProvider:
         else:
             logger.info("QuarterlyResults: Initialized without cache. Parsing will start upon page load.")
 
+    def _login_screener_pure_requests(self) -> requests.Session:
+        """Log in to Screener.in using pure HTTP requests (100% production/cloud compatible, no Selenium needed)."""
+        s = requests.Session()
+        s.headers.update(HTTP_HEADERS)
+        s.headers["Referer"] = "https://www.screener.in/login/"
+
+        try:
+            r = s.get("https://www.screener.in/login/", timeout=10)
+            soup = BeautifulSoup(r.text, "html.parser")
+            csrf_inp = soup.find("input", {"name": "csrfmiddlewaretoken"})
+            if not csrf_inp:
+                logger.warning("CSRF token not found on Screener login page.")
+                return s
+
+            csrf = csrf_inp.get("value", "")
+            data = {
+                "csrfmiddlewaretoken": csrf,
+                "next": "/results/latest/",
+                "username": "capitaldesk.feed@gmail.com",
+                "password": "BlueHorizon*9842"
+            }
+            resp = s.post("https://www.screener.in/login/", data=data, timeout=10, allow_redirects=True)
+            if resp.status_code == 200 or "/results/latest/" in resp.url:
+                logger.info("Successfully authenticated with Screener.in via pure HTTP requests.")
+                cookies = s.cookies.get_dict()
+                try:
+                    os.makedirs(os.path.dirname(self._session_file), exist_ok=True)
+                    with open(self._session_file, "w", encoding="utf-8") as f:
+                        json.dump(cookies, f, indent=2)
+                except Exception:
+                    pass
+            else:
+                logger.warning(f"Screener login returned status {resp.status_code}")
+        except Exception as e:
+            logger.error(f"Error during pure HTTP Screener login: {e}")
+
+        return s
+
     def _get_screener_session(self) -> requests.Session:
         """Create an authenticated requests session for Screener.in."""
         s = requests.Session()
@@ -171,47 +209,20 @@ class QuarterlyResultsProvider:
             except Exception as e:
                 logger.warning(f"Failed to use stored session: {e}")
 
-        # Need re-login via headless Selenium
-        logger.info("Screener session expired or missing. Re-authenticating via headless browser...")
+        # Authenticate with pure requests
+        logger.info("Screener session expired or missing. Logging in via pure HTTP requests...")
+        sess = self._login_screener_pure_requests()
         try:
-            from selenium import webdriver
-            from selenium.webdriver.chrome.service import Service
-            from selenium.webdriver.chrome.options import Options
-            from selenium.webdriver.common.by import By
-            from webdriver_manager.chrome import ChromeDriverManager
+            r = sess.get(SCREENER_LATEST_URL, allow_redirects=False, timeout=8)
+            if r.status_code == 200:
+                return sess
+        except Exception:
+            pass
 
-            opts = Options()
-            opts.add_argument("--headless=new")
-            opts.add_argument("--window-size=1920,1080")
-            opts.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-
-            srv = Service(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=srv, options=opts)
-            try:
-                driver.get("https://www.screener.in/login/")
-                time.sleep(1)
-                driver.find_element(By.ID, "id_username").send_keys("capitaldesk.feed@gmail.com")
-                driver.find_element(By.ID, "id_password").send_keys("BlueHorizon*9842")
-                driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-                time.sleep(2)
-
-                cookies = driver.get_cookies()
-                cookie_dict = {c["name"]: c["value"] for c in cookies}
-                os.makedirs(os.path.dirname(self._session_file), exist_ok=True)
-                with open(self._session_file, "w", encoding="utf-8") as f:
-                    json.dump(cookie_dict, f, indent=2)
-
-                for k, v in cookie_dict.items():
-                    s.cookies.set(k, v, domain=".screener.in")
-            finally:
-                driver.quit()
-        except Exception as e:
-            logger.error(f"Failed to authenticate with Screener: {e}")
-
-        return s
+        return sess
 
     def _load_disk_cache(self) -> Optional[List[Dict[str, Any]]]:
-        """Load from the primary JSON store (user_data/quarterly_results_live.json)."""
+        """Load from the primary JSON store (user_data/quarterly_results_live.json) or bundled seed."""
         target = self._live_file if os.path.exists(self._live_file) else self._cache_file
         if os.path.exists(target):
             try:
@@ -225,6 +236,22 @@ class QuarterlyResultsProvider:
                         return payload
             except Exception as e:
                 logger.warning(f"Error reading disk cache {target}: {e}")
+
+        # Fallback to bundled seed in production
+        seed_path = Path(__file__).resolve().parent / "seed_quarterly_results.json"
+        if seed_path.exists():
+            try:
+                with open(seed_path, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                    items = payload.get("data", []) if isinstance(payload, dict) else payload
+                    if items:
+                        logger.info(f"Loaded {len(items)} seed records in production.")
+                        self._last_fetch_time = payload.get("time", time.time()) if isinstance(payload, dict) else time.time()
+                        self._save_disk_cache(items)
+                        return items
+            except Exception as e:
+                logger.warning(f"Error reading seed_quarterly_results.json: {e}")
+
         return None
 
     def _save_disk_cache(self, data: List[Dict[str, Any]]):

@@ -12,7 +12,7 @@
         max_mcap: null,
         sorting: 'latest',
         exchange: 'all',
-        watchlist: 'portfolio', // DEFAULT IS PORTFOLIO
+        watchlist: 'all', // DEFAULT IS ALL (SHOW ALL STOCKS ON LOAD)
         date: '',
         data: null,
         isFetching: false,
