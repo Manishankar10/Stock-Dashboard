@@ -10,8 +10,14 @@
             </div>
             <h1 class="qr-page-title" id="qr-page-title"><span class="qr-title-desktop">Latest quarterly results</span><span class="qr-title-mobile">Quarterly results</span> <span class="qr-title-quarter" id="qr-title-quarter"></span></h1>
         </div>
-        <!-- Header Actions (Filter + Mobile Refresh Button) -->
+        <!-- Header Actions (Filter + Download + Mobile Refresh Button) -->
         <div class="qr-top-bar-actions">
+            <a href="/api/quarterly-results/download" class="qr-download-btn" title="Download latest quarterly results JSON" download="quarterly_results_latest.json">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+                <span>Download JSON</span>
+            </a>
             <button type="button" class="qr-mobile-filter-trigger" onclick="window.openQrMobileFilter()" title="Filter Results">
                 <span class="qr-filter-icon">⚡</span> Filter
                 <span class="qr-filter-badge-pill" id="qr-mobile-active-filter-badge" style="display: none;">0</span>

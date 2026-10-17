@@ -4,7 +4,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Set, Tuple
 
-from flask import Blueprint, jsonify, render_template, request, send_from_directory, session
+from flask import Blueprint, jsonify, render_template, request, send_file, send_from_directory, session
 
 from .quarterly_results_provider import QuarterlyResultsProvider, clean_symbol
 
@@ -150,3 +150,17 @@ def get_quarterly_results_data():
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@quarterly_results_bp.get("/api/quarterly-results/download")
+@_guard
+def download_quarterly_results_data():
+    live_file = Path("user_data") / "quarterly_results_live.json"
+    if live_file.exists():
+        return send_file(
+            live_file.resolve(),
+            as_attachment=True,
+            download_name="quarterly_results_latest.json",
+            mimetype="application/json",
+        )
+    return jsonify({"error": "Quarterly results file not found."}), 404
