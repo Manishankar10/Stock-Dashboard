@@ -415,7 +415,6 @@
                         <div class="pa-empty-desc">Add stock holdings to "${escapeHtml(paState.activePortfolio)}" to generate comprehensive portfolio analytics.</div>
                     </div>
                 `;
-                updatePaSummaryBanner(0, 0, 0, 0, 0, 0);
                 return;
             }
 
@@ -469,77 +468,8 @@
 
             paState.cachedHoldings = enrichedHoldings;
 
-            // 4. Update Summary Banner Card
-            const overallPnL = totalCurrentVal - totalInvestedVal;
-            const overallPnLPct = totalInvestedVal > 0 ? (overallPnL / totalInvestedVal) * 100 : 0;
-            const prevTotalVal = totalCurrentVal - totalDayPnL;
-            const dayPnLPct = prevTotalVal > 0 ? (totalDayPnL / prevTotalVal) * 100 : 0;
-
-            updatePaSummaryBanner(totalCurrentVal, totalInvestedVal, overallPnL, overallPnLPct, totalDayPnL, dayPnLPct);
-
-            // 5. Render active tab data
+            // 4. Render active tab data
             renderPaActiveTabContent(enrichedHoldings, totalCurrentVal);
-        }
-
-        /**
-         * Update Value & P&L Summary Banner
-         */
-        function updatePaSummaryBanner(currentVal, investedVal, overallPnL, overallPnLPct, dayPnL, dayPnLPct) {
-            const curValEl = document.getElementById('pa-total-current-val');
-            const invValEl = document.getElementById('pa-invested-val');
-            const pnlWrap = document.getElementById('pa-overall-pnl-wrap');
-            const pnlArrow = document.getElementById('pa-pnl-arrow');
-            const pnlLabel = document.getElementById('pa-pnl-label');
-            const pnlAmt = document.getElementById('pa-overall-pnl-amt');
-            const pnlPct = document.getElementById('pa-overall-pnl-pct');
-            const dayValEl = document.getElementById('pa-day-pnl-val');
-            const dayLabelEl = document.getElementById('pa-day-pnl-label');
-            const eyeBtn = document.getElementById('pa-eye-toggle');
-
-            const isPriv = (typeof isPrivacyMode !== 'undefined') ? isPrivacyMode : (localStorage.getItem('capital_desk_privacy_mode') === 'true');
-
-            if (curValEl) {
-                curValEl.innerText = isPriv ? '₹ ••••••' : `₹${Math.round(currentVal).toLocaleString('en-IN')}`;
-            }
-            if (invValEl) {
-                invValEl.innerText = isPriv ? '₹ ••••••' : `₹${Math.round(investedVal).toLocaleString('en-IN')}`;
-            }
-
-            const isPos = overallPnL >= 0;
-            if (pnlWrap) {
-                pnlWrap.className = `pa-overall-pnl-row ${isPos ? 'pos' : 'neg'}`;
-            }
-            if (pnlArrow) {
-                pnlArrow.innerText = isPos ? '↑' : '↓';
-            }
-            if (pnlLabel) {
-                pnlLabel.innerText = isPos ? 'Overall Profit' : 'Overall Loss';
-            }
-            if (pnlAmt) {
-                const sign = isPos ? '+' : '-';
-                pnlAmt.innerText = isPriv ? '₹ ••••••' : `${sign}₹${Math.abs(overallPnL).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            }
-            if (pnlPct) {
-                const sign = isPos ? '+' : '';
-                pnlPct.innerText = `(${sign}${overallPnLPct.toFixed(2)}%)`;
-            }
-
-            const isDayPos = dayPnL >= 0;
-            if (dayLabelEl) {
-                dayLabelEl.innerText = isDayPos ? "Today's Profit" : "Today's Loss";
-            }
-            if (dayValEl) {
-                dayValEl.className = `pa-sub-val pa-day-pnl-val ${isDayPos ? 'pos' : 'neg'}`;
-                const daySign = isDayPos ? '+' : '-';
-                const dayPctSign = isDayPos ? '+' : '';
-                dayValEl.innerText = isPriv 
-                    ? `₹ •••••• (${dayPctSign}${dayPnLPct.toFixed(2)}%)`
-                    : `${daySign}₹${Math.abs(dayPnL).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${dayPctSign}${dayPnLPct.toFixed(2)}%)`;
-            }
-
-            if (eyeBtn) {
-                eyeBtn.style.color = isPriv ? '#10b981' : '';
-            }
         }
 
         /**
