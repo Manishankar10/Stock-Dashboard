@@ -30,6 +30,10 @@
         // Indicator Series
         var cdRiderSeries = null;
         var cachedCdRiderMarkers = [];
+        var stTriggerSeries = null;
+        var stTriggerPriceLine = null;
+        var cachedStTriggerMarkers = [];
+        var cachedStTriggerInfo = null;
         var donchianUpperSeries = null;
         var donchianMiddleSeries = null;
         var donchianLowerSeries = null;
@@ -123,7 +127,7 @@
                 const saved = localStorage.getItem('capital_desk_chart_indicators');
                 if (saved) {
                     const prefs = JSON.parse(saved);
-                    const keys = ['chkCdRider', 'chkBsDonchian', 'chkVolume', 'chkVolumeMa', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
+                    const keys = ['chkCdRider', 'chkStTrigger', 'chkBsDonchian', 'chkVolume', 'chkVolumeMa', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
                     keys.forEach(k => {
                         const el = document.getElementById(k);
                         if (el && prefs[k] !== undefined) {
@@ -3468,6 +3472,18 @@
             addSeriesToMap(data.volume, 'vol');
             addSeriesToMap(data.volume_ma, 'vol_ma');
             addSeriesToMap(data.cdrider, 'cdrider');
+            if (data.st_trigger_series && Array.isArray(data.st_trigger_series)) {
+                data.st_trigger_series.forEach(item => {
+                    if (item && item.time) {
+                        const r = map.get(item.time) || {};
+                        r.st_trigger = item.trigger;
+                        r.st_direction = item.direction;
+                        r.st_dist_pct = item.dist_pct;
+                        r.st_dist_pts = item.dist_pts;
+                        map.set(item.time, r);
+                    }
+                });
+            }
             addSeriesToMap(data.donchian_upper, 'donchian_upper');
             addSeriesToMap(data.donchian_middle, 'donchian_middle');
             addSeriesToMap(data.donchian_lower, 'donchian_lower');
@@ -4106,6 +4122,27 @@
             if (data.donchian_super_buy) donchianMarkers.push(...data.donchian_super_buy);
             if (data.donchian_sell) donchianMarkers.push(...data.donchian_sell);
             cachedBsDonchianMarkers = donchianMarkers.sort((a, b) => {
+                const ta = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() || 0);
+                const tb = typeof b.time === 'number' ? b.time : (new Date(b.time).getTime() || 0);
+                return ta - tb;
+            });
+
+            // ST Trigger (Supertrend Trigger Levels 1, 2.5)
+            stTriggerSeries = mainChart.addLineSeries({
+                color: '#ec4899',
+                lineWidth: 2,
+                title: 'ST Trigger',
+                visible: false,
+                autoscaleInfoProvider: indicatorAutoscaleInfo
+            });
+            if (data.st_trigger_series) stTriggerSeries.setData(data.st_trigger_series);
+
+            cachedStTriggerInfo = data.st_trigger_info || null;
+
+            const stMarkers = [];
+            if (data.st_trigger_buy) stMarkers.push(...data.st_trigger_buy);
+            if (data.st_trigger_sell) stMarkers.push(...data.st_trigger_sell);
+            cachedStTriggerMarkers = stMarkers.sort((a, b) => {
                 const ta = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() || 0);
                 const tb = typeof b.time === 'number' ? b.time : (new Date(b.time).getTime() || 0);
                 return ta - tb;
@@ -4934,6 +4971,21 @@
             const elCdRider = document.getElementById('legCdRider');
             if (elCdRider) elCdRider.innerText = (rec && rec.cdrider !== undefined) ? '₹' + rec.cdrider.toFixed(2) : '-';
 
+            const elStTrig = document.getElementById('legStTrigger');
+            if (elStTrig) {
+                if (rec && rec.st_trigger !== undefined && rec.st_trigger !== null) {
+                    const trigVal = rec.st_trigger.toFixed(2);
+                    const isBuy = (rec.st_direction === 'BUY' || rec.st_direction === 1);
+                    const dirStr = isBuy ? 'BUY' : 'SELL';
+                    const dirColor = isBuy ? '#22c55e' : '#ef5350';
+                    const distPct = (rec.st_dist_pct !== undefined && rec.st_dist_pct !== null) ? rec.st_dist_pct.toFixed(2) : '-';
+                    const distSign = (rec.st_dist_pct !== undefined && rec.st_dist_pct > 0) ? '+' : '';
+                    elStTrig.innerHTML = `<span style="color:#ec4899">₹${trigVal}</span> <span style="color:${dirColor}; font-weight:700;">(${dirStr} ${distSign}${distPct}%)</span>`;
+                } else {
+                    elStTrig.innerText = '-';
+                }
+            }
+
             const elDonchian = document.getElementById('legBsDonchian');
             if (elDonchian) {
                 if (rec && rec.donchian_upper !== undefined) {
@@ -4966,6 +5018,7 @@
             if (!volumeSeries) return;
 
             const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false;
+            const showStTrigger = document.getElementById('chkStTrigger') ? document.getElementById('chkStTrigger').checked : false;
             const showBsDonchian = document.getElementById('chkBsDonchian') ? document.getElementById('chkBsDonchian').checked : false;
             const showVol = document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true;
             const showVolMa = document.getElementById('chkVolumeMa') ? document.getElementById('chkVolumeMa').checked : true;
@@ -4979,6 +5032,7 @@
             try {
                 localStorage.setItem('capital_desk_chart_indicators', JSON.stringify({
                     chkCdRider: showCdRider,
+                    chkStTrigger: showStTrigger,
                     chkBsDonchian: showBsDonchian,
                     chkVolume: showVol,
                     chkVolumeMa: showVolMa,
@@ -4992,9 +5046,76 @@
             } catch(e){}
 
             if (cdRiderSeries) cdRiderSeries.applyOptions({ visible: showCdRider });
+            if (stTriggerSeries) stTriggerSeries.applyOptions({ visible: showStTrigger });
             if (donchianUpperSeries) donchianUpperSeries.applyOptions({ visible: showBsDonchian });
             if (donchianMiddleSeries) donchianMiddleSeries.applyOptions({ visible: showBsDonchian });
             if (donchianLowerSeries) donchianLowerSeries.applyOptions({ visible: showBsDonchian });
+
+            // Manage ST Trigger Horizontal Price Line
+            if (mainSeries) {
+                if (stTriggerPriceLine) {
+                    try { mainSeries.removePriceLine(stTriggerPriceLine); } catch(e){}
+                    stTriggerPriceLine = null;
+                }
+                if (showStTrigger && cachedStTriggerInfo && cachedStTriggerInfo.trigger) {
+                    const isBuy = (cachedStTriggerInfo.direction === 'BUY' || cachedStTriggerInfo.direction === 1);
+                    const trigVal = cachedStTriggerInfo.trigger;
+                    const distPct = cachedStTriggerInfo.dist_pct || 0;
+                    const sign = distPct >= 0 ? '+' : '';
+                    const titleText = isBuy 
+                        ? `SELL below ₹${trigVal.toFixed(2)} (${sign}${distPct.toFixed(2)}%)`
+                        : `BUY above ₹${trigVal.toFixed(2)} (${sign}${distPct.toFixed(2)}%)`;
+                    const lineColor = isBuy ? '#ef5350' : '#22c55e';
+                    try {
+                        stTriggerPriceLine = mainSeries.createPriceLine({
+                            price: trigVal,
+                            color: lineColor,
+                            lineWidth: 2,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: titleText,
+                        });
+                    } catch(e) {
+                        console.error('Error creating ST Trigger price line:', e);
+                    }
+                }
+            }
+
+            // Manage ST Trigger Floating Info Table
+            const infoBox = document.getElementById('stTriggerInfoBox');
+            if (infoBox) {
+                if (showStTrigger && cachedStTriggerInfo) {
+                    const isBuy = (cachedStTriggerInfo.direction === 'BUY' || cachedStTriggerInfo.direction === 1);
+                    const zoneEl = document.getElementById('stInfoZone');
+                    const trigEl = document.getElementById('stInfoTrigger');
+                    const distEl = document.getElementById('stInfoDist');
+                    const limitEl = document.getElementById('stInfoLimit');
+
+                    if (zoneEl) {
+                        zoneEl.innerText = isBuy ? 'BUY ZONE 🟢' : 'SELL ZONE 🔴';
+                        zoneEl.style.color = isBuy ? '#22c55e' : '#ef5350';
+                    }
+                    if (trigEl) {
+                        trigEl.innerText = '₹' + (cachedStTriggerInfo.trigger ? cachedStTriggerInfo.trigger.toFixed(2) : '-');
+                        trigEl.style.color = '#ec4899';
+                    }
+                    if (distEl) {
+                        const distPct = cachedStTriggerInfo.dist_pct || 0;
+                        const distPts = cachedStTriggerInfo.dist_pts || 0;
+                        const sign = distPct >= 0 ? '+' : '';
+                        distEl.innerText = `${sign}${distPct.toFixed(2)}% (${sign}${distPts.toFixed(2)} pts)`;
+                        distEl.style.color = isBuy ? '#ef5350' : '#22c55e';
+                    }
+                    if (limitEl) {
+                        limitEl.innerText = isBuy 
+                            ? `Flip to SELL if close < ₹${cachedStTriggerInfo.trigger.toFixed(2)}`
+                            : `Flip to BUY if close > ₹${cachedStTriggerInfo.trigger.toFixed(2)}`;
+                    }
+                    infoBox.style.display = 'block';
+                } else {
+                    infoBox.style.display = 'none';
+                }
+            }
 
             if (mainSeries) {
                 const combinedMarkers = [];
@@ -5003,6 +5124,9 @@
                 }
                 if (showBsDonchian && cachedBsDonchianMarkers && cachedBsDonchianMarkers.length > 0) {
                     combinedMarkers.push(...cachedBsDonchianMarkers);
+                }
+                if (showStTrigger && cachedStTriggerMarkers && cachedStTriggerMarkers.length > 0) {
+                    combinedMarkers.push(...cachedStTriggerMarkers);
                 }
                 combinedMarkers.sort((a, b) => {
                     const ta = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() || 0);
@@ -5021,6 +5145,9 @@
             if (document.getElementById('legCdRiderGroup')) {
                 document.getElementById('legCdRiderGroup').style.display = showCdRider ? 'inline' : 'none';
             }
+            if (document.getElementById('legStTriggerGroup')) {
+                document.getElementById('legStTriggerGroup').style.display = showStTrigger ? 'inline' : 'none';
+            }
             if (document.getElementById('legBsDonchianGroup')) {
                 document.getElementById('legBsDonchianGroup').style.display = showBsDonchian ? 'inline' : 'none';
             }
@@ -5038,7 +5165,7 @@
             document.getElementById('macdChartPane').style.display = showMacd ? 'block' : 'none';
             document.getElementById('legMacdGroup').style.display = showMacd ? 'inline-block' : 'none';
 
-            document.getElementById('legSmaGroup').style.display = (showCdRider || showBsDonchian || showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
+            document.getElementById('legSmaGroup').style.display = (showCdRider || showStTrigger || showBsDonchian || showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
 
             resizeChartPanes();
         }
@@ -5079,12 +5206,24 @@
             if (rsiContainer) rsiContainer.innerHTML = '';
             if (macdContainer) macdContainer.innerHTML = '';
 
+            if (stTriggerPriceLine && mainSeries) {
+                try { mainSeries.removePriceLine(stTriggerPriceLine); } catch(e){}
+            }
+            stTriggerPriceLine = null;
+            const infoBox = document.getElementById('stTriggerInfoBox');
+            if (infoBox) infoBox.style.display = 'none';
+
             activePriceLines = [];
             drawingCanvas = null;
             currentDrawingTool = null;
             if (typeof hideCanvasObjectMenu === 'function') hideCanvasObjectMenu();
             if (typeof hideDrawingBanner === 'function') hideDrawingBanner();
         }
+
+        window.closeStTriggerInfoBox = function() {
+            const infoBox = document.getElementById('stTriggerInfoBox');
+            if (infoBox) infoBox.style.display = 'none';
+        };
 
         window.openInHouseChart = openInHouseChart;
         window.closeChartModal = closeChartModal;

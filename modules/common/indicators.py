@@ -311,6 +311,113 @@ def calculate_indicators(candles):
                     'price': c_close
                 })
 
+    # ── Supertrend Trigger Levels (ST Trigger: ATR 1, Mult 2.5) ──
+    st_trigger_series = []
+    st_trigger_buy = []
+    st_trigger_sell = []
+    st_trigger_info = {}
+
+    if n >= 2:
+        st_atr_len = 1
+        st_mult = 2.5
+
+        # True Range calculation (ta.atr(1) == True Range)
+        st_tr = [0.0] * n
+        st_tr[0] = candles[0]['high'] - candles[0]['low']
+        for i in range(1, n):
+            h = candles[i]['high']
+            l = candles[i]['low']
+            prev_c = candles[i-1]['close']
+            st_tr[i] = max(h - l, abs(h - prev_c), abs(l - prev_c))
+
+        st_f_up = [0.0] * n
+        st_f_lo = [0.0] * n
+        st_dirn = [1] * n
+
+        for i in range(n):
+            c = candles[i]
+            src = (c['high'] + c['low']) / 2.0
+            ub = src + (st_mult * st_tr[i])
+            lb = src - (st_mult * st_tr[i])
+
+            if i == 0:
+                st_f_up[0] = ub
+                st_f_lo[0] = lb
+                st_dirn[0] = 1
+                curr_dirn = 1
+            else:
+                p_up = st_f_up[i-1]
+                p_lo = st_f_lo[i-1]
+                prev_c = candles[i-1]['close']
+
+                curr_lo = lb if (lb > p_lo or prev_c < p_lo) else p_lo
+                curr_up = ub if (ub < p_up or prev_c > p_up) else p_up
+
+                st_f_lo[i] = curr_lo
+                st_f_up[i] = curr_up
+
+                prev_dirn = st_dirn[i-1]
+                curr_close = c['close']
+
+                if prev_dirn == 1:
+                    curr_dirn = -1 if curr_close < curr_lo else 1
+                else:
+                    curr_dirn = 1 if curr_close > curr_up else -1
+
+                st_dirn[i] = curr_dirn
+
+                # Flips
+                if curr_dirn == 1 and prev_dirn == -1:
+                    st_trigger_buy.append({
+                        'time': times[i],
+                        'position': 'belowBar',
+                        'color': '#10b981',
+                        'shape': 'arrowUp',
+                        'text': 'ST Buy'
+                    })
+                elif curr_dirn == -1 and prev_dirn == 1:
+                    st_trigger_sell.append({
+                        'time': times[i],
+                        'position': 'aboveBar',
+                        'color': '#ef5350',
+                        'shape': 'arrowDown',
+                        'text': 'ST Sell'
+                    })
+
+            is_down = (curr_dirn == -1)
+            trig = st_f_up[i] if is_down else st_f_lo[i]
+            dist_pct = ((trig / c['close']) - 1.0) * 100.0 if c['close'] else 0.0
+            dist_pts = trig - c['close']
+
+            st_trigger_series.append({
+                'time': times[i],
+                'value': round(trig, 2),
+                'color': '#ef5350' if is_down else '#10b981',
+                'trigger': round(trig, 2),
+                'direction': 'SELL' if is_down else 'BUY',
+                'dist_pct': round(dist_pct, 2),
+                'dist_pts': round(dist_pts, 2)
+            })
+
+        latest_c = candles[-1]
+        latest_is_down = (st_dirn[-1] == -1)
+        latest_trig = st_f_up[-1] if latest_is_down else st_f_lo[-1]
+        latest_dist_pct = ((latest_trig / latest_c['close']) - 1.0) * 100.0 if latest_c['close'] else 0.0
+        latest_dist_pts = latest_trig - latest_c['close']
+        fresh = 1 if (n > 1 and st_dirn[-1] != st_dirn[-2]) else 0
+
+        st_trigger_info = {
+            'direction': 'SELL' if latest_is_down else 'BUY',
+            'trigger': round(latest_trig, 2),
+            'dist_pct': round(latest_dist_pct, 2),
+            'dist_pts': round(latest_dist_pts, 2),
+            'prev_up': round(st_f_up[-2] if n > 1 else st_f_up[-1], 2),
+            'prev_lo': round(st_f_lo[-2] if n > 1 else st_f_lo[-1], 2),
+            'fresh': fresh,
+            'atr_len': 1,
+            'mult': 2.5
+        }
+
     return {
         'sma20': sma20,
         'sma50': sma50,
@@ -332,6 +439,10 @@ def calculate_indicators(candles):
         'donchian_super_buy': donchian_super_buy,
         'donchian_sell': donchian_sell,
         'donchian_signals': donchian_signals,
+        'st_trigger_series': st_trigger_series,
+        'st_trigger_buy': st_trigger_buy,
+        'st_trigger_sell': st_trigger_sell,
+        'st_trigger_info': st_trigger_info,
         'macd_line': macd_line,
         'macd_signal': macd_signal,
         'macd_hist': macd_hist,

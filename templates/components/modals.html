@@ -255,6 +255,7 @@
                             <div class="chart-popover-menu" id="popover-indicators">
                                 <div class="popover-menu-title">Indicators</div>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkCdRider" onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 600;">CDRider (Supertrend)</span></label>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkStTrigger" onchange="toggleIndicators()"> <span style="color:#22c55e; font-weight: 600;">ST Trigger (1, 2.5)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkBsDonchian" onchange="toggleIndicators()"> <span style="color:#ffc300; font-weight: 600;">BS Donchian (20)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkVolume" checked onchange="toggleIndicators()"> <span>Volume</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkVolumeMa" checked onchange="toggleIndicators()"> <span style="color:#2962ff">Volume MA (20)</span></label>
@@ -433,6 +434,7 @@
                     <div class="legend-item" id="legVolMaGroup" style="display: none;">VOL MA: <span class="legend-val" style="color:#2962ff" id="legVolMa">-</span></div>
                     <div class="legend-item" id="legSmaGroup">
                         <span id="legCdRiderGroup" style="display: none;">CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> | </span>
+                        <span id="legStTriggerGroup" style="display: none;">ST Trig: <span class="legend-val" id="legStTrigger">-</span> | </span>
                         <span id="legBsDonchianGroup" style="display: none;">Donchian: <span class="legend-val" id="legBsDonchian">-</span> | </span>
                         50 DMA: <span class="legend-val" style="color:#ff6d00" id="legSma50">-</span> |
                         200 DMA: <span class="legend-val" style="color:#e11d48" id="legSma200">-</span> |
@@ -474,6 +476,31 @@
                         </svg>
                     </div>
                     <div class="fav-bar-icons" id="mobileFavBarIcons"></div>
+                </div>
+
+                <!-- ST Trigger Floating Info Table -->
+                <div id="stTriggerInfoBox" class="st-trigger-info-box" style="display: none;">
+                    <div class="st-info-title">
+                        <span>⚡ ST TRIGGER (1 x 2.5)</span>
+                        <span class="st-info-close" onclick="closeStTriggerInfoBox()" title="Hide Info Table">✕</span>
+                    </div>
+                    <div class="st-info-row">
+                        <span class="st-info-lbl">Current Zone</span>
+                        <span class="st-info-val" id="stInfoZone">-</span>
+                    </div>
+                    <div class="st-info-row">
+                        <span class="st-info-lbl">Flip Trigger</span>
+                        <span class="st-info-val" id="stInfoTrigger">-</span>
+                    </div>
+                    <div class="st-info-row">
+                        <span class="st-info-lbl">Distance</span>
+                        <span class="st-info-val" id="stInfoDist">-</span>
+                    </div>
+                    <div class="st-info-row">
+                        <span class="st-info-lbl">Trigger Limit</span>
+                        <span class="st-info-val" id="stInfoLimit" style="font-size: 10px; color: #94a3b8;">-</span>
+                    </div>
+                    <div class="st-info-note">Only bar CLOSE flips signal</div>
                 </div>
 
                 <div id="mainChartPane" style="flex: 3; width: 100%; position: relative;"></div>
