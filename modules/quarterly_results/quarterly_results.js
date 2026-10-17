@@ -112,7 +112,7 @@
         const pdfUrl = item.pdf_url ? escapeHtml(item.pdf_url) : '#';
         const ind = escapeHtml(item.industry || '');
 
-        const quarters = item.quarters || { latest: 'Sep 2026', prev: 'Jun 2026', year_ago: 'Sep 2025' };
+        const quarters = item.quarters || (qrState.data && qrState.data.quarters) || {};
 
         const rowsHtml = (item.metrics || []).map(m => {
             const name = escapeHtml(m.name || '');
@@ -144,6 +144,8 @@
             `;
         }).join('');
 
+        const xbrlUrl = item.xbrl_url ? escapeHtml(item.xbrl_url) : '';
+
         return `
             <div class="qr-result-card" data-symbol="${sym}">
                 <div class="qr-card-header">
@@ -152,6 +154,7 @@
                             ${comp} <span class="qr-ext-icon">↗</span>
                         </span>
                         ${item.pdf_url ? `<a href="${pdfUrl}" target="_blank" rel="noopener noreferrer" class="qr-pdf-link" title="Download Exchange PDF Filing">PDF <span class="qr-pdf-icon">📄</span></a>` : ''}
+                        ${xbrlUrl ? `<a href="${xbrlUrl}" target="_blank" rel="noopener noreferrer" class="qr-xbrl-link" title="View Official SEBI / BSE XBRL XML">XBRL <span class="qr-xbrl-icon">📑</span></a>` : ''}
                         ${ind ? `<span class="qr-industry-pill">${ind}</span>` : ''}
                     </div>
                     <div class="qr-key-stats">
@@ -199,10 +202,10 @@
         if (!data) return;
 
         // 0. Sync Quarter Title Tag
-        const qLabel = data.quarter_label || data.current_quarter || 'Q2 FY27';
+        const qLabel = data.quarter_label || data.current_quarter || '';
         const titleQuarterEl = document.getElementById('qr-title-quarter');
         if (titleQuarterEl) {
-            titleQuarterEl.textContent = `(${qLabel})`;
+            titleQuarterEl.textContent = qLabel ? `(${qLabel})` : '';
         }
 
         // 1. Counters
@@ -516,10 +519,10 @@
         if (!navEl) return;
 
         const isAllActive = !qrState.date;
-        const qLabel = (qrState.data && (qrState.data.quarter_label || qrState.data.current_quarter)) || 'Q2 FY27';
+        const qLabel = (qrState.data && (qrState.data.quarter_label || qrState.data.current_quarter)) || '';
         let html = `
             <button type="button" class="qr-date-pill ${isAllActive ? 'active' : ''}" data-date="" onclick="window.setQrDateFilter('')" title="Show all results for this quarter">
-                All ${escapeHtml(qLabel)} Results
+                All ${qLabel ? escapeHtml(qLabel) + ' ' : ''}Results
             </button>
         `;
 

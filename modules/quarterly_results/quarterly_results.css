@@ -577,6 +577,37 @@
     font-size: 12px;
 }
 
+.qr-xbrl-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: #f59e0b;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.18s ease;
+}
+
+:root:not([data-theme="dark"]) .qr-xbrl-link {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #b45309;
+}
+
+.qr-xbrl-link:hover {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fbbf24;
+}
+
+.qr-xbrl-icon {
+    font-size: 12px;
+}
+
 .qr-industry-pill {
     font-size: 11px;
     color: var(--text-secondary, #94a3b8);
