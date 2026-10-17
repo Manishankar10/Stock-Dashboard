@@ -827,6 +827,12 @@
         const modalBody = modal.querySelector('.sr-modal-body');
         if (modalBody) {
             modalBody.scrollTop = 0;
+            modalBody.scrollLeft = 0;
+        }
+        const modalTableWrap = modal.querySelector('.sr-modal-table-wrapper');
+        if (modalTableWrap) {
+            modalTableWrap.scrollTop = 0;
+            modalTableWrap.scrollLeft = 0;
         }
     };
 

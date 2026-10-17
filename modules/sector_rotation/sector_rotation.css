@@ -1989,6 +1989,108 @@ body.dark-mode .sr-constituents-table th {
     .sr-constituents-table tbody td {
         padding: 8px 12px;
     }
+
+    /* Mobile Isolated Horizontal Scrolling for Constituents Modal Table */
+    .sr-modal-body {
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        flex: 1 1 auto !important;
+    }
+
+    .sr-modal-table-wrapper {
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+    }
+
+    .sr-modal-table-wrapper::-webkit-scrollbar {
+        height: 5px;
+        width: 5px;
+    }
+
+    .sr-modal-table-wrapper::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .sr-modal-table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.4);
+        border-radius: 9999px;
+    }
+
+    .sr-constituents-table {
+        min-width: 650px !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+    }
+
+    /* Column 1 (# Index): Static sticky on left */
+    .sr-constituents-table th:first-child,
+    .sr-constituents-table td:first-child {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background: var(--sr-bg-card) !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        text-align: center !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Column 2 (STOCK Symbol): Static sticky on left */
+    .sr-constituents-table th:nth-child(2),
+    .sr-constituents-table td:nth-child(2) {
+        position: sticky !important;
+        left: 36px !important;
+        z-index: 10 !important;
+        background: var(--sr-bg-card) !important;
+        min-width: 100px !important;
+        box-sizing: border-box !important;
+        border-right: 1px solid var(--sr-border) !important;
+        box-shadow: 2px 0 6px -1px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Sticky Headers for Columns 1 and 2 (Intersection of top sticky and left sticky) */
+    .sr-constituents-table thead th:first-child {
+        z-index: 30 !important;
+        top: 0 !important;
+        left: 0 !important;
+    }
+
+    .sr-constituents-table thead th:nth-child(2) {
+        z-index: 30 !important;
+        top: 0 !important;
+        left: 36px !important;
+    }
+
+    /* Theme specific backgrounds for pinned sticky cells */
+    [data-theme="dark"] .sr-constituents-table td:first-child,
+    [data-theme="dark"] .sr-constituents-table td:nth-child(2),
+    body.dark-mode .sr-constituents-table td:first-child,
+    body.dark-mode .sr-constituents-table td:nth-child(2) {
+        background: #1e293b !important;
+    }
+
+    [data-theme="light"] .sr-constituents-table td:first-child,
+    [data-theme="light"] .sr-constituents-table td:nth-child(2),
+    :root:not([data-theme="dark"]) .sr-constituents-table td:first-child,
+    :root:not([data-theme="dark"]) .sr-constituents-table td:nth-child(2) {
+        background: #ffffff !important;
+    }
+
+    .sr-constituents-table tbody tr.sr-constituent-row:hover td:first-child,
+    .sr-constituents-table tbody tr.sr-constituent-row:hover td:nth-child(2) {
+        background: var(--sr-bg-card) !important;
+    }
 }
 
 /* Web / Desktop Frequency Styling (Explicitly NO scrollbar) */
