@@ -45,6 +45,11 @@
 .of-error { color: #dc2626; }
 .of-spinner { width: 17px; height: 17px; border: 2px solid var(--border-color, #e2e8f0); border-top-color: #10b981; border-radius: 50%; animation: of-spin .8s linear infinite; }
 @keyframes of-spin { to { transform: rotate(360deg); } }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+.of-refresh.refreshing svg,
+.of-refresh.spinning svg {
+    animation: pf-spin 0.75s linear infinite !important;
+}
 @media (max-width: 760px) {
     .of-modal-overlay { padding: 0; }
     .of-modal { width: 100vw; height: 100vh; max-width: none; border-radius: 0; }

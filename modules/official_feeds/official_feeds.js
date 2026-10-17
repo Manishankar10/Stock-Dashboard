@@ -100,7 +100,11 @@
                         <h2 id="of-modal-title">Official Feeds - <span id="of-watchlist-title"></span></h2>
                     </div>
                     <div class="of-header-actions">
-                        <button type="button" class="btn-secondary of-refresh" id="of-refresh">↻ Refresh</button>
+                        <button type="button" class="wl-refresh-btn of-refresh" id="of-refresh" title="Refresh Official Feeds" aria-label="Refresh Official Feeds">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                            </svg>
+                        </button>
                         <button type="button" class="of-close" aria-label="Close official feeds" id="of-close">×</button>
                     </div>
                 </header>
@@ -299,7 +303,7 @@
         if (loadedItems.length) renderItems([]);
         else feed.innerHTML = `<div class="of-loading"><span class="of-spinner"></span>Loading official exchange announcements for ${scopeMsg}…</div>`;
         const refreshButton = modal.querySelector('#of-refresh');
-        refreshButton.style.display = 'none';
+        if (refreshButton) refreshButton.classList.add('refreshing');
         let loadError = '';
         try {
             const params = new URLSearchParams({ watchlist: currentWatchlist, page: String(currentPage) });
@@ -330,7 +334,7 @@
             loadError = error.message || 'Could not load official feeds.';
         } finally {
             loading = false;
-            refreshButton.style.display = '';
+            if (refreshButton) refreshButton.classList.remove('refreshing');
             renderItems([], loadError);
         }
     }

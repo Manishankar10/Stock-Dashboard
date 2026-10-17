@@ -912,18 +912,6 @@
                     </div>
 
                     <div class="wl-action-sheet-list">
-                        <!-- 0. Refresh Quotes -->
-                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); triggerWatchlistRefresh();">
-                            <div class="wl-sheet-item-left">
-                                <span class="wl-sheet-icon">🔄</span>
-                                <div>
-                                    <div class="wl-sheet-title">Refresh Quotes</div>
-                                    <div class="wl-sheet-sub">Fetch latest market prices</div>
-                                </div>
-                            </div>
-                            <span class="wl-sheet-chevron">›</span>
-                        </div>
-
                         <!-- 1. Sort & Filter -->
                         <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWlMobileSortModal();">
                             <div class="wl-sheet-item-left">
@@ -1772,11 +1760,9 @@
 
             document.addEventListener('mouseover', (e) => {
                 if (window.innerWidth <= 768) return; // Strict rule: Web only
-                if (e.target.closest('.wl-row-menu-btn') || e.target.closest('button') || e.target.closest('.menu-dropdown-content') || e.target.closest('.wl-overflow-menu')) {
-                    wlTooltipEl.style.opacity = '0';
-                    return;
-                }
-                const tr = e.target.closest('.wl-table tr.pf-row');
+                const symEl = e.target.closest('.stock-symbol');
+                if (!symEl) return;
+                const tr = symEl.closest('.wl-table tr.pf-row');
                 if (!tr) return;
                 const sym = tr.dataset.symbol || (tr.id ? tr.id.replace('row-', '') : '');
                 const info = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
@@ -1788,7 +1774,7 @@
 
             document.addEventListener('mousemove', (e) => {
                 if (window.innerWidth <= 768 || wlTooltipEl.style.opacity !== '1') return;
-                if (e.target.closest('.wl-row-menu-btn') || e.target.closest('button') || e.target.closest('.menu-dropdown-content') || e.target.closest('.wl-overflow-menu')) {
+                if (!e.target.closest('.stock-symbol')) {
                     wlTooltipEl.style.opacity = '0';
                     return;
                 }
@@ -1808,10 +1794,10 @@
             });
 
             document.addEventListener('mouseout', (e) => {
-                const tr = e.target.closest('.wl-table tr.pf-row');
-                if (tr) {
+                const symEl = e.target.closest('.stock-symbol');
+                if (symEl) {
                     const related = e.relatedTarget;
-                    if (!related || !related.closest || related.closest('.wl-table tr.pf-row') !== tr) {
+                    if (!related || !related.closest || related.closest('.stock-symbol') !== symEl) {
                         wlTooltipEl.style.opacity = '0';
                         wlTooltipEl.style.transform = 'translateY(4px)';
                     }
