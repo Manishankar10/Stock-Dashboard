@@ -4,7 +4,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Set, Tuple
 
-from flask import Blueprint, jsonify, render_template, request, send_file, send_from_directory, session
+from flask import Blueprint, jsonify, redirect, render_template, request, send_file, send_from_directory, session
 
 from .quarterly_results_provider import QuarterlyResultsProvider, clean_symbol
 
@@ -164,3 +164,17 @@ def download_quarterly_results_data():
             mimetype="application/json",
         )
     return jsonify({"error": "Quarterly results file not found."}), 404
+
+
+@quarterly_results_bp.get("/api/quarterly-results/pdf-open")
+def open_exchange_pdf():
+    target = str(request.args.get("target", "")).strip()
+    if not target:
+        return jsonify({"error": "Target URL required"}), 400
+    if "bseindia.com" in target or "nseindia.com" in target:
+        return redirect(target)
+    if _PROVIDER:
+        resolved = _PROVIDER.resolve_pdf_url(target)
+        return redirect(resolved)
+    return redirect(target)
+

@@ -12,7 +12,7 @@
         max_mcap: null,
         sorting: 'latest',
         exchange: 'all',
-        watchlist: 'all', // DEFAULT IS ALL (SHOW ALL STOCKS ON LOAD)
+        watchlist: 'portfolio', // DEFAULT IS IN PORTFOLIO
         date: '',
         data: null,
         isFetching: false,
@@ -109,8 +109,18 @@
         const price = item.price !== undefined ? `₹ ${Number(item.price).toLocaleString('en-IN', {minimumFractionDigits: 1, maximumFractionDigits: 2})}` : '—';
         const mcap = item.mcap_cr !== undefined ? `₹ ${Number(item.mcap_cr).toLocaleString('en-IN')} Cr` : '—';
         const pe = item.pe !== undefined ? Number(item.pe).toFixed(1) : '—';
-        const pdfUrl = item.pdf_url ? escapeHtml(item.pdf_url) : '#';
         const ind = escapeHtml(item.industry || '');
+        let rawPdf = item.pdf_url || '';
+        let pdfUrl = '#';
+        if (rawPdf) {
+            if (rawPdf.includes('bseindia') || rawPdf.includes('nseindia')) {
+                pdfUrl = escapeHtml(rawPdf);
+            } else if (rawPdf.includes('screener.in')) {
+                pdfUrl = `/api/quarterly-results/pdf-open?target=${encodeURIComponent(rawPdf)}`;
+            } else {
+                pdfUrl = escapeHtml(rawPdf);
+            }
+        }
 
         const quarters = item.quarters || (qrState.data && qrState.data.quarters) || {};
 
@@ -263,6 +273,7 @@
             return;
         }
 
+        if (streamEl) streamEl.style.display = 'flex';
         if (emptyEl) emptyEl.style.display = 'none';
 
         // Check if pagination should be enabled:

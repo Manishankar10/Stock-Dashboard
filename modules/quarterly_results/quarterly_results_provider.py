@@ -229,10 +229,10 @@ class QuarterlyResultsProvider:
                 with open(target, "r", encoding="utf-8") as f:
                     payload = json.load(f)
                     if isinstance(payload, dict) and "data" in payload and "time" in payload:
-                        self._last_fetch_time = payload["time"]
+                        self._last_fetch_time = time.time()
                         return payload["data"]
                     elif isinstance(payload, list):
-                        self._last_fetch_time = os.path.getmtime(target)
+                        self._last_fetch_time = time.time()
                         return payload
             except Exception as e:
                 logger.warning(f"Error reading disk cache {target}: {e}")
@@ -296,6 +296,43 @@ class QuarterlyResultsProvider:
         except Exception as e:
             logger.warning(f"Error saving to {self._live_file}: {e}")
 
+    def resolve_pdf_url(self, screener_url: str) -> str:
+        """Resolve a Screener source redirect URL to direct BSE/NSE official PDF link."""
+        if not screener_url:
+            return ""
+        if "bseindia.com" in screener_url or "nseindia.com" in screener_url:
+            return screener_url
+
+        if not hasattr(self, "_pdf_cache"):
+            self._pdf_cache = {
+                "https://www.screener.in/company/source/quarter/1298/9/2026/": "https://www.bseindia.com/xml-data/corpfiling/AttachLive/f5d5fb37-aa66-401c-85d6-58ccd3982828.pdf",
+                "https://www.screener.in/company/source/quarter/1297/9/2026/": "https://www.bseindia.com/xml-data/corpfiling/AttachLive/1489eedb-b159-45d7-886b-fb42009fd892.pdf",
+                "https://www.screener.in/company/source/quarter/3365/9/2026/": "https://www.bseindia.com/xml-data/corpfiling/AttachLive/2b021530-bbc2-4590-8375-cefc205a7132.pdf",
+                "https://www.screener.in/company/source/quarter/1274413/9/2026/": "https://nsearchives.nseindia.com/corporate/LAGNAM_17102026164912_OutcomeOfBoardMeeting17102026.pdf",
+                "https://www.screener.in/company/source/quarter/1274575/9/2026/": "https://nsearchives.nseindia.com/corporate/PARIN_17102026153021_Outcome_of_BM_17102026.pdf",
+            }
+
+        if screener_url in self._pdf_cache:
+            return self._pdf_cache[screener_url]
+
+        try:
+            s = self._screener_session or requests.Session()
+            s.headers.update(HTTP_HEADERS)
+            r = s.get(screener_url, allow_redirects=False, timeout=3)
+            loc = r.headers.get("Location")
+            if loc:
+                m = re.search(r"Pname=([^&#]+)", loc)
+                if m:
+                    direct = f"https://www.bseindia.com/xml-data/corpfiling/AttachLive/{m.group(1)}"
+                else:
+                    direct = loc
+                self._pdf_cache[screener_url] = direct
+                return direct
+        except Exception as e:
+            logger.debug(f"Could not resolve PDF URL {screener_url}: {e}")
+
+        return screener_url
+
     def _parse_card(self, table: Any, header_div: Any) -> Optional[Dict[str, Any]]:
         """Parse a single company quarterly card from Screener HTML."""
         comp_a = header_div.find("a", href=lambda h: h and "/company/" in h and "/source/" not in h)
@@ -309,7 +346,8 @@ class QuarterlyResultsProvider:
         is_consolidated = "consolidated" in comp_href
 
         pdf_a = header_div.find("a", href=lambda h: h and "/source/quarter/" in h)
-        pdf_link = f"https://www.screener.in{pdf_a.get('href')}" if pdf_a else None
+        raw_pdf_link = f"https://www.screener.in{pdf_a.get('href')}" if pdf_a else None
+        pdf_link = self.resolve_pdf_url(raw_pdf_link) if raw_pdf_link else None
 
         price = None
         market_cap = None
