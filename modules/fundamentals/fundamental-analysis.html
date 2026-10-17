@@ -74,6 +74,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   box-shadow: var(--shadow-sm);
   max-width: 100%;
   box-sizing: border-box;
+  overflow-x: clip;
 }
 @keyframes pf-spin {
   0% { transform: rotate(0deg); }
@@ -159,14 +160,83 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 /* Financial Tables */
 .sec-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .sec-title { font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-.table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; width: 100%; max-width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
-.table { width: 100%; min-width: 100%; border-collapse: collapse; }
+.table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) var(--bg-subtle);
+}
+.table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+.table-wrap::-webkit-scrollbar-track {
+  background: var(--bg-subtle);
+  border-radius: 4px;
+}
+.table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+.table-wrap.is-dragging {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+.table-wrap.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+.table { width: 100%; min-width: 100%; border-collapse: separate; border-spacing: 0; }
 .table th, .table td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid var(--border-color); text-align: right; white-space: nowrap; }
-.table th:first-child, .table td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 1; font-weight: 600; color: var(--text-primary); }
 .table th { background: var(--table-header-bg); color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+.table th:first-child, .table td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-color);
+  box-shadow: 3px 0 8px -2px rgba(0, 0, 0, 0.35);
+  cursor: default;
+}
+[data-theme="light"] .table th:first-child,
+[data-theme="light"] .table td:first-child {
+  background: #ffffff;
+  box-shadow: 3px 0 8px -2px rgba(0, 0, 0, 0.08);
+}
+.table th:first-child {
+  background: var(--table-header-bg);
+  z-index: 10;
+}
+[data-theme="light"] .table th:first-child {
+  background: #e2e8f0;
+}
 .table tr:hover td { background: var(--table-hover-bg); }
+.table tr:hover td:first-child { background: var(--table-hover-bg); }
 .table tr.highlight td { background: rgba(16, 185, 129, 0.08); font-weight: 700; }
-.table tr.highlight td:first-child { color: var(--accent); }
+.table tr.highlight td:first-child {
+  background: var(--bg-card);
+  color: var(--accent);
+}
+[data-theme="light"] .table tr.highlight td:first-child {
+  background: #ffffff;
+}
+.table tr.highlight:hover td:first-child {
+  background: var(--table-hover-bg);
+}
 
 /* Peer Comparison Table Desktop Full-Width & Spacing */
 .peers-table {
@@ -1370,6 +1440,13 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   color: var(--text-secondary) !important;
   border-bottom: 1px dashed var(--border-color) !important;
 }
+.split-detail-row td:first-child {
+  background: #182234 !important;
+  z-index: 5 !important;
+}
+[data-theme="light"] .split-detail-row td:first-child {
+  background: #f1f5f9 !important;
+}
 .split-child-label {
   padding-left: 14px;
   color: var(--text-secondary);
@@ -2539,9 +2616,8 @@ function renderScreenerTable(section, secId) {
     return `<div class="empty-state">No financial statement data available</div>`;
   }
 
-  // On web (> 768px), show latest period first (reverse chronological order); on mobile, keep standard chronological
-  const isWeb = window.innerWidth > 768;
-  const colIndices = isWeb ? cols.map((_, i) => i).reverse() : cols.map((_, i) => i);
+  // Numbers low to high in both web and responsive (chronological ascending order)
+  const colIndices = cols.map((_, i) => i);
   const headerHtml = `<thead><tr><th>Particulars</th>${colIndices.map(i => `<th>${esc(cols[i])}</th>`).join('')}</tr></thead>`;
   
   const bodyHtml = rows.map((r, rowIdx) => {
@@ -2703,6 +2779,10 @@ async function switchFundamentalMode(newMode) {
   document.querySelectorAll('.mode-switch-btn').forEach(btn => {
     const isTarget = btn.id.toLowerCase().includes(newMode);
     btn.classList.toggle('active', isTarget);
+  });
+
+  document.querySelectorAll('.table-wrap').forEach(w => {
+    w._userScrolled = false;
   });
 
   await loadFundamentals(newMode);
@@ -3004,18 +3084,107 @@ function initWebNavScrollSpy() {
   });
 }
 
-function focusLatestTables() {
-  if (window.innerWidth <= 768) {
-    requestAnimationFrame(() => {
-      document.querySelectorAll('.table-wrap').forEach(wrap => {
-        if (wrap.classList.contains('peers-table-wrap') || wrap.id === 'peersTableWrap') {
-          wrap.scrollLeft = 0;
-          return;
-        }
+function focusLatestTables(force = false) {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.table-wrap').forEach(wrap => {
+      if (wrap.classList.contains('peers-table-wrap') || wrap.id === 'peersTableWrap') {
+        wrap.scrollLeft = 0;
+        return;
+      }
+      if (force || !wrap._userScrolled) {
+        wrap._programmaticScroll = true;
         wrap.scrollLeft = wrap.scrollWidth;
-      });
+        setTimeout(() => { wrap._programmaticScroll = false; }, 60);
+      }
     });
-  }
+  });
+}
+
+function initTableDragToScroll() {
+  document.querySelectorAll('.table-wrap').forEach(wrap => {
+    if (wrap._dragInit) return;
+    wrap._dragInit = true;
+
+    // Track user manual scroll vs programmatic scroll
+    wrap.addEventListener('scroll', () => {
+      if (!wrap._programmaticScroll) {
+        wrap._userScrolled = true;
+      }
+    }, { passive: true });
+
+    // Observe size changes (font loads, window resize) to keep pointing to latest data until user scrolls
+    if (window.ResizeObserver && !wrap.classList.contains('peers-table-wrap') && wrap.id !== 'peersTableWrap') {
+      const ro = new ResizeObserver(() => {
+        if (!wrap._userScrolled) {
+          wrap._programmaticScroll = true;
+          wrap.scrollLeft = wrap.scrollWidth;
+          setTimeout(() => { wrap._programmaticScroll = false; }, 60);
+        }
+      });
+      ro.observe(wrap);
+      const table = wrap.querySelector('table');
+      if (table) ro.observe(table);
+    }
+
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let hasMoved = false;
+
+    wrap.addEventListener('mousedown', (e) => {
+      // Don't drag if clicking buttons, links, or sticky first column
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('th:first-child, td:first-child')) {
+        return;
+      }
+      if (e.button !== 0) return; // Only left mouse button
+      isDown = true;
+      hasMoved = false;
+      wrap.classList.add('is-dragging');
+      startX = e.pageX - wrap.offsetLeft;
+      scrollLeft = wrap.scrollLeft;
+    });
+
+    wrap.addEventListener('mouseleave', () => {
+      if (isDown) {
+        isDown = false;
+        wrap.classList.remove('is-dragging');
+      }
+    });
+
+    wrap.addEventListener('mouseup', () => {
+      if (isDown) {
+        isDown = false;
+        wrap.classList.remove('is-dragging');
+        if (hasMoved) {
+          const captureClick = (clickEvent) => {
+            clickEvent.stopPropagation();
+            clickEvent.preventDefault();
+            wrap.removeEventListener('click', captureClick, true);
+          };
+          wrap.addEventListener('click', captureClick, true);
+          setTimeout(() => wrap.removeEventListener('click', captureClick, true), 50);
+        }
+      }
+    });
+
+    wrap.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - wrap.offsetLeft;
+      const walk = (x - startX) * 1.4;
+      if (Math.abs(walk) > 4) {
+        hasMoved = true;
+      }
+      wrap.scrollLeft = scrollLeft - walk;
+    });
+  });
+}
+
+// When web fonts finish loading, keep pointing to latest data
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    focusLatestTables();
+  });
 }
 
 function showModeSwitchLoader(mode) {
@@ -3277,9 +3446,11 @@ function render(d) {
   document.getElementById('content').style.display = 'flex';
   window._lastFundamentalsData = d;
 
-  // Focus the latest column on mobile (user can swipe left for older)
-  focusLatestTables();
-  setTimeout(focusLatestTables, 80);
+  // Focus the latest column in both web and responsive (scroll content to latest data)
+  initTableDragToScroll();
+  focusLatestTables(true);
+  setTimeout(() => focusLatestTables(true), 50);
+  setTimeout(() => focusLatestTables(true), 200);
 
   // Pre-fetch trades badge count & data in background
   preloadTradesData(c.name || symbol, d.company_id || '');
@@ -4075,6 +4246,7 @@ window.addEventListener('resize', () => {
     }
   } else {
     focusLatestTables();
+    initTableDragToScroll();
   }
 });
 
