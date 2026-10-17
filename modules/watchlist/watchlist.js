@@ -604,6 +604,19 @@
             officialFeedsBtn.onclick = () => openWatchlistOfficialFeeds(activeWatchlistName);
             watchlistFileControls.appendChild(officialFeedsBtn);
 
+            const brokerResearchBtn = document.createElement('button');
+            brokerResearchBtn.className = 'btn-secondary';
+            brokerResearchBtn.style.padding = '8px 14px';
+            brokerResearchBtn.style.fontSize = '12px';
+            brokerResearchBtn.title = 'View institutional & broker research reports for this watchlist';
+            brokerResearchBtn.innerHTML = '🏛️ Institutional &amp; Broker Research';
+            brokerResearchBtn.onclick = () => {
+                if (typeof window.openBrokerResearchModal === 'function') {
+                    window.openBrokerResearchModal(null, null, activeWatchlistName);
+                }
+            };
+            watchlistFileControls.appendChild(brokerResearchBtn);
+
             // Watchlist Refresh Button (matching responsive portfolio style)
             const wlRefreshBtn = document.createElement('button');
             wlRefreshBtn.type = 'button';
@@ -624,6 +637,7 @@
             watchlistOverflow.innerHTML = `
                 <button type="button" class="wl-overflow-trigger" aria-label="More watchlist actions" title="More actions" onclick="toggleActionOverflow(event, 'watchlist-overflow-menu')">⋮</button>
                 <div class="wl-overflow-menu" role="menu">
+                    <button type="button" role="menuitem" onclick="if (typeof window.openBrokerResearchModal === 'function') window.openBrokerResearchModal(null, null, activeWatchlistName); closeActionOverflow(event)">🏛️ Institutional &amp; Broker Research</button>
                     <button type="button" role="menuitem" onclick="exportActiveWatchlistToTxt(); closeActionOverflow(event)">⇩ Export</button>
                     <button type="button" role="menuitem" onclick="openWatchlistTxtImportModal(); closeActionOverflow(event)">⇧ Import</button>
                     <div class="wl-overflow-divider"></div>
@@ -799,6 +813,9 @@
                             if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
                             else if (typeof openFundamentalsModal === 'function') openFundamentalsModal(sym);
                         }},
+                        { label: '🏛️ Institutional & Broker Research', action: () => {
+                            if (typeof window.openBrokerResearchModal === 'function') window.openBrokerResearchModal(sym, info.name || sym);
+                        }},
                         { label: '📰 Latest News', action: () => {
                             if (typeof window.openStockNewsModal === 'function') window.openStockNewsModal(sym);
                             else if (typeof openStockNewsModal === 'function') openStockNewsModal(sym);
@@ -948,7 +965,19 @@
                             <span class="wl-sheet-chevron">↗</span>
                         </div>
 
-                        <!-- 4. Actions (Collapsible: Export, Import, Delete) -->
+                        <!-- 4. Institutional & Broker Research -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); if (typeof window.openBrokerResearchModal === 'function') window.openBrokerResearchModal(null, null, '${escapeHtml(currentWl)}');">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">🏛️</span>
+                                <div>
+                                    <div class="wl-sheet-title">Institutional &amp; Broker Research</div>
+                                    <div class="wl-sheet-sub">Recent 6M reports by institutions &amp; MFs</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">↗</span>
+                        </div>
+
+                        <!-- 5. Actions (Collapsible: Export, Import, Delete) -->
                         <div class="wl-sheet-item wl-sheet-collapsible-trigger" id="wl-actions-collapse-trigger" onclick="toggleWlActionsCollapse(event)">
                             <div class="wl-sheet-item-left">
                                 <span class="wl-sheet-icon">⚡</span>
