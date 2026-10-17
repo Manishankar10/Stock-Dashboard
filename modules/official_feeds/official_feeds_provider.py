@@ -45,6 +45,106 @@ def _as_iso_date(raw):
     return value
 
 
+NOISE_PATTERNS = [
+    re.compile(r"loss of share certificate", re.IGNORECASE),
+    re.compile(r"duplicate share certificate", re.IGNORECASE),
+    re.compile(r"issue of duplicate", re.IGNORECASE),
+    re.compile(r"closure of trading window", re.IGNORECASE),
+    re.compile(r"trading window closure", re.IGNORECASE),
+    re.compile(r"trading window\b", re.IGNORECASE),
+    re.compile(r"regulation 74\s*\(\s*5\s*\)", re.IGNORECASE),
+    re.compile(r"regulation 39\s*\(\s*3\s*\)", re.IGNORECASE),
+    re.compile(r"newspaper publication", re.IGNORECASE),
+    re.compile(r"newspaper clipping", re.IGNORECASE),
+    re.compile(r"copy of newspaper", re.IGNORECASE),
+    re.compile(r"demat.*remat", re.IGNORECASE),
+    re.compile(r"confirmation certificate under", re.IGNORECASE),
+]
+
+
+def is_noise_announcement(subject, details):
+    """Filter out routine non-market-moving administrative paperwork."""
+    text = f"{subject or ''} {details or ''}".lower()
+    return any(p.search(text) for p in NOISE_PATTERNS)
+
+
+def classify_announcement(subject, details, company=""):
+    """Classify announcements into standardized Screener-style categories and subcategories."""
+    raw_sub = (subject or "").strip()
+    raw_det = (details or "").strip()
+    text = f"{raw_sub} {raw_det}".lower()
+
+    if any(k in text for k in ["financial result", "un-audited financial", "unaudited financial", "audited financial", "quarterly result", "financial results for"]):
+        category = "Results & Financials"
+        subcategory = "Financial Results"
+    elif any(k in text for k in ["investor presentation", "earnings presentation", "analyst presentation", "investor deck", "corporate presentation"]):
+        category = "Results & Financials"
+        subcategory = "Investor Presentation"
+    elif any(k in text for k in ["transcript", "audio recording", "recording of concall", "recording of call", "concall recording"]) and any(k in text for k in ["call", "meet", "concall", "analyst"]):
+        category = "Results & Financials"
+        subcategory = "Concall Transcript & Audio"
+    elif any(k in text for k in ["concall", "conference call", "analyst meet", "institutional investor meet", "schedule of meet", "schedule of analyst"]):
+        category = "Results & Financials"
+        subcategory = "Concalls & Analyst Meets"
+    elif "dividend" in text:
+        category = "Corporate Actions"
+        subcategory = "Dividends"
+    elif any(k in text for k in ["bonus issue", "bonus shares"]):
+        category = "Corporate Actions"
+        subcategory = "Bonus Issue"
+    elif any(k in text for k in ["sub-division", "stock split", "face value"]):
+        category = "Corporate Actions"
+        subcategory = "Stock Split"
+    elif any(k in text for k in ["buyback", "buy-back"]):
+        category = "Corporate Actions"
+        subcategory = "Buyback of Shares"
+    elif any(k in text for k in ["rights issue", "warrants"]):
+        category = "Corporate Actions"
+        subcategory = "Rights Issue / Warrants"
+    elif "outcome of board meeting" in text:
+        category = "Board Meetings"
+        subcategory = "Outcome of Board Meeting"
+    elif "board meeting" in text:
+        category = "Board Meetings"
+        subcategory = "Board Meeting Intimation"
+    elif any(k in text for k in ["order win", "bagged order", "awarded", "work order", "contract win", "receipt of order", "letter of award", "letter of intent", "order intake"]):
+        category = "Business & Operations"
+        subcategory = "Orders & Contracts"
+    elif any(k in text for k in ["capacity expansion", "commissioning", "commercial production", "new plant", "commencement of commercial"]):
+        category = "Business & Operations"
+        subcategory = "Capacity Expansion & Capex"
+    elif any(k in text for k in ["acquisition", "acquires", "merger", "amalgamation", "joint venture", "stake purchase", "slump sale", "takeover"]):
+        category = "Business & Operations"
+        subcategory = "Acquisitions & Mergers (M&A)"
+    elif any(k in text for k in ["credit rating", "rating assigned", "rating reaffirmed", "rating upgraded", "rating downgraded", "crisil", "icra", "care rating", "ind-ra", "brickwork"]):
+        category = "Credit Ratings"
+        subcategory = "Credit Ratings"
+    elif any(k in text for k in ["resignation", "appointment", "cessation", "superannuation", "chief executive", "ceo", "cfo", "managing director", "whole-time director", "company secretary", "compliance officer", "statutory auditor"]):
+        category = "Management & Governance"
+        subcategory = "Management & KMP Changes"
+    elif any(k in text for k in ["press release", "media release", "business update", "operational update", "product launch"]):
+        category = "Business & Operations"
+        subcategory = "Press Release & Updates"
+    elif any(k in text for k in ["annual report", "brsr", "integrated report"]):
+        category = "Disclosures"
+        subcategory = "Annual Report"
+    elif any(k in text for k in ["shareholding pattern", "promoter pledge", "insider trading", "regulation 30", "sebi (pit)"]):
+        category = "Disclosures"
+        subcategory = "Shareholding & Regulatory"
+    else:
+        category = "Company Update"
+        subcategory = "General Updates"
+
+    # Extract clean headline: Remove generic boilerplate
+    clean_title = raw_det or raw_sub
+    clean_title = re.sub(r"^.*?\bhas informed the Exchange\s+(?:about|regarding)\s*", "", clean_title, flags=re.IGNORECASE)
+    clean_title = clean_title.strip().strip("'\"")
+    if not clean_title or len(clean_title) < 5 or clean_title.lower() in ["general updates", "updates"]:
+        clean_title = raw_sub
+
+    return category, subcategory, clean_title
+
+
 class OfficialFeedsProvider:
     def __init__(self):
         self._cache = {}
@@ -167,15 +267,23 @@ class OfficialFeedsProvider:
         output = []
         for item in payload[:PAGE_SIZE]:
             subject = str(item.get("desc") or item.get("subject") or item.get("SUBJECT") or "").strip()
-            if not subject:
+            details = str(item.get("attchmntText") or item.get("details") or "").strip()
+            if not subject and not details:
                 continue
+
+            company_name = item.get("sm_name") or item.get("companyName") or item.get("company") or symbol
+            if is_noise_announcement(subject, details):
+                continue
+
+            category, subcategory, clean_headline = classify_announcement(subject, details, company_name)
             attachment = item.get("attchmntFile") or item.get("attachment") or item.get("ATTACHMENT") or ""
             output.append({
                 "symbol": _clean_symbol(item.get("symbol") or symbol),
-                "company": item.get("sm_name") or item.get("companyName") or item.get("company") or symbol,
-                "subject": subject,
-                "subcategory": subject,
-                "details": str(item.get("attchmntText") or item.get("details") or "").strip(),
+                "company": company_name,
+                "subject": clean_headline,
+                "category": category,
+                "subcategory": subcategory,
+                "details": details,
                 "date": _as_iso_date(item.get("an_dt") or item.get("broadcastDateTime") or item.get("date")),
                 "source": "NSE",
                 "url": urljoin("https://www.nseindia.com/", str(attachment)) if attachment else NSE_ANNOUNCEMENTS.format(symbol=symbol),
@@ -213,15 +321,23 @@ class OfficialFeedsProvider:
         output = []
         for item in rows[:PAGE_SIZE]:
             subject = str(item.get("SUBCATNAME") or item.get("CATEGORYNAME") or item.get("HEADLINE") or "").strip()
-            if not subject:
+            details = str(item.get("HEADLINE") or item.get("NEWSSUB") or "").strip()
+            if not subject and not details:
                 continue
+
+            company_name = item.get("SLONGNAME") or item.get("LONG_NAME") or scrip_code
+            if is_noise_announcement(subject, details):
+                continue
+
+            category, subcategory, clean_headline = classify_announcement(subject, details, company_name)
             attachment = str(item.get("ATTACHMENTNAME") or "").strip()
             output.append({
                 "symbol": _clean_symbol(watchlist_symbol or scrip_code),
-                "company": item.get("SLONGNAME") or item.get("LONG_NAME") or scrip_code,
-                "subject": subject,
-                "subcategory": subject,
-                "details": str(item.get("HEADLINE") or item.get("NEWSSUB") or "").strip(),
+                "company": company_name,
+                "subject": clean_headline,
+                "category": category,
+                "subcategory": subcategory,
+                "details": details,
                 "date": _as_iso_date(item.get("DT_TM") or item.get("NEWS_DT") or item.get("NEWS_DT_TM")),
                 "source": "BSE",
                 "url": urljoin(BSE_ATTACHMENTS, attachment) if attachment else BSE_ANNOUNCEMENTS,
