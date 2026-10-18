@@ -285,7 +285,9 @@
     async function openIndustryStocks(pathOrCode) {
         const tableView = document.getElementById('indTableView');
         const stocksView = document.getElementById('indStocksView');
+        const ribbon = document.getElementById('indMacroFilterBar');
         if (tableView) tableView.style.display = 'none';
+        if (ribbon) ribbon.style.display = 'none';
         if (stocksView) stocksView.style.display = 'block';
 
         // Scroll to top of view
@@ -363,7 +365,9 @@
     function closeIndustryStocksView() {
         const tableView = document.getElementById('indTableView');
         const stocksView = document.getElementById('indStocksView');
+        const ribbon = document.getElementById('indMacroFilterBar');
         if (tableView) tableView.style.display = 'block';
+        if (ribbon) ribbon.style.display = 'flex';
         if (stocksView) stocksView.style.display = 'none';
     }
 

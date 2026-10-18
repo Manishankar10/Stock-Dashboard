@@ -24,18 +24,19 @@
             </div>
         </div>
 
-        <!-- 2. Macro-Economic Sector Quick Filter Pills -->
-        <div class="ind-macro-filter-bar" id="indMacroFilterBar">
-            <button type="button" class="macro-pill active" data-macro="ALL" onclick="filterByMacroSector('ALL', this)">
-                🌐 All Sectors (188)
-            </button>
-            <!-- Injected dynamically via JS -->
-        </div>
-
         <!-- =========================================================
              VIEW A: INDUSTRIES DIRECTORY TABLE
         ========================================================= -->
         <div id="indTableView" class="ind-view-section">
+            
+            <!-- 2. Macro-Economic Sector Quick Filter Pills -->
+            <div class="ind-macro-filter-bar" id="indMacroFilterBar">
+                <button type="button" class="macro-pill active" data-macro="ALL" onclick="filterByMacroSector('ALL', this)">
+                    🌐 All Sectors (188)
+                </button>
+                <!-- Injected dynamically via JS -->
+            </div>
+
             <div class="ind-table-meta-bar">
                 <div class="ind-table-info">
                     Showing <strong id="indShowingCount">188</strong> industries
