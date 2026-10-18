@@ -116,6 +116,11 @@ class TransactionsProvider:
                         data = json.load(f)
                         if isinstance(data, list) and len(data) > 0:
                             self._cache_deals = data
+                            if self._last_fetch_time == 0:
+                                try:
+                                    self._last_fetch_time = os.path.getmtime(path)
+                                except Exception:
+                                    self._last_fetch_time = time.time()
                             return
                 except Exception as e:
                     print(f"[TransactionsProvider] Warning loading storage file {path}: {e}")
@@ -372,10 +377,21 @@ class TransactionsProvider:
         """Query, filter, and compute KPIs for deals matching criteria."""
         now = time.time()
         with self._lock:
-            need_fetch = force_refresh or not self._cache_deals or (now - self._last_fetch_time > CACHE_TTL)
+            time_since_last = now - self._last_fetch_time if self._last_fetch_time > 0 else float("inf")
+            # Strict 15-minute rate limit window before calling official exchange websites
+            can_call_official = (not self._cache_deals) or (time_since_last >= CACHE_TTL)
 
-        if need_fetch:
-            self.fetch_live_deals()
+        official_called = False
+        if can_call_official and (force_refresh or not self._cache_deals or time_since_last >= CACHE_TTL):
+            try:
+                self.fetch_live_deals()
+                official_called = True
+            except Exception as e:
+                print(f"[TransactionsProvider] Error fetching live deals: {e}")
+
+        now = time.time()
+        time_since_last = now - self._last_fetch_time if self._last_fetch_time > 0 else 0
+        cooldown_remaining = max(0, int(CACHE_TTL - time_since_last)) if self._last_fetch_time > 0 else 0
 
         deals = list(self._cache_deals)
 
@@ -498,5 +514,9 @@ class TransactionsProvider:
                 "latest_date": latest_date,
                 "earliest_date": earliest_date,
             },
-            "last_updated": datetime.fromtimestamp(self._last_fetch_time).strftime("%d %b %Y %H:%M:%S") if self._last_fetch_time else "Just now"
+            "last_updated": datetime.fromtimestamp(self._last_fetch_time).strftime("%d %b %Y %H:%M:%S") if self._last_fetch_time else "Just now",
+            "last_updated_iso": datetime.fromtimestamp(self._last_fetch_time).isoformat() if self._last_fetch_time else "",
+            "official_called": official_called,
+            "cooldown_remaining_seconds": cooldown_remaining,
+            "rate_limit_window_seconds": CACHE_TTL
         }

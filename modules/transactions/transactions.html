@@ -9,7 +9,7 @@
         </div>
         <div class="tx-header-actions">
             <span class="tx-updated-tag" id="tx-last-updated-tag">🕒 Updated just now</span>
-            <button type="button" class="tx-refresh-btn" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Collect live deals from exchange now (Auto-refreshes every 15 mins)" aria-label="Refresh Transactions (15m cadence)">
+            <button type="button" class="tx-refresh-btn" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Refresh transactions (15 mins exchange rate-limit window)" aria-label="Refresh Transactions (15m window)">
                 <svg class="tx-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
@@ -25,7 +25,7 @@
                 <span class="tx-kpi-icon">📋</span>
             </div>
             <div class="tx-kpi-value" id="tx-kpi-total-deals">0</div>
-            <div class="tx-kpi-sub" id="tx-kpi-deals-breakdown">Across active filters</div>
+            <div class="tx-kpi-sub" id="tx-kpi-deals-breakdown">All transaction amounts (₹0 to ₹100+ Cr)</div>
         </div>
 
         <div class="tx-kpi-card tx-kpi-buy">
@@ -202,11 +202,11 @@
                 <div class="tx-per-page-wrapper">
                     <span>Show:</span>
                     <select id="tx-per-page-select" class="tx-per-page-select" onchange="handleTxPerPageChange(this.value)">
-                        <option value="15">15</option>
-                        <option value="30" selected>30</option>
-                        <option value="50">50</option>
+                        <option value="all" selected>All (No Limit)</option>
                         <option value="100">100</option>
-                        <option value="all">All</option>
+                        <option value="50">50</option>
+                        <option value="30">30</option>
+                        <option value="15">15</option>
                     </select>
                 </div>
                 <div class="tx-page-buttons" id="tx-page-buttons">

@@ -18,36 +18,18 @@
         sortField: 'date',
         sortDir: 'desc',
         page: 1,
-        perPage: 30,
+        perPage: 'all',          // Don't limit deals: show all deals across all amounts
         deals: [],
         filteredDeals: [],
         kpis: {},
         countsByType: {},
         userWatchlists: [],
         isLoading: false,
-        lastUpdatedText: 'Just now'
+        lastUpdatedText: 'Just now',
+        cooldownRemainingSeconds: 0
     };
 
-    const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes (900,000 ms)
-    let autoRefreshTimer = null;
     let lastFetchTimestamp = 0;
-
-    function scheduleNextAutoRefresh() {
-        if (autoRefreshTimer) {
-            clearTimeout(autoRefreshTimer);
-            autoRefreshTimer = null;
-        }
-        autoRefreshTimer = setTimeout(() => {
-            const isTxActive = (window.currentTab === 'transactions' || window.location.pathname === '/transactions');
-            if (document.visibilityState !== 'hidden' && isTxActive) {
-                console.log('[Transactions] 15-minute auto-refresh triggered from exchange...');
-                fetchTransactions(true);
-            } else {
-                // If inactive or hidden, check again in 30 seconds
-                autoRefreshTimer = setTimeout(scheduleNextAutoRefresh, 30000);
-            }
-        }, AUTO_REFRESH_INTERVAL_MS);
-    }
 
     window.txState = state;
 
@@ -85,6 +67,7 @@
                 state.countsByType = data.counts_by_type || {};
                 state.userWatchlists = data.user_watchlists || [];
                 state.lastUpdatedText = data.last_updated || 'Just now';
+                state.cooldownRemainingSeconds = data.cooldown_remaining_seconds || 0;
 
                 // Sync date defaults from exchange payload if first load
                 if (!state.fromDate && !state.toDate && data.date_range) {
@@ -96,7 +79,16 @@
 
                 updateWatchlistDropdown();
                 renderView();
-                scheduleNextAutoRefresh();
+
+                // If user triggered manual refresh, notify on exchange status / 15m window
+                if (forceRefresh && typeof window.showToast === 'function') {
+                    if (data.official_called) {
+                        window.showToast('Official exchange transactions refreshed from NSE India.', 'success', 3000);
+                    } else if (state.cooldownRemainingSeconds > 0) {
+                        const remMin = Math.max(1, Math.ceil(state.cooldownRemainingSeconds / 60));
+                        window.showToast(`Official exchanges maintain a 15m window (${remMin}m remaining). Data is current.`, 'info', 3200);
+                    }
+                }
             } else {
                 console.error('[Transactions] Failed to load:', data.error);
             }
@@ -123,7 +115,7 @@
 
         const updatedTag = document.getElementById('tx-last-updated-tag');
         if (updatedTag) {
-            updatedTag.innerHTML = `🕒 Updated: <strong>${escapeHtml(state.lastUpdatedText)}</strong> <span class="tx-cadence-badge" style="opacity: 0.75; font-size: 11px; margin-left: 6px; font-weight: normal;">(Auto-refreshes every 15m)</span>`;
+            updatedTag.innerHTML = `🕒 Updated: <strong>${escapeHtml(state.lastUpdatedText)}</strong> <span class="tx-cadence-badge" style="opacity: 0.75; font-size: 11px; margin-left: 6px; font-weight: normal;">(15m exchange window)</span>`;
         }
     }
 
@@ -298,6 +290,11 @@
                 ? `<a href="${deal.filing_url}" target="_blank" rel="noopener noreferrer" class="tx-source-link" title="Open official XBRL filing">Filing ↗</a>`
                 : `<span style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(deal.source || 'NSE')}</span>`;
 
+            let valTitle = `₹${deal.value ? Number(deal.value).toLocaleString() : '0'}`;
+            if (!deal.value && deal.quantity) {
+                valTitle = `Consideration ₹0 (${escapeHtml(deal.mode || 'Disclosed Deal')})`;
+            }
+
             const isPromoterTab = (state.dealType === 'promoter');
             let clientColHtml = '';
             let categoryColHtml = '';
@@ -343,7 +340,7 @@
                 <td class="text-center">
                     <span class="tx-action-pill ${actionClass}">${actionText}</span>
                 </td>
-                <td class="text-right tx-val-cell ${valClass}" title="₹${deal.value ? deal.value.toLocaleString() : '0'}">
+                <td class="text-right tx-val-cell ${valClass}" title="${valTitle}">
                     ${deal.value_formatted || '₹0.00'}
                 </td>
                 <td class="text-right" style="font-family: 'Plus Jakarta Sans', var(--font-sans); font-weight: 600;">
@@ -449,7 +446,7 @@
         paginationBar.style.display = 'flex';
 
         if (state.perPage === 'all') {
-            infoEl.innerText = `Showing all ${total.toLocaleString()} deals`;
+            infoEl.innerText = `Showing all ${total.toLocaleString()} deals (all amounts)`;
             buttonsEl.innerHTML = '';
             return;
         }
@@ -514,13 +511,11 @@
 
     // --- 6. Event Handlers & Global Methods ---
     window.loadTransactionsModule = function (forceRefresh = false) {
-        const elapsed = lastFetchTimestamp > 0 ? (Date.now() - lastFetchTimestamp) : Infinity;
-        if (forceRefresh || elapsed >= AUTO_REFRESH_INTERVAL_MS || !state.deals || state.deals.length === 0) {
-            fetchTransactions(forceRefresh || elapsed >= AUTO_REFRESH_INTERVAL_MS);
+        if (forceRefresh || !state.deals || state.deals.length === 0) {
+            fetchTransactions(forceRefresh);
         } else {
             renderView();
         }
-        scheduleNextAutoRefresh();
     };
 
     window.refreshTransactionsData = function (forceRefresh = true) {
@@ -718,20 +713,6 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
-
-    // Auto-refresh when returning to tab if 15 minutes have elapsed
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            const isTxActive = (window.currentTab === 'transactions' || window.location.pathname === '/transactions');
-            if (isTxActive && lastFetchTimestamp > 0) {
-                const elapsed = Date.now() - lastFetchTimestamp;
-                if (elapsed >= AUTO_REFRESH_INTERVAL_MS) {
-                    console.log(`[Transactions] Tab visible again after ${Math.round(elapsed / 60000)}m (>= 15m). Auto-refreshing transactions...`);
-                    fetchTransactions(true);
-                }
-            }
-        }
-    });
 
     // Auto-init on DOMContentLoaded if starting on transactions tab or /transactions route
     document.addEventListener('DOMContentLoaded', () => {

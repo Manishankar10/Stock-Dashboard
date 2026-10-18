@@ -2,6 +2,7 @@
 
 from functools import wraps
 from pathlib import Path
+import time
 from typing import Any, Callable, Dict, Optional, Set, Tuple
 
 from flask import Blueprint, jsonify, render_template, request, send_from_directory, session
@@ -143,7 +144,23 @@ def refresh_transactions_data():
     if _PROVIDER is None:
         return jsonify({"error": "Transactions Provider not initialized"}), 500
     try:
+        now = time.time()
+        time_since_last = now - _PROVIDER._last_fetch_time if _PROVIDER._last_fetch_time > 0 else float("inf")
+        if _PROVIDER._cache_deals and time_since_last < 900:
+            remaining = int(900 - time_since_last)
+            rem_min = (remaining + 59) // 60
+            return jsonify({
+                "success": True,
+                "official_called": False,
+                "message": f"Transactions are up to date. Official exchange data can be called every 15 minutes ({rem_min}m remaining).",
+                "cooldown_remaining_seconds": remaining
+            })
         _PROVIDER.fetch_live_deals()
-        return jsonify({"success": True, "message": "Official transactions data refreshed from NSE India."})
+        return jsonify({
+            "success": True,
+            "official_called": True,
+            "message": "Official transactions data refreshed from NSE India.",
+            "cooldown_remaining_seconds": 900
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
