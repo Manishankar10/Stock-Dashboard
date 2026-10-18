@@ -310,16 +310,27 @@
     text-align: center;
 }
 
-/* Static sticky Industry / Company column: 2/3rd of space (~340px) on web with overflow ellipsis for longer names */
+/* Static sticky Industry column: 340px on web with overflow ellipsis for longer names */
 .ind-table th.th-name,
-.ind-table td.td-industry-name,
-.ind-table th.th-company,
-.ind-table td.td-company-name {
+.ind-table td.td-industry-name {
     position: sticky;
     left: 50px;
     width: 340px;
     max-width: 340px;
     min-width: 340px;
+    box-sizing: border-box;
+    border-right: 1px solid var(--border-color, #2a2e39);
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.18);
+}
+
+/* Static sticky Stock / Company column in drilldown list: decreased to 2/3 of current width (~227px) */
+.ind-table th.th-company,
+.ind-table td.td-company-name {
+    position: sticky;
+    left: 50px;
+    width: 227px;
+    max-width: 227px;
+    min-width: 227px;
     box-sizing: border-box;
     border-right: 1px solid var(--border-color, #2a2e39);
     box-shadow: 3px 0 6px rgba(0, 0, 0, 0.18);
@@ -346,6 +357,7 @@
 /* Stock Name Link in drill-down: matches industry column style, NO underline, overflow ellipsis */
 .ind-stock-link {
     font-weight: 400;
+    font-size: 13.5px;
     color: #38bdf8;
     cursor: pointer;
     text-decoration: none !important;
@@ -364,6 +376,7 @@
 
 .stock-name-text {
     font-weight: 400;
+    font-size: 13.5px;
     white-space: nowrap;
     display: inline-block;
     max-width: 100%;
@@ -388,6 +401,7 @@
 /* Industry link cell with overflow ellipsis for longer names */
 .ind-table td.td-industry-name .ind-link-cell {
     font-weight: 400;
+    font-size: 13.5px;
     color: #38bdf8;
     cursor: pointer;
     text-decoration: none;
@@ -401,6 +415,7 @@
 
 .ind-table td.td-industry-name .ind-name-text {
     font-weight: 400;
+    font-size: 13.5px;
     white-space: nowrap;
     display: inline-block;
     max-width: 100%;
@@ -873,11 +888,9 @@
         font-size: 11px !important;
     }
 
-    /* Pinned Industry & Company Column: Compact (140px) on mobile -> Frees up 220px+ for data */
+    /* Pinned Industry Column: Compact (140px) on mobile */
     .ind-table th.th-name,
-    .ind-table td.td-industry-name,
-    .ind-table th.th-company,
-    .ind-table td.td-company-name {
+    .ind-table td.td-industry-name {
         width: 140px !important;
         min-width: 140px !important;
         max-width: 140px !important;
@@ -886,10 +899,22 @@
         font-size: 12px !important;
     }
 
+    /* Pinned Stock List Company Column: 2/3 of current width (~95px) on mobile */
+    .ind-table th.th-company,
+    .ind-table td.td-company-name {
+        width: 95px !important;
+        min-width: 95px !important;
+        max-width: 95px !important;
+        left: 36px !important;
+        padding: 8px 6px !important;
+        font-size: 12px !important;
+    }
+
     .ind-table td.td-industry-name .ind-link-cell,
     .ind-table td.td-industry-name .ind-name-text,
     .ind-stock-link,
     .stock-name-text {
+        font-size: 13px !important;
         font-weight: 400 !important;
     }
 
