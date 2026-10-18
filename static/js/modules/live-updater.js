@@ -344,7 +344,14 @@
             if (badge) badge.innerHTML = '⏳ Fetching live prices...';
 
             try {
-                await refreshPrices();
+                if ((window.currentTab === 'transactions' || window.location.pathname === '/transactions') && typeof window.refreshTransactionsData === 'function') {
+                    await Promise.allSettled([
+                        refreshPrices(),
+                        window.refreshTransactionsData(true)
+                    ]);
+                } else {
+                    await refreshPrices();
+                }
             } catch (err) {
                 if (badge) badge.innerHTML = '⚠️ Refresh failed';
             } finally {

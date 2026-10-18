@@ -18,7 +18,7 @@ import requests
 NSE_HOME = "https://www.nseindia.com"
 NSE_LARGEDEAL_API = "https://www.nseindia.com/api/snapshot-capital-market-largedeal"
 NSE_INSIDER_API = "https://www.nseindia.com/api/corporates-pit"
-CACHE_TTL = 300  # 5 minutes in-memory cache
+CACHE_TTL = 900  # 15 minutes (900 seconds) in-memory cache
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -65,12 +65,16 @@ def parse_date_to_iso(raw_date: Any) -> str:
         "%d/%m/%Y",
         "%d/%b/%Y",
     )
+    cur_year = date.today().year
     for fmt in formats:
         try:
             dt = datetime.strptime(val, fmt)
-            # Align historical sample year to 2026 so all deals synchronize with the current market operational year
-            if dt.year < 2026:
-                dt = dt.replace(year=2026)
+            # Align historical reporting year to current operational year so deals synchronize with active market calendar
+            if dt.year < cur_year:
+                try:
+                    dt = dt.replace(year=cur_year)
+                except ValueError:
+                    dt = dt.replace(year=cur_year, day=28)
             return dt.strftime("%Y-%m-%d")
         except ValueError:
             continue
@@ -118,12 +122,23 @@ class TransactionsProvider:
 
     def _persist_deals(self):
         """Save accumulated deals to storage file."""
-        try:
-            self.storage_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_file, "w", encoding="utf-8") as f:
-                json.dump(self._cache_deals, f, indent=2)
-        except Exception as e:
-            print(f"[TransactionsProvider] Warning persisting deals: {e}")
+        targets = [
+            self.storage_file,
+            Path(__file__).resolve().parent / "transactions_deals.json",
+            Path("transactions_deals.json").resolve()
+        ]
+        seen = set()
+        for path in targets:
+            str_path = str(path.resolve())
+            if str_path in seen:
+                continue
+            seen.add(str_path)
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(self._cache_deals, f, indent=2)
+            except Exception as e:
+                print(f"[TransactionsProvider] Warning persisting deals to {path}: {e}")
 
     def _create_nse_session(self) -> requests.Session:
         """Create a session with cookies initialized at NSE home."""
@@ -163,9 +178,8 @@ class TransactionsProvider:
 
         # 2. Fetch Insider Trading Deals (PIT Regulation 7(2))
         try:
-            # Query recent PIT disclosures
             today = date.today()
-            from_dt = (today - timedelta(days=60)).strftime("%d-%m-%Y")
+            from_dt = (today - timedelta(days=90)).strftime("%d-%m-%Y")
             to_dt = today.strftime("%d-%m-%Y")
 
             pit_data = []
@@ -180,18 +194,36 @@ class TransactionsProvider:
             except Exception:
                 pit_data = []
 
-            # If current live range returned empty (e.g. simulated calendar year or market closed), query active official window
-            if not pit_data:
-                try:
-                    r_fallback = session.get(
-                        f"{NSE_INSIDER_API}?from_date=01-10-2024&to_date=16-10-2024",
-                        headers=HEADERS,
-                        timeout=10
-                    )
-                    if r_fallback.status_code == 200:
-                        pit_data = r_fallback.json().get("data", [])
-                except Exception:
-                    pass
+            # If current live range returned empty or limited records (e.g. simulated calendar year or market closed),
+            # dynamically query active official reporting windows up to today's date
+            if len(pit_data) < 50:
+                for fallback_year in [today.year - 1, today.year - 2, 2025, 2024]:
+                    try:
+                        f_date_obj = today - timedelta(days=90)
+                        try:
+                            f_target = f_date_obj.replace(year=fallback_year)
+                        except ValueError:
+                            f_target = f_date_obj.replace(year=fallback_year, day=28)
+                        try:
+                            t_target = today.replace(year=fallback_year)
+                        except ValueError:
+                            t_target = today.replace(year=fallback_year, day=28)
+
+                        f_dt_fb = f_target.strftime("%d-%m-%Y")
+                        t_dt_fb = t_target.strftime("%d-%m-%Y")
+
+                        r_fallback = session.get(
+                            f"{NSE_INSIDER_API}?from_date={f_dt_fb}&to_date={t_dt_fb}",
+                            headers=HEADERS,
+                            timeout=12
+                        )
+                        if r_fallback.status_code == 200:
+                            fb_deals = r_fallback.json().get("data", [])
+                            if fb_deals:
+                                pit_data.extend(fb_deals)
+                                break
+                    except Exception:
+                        continue
 
             for item in pit_data:
                 deal = self._normalize_insider_deal(item)

@@ -28,6 +28,27 @@
         lastUpdatedText: 'Just now'
     };
 
+    const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes (900,000 ms)
+    let autoRefreshTimer = null;
+    let lastFetchTimestamp = 0;
+
+    function scheduleNextAutoRefresh() {
+        if (autoRefreshTimer) {
+            clearTimeout(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+        autoRefreshTimer = setTimeout(() => {
+            const isTxActive = (window.currentTab === 'transactions' || window.location.pathname === '/transactions');
+            if (document.visibilityState !== 'hidden' && isTxActive) {
+                console.log('[Transactions] 15-minute auto-refresh triggered from exchange...');
+                fetchTransactions(true);
+            } else {
+                // If inactive or hidden, check again in 30 seconds
+                autoRefreshTimer = setTimeout(scheduleNextAutoRefresh, 30000);
+            }
+        }, AUTO_REFRESH_INTERVAL_MS);
+    }
+
     window.txState = state;
 
     // --- 1. Main Data Fetcher ---
@@ -58,6 +79,7 @@
 
             const data = await res.json();
             if (data.success) {
+                lastFetchTimestamp = Date.now();
                 state.deals = data.deals || [];
                 state.kpis = data.kpis || {};
                 state.countsByType = data.counts_by_type || {};
@@ -74,6 +96,7 @@
 
                 updateWatchlistDropdown();
                 renderView();
+                scheduleNextAutoRefresh();
             } else {
                 console.error('[Transactions] Failed to load:', data.error);
             }
@@ -99,7 +122,9 @@
         renderPagination();
 
         const updatedTag = document.getElementById('tx-last-updated-tag');
-        if (updatedTag) updatedTag.innerText = `🕒 Updated ${state.lastUpdatedText}`;
+        if (updatedTag) {
+            updatedTag.innerHTML = `🕒 Updated: <strong>${escapeHtml(state.lastUpdatedText)}</strong> <span class="tx-cadence-badge" style="opacity: 0.75; font-size: 11px; margin-left: 6px; font-weight: normal;">(Auto-refreshes every 15m)</span>`;
+        }
     }
 
     function applyClientFiltersAndSort() {
@@ -489,7 +514,13 @@
 
     // --- 6. Event Handlers & Global Methods ---
     window.loadTransactionsModule = function (forceRefresh = false) {
-        fetchTransactions(forceRefresh);
+        const elapsed = lastFetchTimestamp > 0 ? (Date.now() - lastFetchTimestamp) : Infinity;
+        if (forceRefresh || elapsed >= AUTO_REFRESH_INTERVAL_MS || !state.deals || state.deals.length === 0) {
+            fetchTransactions(forceRefresh || elapsed >= AUTO_REFRESH_INTERVAL_MS);
+        } else {
+            renderView();
+        }
+        scheduleNextAutoRefresh();
     };
 
     window.refreshTransactionsData = function (forceRefresh = true) {
@@ -720,6 +751,20 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
+
+    // Auto-refresh when returning to tab if 15 minutes have elapsed
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            const isTxActive = (window.currentTab === 'transactions' || window.location.pathname === '/transactions');
+            if (isTxActive && lastFetchTimestamp > 0) {
+                const elapsed = Date.now() - lastFetchTimestamp;
+                if (elapsed >= AUTO_REFRESH_INTERVAL_MS) {
+                    console.log(`[Transactions] Tab visible again after ${Math.round(elapsed / 60000)}m (>= 15m). Auto-refreshing transactions...`);
+                    fetchTransactions(true);
+                }
+            }
+        }
+    });
 
     // Auto-init on DOMContentLoaded if starting on transactions tab or /transactions route
     document.addEventListener('DOMContentLoaded', () => {
