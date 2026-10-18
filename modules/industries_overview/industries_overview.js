@@ -473,7 +473,7 @@
                 <tr class="stock-row">
                     <td class="th-sno">${sno}</td>
                     <td class="td-company-name" title="${escapeHtml(stk.name)}">
-                        <div style="display:flex; flex-direction:column;">
+                        <div style="display:flex; flex-direction:column; max-width: 100%; overflow: hidden;">
                             <a href="javascript:void(0)" class="ind-stock-link" onclick="openFundamentalsModal('${escapeHtml(nseSym || sym)}')" title="${escapeHtml(stk.name)}">
                                 <strong class="stock-name-text">${escapeHtml(stk.name)}</strong>
                             </a>

@@ -302,16 +302,16 @@
     text-align: center;
 }
 
-/* Static sticky Industry / Company column: max 20% width on column only, not to texts, with full tooltip */
+/* Static sticky Industry / Company column: 2/3rd of space (~340px) on web with overflow ellipsis for longer names */
 .ind-table th.th-name,
 .ind-table td.td-industry-name,
 .ind-table th.th-company,
 .ind-table td.td-company-name {
     position: sticky;
     left: 50px;
-    width: 20%;
-    max-width: 20%;
-    min-width: 180px;
+    width: 340px;
+    max-width: 340px;
+    min-width: 340px;
     box-sizing: border-box;
     border-right: 1px solid var(--border-color, #2a2e39);
     box-shadow: 3px 0 6px rgba(0, 0, 0, 0.18);
@@ -341,7 +341,7 @@
     background: #1e2638;
 }
 
-/* Stock Name Link in drill-down: matches industry column style, NO underline */
+/* Stock Name Link in drill-down: matches industry column style, NO underline, overflow ellipsis */
 .ind-stock-link {
     font-weight: 700;
     color: #38bdf8;
@@ -350,6 +350,8 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    max-width: 100%;
+    overflow: hidden;
     white-space: nowrap;
 }
 
@@ -360,7 +362,10 @@
 
 .stock-name-text {
     white-space: nowrap;
-    display: inline;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     vertical-align: middle;
     text-decoration: none !important;
 }
@@ -372,9 +377,12 @@
     font-family: monospace;
     line-height: 1.2;
     margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* Unconstrained inner text - allows full name display up to column width with tooltip on cell */
+/* Industry link cell with overflow ellipsis for longer names */
 .ind-table td.td-industry-name .ind-link-cell {
     font-weight: 700;
     color: #38bdf8;
@@ -383,12 +391,17 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    max-width: 100%;
+    overflow: hidden;
     white-space: nowrap;
 }
 
 .ind-table td.td-industry-name .ind-name-text {
     white-space: nowrap;
-    display: inline;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     vertical-align: middle;
 }
 
