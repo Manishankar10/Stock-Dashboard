@@ -1063,11 +1063,11 @@
             if (!item) return;
             const num = parseFloat(val);
             item.price = Math.max(0, isNaN(num) ? 0 : num);
-            recalcBulkWeights(false);
-            updateBulkRowDisplay(idx);
+            recalcBulkWeights(true);
+            renderBulkStocksTable();
         }
 
-        function recalcBulkWeights(forceEqual = false) {
+        function recalcBulkWeights(forceEqual = true) {
             const plannedInput = document.getElementById('scBulkPlannedAmount');
             const plannedAmount = plannedInput ? Math.max(0, parseFloat(plannedInput.value) || 0) : 100000;
             const N = bulkStockBasket.length;
@@ -1077,12 +1077,10 @@
 
             if (N > 0 && targetAmountPerStock > 0) {
                 bulkStockBasket.forEach(item => {
-                    if (forceEqual || !item.userEditedQty) {
-                        if (item.price > 0) {
-                            item.quantity = Math.max(1, Math.floor(targetAmountPerStock / item.price));
-                        } else {
-                            item.quantity = 1;
-                        }
+                    if (item.price > 0) {
+                        item.quantity = Math.max(1, Math.floor(targetAmountPerStock / item.price));
+                    } else {
+                        item.quantity = 1;
                     }
                 });
             }
@@ -1155,7 +1153,7 @@
                             </div>
                         </td>
                         <td style="padding: 10px 12px; text-align: right; vertical-align: middle;">
-                            <input type="number" step="1" min="1" class="sc-bulk-input sc-bulk-qty-input" value="${item.quantity}" onchange="onBulkQtyChange(${idx}, this.value)" style="width: 75px;">
+                            <input type="number" class="sc-bulk-input sc-bulk-qty-input" value="${item.quantity}" readonly tabindex="-1" onkeydown="return false;" onpaste="return false;" style="width: 75px;" title="Auto-calculated equal weight quantity (non-editable)">
                         </td>
                         <td style="padding: 10px 12px; text-align: right; vertical-align: middle; font-weight: 700; color: var(--text-primary);" id="scBulkAmount-${idx}">
                             ₹${amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}

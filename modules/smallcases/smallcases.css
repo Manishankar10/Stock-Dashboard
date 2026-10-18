@@ -130,6 +130,26 @@
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+.sc-bulk-qty-input[readonly] {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    color: var(--text-primary) !important;
+    cursor: not-allowed !important;
+    user-select: none !important;
+}
+
+.sc-bulk-qty-input[readonly]:focus {
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+:root:not([data-theme="dark"]) .sc-bulk-qty-input[readonly] {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+}
+
 .sc-live-indicator {
     display: inline-block;
     width: 7px;
