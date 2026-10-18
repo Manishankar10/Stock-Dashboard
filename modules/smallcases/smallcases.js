@@ -780,11 +780,9 @@
             }
 
             const plannedInput = document.getElementById('scBulkPlannedAmount');
-            if (plannedInput && (!plannedInput.value || Number(plannedInput.value) <= 0)) {
-                plannedInput.value = '100000';
+            if (plannedInput) {
+                plannedInput.value = '100000'; // Default 1 Lakh
             }
-
-            updateBulkPresetChips();
 
             const searchInput = document.getElementById('scBulkSearchInput');
             if (searchInput) searchInput.value = '';

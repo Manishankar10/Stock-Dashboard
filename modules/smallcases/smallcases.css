@@ -100,17 +100,11 @@
 }
 
 .sc-bulk-col-amount {
-    flex: 0 0 auto;
+    flex: 0 0 145px;
 }
 
-.sc-bulk-amount-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.sc-bulk-amount-group input#scBulkPlannedAmount {
-    width: 95px;
+.sc-bulk-col-amount input#scBulkPlannedAmount {
+    width: 100%;
     height: 36px;
     font-size: 14px;
     font-weight: 700;
@@ -119,24 +113,6 @@
     border: 1px solid var(--border-color);
     background: var(--bg-subtle);
     color: var(--text-primary);
-    box-sizing: border-box;
-}
-
-.sc-bulk-chips-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.sc-bulk-chips-row .sc-bulk-chip {
-    height: 36px;
-    padding: 0 7px;
-    font-size: 11px;
-    font-weight: 700;
-    border-radius: 7px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     box-sizing: border-box;
 }
 
@@ -438,14 +414,6 @@
         flex: none !important;
     }
 
-    .sc-bulk-amount-group input#scBulkPlannedAmount {
-        flex: 1 1 90px !important;
-        width: auto !important;
-    }
-
-    .sc-bulk-chips-row {
-        flex-wrap: wrap !important;
-    }
 
     .sc-bulk-modal-content {
         padding: 14px 10px !important;

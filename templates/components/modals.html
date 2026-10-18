@@ -244,21 +244,12 @@
                 <!-- Top Config Card: All controls in single row -->
                 <div class="sc-bulk-config-card">
                     <div class="sc-bulk-single-row">
-                        <!-- Planned Amount & Quick Chips -->
+                        <!-- Planned Amount (Default: 1 Lakh) -->
                         <div class="sc-bulk-col-amount">
                             <label class="sc-bulk-label" for="scBulkPlannedAmount">
                                 💰 Planned Amount (₹) *
                             </label>
-                            <div class="sc-bulk-amount-group">
-                                <input type="number" id="scBulkPlannedAmount" min="1" step="500" value="100000" placeholder="100000" oninput="recalcBulkWeights()">
-                                <div class="sc-bulk-chips-row">
-                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(25000)">₹25K</button>
-                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(50000)">₹50K</button>
-                                    <button type="button" class="sc-bulk-chip active" onclick="setBulkPlannedAmount(100000)">₹1L</button>
-                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(200000)">₹2L</button>
-                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(500000)">₹5L</button>
-                                </div>
-                            </div>
+                            <input type="number" id="scBulkPlannedAmount" min="1" step="500" value="100000" placeholder="100000" oninput="recalcBulkWeights()">
                         </div>
 
                         <!-- Transaction Date -->
