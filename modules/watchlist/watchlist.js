@@ -1161,7 +1161,7 @@
                             submenu.style.display = 'none';
                             mMove.classList.remove('active');
                             window._wlSubmenuHideTimer = null;
-                        }, 2000);
+                        }, 1000);
                     };
 
                     if (otherWatchlists.length === 0) {
