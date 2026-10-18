@@ -291,11 +291,13 @@
             if (paginationToolbar) paginationToolbar.style.display = isWeb ? 'flex' : 'none';
             if (paginationBottom) paginationBottom.style.display = 'flex';
 
-            // Sync select element
+            // Sync select elements
             const selectEl = document.getElementById('qr-page-size-select');
             if (selectEl) selectEl.value = String(qrState.pageSize);
+            const bottomSelectEl = document.getElementById('qr-bottom-page-size-select');
+            if (bottomSelectEl) bottomSelectEl.value = String(qrState.pageSize);
 
-            // Sync size pills in bottom bar
+            // Sync size pills in bottom bar if present
             document.querySelectorAll('.qr-size-pill').forEach(pill => {
                 const pSize = pill.getAttribute('data-size');
                 pill.classList.toggle('active', String(pSize) === String(qrState.pageSize));
