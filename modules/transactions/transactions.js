@@ -711,39 +711,6 @@
         }
     };
 
-    window.exportTransactionsCSV = function () {
-        if (!state.filteredDeals || state.filteredDeals.length === 0) {
-            alert('No transactions available to export.');
-            return;
-        }
-
-        const headers = ['Date', 'Symbol', 'Company', 'Deal Type', 'Client / Party', 'Category', 'Action', 'Quantity', 'Avg Price (INR)', 'Total Value (INR)', 'Mode', 'Source'];
-        const rows = state.filteredDeals.map(d => [
-            `"${d.date_display || d.date || ''}"`,
-            `"${d.symbol || ''}"`,
-            `"${(d.company || '').replace(/"/g, '""')}"`,
-            `"${d.deal_type_label || d.deal_type || ''}"`,
-            `"${(d.client_name || '').replace(/"/g, '""')}"`,
-            `"${(d.person_category || '').replace(/"/g, '""')}"`,
-            `"${d.action || ''}"`,
-            d.quantity || 0,
-            d.price || 0,
-            d.value || 0,
-            `"${(d.mode || '').replace(/"/g, '""')}"`,
-            `"${d.source || 'NSE'}"`
-        ]);
-
-        const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `CapitalDesk_Transactions_${state.dealType}_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
     function escapeHtml(str) {
         return String(str || '')
             .replace(/&/g, '&amp;')

@@ -9,21 +9,11 @@
         </div>
         <div class="tx-header-actions">
             <span class="tx-updated-tag" id="tx-last-updated-tag">🕒 Updated just now</span>
-            <div class="tx-header-btns-group">
-                <button type="button" class="tx-btn-action tx-btn-export" onclick="exportTransactionsCSV()" title="Export filtered deals to CSV">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    <span>Export CSV</span>
-                </button>
-                <button type="button" class="tx-refresh-btn" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Collect live deals from exchange now (Auto-refreshes every 15 mins)" aria-label="Refresh Transactions (15m cadence)">
-                    <svg class="tx-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                    </svg>
-                </button>
-            </div>
+            <button type="button" class="tx-refresh-btn" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Collect live deals from exchange now (Auto-refreshes every 15 mins)" aria-label="Refresh Transactions (15m cadence)">
+                <svg class="tx-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+            </button>
         </div>
     </div>
 

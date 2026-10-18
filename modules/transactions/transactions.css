@@ -58,11 +58,6 @@
     flex-wrap: wrap;
 }
 
-.tx-header-btns-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
 
 .tx-updated-tag {
     font-size: 11px;
@@ -925,12 +920,6 @@
         white-space: nowrap;
     }
 
-    .tx-header-btns-group {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-    }
 
     .tx-kpi-grid {
         grid-template-columns: repeat(2, 1fr);
