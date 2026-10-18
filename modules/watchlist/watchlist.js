@@ -1172,6 +1172,13 @@
                             submenu.style.marginRight = '4px';
                             submenu.style.marginLeft = '0';
                         }
+                        if (rect.top < 10) {
+                            submenu.style.bottom = 'auto';
+                            submenu.style.top = '0';
+                        } else {
+                            submenu.style.bottom = '0';
+                            submenu.style.top = 'auto';
+                        }
                     });
                     mMove.addEventListener('mouseleave', () => {
                         if (!mMove.classList.contains('active')) {
@@ -1202,6 +1209,13 @@
                                 submenu.style.left = 'auto';
                                 submenu.style.marginRight = '4px';
                                 submenu.style.marginLeft = '0';
+                            }
+                            if (rect.top < 10) {
+                                submenu.style.bottom = 'auto';
+                                submenu.style.top = '0';
+                            } else {
+                                submenu.style.bottom = '0';
+                                submenu.style.top = 'auto';
                             }
                         }
                     });
@@ -1256,19 +1270,27 @@
             const spaceBelow = viewportHeight - btnRect.bottom;
             const spaceAbove = btnRect.top - 60; // 60px reserved for sticky header
 
-            if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
-                // Open UPWARDS
-                popover.style.top = 'auto';
-                popover.style.bottom = `${viewportHeight - btnRect.top + 4}px`;
+            let desiredTop;
+            if (spaceBelow >= popoverHeight) {
+                desiredTop = btnRect.bottom + 4;
+            } else if (spaceAbove >= popoverHeight) {
+                desiredTop = btnRect.top - 4 - popoverHeight;
             } else {
-                // Open DOWNWARDS
-                popover.style.top = `${btnRect.bottom + 4}px`;
-                popover.style.bottom = 'auto';
+                if (spaceAbove > spaceBelow) {
+                    desiredTop = btnRect.top - 4 - popoverHeight;
+                } else {
+                    desiredTop = btnRect.bottom + 4;
+                }
             }
+
+            const clampedTop = Math.max(10, Math.min(viewportHeight - popoverHeight - 10, desiredTop));
+            popover.style.top = `${clampedTop}px`;
+            popover.style.bottom = 'auto';
 
             const rightOffset = viewportWidth - btnRect.right;
             popover.style.right = `${Math.max(8, rightOffset)}px`;
             popover.style.left = 'auto';
+            popover.style.maxWidth = `${Math.min(260, viewportWidth - 16)}px`;
 
             const parentTr = btn.closest('tr');
             if (parentTr) parentTr.classList.add('wl-row-menu-open');
