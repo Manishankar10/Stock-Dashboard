@@ -429,12 +429,21 @@
                         <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">XIRR</div><div class="value ${dXirrClass}" style="font-size:16px; color: ${dXirrColor} !important;">${dXirrStr}</div></div>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px; flex-wrap: wrap; gap: 8px;">
-                        <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase;">Holdings (${holdings.length})</h4>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn-primary" style="font-size: 11px; padding: 4px 12px; background: #3b82f6; border-color: #2563eb;" onclick="openBulkStockModal('${escapeHtml(id)}')">⚖️ Add bulk stock</button>
-                            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="openSmallcaseImportModal('${escapeHtml(id)}')">⬆ Import Excel</button>
-                            <button class="btn-primary" style="font-size: 11px; padding: 4px 12px;" onclick="openSmallcaseTxModal('${escapeHtml(id)}','BUY')">🟢 Buy / Sell Holding</button>
+                    <div class="sc-holdings-header">
+                        <h4 class="sc-holdings-title" style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase;">Holdings (${holdings.length})</h4>
+                        <div class="sc-holdings-actions">
+                            <button class="btn-primary sc-holdings-btn sc-btn-bulk" onclick="openBulkStockModal('${escapeHtml(id)}')">
+                                <span class="sc-btn-icon">⚖️</span>
+                                <span class="sc-btn-text">Add bulk stocks</span>
+                            </button>
+                            <button class="btn-secondary sc-holdings-btn sc-btn-import" onclick="openSmallcaseImportModal('${escapeHtml(id)}')">
+                                <span class="sc-btn-icon">⬆</span>
+                                <span class="sc-btn-text">Import Excel</span>
+                            </button>
+                            <button class="btn-primary sc-holdings-btn sc-btn-trade" onclick="openSmallcaseTxModal('${escapeHtml(id)}','BUY')">
+                                <span class="sc-btn-icon">🟢</span>
+                                <span class="sc-btn-text">Buy / Sell<span class="sc-btn-holding-text"> Holding</span></span>
+                            </button>
                         </div>
                     </div>
 

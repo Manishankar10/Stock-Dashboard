@@ -114,7 +114,7 @@ def get_quarterly_results_data():
     mcap_tier = str(request.args.get("mcap_tier", "")).strip()
     sorting = str(request.args.get("sorting", "latest")).strip()
     exchange = str(request.args.get("exchange", "all")).strip()
-    watchlist = str(request.args.get("watchlist", "all")).strip()
+    watchlist = str(request.args.get("watchlist", "portfolio")).strip()
     date_val = str(request.args.get("date", "")).strip()
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
