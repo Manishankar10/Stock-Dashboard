@@ -19,6 +19,44 @@
     let stockSortCol = 'mar_cap';
     let stockSortAsc = false;
 
+    // Macro Icons map matching main industry categories
+    const macroIcons = {
+        'IN01': '📦', // Commodities
+        'IN02': '🚗', // Consumer Discretionary
+        'IN03': '⚡', // Energy
+        'IN04': '🛒', // Fast Moving Consumer Goods
+        'IN05': '🏦', // Financial Services
+        'IN06': '🏥', // Healthcare
+        'IN07': '⚙️', // Industrials
+        'IN08': '💻', // Information Technology
+        'IN09': '🛎️', // Services
+        'IN10': '📡', // Telecommunication
+        'IN11': '💡', // Utilities
+        'IN12': '🌐'  // Diversified
+    };
+
+    function getMacroIcon(ind) {
+        if (!ind) return '📁';
+        const code = ind.macro_code || '';
+        if (macroIcons[code]) return macroIcons[code];
+
+        const name = (ind.macro_name || '').toLowerCase();
+        if (name.includes('consumer discretionary')) return '🚗';
+        if (name.includes('industrial')) return '⚙️';
+        if (name.includes('service')) return '🛎️';
+        if (name.includes('commodit')) return '📦';
+        if (name.includes('fast moving') || name.includes('fmcg')) return '🛒';
+        if (name.includes('financial')) return '🏦';
+        if (name.includes('health')) return '🏥';
+        if (name.includes('energy')) return '⚡';
+        if (name.includes('information tech') || name.includes('it')) return '💻';
+        if (name.includes('telecom')) return '📡';
+        if (name.includes('utilit') || name.includes('power')) return '💡';
+        if (name.includes('diversif')) return '🌐';
+
+        return '📁';
+    }
+
     // Format helpers
     function fmtNum(val, decimals = 2) {
         if (val === null || val === undefined || isNaN(val)) return '-';
@@ -97,12 +135,6 @@
                 🌐 All Sectors (${allIndustries.length})
             </button>
         `;
-
-        const macroIcons = {
-            'IN01': '📦', 'IN02': '🚗', 'IN03': '⚡', 'IN04': '🛒',
-            'IN05': '🏦', 'IN06': '🏥', 'IN07': '⚙️', 'IN08': '💻',
-            'IN09': '🛎️', 'IN10': '📡', 'IN11': '💡', 'IN12': '🌐'
-        };
 
         macroSectors.forEach(m => {
             const cnt = countMap[m.code] || 0;
@@ -254,13 +286,14 @@
             const peVal = ind.median_pe ? ind.median_pe.toFixed(1) : '-';
             const roceVal = ind.wtd_roce ? `${ind.wtd_roce.toFixed(1)}%` : '-';
             const opmVal = ind.opm ? `${ind.opm.toFixed(1)}%` : '-';
+            const macroIcon = getMacroIcon(ind);
 
             html += `
                 <tr class="ind-row">
                     <td class="th-sno">${sno}</td>
                     <td class="td-industry-name" title="${escapeHtml(ind.name)}">
                         <a href="javascript:void(0)" class="ind-link-cell" onclick="openIndustryStocks('${escapeHtml(ind.path)}')" title="${escapeHtml(ind.name)}">
-                            <span>⚒️</span> <span class="ind-name-text">${escapeHtml(ind.name)}</span>
+                            <span>${macroIcon}</span> <span class="ind-name-text">${escapeHtml(ind.name)}</span>
                         </a>
                     </td>
                     <td class="th-num"><strong>${ind.company_count}</strong></td>
@@ -325,6 +358,12 @@
             const bcInd = document.getElementById('bcIndustryName');
 
             if (currentIndustryMeta) {
+                const icon = getMacroIcon(currentIndustryMeta);
+                const bcMacroIcon = document.getElementById('bcMacroIcon');
+                const bcIndustryIcon = document.getElementById('bcIndustryIcon');
+                if (bcMacroIcon) bcMacroIcon.innerText = icon;
+                if (bcIndustryIcon) bcIndustryIcon.innerText = icon;
+
                 if (bcMacro) bcMacro.innerText = currentIndustryMeta.macro_name;
                 if (bcSector) bcSector.innerText = currentIndustryMeta.sector_name;
                 if (bcGroup) bcGroup.innerText = currentIndustryMeta.industry_group_name;
