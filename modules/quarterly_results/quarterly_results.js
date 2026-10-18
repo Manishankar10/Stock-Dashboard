@@ -290,6 +290,8 @@
         if (enablePagination) {
             if (paginationToolbar) paginationToolbar.style.display = isWeb ? 'flex' : 'none';
             if (paginationBottom) paginationBottom.style.display = 'flex';
+            const bottomSummaryEl = document.getElementById('qr-bottom-summary');
+            if (bottomSummaryEl) bottomSummaryEl.style.display = 'none';
 
             // Sync select elements
             const selectEl = document.getElementById('qr-page-size-select');
@@ -355,9 +357,12 @@
         if (!navEl) return;
 
         if (totalPages <= 1) {
-            navEl.innerHTML = `<span class="qr-page-static-info">Showing all ${total} results</span>`;
+            navEl.innerHTML = '';
+            navEl.style.display = 'none';
             return;
         }
+
+        navEl.style.display = 'flex';
 
         let html = '';
 
