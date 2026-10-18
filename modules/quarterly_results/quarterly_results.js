@@ -347,6 +347,12 @@
             streamEl.innerHTML = pagedResults.map(item => buildResultCardHtml(item)).join('');
             streamEl.style.display = 'flex';
         }
+
+        if (enablePagination && paginationBottom) {
+            paginationBottom.style.display = 'flex';
+            // Force synchronous layout & compositor update so mobile browser paints footer immediately
+            void paginationBottom.offsetHeight;
+        }
     }
 
     /**
@@ -354,15 +360,18 @@
      */
     function renderPaginationNav(currentPage, totalPages, total) {
         const navEl = document.getElementById('qr-pagination-nav');
+        const paginationBottom = document.getElementById('qr-pagination-bottom');
         if (!navEl) return;
 
         if (totalPages <= 1) {
             navEl.innerHTML = '';
             navEl.style.display = 'none';
+            if (paginationBottom) paginationBottom.classList.remove('has-nav');
             return;
         }
 
         navEl.style.display = 'flex';
+        if (paginationBottom) paginationBottom.classList.add('has-nav');
 
         let html = '';
 

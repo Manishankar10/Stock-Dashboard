@@ -1664,14 +1664,17 @@
     margin-top: 18px;
     margin-bottom: 16px;
     padding: 14px 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: #181d28;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 :root:not([data-theme="dark"]) .qr-pagination-bottom {
-    background: rgba(0, 0, 0, 0.02);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: #f8fafc;
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 .qr-pagination-nav {
@@ -1745,11 +1748,16 @@
     width: 100%;
     flex-wrap: nowrap;
     gap: 10px;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.qr-pagination-bottom.has-nav .qr-bottom-size-bar {
     padding-bottom: 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-:root:not([data-theme="dark"]) .qr-bottom-size-bar {
+:root:not([data-theme="dark"]) .qr-pagination-bottom.has-nav .qr-bottom-size-bar {
     border-bottom-color: rgba(0, 0, 0, 0.06);
 }
 
@@ -1853,39 +1861,48 @@
 
     /* Show bottom pagination card on mobile with size dropdown and page nav */
     .qr-pagination-bottom {
-        display: flex !important;
+        display: flex;
         flex-direction: column;
         align-items: center;
         gap: 12px;
         margin-top: 16px;
         margin-bottom: 24px;
         padding: 14px 12px;
-        background: rgba(255, 255, 255, 0.03);
+        background: #181d28;
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 14px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        will-change: transform;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
     }
 
     :root:not([data-theme="dark"]) .qr-pagination-bottom {
-        background: rgba(0, 0, 0, 0.02);
+        background: #f8fafc;
         border-color: rgba(0, 0, 0, 0.08);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
     }
 
     .qr-bottom-size-bar {
-        display: flex !important;
+        display: flex;
         width: 100%;
         align-items: center;
         justify-content: space-between;
         flex-wrap: nowrap !important;
         gap: 10px;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    /* Only show bottom divider on size bar when page nav buttons exist */
+    .qr-pagination-bottom.has-nav .qr-bottom-size-bar {
         padding-bottom: 12px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    :root:not([data-theme="dark"]) .qr-bottom-size-bar {
+    :root:not([data-theme="dark"]) .qr-pagination-bottom.has-nav .qr-bottom-size-bar {
         border-bottom-color: rgba(0, 0, 0, 0.06);
     }
 
