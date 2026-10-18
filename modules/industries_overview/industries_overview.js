@@ -472,27 +472,26 @@
             html += `
                 <tr class="stock-row">
                     <td class="th-sno">${sno}</td>
-                    <td>
+                    <td class="td-company-name" title="${escapeHtml(stk.name)}">
                         <div style="display:flex; flex-direction:column;">
-                            <a href="javascript:void(0)" class="ind-link-cell" onclick="openFundamentalsModal('${escapeHtml(nseSym || sym)}')">
-                                <strong class="stock-comp-name">${escapeHtml(stk.name)}</strong>
+                            <a href="javascript:void(0)" class="ind-stock-link" onclick="openFundamentalsModal('${escapeHtml(nseSym || sym)}')" title="${escapeHtml(stk.name)}">
+                                <strong class="stock-name-text">${escapeHtml(stk.name)}</strong>
                             </a>
-                            <span style="font-size: 11px; color: var(--text-secondary); font-family: monospace;">${escapeHtml(sym)}</span>
+                            ${sym ? `<span class="stock-sym-sub">${escapeHtml(sym)}</span>` : ''}
                         </div>
                     </td>
                     <td class="th-num"><strong>${cmpStr}</strong></td>
                     <td class="th-num">${peStr}</td>
                     <td class="th-num">${mcapStr}</td>
-                    <td class="th-num">${divStr}</td>
                     <td class="th-num">${npStr}</td>
                     <td class="th-num">${npVarStr}</td>
                     <td class="th-num">${salesStr}</td>
                     <td class="th-num">${salesVarStr}</td>
                     <td class="th-num"><strong>${roceStr}</strong></td>
+                    <td class="th-num">${divStr}</td>
                     <td class="th-center">
                         <button type="button" class="stk-action-btn stk-action-chart" onclick="openStockChart('${escapeHtml(nseSym || sym)}')" title="Open Interactive Chart">📈</button>
                         <button type="button" class="stk-action-btn" onclick="openFundamentalsModal('${escapeHtml(nseSym || sym)}')" title="Open Fundamental Scorecard">📑</button>
-                        <a href="https://www.screener.in${escapeHtml(stk.href)}" target="_blank" class="stk-action-btn" style="text-decoration:none; display:inline-block;" title="View on Screener">🔗</a>
                     </td>
                 </tr>
             `;
