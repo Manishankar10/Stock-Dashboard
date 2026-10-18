@@ -241,49 +241,46 @@
 
             <!-- Modal Scrollable Content -->
             <div class="sc-bulk-scroll-body" style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 14px;">
-                <!-- Top Config Card -->
-                <div class="sc-bulk-config-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
-                    <div class="sc-bulk-config-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                        <!-- Planned Amount -->
-                        <div>
-                            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
-                                💰 Planned Investment Amount (₹) *
+                <!-- Top Config Card: All controls in single row -->
+                <div class="sc-bulk-config-card">
+                    <div class="sc-bulk-single-row">
+                        <!-- Planned Amount & Quick Chips -->
+                        <div class="sc-bulk-col-amount">
+                            <label class="sc-bulk-label" for="scBulkPlannedAmount">
+                                💰 Planned Amount (₹) *
                             </label>
-                            <div style="position: relative;">
-                                <input type="number" id="scBulkPlannedAmount" min="1" step="500" value="100000" placeholder="e.g. 100000" style="width: 100%; font-size: 15px; font-weight: 700; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); box-sizing: border-box;" oninput="recalcBulkWeights()">
-                            </div>
-                            <!-- Quick Amount Chips -->
-                            <div class="sc-bulk-chips-row" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
-                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(25000)">₹25K</button>
-                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(50000)">₹50K</button>
-                                <button type="button" class="sc-bulk-chip active" onclick="setBulkPlannedAmount(100000)">₹1L</button>
-                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(200000)">₹2L</button>
-                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(500000)">₹5L</button>
+                            <div class="sc-bulk-amount-group">
+                                <input type="number" id="scBulkPlannedAmount" min="1" step="500" value="100000" placeholder="100000" oninput="recalcBulkWeights()">
+                                <div class="sc-bulk-chips-row">
+                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(25000)">₹25K</button>
+                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(50000)">₹50K</button>
+                                    <button type="button" class="sc-bulk-chip active" onclick="setBulkPlannedAmount(100000)">₹1L</button>
+                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(200000)">₹2L</button>
+                                    <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(500000)">₹5L</button>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Investment Date & Stock Search -->
-                        <div>
-                            <div class="form-group" style="margin-bottom: 8px;">
-                                <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
-                                    📅 Transaction Date *
-                                </label>
-                                <input type="date" id="scBulkDate" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); box-sizing: border-box;">
-                            </div>
-                            <div style="display: flex; justify-content: flex-end;">
-                                <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="toggleBulkPasteBox()">📋 Paste Symbols in Bulk</button>
-                            </div>
+                        <!-- Transaction Date -->
+                        <div class="sc-bulk-col-date">
+                            <label class="sc-bulk-label" for="scBulkDate">
+                                📅 Date *
+                            </label>
+                            <input type="date" id="scBulkDate">
                         </div>
-                    </div>
 
-                    <!-- Autocomplete Stock Search Input -->
-                    <div style="margin-top: 12px; position: relative;">
-                        <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
-                            🔍 Search & Add Stock to Basket
-                        </label>
-                        <div class="autocomplete-wrapper" style="width: 100%; position: relative;">
-                            <input type="text" id="scBulkSearchInput" placeholder="Type stock name or symbol (e.g. RELIANCE, TCS, INFY)..." autocomplete="off" onkeyup="handleBulkStockSearch(this, event)" style="width: 100%; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); font-size: 13px; box-sizing: border-box;">
-                            <div class="autocomplete-dropdown" id="dropdown-scBulk" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10020; max-height: 220px; overflow-y: auto;"></div>
+                        <!-- Search & Add Stock with Paste Button -->
+                        <div class="sc-bulk-col-search">
+                            <label class="sc-bulk-label" for="scBulkSearchInput">
+                                🔍 Search & Add Stock to Basket
+                            </label>
+                            <div class="autocomplete-wrapper sc-bulk-search-wrap">
+                                <input type="text" id="scBulkSearchInput" placeholder="Stock name or symbol (e.g. RELIANCE, TCS)..." autocomplete="off" onkeyup="handleBulkStockSearch(this, event)">
+                                <button type="button" class="btn-secondary sc-bulk-paste-btn" onclick="toggleBulkPasteBox()" title="Paste symbols in bulk">
+                                    📋 Paste
+                                </button>
+                                <div class="autocomplete-dropdown" id="dropdown-scBulk" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10020; max-height: 220px; overflow-y: auto;"></div>
+                            </div>
                         </div>
                     </div>
 

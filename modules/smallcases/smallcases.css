@@ -75,6 +75,127 @@
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
+/* Bulk Stocks Single-Row Top Toolbar */
+.sc-bulk-config-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.sc-bulk-single-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    width: 100%;
+}
+
+.sc-bulk-label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    white-space: nowrap;
+}
+
+.sc-bulk-col-amount {
+    flex: 0 0 auto;
+}
+
+.sc-bulk-amount-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sc-bulk-amount-group input#scBulkPlannedAmount {
+    width: 95px;
+    height: 36px;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    box-sizing: border-box;
+}
+
+.sc-bulk-chips-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sc-bulk-chips-row .sc-bulk-chip {
+    height: 36px;
+    padding: 0 7px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.sc-bulk-col-date {
+    flex: 0 0 135px;
+}
+
+.sc-bulk-col-date input#scBulkDate {
+    width: 100%;
+    height: 36px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+.sc-bulk-col-search {
+    flex: 1 1 auto;
+    min-width: 200px;
+}
+
+.sc-bulk-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    width: 100%;
+}
+
+.sc-bulk-search-wrap input#scBulkSearchInput {
+    flex: 1;
+    height: 36px;
+    padding: 6px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    font-size: 12.5px;
+    box-sizing: border-box;
+}
+
+.sc-bulk-paste-btn {
+    height: 36px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 7px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
 .sc-bulk-chip {
     padding: 3px 9px;
     font-size: 11px;
@@ -302,6 +423,28 @@
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
+    }
+
+    .sc-bulk-single-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .sc-bulk-col-amount,
+    .sc-bulk-col-date,
+    .sc-bulk-col-search {
+        width: 100% !important;
+        flex: none !important;
+    }
+
+    .sc-bulk-amount-group input#scBulkPlannedAmount {
+        flex: 1 1 90px !important;
+        width: auto !important;
+    }
+
+    .sc-bulk-chips-row {
+        flex-wrap: wrap !important;
     }
 
     .sc-bulk-modal-content {
