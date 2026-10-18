@@ -223,15 +223,17 @@
     top: 0;
     z-index: 20;
     background: #1e222d;
-    padding: 10px 12px;
+    padding: 6px 10px;
     font-weight: 700;
-    font-size: 11.5px;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.3px;
     color: var(--text-secondary, #94a3b8);
     border-bottom: 1px solid var(--border-color, #2a2e39);
     box-shadow: inset 0 -1px 0 var(--border-color, #2a2e39);
     user-select: none;
+    vertical-align: bottom;
+    line-height: 1.25;
 }
 
 .ind-table th.th-sortable {
@@ -880,8 +882,10 @@
         font-size: 11.5px;
     }
     .ind-table th {
-        padding: 8px 8px;
-        font-size: 10.5px;
+        padding: 6px 6px;
+        font-size: 10px;
+        line-height: 1.2;
+        vertical-align: bottom;
     }
 
     /* 5. Drill-Down Breadcrumbs: Sleek single horizontal scroll track */

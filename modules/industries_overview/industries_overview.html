@@ -50,17 +50,17 @@
                         <tr>
                             <th class="th-sortable th-sno" onclick="sortIndustries('sno')">S.No. <span class="sort-icon" id="sort-ind-sno"></span></th>
                             <th class="th-sortable th-name" onclick="sortIndustries('name')">Industry <span class="sort-icon" id="sort-ind-name">▲</span></th>
-                            <th class="th-sortable th-num" onclick="sortIndustries('company_count')">No. of Co. <span class="sort-icon" id="sort-ind-company_count"></span></th>
-                            <th class="th-sortable th-num" onclick="sortIndustries('total_market_cap')">Total M.Cap (₹ Cr) <span class="sort-icon" id="sort-ind-total_market_cap"></span></th>
-                            <th class="th-sortable th-num" onclick="sortIndustries('median_market_cap')">Median M.Cap (₹ Cr) <span class="sort-icon" id="sort-ind-median_market_cap"></span></th>
-                            <th class="th-sortable th-num" onclick="sortIndustries('median_pe')">Median P/E <span class="sort-icon" id="sort-ind-median_pe"></span></th>
-                            <th class="th-sortable th-num" onclick="sortIndustries('sales_growth')">Sales Growth <span class="sort-icon" id="sort-ind-sales_growth"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('company_count')">No. of<br>Co. <span class="sort-icon" id="sort-ind-company_count"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('total_market_cap')">Total M.Cap<br>(₹ Cr) <span class="sort-icon" id="sort-ind-total_market_cap"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('median_market_cap')">Median M.Cap<br>(₹ Cr) <span class="sort-icon" id="sort-ind-median_market_cap"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('median_pe')">Median<br>P/E <span class="sort-icon" id="sort-ind-median_pe"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('sales_growth')">Sales<br>Growth <span class="sort-icon" id="sort-ind-sales_growth"></span></th>
                             <th class="th-sortable th-num" onclick="sortIndustries('opm')">OPM <span class="sort-icon" id="sort-ind-opm"></span></th>
-                            <th class="th-sortable th-num" onclick="sortIndustries('wtd_roce')">Wtd. Avg ROCE <span class="sort-icon" id="sort-ind-wtd_roce"></span></th>
-                            <th class="th-sortable th-num" onclick="sortIndustries('return_1y')">Median 1Y Return <span class="sort-icon" id="sort-ind-return_1y"></span></th>
-                            <th class="th-sortable th-macro" onclick="sortIndustries('macro_name')">Macro Sector <span class="sort-icon" id="sort-ind-macro_name"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('wtd_roce')">Wtd. Avg<br>ROCE <span class="sort-icon" id="sort-ind-wtd_roce"></span></th>
+                            <th class="th-sortable th-num" onclick="sortIndustries('return_1y')">Median<br>1Y Return <span class="sort-icon" id="sort-ind-return_1y"></span></th>
+                            <th class="th-sortable th-macro" onclick="sortIndustries('macro_name')">Macro<br>Sector <span class="sort-icon" id="sort-ind-macro_name"></span></th>
                             <th class="th-sortable th-sector" onclick="sortIndustries('sector_name')">Sector <span class="sort-icon" id="sort-ind-sector_name"></span></th>
-                            <th class="th-sortable th-group" onclick="sortIndustries('industry_group_name')">Industry Group <span class="sort-icon" id="sort-ind-industry_group_name"></span></th>
+                            <th class="th-sortable th-group" onclick="sortIndustries('industry_group_name')">Industry<br>Group <span class="sort-icon" id="sort-ind-industry_group_name"></span></th>
                         </tr>
                     </thead>
                     <tbody id="indMasterTableBody">
@@ -154,15 +154,15 @@
                         <tr>
                             <th class="th-sortable th-sno" onclick="sortStocks('sno')">S.No. <span class="sort-icon" id="sort-stk-sno"></span></th>
                             <th class="th-sortable th-company" onclick="sortStocks('name')">Company <span class="sort-icon" id="sort-stk-name"></span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('cmp')">CMP (₹) <span class="sort-icon" id="sort-stk-cmp"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('cmp')">CMP<br>(₹) <span class="sort-icon" id="sort-stk-cmp"></span></th>
                             <th class="th-sortable th-num" onclick="sortStocks('pe')">P/E <span class="sort-icon" id="sort-stk-pe"></span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('mar_cap')">Mar Cap (₹ Cr.) <span class="sort-icon" id="sort-stk-mar_cap">▼</span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('np_qtr')">NP Qtr (₹ Cr.) <span class="sort-icon" id="sort-stk-np_qtr"></span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('qtr_profit_var')">Qtr Profit Var % <span class="sort-icon" id="sort-stk-qtr_profit_var"></span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('sales_qtr')">Sales Qtr (₹ Cr.) <span class="sort-icon" id="sort-stk-sales_qtr"></span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('qtr_sales_var')">Qtr Sales Var % <span class="sort-icon" id="sort-stk-qtr_sales_var"></span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('roce')">ROCE % <span class="sort-icon" id="sort-stk-roce"></span></th>
-                            <th class="th-sortable th-num" onclick="sortStocks('div_yield')">Div Yld % <span class="sort-icon" id="sort-stk-div_yield"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('mar_cap')">Mar Cap<br>(₹ Cr.) <span class="sort-icon" id="sort-stk-mar_cap">▼</span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('np_qtr')">NP Qtr<br>(₹ Cr.) <span class="sort-icon" id="sort-stk-np_qtr"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('qtr_profit_var')">Qtr Profit<br>Var % <span class="sort-icon" id="sort-stk-qtr_profit_var"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('sales_qtr')">Sales Qtr<br>(₹ Cr.) <span class="sort-icon" id="sort-stk-sales_qtr"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('qtr_sales_var')">Qtr Sales<br>Var % <span class="sort-icon" id="sort-stk-qtr_sales_var"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('roce')">ROCE<br>% <span class="sort-icon" id="sort-stk-roce"></span></th>
+                            <th class="th-sortable th-num" onclick="sortStocks('div_yield')">Div Yld<br>% <span class="sort-icon" id="sort-stk-div_yield"></span></th>
                             <th class="th-center" style="width: 80px;">Actions</th>
                         </tr>
                     </thead>
