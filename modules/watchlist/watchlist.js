@@ -1019,42 +1019,6 @@
 
             popover.dataset.sym = sym;
             popover.innerHTML = '';
-            popover.classList.remove('is-fading-out');
-            popover.style.opacity = '1';
-
-            const showPopover = () => {
-                if (window._wlPopoverFadeTimer) {
-                    clearTimeout(window._wlPopoverFadeTimer);
-                    window._wlPopoverFadeTimer = null;
-                }
-                popover.classList.remove('is-fading-out');
-                popover.style.opacity = '1';
-            };
-
-            const fadeOutPopover = () => {
-                if (window._wlPopoverFadeTimer) clearTimeout(window._wlPopoverFadeTimer);
-                popover.classList.add('is-fading-out');
-                window._wlPopoverFadeTimer = setTimeout(() => {
-                    closeAllWlMenus();
-                    window._wlPopoverFadeTimer = null;
-                }, 2000);
-            };
-
-            popover.onmouseenter = showPopover;
-            popover.onmouseleave = (ev) => {
-                const rel = ev.relatedTarget;
-                if (rel && (rel === btn || btn.contains(rel))) return;
-                fadeOutPopover();
-            };
-
-            btn.onmouseenter = showPopover;
-            btn.onmouseleave = (ev) => {
-                const rel = ev.relatedTarget;
-                if (rel && (rel === popover || popover.contains(rel))) return;
-                if (popover && popover.style.display === 'block') {
-                    fadeOutPopover();
-                }
-            };
 
             const info = (stockPricesData && stockPricesData[sym]) || {};
 
@@ -1183,25 +1147,20 @@
                     };
 
                     const showSubmenu = () => {
-                        if (window._wlSubmenuFadeTimer) {
-                            clearTimeout(window._wlSubmenuFadeTimer);
-                            window._wlSubmenuFadeTimer = null;
+                        if (window._wlSubmenuHideTimer) {
+                            clearTimeout(window._wlSubmenuHideTimer);
+                            window._wlSubmenuHideTimer = null;
                         }
-                        showPopover();
                         positionSubmenu();
-                        submenu.classList.remove('is-fading-out');
-                        submenu.classList.add('is-visible');
+                        submenu.style.display = 'block';
                     };
 
-                    const fadeOutSubmenu = () => {
-                        if (window._wlSubmenuFadeTimer) clearTimeout(window._wlSubmenuFadeTimer);
-                        submenu.classList.remove('is-visible');
-                        submenu.classList.add('is-fading-out');
-                        window._wlSubmenuFadeTimer = setTimeout(() => {
-                            submenu.classList.remove('is-fading-out');
+                    const delayHideSubmenu = () => {
+                        if (window._wlSubmenuHideTimer) clearTimeout(window._wlSubmenuHideTimer);
+                        window._wlSubmenuHideTimer = setTimeout(() => {
                             submenu.style.display = 'none';
                             mMove.classList.remove('active');
-                            window._wlSubmenuFadeTimer = null;
+                            window._wlSubmenuHideTimer = null;
                         }, 2000);
                     };
 
@@ -1269,13 +1228,13 @@
                         });
                     }
 
-                    // Hover behavior with 2s fade-out & immediate fade-in
+                    // Hover behavior: immediate open, wait 2s before hiding when mouse leaves
                     mMove.addEventListener('mouseenter', showSubmenu);
                     mMove.addEventListener('mouseleave', (ev) => {
                         const rel = ev.relatedTarget;
                         if (rel && (rel === submenu || submenu.contains(rel))) return;
                         if (!mMove.classList.contains('active')) {
-                            fadeOutSubmenu();
+                            delayHideSubmenu();
                         }
                     });
 
@@ -1284,7 +1243,7 @@
                         const rel = ev.relatedTarget;
                         if (rel && (rel === mMove || mMove.contains(rel))) return;
                         if (!mMove.classList.contains('active')) {
-                            fadeOutSubmenu();
+                            delayHideSubmenu();
                         }
                     });
 
@@ -1293,9 +1252,12 @@
                         if (ev.target.closest('.wl-move-target-item')) return;
                         ev.preventDefault();
                         ev.stopPropagation();
-                        const isOpen = submenu.classList.contains('is-visible') && !submenu.classList.contains('is-fading-out');
+                        const isOpen = submenu.style.display === 'block';
                         if (isOpen) {
-                            submenu.classList.remove('is-visible', 'is-fading-out');
+                            if (window._wlSubmenuHideTimer) {
+                                clearTimeout(window._wlSubmenuHideTimer);
+                                window._wlSubmenuHideTimer = null;
+                            }
                             submenu.style.display = 'none';
                             mMove.classList.remove('active');
                         } else {
@@ -1404,26 +1366,18 @@
 
         function closeAllWlMenus() {
             let hadOpen = false;
-            if (window._wlSubmenuFadeTimer) {
-                clearTimeout(window._wlSubmenuFadeTimer);
-                window._wlSubmenuFadeTimer = null;
-            }
-            if (window._wlPopoverFadeTimer) {
-                clearTimeout(window._wlPopoverFadeTimer);
-                window._wlPopoverFadeTimer = null;
+            if (window._wlSubmenuHideTimer) {
+                clearTimeout(window._wlSubmenuHideTimer);
+                window._wlSubmenuHideTimer = null;
             }
             const popover = document.getElementById('wl-global-stock-popover');
             if (popover && popover.style.display === 'block') {
                 hadOpen = true;
                 popover.style.display = 'none';
-                popover.classList.remove('is-fading-out');
-                popover.style.opacity = '1';
                 popover.dataset.sym = '';
             }
             document.querySelectorAll('.wl-move-submenu').forEach(el => {
-                el.classList.remove('is-visible', 'is-fading-out');
                 el.style.display = 'none';
-                el.style.opacity = '0';
             });
             document.querySelectorAll('.wl-move-menu-item.active').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => {

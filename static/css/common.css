@@ -2543,6 +2543,7 @@
 }
 
 .wl-move-submenu {
+    display: none;
     position: absolute;
     min-width: 170px;
     max-width: 240px;
@@ -2555,24 +2556,6 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
     padding: 4px 0;
     z-index: 1000000;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 2s ease-out, visibility 2s ease-out;
-}
-
-.wl-move-submenu.is-visible {
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    transition: opacity 0.12s ease-in, visibility 0.12s ease-in !important;
-}
-
-.wl-move-submenu.is-fading-out {
-    opacity: 0 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    transition: opacity 2s ease-out, visibility 2s ease-out !important;
 }
 
 /* Invisible hover bridge between Move item and submenu */
@@ -2629,13 +2612,6 @@
     padding: 4px 0;
     text-align: left;
     box-sizing: border-box;
-    transition: opacity 0.12s ease-in;
-}
-
-#wl-global-stock-popover.is-fading-out {
-    opacity: 0 !important;
-    pointer-events: auto !important;
-    transition: opacity 2s ease-out !important;
 }
 
 [data-theme="dark"] #wl-global-stock-popover {
