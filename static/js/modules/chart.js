@@ -1426,6 +1426,12 @@
 
             mainContainer.addEventListener('pointerdown', (e) => {
                 if (hasOpenChartPopover()) closeAllChartPopovers();
+                const menu = document.getElementById('plusActionMenu');
+                if (menu && menu.style.display === 'block') {
+                    if (e.target && e.target.closest && !e.target.closest('#plusActionMenu') && !e.target.closest('#axisPlusBtn')) {
+                        hidePlusActionMenu();
+                    }
+                }
                 if (currentDrawingTool) return;
                 if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn'))) return;
 
@@ -1448,7 +1454,7 @@
                 // Web desktop only: scroll over right Y-axis price scale to expand price as much as possible
                 if (window.innerWidth > 768 && mainSeries && mainChart) {
                     const rect = mainContainer.getBoundingClientRect();
-                    const isOverRightAxis = (e.clientX >= rect.right - 65);
+                    const isOverRightAxis = (e.clientX >= rect.right - 95);
                     if (isOverRightAxis) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -4193,6 +4199,7 @@
                     tickMarkFormatter: (time, tickMarkType, locale) => formatChartTickMark(time, tickMarkType, locale)
                 }
             });
+            window.mainChart = mainChart;
 
             // Safety sort and deduplicate candles and volume_data strictly ascending by time
             if (data.candles && Array.isArray(data.candles)) {
@@ -4245,6 +4252,7 @@
             }
 
             attachDrawingSyncPrimitive(mainSeries);
+            window.mainSeries = mainSeries;
 
             volumeSeries = mainChart.addHistogramSeries({
                 color: '#26a69a',
@@ -4590,6 +4598,8 @@
             }
         }
         window.toggleYScaleMode = toggleYScaleMode;
+        window.getYAxisScaleMultiplier = () => yAxisScaleMultiplier;
+        window.isDraggingPriceScaleActive = () => isDraggingPriceScale;
 
         function setupRightPriceAxisHoverZone() {
             const mainContainer = document.getElementById('mainChartPane');
@@ -4601,11 +4611,19 @@
                     return;
                 }
                 if (!mainSeries || !mainChart) return;
+
+                // While user is actively dragging the price scale, keep badge hidden so drag is completely free
+                if (isDraggingPriceScale) {
+                    const badge = document.getElementById('rightPriceAxisPlusBadge');
+                    if (badge) badge.style.display = 'none';
+                    return;
+                }
+
                 const rect = mainContainer.getBoundingClientRect();
                 const y = e.clientY - rect.top;
 
-                // Right price axis zone is typically rightmost 65px
-                const isOverRightAxis = (e.clientX >= rect.right - 65);
+                // Right price axis zone spans rightmost ~95px (including + button and price numbers)
+                const isOverRightAxis = (e.clientX >= rect.right - 95);
 
                 if (y < 0 || y > mainContainer.clientHeight || !isOverRightAxis) {
                     const badge = document.getElementById('rightPriceAxisPlusBadge');
@@ -4631,11 +4649,19 @@
 
             mainContainer.onmousedown = (e) => {
                 if (window.innerWidth <= 768) return;
+                const menu = document.getElementById('plusActionMenu');
+                if (menu && menu.style.display === 'block') {
+                    if (e.target && e.target.closest && !e.target.closest('#plusActionMenu') && !e.target.closest('#axisPlusBtn')) {
+                        hidePlusActionMenu();
+                    }
+                }
                 const rect = mainContainer.getBoundingClientRect();
-                if (e.clientX >= rect.right - 65) {
+                if (e.clientX >= rect.right - 95) {
                     isDraggingPriceScale = true;
                     startDragPriceScaleY = e.clientY;
                     hasDraggedPriceScale = false;
+                    const badge = document.getElementById('rightPriceAxisPlusBadge');
+                    if (badge) badge.style.display = 'none';
                     if (mainChart && isYScaleAuto) {
                         mainChart.priceScale('right').applyOptions({ autoScale: false });
                         isYScaleAuto = false;
@@ -4650,6 +4676,8 @@
                 const dy = e.clientY - startDragPriceScaleY;
                 if (Math.abs(dy) >= 2) {
                     hasDraggedPriceScale = true;
+                    const badge = document.getElementById('rightPriceAxisPlusBadge');
+                    if (badge) badge.style.display = 'none';
                     // Dragging UP (dy < 0) expands prices; Dragging DOWN (dy > 0) compresses prices
                     yAxisScaleMultiplier *= (dy < 0 ? 0.98 : 1.02);
                     yAxisScaleMultiplier = Math.max(0.001, Math.min(100.0, yAxisScaleMultiplier));
@@ -4671,14 +4699,10 @@
                     hasDraggedPriceScale = false;
                     return;
                 }
-                const rect = mainContainer.getBoundingClientRect();
-                if (e.clientX >= rect.right - 65) {
-                    const y = e.clientY - rect.top;
-                    const price = mainSeries ? mainSeries.coordinateToPrice(y) : null;
-                    if (price !== null && price !== undefined && !isNaN(price)) {
-                        currentRightAxisPrice = parseFloat(price.toFixed(2));
-                        showRightAxisPlusBtn(y, currentRightAxisPrice);
-                        toggleRightAxisPlusMenu(e);
+                const menu = document.getElementById('plusActionMenu');
+                if (menu && menu.style.display === 'block') {
+                    if (e.target && e.target.closest && !e.target.closest('#plusActionMenu') && !e.target.closest('#axisPlusBtn')) {
+                        hidePlusActionMenu();
                     }
                 }
             };
@@ -4692,7 +4716,7 @@
             mainContainer.ondblclick = (e) => {
                 if (window.innerWidth <= 768) return;
                 const rect = mainContainer.getBoundingClientRect();
-                if (e.clientX >= rect.right - 65) {
+                if (e.clientX >= rect.right - 95) {
                     yAxisScaleMultiplier = 1.0;
                     yAxisPanOffset = 0.0;
                     isYScaleAuto = true;
@@ -4723,8 +4747,8 @@
                     pointer-events: none;
                 `;
                 badge.innerHTML = `
-                    <button type="button" id="axisPlusBtn" onclick="toggleRightAxisPlusMenu(event)" style="background: #10b981; border: 1px solid #059669; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: none; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; margin-right: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); transition: transform 0.12s, background 0.12s; pointer-events: auto;" title="Click + to draw Target, SL or set Price Alert">+</button>
-                    <div id="axisPriceTextLabel" onclick="handlePriceLabelClick(event)" style="background: #1e222d; border: 1px solid #10b981; color: #f8fafc; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; box-shadow: 0 2px 8px rgba(0,0,0,0.5); cursor: pointer; pointer-events: auto;" title="Click to show + tools"></div>
+                    <button type="button" id="axisPlusBtn" style="background: #10b981; border: 1px solid #059669; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; margin-right: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); transition: transform 0.12s, background 0.12s; pointer-events: auto;" title="Click + to draw Target, SL or set Price Alert">+</button>
+                    <div id="axisPriceTextLabel" style="background: #1e222d; border: 1px solid #10b981; color: #f8fafc; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; box-shadow: 0 2px 8px rgba(0,0,0,0.5); pointer-events: none; user-select: none;"></div>
                 `;
                 mainContainer.appendChild(badge);
 
@@ -4733,8 +4757,29 @@
             }
 
             const btn = badge.querySelector('#axisPlusBtn');
-            if (btn) {
-                btn.onclick = (e) => { toggleRightAxisPlusMenu(e); };
+            if (btn && !btn._hasScaleHandlers) {
+                btn._hasScaleHandlers = true;
+
+                btn.onmousedown = (e) => {
+                    isDraggingPriceScale = true;
+                    startDragPriceScaleY = e.clientY;
+                    hasDraggedPriceScale = false;
+                    if (mainChart && isYScaleAuto) {
+                        mainChart.priceScale('right').applyOptions({ autoScale: false });
+                        isYScaleAuto = false;
+                        const btnScale = document.getElementById('btnToggleYScale');
+                        if (btnScale) { btnScale.innerText = '🔒 Auto Scale'; btnScale.style.color = '#10b981'; }
+                    }
+                };
+
+                btn.onclick = (e) => {
+                    if (hasDraggedPriceScale) {
+                        hasDraggedPriceScale = false;
+                        if (e) e.stopPropagation();
+                        return;
+                    }
+                    toggleRightAxisPlusMenu(e);
+                };
                 btn.onmouseenter = () => { isRightAxisHovered = true; btn.style.transform = 'scale(1.2)'; btn.style.background = '#059669'; };
                 btn.onmouseleave = () => { btn.style.transform = 'scale(1.0)'; btn.style.background = '#10b981'; };
             }
@@ -4751,23 +4796,10 @@
 
         function showRightAxisPlusBtn(y, price) {
             renderRightAxisHoverBadge(y, price);
-            const badge = document.getElementById('rightPriceAxisPlusBadge');
-            if (badge) {
-                const btn = badge.querySelector('#axisPlusBtn');
-                if (btn) {
-                    btn.style.display = 'flex';
-                }
-            }
         }
 
         function handlePriceLabelClick(e) {
             if (e) e.stopPropagation();
-            if (currentRightAxisPrice === null || isNaN(currentRightAxisPrice)) return;
-            const badge = document.getElementById('rightPriceAxisPlusBadge');
-            if (badge) {
-                const btn = badge.querySelector('#axisPlusBtn');
-                if (btn) btn.style.display = 'flex';
-            }
             toggleRightAxisPlusMenu(e);
         }
         window.handlePriceLabelClick = handlePriceLabelClick;
@@ -4780,8 +4812,6 @@
                 if (!isRightAxisHovered && (!menu || menu.style.display !== 'block')) {
                     if (badge) {
                         badge.style.display = 'none';
-                        const btn = badge.querySelector('#axisPlusBtn');
-                        if (btn) btn.style.display = 'none';
                     }
                 }
             }, 150);
@@ -4878,6 +4908,10 @@
         function hidePlusActionMenu() {
             const menu = document.getElementById('plusActionMenu');
             if (menu) menu.style.display = 'none';
+            const badge = document.getElementById('rightPriceAxisPlusBadge');
+            if (badge && !isRightAxisHovered) {
+                badge.style.display = 'none';
+            }
         }
 
         function executePlusAction(actionType) {
