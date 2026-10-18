@@ -12,11 +12,11 @@
         max_mcap: null,
         sorting: 'latest',
         exchange: 'all',
-        watchlist: 'portfolio', // DEFAULT IS IN PORTFOLIO
+        watchlist: 'all', // DEFAULT IS ALL (SHOW ALL STOCKS ON LOAD)
         date: '',
         data: null,
         isFetching: false,
-        pageSize: 10,
+        pageSize: 'all',
         currentPage: 1
     };
 
@@ -764,7 +764,7 @@
     }
 
     function setQrWatchlistScope(scope) {
-        qrState.watchlist = scope || 'portfolio';
+        qrState.watchlist = scope || 'all';
         qrState.currentPage = 1;
         loadQuarterlyResults();
     }
@@ -783,10 +783,10 @@
         qrState.max_mcap = null;
         qrState.sorting = 'latest';
         qrState.exchange = 'all';
-        qrState.watchlist = 'portfolio';
+        qrState.watchlist = 'all';
         qrState.date = '';
         qrState.currentPage = 1;
-        qrState.pageSize = 10;
+        qrState.pageSize = 'all';
 
         const searchInput = document.getElementById('qr-search-input');
         if (searchInput) searchInput.value = '';
