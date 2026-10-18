@@ -116,6 +116,19 @@
         });
 
         container.innerHTML = html;
+        attachRibbonWheelScroll(container);
+    }
+
+    // Mouse wheel horizontal scroll for ribbon
+    function attachRibbonWheelScroll(container) {
+        if (!container || container.dataset.wheelBound) return;
+        container.dataset.wheelBound = 'true';
+        container.addEventListener('wheel', function (e) {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                container.scrollLeft += (e.deltaY * 1.2);
+            }
+        }, { passive: false });
     }
 
     // 3. Filter and Sorting
@@ -245,8 +258,8 @@
             html += `
                 <tr class="ind-row">
                     <td class="th-sno">${sno}</td>
-                    <td>
-                        <a href="javascript:void(0)" class="ind-link-cell" onclick="openIndustryStocks('${escapeHtml(ind.path)}')">
+                    <td class="td-industry-name" title="${escapeHtml(ind.name)}">
+                        <a href="javascript:void(0)" class="ind-link-cell" onclick="openIndustryStocks('${escapeHtml(ind.path)}')" title="${escapeHtml(ind.name)}">
                             <span>⚒️</span> <strong class="ind-name-text">${escapeHtml(ind.name)}</strong>
                         </a>
                     </td>

@@ -14,17 +14,24 @@
 /* 1. Header Panel */
 .ind-header-panel {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 16px;
-    padding-bottom: 14px;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--border-color, #2a2e39);
 }
 
 .ind-title-row {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.ind-title-left {
+    display: inline-flex;
     align-items: center;
     gap: 10px;
 }
@@ -54,20 +61,14 @@
 .ind-subtitle {
     font-size: 13px;
     color: var(--text-secondary, #94a3b8);
-    margin-top: 4px;
-}
-
-.ind-header-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    margin-top: 2px;
 }
 
 .ind-search-box {
     position: relative;
     display: flex;
     align-items: center;
+    margin-left: auto;
 }
 
 .ind-search-icon {
@@ -85,7 +86,7 @@
     padding: 7px 30px 7px 32px;
     border-radius: 6px;
     font-size: 13px;
-    width: 250px;
+    width: 260px;
     transition: all 0.2s;
 }
 
@@ -93,7 +94,7 @@
     outline: none;
     border-color: #10b981;
     box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-    width: 290px;
+    width: 300px;
 }
 
 #indClearSearchBtn {
@@ -104,36 +105,6 @@
     color: var(--text-secondary, #94a3b8);
     font-size: 12px;
     cursor: pointer;
-}
-
-.ind-action-buttons {
-    display: flex;
-    gap: 8px;
-}
-
-.btn-ind-action {
-    background: var(--bg-card, #1e222d);
-    border: 1px solid var(--border-color, #2a2e39);
-    color: var(--text-primary, #f8fafc);
-    padding: 7px 12px;
-    border-radius: 6px;
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s ease;
-}
-
-.btn-ind-action:hover {
-    background: var(--bg-subtle, #2a2e39);
-    border-color: #3b82f6;
-}
-
-.btn-ind-refresh:hover {
-    border-color: #10b981;
-    color: #10b981;
 }
 
 /* 2. Macro Sector Filter Pills */
@@ -192,37 +163,51 @@
     margin-bottom: 10px;
 }
 
-.ind-table-tip {
-    font-size: 12px;
-    opacity: 0.85;
-}
-
 /* 4. Tables Styling */
 .ind-table-responsive-wrapper {
     width: 100%;
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 520px; /* Maximum 12 rows visible + static table header */
     border: 1px solid var(--border-color, #2a2e39);
     border-radius: 8px;
     background: var(--bg-card, #131722);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    scrollbar-width: thin;
+}
+
+.ind-table-responsive-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.ind-table-responsive-wrapper::-webkit-scrollbar-thumb {
+    background: var(--border-color, #2a2e39);
+    border-radius: 4px;
+}
+.ind-table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
 }
 
 .ind-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 12.5px;
     text-align: left;
     white-space: nowrap;
 }
 
 .ind-table thead {
-    background: var(--bg-subtle, #1e222d);
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 10;
 }
 
 .ind-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-subtle, #1e222d);
     padding: 10px 12px;
     font-weight: 700;
     font-size: 11.5px;
@@ -230,6 +215,7 @@
     letter-spacing: 0.4px;
     color: var(--text-secondary, #94a3b8);
     border-bottom: 1px solid var(--border-color, #2a2e39);
+    box-shadow: inset 0 -1px 0 var(--border-color, #2a2e39);
     user-select: none;
 }
 
@@ -248,18 +234,21 @@
     margin-left: 3px;
 }
 
-.ind-table td {
-    padding: 9px 12px;
-    border-bottom: 1px solid rgba(42, 46, 57, 0.5);
-    color: var(--text-primary, #f1f5f9);
-}
-
 .ind-table tbody tr {
+    height: 40px;
     transition: background 0.1s ease;
 }
 
 .ind-table tbody tr:hover {
     background: var(--bg-hover, rgba(59, 130, 246, 0.08));
+}
+
+.ind-table td {
+    padding: 8px 12px;
+    height: 40px;
+    box-sizing: border-box;
+    border-bottom: 1px solid rgba(42, 46, 57, 0.5);
+    color: var(--text-primary, #f1f5f9);
 }
 
 .ind-table td.th-num, .ind-table th.th-num {
@@ -278,8 +267,23 @@
     text-align: center;
 }
 
-/* Industry Name Clickable Link */
-.ind-link-cell {
+/* Industry Name column: max 20% width with tooltip */
+.ind-table th.th-name,
+.ind-table td.td-industry-name {
+    width: 20%;
+    max-width: 20%;
+    min-width: 150px;
+    box-sizing: border-box;
+}
+
+.ind-table td.td-industry-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.ind-table td.td-industry-name .ind-link-cell {
     font-weight: 700;
     color: #38bdf8;
     cursor: pointer;
@@ -287,6 +291,19 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ind-table td.td-industry-name .ind-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    max-width: calc(100% - 24px);
+    vertical-align: middle;
 }
 
 .ind-link-cell:hover {
@@ -521,12 +538,12 @@
     background: #ffffff;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
-[data-theme="light"] .ind-table thead {
-    background: #f8fafc;
-}
+[data-theme="light"] .ind-table thead,
 [data-theme="light"] .ind-table th {
+    background: #f8fafc;
     color: #64748b;
     border-bottom-color: #e2e8f0;
+    box-shadow: inset 0 -1px 0 #e2e8f0;
 }
 [data-theme="light"] .ind-table td {
     color: #1e293b;
@@ -558,14 +575,28 @@
     .ind-overview-container {
         padding: 6px 10px 24px;
     }
-    .ind-title {
-        font-size: 18px;
+    .ind-title-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .ind-title-left {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .ind-search-box {
+        width: 100%;
+        margin-left: 0;
     }
     .ind-search-box input {
         width: 100%;
     }
     .ind-search-box input:focus {
         width: 100%;
+    }
+    .ind-table th.th-name,
+    .ind-table td.td-industry-name {
+        max-width: 180px;
     }
     .ind-banner-stats {
         gap: 12px;

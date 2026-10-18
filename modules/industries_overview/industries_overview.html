@@ -7,31 +7,20 @@
         
         <!-- 1. Header & Summary Row -->
         <div class="ind-header-panel">
-            <div class="ind-header-left">
-                <div class="ind-title-row">
+            <div class="ind-title-row">
+                <div class="ind-title-left">
                     <span class="ind-title-icon">🏭</span>
                     <h2 class="ind-title">Industries Overview</h2>
                     <span class="ind-badge-count" id="indTotalCountBadge">188 Industries</span>
                 </div>
-                <div class="ind-subtitle">
-                    Comparision of important ratios & valuations across different industries with SEBI/NSE 4-tier classification.
-                </div>
-            </div>
-
-            <div class="ind-header-right">
                 <div class="ind-search-box">
                     <span class="ind-search-icon">🔍</span>
                     <input type="text" id="indSearchInput" placeholder="Search industry, sector, group..." oninput="handleIndustrySearch(this.value)">
                     <button type="button" id="indClearSearchBtn" onclick="clearIndustrySearch()" style="display: none;">✕</button>
                 </div>
-                <div class="ind-action-buttons">
-                    <button type="button" class="btn-ind-action" onclick="exportIndustriesToCsv()" title="Export Industries to CSV">
-                        📥 Export CSV
-                    </button>
-                    <button type="button" class="btn-ind-action btn-ind-refresh" onclick="refreshIndustriesData()" title="Refresh Industry Data">
-                        🔄 Refresh
-                    </button>
-                </div>
+            </div>
+            <div class="ind-subtitle">
+                Comparision of important ratios &amp; valuations across different industries with SEBI/NSE 4-tier classification.
             </div>
         </div>
 
@@ -51,9 +40,6 @@
                 <div class="ind-table-info">
                     Showing <strong id="indShowingCount">188</strong> industries
                     <span id="indFilterLabel" style="display: none; color: #10b981; margin-left: 6px;"></span>
-                </div>
-                <div class="ind-table-tip">
-                    💡 Click on any industry to view its related stocks & corporate earnings. Click column headers to sort.
                 </div>
             </div>
 
