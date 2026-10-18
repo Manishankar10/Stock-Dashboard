@@ -811,10 +811,7 @@
         margin-bottom: 10px;
     }
     .ind-table-info {
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        display: none !important;
     }
     .ind-search-box {
         width: 100%;
@@ -974,7 +971,7 @@
         margin-bottom: 10px;
     }
     .ind-stocks-count-info {
-        font-size: 12px;
+        display: none !important;
     }
     .ind-stocks-search {
         width: 100%;
