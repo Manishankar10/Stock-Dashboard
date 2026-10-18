@@ -260,7 +260,7 @@
                     <td class="th-sno">${sno}</td>
                     <td class="td-industry-name" title="${escapeHtml(ind.name)}">
                         <a href="javascript:void(0)" class="ind-link-cell" onclick="openIndustryStocks('${escapeHtml(ind.path)}')" title="${escapeHtml(ind.name)}">
-                            <span>⚒️</span> <strong class="ind-name-text">${escapeHtml(ind.name)}</strong>
+                            <span>⚒️</span> <span class="ind-name-text">${escapeHtml(ind.name)}</span>
                         </a>
                     </td>
                     <td class="th-num"><strong>${ind.company_count}</strong></td>
@@ -475,7 +475,7 @@
                     <td class="td-company-name" title="${escapeHtml(stk.name)}">
                         <div style="display:flex; flex-direction:column; max-width: 100%; overflow: hidden;">
                             <a href="javascript:void(0)" class="ind-stock-link" onclick="openFundamentalsModal('${escapeHtml(nseSym || sym)}')" title="${escapeHtml(stk.name)}">
-                                <strong class="stock-name-text">${escapeHtml(stk.name)}</strong>
+                                <span class="stock-name-text">${escapeHtml(stk.name)}</span>
                             </a>
                             ${sym ? `<span class="stock-sym-sub">${escapeHtml(sym)}</span>` : ''}
                         </div>

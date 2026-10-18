@@ -345,7 +345,7 @@
 
 /* Stock Name Link in drill-down: matches industry column style, NO underline, overflow ellipsis */
 .ind-stock-link {
-    font-weight: 700;
+    font-weight: 400;
     color: #38bdf8;
     cursor: pointer;
     text-decoration: none !important;
@@ -363,6 +363,7 @@
 }
 
 .stock-name-text {
+    font-weight: 400;
     white-space: nowrap;
     display: inline-block;
     max-width: 100%;
@@ -386,7 +387,7 @@
 
 /* Industry link cell with overflow ellipsis for longer names */
 .ind-table td.td-industry-name .ind-link-cell {
-    font-weight: 700;
+    font-weight: 400;
     color: #38bdf8;
     cursor: pointer;
     text-decoration: none;
@@ -399,6 +400,7 @@
 }
 
 .ind-table td.td-industry-name .ind-name-text {
+    font-weight: 400;
     white-space: nowrap;
     display: inline-block;
     max-width: 100%;
@@ -882,6 +884,13 @@
         left: 36px !important;
         padding: 8px 8px !important;
         font-size: 12px !important;
+    }
+
+    .ind-table td.td-industry-name .ind-link-cell,
+    .ind-table td.td-industry-name .ind-name-text,
+    .ind-stock-link,
+    .stock-name-text {
+        font-weight: 400 !important;
     }
 
     .ind-table td {
