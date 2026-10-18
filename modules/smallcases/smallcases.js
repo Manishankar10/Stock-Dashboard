@@ -251,7 +251,16 @@
                             <div class="company-name">${escapeHtml(s.description || 'No description')}</div>
                         </td>
                         <td><span class="badge badge-nse">${escapeHtml(s.category || 'General')}</span></td>
-                        <td><strong>${s.stocks_count}</strong> <span style="font-size:11px; color:var(--text-secondary);">(${s.active_positions} active)</span></td>
+                        <td>
+                            <strong>${s.stocks_count}</strong> <span style="font-size:11px; color:var(--text-secondary);">(${s.active_positions} active)</span>
+                            ${s.stocks_count === 0 ? `
+                                <div style="margin-top: 3px;" onclick="event.stopPropagation();">
+                                    <a href="javascript:void(0)" onclick="openBulkStockModal('${escapeHtml(s.id)}')" style="font-size: 11px; color: #3b82f6; font-weight: 600; text-decoration: underline;">
+                                        + Add bulk stock
+                                    </a>
+                                </div>
+                            ` : ''}
+                        </td>
                         <td>
                             <strong>${valStr}</strong>
                             <div class="company-name">Invested ${invStr}</div>
@@ -267,7 +276,8 @@
                         <td class="${xirrClass}" style="color: ${xirrColor} !important;"><strong>${xirrStr}</strong></td>
                         <td><span class="badge ${statusClass}">${escapeHtml(s.status || 'ACTIVE')}</span></td>
                         <td style="text-align: right;" onclick="event.stopPropagation();">
-                            <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                            <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                                ${s.stocks_count === 0 ? `<button class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #3b82f6; border-color: #93c5fd;" onclick="openBulkStockModal('${escapeHtml(s.id)}')">⚖️ Add bulk</button>` : ''}
                                 <button class="btn-primary" style="font-size: 11px; padding: 4px 10px;" onclick="viewSmallcaseDetails('${escapeHtml(s.id)}')">🔍 Details</button>
                                 <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="openEditSmallcaseModal('${escapeHtml(s.id)}')">✏️ Edit</button>
                             </div>
@@ -419,81 +429,91 @@
                         <div class="metric-card" style="padding: 10px 12px;"><div class="title" style="font-size:10px;">XIRR</div><div class="value ${dXirrClass}" style="font-size:16px; color: ${dXirrColor} !important;">${dXirrStr}</div></div>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px; flex-wrap: wrap; gap: 8px;">
                         <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase;">Holdings (${holdings.length})</h4>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn-primary" style="font-size: 11px; padding: 4px 12px; background: #3b82f6; border-color: #2563eb;" onclick="openBulkStockModal('${escapeHtml(id)}')">⚖️ Add bulk stock</button>
                             <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="openSmallcaseImportModal('${escapeHtml(id)}')">⬆ Import Excel</button>
                             <button class="btn-primary" style="font-size: 11px; padding: 4px 12px;" onclick="openSmallcaseTxModal('${escapeHtml(id)}','BUY')">🟢 Buy / Sell Holding</button>
                         </div>
                     </div>
 
-                    <div class="table-responsive-container" style="margin-bottom: 20px;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    ${sortSmallcaseHead('Stock', 'holdings', 'stock_name')}
-                                    ${sortSmallcaseHead('Qty', 'holdings', 'quantity')}
-                                    ${sortSmallcaseHead('Avg Buy', 'holdings', 'average_buy_price')}
-                                    ${sortSmallcaseHead('Invested', 'holdings', 'invested')}
-                                    ${sortSmallcaseHead('Current Price', 'holdings', 'current_price')}
-                                    ${sortSmallcaseHead('Current Value', 'holdings', 'current_value')}
-                                    ${sortSmallcaseHead('P&L', 'holdings', 'total_pnl')}
-                                    ${sortSmallcaseHead('Return', 'holdings', 'return_pct')}
-                                    ${sortSmallcaseHead('Status', 'holdings', 'status')}
-                                    <th style="text-align: right;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
+                    ${holdings.length === 0 ? `
+                        <div class="sc-empty-holdings-card">
+                            <div style="font-size: 32px; margin-bottom: 8px;">⚖️</div>
+                            <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: var(--text-primary);">This smallcase has no stocks yet</h4>
+                            <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--text-secondary); max-width: 480px; line-height: 1.5;">
+                                Build an equal weight portfolio basket based on your planned investment amount. Stocks will be split automatically with live market prices.
+                            </p>
+                            <button class="btn-primary" style="font-size: 13px; padding: 8px 18px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: #3b82f6; border-color: #2563eb;" onclick="openBulkStockModal('${escapeHtml(id)}')">
+                                ⚖️ Add bulk stock (Equal Weight)
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="table-responsive-container" style="margin-bottom: 20px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        ${sortSmallcaseHead('Stock', 'holdings', 'stock_name')}
+                                        ${sortSmallcaseHead('Qty', 'holdings', 'quantity')}
+                                        ${sortSmallcaseHead('Avg Buy', 'holdings', 'average_buy_price')}
+                                        ${sortSmallcaseHead('Invested', 'holdings', 'invested')}
+                                        ${sortSmallcaseHead('Current Price', 'holdings', 'current_price')}
+                                        ${sortSmallcaseHead('Current Value', 'holdings', 'current_value')}
+                                        ${sortSmallcaseHead('P&L', 'holdings', 'total_pnl')}
+                                        ${sortSmallcaseHead('Return', 'holdings', 'return_pct')}
+                                        ${sortSmallcaseHead('Status', 'holdings', 'status')}
+                                        <th style="text-align: right;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${holdings.map(h => {
+                                        const hPnlColor = getSmallcasePnlColor(h.total_pnl);
+                                        const hPnlClass = getSmallcasePnlClass(h.total_pnl);
+                                        const hPnlSign = (h.total_pnl || 0) > 0 ? '+' : ((h.total_pnl || 0) < 0 ? '-' : '');
 
-                holdings.forEach(h => {
-                    const hPnlColor = getSmallcasePnlColor(h.total_pnl);
-                    const hPnlClass = getSmallcasePnlClass(h.total_pnl);
-                    const hPnlSign = (h.total_pnl || 0) > 0 ? '+' : ((h.total_pnl || 0) < 0 ? '-' : '');
+                                        const hRetColor = getSmallcasePnlColor(h.return_pct);
+                                        const hRetClass = getSmallcasePnlClass(h.return_pct);
+                                        const hRetSign = (h.return_pct || 0) > 0 ? '+' : ((h.return_pct || 0) < 0 ? '-' : '');
 
-                    const hRetColor = getSmallcasePnlColor(h.return_pct);
-                    const hRetClass = getSmallcasePnlClass(h.return_pct);
-                    const hRetSign = (h.return_pct || 0) > 0 ? '+' : ((h.return_pct || 0) < 0 ? '-' : '');
+                                        const hRealColor = getSmallcasePnlColor(h.realized_pnl);
+                                        const hRealSign = (h.realized_pnl || 0) > 0 ? '+' : ((h.realized_pnl || 0) < 0 ? '-' : '');
+                                        const hRealStr = h.realized_pnl ? `<div style="font-size:10px; color:${hRealColor} !important;">Realized: ${isPrivacyMode ? '₹ ••••••' : `${hRealSign}₹${Math.abs(h.realized_pnl).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div>` : '';
 
-                    const hRealColor = getSmallcasePnlColor(h.realized_pnl);
-                    const hRealSign = (h.realized_pnl || 0) > 0 ? '+' : ((h.realized_pnl || 0) < 0 ? '-' : '');
-                    const hRealStr = h.realized_pnl ? `<div style="font-size:10px; color:${hRealColor} !important;">Realized: ${isPrivacyMode ? '₹ ••••••' : `${hRealSign}₹${Math.abs(h.realized_pnl).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</div>` : '';
+                                        const hTodayColor = getSmallcasePnlColor(h.today_change);
+                                        const hTodaySign = (h.today_change || 0) > 0 ? '+' : ((h.today_change || 0) < 0 ? '-' : '');
+                                        const hTodayPctSign = (h.today_change_pct || 0) > 0 ? '+' : ((h.today_change_pct || 0) < 0 ? '-' : '');
+                                        const hTodayStr = h.today_change != null ? `<div style="font-size:10px; color:${hTodayColor} !important;">1D: ${hTodaySign}₹${Math.abs(h.today_change).toFixed(2)} (${hTodayPctSign}${Math.abs(h.today_change_pct || 0).toFixed(2)}%)</div>` : '';
 
-                    const hTodayColor = getSmallcasePnlColor(h.today_change);
-                    const hTodaySign = (h.today_change || 0) > 0 ? '+' : ((h.today_change || 0) < 0 ? '-' : '');
-                    const hTodayPctSign = (h.today_change_pct || 0) > 0 ? '+' : ((h.today_change_pct || 0) < 0 ? '-' : '');
-                    const hTodayStr = h.today_change != null ? `<div style="font-size:10px; color:${hTodayColor} !important;">1D: ${hTodaySign}₹${Math.abs(h.today_change).toFixed(2)} (${hTodayPctSign}${Math.abs(h.today_change_pct || 0).toFixed(2)}%)</div>` : '';
-
-                    html += `
-                        <tr>
-                            <td><strong>${escapeHtml(h.stock_name)}</strong><div class="company-name">${escapeHtml(h.symbol)}</div></td>
-                            <td>${h.quantity}</td>
-                            <td>₹${h.average_buy_price ? h.average_buy_price.toFixed(2) : '-'}</td>
-                            <td>${isPrivacyMode ? '₹ ••••••' : `₹${(h.invested || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
-                            <td>
-                                ₹${h.current_price ? h.current_price.toFixed(2) : '-'}
-                                ${hTodayStr}
-                            </td>
-                            <td>${isPrivacyMode ? '₹ ••••••' : `₹${(h.current_value || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
-                            <td class="${hPnlClass}" style="color: ${hPnlColor} !important;">
-                                <strong>${isPrivacyMode ? '₹ ••••••' : `${hPnlSign}₹${Math.abs(h.total_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</strong>
-                                ${hRealStr}
-                            </td>
-                            <td class="${hRetClass}" style="color: ${hRetColor} !important;">
-                                <strong>${hRetSign}${h.return_pct ? Math.abs(h.return_pct).toFixed(2) : '0.00'}%</strong>
-                            </td>
-                            <td><span class="badge ${h.status === 'ACTIVE' ? 'badge-lt' : 'badge-st'}">${escapeHtml(h.status)}</span></td>
-                            <td style="text-align: right;">
-                                ${h.status === 'ACTIVE' ? `<button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; color:#ef4444; border-color:#fca5a5;" onclick="openSmallcaseExitModal('${escapeHtml(id)}','${escapeHtml(h.symbol)}',${h.quantity},${h.current_price || 0})">🔴 Exit</button>` : ''}
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                html += `
-                            </tbody>
-                        </table>
-                    </div>
+                                        return `
+                                            <tr>
+                                                <td><strong>${escapeHtml(h.stock_name)}</strong><div class="company-name">${escapeHtml(h.symbol)}</div></td>
+                                                <td>${h.quantity}</td>
+                                                <td>₹${h.average_buy_price ? h.average_buy_price.toFixed(2) : '-'}</td>
+                                                <td>${isPrivacyMode ? '₹ ••••••' : `₹${(h.invested || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
+                                                <td>
+                                                    ₹${h.current_price ? h.current_price.toFixed(2) : '-'}
+                                                    ${hTodayStr}
+                                                </td>
+                                                <td>${isPrivacyMode ? '₹ ••••••' : `₹${(h.current_value || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
+                                                <td class="${hPnlClass}" style="color: ${hPnlColor} !important;">
+                                                    <strong>${isPrivacyMode ? '₹ ••••••' : `${hPnlSign}₹${Math.abs(h.total_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</strong>
+                                                    ${hRealStr}
+                                                </td>
+                                                <td class="${hRetClass}" style="color: ${hRetColor} !important;">
+                                                    <strong>${hRetSign}${h.return_pct ? Math.abs(h.return_pct).toFixed(2) : '0.00'}%</strong>
+                                                </td>
+                                                <td><span class="badge ${h.status === 'ACTIVE' ? 'badge-lt' : 'badge-st'}">${escapeHtml(h.status)}</span></td>
+                                                <td style="text-align: right;">
+                                                    ${h.status === 'ACTIVE' ? `<button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; color:#ef4444; border-color:#fca5a5;" onclick="openSmallcaseExitModal('${escapeHtml(id)}','${escapeHtml(h.symbol)}',${h.quantity},${h.current_price || 0})">🔴 Exit</button>` : ''}
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
 
                     <h4 style="margin: 20px 0 10px; font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase;">Transaction History (${transactions.length})</h4>
                     <div class="table-responsive-container">
@@ -727,3 +747,569 @@
                 btn.innerText = 'Import Excel';
             }
         }
+
+        // =========================================================
+        // ADD BULK STOCKS (EQUAL WEIGHT) CONTROLLERS
+        // =========================================================
+        let bulkStockBasket = [];
+        let bulkStockSmallcaseId = null;
+        let bulkSearchTimeout = null;
+
+        function openBulkStockModal(id) {
+            bulkStockSmallcaseId = id;
+            let sc = (smallcaseListCache || []).find(x => String(x.id) === String(id));
+            if (!sc && selectedSmallcaseDetail && String(selectedSmallcaseDetail.id) === String(id)) {
+                sc = selectedSmallcaseDetail;
+            }
+            const nameEl = document.getElementById('scBulkSmallcaseName');
+            if (nameEl) nameEl.innerText = sc ? sc.name : id;
+
+            const dateInput = document.getElementById('scBulkDate');
+            if (dateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.value = today;
+            }
+
+            const plannedInput = document.getElementById('scBulkPlannedAmount');
+            if (plannedInput && (!plannedInput.value || Number(plannedInput.value) <= 0)) {
+                plannedInput.value = '100000';
+            }
+
+            updateBulkPresetChips();
+
+            const searchInput = document.getElementById('scBulkSearchInput');
+            if (searchInput) searchInput.value = '';
+            const dropdown = document.getElementById('dropdown-scBulk');
+            if (dropdown) dropdown.style.display = 'none';
+
+            const pasteArea = document.getElementById('scBulkPasteArea');
+            if (pasteArea) pasteArea.style.display = 'none';
+            const pasteInput = document.getElementById('scBulkPasteInput');
+            if (pasteInput) pasteInput.value = '';
+
+            const statusEl = document.getElementById('scBulkStatus');
+            if (statusEl) {
+                statusEl.style.display = 'none';
+                statusEl.innerText = '';
+            }
+
+            bulkStockBasket = [];
+            renderBulkStocksTable();
+            recalcBulkWeights(true);
+
+            openSmallcaseModal('bulkStockSmallcaseModal');
+        }
+
+        function setBulkPlannedAmount(amt) {
+            const plannedInput = document.getElementById('scBulkPlannedAmount');
+            if (plannedInput) {
+                plannedInput.value = amt;
+            }
+            updateBulkPresetChips();
+            recalcBulkWeights(true);
+        }
+
+        function updateBulkPresetChips() {
+            const plannedInput = document.getElementById('scBulkPlannedAmount');
+            const val = plannedInput ? Number(plannedInput.value) : 0;
+            document.querySelectorAll('.sc-bulk-chip').forEach(btn => {
+                const clickText = btn.getAttribute('onclick') || '';
+                const match = clickText.match(/\d+/);
+                const chipVal = match ? Number(match[0]) : 0;
+                btn.classList.toggle('active', chipVal === val);
+            });
+        }
+
+        function toggleBulkPasteBox() {
+            const pasteArea = document.getElementById('scBulkPasteArea');
+            if (!pasteArea) return;
+            const isHidden = pasteArea.style.display === 'none';
+            pasteArea.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {
+                const pasteInput = document.getElementById('scBulkPasteInput');
+                if (pasteInput) pasteInput.focus();
+            }
+        }
+
+        function cleanSymbolForBulk(sym) {
+            if (!sym) return '';
+            let s = String(sym).trim().toUpperCase();
+            if (!s.endsWith('.NS') && !s.endsWith('.BO')) {
+                s += '.NS';
+            }
+            return s;
+        }
+
+        async function fetchLiveStockPrice(symbol) {
+            const cleanSym = cleanSymbolForBulk(symbol);
+            const globalPrices = window.stockPricesData || (typeof stockPricesData !== 'undefined' ? stockPricesData : {});
+            if (globalPrices && globalPrices[cleanSym] && globalPrices[cleanSym].price) {
+                return {
+                    price: Number(globalPrices[cleanSym].price),
+                    name: globalPrices[cleanSym].name || cleanSym
+                };
+            }
+            const baseSym = cleanSym.replace(/\.(NS|BO)$/, '');
+            if (globalPrices && globalPrices[baseSym] && globalPrices[baseSym].price) {
+                return {
+                    price: Number(globalPrices[baseSym].price),
+                    name: globalPrices[baseSym].name || baseSym
+                };
+            }
+
+            try {
+                const res = await fetch('/api/stock_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: [cleanSym] })
+                });
+                const data = await res.json();
+                if (data && data[cleanSym] && data[cleanSym].price) {
+                    return {
+                        price: Number(data[cleanSym].price),
+                        name: data[cleanSym].name || cleanSym
+                    };
+                }
+            } catch (e) {
+                console.warn('Could not fetch price for', cleanSym, e);
+            }
+            return { price: 0, name: cleanSym };
+        }
+
+        async function handleBulkStockSearch(inputElement, event) {
+            const query = inputElement.value.trim();
+            const dropdown = document.getElementById('dropdown-scBulk');
+            if (!dropdown) return;
+
+            if (bulkSearchTimeout) clearTimeout(bulkSearchTimeout);
+
+            if (query.length < 2) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            bulkSearchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                    const results = await res.json();
+                    dropdown.innerHTML = '';
+                    if (results && results.length > 0) {
+                        results.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'autocomplete-item';
+                            div.style.padding = '8px 12px';
+                            div.style.cursor = 'pointer';
+                            div.style.borderBottom = '1px solid var(--border-color)';
+                            div.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong style="color: var(--text-primary);">${escapeHtml(item.symbol || '')}</strong>
+                                        <div style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(item.name || '')}</div>
+                                    </div>
+                                    <span class="badge badge-nse" style="font-size: 10px;">${escapeHtml(item.exchange || 'NSE')}</span>
+                                </div>
+                            `;
+                            div.onclick = async () => {
+                                dropdown.style.display = 'none';
+                                inputElement.value = '';
+                                await addStockToBulkBasket(item.symbol, item.name, item.exchange);
+                            };
+                            dropdown.appendChild(div);
+                        });
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+                } catch (e) {
+                    dropdown.style.display = 'none';
+                }
+            }, 250);
+        }
+
+        async function addStockToBulkBasket(symbol, name, exchange) {
+            const cleanSym = cleanSymbolForBulk(symbol);
+            if (!cleanSym) return;
+
+            const exists = bulkStockBasket.some(x => x.symbol === cleanSym);
+            if (exists) {
+                showBulkStatus(`Stock ${cleanSym} is already in the basket!`, 'warning');
+                return;
+            }
+
+            const quote = await fetchLiveStockPrice(cleanSym);
+            const livePrice = quote.price > 0 ? quote.price : 0;
+            const stockName = name || quote.name || cleanSym;
+
+            bulkStockBasket.push({
+                symbol: cleanSym,
+                name: stockName,
+                exchange: exchange || 'NSE',
+                price: livePrice,
+                quantity: 1,
+                userEditedQty: false
+            });
+
+            showBulkStatus(`Added ${cleanSym} (Live price: ₹${livePrice.toFixed(2)})`, 'success');
+            recalcBulkWeights(true);
+            renderBulkStocksTable();
+        }
+
+        async function addPastedBulkStocks() {
+            const pasteInput = document.getElementById('scBulkPasteInput');
+            if (!pasteInput || !pasteInput.value.trim()) return;
+
+            const rawText = pasteInput.value;
+            const rawTokens = rawText.split(/[\r\n,;]+/).map(s => s.trim()).filter(Boolean);
+            if (!rawTokens.length) return;
+
+            const uniqueSymbols = [];
+            rawTokens.forEach(t => {
+                const clean = cleanSymbolForBulk(t);
+                if (clean && !uniqueSymbols.includes(clean) && !bulkStockBasket.some(x => x.symbol === clean)) {
+                    uniqueSymbols.push(clean);
+                }
+            });
+
+            if (!uniqueSymbols.length) {
+                showBulkStatus('All pasted symbols are already in the basket or invalid.', 'warning');
+                return;
+            }
+
+            showBulkStatus(`Fetching live prices for ${uniqueSymbols.length} stocks...`, 'info');
+
+            let priceMap = {};
+            try {
+                const res = await fetch('/api/stock_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: uniqueSymbols })
+                });
+                priceMap = await res.json() || {};
+            } catch (e) {
+                console.warn('Batch price fetch failed, falling back', e);
+            }
+
+            const globalPrices = window.stockPricesData || (typeof stockPricesData !== 'undefined' ? stockPricesData : {});
+
+            uniqueSymbols.forEach(sym => {
+                let p = 0;
+                let n = sym;
+                if (priceMap[sym] && priceMap[sym].price) {
+                    p = Number(priceMap[sym].price);
+                    n = priceMap[sym].name || sym;
+                } else if (globalPrices && globalPrices[sym] && globalPrices[sym].price) {
+                    p = Number(globalPrices[sym].price);
+                    n = globalPrices[sym].name || sym;
+                }
+                bulkStockBasket.push({
+                    symbol: sym,
+                    name: n,
+                    exchange: 'NSE',
+                    price: p,
+                    quantity: 1,
+                    userEditedQty: false
+                });
+            });
+
+            pasteInput.value = '';
+            toggleBulkPasteBox();
+            showBulkStatus(`Added ${uniqueSymbols.length} stocks to basket with live prices!`, 'success');
+            recalcBulkWeights(true);
+            renderBulkStocksTable();
+        }
+
+        function removeStockFromBulkBasket(idx) {
+            if (idx >= 0 && idx < bulkStockBasket.length) {
+                const removed = bulkStockBasket.splice(idx, 1);
+                recalcBulkWeights(true);
+                renderBulkStocksTable();
+                if (removed.length) {
+                    showBulkStatus(`Removed ${removed[0].symbol}`, 'info');
+                }
+            }
+        }
+
+        function clearAllBulkStocks() {
+            if (!bulkStockBasket.length) return;
+            if (confirm('Clear all stocks from the basket?')) {
+                bulkStockBasket = [];
+                recalcBulkWeights(true);
+                renderBulkStocksTable();
+                showBulkStatus('Cleared all stocks.', 'info');
+            }
+        }
+
+        function onBulkQtyChange(idx, val) {
+            const item = bulkStockBasket[idx];
+            if (!item) return;
+            const num = parseFloat(val);
+            item.quantity = Math.max(1, isNaN(num) ? 1 : num);
+            item.userEditedQty = true;
+            recalcBulkWeights(false);
+            updateBulkRowDisplay(idx);
+        }
+
+        function onBulkPriceChange(idx, val) {
+            const item = bulkStockBasket[idx];
+            if (!item) return;
+            const num = parseFloat(val);
+            item.price = Math.max(0, isNaN(num) ? 0 : num);
+            recalcBulkWeights(false);
+            updateBulkRowDisplay(idx);
+        }
+
+        function recalcBulkWeights(forceEqual = false) {
+            const plannedInput = document.getElementById('scBulkPlannedAmount');
+            const plannedAmount = plannedInput ? Math.max(0, parseFloat(plannedInput.value) || 0) : 100000;
+            const N = bulkStockBasket.length;
+
+            const targetWeight = N > 0 ? (100 / N) : 0;
+            const targetAmountPerStock = N > 0 ? (plannedAmount / N) : 0;
+
+            if (N > 0 && targetAmountPerStock > 0) {
+                bulkStockBasket.forEach(item => {
+                    if (forceEqual || !item.userEditedQty) {
+                        if (item.price > 0) {
+                            item.quantity = Math.max(1, Math.floor(targetAmountPerStock / item.price));
+                        } else {
+                            item.quantity = 1;
+                        }
+                    }
+                });
+            }
+
+            let totalAllocated = 0;
+            bulkStockBasket.forEach(item => {
+                totalAllocated += (item.quantity * item.price);
+            });
+
+            bulkStockBasket.forEach(item => {
+                const amount = item.quantity * item.price;
+                item.amount = amount;
+                item.weight = totalAllocated > 0 ? ((amount / totalAllocated) * 100) : targetWeight;
+                item.targetWeight = targetWeight;
+            });
+
+            const countEl = document.getElementById('scBulkCount');
+            if (countEl) countEl.innerText = N;
+
+            const targetWeightEl = document.getElementById('scBulkTargetWeight');
+            if (targetWeightEl) targetWeightEl.innerText = `${targetWeight.toFixed(2)}% each`;
+
+            const plannedDisp = document.getElementById('scBulkPlannedDisp');
+            if (plannedDisp) plannedDisp.innerText = `₹${plannedAmount.toLocaleString('en-IN')}`;
+
+            const actualDisp = document.getElementById('scBulkActualDisp');
+            if (actualDisp) actualDisp.innerText = `₹${totalAllocated.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            const cashDiff = document.getElementById('scBulkCashDiff');
+            if (cashDiff) {
+                const diff = plannedAmount - totalAllocated;
+                cashDiff.innerText = `${diff >= 0 ? '₹' : '-₹'}${Math.abs(diff).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                cashDiff.style.color = diff >= 0 ? 'var(--text-secondary)' : '#ef4444';
+            }
+        }
+
+        function renderBulkStocksTable() {
+            const tbody = document.getElementById('scBulkTableBody');
+            const emptyRow = document.getElementById('scBulkEmptyRow');
+            if (!tbody) return;
+
+            if (!bulkStockBasket.length) {
+                tbody.innerHTML = '';
+                if (emptyRow) emptyRow.style.display = 'block';
+                return;
+            }
+
+            if (emptyRow) emptyRow.style.display = 'none';
+
+            let html = '';
+            bulkStockBasket.forEach((item, idx) => {
+                const amount = item.amount != null ? item.amount : (item.quantity * item.price);
+                const weight = item.weight != null ? item.weight : item.targetWeight;
+                const isLive = item.price > 0;
+
+                html += `
+                    <tr class="sc-bulk-row" id="scBulkRow-${idx}" style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 10px 12px; vertical-align: middle;">
+                            <div style="font-weight: 700; color: var(--text-primary);">${escapeHtml(item.name || item.symbol)}</div>
+                            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                                <span class="stock-symbol" style="font-size: 11px;">${escapeHtml(item.symbol)}</span>
+                                <span class="badge badge-nse" style="font-size: 9.5px; padding: 1px 4px;">${escapeHtml(item.exchange || 'NSE')}</span>
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: right; vertical-align: middle;">
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                                ${isLive ? '<span class="sc-live-indicator" title="Live Market Price"></span>' : ''}
+                                <span>₹</span>
+                                <input type="number" step="0.05" min="0.01" class="sc-bulk-input sc-bulk-price-input" value="${item.price.toFixed(2)}" onchange="onBulkPriceChange(${idx}, this.value)" style="width: 85px;">
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: right; vertical-align: middle;">
+                            <input type="number" step="1" min="1" class="sc-bulk-input sc-bulk-qty-input" value="${item.quantity}" onchange="onBulkQtyChange(${idx}, this.value)" style="width: 75px;">
+                        </td>
+                        <td style="padding: 10px 12px; text-align: right; vertical-align: middle; font-weight: 700; color: var(--text-primary);" id="scBulkAmount-${idx}">
+                            ₹${amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td style="padding: 10px 12px; text-align: right; vertical-align: middle;" id="scBulkWeight-${idx}">
+                            <span class="sc-bulk-weight-pill">
+                                ⚖️ ${weight.toFixed(2)}%
+                            </span>
+                            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Target: ${item.targetWeight ? item.targetWeight.toFixed(2) : '0.00'}%</div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center; vertical-align: middle;">
+                            <button type="button" class="sc-bulk-delete-btn" onclick="removeStockFromBulkBasket(${idx})" title="Remove stock">✕</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updateBulkRowDisplay(idx) {
+            const item = bulkStockBasket[idx];
+            if (!item) return;
+
+            const amountEl = document.getElementById(`scBulkAmount-${idx}`);
+            if (amountEl) {
+                amountEl.innerText = `₹${item.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            }
+
+            const weightEl = document.getElementById(`scBulkWeight-${idx}`);
+            if (weightEl) {
+                weightEl.innerHTML = `
+                    <span class="sc-bulk-weight-pill">
+                        ⚖️ ${item.weight.toFixed(2)}%
+                    </span>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Target: ${item.targetWeight ? item.targetWeight.toFixed(2) : '0.00'}%</div>
+                `;
+            }
+
+            bulkStockBasket.forEach((other, oIdx) => {
+                if (oIdx !== idx) {
+                    const oWeightEl = document.getElementById(`scBulkWeight-${oIdx}`);
+                    if (oWeightEl) {
+                        oWeightEl.innerHTML = `
+                            <span class="sc-bulk-weight-pill">
+                                ⚖️ ${other.weight.toFixed(2)}%
+                            </span>
+                            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Target: ${other.targetWeight ? other.targetWeight.toFixed(2) : '0.00'}%</div>
+                        `;
+                    }
+                }
+            });
+        }
+
+        function showBulkStatus(msg, type = 'info') {
+            const el = document.getElementById('scBulkStatus');
+            if (!el) return;
+            el.innerText = msg;
+            el.style.display = 'block';
+            if (type === 'error') {
+                el.style.color = '#ef4444';
+            } else if (type === 'success') {
+                el.style.color = '#10b981';
+            } else if (type === 'warning') {
+                el.style.color = '#f59e0b';
+            } else {
+                el.style.color = 'var(--text-secondary)';
+            }
+        }
+
+        async function submitBulkStockBasket() {
+            if (!bulkStockSmallcaseId) {
+                showBulkStatus('No Smallcase selected!', 'error');
+                return;
+            }
+
+            if (!bulkStockBasket.length) {
+                showBulkStatus('Please add at least one stock to the basket.', 'error');
+                return;
+            }
+
+            const dateInput = document.getElementById('scBulkDate');
+            const txDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().split('T')[0];
+
+            for (let i = 0; i < bulkStockBasket.length; i++) {
+                const s = bulkStockBasket[i];
+                if (!s.price || s.price <= 0) {
+                    showBulkStatus(`Invalid price for ${s.symbol}. Please enter a positive price.`, 'error');
+                    return;
+                }
+                if (!s.quantity || s.quantity <= 0) {
+                    showBulkStatus(`Invalid quantity for ${s.symbol}. Please enter at least 1 share.`, 'error');
+                    return;
+                }
+            }
+
+            const submitBtn = document.getElementById('scBulkSubmitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Adding stocks...';
+            }
+
+            const plannedAmount = document.getElementById('scBulkPlannedAmount')?.value || '';
+            const txs = bulkStockBasket.map(s => ({
+                symbol: s.symbol,
+                stock_name: s.name,
+                price: s.price,
+                quantity: s.quantity,
+                transaction_date: txDate,
+                transaction_type: 'BUY',
+                charges: 0,
+                notes: `Equal weight basket (Planned: ₹${plannedAmount})`
+            }));
+
+            try {
+                const res = await fetch(`/api/smallcases/${encodeURIComponent(bulkStockSmallcaseId)}/transactions/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transactions: txs })
+                });
+
+                const data = await res.json();
+                if (!res.ok || data.error) {
+                    throw new Error(data.error || 'Failed to add bulk stocks');
+                }
+
+                showBulkStatus(`Success! Added ${data.count} stocks to smallcase.`, 'success');
+
+                setTimeout(async () => {
+                    closeSmallcaseModal('bulkStockSmallcaseModal');
+                    await loadSmallcasesTab();
+                    if (selectedSmallcaseId && String(selectedSmallcaseId) === String(bulkStockSmallcaseId)) {
+                        await viewSmallcaseDetails(bulkStockSmallcaseId);
+                    }
+                }, 400);
+
+            } catch (err) {
+                showBulkStatus(err.message, 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = '✓ Add All Stocks to Smallcase';
+                }
+            }
+        }
+
+        // Global dropdown closer for bulk search
+        document.addEventListener('click', (e) => {
+            const scBulkDrop = document.getElementById('dropdown-scBulk');
+            if (scBulkDrop && !e.target.closest('#scBulkSearchInput') && !e.target.closest('#dropdown-scBulk')) {
+                scBulkDrop.style.display = 'none';
+            }
+        });
+
+        // Expose global window hooks
+        window.openBulkStockModal = openBulkStockModal;
+        window.setBulkPlannedAmount = setBulkPlannedAmount;
+        window.recalcBulkWeights = recalcBulkWeights;
+        window.handleBulkStockSearch = handleBulkStockSearch;
+        window.toggleBulkPasteBox = toggleBulkPasteBox;
+        window.addPastedBulkStocks = addPastedBulkStocks;
+        window.removeStockFromBulkBasket = removeStockFromBulkBasket;
+        window.clearAllBulkStocks = clearAllBulkStocks;
+        window.onBulkQtyChange = onBulkQtyChange;
+        window.onBulkPriceChange = onBulkPriceChange;
+        window.submitBulkStockBasket = submitBulkStockBasket;

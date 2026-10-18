@@ -223,6 +223,157 @@
         </div>
     </div>
 
+    <!-- Add Bulk Stock (Equal Weight) Modal -->
+    <div id="bulkStockSmallcaseModal" class="small-modal" style="z-index: 10015;">
+        <div class="small-modal-content sc-bulk-modal-content" style="width: 900px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 22px;">
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 14px; flex-shrink: 0;">
+                <div>
+                    <h3 style="margin: 0; font-size: 19px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                        ⚖️ Add Bulk Stock <span style="font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.15); color: #3b82f6;">Equal Weight</span>
+                    </h3>
+                    <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 3px;">
+                        Smallcase: <strong id="scBulkSmallcaseName" style="color: var(--text-primary);">—</strong> • Split planned amount equally across stocks with live prices
+                    </div>
+                </div>
+                <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1;" onclick="closeSmallcaseModal('bulkStockSmallcaseModal')">&times;</span>
+            </div>
+
+            <!-- Modal Scrollable Content -->
+            <div class="sc-bulk-scroll-body" style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 14px;">
+                <!-- Top Config Card -->
+                <div class="sc-bulk-config-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+                    <div class="sc-bulk-config-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <!-- Planned Amount -->
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+                                💰 Planned Investment Amount (₹) *
+                            </label>
+                            <div style="position: relative;">
+                                <input type="number" id="scBulkPlannedAmount" min="1" step="500" value="100000" placeholder="e.g. 100000" style="width: 100%; font-size: 15px; font-weight: 700; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); box-sizing: border-box;" oninput="recalcBulkWeights()">
+                            </div>
+                            <!-- Quick Amount Chips -->
+                            <div class="sc-bulk-chips-row" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(25000)">₹25K</button>
+                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(50000)">₹50K</button>
+                                <button type="button" class="sc-bulk-chip active" onclick="setBulkPlannedAmount(100000)">₹1L</button>
+                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(200000)">₹2L</button>
+                                <button type="button" class="sc-bulk-chip" onclick="setBulkPlannedAmount(500000)">₹5L</button>
+                            </div>
+                        </div>
+
+                        <!-- Investment Date & Stock Search -->
+                        <div>
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+                                    📅 Transaction Date *
+                                </label>
+                                <input type="date" id="scBulkDate" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; justify-content: flex-end;">
+                                <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="toggleBulkPasteBox()">📋 Paste Symbols in Bulk</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Autocomplete Stock Search Input -->
+                    <div style="margin-top: 12px; position: relative;">
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+                            🔍 Search & Add Stock to Basket
+                        </label>
+                        <div class="autocomplete-wrapper" style="width: 100%; position: relative;">
+                            <input type="text" id="scBulkSearchInput" placeholder="Type stock name or symbol (e.g. RELIANCE, TCS, INFY)..." autocomplete="off" onkeyup="handleBulkStockSearch(this, event)" style="width: 100%; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); font-size: 13px; box-sizing: border-box;">
+                            <div class="autocomplete-dropdown" id="dropdown-scBulk" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10020; max-height: 220px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Quick Paste Area -->
+                    <div id="scBulkPasteArea" style="display: none; margin-top: 12px; padding: 12px; background: rgba(59, 130, 246, 0.05); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 8px;">
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Paste Stock Symbols (comma or space separated)</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">Example: <code>RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, LT, BHARTIARTL</code></div>
+                        <textarea id="scBulkPasteInput" rows="2" placeholder="RELIANCE, TCS, INFY..." style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); box-sizing: border-box; resize: vertical;"></textarea>
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="toggleBulkPasteBox()">Close</button>
+                            <button type="button" class="btn-primary" style="font-size: 11px; padding: 4px 12px;" onclick="addPastedBulkStocks()">+ Add All Pasted Stocks</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Allocation Metrics Summary Bar -->
+                <div class="sc-bulk-summary-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
+                    <div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Stocks Count</div>
+                        <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="scBulkCount">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Target Weight</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #3b82f6;" id="scBulkTargetWeight">0.00%</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Planned Total</div>
+                        <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="scBulkPlannedDisp">₹1,00,000</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Actual Allocated</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #10b981;" id="scBulkActualDisp">₹0.00</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Cash Left</div>
+                        <div style="font-size: 16px; font-weight: 700; color: var(--text-secondary);" id="scBulkCashDiff">₹1,00,000</div>
+                    </div>
+                </div>
+
+                <!-- Stocks Table / Responsive Grid -->
+                <div class="sc-bulk-table-wrap" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--bg-card);">
+                    <div class="table-responsive-container" style="max-height: 280px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+                            <thead>
+                                <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color);">
+                                    <th style="padding: 10px 12px; text-align: left; font-weight: 700;">Stock</th>
+                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 130px;">Price (Live Price)</th>
+                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 110px;">Quantity (Auto Fill)</th>
+                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 120px;">Amount (₹)</th>
+                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 120px;">Weights (Auto Calc)</th>
+                                    <th style="padding: 10px 12px; text-align: center; font-weight: 700; width: 50px;">✕</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scBulkTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State Placeholder when no stocks added -->
+                    <div id="scBulkEmptyRow" style="padding: 30px 16px; text-align: center; color: var(--text-secondary);">
+                        <div style="font-size: 24px; margin-bottom: 6px;">⚖️</div>
+                        <div style="font-weight: 600; color: var(--text-primary);">No stocks added to basket yet</div>
+                        <div style="font-size: 12px; margin-top: 4px;">Use the search box above or click "Paste Symbols in Bulk" to add stocks for equal weight distribution.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status message -->
+            <div id="scBulkStatus" style="font-size: 12px; margin-top: 10px; display: none;"></div>
+
+            <!-- Modal Footer Controls -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 14px; margin-top: 14px; flex-shrink: 0; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="recalcBulkWeights(true)" title="Recalculate equal weight quantities for all stocks">
+                        ↻ Recalculate Equal Weights
+                    </button>
+                    <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="clearAllBulkStocks()" title="Clear stock list">
+                        Clear All
+                    </button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="closeSmallcaseModal('bulkStockSmallcaseModal')">Cancel</button>
+                    <button type="button" class="btn-primary" id="scBulkSubmitBtn" style="font-size: 12px; padding: 6px 18px; font-weight: 700; background: #10b981; border-color: #059669;" onclick="submitBulkStockBasket()">
+                        ✓ Add All Stocks to Smallcase
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- =========================================================
          IN-HOUSE TECHNICAL CHART MODAL (LIGHTWEIGHT CHARTS PRO)
     ========================================================= -->

@@ -641,6 +641,68 @@ def add_transaction(identifier):
         return jsonify({'error': str(e)}), 500
 
 
+@smallcases_bp.route('/api/smallcases/<identifier>/transactions/bulk', methods=['POST'])
+@_guard
+def add_bulk_transactions(identifier):
+    try:
+        data = _load()
+        key, sc = _case_key(data, identifier)
+        if not sc:
+            return jsonify({'error': 'Smallcase not found'}), 404
+        b = request.get_json(force=True) or {}
+        items = b.get('transactions') or b.get('stocks') or []
+        if not items or not isinstance(items, list):
+            raise ValueError('A non-empty list of transactions is required')
+
+        candidate = list(_transactions(sc))
+        new_txs = []
+        now_ts = _now()
+        username = session.get('username')
+
+        for idx, item in enumerate(items):
+            typ = str(item.get('transaction_type', 'BUY')).upper()
+            if typ not in ('BUY', 'SELL'):
+                raise ValueError(f'Item {idx + 1}: transaction_type must be BUY or SELL')
+            sym = _symbol(item.get('symbol'))
+            qty = _num(item.get('quantity'), f'quantity for {sym}')
+            price = _num(item.get('price'), f'price for {sym}')
+            d = _date(item.get('transaction_date') or item.get('buy_date') or _today(), f'date for {sym}')
+            charges = _num(item.get('charges', 0), f'charges for {sym}', allow_zero=True)
+            gross = qty * price
+            stock_name = str(item.get('stock_name') or sym)
+            if _FETCHER is not None:
+                try:
+                    q = _FETCHER.fetch_stock(sym) or {}
+                    if not q.get('error'):
+                        stock_name = q.get('name') or stock_name
+                except Exception:
+                    pass
+
+            tx = {
+                'id': _id('tx'), 'smallcase_id': sc['id'], 'stock_id': sym,
+                'stock_symbol': sym, 'symbol': sym, 'stock_name': stock_name,
+                'transaction_type': typ, 'quantity': round(qty, 6),
+                'price': round(price, 6), 'transaction_date': d.strftime('%Y-%m-%d'),
+                'gross_amount': round(gross, 2), 'charges': round(charges, 2),
+                'net_amount': round(gross + charges if typ == 'BUY' else gross - charges, 2),
+                'notes': str(item.get('notes', 'Bulk equal weight stock')).strip(),
+                'created_at': now_ts, 'updated_at': now_ts, 'created_by': username
+            }
+            candidate.append(tx)
+            new_txs.append(tx)
+
+        _validate_transactions(sc, candidate)
+        sc['transactions'] = candidate
+        sc['updated_at'] = now_ts
+        _audit(sc, 'BULK_TRANSACTIONS_ADDED', 'transaction', f'{len(new_txs)} transactions', new={'count': len(new_txs)})
+        _save(data)
+        return jsonify({'success': True, 'count': len(new_txs), 'transactions': new_txs, 'smallcase': _summary(sc)}), 201
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @smallcases_bp.route('/api/smallcases/<identifier>/import', methods=['POST'])
 @_guard
 def import_transactions(identifier):
