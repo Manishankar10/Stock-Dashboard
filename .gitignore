@@ -31,3 +31,4 @@ ENV/
 Thumbs.db
 static/logo.jpeg
 scratch/
+industry_stocks_cache.json
