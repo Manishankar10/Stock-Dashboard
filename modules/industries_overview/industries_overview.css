@@ -256,33 +256,70 @@
     font-family: monospace;
 }
 
-.ind-table td.th-sno, .ind-table th.th-sno {
-    width: 45px;
+/* Static sticky S.No column */
+.ind-table th.th-sno,
+.ind-table td.th-sno {
+    position: sticky;
+    left: 0;
+    width: 50px;
+    min-width: 50px;
+    max-width: 50px;
     text-align: center;
     color: var(--text-secondary, #64748b);
     font-weight: 600;
+    box-sizing: border-box;
+}
+
+.ind-table th.th-sno {
+    top: 0;
+    z-index: 25;
+    background: var(--bg-subtle, #1e222d);
+}
+
+.ind-table td.th-sno {
+    z-index: 12;
+    background: var(--bg-card, #131722);
 }
 
 .ind-table th.th-center, .ind-table td.th-center {
     text-align: center;
 }
 
-/* Industry Name column: max 20% width with tooltip */
+/* Static sticky Industry column: max 20% width on column only, not to texts, with full tooltip */
 .ind-table th.th-name,
 .ind-table td.td-industry-name {
+    position: sticky;
+    left: 50px;
     width: 20%;
     max-width: 20%;
-    min-width: 150px;
+    min-width: 180px;
     box-sizing: border-box;
+    border-right: 1px solid var(--border-color, #2a2e39);
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.18);
+}
+
+.ind-table th.th-name {
+    top: 0;
+    z-index: 24;
+    background: var(--bg-subtle, #1e222d);
 }
 
 .ind-table td.td-industry-name {
+    z-index: 11;
+    background: var(--bg-card, #131722);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     cursor: default;
 }
 
+/* Row hover highlight for sticky columns */
+.ind-table tbody tr:hover td.th-sno,
+.ind-table tbody tr:hover td.td-industry-name {
+    background: #1e2638;
+}
+
+/* Unconstrained inner text - allows full name display up to column width with tooltip on cell */
 .ind-table td.td-industry-name .ind-link-cell {
     font-weight: 700;
     color: #38bdf8;
@@ -290,19 +327,13 @@
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    gap: 5px;
     white-space: nowrap;
 }
 
 .ind-table td.td-industry-name .ind-name-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
-    display: inline-block;
-    max-width: calc(100% - 24px);
+    display: inline;
     vertical-align: middle;
 }
 
@@ -552,6 +583,21 @@
 [data-theme="light"] .ind-table tbody tr:hover {
     background: #f1f5f9;
 }
+[data-theme="light"] .ind-table tbody tr:hover td.th-sno,
+[data-theme="light"] .ind-table tbody tr:hover td.td-industry-name {
+    background: #f1f5f9;
+}
+[data-theme="light"] .ind-table th.th-sno,
+[data-theme="light"] .ind-table th.th-name {
+    background: #f8fafc;
+    border-right-color: #e2e8f0;
+}
+[data-theme="light"] .ind-table td.th-sno,
+[data-theme="light"] .ind-table td.td-industry-name {
+    background: #ffffff;
+    border-right-color: #e2e8f0;
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.04);
+}
 [data-theme="light"] .ind-search-box input,
 [data-theme="light"] .btn-ind-action,
 [data-theme="light"] .macro-pill,
@@ -598,10 +644,6 @@
     }
     .ind-search-box input:focus {
         width: 100%;
-    }
-    .ind-table th.th-name,
-    .ind-table td.td-industry-name {
-        max-width: 180px;
     }
     .ind-banner-stats {
         gap: 12px;

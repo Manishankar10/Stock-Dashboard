@@ -263,9 +263,6 @@
                             <span>⚒️</span> <strong class="ind-name-text">${escapeHtml(ind.name)}</strong>
                         </a>
                     </td>
-                    <td><span class="ind-tag-pill">${escapeHtml(ind.macro_name)}</span></td>
-                    <td><span class="ind-tag-pill">${escapeHtml(ind.sector_name)}</span></td>
-                    <td><span class="ind-tag-pill">${escapeHtml(ind.industry_group_name)}</span></td>
                     <td class="th-num"><strong>${ind.company_count}</strong></td>
                     <td class="th-num">₹${fmtNum(ind.total_market_cap, 0)}</td>
                     <td class="th-num">₹${fmtNum(ind.median_market_cap, 0)}</td>
@@ -274,6 +271,9 @@
                     <td class="th-num">${opmVal}</td>
                     <td class="th-num"><strong>${roceVal}</strong></td>
                     <td class="th-num">${fmtPct(ind.return_1y)}</td>
+                    <td><span class="ind-tag-pill">${escapeHtml(ind.macro_name)}</span></td>
+                    <td><span class="ind-tag-pill">${escapeHtml(ind.sector_name)}</span></td>
+                    <td><span class="ind-tag-pill">${escapeHtml(ind.industry_group_name)}</span></td>
                 </tr>
             `;
         });
