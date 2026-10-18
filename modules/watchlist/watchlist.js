@@ -1137,8 +1137,13 @@
 
                     const positionSubmenu = () => {
                         submenu.style.display = 'block';
-                        const rect = submenu.getBoundingClientRect();
-                        if (rect.left < 8) {
+                        const smWidth = submenu.offsetWidth || 185;
+                        const smHeight = submenu.offsetHeight || 220;
+                        const popRect = popover.getBoundingClientRect();
+                        const vh = window.innerHeight || document.documentElement.clientHeight;
+
+                        // Check horizontal clearance: if flyout to left fits, go left, else flyout right
+                        if (popRect.left - smWidth - 6 < 8) {
                             submenu.style.right = 'auto';
                             submenu.style.left = '100%';
                             submenu.style.marginRight = '0';
@@ -1153,12 +1158,27 @@
                             submenu.classList.remove('bridge-left');
                             submenu.classList.add('bridge-right');
                         }
-                        if (rect.top < 10) {
+
+                        // Check vertical positioning relative to Move item
+                        const mRect = mMove.getBoundingClientRect();
+                        if (vh - mRect.top < smHeight + 10) {
+                            submenu.style.top = 'auto';
+                            submenu.style.bottom = '0';
+                        } else {
                             submenu.style.bottom = 'auto';
                             submenu.style.top = '0';
+                        }
+
+                        // Viewport vertical clamping
+                        const smRect = submenu.getBoundingClientRect();
+                        if (smRect.bottom > vh - 8) {
+                            const diff = smRect.bottom - (vh - 8);
+                            submenu.style.transform = `translateY(-${Math.round(diff)}px)`;
+                        } else if (smRect.top < 10) {
+                            const diff = 10 - smRect.top;
+                            submenu.style.transform = `translateY(${Math.round(diff)}px)`;
                         } else {
-                            submenu.style.bottom = '0';
-                            submenu.style.top = 'auto';
+                            submenu.style.transform = 'none';
                         }
                     };
 
@@ -1330,9 +1350,24 @@
             popover.style.position = 'fixed';
             popover.style.zIndex = '999999';
 
+            const popoverWidth = popover.offsetWidth || 215;
             const popoverHeight = popover.offsetHeight || 260;
-            const spaceBelow = viewportHeight - btnRect.bottom;
-            const spaceAbove = btnRect.top - 60; // 60px reserved for sticky header
+
+            // Detect sticky header in table container to prevent upward collisions
+            const tableContainer = btn.closest('.table-responsive-container') || btn.closest('.wl-table-container');
+            let topBoundary = 10;
+            if (tableContainer) {
+                const thead = tableContainer.querySelector('thead');
+                if (thead) {
+                    const theadRect = thead.getBoundingClientRect();
+                    if (theadRect.bottom > 0 && theadRect.bottom < viewportHeight) {
+                        topBoundary = Math.max(10, theadRect.bottom + 2);
+                    }
+                }
+            }
+
+            const spaceBelow = viewportHeight - btnRect.bottom - 10;
+            const spaceAbove = btnRect.top - topBoundary - 4;
 
             let desiredTop;
             if (spaceBelow >= popoverHeight) {
@@ -1347,13 +1382,18 @@
                 }
             }
 
-            const clampedTop = Math.max(10, Math.min(viewportHeight - popoverHeight - 10, desiredTop));
-            popover.style.top = `${clampedTop}px`;
+            const clampedTop = Math.max(topBoundary, Math.min(viewportHeight - popoverHeight - 10, desiredTop));
+            popover.style.top = `${Math.round(clampedTop)}px`;
             popover.style.bottom = 'auto';
 
-            const rightOffset = viewportWidth - btnRect.right;
-            popover.style.right = `${Math.max(8, rightOffset)}px`;
-            popover.style.left = 'auto';
+            // Precise horizontal positioning: align right edge of popover with right edge of button
+            let desiredLeft = btnRect.right - popoverWidth;
+            if (desiredLeft < 8) desiredLeft = 8;
+            if (desiredLeft + popoverWidth > viewportWidth - 8) {
+                desiredLeft = viewportWidth - popoverWidth - 8;
+            }
+            popover.style.left = `${Math.round(desiredLeft)}px`;
+            popover.style.right = 'auto';
             popover.style.maxWidth = `${Math.min(260, viewportWidth - 16)}px`;
 
             const parentTr = btn.closest('tr');

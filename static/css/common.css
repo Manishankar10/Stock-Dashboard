@@ -2613,13 +2613,8 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 
-/* Prevent clipping of action dropdowns and flyout menus in watchlist container */
-.table-responsive-container.wl-container-menu-open,
-.wl-table-container.wl-container-menu-open,
-.table-responsive-container:has(.wl-row-menu-open),
-.wl-table-container:has(.wl-row-menu-open) {
-    overflow: visible !important;
-}
+/* Prevent clipping of action dropdowns and flyout menus in watchlist container - Handled globally by floating popover appended to body */
+
 
 /* Global Floating Stock Action Popover */
 #wl-global-stock-popover {
