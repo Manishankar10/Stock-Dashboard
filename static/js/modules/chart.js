@@ -1170,6 +1170,18 @@
             updateDrawingToolButtonsUI();
             showDrawingBanner(toolType);
             enableCanvasInteractions(true);
+            try {
+                if (mainChart) {
+                    mainChart.applyOptions({
+                        handleScroll: {
+                            mouseWheel: true,
+                            pressedMove: false,
+                            horzTouchDrag: false,
+                            vertTouchDrag: false
+                        }
+                    });
+                }
+            } catch(e) {}
         }
 
         function updateDrawingToolButtonsUI() {
@@ -1322,6 +1334,18 @@
             updateDrawingToolButtonsUI();
             hideDrawingBanner();
             enableCanvasInteractions(false);
+            try {
+                if (mainChart) {
+                    mainChart.applyOptions({
+                        handleScroll: {
+                            mouseWheel: true,
+                            pressedMove: true,
+                            horzTouchDrag: true,
+                            vertTouchDrag: true
+                        }
+                    });
+                }
+            } catch(e) {}
             redrawCanvasOverlay();
         }
 
@@ -1490,9 +1514,15 @@
 
         function enableCanvasInteractions(enable) {
             if (drawingCanvas) {
-                drawingCanvas.style.pointerEvents = enable ? 'auto' : 'none';
+                // Keep pointerEvents 'none' so mouse movements reach LightweightCharts underneath
+                // and display the native crosshair cursor and lines on both X and Y axis during new drawings
+                drawingCanvas.style.pointerEvents = 'none';
                 drawingCanvas.style.cursor = enable ? 'crosshair' : 'default';
                 drawingCanvas.style.touchAction = enable ? 'none' : '';
+            }
+            const mainContainer = document.getElementById('mainChartPane');
+            if (mainContainer) {
+                mainContainer.style.cursor = enable ? 'crosshair' : 'default';
             }
         }
 
@@ -2862,9 +2892,6 @@
                 }
 
                 popup.style.setProperty('display', 'inline-flex', 'important');
-                if (drawingCanvas) {
-                    drawingCanvas.style.pointerEvents = 'auto';
-                }
             }
         }
 
