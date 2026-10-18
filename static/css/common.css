@@ -2536,3 +2536,52 @@
         min-width: 180px;
     }
 }
+
+/* Watchlist Stock Move Flyout Submenu */
+.wl-move-menu-item {
+    position: relative;
+}
+
+.wl-move-menu-item:hover > .wl-move-submenu,
+.wl-move-menu-item.active > .wl-move-submenu {
+    display: block !important;
+}
+
+.wl-move-submenu::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -12px;
+    bottom: 0;
+    width: 16px;
+    background: transparent;
+}
+
+.menu-item {
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.menu-item:hover,
+.wl-move-target-item:hover {
+    background-color: var(--table-hover-bg) !important;
+}
+
+[data-theme="dark"] .wl-move-submenu {
+    background: var(--bg-card, #1e222d) !important;
+    border-color: var(--border-color, #2a2e39) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="light"] .wl-move-submenu {
+    background: var(--bg-card, #ffffff) !important;
+    border-color: var(--border-color, #e2e8f0) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Prevent clipping of action dropdowns and flyout menus in watchlist container */
+.table-responsive-container.wl-container-menu-open,
+.wl-table-container.wl-container-menu-open,
+.table-responsive-container:has(.wl-row-menu-open),
+.wl-table-container:has(.wl-row-menu-open) {
+    overflow: visible !important;
+}

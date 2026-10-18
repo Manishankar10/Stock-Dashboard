@@ -275,3 +275,64 @@ def remove_stock(name, symbol):
         save_data(data)
 
     return json_ordered({"success": True, "watchlists": data})
+
+
+@watchlist_bp.route("/api/watchlists/move-stock", methods=["POST"])
+@login_required
+def move_stock():
+    payload = request.get_json(silent=True) or {}
+    source_name = payload.get("source_watchlist")
+    target_name = payload.get("target_watchlist")
+    symbol = payload.get("symbol")
+
+    if not source_name or not target_name or not symbol:
+        return jsonify({"error": "source_watchlist, target_watchlist, and symbol are required"}), 400
+
+    data = load_data()
+    source_key = find_watchlist_key(data, source_name)
+    target_key = find_watchlist_key(data, target_name)
+
+    if not source_key or source_key not in data:
+        return jsonify({"error": f"Source watchlist '{source_name}' not found"}), 404
+    if not target_key or target_key not in data:
+        return jsonify({"error": f"Target watchlist '{target_name}' not found"}), 404
+
+    sym_unquoted = urllib.parse.unquote(str(symbol)).strip()
+    sym_clean = re.sub(r"\.(NS|BO)$", "", sym_unquoted, flags=re.IGNORECASE)
+
+    # 1. Remove from source watchlist
+    matched_sym = None
+    to_remove = []
+    for s in data[source_key]:
+        s_str = str(s).strip()
+        if s_str.upper() == sym_unquoted.upper() or s_str.upper() == str(symbol).strip().upper():
+            matched_sym = s
+            to_remove.append(s)
+        elif re.sub(r"\.(NS|BO)$", "", s_str, flags=re.IGNORECASE).upper() == sym_clean.upper():
+            if not matched_sym:
+                matched_sym = s
+            to_remove.append(s)
+
+    if not matched_sym:
+        matched_sym = str(symbol).strip()
+
+    for s in to_remove:
+        if s in data[source_key]:
+            data[source_key].remove(s)
+
+    # 2. Add to target watchlist if not already present
+    target_existing_clean = {
+        re.sub(r"\.(NS|BO)$", "", str(s).strip(), flags=re.IGNORECASE).upper()
+        for s in data[target_key]
+    }
+    if sym_clean.upper() not in target_existing_clean:
+        data[target_key].append(matched_sym)
+
+    save_data(data)
+    return json_ordered({
+        "success": True,
+        "symbol": matched_sym,
+        "source_watchlist": source_key,
+        "target_watchlist": target_key,
+        "watchlists": data
+    })
