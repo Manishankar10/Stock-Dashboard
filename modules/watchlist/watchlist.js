@@ -1019,6 +1019,42 @@
 
             popover.dataset.sym = sym;
             popover.innerHTML = '';
+            popover.classList.remove('is-fading-out');
+            popover.style.opacity = '1';
+
+            const showPopover = () => {
+                if (window._wlPopoverFadeTimer) {
+                    clearTimeout(window._wlPopoverFadeTimer);
+                    window._wlPopoverFadeTimer = null;
+                }
+                popover.classList.remove('is-fading-out');
+                popover.style.opacity = '1';
+            };
+
+            const fadeOutPopover = () => {
+                if (window._wlPopoverFadeTimer) clearTimeout(window._wlPopoverFadeTimer);
+                popover.classList.add('is-fading-out');
+                window._wlPopoverFadeTimer = setTimeout(() => {
+                    closeAllWlMenus();
+                    window._wlPopoverFadeTimer = null;
+                }, 2000);
+            };
+
+            popover.onmouseenter = showPopover;
+            popover.onmouseleave = (ev) => {
+                const rel = ev.relatedTarget;
+                if (rel && (rel === btn || btn.contains(rel))) return;
+                fadeOutPopover();
+            };
+
+            btn.onmouseenter = showPopover;
+            btn.onmouseleave = (ev) => {
+                const rel = ev.relatedTarget;
+                if (rel && (rel === popover || popover.contains(rel))) return;
+                if (popover && popover.style.display === 'block') {
+                    fadeOutPopover();
+                }
+            };
 
             const info = (stockPricesData && stockPricesData[sym]) || {};
 
@@ -1099,6 +1135,56 @@
                         box-sizing: border-box;
                     `;
 
+                    const positionSubmenu = () => {
+                        submenu.style.display = 'block';
+                        const rect = submenu.getBoundingClientRect();
+                        if (rect.left < 8) {
+                            submenu.style.right = 'auto';
+                            submenu.style.left = '100%';
+                            submenu.style.marginRight = '0';
+                            submenu.style.marginLeft = '4px';
+                            submenu.classList.remove('bridge-right');
+                            submenu.classList.add('bridge-left');
+                        } else {
+                            submenu.style.right = '100%';
+                            submenu.style.left = 'auto';
+                            submenu.style.marginRight = '4px';
+                            submenu.style.marginLeft = '0';
+                            submenu.classList.remove('bridge-left');
+                            submenu.classList.add('bridge-right');
+                        }
+                        if (rect.top < 10) {
+                            submenu.style.bottom = 'auto';
+                            submenu.style.top = '0';
+                        } else {
+                            submenu.style.bottom = '0';
+                            submenu.style.top = 'auto';
+                        }
+                    };
+
+                    const showSubmenu = () => {
+                        if (window._wlSubmenuFadeTimer) {
+                            clearTimeout(window._wlSubmenuFadeTimer);
+                            window._wlSubmenuFadeTimer = null;
+                        }
+                        showPopover();
+                        positionSubmenu();
+                        submenu.classList.remove('is-fading-out');
+                        submenu.classList.add('is-visible');
+                    };
+
+                    const fadeOutSubmenu = () => {
+                        if (window._wlSubmenuFadeTimer) clearTimeout(window._wlSubmenuFadeTimer);
+                        submenu.classList.remove('is-visible');
+                        submenu.classList.add('is-fading-out');
+                        window._wlSubmenuFadeTimer = setTimeout(() => {
+                            submenu.classList.remove('is-fading-out');
+                            submenu.style.display = 'none';
+                            mMove.classList.remove('active');
+                            window._wlSubmenuFadeTimer = null;
+                        }, 2000);
+                    };
+
                     if (otherWatchlists.length === 0) {
                         const emptyItem = document.createElement('div');
                         emptyItem.className = 'wl-move-empty-item';
@@ -1106,6 +1192,11 @@
                         emptyItem.innerText = 'No other watchlists';
                         submenu.appendChild(emptyItem);
                     } else {
+                        const titleItem = document.createElement('div');
+                        titleItem.style.cssText = 'padding: 6px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8); border-bottom: 1px solid var(--border-color); cursor: default;';
+                        titleItem.innerText = 'Move to Watchlist';
+                        submenu.appendChild(titleItem);
+
                         otherWatchlists.forEach(targetWl => {
                             const count = Array.isArray(watchlistsData[targetWl]) ? watchlistsData[targetWl].length : 0;
                             const targetItem = document.createElement('div');
@@ -1153,36 +1244,27 @@
 
                             targetItem.addEventListener('click', handleTargetClick);
                             targetItem.addEventListener('touchend', handleTargetClick);
+                            targetItem.addEventListener('mouseenter', showSubmenu);
                             submenu.appendChild(targetItem);
                         });
                     }
 
-                    // Hover behavior
-                    mMove.addEventListener('mouseenter', () => {
-                        submenu.style.display = 'block';
-                        const rect = submenu.getBoundingClientRect();
-                        if (rect.left < 8) {
-                            submenu.style.right = 'auto';
-                            submenu.style.left = '100%';
-                            submenu.style.marginRight = '0';
-                            submenu.style.marginLeft = '4px';
-                        } else {
-                            submenu.style.right = '100%';
-                            submenu.style.left = 'auto';
-                            submenu.style.marginRight = '4px';
-                            submenu.style.marginLeft = '0';
-                        }
-                        if (rect.top < 10) {
-                            submenu.style.bottom = 'auto';
-                            submenu.style.top = '0';
-                        } else {
-                            submenu.style.bottom = '0';
-                            submenu.style.top = 'auto';
+                    // Hover behavior with 2s fade-out & immediate fade-in
+                    mMove.addEventListener('mouseenter', showSubmenu);
+                    mMove.addEventListener('mouseleave', (ev) => {
+                        const rel = ev.relatedTarget;
+                        if (rel && (rel === submenu || submenu.contains(rel))) return;
+                        if (!mMove.classList.contains('active')) {
+                            fadeOutSubmenu();
                         }
                     });
-                    mMove.addEventListener('mouseleave', () => {
+
+                    submenu.addEventListener('mouseenter', showSubmenu);
+                    submenu.addEventListener('mouseleave', (ev) => {
+                        const rel = ev.relatedTarget;
+                        if (rel && (rel === mMove || mMove.contains(rel))) return;
                         if (!mMove.classList.contains('active')) {
-                            submenu.style.display = 'none';
+                            fadeOutSubmenu();
                         }
                     });
 
@@ -1191,32 +1273,14 @@
                         if (ev.target.closest('.wl-move-target-item')) return;
                         ev.preventDefault();
                         ev.stopPropagation();
-                        const isOpen = submenu.style.display === 'block';
+                        const isOpen = submenu.classList.contains('is-visible') && !submenu.classList.contains('is-fading-out');
                         if (isOpen) {
+                            submenu.classList.remove('is-visible', 'is-fading-out');
                             submenu.style.display = 'none';
                             mMove.classList.remove('active');
                         } else {
-                            submenu.style.display = 'block';
+                            showSubmenu();
                             mMove.classList.add('active');
-                            const rect = submenu.getBoundingClientRect();
-                            if (rect.left < 8) {
-                                submenu.style.right = 'auto';
-                                submenu.style.left = '100%';
-                                submenu.style.marginRight = '0';
-                                submenu.style.marginLeft = '4px';
-                            } else {
-                                submenu.style.right = '100%';
-                                submenu.style.left = 'auto';
-                                submenu.style.marginRight = '4px';
-                                submenu.style.marginLeft = '0';
-                            }
-                            if (rect.top < 10) {
-                                submenu.style.bottom = 'auto';
-                                submenu.style.top = '0';
-                            } else {
-                                submenu.style.bottom = '0';
-                                submenu.style.top = 'auto';
-                            }
                         }
                     });
 
@@ -1300,12 +1364,28 @@
 
         function closeAllWlMenus() {
             let hadOpen = false;
+            if (window._wlSubmenuFadeTimer) {
+                clearTimeout(window._wlSubmenuFadeTimer);
+                window._wlSubmenuFadeTimer = null;
+            }
+            if (window._wlPopoverFadeTimer) {
+                clearTimeout(window._wlPopoverFadeTimer);
+                window._wlPopoverFadeTimer = null;
+            }
             const popover = document.getElementById('wl-global-stock-popover');
             if (popover && popover.style.display === 'block') {
                 hadOpen = true;
                 popover.style.display = 'none';
+                popover.classList.remove('is-fading-out');
+                popover.style.opacity = '1';
                 popover.dataset.sym = '';
             }
+            document.querySelectorAll('.wl-move-submenu').forEach(el => {
+                el.classList.remove('is-visible', 'is-fading-out');
+                el.style.display = 'none';
+                el.style.opacity = '0';
+            });
+            document.querySelectorAll('.wl-move-menu-item.active').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => {
                 if (el.style.display === 'block') {
                     hadOpen = true;
@@ -1314,8 +1394,6 @@
             });
             document.querySelectorAll('.wl-row-menu-open').forEach(el => el.classList.remove('wl-row-menu-open'));
             document.querySelectorAll('.wl-container-menu-open').forEach(el => el.classList.remove('wl-container-menu-open'));
-            document.querySelectorAll('.wl-move-menu-item.active').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.wl-move-submenu').forEach(el => { el.style.display = 'none'; });
             if (hadOpen) {
                 window._wlMenuJustClosed = true;
                 setTimeout(() => { window._wlMenuJustClosed = false; }, 300);
@@ -1335,6 +1413,9 @@
             }, { passive: true });
             document.addEventListener('scroll', (e) => {
                 if (e.target && e.target !== document) {
+                    if (e.target.closest && (e.target.closest('#wl-global-stock-popover') || e.target.closest('.wl-move-submenu'))) {
+                        return; // Do not close if scrolling inside the popover or submenu
+                    }
                     closeAllWlMenus();
                 }
             }, { capture: true, passive: true });
