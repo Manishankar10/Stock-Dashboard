@@ -584,6 +584,11 @@
         width: 100%;
         justify-content: space-between;
     }
+    .ind-table-meta-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
     .ind-search-box {
         width: 100%;
         margin-left: 0;
