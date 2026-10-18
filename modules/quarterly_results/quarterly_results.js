@@ -424,7 +424,7 @@
     }
 
     function setQrPageSize(size) {
-        qrState.pageSize = size === 'all' ? 'all' : Number(size);
+        qrState.pageSize = Number(size) || 10;
         qrState.currentPage = 1;
         renderCurrentResultsStream();
     }
