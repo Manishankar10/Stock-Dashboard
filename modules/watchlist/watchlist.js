@@ -809,237 +809,7 @@
                         toggleWlRowMenu(e, sym);
                     };
 
-                    const menuDropdown = document.createElement('div');
-                    menuDropdown.id = `wl-row-menu-${sym}`;
-                    menuDropdown.className = 'menu-dropdown-content';
-                    menuDropdown.style.cssText = `
-                        display: none;
-                        position: absolute;
-                        right: 0;
-                        top: 100%;
-                        margin-top: 4px;
-                        z-index: 1000;
-                        min-width: 170px;
-                        background: var(--bg-card);
-                        border: 1px solid var(--border-color);
-                        border-radius: 8px;
-                        box-shadow: var(--shadow-md);
-                        padding: 4px 0;
-                        text-align: left;
-                    `;
-
-                    const menuItems = [
-                        { label: '📊 Technical Chart', action: () => {
-                            if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
-                            else if (typeof openInHouseChart === 'function') openInHouseChart(sym);
-                        }},
-                        { label: '📈 Fundamentals', action: () => {
-                            if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
-                            else if (typeof openFundamentalsModal === 'function') openFundamentalsModal(sym);
-                        }},
-                        { label: '🏛️ Institutional & Broker Research', action: () => {
-                            if (typeof window.openBrokerResearchModal === 'function') window.openBrokerResearchModal(sym, info.name || sym);
-                        }},
-                        { label: '📰 Latest News', action: () => {
-                            if (typeof window.openStockNewsModal === 'function') window.openStockNewsModal(sym);
-                            else if (typeof openStockNewsModal === 'function') openStockNewsModal(sym);
-                        }},
-                        { label: '🔔 Set Price Alert', action: () => {
-                            if (typeof window.openCreateAlertModal === 'function') window.openCreateAlertModal(sym);
-                            else if (typeof openCreateAlertModal === 'function') openCreateAlertModal(sym);
-                        }},
-                        { divider: true },
-                        { isMove: true },
-                        { label: '🗑️ Remove Stock', danger: true, action: () => {
-                            if (typeof window.removeWatchlistStock === 'function') window.removeWatchlistStock(null, sym);
-                            else if (typeof removeWatchlistStock === 'function') removeWatchlistStock(null, sym);
-                        }}
-                    ];
-
-                    menuItems.forEach(item => {
-                        if (item.divider) {
-                            const d = document.createElement('div');
-                            d.style.cssText = 'height: 1px; background: var(--border-color); margin: 4px 0;';
-                            menuDropdown.appendChild(d);
-                            return;
-                        }
-
-                        if (item.isMove) {
-                            const otherWatchlists = Object.keys(watchlistsData || {}).filter(wName => wName !== activeWatchlistName);
-                            const mMove = document.createElement('div');
-                            mMove.className = 'menu-item wl-move-menu-item';
-                            mMove.style.cssText = `padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: space-between; position: relative; color: var(--text-primary);`;
-
-                            const labelSpan = document.createElement('span');
-                            labelSpan.style.cssText = 'display: inline-flex; align-items: center; gap: 8px;';
-                            labelSpan.innerHTML = '<span>📁</span><span>Move</span>';
-
-                            const arrowSpan = document.createElement('span');
-                            arrowSpan.className = 'wl-move-arrow';
-                            arrowSpan.style.cssText = 'font-size: 10px; opacity: 0.7; margin-left: auto; padding-left: 10px;';
-                            arrowSpan.innerHTML = '◂';
-
-                            mMove.appendChild(labelSpan);
-                            mMove.appendChild(arrowSpan);
-
-                            const submenu = document.createElement('div');
-                            submenu.className = 'wl-move-submenu';
-                            submenu.style.cssText = `
-                                display: none;
-                                position: absolute;
-                                right: 100%;
-                                bottom: 0;
-                                margin-right: 4px;
-                                min-width: 170px;
-                                max-width: 240px;
-                                max-height: 240px;
-                                overflow-y: auto;
-                                overflow-x: hidden;
-                                background: var(--bg-card);
-                                border: 1px solid var(--border-color);
-                                border-radius: 8px;
-                                box-shadow: var(--shadow-md, 0 10px 25px rgba(0, 0, 0, 0.3));
-                                padding: 4px 0;
-                                z-index: 10070;
-                                text-align: left;
-                                box-sizing: border-box;
-                            `;
-
-                            if (otherWatchlists.length === 0) {
-                                const emptyItem = document.createElement('div');
-                                emptyItem.className = 'wl-move-empty-item';
-                                emptyItem.style.cssText = 'padding: 8px 14px; font-size: 11px; color: var(--text-secondary); font-style: italic;';
-                                emptyItem.innerText = 'No other watchlists';
-                                submenu.appendChild(emptyItem);
-                            } else {
-                                otherWatchlists.forEach(targetWl => {
-                                    const count = Array.isArray(watchlistsData[targetWl]) ? watchlistsData[targetWl].length : 0;
-                                    const targetItem = document.createElement('div');
-                                    targetItem.className = 'menu-item wl-move-target-item';
-                                    targetItem.style.cssText = `
-                                        padding: 8px 14px;
-                                        font-size: 12px;
-                                        font-weight: 500;
-                                        cursor: pointer;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: space-between;
-                                        gap: 10px;
-                                        color: var(--text-primary);
-                                    `;
-
-                                    const targetNameSpan = document.createElement('span');
-                                    targetNameSpan.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;';
-                                    targetNameSpan.title = targetWl;
-                                    targetNameSpan.innerText = targetWl;
-
-                                    const targetBadge = document.createElement('span');
-                                    targetBadge.style.cssText = 'font-size: 10px; color: var(--text-secondary); opacity: 0.8; font-weight: normal; flex-shrink: 0;';
-                                    targetBadge.innerText = `${count} ${count === 1 ? 'stock' : 'stocks'}`;
-
-                                    targetItem.appendChild(targetNameSpan);
-                                    targetItem.appendChild(targetBadge);
-
-                                    let targetTriggerTime = 0;
-                                    const handleTargetClick = (ev) => {
-                                        const now = Date.now();
-                                        if (now - targetTriggerTime < 350) return;
-                                        targetTriggerTime = now;
-                                        if (ev) {
-                                            ev.preventDefault();
-                                            ev.stopPropagation();
-                                            ev.stopImmediatePropagation();
-                                        }
-                                        window._wlMenuJustClosed = true;
-                                        setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
-                                        closeAllWlMenus();
-                                        moveWatchlistStock(activeWatchlistName, targetWl, sym);
-                                    };
-
-                                    targetItem.addEventListener('click', handleTargetClick);
-                                    targetItem.addEventListener('touchend', handleTargetClick);
-                                    submenu.appendChild(targetItem);
-                                });
-                            }
-
-                            // Show on hover (via mouseenter/mouseleave + CSS)
-                            mMove.addEventListener('mouseenter', () => {
-                                submenu.style.display = 'block';
-                                const rect = submenu.getBoundingClientRect();
-                                if (rect.left < 8) {
-                                    submenu.style.right = 'auto';
-                                    submenu.style.left = '100%';
-                                    submenu.style.marginRight = '0';
-                                    submenu.style.marginLeft = '4px';
-                                }
-                            });
-                            mMove.addEventListener('mouseleave', () => {
-                                if (!mMove.classList.contains('active')) {
-                                    submenu.style.display = 'none';
-                                }
-                            });
-
-                            // Mobile tap toggle
-                            mMove.addEventListener('click', (ev) => {
-                                if (ev.target.closest('.wl-move-target-item')) return;
-                                ev.preventDefault();
-                                ev.stopPropagation();
-                                const isOpen = submenu.style.display === 'block';
-                                if (isOpen) {
-                                    submenu.style.display = 'none';
-                                    mMove.classList.remove('active');
-                                } else {
-                                    submenu.style.display = 'block';
-                                    mMove.classList.add('active');
-                                    const rect = submenu.getBoundingClientRect();
-                                    if (rect.left < 8) {
-                                        submenu.style.right = 'auto';
-                                        submenu.style.left = '100%';
-                                        submenu.style.marginRight = '0';
-                                        submenu.style.marginLeft = '4px';
-                                    }
-                                }
-                            });
-
-                            mMove.appendChild(submenu);
-                            menuDropdown.appendChild(mMove);
-                            return;
-                        }
-
-                        const mBtn = document.createElement('div');
-                        mBtn.className = 'menu-item';
-                        mBtn.style.cssText = `padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: ${item.danger ? '#ef4444' : 'var(--text-primary)'};`;
-                        mBtn.innerText = item.label;
-
-                        let lastTriggerTime = 0;
-                        const handleAction = (ev) => {
-                            const now = Date.now();
-                            if (now - lastTriggerTime < 350) return;
-                            lastTriggerTime = now;
-                            if (ev) {
-                                ev.preventDefault();
-                                ev.stopPropagation();
-                                ev.stopImmediatePropagation();
-                            }
-                            window._wlMenuJustClosed = true;
-                            setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
-                            closeAllWlMenus();
-                            try {
-                                if (typeof item.action === 'function') {
-                                    item.action();
-                                }
-                            } catch (err) {
-                                console.error('Watchlist menu action error:', err);
-                            }
-                        };
-
-                        mBtn.addEventListener('touchend', handleAction);
-                        mBtn.addEventListener('click', handleAction);
-                        menuDropdown.appendChild(mBtn);
-                    });
-
-                    menuWrapper.appendChild(menuBtn);
-                    menuWrapper.appendChild(menuDropdown);
+                            menuWrapper.appendChild(menuBtn);
                     tdActions.appendChild(menuWrapper);
 
 
@@ -1228,56 +998,292 @@
                 e.preventDefault();
                 e.stopPropagation();
             }
-            const dropdown = document.getElementById(`wl-row-menu-${sym}`);
             const btn = e ? (e.currentTarget || (e.target && e.target.closest ? e.target.closest('button') : null)) : null;
-            const parentTr = dropdown ? dropdown.closest('tr') : null;
-            const isAlreadyOpen = dropdown && dropdown.style.display === 'block';
+            if (!btn) return;
+
+            let popover = document.getElementById('wl-global-stock-popover');
+            const isAlreadyOpen = popover && popover.style.display === 'block' && popover.dataset.sym === sym;
 
             closeAllWlMenus();
 
-            if (dropdown && !isAlreadyOpen) {
-                const btnRect = btn ? btn.getBoundingClientRect() : (dropdown.parentElement ? dropdown.parentElement.getBoundingClientRect() : null);
-                const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-                const container = dropdown.closest('.table-responsive-container') || dropdown.closest('.wl-table-container');
-                const contRect = container ? container.getBoundingClientRect() : null;
-
-                let shouldOpenUp = false;
-                if (btnRect) {
-                    const spaceBelowView = viewportHeight - btnRect.bottom;
-                    const spaceAboveView = btnRect.top - 60;
-                    const spaceBelowCont = contRect ? (contRect.bottom - btnRect.bottom) : spaceBelowView;
-                    const spaceAboveCont = contRect ? (btnRect.top - contRect.top) : spaceAboveView;
-                    const MENU_CLEARANCE = 260; // Full dropdown height with Move & Remove
-
-                    if (spaceBelowCont < MENU_CLEARANCE || spaceBelowView < MENU_CLEARANCE) {
-                        if (spaceAboveCont >= MENU_CLEARANCE || spaceAboveCont > spaceBelowCont || spaceAboveView > spaceBelowView) {
-                            shouldOpenUp = true;
-                        }
-                    }
-                }
-
-                if (shouldOpenUp) {
-                    dropdown.style.top = 'auto';
-                    dropdown.style.bottom = '100%';
-                    dropdown.style.marginTop = '0';
-                    dropdown.style.marginBottom = '4px';
-                } else {
-                    dropdown.style.top = '100%';
-                    dropdown.style.bottom = 'auto';
-                    dropdown.style.marginTop = '4px';
-                    dropdown.style.marginBottom = '0';
-                }
-
-                dropdown.style.zIndex = '10060';
-                dropdown.style.display = 'block';
-                if (parentTr) parentTr.classList.add('wl-row-menu-open');
-                if (container) container.classList.add('wl-container-menu-open');
-                _wlMenuOpenScrollY = window.scrollY || window.pageYOffset || 0;
+            if (isAlreadyOpen) {
+                return;
             }
+
+            if (!popover) {
+                popover = document.createElement('div');
+                popover.id = 'wl-global-stock-popover';
+                popover.className = 'menu-dropdown-content wl-global-popover';
+                document.body.appendChild(popover);
+            }
+
+            popover.dataset.sym = sym;
+            popover.innerHTML = '';
+
+            const info = (stockPricesData && stockPricesData[sym]) || {};
+
+            const menuItems = [
+                { label: '📊 Technical Chart', action: () => {
+                    if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
+                    else if (typeof openInHouseChart === 'function') openInHouseChart(sym);
+                }},
+                { label: '📈 Fundamentals', action: () => {
+                    if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
+                    else if (typeof openFundamentalsModal === 'function') openFundamentalsModal(sym);
+                }},
+                { label: '🏛️ Institutional & Broker Research', action: () => {
+                    if (typeof window.openBrokerResearchModal === 'function') window.openBrokerResearchModal(sym, info.name || sym);
+                }},
+                { label: '📰 Latest News', action: () => {
+                    if (typeof window.openStockNewsModal === 'function') window.openStockNewsModal(sym);
+                    else if (typeof openStockNewsModal === 'function') openStockNewsModal(sym);
+                }},
+                { label: '🔔 Set Price Alert', action: () => {
+                    if (typeof window.openCreateAlertModal === 'function') window.openCreateAlertModal(sym);
+                    else if (typeof openCreateAlertModal === 'function') openCreateAlertModal(sym);
+                }},
+                { divider: true },
+                { isMove: true },
+                { label: '🗑️ Remove Stock', danger: true, action: () => {
+                    if (typeof window.removeWatchlistStock === 'function') window.removeWatchlistStock(null, sym);
+                    else if (typeof removeWatchlistStock === 'function') removeWatchlistStock(null, sym);
+                }}
+            ];
+
+            menuItems.forEach(item => {
+                if (item.divider) {
+                    const d = document.createElement('div');
+                    d.style.cssText = 'height: 1px; background: var(--border-color); margin: 4px 0;';
+                    popover.appendChild(d);
+                    return;
+                }
+
+                if (item.isMove) {
+                    const otherWatchlists = Object.keys(watchlistsData || {}).filter(wName => wName !== activeWatchlistName);
+                    const mMove = document.createElement('div');
+                    mMove.className = 'menu-item wl-move-menu-item';
+                    mMove.style.cssText = 'padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: space-between; position: relative; color: var(--text-primary);';
+
+                    const labelSpan = document.createElement('span');
+                    labelSpan.style.cssText = 'display: inline-flex; align-items: center; gap: 8px;';
+                    labelSpan.innerHTML = '<span>📁</span><span>Move</span>';
+
+                    const arrowSpan = document.createElement('span');
+                    arrowSpan.className = 'wl-move-arrow';
+                    arrowSpan.style.cssText = 'font-size: 10px; opacity: 0.7; margin-left: auto; padding-left: 10px;';
+                    arrowSpan.innerHTML = '◂';
+
+                    mMove.appendChild(labelSpan);
+                    mMove.appendChild(arrowSpan);
+
+                    const submenu = document.createElement('div');
+                    submenu.className = 'wl-move-submenu';
+                    submenu.style.cssText = `
+                        display: none;
+                        position: absolute;
+                        right: 100%;
+                        bottom: 0;
+                        margin-right: 4px;
+                        min-width: 170px;
+                        max-width: 240px;
+                        max-height: 240px;
+                        overflow-y: auto;
+                        overflow-x: hidden;
+                        background: var(--bg-card);
+                        border: 1px solid var(--border-color);
+                        border-radius: 8px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
+                        padding: 4px 0;
+                        z-index: 1000000;
+                        text-align: left;
+                        box-sizing: border-box;
+                    `;
+
+                    if (otherWatchlists.length === 0) {
+                        const emptyItem = document.createElement('div');
+                        emptyItem.className = 'wl-move-empty-item';
+                        emptyItem.style.cssText = 'padding: 8px 14px; font-size: 11px; color: var(--text-secondary); font-style: italic;';
+                        emptyItem.innerText = 'No other watchlists';
+                        submenu.appendChild(emptyItem);
+                    } else {
+                        otherWatchlists.forEach(targetWl => {
+                            const count = Array.isArray(watchlistsData[targetWl]) ? watchlistsData[targetWl].length : 0;
+                            const targetItem = document.createElement('div');
+                            targetItem.className = 'menu-item wl-move-target-item';
+                            targetItem.style.cssText = `
+                                padding: 8px 14px;
+                                font-size: 12px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                gap: 10px;
+                                box-sizing: border-box;
+                                color: var(--text-primary);
+                            `;
+
+                            const targetNameSpan = document.createElement('span');
+                            targetNameSpan.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;';
+                            targetNameSpan.title = targetWl;
+                            targetNameSpan.innerText = targetWl;
+
+                            const targetBadge = document.createElement('span');
+                            targetBadge.style.cssText = 'font-size: 10px; color: var(--text-secondary); opacity: 0.8; font-weight: normal; flex-shrink: 0;';
+                            targetBadge.innerText = `${count} ${count === 1 ? 'stock' : 'stocks'}`;
+
+                            targetItem.appendChild(targetNameSpan);
+                            targetItem.appendChild(targetBadge);
+
+                            let targetTriggerTime = 0;
+                            const handleTargetClick = (ev) => {
+                                const now = Date.now();
+                                if (now - targetTriggerTime < 350) return;
+                                targetTriggerTime = now;
+                                if (ev) {
+                                    ev.preventDefault();
+                                    ev.stopPropagation();
+                                    ev.stopImmediatePropagation();
+                                }
+                                window._wlMenuJustClosed = true;
+                                setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
+                                closeAllWlMenus();
+                                moveWatchlistStock(activeWatchlistName, targetWl, sym);
+                            };
+
+                            targetItem.addEventListener('click', handleTargetClick);
+                            targetItem.addEventListener('touchend', handleTargetClick);
+                            submenu.appendChild(targetItem);
+                        });
+                    }
+
+                    // Hover behavior
+                    mMove.addEventListener('mouseenter', () => {
+                        submenu.style.display = 'block';
+                        const rect = submenu.getBoundingClientRect();
+                        if (rect.left < 8) {
+                            submenu.style.right = 'auto';
+                            submenu.style.left = '100%';
+                            submenu.style.marginRight = '0';
+                            submenu.style.marginLeft = '4px';
+                        } else {
+                            submenu.style.right = '100%';
+                            submenu.style.left = 'auto';
+                            submenu.style.marginRight = '4px';
+                            submenu.style.marginLeft = '0';
+                        }
+                    });
+                    mMove.addEventListener('mouseleave', () => {
+                        if (!mMove.classList.contains('active')) {
+                            submenu.style.display = 'none';
+                        }
+                    });
+
+                    // Mobile tap toggle
+                    mMove.addEventListener('click', (ev) => {
+                        if (ev.target.closest('.wl-move-target-item')) return;
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        const isOpen = submenu.style.display === 'block';
+                        if (isOpen) {
+                            submenu.style.display = 'none';
+                            mMove.classList.remove('active');
+                        } else {
+                            submenu.style.display = 'block';
+                            mMove.classList.add('active');
+                            const rect = submenu.getBoundingClientRect();
+                            if (rect.left < 8) {
+                                submenu.style.right = 'auto';
+                                submenu.style.left = '100%';
+                                submenu.style.marginRight = '0';
+                                submenu.style.marginLeft = '4px';
+                            } else {
+                                submenu.style.right = '100%';
+                                submenu.style.left = 'auto';
+                                submenu.style.marginRight = '4px';
+                                submenu.style.marginLeft = '0';
+                            }
+                        }
+                    });
+
+                    mMove.appendChild(submenu);
+                    popover.appendChild(mMove);
+                    return;
+                }
+
+                const mBtn = document.createElement('div');
+                mBtn.className = 'menu-item';
+                mBtn.style.cssText = `padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; color: ${item.danger ? '#ef4444' : 'var(--text-primary)'};`;
+                mBtn.innerText = item.label;
+
+                let lastTriggerTime = 0;
+                const handleAction = (ev) => {
+                    const now = Date.now();
+                    if (now - lastTriggerTime < 350) return;
+                    lastTriggerTime = now;
+                    if (ev) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation();
+                    }
+                    window._wlMenuJustClosed = true;
+                    setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
+                    closeAllWlMenus();
+                    try {
+                        if (typeof item.action === 'function') {
+                            item.action();
+                        }
+                    } catch (err) {
+                        console.error('Watchlist menu action error:', err);
+                    }
+                };
+
+                mBtn.addEventListener('touchend', handleAction);
+                mBtn.addEventListener('click', handleAction);
+                popover.appendChild(mBtn);
+            });
+
+            // Position popover relative to button in fixed viewport coordinates
+            const btnRect = btn.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+            const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+
+            popover.style.display = 'block';
+            popover.style.position = 'fixed';
+            popover.style.zIndex = '999999';
+
+            const popoverHeight = popover.offsetHeight || 260;
+            const spaceBelow = viewportHeight - btnRect.bottom;
+            const spaceAbove = btnRect.top - 60; // 60px reserved for sticky header
+
+            if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
+                // Open UPWARDS
+                popover.style.top = 'auto';
+                popover.style.bottom = `${viewportHeight - btnRect.top + 4}px`;
+            } else {
+                // Open DOWNWARDS
+                popover.style.top = `${btnRect.bottom + 4}px`;
+                popover.style.bottom = 'auto';
+            }
+
+            const rightOffset = viewportWidth - btnRect.right;
+            popover.style.right = `${Math.max(8, rightOffset)}px`;
+            popover.style.left = 'auto';
+
+            const parentTr = btn.closest('tr');
+            if (parentTr) parentTr.classList.add('wl-row-menu-open');
+            _wlMenuOpenScrollY = window.scrollY || window.pageYOffset || 0;
         }
+        window.toggleWlRowMenu = toggleWlRowMenu;
 
         function closeAllWlMenus() {
             let hadOpen = false;
+            const popover = document.getElementById('wl-global-stock-popover');
+            if (popover && popover.style.display === 'block') {
+                hadOpen = true;
+                popover.style.display = 'none';
+                popover.dataset.sym = '';
+            }
             document.querySelectorAll('[id^="wl-row-menu-"]').forEach(el => {
                 if (el.style.display === 'block') {
                     hadOpen = true;
@@ -1296,25 +1302,25 @@
 
         if (!window._wlRowMenuOutsideBound) {
             const handleOutside = (e) => {
-                if (!e.target.closest('.menu-dropdown-content') && !e.target.closest('.wl-row-menu-btn')) {
+                if (!e.target.closest('#wl-global-stock-popover') && !e.target.closest('.menu-dropdown-content') && !e.target.closest('.wl-row-menu-btn')) {
                     closeAllWlMenus();
                 }
             };
             document.addEventListener('click', handleOutside);
             document.addEventListener('touchstart', handleOutside, { passive: true });
             window.addEventListener('scroll', () => {
-                if (window.innerWidth <= 768) {
-                    const currentY = window.scrollY || window.pageYOffset || 0;
-                    if (Math.abs(currentY - _wlMenuOpenScrollY) > 8) {
-                        closeAllWlMenus();
-                    }
-                }
+                closeAllWlMenus();
             }, { passive: true });
-            document.addEventListener('touchmove', (e) => {
-                if (window.innerWidth <= 768 && !e.target.closest('.menu-dropdown-content')) {
+            document.addEventListener('scroll', (e) => {
+                if (e.target && e.target !== document) {
                     closeAllWlMenus();
                 }
-            }, { passive: true });
+            }, { capture: true, passive: true });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeAllWlMenus();
+                }
+            });
             window._wlRowMenuOutsideBound = true;
         }
 

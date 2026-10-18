@@ -2585,3 +2585,30 @@
 .wl-table-container:has(.wl-row-menu-open) {
     overflow: visible !important;
 }
+
+/* Global Floating Stock Action Popover */
+#wl-global-stock-popover {
+    position: fixed;
+    z-index: 999999;
+    min-width: 180px;
+    max-width: 260px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+[data-theme="dark"] #wl-global-stock-popover {
+    background: var(--bg-card, #1e222d) !important;
+    border-color: var(--border-color, #2a2e39) !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="light"] #wl-global-stock-popover {
+    background: var(--bg-card, #ffffff) !important;
+    border-color: var(--border-color, #e2e8f0) !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
