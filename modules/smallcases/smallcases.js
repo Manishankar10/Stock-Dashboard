@@ -959,6 +959,10 @@
             showBulkStatus(`Added ${cleanSym} (Live price: ₹${livePrice.toFixed(2)})`, 'success');
             recalcBulkWeights(true);
             renderBulkStocksTable();
+            setTimeout(() => {
+                const tbl = document.getElementById('scBulkTableContainer');
+                if (tbl) tbl.scrollTop = tbl.scrollHeight;
+            }, 50);
         }
 
         async function addPastedBulkStocks() {
@@ -1019,10 +1023,15 @@
             });
 
             pasteInput.value = '';
-            toggleBulkPasteBox();
+            const pasteArea = document.getElementById('scBulkPasteArea');
+            if (pasteArea) pasteArea.style.display = 'none';
             showBulkStatus(`Added ${uniqueSymbols.length} stocks to basket with live prices!`, 'success');
             recalcBulkWeights(true);
             renderBulkStocksTable();
+            setTimeout(() => {
+                const tbl = document.getElementById('scBulkTableContainer');
+                if (tbl) tbl.scrollTop = tbl.scrollHeight;
+            }, 50);
         }
 
         function removeStockFromBulkBasket(idx) {

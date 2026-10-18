@@ -240,7 +240,7 @@
             </div>
 
             <!-- Modal Scrollable Content -->
-            <div class="sc-bulk-scroll-body" style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 14px;">
+            <div class="sc-bulk-scroll-body">
                 <!-- Top Config Card: All controls in single row -->
                 <div class="sc-bulk-config-card">
                     <div class="sc-bulk-single-row">
@@ -311,30 +311,28 @@
                     </div>
                 </div>
 
-                <!-- Stocks Table / Responsive Grid -->
-                <div class="sc-bulk-table-wrap" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--bg-card);">
-                    <div class="table-responsive-container" style="max-height: 280px; overflow-y: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
-                            <thead>
-                                <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color);">
-                                    <th style="padding: 10px 12px; text-align: left; font-weight: 700;">Stock</th>
-                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 130px;">Price (Live Price)</th>
-                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 110px;">Quantity (Auto Fill)</th>
-                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 120px;">Amount (₹)</th>
-                                    <th style="padding: 10px 12px; text-align: right; font-weight: 700; width: 120px;">Weights (Auto Calc)</th>
-                                    <th style="padding: 10px 12px; text-align: center; font-weight: 700; width: 50px;">✕</th>
-                                </tr>
-                            </thead>
-                            <tbody id="scBulkTableBody">
-                                <!-- Populated dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- Stocks Table / Responsive Grid Container -->
+                <div class="sc-bulk-table-container" id="scBulkTableContainer">
+                    <table class="sc-bulk-table" id="scBulkTable">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">Stock</th>
+                                <th style="text-align: right; width: 130px;">Price (Live Price)</th>
+                                <th style="text-align: right; width: 110px;">Quantity (Auto Fill)</th>
+                                <th style="text-align: right; width: 120px;">Amount (₹)</th>
+                                <th style="text-align: right; width: 125px;">Weights (Auto Calc)</th>
+                                <th style="text-align: center; width: 50px;">✕</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scBulkTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
                     <!-- Empty State Placeholder when no stocks added -->
                     <div id="scBulkEmptyRow" style="padding: 30px 16px; text-align: center; color: var(--text-secondary);">
                         <div style="font-size: 24px; margin-bottom: 6px;">⚖️</div>
                         <div style="font-weight: 600; color: var(--text-primary);">No stocks added to basket yet</div>
-                        <div style="font-size: 12px; margin-top: 4px;">Use the search box above or click "Paste Symbols in Bulk" to add stocks for equal weight distribution.</div>
+                        <div style="font-size: 12px; margin-top: 4px;">Use the search box above or click "Paste" to add stocks for equal weight distribution.</div>
                     </div>
                 </div>
             </div>

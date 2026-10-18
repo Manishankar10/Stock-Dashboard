@@ -73,6 +73,19 @@
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
     border-radius: 14px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 90vh !important;
+    overflow: hidden !important;
+}
+
+.sc-bulk-scroll-body {
+    flex: 1 1 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
 }
 
 /* Bulk Stocks Single-Row Top Toolbar */
@@ -81,6 +94,11 @@
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 12px 14px;
+    flex-shrink: 0;
+}
+
+.sc-bulk-summary-bar {
+    flex-shrink: 0;
 }
 
 .sc-bulk-single-row {
@@ -292,6 +310,114 @@
     border-color: #ef4444;
 }
 
+/* Bulk Stock Dedicated Scrollable Table Container */
+.sc-bulk-table-container {
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 180px;
+    max-height: 380px;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain;
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-card);
+}
+
+/* Custom Sleek Scrollbars */
+.sc-bulk-table-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.sc-bulk-table-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.sc-bulk-table-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+}
+
+.sc-bulk-table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.5);
+}
+
+:root:not([data-theme="dark"]) .sc-bulk-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+}
+
+:root:not([data-theme="dark"]) .sc-bulk-table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Static Sticky Header Bulk Stocks Table */
+.sc-bulk-table {
+    width: 100%;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    font-size: 12.5px;
+    margin: 0;
+}
+
+.sc-bulk-table thead,
+.sc-bulk-table thead tr,
+.sc-bulk-table thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 25 !important;
+}
+
+.sc-bulk-table thead th {
+    background: var(--bg-card, #131722) !important;
+    color: var(--text-secondary, #94a3b8) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    padding: 10px 12px !important;
+    border-bottom: 2px solid var(--border-color, rgba(255, 255, 255, 0.15)) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+    white-space: nowrap !important;
+}
+
+:root:not([data-theme="dark"]) .sc-bulk-table thead th {
+    background: #f8fafc !important;
+    color: #475569 !important;
+    border-bottom-color: #cbd5e1 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.sc-bulk-table tbody tr {
+    background: var(--bg-card, #131722);
+    transition: background 0.15s ease;
+}
+
+.sc-bulk-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+:root:not([data-theme="dark"]) .sc-bulk-table tbody tr {
+    background: #ffffff;
+}
+
+:root:not([data-theme="dark"]) .sc-bulk-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.sc-bulk-table tbody td {
+    padding: 10px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
+}
+
+:root:not([data-theme="dark"]) .sc-bulk-table tbody td {
+    border-bottom-color: #f1f5f9 !important;
+}
+
 /* Holdings Action Buttons Row */
 .sc-holdings-header {
     display: flex;
@@ -401,37 +527,68 @@
         text-overflow: ellipsis !important;
     }
 
-    .sc-bulk-single-row {
-        flex-direction: column !important;
-        align-items: stretch !important;
+    .sc-bulk-modal-content {
+        padding: 12px 10px !important;
+        width: 98vw !important;
+        max-width: 98vw !important;
+        max-height: 94vh !important;
+    }
+
+    .sc-bulk-scroll-body {
         gap: 10px !important;
     }
 
-    .sc-bulk-col-amount,
-    .sc-bulk-col-date,
-    .sc-bulk-col-search {
+    /* Single row wraps into 2 neat rows on mobile: Row 1 = Amount & Date side-by-side, Row 2 = Search full width */
+    .sc-bulk-single-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+
+    .sc-bulk-col-amount {
+        grid-column: 1 / 2 !important;
         width: 100% !important;
         flex: none !important;
     }
 
-
-    .sc-bulk-modal-content {
-        padding: 14px 10px !important;
-        width: 98vw !important;
-        max-width: 98vw !important;
+    .sc-bulk-col-date {
+        grid-column: 2 / 3 !important;
+        width: 100% !important;
+        flex: none !important;
     }
 
-    .sc-bulk-config-grid {
-        grid-template-columns: 1fr !important;
-        gap: 10px !important;
+    .sc-bulk-col-search {
+        grid-column: 1 / 3 !important;
+        width: 100% !important;
+        flex: none !important;
     }
 
     .sc-bulk-summary-bar {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+        padding: 8px 10px !important;
     }
 
-    .sc-bulk-table-wrap table {
+    .sc-bulk-summary-bar > div:nth-child(4) {
+        grid-column: 1 / 2 !important;
+    }
+
+    .sc-bulk-summary-bar > div:nth-child(5) {
+        grid-column: 2 / 4 !important;
+    }
+
+    .sc-bulk-table-container {
+        min-height: 180px !important;
+        max-height: 270px !important;
+    }
+
+    .sc-bulk-table thead th {
+        padding: 8px 10px !important;
+        font-size: 10.5px !important;
+    }
+
+    .sc-bulk-table tbody td {
+        padding: 8px 10px !important;
         font-size: 11.5px !important;
     }
 
@@ -439,6 +596,15 @@
         width: 75px !important;
         padding: 4px 6px !important;
         font-size: 11.5px !important;
+    }
+}
+
+@media (max-height: 520px) {
+    .sc-bulk-modal-content {
+        overflow-y: auto !important;
+    }
+    .sc-bulk-scroll-body {
+        overflow: visible !important;
     }
 }
 
