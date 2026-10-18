@@ -3152,25 +3152,24 @@
         display: none !important;
     }
 
-    /* Mobile Drawn Tool Action Popup: Hide tool name and divider, show only compact icon buttons */
-    .canvas-obj-title,
-    .canvas-obj-divider {
+    /* Mobile Drawn Tool Action Popup: Sleek compact floating action toolbar */
+    .canvas-obj-title {
         display: none !important;
     }
 
     .canvas-object-popup {
-        padding: 4px 6px !important;
-        gap: 5px !important;
+        padding: 2px 4px !important;
+        gap: 1px !important;
+        height: 32px !important;
     }
 
     .canvas-obj-btn {
-        width: 28px !important;
-        height: 28px !important;
-        font-size: 13.5px !important;
+        width: 26px !important;
+        height: 26px !important;
     }
 
-    .canvas-obj-color-btn {
-        width: 24px !important;
+    .canvas-obj-drag-handle {
+        width: 12px !important;
         height: 24px !important;
     }
 

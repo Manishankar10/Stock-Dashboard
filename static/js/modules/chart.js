@@ -57,6 +57,13 @@
         var cachedChartData = null;
         var latestCandlePrice = 0;
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
+        }
+
         function toggleChartPopover(popoverId, event) {
             if (event) event.stopPropagation();
             const targetMenu = document.getElementById(popoverId);
@@ -84,6 +91,14 @@
                     return;
                 }
                 closeAllChartPopovers();
+            }
+
+            // Close more menu on outside click
+            const moreMenu = document.getElementById('canvasObjMoreMenu');
+            if (moreMenu && moreMenu.style.display === 'flex') {
+                if (!e.target || !e.target.closest || (!e.target.closest('#canvasObjMoreMenu') && !e.target.closest('.canvas-obj-more-btn'))) {
+                    moreMenu.style.display = 'none';
+                }
             }
 
             // On mobile view only: close drawing action popup if user taps outside
@@ -2643,6 +2658,68 @@
             return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
         }
 
+        function makeCanvasPopupDraggable(popup, handle) {
+            if (!popup || !handle || handle.dataset.dragBound) return;
+            handle.dataset.dragBound = '1';
+
+            function onStart(e) {
+                if (e.type === 'mousedown' && e.button !== 0) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const startX = clientX;
+                const startY = clientY;
+                const initialLeft = popup.offsetLeft;
+                const initialTop = popup.offsetTop;
+                const mainContainer = document.getElementById('mainChartPane');
+
+                handle.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+
+                function onMove(ev) {
+                    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                    const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                    const dx = cx - startX;
+                    const dy = cy - startY;
+                    const maxW = (mainContainer ? mainContainer.clientWidth : window.innerWidth) - popup.offsetWidth - 8;
+                    const maxH = (mainContainer ? mainContainer.clientHeight : window.innerHeight) - popup.offsetHeight - 8;
+                    popup.style.left = Math.max(6, Math.min(initialLeft + dx, maxW)) + 'px';
+                    popup.style.top = Math.max(6, Math.min(initialTop + dy, maxH)) + 'px';
+                    if (ev.cancelable) ev.preventDefault();
+                }
+
+                function onEnd() {
+                    handle.style.cursor = 'grab';
+                    document.body.style.userSelect = '';
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onEnd);
+                    window.removeEventListener('touchmove', onMove);
+                    window.removeEventListener('touchend', onEnd);
+                }
+
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onEnd);
+                window.addEventListener('touchmove', onMove, { passive: false });
+                window.addEventListener('touchend', onEnd);
+
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            handle.addEventListener('mousedown', onStart);
+            handle.addEventListener('touchstart', onStart, { passive: false });
+        }
+
+        function toggleCanvasObjectMoreMenu(event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const moreMenu = document.getElementById('canvasObjMoreMenu');
+            if (!moreMenu) return;
+            moreMenu.style.display = (moreMenu.style.display === 'flex') ? 'none' : 'flex';
+        }
+        window.toggleCanvasObjectMoreMenu = toggleCanvasObjectMoreMenu;
+
         function showCanvasObjectMenu(obj, x, y) {
             let popup = document.getElementById('canvasObjectPopup');
             const mainContainer = document.getElementById('mainChartPane');
@@ -2659,52 +2736,132 @@
 
             if (popup && mainContainer) {
                 const isMobile = window.innerWidth <= 768;
-                const estimatedWidth = isMobile ? 140 : 220;
+                const estimatedWidth = isMobile ? 165 : 195;
                 popup.style.left = Math.max(10, Math.min(x - 20, mainContainer.clientWidth - estimatedWidth - 10)) + 'px';
                 popup.style.top = Math.max(10, (y > 55 ? (y - 46) : (y + 16))) + 'px';
                 popup.dataset.activeObjId = String(obj.id);
 
                 const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
-                const colorFn = obj.kind === 'line'
-                    ? (isMobile ? `updatePriceLineColorById('${obj.id}', this.value); hideCanvasObjectMenu();` : `updatePriceLineColorById('${obj.id}', this.value)`)
-                    : (isMobile ? `updateShapeColorById('${obj.id}', this.value); hideCanvasObjectMenu();` : `updateShapeColorById('${obj.id}', this.value)`);
                 const toggleVisFn = obj.kind === 'line' ? `togglePriceLineVisibility('${obj.id}'); hideCanvasObjectMenu();` : `toggleShapeVisibility('${obj.id}'); hideCanvasObjectMenu();`;
-                const visIcon = obj.hidden ? '🙈' : '👁️';
                 const visLabel = obj.hidden ? 'Show' : 'Hide';
+                const currentColor = obj.color || '#10b981';
+                const isNote = (obj.kind === 'shape' && obj.type === 'note');
 
                 popup.innerHTML = `
-                    <span class="canvas-obj-title" title="${escapeHtml(obj.name)}">${escapeHtml(obj.name)}</span>
-                    <span class="canvas-obj-divider"></span>
-                    <label class="canvas-obj-color-btn" title="Change Color" aria-label="Change Color">
-                        <input type="color" value="${obj.color || '#10b981'}" onchange="${colorFn}">
+                    <div class="canvas-obj-drag-handle" title="Drag toolbar" aria-label="Drag toolbar">
+                        <svg width="6" height="14" viewBox="0 0 6 14" fill="currentColor">
+                            <circle cx="1.5" cy="2" r="1.1"/>
+                            <circle cx="4.5" cy="2" r="1.1"/>
+                            <circle cx="1.5" cy="7" r="1.1"/>
+                            <circle cx="4.5" cy="7" r="1.1"/>
+                            <circle cx="1.5" cy="12" r="1.1"/>
+                            <circle cx="4.5" cy="12" r="1.1"/>
+                        </svg>
+                    </div>
+                    <label class="canvas-obj-btn canvas-obj-color-tool" title="Line Color" aria-label="Line Color">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                        <span class="canvas-obj-color-bar" style="background-color: ${currentColor};"></span>
+                        <input type="color" value="${currentColor}" class="canvas-obj-color-input" aria-label="Change Color">
                     </label>
-                    <button type="button" class="canvas-obj-btn canvas-obj-vis-btn" onclick="${toggleVisFn}" title="${visLabel} Drawing" aria-label="${visLabel}">
-                        <span>${visIcon}</span>
+                    ${isNote ? `
+                    <button type="button" class="canvas-obj-btn canvas-obj-text-btn" title="Text Note Properties" aria-label="Text Note Properties" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="4 7 4 4 20 4 20 7"/>
+                            <line x1="12" y1="4" x2="12" y2="20"/>
+                        </svg>
+                        <span class="canvas-obj-color-bar" style="background-color: ${currentColor};"></span>
                     </button>
-                    <button type="button" class="canvas-obj-btn canvas-obj-edit-btn" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" title="Edit Drawing Details" aria-label="Edit">
-                        <span>✏️</span>
+                    ` : ''}
+                    <button type="button" class="canvas-obj-btn canvas-obj-settings-btn" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" title="Settings" aria-label="Settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2.5l7.36 4.25v8.5L12 19.5l-7.36-4.25v-8.5L12 2.5z"/>
+                            <circle cx="12" cy="11" r="3.2"/>
+                        </svg>
                     </button>
+                    <button type="button" class="canvas-obj-btn canvas-obj-vis-btn ${obj.hidden ? 'canvas-obj-hidden' : ''}" onclick="${toggleVisFn}" title="${visLabel} Drawing" aria-label="${visLabel}">
+                        ${obj.hidden ? `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                            <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>` : `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>`}
+                    </button>
+                    <span class="canvas-obj-divider"></span>
                     <button type="button" class="canvas-obj-btn canvas-obj-delete-btn" onclick="${deleteFn}" title="Delete Drawing" aria-label="Delete">
-                        <span>🗑️</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            <line x1="10" y1="11" x2="10" y2="17"/>
+                            <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
                     </button>
+                    <button type="button" class="canvas-obj-btn canvas-obj-more-btn" onclick="toggleCanvasObjectMoreMenu(event)" title="More options" aria-label="More options">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="5" cy="12" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="19" cy="12" r="2"/>
+                        </svg>
+                    </button>
+                    <div id="canvasObjMoreMenu" class="canvas-obj-more-menu" style="display: none;">
+                        <div class="canvas-obj-more-header" title="${escapeHtml(obj.name)}">${escapeHtml(obj.name)}</div>
+                        <button type="button" class="canvas-obj-more-item" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.5l7.36 4.25v8.5L12 19.5l-7.36-4.25v-8.5L12 2.5z"/><circle cx="12" cy="11" r="3.2"/></svg>
+                            <span>Settings...</span>
+                        </button>
+                        <button type="button" class="canvas-obj-more-item" onclick="${toggleVisFn}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <span>${visLabel} Drawing</span>
+                        </button>
+                        <button type="button" class="canvas-obj-more-item danger" onclick="${deleteFn}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            <span>Delete Drawing</span>
+                        </button>
+                    </div>
                 `;
 
-                // Responsive mobile view only: after taking any action from the popup, close the popup immediately
-                if (isMobile) {
-                    const colorInput = popup.querySelector('input[type="color"]');
-                    if (colorInput) {
+                // Initialize draggable handle
+                const dragHandle = popup.querySelector('.canvas-obj-drag-handle');
+                if (dragHandle) {
+                    makeCanvasPopupDraggable(popup, dragHandle);
+                }
+
+                // Color picker input handlers
+                const colorInput = popup.querySelector('.canvas-obj-color-input');
+                const colorBar = popup.querySelector('.canvas-obj-color-bar');
+                if (colorInput) {
+                    const onColorChange = function() {
+                        const newColor = this.value;
+                        if (colorBar) colorBar.style.backgroundColor = newColor;
+                        if (obj.kind === 'line') {
+                            updatePriceLineColorById(obj.id, newColor);
+                        } else {
+                            updateShapeColorById(obj.id, newColor);
+                        }
+                    };
+                    colorInput.addEventListener('input', onColorChange);
+                    colorInput.addEventListener('change', onColorChange);
+                    if (isMobile) {
                         colorInput.addEventListener('change', () => {
                             hideCanvasObjectMenu();
                         });
                     }
-                    popup.querySelectorAll('button').forEach(btn => {
+                }
+
+                // Mobile auto-close on action buttons
+                if (isMobile) {
+                    popup.querySelectorAll('button:not(.canvas-obj-more-btn)').forEach(btn => {
                         btn.addEventListener('click', () => {
                             hideCanvasObjectMenu();
                         });
                     });
                 }
 
-                popup.style.setProperty('display', 'flex', 'important');
+                popup.style.setProperty('display', 'inline-flex', 'important');
                 if (drawingCanvas) {
                     drawingCanvas.style.pointerEvents = 'auto';
                 }
@@ -2716,6 +2873,8 @@
             if (popup) {
                 popup.style.setProperty('display', 'none', 'important');
                 popup.dataset.activeObjId = '';
+                const moreMenu = document.getElementById('canvasObjMoreMenu');
+                if (moreMenu) moreMenu.style.display = 'none';
             }
         }
 
@@ -5248,5 +5407,7 @@
         window.renderFavoriteToolsShortcuts = renderFavoriteToolsShortcuts;
         window.toggleFavoriteTool = toggleFavoriteTool;
         window.executeToolById = executeToolById;
+        window.showCanvasObjectMenu = showCanvasObjectMenu;
+        window.hideCanvasObjectMenu = hideCanvasObjectMenu;
 
 
