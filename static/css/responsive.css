@@ -1574,7 +1574,7 @@
         width: 100% !important;
         min-width: 100% !important;
         box-sizing: border-box !important;
-        padding: 8px 12px !important;
+        padding: 8px 32px 8px 36px !important;
         font-size: 12.5px !important;
     }
 
