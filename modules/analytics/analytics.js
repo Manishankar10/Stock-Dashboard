@@ -467,8 +467,7 @@
                     });
 
                     selectorContainer.innerHTML = `
-                        <span class="pa-portfolio-select-label">Select:</span>
-                        <select class="pa-portfolio-select" id="pa-portfolio-select" onchange="window.setPaPortfolio(this.value)">
+                        <select class="pa-portfolio-select" id="pa-portfolio-select" onchange="window.setPaPortfolio(this.value)" aria-label="Select Portfolio">
                             ${optionsHtml}
                         </select>
                     `;
