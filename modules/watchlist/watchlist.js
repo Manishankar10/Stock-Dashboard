@@ -1467,6 +1467,11 @@
                             } else if (type === 'modal-pf') {
                                 const symInput = document.getElementById('modal-pf-add-symbol');
                                 if (symInput) symInput.value = item.symbol;
+                                const priceInput = document.getElementById('modal-pf-add-price');
+                                const info = (typeof stockPricesData !== 'undefined' && stockPricesData[item.symbol]) || {};
+                                if (priceInput && !priceInput.value && info.price) {
+                                    priceInput.value = info.price.toFixed(2);
+                                }
                             } else if (type === 'scTx') {
                                 const symInput = document.getElementById('scTxSymbol');
                                 if (symInput) symInput.value = item.symbol;

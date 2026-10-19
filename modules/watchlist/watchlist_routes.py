@@ -1,12 +1,13 @@
 import os
 import re
 import json
+import difflib
 import datetime
 import urllib.parse
 from flask import Blueprint, request, jsonify, session, render_template, Response
 from modules.common.auth_utils import login_required
 from modules.common.data_paths import BASE_DATA_DIR, DATA_FILE, USER_DATA_DIR
-from modules.common.market_fetcher import resolve_watchlist_symbol, fetcher, stock_cache
+from modules.common.market_fetcher import resolve_watchlist_symbol, fetcher, stock_cache, POPULAR_INDIAN_STOCKS
 from db_store import load_user_doc_db, save_user_doc_db
 
 watchlist_bp = Blueprint("watchlist_api", __name__)

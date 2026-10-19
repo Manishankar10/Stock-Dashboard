@@ -1,12 +1,21 @@
 import os
 import re
+import json
+import difflib
 import datetime
 import uuid
 import math
+import urllib.parse
 from flask import Blueprint, request, jsonify, session, render_template
 from modules.common.auth_utils import login_required
 from modules.common.data_paths import BASE_DATA_DIR, PORTFOLIO_FILE, USER_DATA_DIR
-from modules.common.market_fetcher import resolve_watchlist_symbol, fetcher, stock_cache
+from modules.common.market_fetcher import (
+    resolve_watchlist_symbol,
+    fetcher,
+    stock_cache,
+    format_financial_symbol,
+    POPULAR_INDIAN_STOCKS
+)
 from db_store import load_user_doc_db, save_user_doc_db
 from modules.watchlist.watchlist_routes import get_user_portfolio_file
 
@@ -88,6 +97,22 @@ def save_user_transactions(data, username=None):
     save_user_doc_db("transactions", username, data, filepath)
 
 
+def find_portfolio_key(data, target_name):
+    if not isinstance(data, dict) or not target_name:
+        return None
+    if target_name in data:
+        return target_name
+    name_str = urllib.parse.unquote(str(target_name))
+    if name_str in data:
+        return name_str
+    target_clean = re.sub(r"\s+", " ", name_str).strip().lower()
+    for k in data.keys():
+        if k == target_name or str(k).strip() == str(name_str).strip():
+            return k
+        if re.sub(r"\s+", " ", str(k)).strip().lower() == target_clean:
+            return k
+    return None
+
 @portfolio_bp.route("/api/portfolios", methods=["GET"])
 @login_required
 def get_portfolios():
@@ -100,11 +125,13 @@ def create_portfolio():
     if not name:
         return jsonify({"error": "Portfolio name is required"}), 400
     
+    clean_name = re.sub(r"\s+", " ", str(name)).strip()
     data = load_portfolios()
-    if name in data:
+    target_key = find_portfolio_key(data, clean_name)
+    if target_key:
         return jsonify({"error": "Portfolio already exists"}), 400
     
-    data[name] = []
+    data[clean_name] = []
     save_portfolios(data)
     return jsonify({"success": True, "portfolios": data})
 
@@ -112,8 +139,9 @@ def create_portfolio():
 @login_required
 def delete_portfolio(name):
     data = load_portfolios()
-    if name in data:
-        del data[name]
+    target_key = find_portfolio_key(data, name)
+    if target_key and target_key in data:
+        del data[target_key]
         save_portfolios(data)
     return jsonify({"success": True, "portfolios": data})
 
@@ -151,11 +179,12 @@ def add_portfolio_stock(name):
                 symbol = corrected_sym
 
     data = load_portfolios()
-    if name not in data:
-        return jsonify({"error": "Portfolio not found"}), 404
+    target_key = find_portfolio_key(data, name)
+    if not target_key:
+        return jsonify({"error": f"Portfolio '{name}' not found"}), 404
 
     existing_holding = None
-    for holding in data[name]:
+    for holding in data[target_key]:
         if holding.get("symbol") == symbol:
             existing_holding = holding
             break
@@ -181,7 +210,7 @@ def add_portfolio_stock(name):
         tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
         tx = {
             "id": tx_id,
-            "portfolio": name,
+            "portfolio": target_key,
             "symbol": symbol,
             "type": "BUY",
             "quantity": round(quantity, 4),
@@ -198,7 +227,7 @@ def add_portfolio_stock(name):
         txs.insert(0, tx)
         save_user_transactions(txs)
     else:
-        data[name].append({
+        data[target_key].append({
             "symbol": symbol,
             "buy_price": round(buy_price, 2),
             "quantity": round(quantity, 4),
@@ -210,7 +239,7 @@ def add_portfolio_stock(name):
         tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
         tx = {
             "id": tx_id,
-            "portfolio": name,
+            "portfolio": target_key,
             "symbol": symbol,
             "type": "BUY",
             "quantity": round(quantity, 4),
@@ -253,17 +282,18 @@ def sell_portfolio_stock(name):
 
     symbol = format_financial_symbol(symbol)
     data = load_portfolios()
-    if name not in data:
-        return jsonify({"error": "Portfolio not found"}), 404
+    target_key = find_portfolio_key(data, name)
+    if not target_key:
+        return jsonify({"error": f"Portfolio '{name}' not found"}), 404
 
     target_holding = None
-    for holding in data[name]:
+    for holding in data[target_key]:
         if holding.get("symbol") == symbol:
             target_holding = holding
             break
 
     if not target_holding:
-        return jsonify({"error": f"Stock {symbol} not found in portfolio '{name}'"}), 404
+        return jsonify({"error": f"Stock {symbol} not found in portfolio '{target_key}'"}), 404
 
     curr_qty = float(target_holding.get("quantity", 0))
     avg_buy_price = float(target_holding.get("buy_price", 0))
@@ -276,7 +306,7 @@ def sell_portfolio_stock(name):
 
     rem_qty = curr_qty - sell_qty
     if rem_qty <= 0.0001:
-        data[name] = [h for h in data[name] if h.get("symbol") != symbol]
+        data[target_key] = [h for h in data[target_key] if h.get("symbol") != symbol]
     else:
         target_holding["quantity"] = round(rem_qty, 4)
 
@@ -286,7 +316,7 @@ def sell_portfolio_stock(name):
     tx_id = f"tx_{int(datetime.datetime.now().timestamp() * 1000)}"
     tx = {
         "id": tx_id,
-        "portfolio": name,
+        "portfolio": target_key,
         "symbol": symbol,
         "type": "SELL",
         "quantity": round(sell_qty, 4),
@@ -309,8 +339,9 @@ def sell_portfolio_stock(name):
 @login_required
 def remove_portfolio_stock(name, symbol):
     data = load_portfolios()
-    if name in data:
-        data[name] = [item for item in data[name] if item.get("symbol") != symbol]
+    target_key = find_portfolio_key(data, name)
+    if target_key and target_key in data:
+        data[target_key] = [item for item in data[target_key] if item.get("symbol") != symbol]
         save_portfolios(data)
     return jsonify({"success": True, "portfolios": data})
 

@@ -677,10 +677,18 @@
             if (data.success) {
                 closeAddHoldingModal();
                 portfoliosData = data.portfolios;
+                if (data.transactions) userTransactionsData = data.transactions;
+                if (typeof showToast === 'function') {
+                    showToast(`Added ${symbol} to ${targetPf}`, 'success');
+                }
                 renderPortfolios();
                 refreshPrices();
             } else {
-                alert(data.error || 'Failed to add holding');
+                if (typeof showToast === 'function') {
+                    showToast(data.error || 'Failed to add holding', 'error');
+                } else {
+                    alert(data.error || 'Failed to add holding');
+                }
             }
         }
 
