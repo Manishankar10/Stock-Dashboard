@@ -565,54 +565,35 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-weight: 400;
-    color: #10b981;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
     cursor: pointer;
     text-decoration: none;
+    letter-spacing: -0.01em;
+    transition: color 0.15s ease;
 }
 
 .tx-stock-ticker:hover {
-    text-decoration: underline;
+    color: #10b981;
+    text-decoration: none;
 }
 
 .tx-exch-tag {
     font-size: 9px;
-    font-weight: 500;
+    font-weight: 600;
     background: rgba(59, 130, 246, 0.12);
     color: #3b82f6;
-    padding: 1px 4px;
+    padding: 1.5px 5px;
     border-radius: 4px;
-}
-
-.tx-fund-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10.5px;
-    font-weight: 500;
-    color: #3b82f6;
-    text-decoration: none;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.tx-fund-link:hover {
-    color: #2563eb;
-    text-decoration: underline;
-}
-
-[data-theme="dark"] .tx-fund-link {
-    color: #60a5fa;
-}
-
-[data-theme="dark"] .tx-fund-link:hover {
-    color: #93c5fd;
+    letter-spacing: 0.02em;
 }
 
 .tx-stock-name {
-    font-size: 11px;
+    font-size: 11.5px;
+    font-weight: 500;
     color: var(--text-secondary);
-    max-width: 220px;
+    max-width: 230px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -628,16 +609,18 @@
 
 .tx-client-cell {
     font-weight: 400;
-    color: var(--text-primary);
-    max-width: 260px;
+    color: var(--text-secondary);
+    max-width: 250px;
 }
 
 .tx-client-name {
+    font-size: 12px;
     font-weight: 400;
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    line-height: 1.3;
+    line-height: 1.35;
 }
 
 .tx-client-sub {
@@ -772,18 +755,20 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 3px;
 }
 
 .tx-card-stock {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
 }
 
 .tx-card-ticker {
-    font-size: 13.5px;
-    font-weight: 400;
-    color: #10b981;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
 }
 
 .tx-card-date {
@@ -795,14 +780,14 @@
 .tx-card-company-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
-    margin-top: -3px;
+    margin-bottom: 8px;
 }
 
 .tx-card-company {
-    font-size: 11.5px;
-    font-weight: 400;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--text-secondary);
     line-height: 1.3;
     overflow: hidden;
@@ -817,36 +802,6 @@
 
 .tx-card-company:hover {
     color: #10b981;
-    text-decoration: underline;
-}
-
-.tx-card-fund-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    font-weight: 500;
-    color: #3b82f6;
-    text-decoration: none;
-    background: rgba(59, 130, 246, 0.08);
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    padding: 1.5px 6px;
-    border-radius: 4px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: all 0.15s ease;
-}
-
-.tx-card-fund-link:hover {
-    background: rgba(59, 130, 246, 0.16);
-    color: #2563eb;
-    text-decoration: underline;
-}
-
-[data-theme="dark"] .tx-card-fund-link {
-    color: #60a5fa;
-    background: rgba(59, 130, 246, 0.14);
-    border-color: rgba(59, 130, 246, 0.3);
 }
 
 .tx-card-party-row {
@@ -854,15 +809,16 @@
     justify-content: space-between;
     align-items: center;
     background: var(--bg-body);
-    padding: 7px 10px;
+    padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid var(--border-color);
+    margin-bottom: 10px;
 }
 
 .tx-card-client-name {
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 400;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     max-width: 65%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1240,20 +1196,20 @@
     .tx-card-stock {
         display: flex !important;
         align-items: center !important;
-        gap: 5px !important;
+        gap: 6px !important;
     }
 
     .tx-card-ticker {
-        font-size: 13.5px !important;
-        font-weight: 400 !important;
-        color: #10b981 !important;
-        letter-spacing: 0.01em !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        color: var(--text-primary) !important;
+        letter-spacing: -0.01em !important;
     }
 
     .tx-exch-tag {
         font-size: 8.5px !important;
-        font-weight: 500 !important;
-        padding: 1px 4px !important;
+        font-weight: 600 !important;
+        padding: 1.5px 5px !important;
     }
 
     .tx-action-pill {
@@ -1272,14 +1228,15 @@
     .tx-card-company-row {
         display: flex !important;
         align-items: center !important;
-        justify-content: space-between !important;
-        gap: 8px !important;
-        margin-top: -3px !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        margin-bottom: 7px !important;
+        margin-top: 1px !important;
     }
 
     .tx-card-company {
-        font-size: 11px !important;
-        font-weight: 400 !important;
+        font-size: 11.5px !important;
+        font-weight: 500 !important;
         color: var(--text-secondary) !important;
         line-height: 1.3 !important;
         overflow: hidden !important;
@@ -1294,47 +1251,18 @@
 
     .tx-card-company:hover {
         color: #10b981 !important;
-        text-decoration: underline !important;
-    }
-
-    .tx-card-fund-link {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 2px !important;
-        font-size: 10px !important;
-        font-weight: 500 !important;
-        color: #3b82f6 !important;
-        text-decoration: none !important;
-        background: rgba(59, 130, 246, 0.08) !important;
-        border: 1px solid rgba(59, 130, 246, 0.2) !important;
-        padding: 1.5px 6px !important;
-        border-radius: 4px !important;
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-        transition: all 0.15s ease !important;
-    }
-
-    .tx-card-fund-link:hover {
-        background: rgba(59, 130, 246, 0.16) !important;
-        color: #2563eb !important;
-        text-decoration: underline !important;
-    }
-
-    [data-theme="dark"] .tx-card-fund-link {
-        color: #60a5fa !important;
-        background: rgba(59, 130, 246, 0.14) !important;
-        border-color: rgba(59, 130, 246, 0.3) !important;
     }
 
     .tx-card-party-row {
-        padding: 6px 8px !important;
+        padding: 5px 8px !important;
         border-radius: 6px !important;
+        margin-bottom: 8px !important;
     }
 
     .tx-card-client-name {
         font-size: 10.5px !important;
         font-weight: 400 !important;
-        color: var(--text-primary) !important;
+        color: var(--text-secondary) !important;
     }
 
     .tx-category-badge {
