@@ -1142,6 +1142,30 @@
                 </div>
             </div>
 
+            <!-- Line Width & Style Group -->
+            <div class="form-group" id="editDrawingLinePropsGroup" style="margin-bottom: 18px;">
+                <div style="display: flex; gap: 14px; align-items: center;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Line Width</label>
+                        <div id="editDrawingWidthOptions" style="display: flex; gap: 6px;">
+                            <button type="button" class="edit-width-btn" data-width="1" onclick="setEditDrawingLineWidth(1)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">1px</button>
+                            <button type="button" class="edit-width-btn" data-width="2" onclick="setEditDrawingLineWidth(2)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">2px</button>
+                            <button type="button" class="edit-width-btn" data-width="3" onclick="setEditDrawingLineWidth(3)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">3px</button>
+                            <button type="button" class="edit-width-btn" data-width="4" onclick="setEditDrawingLineWidth(4)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">4px</button>
+                        </div>
+                        <input type="hidden" id="editDrawingLineWidth" value="2">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Line Style</label>
+                        <select id="editDrawingLineStyle" style="width: 100%; padding: 7px 10px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 6px; color: var(--text-primary, #ffffff); font-size: 12px;">
+                            <option value="solid">Line (Solid)</option>
+                            <option value="dashed">Dashed line</option>
+                            <option value="dotted">Dotted line</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Footer Actions -->
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color, #363a45); padding-top: 14px; margin-top: 16px;">
                 <button type="button" class="btn-secondary" style="background: rgba(239, 83, 80, 0.15); border: 1px solid #ef5350; color: #ef5350; padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer;" onclick="deleteCurrentEditDrawing()">🗑️ Delete</button>

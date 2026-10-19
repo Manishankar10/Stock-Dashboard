@@ -154,6 +154,19 @@
         }
 
         var activeToolColor = '#10b981'; // Active drawing color
+        var activeToolLineWidth = 2; // Active line thickness (1, 2, 3, 4)
+        var activeToolLineStyle = 'solid'; // Active line style ('solid', 'dashed', 'dotted')
+
+        function renderLineStyleIcon(style) {
+            if (style === 'dotted') {
+                return `<svg width="18" height="14" viewBox="0 0 18 14"><line x1="2" y1="7" x2="16" y2="7" stroke="currentColor" stroke-width="2.5" stroke-dasharray="2 3" stroke-linecap="round"/></svg>`;
+            } else if (style === 'dashed') {
+                return `<svg width="18" height="14" viewBox="0 0 18 14"><line x1="2" y1="7" x2="16" y2="7" stroke="currentColor" stroke-width="2" stroke-dasharray="4 2"/></svg>`;
+            } else {
+                return `<svg width="18" height="14" viewBox="0 0 18 14"><line x1="2" y1="7" x2="16" y2="7" stroke="currentColor" stroke-width="2"/></svg>`;
+            }
+        }
+        window.renderLineStyleIcon = renderLineStyleIcon;
 
         function setActiveToolColor(colorHex, el) {
             activeToolColor = colorHex;
@@ -260,11 +273,17 @@
             lines.forEach(item => {
                 if (!item.hidden) {
                     try {
+                        const lw = item.lineWidth ? parseInt(item.lineWidth) : 2;
+                        let ls = LightweightCharts.LineStyle.Dashed;
+                        if (item.lineStyle === 'solid') ls = LightweightCharts.LineStyle.Solid;
+                        else if (item.lineStyle === 'dotted') ls = LightweightCharts.LineStyle.Dotted;
+                        else if (item.lineStyle === 'dashed') ls = LightweightCharts.LineStyle.Dashed;
+
                         const priceLine = mainSeries.createPriceLine({
                             price: item.price,
                             color: item.color || '#10b981',
-                            lineWidth: 2,
-                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            lineWidth: lw,
+                            lineStyle: ls,
                             axisLabelVisible: true,
                             title: `${item.label || 'Line'}: ₹${item.price}`
                         });
@@ -481,6 +500,13 @@
                 if (price2Group) price2Group.style.display = 'none';
 
                 currentColor = line.color || '#10b981';
+                const currentWidth = line.lineWidth ? parseInt(line.lineWidth) : 2;
+                const currentStyle = line.lineStyle || 'dashed';
+                setEditDrawingLineWidth(currentWidth);
+                const styleSelect = document.getElementById('editDrawingLineStyle');
+                if (styleSelect) styleSelect.value = currentStyle;
+                const propsGroup = document.getElementById('editDrawingLinePropsGroup');
+                if (propsGroup) propsGroup.style.display = 'block';
             } else if (kind === 'shape') {
                 const shapes = getSavedChartShapes(currentChartSymbol);
                 const shape = shapes.find(s => s.id === id);
@@ -491,6 +517,18 @@
                 const typeInput = document.getElementById('editDrawingType');
                 if (typeInput) typeInput.value = shape.type;
                 currentColor = shape.color || '#3b82f6';
+
+                const propsGroup = document.getElementById('editDrawingLinePropsGroup');
+                if (shape.type === 'note') {
+                    if (propsGroup) propsGroup.style.display = 'none';
+                } else {
+                    if (propsGroup) propsGroup.style.display = 'block';
+                    const currentWidth = shape.lineWidth ? parseInt(shape.lineWidth) : (shape.type === 'rectangle' ? 1 : 2);
+                    const currentStyle = shape.lineStyle || (shape.type === 'vertical' ? 'dashed' : 'solid');
+                    setEditDrawingLineWidth(currentWidth);
+                    const styleSelect = document.getElementById('editDrawingLineStyle');
+                    if (styleSelect) styleSelect.value = currentStyle;
+                }
 
                 if (shape.type === 'note') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Note Callout</span>`;
@@ -587,6 +625,25 @@
             currentEditDrawingTarget = null;
         }
 
+        function setEditDrawingLineWidth(width) {
+            const input = document.getElementById('editDrawingLineWidth');
+            if (input) input.value = width;
+            const btns = document.querySelectorAll('#editDrawingWidthOptions .edit-width-btn');
+            btns.forEach(b => {
+                const w = parseInt(b.dataset.width);
+                if (w === width) {
+                    b.style.borderColor = '#3b82f6';
+                    b.style.background = 'rgba(59, 130, 246, 0.2)';
+                    b.style.color = '#3b82f6';
+                } else {
+                    b.style.borderColor = 'var(--border-color, #363a45)';
+                    b.style.background = 'var(--bg-input, #131722)';
+                    b.style.color = 'var(--text-primary, #ffffff)';
+                }
+            });
+        }
+        window.setEditDrawingLineWidth = setEditDrawingLineWidth;
+
         function setEditDrawingColor(color) {
             const picker = document.getElementById('editDrawingColorPicker');
             if (picker) picker.value = color;
@@ -611,6 +668,10 @@
             const { kind, id } = currentEditDrawingTarget;
             const colorPicker = document.getElementById('editDrawingColorPicker');
             const chosenColor = colorPicker ? colorPicker.value : '#10b981';
+            const widthInput = document.getElementById('editDrawingLineWidth');
+            const styleInput = document.getElementById('editDrawingLineStyle');
+            const chosenWidth = widthInput ? (parseInt(widthInput.value) || 2) : 2;
+            const chosenStyle = styleInput ? (styleInput.value || 'solid') : 'solid';
 
             if (kind === 'line') {
                 const labelInput = document.getElementById('editDrawingLabel');
@@ -629,6 +690,8 @@
                     line.label = newLabel || line.label || 'Line';
                     line.price = newPrice;
                     line.color = chosenColor;
+                    line.lineWidth = chosenWidth;
+                    line.lineStyle = chosenStyle;
                     localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
                     restoreSavedPriceLines(currentChartSymbol);
                     redrawCanvasOverlay();
@@ -659,6 +722,10 @@
                         if (shape.type === 'rectangle' || shape.type === 'parallelchannel') {
                             shape.fillColor = hexToRgba(chosenColor, shape.type === 'rectangle' ? 0.18 : 0.12);
                         }
+                    }
+                    if (shape.type !== 'note') {
+                        shape.lineWidth = chosenWidth;
+                        shape.lineStyle = chosenStyle;
                     }
                     localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
                     redrawCanvasOverlay();
@@ -727,13 +794,27 @@
             if (!mainSeries) return;
             const label = customLabel || (type === 'target' ? 'Target' : type === 'stoploss' ? 'Stop Loss' : 'Support');
             const lineId = 'pl_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-            const lineData = { id: lineId, type: type, price: price, color: color || activeToolColor, label: label };
+            const lw = activeToolLineWidth ? parseInt(activeToolLineWidth) : 2;
+            let ls = LightweightCharts.LineStyle.Dashed;
+            if (activeToolLineStyle === 'solid') ls = LightweightCharts.LineStyle.Solid;
+            else if (activeToolLineStyle === 'dotted') ls = LightweightCharts.LineStyle.Dotted;
+            else if (activeToolLineStyle === 'dashed') ls = LightweightCharts.LineStyle.Dashed;
+
+            const lineData = {
+                id: lineId,
+                type: type,
+                price: price,
+                color: color || activeToolColor,
+                label: label,
+                lineWidth: lw,
+                lineStyle: activeToolLineStyle || 'dashed'
+            };
 
             const priceLine = mainSeries.createPriceLine({
                 price: price,
                 color: color || activeToolColor,
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Dashed,
+                lineWidth: lw,
+                lineStyle: ls,
                 axisLabelVisible: true,
                 title: `${label}: ₹${price}`
             });
@@ -2284,7 +2365,9 @@
                     time: endPt.time,
                     logical: endPt.logical,
                     futureOffset: endPt.futureOffset || 0,
-                    color: activeToolColor || '#f59e0b'
+                    color: activeToolColor || '#f59e0b',
+                    lineWidth: activeToolLineWidth || 2,
+                    lineStyle: activeToolLineStyle || 'dashed'
                 };
                 saveChartShapeForSymbol(currentChartSymbol, shape);
                 cancelDrawingTool();
@@ -2351,7 +2434,9 @@
                         futureOffset2: pt2.futureOffset || 0,
                         price2: pt2.price,
                         color: activeToolColor || (activeTool === 'trendline' ? '#3b82f6' : activeTool === 'rectangle' ? '#a855f7' : activeTool === 'fib' ? '#6366f1' : '#10b981'),
-                        fillColor: activeTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null
+                        fillColor: activeTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null,
+                        lineWidth: activeToolLineWidth || 2,
+                        lineStyle: activeToolLineStyle || 'solid'
                     };
 
                     saveChartShapeForSymbol(currentChartSymbol, shape);
@@ -2430,7 +2515,9 @@
                         futureOffset3: pt3.futureOffset || 0,
                         price3: pt3.price,
                         color: activeToolColor || (activeTool === 'parallelchannel' ? '#3b82f6' : '#a855f7'),
-                        fillColor: (activeTool === 'parallelchannel') ? hexToRgba(activeToolColor || '#3b82f6', 0.12) : null
+                        fillColor: (activeTool === 'parallelchannel') ? hexToRgba(activeToolColor || '#3b82f6', 0.12) : null,
+                        lineWidth: activeToolLineWidth || 2,
+                        lineStyle: activeToolLineStyle || 'solid'
                     };
 
                     saveChartShapeForSymbol(currentChartSymbol, shape);
@@ -2528,7 +2615,9 @@
                         time: pt.time,
                         logical: pt.logical,
                         futureOffset: pt.futureOffset || 0,
-                        color: activeToolColor || '#f59e0b'
+                        color: activeToolColor || '#f59e0b',
+                        lineWidth: activeToolLineWidth || 2,
+                        lineStyle: activeToolLineStyle || 'dashed'
                     };
                     saveChartShapeForSymbol(currentChartSymbol, shape);
                     cancelDrawingTool();
@@ -2600,7 +2689,9 @@
                             futureOffset2: pt2.futureOffset || 0,
                             price2: pt2.price,
                             color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : currentDrawingTool === 'rectangle' ? '#a855f7' : currentDrawingTool === 'fib' ? '#6366f1' : '#10b981'),
-                            fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null
+                            fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null,
+                            lineWidth: activeToolLineWidth || 2,
+                            lineStyle: activeToolLineStyle || 'solid'
                         };
 
                         saveChartShapeForSymbol(currentChartSymbol, shape);
@@ -2652,7 +2743,9 @@
                             futureOffset3: pt3.futureOffset || 0,
                             price3: pt3.price,
                             color: activeToolColor || (currentDrawingTool === 'parallelchannel' ? '#3b82f6' : '#a855f7'),
-                            fillColor: (currentDrawingTool === 'parallelchannel') ? hexToRgba(activeToolColor || '#3b82f6', 0.12) : null
+                            fillColor: (currentDrawingTool === 'parallelchannel') ? hexToRgba(activeToolColor || '#3b82f6', 0.12) : null,
+                            lineWidth: activeToolLineWidth || 2,
+                            lineStyle: activeToolLineStyle || 'solid'
                         };
 
                         saveChartShapeForSymbol(currentChartSymbol, shape);
@@ -2935,16 +3028,163 @@
             handle.addEventListener('touchstart', onStart, { passive: false });
         }
 
+        function toggleCanvasObjWidthMenu(event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const widthMenu = document.getElementById('canvasObjWidthMenu');
+            const styleMenu = document.getElementById('canvasObjStyleMenu');
+            const moreMenu = document.getElementById('canvasObjMoreMenu');
+            if (styleMenu) styleMenu.style.display = 'none';
+            if (moreMenu) moreMenu.style.display = 'none';
+            if (!widthMenu) return;
+            widthMenu.style.display = (widthMenu.style.display === 'flex') ? 'none' : 'flex';
+        }
+        window.toggleCanvasObjWidthMenu = toggleCanvasObjWidthMenu;
+
+        function toggleCanvasObjStyleMenu(event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const widthMenu = document.getElementById('canvasObjWidthMenu');
+            const styleMenu = document.getElementById('canvasObjStyleMenu');
+            const moreMenu = document.getElementById('canvasObjMoreMenu');
+            if (widthMenu) widthMenu.style.display = 'none';
+            if (moreMenu) moreMenu.style.display = 'none';
+            if (!styleMenu) return;
+            styleMenu.style.display = (styleMenu.style.display === 'flex') ? 'none' : 'flex';
+        }
+        window.toggleCanvasObjStyleMenu = toggleCanvasObjStyleMenu;
+
         function toggleCanvasObjectMoreMenu(event) {
             if (event) {
                 event.stopPropagation();
                 event.preventDefault();
             }
+            const widthMenu = document.getElementById('canvasObjWidthMenu');
+            const styleMenu = document.getElementById('canvasObjStyleMenu');
             const moreMenu = document.getElementById('canvasObjMoreMenu');
+            if (widthMenu) widthMenu.style.display = 'none';
+            if (styleMenu) styleMenu.style.display = 'none';
             if (!moreMenu) return;
             moreMenu.style.display = (moreMenu.style.display === 'flex') ? 'none' : 'flex';
         }
         window.toggleCanvasObjectMoreMenu = toggleCanvasObjectMoreMenu;
+
+        function setCanvasObjectLineWidth(width, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const widthMenu = document.getElementById('canvasObjWidthMenu');
+            if (widthMenu) widthMenu.style.display = 'none';
+
+            activeToolLineWidth = width;
+
+            const popup = document.getElementById('canvasObjectPopup');
+            if (!popup || !popup.dataset.activeObjId) return;
+            const objId = popup.dataset.activeObjId;
+            const objKind = popup.dataset.activeObjKind;
+
+            if (objKind === 'line') {
+                const lines = getSavedPriceLines(currentChartSymbol);
+                const line = lines.find(l => l.id === objId);
+                if (line) {
+                    line.lineWidth = width;
+                    localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                    const pl = activePriceLines.find(p => p.id === objId);
+                    if (pl) {
+                        pl.data.lineWidth = width;
+                        if (pl.lineObj) {
+                            pl.lineObj.applyOptions({ lineWidth: width });
+                        }
+                    }
+                }
+            } else {
+                const shapes = getSavedChartShapes(currentChartSymbol);
+                const shape = shapes.find(s => s.id === objId);
+                if (shape) {
+                    shape.lineWidth = width;
+                    localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                    redrawCanvasOverlay();
+                }
+            }
+
+            // Update width button UI in popup
+            const widthBtn = popup.querySelector('.canvas-obj-width-btn');
+            if (widthBtn) {
+                const prev = widthBtn.querySelector('.canvas-obj-width-preview');
+                if (prev) prev.style.height = `${width}px`;
+                const lbl = widthBtn.querySelector('.canvas-obj-width-label');
+                if (lbl) lbl.innerText = `${width}px`;
+                widthBtn.title = `Line Width (${width}px)`;
+            }
+            if (widthMenu) {
+                widthMenu.querySelectorAll('.canvas-obj-dropdown-item').forEach((item, idx) => {
+                    item.classList.toggle('active', (idx + 1) === width);
+                });
+            }
+        }
+        window.setCanvasObjectLineWidth = setCanvasObjectLineWidth;
+
+        function setCanvasObjectLineStyle(style, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const styleMenu = document.getElementById('canvasObjStyleMenu');
+            if (styleMenu) styleMenu.style.display = 'none';
+
+            activeToolLineStyle = style;
+
+            const popup = document.getElementById('canvasObjectPopup');
+            if (!popup || !popup.dataset.activeObjId) return;
+            const objId = popup.dataset.activeObjId;
+            const objKind = popup.dataset.activeObjKind;
+
+            if (objKind === 'line') {
+                const lines = getSavedPriceLines(currentChartSymbol);
+                const line = lines.find(l => l.id === objId);
+                if (line) {
+                    line.lineStyle = style;
+                    localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                    const pl = activePriceLines.find(p => p.id === objId);
+                    if (pl) {
+                        pl.data.lineStyle = style;
+                        if (pl.lineObj) {
+                            const lwStyle = (style === 'solid') ? LightweightCharts.LineStyle.Solid :
+                                            (style === 'dotted') ? LightweightCharts.LineStyle.Dotted :
+                                            LightweightCharts.LineStyle.Dashed;
+                            pl.lineObj.applyOptions({ lineStyle: lwStyle });
+                        }
+                    }
+                }
+            } else {
+                const shapes = getSavedChartShapes(currentChartSymbol);
+                const shape = shapes.find(s => s.id === objId);
+                if (shape) {
+                    shape.lineStyle = style;
+                    localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                    redrawCanvasOverlay();
+                }
+            }
+
+            // Update style button UI in popup
+            const styleBtn = popup.querySelector('.canvas-obj-style-btn');
+            if (styleBtn) {
+                styleBtn.innerHTML = renderLineStyleIcon(style);
+                styleBtn.title = `Line Style (${style})`;
+            }
+            if (styleMenu) {
+                const styles = ['solid', 'dashed', 'dotted'];
+                styleMenu.querySelectorAll('.canvas-obj-dropdown-item').forEach((item, idx) => {
+                    item.classList.toggle('active', styles[idx] === style);
+                });
+            }
+        }
+        window.setCanvasObjectLineStyle = setCanvasObjectLineStyle;
 
         function showCanvasObjectMenu(obj, x, y) {
             let popup = document.getElementById('canvasObjectPopup');
@@ -2954,7 +3194,21 @@
                 popup.id = 'canvasObjectPopup';
                 popup.className = 'canvas-object-popup';
                 popup.addEventListener('mousedown', function(evt) { evt.stopPropagation(); });
-                popup.addEventListener('click', function(evt) { evt.stopPropagation(); });
+                popup.addEventListener('click', function(evt) {
+                    if (!evt.target.closest('.canvas-obj-width-btn') && !evt.target.closest('#canvasObjWidthMenu')) {
+                        const wm = document.getElementById('canvasObjWidthMenu');
+                        if (wm) wm.style.display = 'none';
+                    }
+                    if (!evt.target.closest('.canvas-obj-style-btn') && !evt.target.closest('#canvasObjStyleMenu')) {
+                        const sm = document.getElementById('canvasObjStyleMenu');
+                        if (sm) sm.style.display = 'none';
+                    }
+                    if (!evt.target.closest('.canvas-obj-more-btn') && !evt.target.closest('#canvasObjMoreMenu')) {
+                        const mm = document.getElementById('canvasObjMoreMenu');
+                        if (mm) mm.style.display = 'none';
+                    }
+                    evt.stopPropagation();
+                });
                 popup.addEventListener('touchstart', function(evt) { evt.stopPropagation(); }, { passive: true });
                 popup.addEventListener('touchend', function(evt) { evt.stopPropagation(); });
                 mainContainer.appendChild(popup);
@@ -2962,15 +3216,37 @@
 
             if (popup && mainContainer) {
                 const isMobile = window.innerWidth <= 768;
-                const estimatedWidth = isMobile ? 165 : 195;
+                const estimatedWidth = isMobile ? 240 : 280;
                 popup.style.left = Math.max(10, Math.min(x - 20, mainContainer.clientWidth - estimatedWidth - 10)) + 'px';
                 popup.style.top = Math.max(10, (y > 55 ? (y - 46) : (y + 16))) + 'px';
                 popup.dataset.activeObjId = String(obj.id);
+                popup.dataset.activeObjKind = String(obj.kind);
+
+                let currentWidth = 2;
+                let currentStyle = 'solid';
+                let currentColor = obj.color || '#10b981';
+
+                if (obj.kind === 'line') {
+                    const lines = getSavedPriceLines(currentChartSymbol);
+                    const l = lines.find(x => x.id === obj.id);
+                    if (l) {
+                        currentWidth = l.lineWidth ? parseInt(l.lineWidth) : 2;
+                        currentStyle = l.lineStyle || 'dashed';
+                        currentColor = l.color || currentColor;
+                    }
+                } else if (obj.kind === 'shape') {
+                    const shapes = getSavedChartShapes(currentChartSymbol);
+                    const s = shapes.find(x => x.id === obj.id);
+                    if (s) {
+                        currentWidth = s.lineWidth ? parseInt(s.lineWidth) : (s.type === 'rectangle' ? 1 : 2);
+                        currentStyle = s.lineStyle || (s.type === 'vertical' ? 'dashed' : 'solid');
+                        currentColor = s.color || currentColor;
+                    }
+                }
 
                 const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
                 const toggleVisFn = obj.kind === 'line' ? `togglePriceLineVisibility('${obj.id}'); hideCanvasObjectMenu();` : `toggleShapeVisibility('${obj.id}'); hideCanvasObjectMenu();`;
                 const visLabel = obj.hidden ? 'Show' : 'Hide';
-                const currentColor = obj.color || '#10b981';
                 const isNote = (obj.kind === 'shape' && obj.type === 'note');
 
                 popup.innerHTML = `
@@ -2999,7 +3275,47 @@
                         </svg>
                         <span class="canvas-obj-color-bar" style="background-color: ${currentColor};"></span>
                     </button>
-                    ` : ''}
+                    ` : `
+                    <div class="canvas-obj-popover-wrapper" style="position: relative; display: inline-flex;">
+                        <button type="button" class="canvas-obj-btn canvas-obj-width-btn" onclick="toggleCanvasObjWidthMenu(event)" title="Line Width (${currentWidth}px)" aria-label="Line Width">
+                            <span class="canvas-obj-width-preview" style="height: ${currentWidth}px;"></span>
+                            <span class="canvas-obj-width-label">${currentWidth}px</span>
+                        </button>
+                        <div id="canvasObjWidthMenu" class="canvas-obj-dropdown-menu" style="display: none;">
+                            ${[1, 2, 3, 4].map(w => `
+                                <button type="button" class="canvas-obj-dropdown-item ${currentWidth === w ? 'active' : ''}" onclick="setCanvasObjectLineWidth(${w}, event)">
+                                    <span class="canvas-obj-line-sample width-${w}"></span>
+                                    <span>${w}px</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="canvas-obj-popover-wrapper" style="position: relative; display: inline-flex;">
+                        <button type="button" class="canvas-obj-btn canvas-obj-style-btn" onclick="toggleCanvasObjStyleMenu(event)" title="Line Style (${currentStyle})" aria-label="Line Style">
+                            ${renderLineStyleIcon(currentStyle)}
+                        </button>
+                        <div id="canvasObjStyleMenu" class="canvas-obj-dropdown-menu" style="display: none;">
+                            <button type="button" class="canvas-obj-dropdown-item ${currentStyle === 'solid' ? 'active' : ''}" onclick="setCanvasObjectLineStyle('solid', event)">
+                                <svg width="22" height="14" viewBox="0 0 22 14">
+                                    <line x1="2" y1="7" x2="20" y2="7" stroke="currentColor" stroke-width="2" />
+                                </svg>
+                                <span>Line</span>
+                            </button>
+                            <button type="button" class="canvas-obj-dropdown-item ${currentStyle === 'dashed' ? 'active' : ''}" onclick="setCanvasObjectLineStyle('dashed', event)">
+                                <svg width="22" height="14" viewBox="0 0 22 14">
+                                    <line x1="2" y1="7" x2="20" y2="7" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
+                                </svg>
+                                <span>Dashed line</span>
+                            </button>
+                            <button type="button" class="canvas-obj-dropdown-item ${currentStyle === 'dotted' ? 'active' : ''}" onclick="setCanvasObjectLineStyle('dotted', event)">
+                                <svg width="22" height="14" viewBox="0 0 22 14">
+                                    <line x1="2" y1="7" x2="20" y2="7" stroke="currentColor" stroke-width="2.5" stroke-dasharray="2 3" stroke-linecap="round" />
+                                </svg>
+                                <span>Dotted line</span>
+                            </button>
+                        </div>
+                    </div>
+                    `}
                     <button type="button" class="canvas-obj-btn canvas-obj-settings-btn" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" title="Settings" aria-label="Settings">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 2.5l7.36 4.25v8.5L12 19.5l-7.36-4.25v-8.5L12 2.5z"/>
@@ -3078,9 +3394,9 @@
                     }
                 }
 
-                // Mobile auto-close on action buttons
+                // Mobile auto-close on action buttons (ignore menu triggers and dropdown items)
                 if (isMobile) {
-                    popup.querySelectorAll('button:not(.canvas-obj-more-btn)').forEach(btn => {
+                    popup.querySelectorAll('button:not(.canvas-obj-more-btn):not(.canvas-obj-width-btn):not(.canvas-obj-style-btn):not(.canvas-obj-dropdown-item)').forEach(btn => {
                         btn.addEventListener('click', () => {
                             hideCanvasObjectMenu();
                         });
@@ -3096,8 +3412,13 @@
             if (popup) {
                 popup.style.setProperty('display', 'none', 'important');
                 popup.dataset.activeObjId = '';
+                popup.dataset.activeObjKind = '';
                 const moreMenu = document.getElementById('canvasObjMoreMenu');
                 if (moreMenu) moreMenu.style.display = 'none';
+                const widthMenu = document.getElementById('canvasObjWidthMenu');
+                if (widthMenu) widthMenu.style.display = 'none';
+                const styleMenu = document.getElementById('canvasObjStyleMenu');
+                if (styleMenu) styleMenu.style.display = 'none';
             }
         }
 
@@ -3258,8 +3579,17 @@
                     ctx.fillRect(leftX, topY, boxWidth, boxHeight);
 
                     ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.5;
-                    if (s.isPreview) ctx.setLineDash([4, 4]);
+                    const lw = s.lineWidth || 1.5;
+                    ctx.lineWidth = lw;
+                    if (s.isPreview) {
+                        ctx.setLineDash([4, 4]);
+                    } else if (s.lineStyle === 'dotted') {
+                        ctx.setLineDash([2, 3]);
+                    } else if (s.lineStyle === 'dashed') {
+                        ctx.setLineDash([6, 4]);
+                    } else {
+                        ctx.setLineDash([]);
+                    }
                     ctx.strokeRect(leftX, topY, boxWidth, boxHeight);
 
                     // 2. Center Stem & Handles
@@ -3268,7 +3598,7 @@
                     ctx.setLineDash([]);
                     ctx.moveTo(centerX, y1);
                     ctx.lineTo(centerX, y2);
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = Math.max(1.5, lw);
                     ctx.strokeStyle = color;
                     ctx.stroke();
 
@@ -3474,9 +3804,17 @@
 
                     // Baseline
                     ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.8;
-                    if (s.isPreview) ctx.setLineDash([4, 4]);
-                    else ctx.setLineDash([]);
+                    const lw = s.lineWidth || 1.8;
+                    ctx.lineWidth = lw;
+                    if (s.isPreview) {
+                        ctx.setLineDash([4, 4]);
+                    } else if (s.lineStyle === 'dotted') {
+                        ctx.setLineDash([2, 3]);
+                    } else if (s.lineStyle === 'dashed') {
+                        ctx.setLineDash([6, 4]);
+                    } else {
+                        ctx.setLineDash([]);
+                    }
                     ctx.beginPath();
                     ctx.moveTo(x1, y1);
                     ctx.lineTo(x2, y2);
@@ -3490,7 +3828,7 @@
 
                     // Midline (Median dashed)
                     ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.2;
+                    ctx.lineWidth = Math.max(1, lw * 0.7);
                     ctx.setLineDash([5, 5]);
                     ctx.beginPath();
                     ctx.moveTo(x1, y1 + dy / 2);
@@ -3536,10 +3874,13 @@
                         { ratio: 1.618, label: '1.618 (161.8%)', color: '#ec4899', fill: 'rgba(236, 72, 153, 0.06)' }
                     ];
 
-                    // Draw connecting dashed trendline
+                    // Draw connecting trendline
+                    const lw = s.lineWidth || 1.5;
                     ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([4, 4]);
+                    ctx.lineWidth = lw;
+                    if (s.lineStyle === 'dotted') ctx.setLineDash([2, 3]);
+                    else if (s.lineStyle === 'solid') ctx.setLineDash([]);
+                    else ctx.setLineDash([4, 4]);
                     ctx.beginPath();
                     ctx.moveTo(x1, y1);
                     ctx.lineTo(x2, y2);
@@ -3573,7 +3914,7 @@
                         if (item.y === null) return;
                         const y = item.y;
                         ctx.strokeStyle = item.lvl.color;
-                        ctx.lineWidth = (item.lvl.ratio === 0.0 || item.lvl.ratio === 0.618 || item.lvl.ratio === 1.0) ? 1.5 : 1;
+                        ctx.lineWidth = (item.lvl.ratio === 0.0 || item.lvl.ratio === 0.618 || item.lvl.ratio === 1.0) ? Math.max(1.5, lw) : lw;
                         ctx.beginPath();
                         ctx.moveTo(startX, y);
                         ctx.lineTo(endX, y);
@@ -3612,9 +3953,13 @@
                     ctx.save();
                     const color = s.color || '#a855f7';
 
+                    const lw = s.lineWidth || 1.6;
                     // Wave 1 Line (Trend)
                     ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.6;
+                    ctx.lineWidth = lw;
+                    if (s.lineStyle === 'dotted') ctx.setLineDash([2, 3]);
+                    else if (s.lineStyle === 'dashed') ctx.setLineDash([6, 4]);
+                    else ctx.setLineDash([]);
                     ctx.beginPath();
                     ctx.moveTo(x1, y1);
                     ctx.lineTo(x2, y2);
@@ -3623,7 +3968,7 @@
                     // Wave 2 Line (Retracement to Point 3)
                     if (x3 !== null && y3 !== null) {
                         ctx.strokeStyle = color;
-                        ctx.lineWidth = 1.3;
+                        ctx.lineWidth = Math.max(1, lw * 0.8);
                         ctx.setLineDash([4, 4]);
                         ctx.beginPath();
                         ctx.moveTo(x2, y2);
@@ -3673,7 +4018,7 @@
                             if (item.y === null) return;
                             const y = item.y;
                             ctx.strokeStyle = item.lvl.color;
-                            ctx.lineWidth = (item.lvl.ratio === 1.0 || item.lvl.ratio === 1.618) ? 1.5 : 1;
+                            ctx.lineWidth = (item.lvl.ratio === 1.0 || item.lvl.ratio === 1.618) ? Math.max(1.5, lw) : lw;
                             ctx.beginPath();
                             ctx.moveTo(startX, y);
                             ctx.lineTo(endX, y);
@@ -3720,14 +4065,24 @@
                     ctx.moveTo(x1, y1);
                     ctx.lineTo(x2, y2);
                     ctx.strokeStyle = s.color || '#3b82f6';
-                    ctx.lineWidth = s.isPreview ? 2 : 2.5;
-                    if (s.isPreview) ctx.setLineDash([4, 4]);
+                    const lw = s.lineWidth || 2;
+                    ctx.lineWidth = s.isPreview ? 2 : lw;
+                    if (s.isPreview) {
+                        ctx.setLineDash([4, 4]);
+                    } else if (s.lineStyle === 'dotted') {
+                        ctx.setLineDash([2, 3]);
+                    } else if (s.lineStyle === 'dashed') {
+                        ctx.setLineDash([6, 4]);
+                    } else {
+                        ctx.setLineDash([]);
+                    }
                     ctx.stroke();
 
                     // Draw end handle dots
                     ctx.fillStyle = s.color || '#3b82f6';
-                    ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 2 * Math.PI); ctx.fill();
-                    ctx.beginPath(); ctx.arc(x2, y2, 4, 0, 2 * Math.PI); ctx.fill();
+                    const handleR = Math.max(3.5, lw + 1.5);
+                    ctx.beginPath(); ctx.arc(x1, y1, handleR, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(x2, y2, handleR, 0, 2 * Math.PI); ctx.fill();
                     ctx.restore();
                 }
             } else if (s.type === 'rectangle') {
@@ -3747,8 +4102,17 @@
                     ctx.fillRect(rectX, rectY, w, h);
 
                     ctx.strokeStyle = s.color || '#a855f7';
-                    ctx.lineWidth = 1.5;
-                    if (s.isPreview) ctx.setLineDash([4, 4]);
+                    const lw = s.lineWidth || 1.5;
+                    ctx.lineWidth = lw;
+                    if (s.isPreview) {
+                        ctx.setLineDash([4, 4]);
+                    } else if (s.lineStyle === 'dotted') {
+                        ctx.setLineDash([2, 3]);
+                    } else if (s.lineStyle === 'dashed') {
+                        ctx.setLineDash([6, 4]);
+                    } else {
+                        ctx.setLineDash([]);
+                    }
                     ctx.strokeRect(rectX, rectY, w, h);
 
                     if (!s.isPreview) {
@@ -3780,8 +4144,15 @@
                     ctx.moveTo(x, 0);
                     ctx.lineTo(x, drawingCanvas.height);
                     ctx.strokeStyle = s.color || '#f59e0b';
-                    ctx.lineWidth = 1.5;
-                    ctx.setLineDash([5, 5]);
+                    const lw = s.lineWidth || 1.5;
+                    ctx.lineWidth = lw;
+                    if (s.lineStyle === 'dotted') {
+                        ctx.setLineDash([2, 3]);
+                    } else if (s.lineStyle === 'solid') {
+                        ctx.setLineDash([]);
+                    } else {
+                        ctx.setLineDash([5, 5]);
+                    }
                     ctx.stroke();
 
                     // Draw top tag

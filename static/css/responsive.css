@@ -3201,6 +3201,27 @@
         height: 26px !important;
     }
 
+    .canvas-obj-width-btn {
+        width: auto !important;
+        min-width: 38px !important;
+        height: 26px !important;
+        padding: 0 4px !important;
+        gap: 3px !important;
+    }
+
+    .canvas-obj-width-btn .canvas-obj-width-preview {
+        width: 10px !important;
+    }
+
+    .canvas-obj-width-btn .canvas-obj-width-label {
+        font-size: 10px !important;
+    }
+
+    .canvas-obj-style-btn {
+        width: 26px !important;
+        height: 26px !important;
+    }
+
     .canvas-obj-drag-handle {
         width: 12px !important;
         height: 24px !important;
