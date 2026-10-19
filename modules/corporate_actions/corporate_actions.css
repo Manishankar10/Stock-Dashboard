@@ -731,6 +731,10 @@
         width: 100% !important;
     }
 
+    .corp-filter-label {
+        display: none !important;
+    }
+
     .corp-filter-group {
         width: 100% !important;
         display: flex !important;
