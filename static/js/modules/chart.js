@@ -1659,6 +1659,179 @@
         let activeDrawingDrag = null;
         let lastDrawingClickTime = 0;
         let lastDrawingClickId = null;
+        let activeDrawingCrosshair = null;
+
+        function formatCrosshairPointTime(pt) {
+            if (!pt) return '';
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            if (pt.futureOffset && pt.futureOffset > 0 && cachedChartData && cachedChartData.candles && cachedChartData.candles.length > 0) {
+                const lastCandle = cachedChartData.candles[cachedChartData.candles.length - 1];
+                const lastTime = lastCandle.time;
+                const intv = (currentChartInterval || '1d').toLowerCase();
+                let baseDate = new Date();
+                if (typeof lastTime === 'string') {
+                    baseDate = new Date(lastTime);
+                } else if (typeof lastTime === 'number') {
+                    baseDate = new Date(lastTime * 1000);
+                } else if (typeof lastTime === 'object' && lastTime.year) {
+                    baseDate = new Date(Date.UTC(lastTime.year, lastTime.month - 1, lastTime.day));
+                }
+
+                if (['5m', '15m', '30m', '60m', '1h'].includes(intv)) {
+                    const minutes = intv === '5m' ? 5 : intv === '15m' ? 15 : intv === '30m' ? 30 : 60;
+                    const targetMs = baseDate.getTime() + (pt.futureOffset * minutes * 60 * 1000);
+                    const d = new Date(targetMs);
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const mm = String(d.getMinutes()).padStart(2, '0');
+                    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${hh}:${mm}`;
+                } else {
+                    let addedBars = 0;
+                    let cur = new Date(baseDate.getTime());
+                    while (addedBars < pt.futureOffset) {
+                        cur.setDate(cur.getDate() + 1);
+                        const dayOfWeek = cur.getDay();
+                        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                            addedBars++;
+                        }
+                    }
+                    return `${cur.getDate()} ${months[cur.getMonth()]} ${cur.getFullYear()}`;
+                }
+            }
+
+            if (pt.time) {
+                if (typeof formatCrosshairBadgeTime === 'function') {
+                    return formatCrosshairBadgeTime(pt.time);
+                }
+                return String(pt.time);
+            }
+            return '';
+        }
+
+        function syncCrosshairToPoint(pt) {
+            if (!mainChart || !mainSeries || !pt) return;
+            try {
+                if (pt.futureOffset && pt.futureOffset > 0) {
+                    if (typeof mainChart.clearCrosshairPosition === 'function') {
+                        mainChart.clearCrosshairPosition();
+                    }
+                    return;
+                }
+
+                let price = pt.price;
+                if (price === null || price === undefined || isNaN(price)) {
+                    if (pt.y !== null && pt.y !== undefined) {
+                        price = mainSeries.coordinateToPrice(pt.y);
+                    }
+                }
+                if (price === null || price === undefined || isNaN(price)) return;
+
+                let targetTime = pt.time;
+                if (!targetTime && cachedChartData && cachedChartData.candles && cachedChartData.candles.length > 0) {
+                    if (pt.logical !== null && pt.logical !== undefined) {
+                        const idx = Math.max(0, Math.min(cachedChartData.candles.length - 1, Math.round(pt.logical)));
+                        targetTime = cachedChartData.candles[idx].time;
+                    } else if (pt.x !== null && pt.x !== undefined) {
+                        const rawTime = mainChart.timeScale().coordinateToTime(pt.x);
+                        targetTime = rawTime || cachedChartData.candles[cachedChartData.candles.length - 1].time;
+                    }
+                }
+
+                if (targetTime !== null && targetTime !== undefined) {
+                    mainChart.setCrosshairPosition(price, targetTime, mainSeries);
+                }
+            } catch (err) {
+                // Ignore crosshair errors
+            }
+        }
+
+        function drawActiveDrawingCrosshair(ctx) {
+            if (!activeDrawingCrosshair || !drawingCanvas || !mainChart || !mainSeries) return;
+            if (!(activeDrawingCrosshair.futureOffset && activeDrawingCrosshair.futureOffset > 0)) return;
+
+            const x = activeDrawingCrosshair.x;
+            const y = activeDrawingCrosshair.y;
+            if (x === null || x === undefined || y === null || y === undefined) return;
+
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const isDark = currentTheme === 'dark';
+            const lineColor = isDark ? '#758696' : '#94a3b8';
+            const labelBg = isDark ? '#2a2e39' : '#334155';
+            const labelTextColor = '#ffffff';
+
+            ctx.save();
+
+            // 1. Vertical dashed line
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, drawingCanvas.height);
+            ctx.stroke();
+
+            // 2. Horizontal dashed line
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(drawingCanvas.width, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 3. Time badge at bottom
+            const timeText = formatCrosshairPointTime(activeDrawingCrosshair);
+            if (timeText) {
+                ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                const textWidth = ctx.measureText(timeText).width;
+                const badgeWidth = textWidth + 14;
+                const badgeHeight = 20;
+                const badgeX = Math.max(2, Math.min(drawingCanvas.width - badgeWidth - 2, x - badgeWidth / 2));
+                const badgeY = drawingCanvas.height - badgeHeight - 2;
+
+                ctx.fillStyle = labelBg;
+                ctx.beginPath();
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
+                } else {
+                    ctx.rect(badgeX, badgeY, badgeWidth, badgeHeight);
+                }
+                ctx.fill();
+
+                ctx.fillStyle = labelTextColor;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(timeText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
+            }
+
+            // 4. Price badge on right
+            let price = activeDrawingCrosshair.price;
+            if (price === null || price === undefined || isNaN(price)) {
+                price = mainSeries.coordinateToPrice(y);
+            }
+            if (price !== null && price !== undefined && !isNaN(price)) {
+                const priceText = `₹${price.toFixed(2)}`;
+                ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                const pTextWidth = ctx.measureText(priceText).width;
+                const pBadgeWidth = pTextWidth + 10;
+                const pBadgeHeight = 18;
+                const pBadgeX = drawingCanvas.width - pBadgeWidth - 2;
+                const pBadgeY = Math.max(2, Math.min(drawingCanvas.height - pBadgeHeight - 2, y - pBadgeHeight / 2));
+
+                ctx.fillStyle = labelBg;
+                ctx.beginPath();
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(pBadgeX, pBadgeY, pBadgeWidth, pBadgeHeight, 3);
+                } else {
+                    ctx.rect(pBadgeX, pBadgeY, pBadgeWidth, pBadgeHeight);
+                }
+                ctx.fill();
+
+                ctx.fillStyle = labelTextColor;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(priceText, pBadgeX + pBadgeWidth / 2, pBadgeY + pBadgeHeight / 2);
+            }
+
+            ctx.restore();
+        }
 
         function handleChartPaneMouseMove(e) {
             if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) {
@@ -1684,6 +1857,7 @@
                 if (clickedObj) {
                     drawingCanvas.style.pointerEvents = 'auto';
                     drawingCanvas.style.cursor = clickedObj.cursor || 'grab';
+                    syncCrosshairToPoint(pt);
                 } else {
                     drawingCanvas.style.pointerEvents = 'none';
                     drawingCanvas.style.cursor = 'default';
@@ -1729,6 +1903,9 @@
 
             let dragPart = clickedObj.subPart || 'body';
 
+            activeDrawingCrosshair = { x: pt.x, y: pt.y, price: pt.price, time: pt.time, logical: pt.logical, futureOffset: pt.futureOffset || 0 };
+            syncCrosshairToPoint(pt);
+
             activeDrawingDrag = {
                 target: clickedObj,
                 dragPart: dragPart,
@@ -1738,11 +1915,15 @@
                 initialPrice: clickedObj.kind === 'line' ? (getSavedPriceLines(currentChartSymbol).find(l => l.id === clickedObj.id)?.price || pt.price) : null,
                 initialShape: clickedObj.kind === 'shape' ? JSON.parse(JSON.stringify(getSavedChartShapes(currentChartSymbol).find(s => s.id === clickedObj.id) || {})) : null
             };
+            redrawCanvasOverlay();
 
             const onWindowDrawingMove = (moveEvt) => {
                 if (!activeDrawingDrag) return;
                 const curPt = getChartPointFromEvent(moveEvt);
                 if (!curPt) return;
+
+                activeDrawingCrosshair = { x: curPt.x, y: curPt.y, price: curPt.price, time: curPt.time, logical: curPt.logical, futureOffset: curPt.futureOffset || 0 };
+                syncCrosshairToPoint(curPt);
 
                 const dist = Math.hypot(curPt.x - activeDrawingDrag.startPt.x, curPt.y - activeDrawingDrag.startPt.y);
                 if (dist >= 4) {
@@ -1919,7 +2100,15 @@
                 window.removeEventListener('touchmove', onWindowDrawingMove);
                 window.removeEventListener('touchend', onWindowDrawingUp);
 
-                if (!activeDrawingDrag) return;
+                activeDrawingCrosshair = null;
+                if (mainChart && typeof mainChart.clearCrosshairPosition === 'function') {
+                    mainChart.clearCrosshairPosition();
+                }
+
+                if (!activeDrawingDrag) {
+                    redrawCanvasOverlay();
+                    return;
+                }
 
                 if (activeDrawingDrag.hasMoved) {
                     lastDrawingClickTime = 0;
@@ -1962,6 +2151,7 @@
                     drawingCanvas.style.cursor = 'default';
                 }
                 activeDrawingDrag = null;
+                redrawCanvasOverlay();
             };
 
             window.addEventListener('mousemove', onWindowDrawingMove);
@@ -3018,6 +3208,10 @@
                     };
                     drawSingleShape(ctx, previewShape);
                 }
+            }
+
+            if (activeDrawingCrosshair) {
+                drawActiveDrawingCrosshair(ctx);
             }
         }
 
