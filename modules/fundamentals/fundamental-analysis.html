@@ -1567,6 +1567,65 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   background: var(--accent);
   color: #fff;
 }
+.chart-type-tabs {
+  display: inline-flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+.chart-type-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chart-type-btn:hover {
+  color: var(--text-primary);
+}
+.chart-type-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+.chart-bottom-legend {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding-top: 10px;
+  flex-wrap: wrap;
+}
+.chart-legend-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.chart-legend-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  accent-color: #3b82f6;
+}
+.chart-legend-checkbox:hover {
+  color: var(--text-primary);
+}
+.chart-legend-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
 .chart-canvas-box {
   width: 100%;
   height: 300px;
@@ -2257,17 +2316,22 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
       <div class="ratios-grid" id="ratiosGrid"></div>
     </div>
 
-    <!-- Technical Price & Moving Averages Chart -->
+    <!-- Technical Price & Moving Averages / PE Ratio / Price to Book Chart -->
     <div class="card" id="chartSection">
-      <div class="sec-head">
+      <div class="sec-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <div>
-          <div class="sec-title">📈 Price & Moving Averages</div>
-          <div class="sec-sub">Technical Price History, 50 DMA, 200 DMA & Volumes</div>
+          <div class="sec-title" id="chartSectionTitle">📈 Price & Moving Averages</div>
+          <div class="sec-sub" id="chartSectionSub">Technical Price History, 50 DMA, 200 DMA & Volumes</div>
+        </div>
+        <div class="chart-type-tabs" id="chartTypeTabs">
+          <button class="chart-type-btn active" data-type="price" onclick="switchChartType('price')">Price</button>
+          <button class="chart-type-btn" data-type="pe" onclick="switchChartType('pe')">PE Ratio</button>
+          <button class="chart-type-btn" data-type="pb" onclick="switchChartType('pb')">Price to Book</button>
         </div>
       </div>
       <div class="chart-container-wrap">
         <div class="chart-controls">
-          <div class="chart-legend">
+          <div class="chart-legend" id="chartLegendTop">
             <span class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> Price</span>
             <span class="legend-item"><span class="legend-dot" style="background: #38bdf8;"></span> 50 DMA</span>
             <span class="legend-item"><span class="legend-dot" style="background: #f59e0b;"></span> 200 DMA</span>
@@ -2287,6 +2351,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
           <canvas id="screenerChartCanvas"></canvas>
           <div id="chartTooltip" class="chart-tooltip" style="display: none;"></div>
         </div>
+        <div class="chart-bottom-legend" id="chartBottomLegend" style="display: none;"></div>
       </div>
     </div>
 
@@ -2637,6 +2702,16 @@ function esc(v) {
 let currentFundamentalMode = 'consolidated';
 let _chartDatasets = [];
 let _chartCurrentDays = 365;
+let _currentChartType = 'price'; // 'price' | 'pe' | 'pb'
+let _chartDatasetsCache = {};
+let _chartVisibility = {
+  pe_line: true,
+  pe_median: true,
+  pe_bar: true,
+  pb_line: true,
+  pb_median: true,
+  pb_bar: true
+};
 
 function renderScreenerTable(section, secId) {
   const cols = section?.columns || [];
@@ -2830,6 +2905,91 @@ async function switchFundamentalMode(newMode) {
   await loadFundamentals(newMode);
 }
 
+function formatChartDate(rawDate) {
+  if (!rawDate) return '';
+  const d = new Date(rawDate);
+  if (isNaN(d.getTime())) return String(rawDate);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+async function switchChartType(type) {
+  if (_currentChartType === type) return;
+  _currentChartType = type;
+
+  // Update tabs active state
+  document.querySelectorAll('#chartTypeTabs .chart-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-type') === type);
+  });
+
+  const titleEl = document.getElementById('chartSectionTitle');
+  const subEl = document.getElementById('chartSectionSub');
+  const topLegend = document.getElementById('chartLegendTop');
+  const bottomLegend = document.getElementById('chartBottomLegend');
+
+  if (type === 'price') {
+    if (titleEl) titleEl.textContent = '📈 Price & Moving Averages';
+    if (subEl) subEl.textContent = 'Technical Price History, 50 DMA, 200 DMA & Volumes';
+    if (topLegend) topLegend.style.display = 'flex';
+    if (bottomLegend) bottomLegend.style.display = 'none';
+  } else if (type === 'pe') {
+    if (titleEl) titleEl.textContent = '📈 PE Ratio';
+    if (subEl) subEl.textContent = 'Price to Earnings, Median PE & TTM EPS';
+    if (topLegend) topLegend.style.display = 'none';
+    if (bottomLegend) bottomLegend.style.display = 'flex';
+  } else if (type === 'pb') {
+    if (titleEl) titleEl.textContent = '📈 Price to Book';
+    if (subEl) subEl.textContent = 'Price to Book Value, Median PBV & Book Value';
+    if (topLegend) topLegend.style.display = 'none';
+    if (bottomLegend) bottomLegend.style.display = 'flex';
+  }
+
+  // Screener defaults to 5Y for valuation ratios (PE and PB) if currently on 1Y/less
+  if ((type === 'pe' || type === 'pb') && _chartCurrentDays < 1095) {
+    _chartCurrentDays = 1825;
+    document.querySelectorAll('#chartRangeBtns .range-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.trim() === '5Y');
+    });
+  }
+
+  await loadAndRenderChart(_chartCurrentDays);
+}
+
+function updateRatioBottomLegend(type, lineLabel, medianLabel, barLabel) {
+  const bottomLegend = document.getElementById('chartBottomLegend');
+  if (!bottomLegend) return;
+
+  const showLine = _chartVisibility[type + '_line'] !== false;
+  const showMedian = _chartVisibility[type + '_median'] !== false;
+  const showBar = _chartVisibility[type + '_bar'] !== false;
+
+  bottomLegend.innerHTML = `
+    <label class="chart-legend-checkbox">
+      <input type="checkbox" ${showLine ? 'checked' : ''} onchange="toggleRatioSeries('${type}', 'line', this.checked)">
+      <span class="chart-legend-icon" style="background: #818cf8;"></span>
+      <span>${lineLabel}</span>
+    </label>
+    <label class="chart-legend-checkbox">
+      <input type="checkbox" ${showMedian ? 'checked' : ''} onchange="toggleRatioSeries('${type}', 'median', this.checked)">
+      <span class="chart-legend-icon" style="background: #fbbf24; border-top: 2px dashed #fbbf24; height: 0; margin-top: 5px;"></span>
+      <span>${medianLabel}</span>
+    </label>
+    <label class="chart-legend-checkbox">
+      <input type="checkbox" ${showBar ? 'checked' : ''} onchange="toggleRatioSeries('${type}', 'bar', this.checked)">
+      <span class="chart-legend-icon" style="background: rgba(147, 197, 253, 0.7);"></span>
+      <span>${barLabel}</span>
+    </label>
+  `;
+}
+
+function toggleRatioSeries(type, key, isChecked) {
+  _chartVisibility[type + '_' + key] = isChecked;
+  const cacheKey = `${type}:${_chartCurrentDays}`;
+  const datasets = _chartDatasetsCache[cacheKey] || _chartDatasets;
+  if (datasets && datasets.length) {
+    renderRatioChart(datasets, type, _chartCurrentDays);
+  }
+}
+
 async function setChartRange(days) {
   _chartCurrentDays = days;
   document.querySelectorAll('#chartRangeBtns .range-btn').forEach(btn => {
@@ -2844,28 +3004,62 @@ async function setChartRange(days) {
     ));
   });
 
-  // If user selects ALL or 5Y, check if extended historical points are needed
-  if (days >= 1825 && window.companyId) {
-    const priceDs = _chartDatasets.find(d => /price/i.test(d.metric)) || _chartDatasets[0];
-    const valCount = (priceDs?.values || []).length;
-    // If requesting ALL or 5Y and dataset has fewer historical points
-    if (days >= 10000 || valCount < 260) {
-      const fetchDays = days >= 10000 ? 10000 : 1825;
-      try {
-        const resp = await fetch(`/api/fundamentals/chart?company_id=${encodeURIComponent(window.companyId)}&days=${fetchDays}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data && data.datasets && data.datasets.length) {
+  await loadAndRenderChart(days);
+}
+
+async function loadAndRenderChart(days = _chartCurrentDays) {
+  _chartCurrentDays = days;
+  const companyId = window.companyId;
+  const type = _currentChartType;
+
+  let query = 'Price-DMA50-DMA200-Volume';
+  if (type === 'pe') query = 'Price to Earning-Median PE-EPS';
+  else if (type === 'pb') query = 'Price to book value-Median PBV-Book value';
+
+  const cacheKey = `${type}:${days}`;
+  if (_chartDatasetsCache[cacheKey]) {
+    if (type === 'price') {
+      renderScreenerChart(_chartDatasetsCache[cacheKey], days);
+    } else {
+      renderRatioChart(_chartDatasetsCache[cacheKey], type, days);
+    }
+    return;
+  }
+
+  // If initial load already provided price data:
+  if (type === 'price' && _chartDatasets && _chartDatasets.length && days <= 1825 && !_chartDatasetsCache[cacheKey]) {
+    _chartDatasetsCache[cacheKey] = _chartDatasets;
+    renderScreenerChart(_chartDatasets, days);
+    return;
+  }
+
+  if (companyId) {
+    try {
+      const resp = await fetch(`/api/fundamentals/chart?company_id=${encodeURIComponent(companyId)}&days=${days}&q=${encodeURIComponent(query)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.datasets && data.datasets.length) {
+          _chartDatasetsCache[cacheKey] = data.datasets;
+          if (type === 'price') {
             _chartDatasets = data.datasets;
+            renderScreenerChart(data.datasets, days);
+          } else {
+            renderRatioChart(data.datasets, type, days);
           }
+          return;
         }
-      } catch (err) {
-        console.warn('Could not fetch extended chart data:', err);
       }
+    } catch (err) {
+      console.warn('Could not fetch chart data for', type, err);
     }
   }
 
-  renderScreenerChart(_chartDatasets, days);
+  // Fallback rendering
+  if (type === 'price') {
+    renderScreenerChart(_chartDatasets, days);
+  } else {
+    renderRatioChart([], type, days);
+  }
 }
 
 function renderScreenerChart(datasets, days = _chartCurrentDays) {
@@ -2887,6 +3081,7 @@ function renderScreenerChart(datasets, days = _chartCurrentDays) {
   ctx.scale(dpr, dpr);
 
   if (!_chartDatasets.length) {
+    ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#94a3b8';
     ctx.font = '12px Inter, sans-serif';
     ctx.textAlign = 'center';
@@ -3009,14 +3204,7 @@ function renderScreenerChart(datasets, days = _chartCurrentDays) {
     drawLine(priceVals, '#10b981', 2);
   }
 
-  function formatChartDate(rawDate) {
-    if (!rawDate) return '';
-    const d = new Date(rawDate);
-    if (isNaN(d.getTime())) return String(rawDate);
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
-
-  // Date labels along X axis (Common date-only format, e.g. 15 Mar 2024)
+  // Date labels along X axis
   ctx.fillStyle = '#64748b';
   ctx.font = '9.5px Inter, sans-serif';
   ctx.textAlign = 'center';
@@ -3032,6 +3220,7 @@ function renderScreenerChart(datasets, days = _chartCurrentDays) {
 
   window._chartPoints = priceVals.map((p, idx) => ({
     date: p[0],
+    chartType: 'price',
     price: p[1],
     dma50: dma50Vals[idx]?.[1],
     dma200: dma200Vals[idx]?.[1],
@@ -3040,31 +3229,291 @@ function renderScreenerChart(datasets, days = _chartCurrentDays) {
     y: getY(p[1])
   }));
 
-  if (!box._listenerAttached) {
-    box._listenerAttached = true;
-    const tooltip = document.getElementById('chartTooltip');
+  attachChartTooltipListener(box);
+}
 
-    const onMove = (e) => {
-      if (!window._chartPoints || !window._chartPoints.length) return;
-      const bRect = box.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const mouseX = clientX - bRect.left;
+function renderRatioChart(datasets, type, days = _chartCurrentDays) {
+  const canvas = document.getElementById('screenerChartCanvas');
+  const box = document.getElementById('chartCanvasBox');
+  if (!canvas || !box) return;
 
-      let closest = window._chartPoints[0];
-      let minDiff = Infinity;
-      for (const pt of window._chartPoints) {
-        const diff = Math.abs(pt.x - mouseX);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closest = pt;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = box.getBoundingClientRect();
+  const width = rect.width || 800;
+  const height = rect.height || 300;
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  ctx.scale(dpr, dpr);
+
+  const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
+
+  if (!datasets || !datasets.length) {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No ' + (type === 'pe' ? 'PE Ratio' : 'Price to Book') + ' dataset available', width / 2, height / 2);
+    return;
+  }
+
+  // Identify datasets
+  let lineDs, barDs, medianDs;
+  if (type === 'pe') {
+    lineDs = datasets.find(d => /Price to Earning|^PE$/i.test(d.metric || '')) || datasets.find(d => /PE/i.test(d.label || ''));
+    barDs = datasets.find(d => /^EPS$/i.test(d.metric || '') || /EPS/i.test(d.label || ''));
+    medianDs = datasets.find(d => /Median/i.test(d.metric || '') || /Median/i.test(d.label || ''));
+  } else {
+    lineDs = datasets.find(d => /Price to book value|^PBV$/i.test(d.metric || '')) || datasets.find(d => /Price to BV|PBV/i.test(d.label || ''));
+    barDs = datasets.find(d => /^Book value$/i.test(d.metric || '') || /Book Value/i.test(d.label || ''));
+    medianDs = datasets.find(d => /Median/i.test(d.metric || '') || /Median/i.test(d.label || ''));
+  }
+
+  const lineLabel = type === 'pe' ? 'PE' : 'Price to BV';
+  const barLabel = type === 'pe' ? 'TTM EPS' : 'Book Value';
+  const medianLabel = medianDs?.label || (type === 'pe' ? 'Median PE' : 'Median PBV');
+
+  // Update bottom legend checkboxes
+  updateRatioBottomLegend(type, lineLabel, medianLabel, barLabel);
+
+  const showLine = _chartVisibility[type + '_line'] !== false;
+  const showMedian = _chartVisibility[type + '_median'] !== false;
+  const showBar = _chartVisibility[type + '_bar'] !== false;
+
+  let lineVals = (lineDs?.values || []).map(v => [v[0], parseFloat(v[1])]).filter(v => !isNaN(v[1]));
+  if (days && days < 10000 && lineVals.length > 5) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const idx = lineVals.findIndex(v => v[0] >= cutoffStr);
+    if (idx > 0) lineVals = lineVals.slice(idx);
+  }
+
+  if (!lineVals.length) {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No data points for selected timeframe', width / 2, height / 2);
+    return;
+  }
+
+  const startDate = lineVals[0][0];
+  const endDate = lineVals[lineVals.length - 1][0];
+
+  let barVals = (barDs?.values || []).map(v => [v[0], parseFloat(v[1])]).filter(v => !isNaN(v[1]) && v[0] >= startDate && v[0] <= endDate);
+  if (!barVals.length && (barDs?.values || []).length) {
+    barVals = (barDs.values || []).map(v => [v[0], parseFloat(v[1])]).filter(v => !isNaN(v[1]));
+  }
+
+  let medianVal = null;
+  if (medianDs && medianDs.values && medianDs.values.length) {
+    medianVal = parseFloat(medianDs.values[0][1]);
+  }
+
+  const padding = { top: 25, right: 48, bottom: 25, left: 48 };
+  const plotW = width - padding.left - padding.right;
+  const plotH = height - padding.top - padding.bottom;
+
+  // Left Y-axis scaling (Bar metric: EPS or Book Value)
+  const barNums = barVals.length ? barVals.map(v => v[1]) : [1];
+  const rawMinBar = Math.min(...barNums);
+  const barMin = rawMinBar < 0 ? rawMinBar * 1.1 : 0;
+  const barMax = Math.max(1, Math.max(...barNums)) * 1.18;
+  const barRange = barMax - barMin || 1;
+
+  // Right Y-axis scaling (Line metric: PE or Price to BV)
+  let lineNums = lineVals.map(v => v[1]);
+  if (medianVal !== null && !isNaN(medianVal)) lineNums = lineNums.concat([medianVal]);
+  let lineMin, lineMax;
+  if (type === 'pe') {
+    lineMin = 0;
+    lineMax = Math.max(10, Math.max(...lineNums)) * 1.1;
+  } else {
+    lineMin = Math.max(0, Math.min(...lineNums) * 0.85);
+    lineMax = Math.max(1, Math.max(...lineNums)) * 1.1;
+  }
+  const lineRange = lineMax - lineMin || 1;
+
+  const getX = (idx, total) => padding.left + (idx / Math.max(total - 1, 1)) * plotW;
+  const getYLeft = (val) => padding.top + (1 - (val - barMin) / barRange) * plotH;
+  const getYRight = (val) => padding.top + (1 - (val - lineMin) / lineRange) * plotH;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Background Grid and Axis Labels
+  ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  ctx.lineWidth = 1;
+  const gridRows = 4;
+  for (let i = 0; i <= gridRows; i++) {
+    const y = padding.top + (i / gridRows) * plotH;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+
+    // Left Y-axis value (Bar metric)
+    const leftVal = barMax - (i / gridRows) * barRange;
+    ctx.fillStyle = '#64748b';
+    ctx.font = '9.5px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(leftVal >= 10 ? leftVal.toFixed(0) : leftVal.toFixed(1), padding.left - 6, y + 3);
+
+    // Right Y-axis value (Line metric)
+    const rightVal = lineMax - (i / gridRows) * lineRange;
+    ctx.textAlign = 'left';
+    ctx.fillText(rightVal >= 10 ? rightVal.toFixed(0) : rightVal.toFixed(1), width - padding.right + 6, y + 3);
+  }
+
+  // Axis Titles at top
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 9.5px Inter, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(barLabel, padding.left - 4, padding.top - 10);
+
+  ctx.textAlign = 'right';
+  ctx.fillText(lineLabel, width - padding.right + 4, padding.top - 10);
+
+  // 1. Draw Bars (Quarterly EPS or Book Value)
+  if (showBar && barVals.length) {
+    const barW = Math.max(8, (plotW / barVals.length) * 0.82);
+    ctx.fillStyle = isDark ? 'rgba(147, 197, 253, 0.4)' : 'rgba(186, 230, 253, 0.7)';
+    ctx.strokeStyle = isDark ? 'rgba(147, 197, 253, 0.65)' : 'rgba(147, 197, 253, 0.9)';
+    ctx.lineWidth = 1;
+
+    barVals.forEach((bv) => {
+      const dateStr = bv[0];
+      let lineIdx = lineVals.findIndex(lv => lv[0] >= dateStr);
+      if (lineIdx === -1) lineIdx = lineVals.length - 1;
+      const x = padding.left + (lineIdx / Math.max(lineVals.length - 1, 1)) * plotW - barW / 2;
+      const y = getYLeft(bv[1]);
+      const h = Math.max(0, padding.top + plotH - y);
+      ctx.fillRect(x, y, barW, h);
+      ctx.strokeRect(x, y, barW, h);
+    });
+  }
+
+  // 2. Draw Median Dashed Line
+  if (showMedian && medianVal !== null && !isNaN(medianVal)) {
+    const medY = getYRight(medianVal);
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = isDark ? '#fbbf24' : '#d97706';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, medY);
+    ctx.lineTo(width - padding.right, medY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 3. Draw Solid Line (PE or Price to BV)
+  if (showLine && lineVals.length) {
+    ctx.beginPath();
+    ctx.strokeStyle = '#818cf8';
+    ctx.lineWidth = 2;
+    lineVals.forEach((pt, i) => {
+      const x = getX(i, lineVals.length);
+      const y = getYRight(pt[1]);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  // 4. X-Axis Dates
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9.5px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  const labelCount = Math.min(width < 500 ? 3 : 6, lineVals.length);
+  for (let k = 0; k < labelCount; k++) {
+    const idx = Math.floor((k / (labelCount - 1 || 1)) * (lineVals.length - 1));
+    const pt = lineVals[idx];
+    if (pt) {
+      const x = getX(idx, lineVals.length);
+      ctx.fillText(formatChartDate(pt[0]), x, height - 8);
+    }
+  }
+
+  // 5. Tooltip Data Points
+  window._chartPoints = lineVals.map((p, idx) => {
+    let matchingBar = barVals.find(b => b[0] === p[0]);
+    if (!matchingBar) {
+      for (let bi = barVals.length - 1; bi >= 0; bi--) {
+        if (barVals[bi][0] <= p[0]) {
+          matchingBar = barVals[bi];
+          break;
         }
       }
+    }
+    return {
+      date: p[0],
+      chartType: type,
+      lineVal: p[1],
+      lineLabel: lineLabel,
+      barVal: matchingBar ? matchingBar[1] : null,
+      barLabel: barLabel,
+      medianVal: medianVal,
+      medianLabel: medianLabel,
+      x: getX(idx, lineVals.length),
+      y: getYRight(p[1])
+    };
+  });
 
-      if (closest && minDiff < 35) {
-        tooltip.style.display = 'block';
-        tooltip.style.left = closest.x + 'px';
-        tooltip.style.top = Math.max(closest.y, 35) + 'px';
+  attachChartTooltipListener(box);
+}
+
+function attachChartTooltipListener(box) {
+  if (box._listenerAttached) return;
+  box._listenerAttached = true;
+  const tooltip = document.getElementById('chartTooltip');
+
+  const onMove = (e) => {
+    if (!window._chartPoints || !window._chartPoints.length) return;
+    const bRect = box.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const mouseX = clientX - bRect.left;
+
+    let closest = window._chartPoints[0];
+    let minDiff = Infinity;
+    for (const pt of window._chartPoints) {
+      const diff = Math.abs(pt.x - mouseX);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = pt;
+      }
+    }
+
+    if (closest && minDiff < 35) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = closest.x + 'px';
+      tooltip.style.top = Math.max(closest.y, 35) + 'px';
+
+      if (closest.chartType === 'pe') {
+        const medText = closest.medianLabel
+          ? (closest.medianLabel.includes('=') ? closest.medianLabel : `${closest.medianLabel}: ${closest.medianVal}`)
+          : (closest.medianVal != null ? `Median PE: ${closest.medianVal}` : '');
+        tooltip.innerHTML = `
+          <div style="font-weight:700; color:var(--text-primary); margin-bottom:2px;">${formatChartDate(closest.date)}</div>
+          <div style="color:#818cf8; font-weight:600;">PE: ${closest.lineVal != null ? closest.lineVal.toFixed(1) : '-'}</div>
+          ${medText ? `<div style="color:#f59e0b;">${medText}</div>` : ''}
+          ${closest.barVal != null ? `<div style="color:#38bdf8;">TTM EPS: ₹${closest.barVal.toFixed(2)}</div>` : ''}
+        `;
+      } else if (closest.chartType === 'pb') {
+        const medText = closest.medianLabel
+          ? (closest.medianLabel.includes('=') ? closest.medianLabel : `${closest.medianLabel}: ${closest.medianVal}`)
+          : (closest.medianVal != null ? `Median PBV: ${closest.medianVal}` : '');
+        tooltip.innerHTML = `
+          <div style="font-weight:700; color:var(--text-primary); margin-bottom:2px;">${formatChartDate(closest.date)}</div>
+          <div style="color:#818cf8; font-weight:600;">Price to BV: ${closest.lineVal != null ? closest.lineVal.toFixed(2) : '-'}</div>
+          ${medText ? `<div style="color:#f59e0b;">${medText}</div>` : ''}
+          ${closest.barVal != null ? `<div style="color:#38bdf8;">Book Value: ₹${closest.barVal.toFixed(2)}</div>` : ''}
+        `;
+      } else {
         tooltip.innerHTML = `
           <div style="font-weight:700; color:var(--text-primary); margin-bottom:2px;">${formatChartDate(closest.date)}</div>
           <div style="color:#10b981; font-weight:600;">Price: ₹${closest.price.toFixed(2)}</div>
@@ -3072,16 +3521,16 @@ function renderScreenerChart(datasets, days = _chartCurrentDays) {
           ${closest.dma200 != null ? `<div style="color:#f59e0b;">200 DMA: ₹${closest.dma200.toFixed(2)}</div>` : ''}
           ${closest.volume != null ? `<div style="color:#94a3b8;">Vol: ${closest.volume.toLocaleString()}</div>` : ''}
         `;
-      } else {
-        tooltip.style.display = 'none';
       }
-    };
+    } else {
+      tooltip.style.display = 'none';
+    }
+  };
 
-    box.addEventListener('mousemove', onMove);
-    box.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
-    box.addEventListener('touchmove', onMove, { passive: true });
-    box.addEventListener('touchend', () => { if (tooltip) tooltip.style.display = 'none'; });
-  }
+  box.addEventListener('mousemove', onMove);
+  box.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
+  box.addEventListener('touchmove', onMove, { passive: true });
+  box.addEventListener('touchend', () => { if (tooltip) tooltip.style.display = 'none'; });
 }
 
 function initWebNavScrollSpy() {
@@ -3426,7 +3875,12 @@ function render(d) {
   }).join('');
 
   // Render Technical Price Chart
-  renderScreenerChart(d.charts?.price || []);
+  if (d.charts?.price && d.charts.price.length) {
+    _chartDatasets = d.charts.price;
+    _chartDatasetsCache[`price:${_chartCurrentDays}`] = d.charts.price;
+    _chartDatasetsCache['price:365'] = d.charts.price;
+  }
+  loadAndRenderChart(_chartCurrentDays);
 
   // Render Pros & Cons
   const pros = d.pros || [];

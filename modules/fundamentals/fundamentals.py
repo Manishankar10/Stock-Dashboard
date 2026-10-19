@@ -775,10 +775,11 @@ def get_chart():
     """Proxy Screener.in interactive technical chart endpoint."""
     company_id = (request.args.get("company_id") or "").strip()
     days = (request.args.get("days") or "365").strip()
+    q = (request.args.get("q") or "Price-DMA50-DMA200-Volume").strip()
     if not company_id:
         return jsonify({"error": "company_id is required"}), 400
 
-    cache_key = f"{company_id}:{days}"
+    cache_key = f"{company_id}:{days}:{q}"
     now = time.time()
     with _fundamentals_cache_lock:
         cached = _charts_cache.get(cache_key)
@@ -789,7 +790,8 @@ def get_chart():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
     }
-    url = f"https://www.screener.in/api/company/{company_id}/chart/?q=Price-DMA50-DMA200-Volume&days={days}"
+    quoted_q = requests.utils.quote(q)
+    url = f"https://www.screener.in/api/company/{company_id}/chart/?q={quoted_q}&days={days}"
 
     try:
         r = requests.get(url, headers=headers, timeout=7)
