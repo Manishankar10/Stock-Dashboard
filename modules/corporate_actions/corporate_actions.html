@@ -17,54 +17,6 @@
         </div>
     </div>
 
-    <!-- Top Summary KPI Statistics Cards -->
-    <div class="corp-kpi-grid">
-        <div class="corp-kpi-card active-tab-bonus" id="corp-kpi-card-bonus" onclick="switchCorpTab('bonus')" title="View Bonus Issues">
-            <div class="corp-kpi-top">
-                <span class="corp-kpi-label">BONUS ISSUES</span>
-                <span class="corp-kpi-icon">🎁</span>
-            </div>
-            <div class="corp-kpi-value" id="corp-kpi-bonus"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
-            <div class="corp-kpi-sub">Free share allocation</div>
-        </div>
-
-        <div class="corp-kpi-card" id="corp-kpi-card-rights" onclick="switchCorpTab('rights')" title="View Rights Issues">
-            <div class="corp-kpi-top">
-                <span class="corp-kpi-label">RIGHTS ISSUES</span>
-                <span class="corp-kpi-icon">📑</span>
-            </div>
-            <div class="corp-kpi-value" id="corp-kpi-rights"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
-            <div class="corp-kpi-sub">Existing shareholder offers</div>
-        </div>
-
-        <div class="corp-kpi-card" id="corp-kpi-card-split" onclick="switchCorpTab('split')" title="View Stock Splits">
-            <div class="corp-kpi-top">
-                <span class="corp-kpi-label">STOCK SPLITS</span>
-                <span class="corp-kpi-icon">✂️</span>
-            </div>
-            <div class="corp-kpi-value" id="corp-kpi-split"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
-            <div class="corp-kpi-sub">Face value subdivision</div>
-        </div>
-
-        <div class="corp-kpi-card" id="corp-kpi-card-buyback" onclick="switchCorpTab('buyback')" title="View Buybacks">
-            <div class="corp-kpi-top">
-                <span class="corp-kpi-label">BUYBACKS</span>
-                <span class="corp-kpi-icon">💼</span>
-            </div>
-            <div class="corp-kpi-value" id="corp-kpi-buyback"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
-            <div class="corp-kpi-sub">Tender & market purchases</div>
-        </div>
-
-        <div class="corp-kpi-card corp-kpi-dividend" id="corp-kpi-card-dividend" onclick="switchCorpTab('dividend')" title="View Dividends">
-            <div class="corp-kpi-top">
-                <span class="corp-kpi-label">DIVIDENDS</span>
-                <span class="corp-kpi-icon">💰</span>
-            </div>
-            <div class="corp-kpi-value text-buy" id="corp-kpi-dividend"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
-            <div class="corp-kpi-sub">Cash payout declarations</div>
-        </div>
-    </div>
-
     <!-- Navigation Tabs Bar -->
     <div class="corp-tabs-bar" role="tablist" aria-label="Corporate Action Categories">
         <button type="button" class="corp-tab-btn active" data-tab="bonus" onclick="switchCorpTab('bonus')">
@@ -122,7 +74,8 @@
                 <span class="corp-section-tag" id="corp-upcoming-badge">0 upcoming</span>
             </div>
 
-            <div class="corp-table-responsive">
+            <!-- Desktop Table View -->
+            <div class="corp-table-responsive desktop-only-view">
                 <table class="corp-table" id="corp-upcoming-table">
                     <thead id="corp-table-head">
                         <tr>
@@ -151,6 +104,18 @@
                 </table>
             </div>
 
+            <!-- Mobile Cards List View (<= 768px, zero horizontal scrolling) -->
+            <div class="corp-mobile-cards-list mobile-only-view" id="corp-upcoming-mobile-cards">
+                <div class="corp-mobile-card skeleton-card">
+                    <span class="skeleton-box" style="width: 60%; height: 16px; margin-bottom: 6px;"></span>
+                    <span class="skeleton-box" style="width: 40%; height: 12px; margin-bottom: 8px;"></span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <span class="skeleton-box" style="height: 36px; border-radius: 6px;"></span>
+                        <span class="skeleton-box" style="height: 36px; border-radius: 6px;"></span>
+                    </div>
+                </div>
+            </div>
+
             <div class="corp-empty-state" id="corp-upcoming-empty" style="display: none;">
                 <div class="corp-empty-icon">📂</div>
                 <div class="corp-empty-title">No upcoming corporate actions found</div>
@@ -172,7 +137,8 @@
             </button>
 
             <div class="corp-past-body" id="corp-past-body" style="display: none;">
-                <div class="corp-table-responsive">
+                <!-- Desktop Table View -->
+                <div class="corp-table-responsive desktop-only-view">
                     <table class="corp-table" id="corp-past-table">
                         <thead id="corp-past-table-head">
                             <!-- Cloned from main table head -->
@@ -181,6 +147,10 @@
                             <!-- Populated dynamically -->
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Cards List View for Past Actions (<= 768px, zero horizontal scrolling) -->
+                <div class="corp-mobile-cards-list mobile-only-view" id="corp-past-mobile-cards">
                 </div>
 
                 <div class="corp-empty-state" id="corp-past-empty" style="display: none;">

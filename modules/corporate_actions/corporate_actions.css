@@ -156,77 +156,114 @@
 }
 
 /* ======================================================== */
-/* 2. Top Summary KPI Cards Grid                            */
+/* 2. Mobile Cards List View (<= 768px)                     */
 /* ======================================================== */
-.corp-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
+.corp-mobile-cards-list {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.corp-kpi-card {
+.corp-mobile-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 13px 15px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    user-select: none;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.corp-kpi-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+.corp-mobile-card:hover {
     border-color: rgba(16, 185, 129, 0.4);
 }
 
-.corp-kpi-card.active-tab {
-    border-color: #10b981;
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.06) 0%, var(--bg-card) 100%);
-}
-
-.corp-kpi-top {
+.corp-mcard-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.corp-kpi-label {
-    font-size: 10px;
+.corp-mcard-company-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.corp-mcard-company-name {
+    font-size: 13.5px;
     font-weight: 700;
-    letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-}
-
-.corp-kpi-icon {
-    font-size: 14px;
-    opacity: 0.9;
-}
-
-.corp-kpi-value {
-    font-size: 20px;
-    font-weight: 800;
     color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', var(--font-sans);
-    margin-bottom: 2px;
-    letter-spacing: -0.01em;
+    cursor: pointer;
+    line-height: 1.3;
+    transition: color 0.15s ease;
+    word-break: break-word;
+}
+
+.corp-mcard-company-name:hover {
+    color: #10b981 !important;
+    text-decoration: underline;
+}
+
+.corp-mcard-ticker-row {
     display: flex;
     align-items: center;
-    min-height: 26px;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
-.corp-kpi-sub {
-    font-size: 11px;
+.corp-mcard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    background: rgba(148, 163, 184, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.corp-mcard-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.corp-mcard-stat-label {
+    font-size: 9.5px;
+    font-weight: 700;
     color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.corp-mcard-stat-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', var(--font-sans);
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.corp-mcard-stat-val.highlight-val {
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .text-buy {
@@ -787,35 +824,6 @@
         display: none !important;
     }
 
-    /* KPI Grid on Mobile: 2 Columns */
-    .corp-kpi-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-        margin-bottom: 12px !important;
-    }
-
-    .corp-kpi-card {
-        padding: 10px 12px !important;
-        border-radius: 10px !important;
-    }
-
-    .corp-kpi-card.corp-kpi-dividend {
-        grid-column: 1 / -1 !important;
-    }
-
-    .corp-kpi-label {
-        font-size: 9px !important;
-    }
-
-    .corp-kpi-value {
-        font-size: 16px !important;
-        min-height: 22px !important;
-    }
-
-    .corp-kpi-sub {
-        font-size: 10px !important;
-    }
-
     /* Tabs Bar Mobile */
     .corp-tabs-bar {
         gap: 6px !important;
@@ -843,6 +851,8 @@
         margin-bottom: 14px !important;
         padding: 10px !important;
         border-radius: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .corp-filter-block {
@@ -874,6 +884,8 @@
         padding: 12px 10px !important;
         margin-bottom: 14px !important;
         border-radius: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .corp-section-title {
@@ -885,97 +897,73 @@
         padding: 1.5px 6px !important;
     }
 
-    /* Table Mobile Layout */
-    .corp-table-responsive {
-        max-height: none !important;
-    }
-
-    .corp-table {
-        table-layout: fixed !important;
-    }
-
-    .corp-table thead th {
-        font-size: 10px !important;
-        padding: 8px 4px !important;
-        position: static !important;
-    }
-
-    .corp-table tbody td {
-        padding: 9px 4px !important;
-        font-size: 11.5px !important;
-    }
-
-    .corp-col-company {
-        width: 44% !important;
-    }
-
-    .corp-col-ex-date-display {
-        width: 28% !important;
-    }
-
-    .corp-col-ratio,
-    .corp-col-premium,
-    .corp-col-old-fv,
-    .corp-col-new-fv,
-    .corp-col-max-price,
-    .corp-col-amount-cr,
-    .corp-col-div-type,
-    .corp-col-percent {
-        width: 28% !important;
-        text-align: right !important;
-    }
-
-    .corp-col-amount,
-    .corp-col-end-date-display,
-    .corp-col-offer-type {
+    /* Desktop/Mobile Layout Toggle */
+    .corporate-actions-container .desktop-only-view {
         display: none !important;
     }
 
-    /* Dividend tab custom widths */
-    .corp-table[data-tab="dividend"] .corp-col-company {
-        width: 34% !important;
-    }
-    .corp-table[data-tab="dividend"] .corp-col-ex-date-display {
-        width: 24% !important;
-    }
-    .corp-table[data-tab="dividend"] .corp-col-amount {
-        display: table-cell !important;
-        width: 18% !important;
-        text-align: right !important;
-    }
-    .corp-table[data-tab="dividend"] .corp-col-div-type {
-        width: 12% !important;
-        text-align: right !important;
-    }
-    .corp-table[data-tab="dividend"] .corp-col-percent {
-        width: 12% !important;
-        text-align: right !important;
+    .corporate-actions-container .mobile-only-view {
+        display: flex !important;
     }
 
-    .corp-company-name {
-        font-size: 12px !important;
+    /* Mobile Cards List Layout - zero horizontal scrolling, full width details */
+    .corp-mobile-cards-list {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    .corp-mobile-card {
+        padding: 12px 13px !important;
+        border-radius: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .corp-mcard-top {
+        margin-bottom: 2px !important;
+    }
+
+    .corp-mcard-company-name {
+        font-size: 13px !important;
         line-height: 1.25 !important;
     }
 
-    .corp-symbol-badge {
-        display: none !important;
+    .corp-mcard-ticker-row {
+        gap: 6px !important;
     }
 
-    .corp-link-icon {
-        display: none !important;
+    .corp-mcard-ticker-row .corp-symbol-badge {
+        display: inline-flex !important;
+        font-size: 9.5px !important;
+        padding: 1.5px 5px !important;
     }
 
-    .corp-date-full {
-        display: none !important;
+    .corp-mcard-ticker-row .corp-link-icon {
+        display: inline-flex !important;
+        font-size: 10.5px !important;
     }
 
-    .corp-date-compact {
-        display: inline !important;
-        font-size: 11px !important;
+    .corp-mcard-grid {
+        gap: 7px 10px !important;
+        padding: 9px 10px !important;
+    }
+
+    .corp-mcard-stat-label {
+        font-size: 9px !important;
+    }
+
+    .corp-mcard-stat-val {
+        font-size: 11.5px !important;
     }
 
     .corp-past-card {
         border-radius: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .corp-past-header {
@@ -992,5 +980,7 @@
 
     .corp-past-body {
         padding: 0 8px 10px 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 }
