@@ -342,6 +342,90 @@
         }
 
         /**
+         * Skeleton Number Loader for Portfolio Analyser
+         */
+        function renderPaSkeletons() {
+            const mountEl = document.getElementById('pa-analysis-mount');
+            if (!mountEl) return;
+            mountEl.innerHTML = `
+                <div class="pa-analysis-grid pa-skeleton-grid">
+                    <div class="pa-chart-card">
+                        <div class="pa-chart-canvas-box" style="display: flex; align-items: center; justify-content: center;">
+                            <div class="pa-skeleton-donut-ring">
+                                <div class="pa-skeleton-donut-center">
+                                    <span class="skeleton-box" style="width: 48px; height: 10px; margin-bottom: 4px;"></span>
+                                    <span class="skeleton-box" style="width: 65px; height: 16px;"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pa-table-card">
+                        <table class="pa-breakdown-table">
+                            <thead>
+                                <tr>
+                                    <th class="pa-col-comp">Company / Segment</th>
+                                    <th class="pa-col-val">Market Value</th>
+                                    <th class="pa-col-pnl">Total G/L</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="pa-row-name-wrap">
+                                            <span class="skeleton-box" style="width: 10px; height: 10px; border-radius: 50%;"></span>
+                                            <span class="skeleton-box" style="width: 32px; height: 14px;"></span>
+                                            <span class="skeleton-box" style="width: 80px; height: 14px;"></span>
+                                        </div>
+                                    </td>
+                                    <td class="pa-row-val-cell">
+                                        <span class="skeleton-box" style="width: 75px; height: 14px; margin-bottom: 3px;"></span>
+                                        <span class="skeleton-box" style="width: 55px; height: 11px;"></span>
+                                    </td>
+                                    <td class="pa-row-pnl-cell">
+                                        <span class="skeleton-box" style="width: 60px; height: 20px; border-radius: 6px;"></span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="pa-row-name-wrap">
+                                            <span class="skeleton-box" style="width: 10px; height: 10px; border-radius: 50%;"></span>
+                                            <span class="skeleton-box" style="width: 32px; height: 14px;"></span>
+                                            <span class="skeleton-box" style="width: 70px; height: 14px;"></span>
+                                        </div>
+                                    </td>
+                                    <td class="pa-row-val-cell">
+                                        <span class="skeleton-box" style="width: 85px; height: 14px; margin-bottom: 3px;"></span>
+                                        <span class="skeleton-box" style="width: 50px; height: 11px;"></span>
+                                    </td>
+                                    <td class="pa-row-pnl-cell">
+                                        <span class="skeleton-box" style="width: 60px; height: 20px; border-radius: 6px;"></span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="pa-row-name-wrap">
+                                            <span class="skeleton-box" style="width: 10px; height: 10px; border-radius: 50%;"></span>
+                                            <span class="skeleton-box" style="width: 32px; height: 14px;"></span>
+                                            <span class="skeleton-box" style="width: 90px; height: 14px;"></span>
+                                        </div>
+                                    </td>
+                                    <td class="pa-row-val-cell">
+                                        <span class="skeleton-box" style="width: 80px; height: 14px; margin-bottom: 3px;"></span>
+                                        <span class="skeleton-box" style="width: 55px; height: 11px;"></span>
+                                    </td>
+                                    <td class="pa-row-pnl-cell">
+                                        <span class="skeleton-box" style="width: 60px; height: 20px; border-radius: 6px;"></span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        window.renderPaSkeletons = renderPaSkeletons;
+
+        /**
          * Main Render Function for Portfolio Analyser
          */
         function renderPortfolioAnalyser() {
@@ -353,6 +437,12 @@
             if (!mountEl) return;
 
             const allPfNames = Object.keys(portfoliosData || {});
+
+            // If portfolios not loaded yet, show skeleton number loader
+            if (!window.portfoliosLoaded && allPfNames.length === 0) {
+                renderPaSkeletons();
+                return;
+            }
 
             // 1. Portfolio Selection Handling
             if (allPfNames.length === 0) {
@@ -719,7 +809,7 @@
                         data: categories.map(c => c.marketValue),
                         backgroundColor: categories.map(c => c.color),
                         borderWidth: 2,
-                        borderColor: document.documentElement.getAttribute('data-theme') === 'light' ? '#ffffff' : '#1e293b',
+                        borderColor: document.documentElement.getAttribute('data-theme') === 'light' ? '#ffffff' : '#0f172a',
                         hoverOffset: 6
                     }]
                 },

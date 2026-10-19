@@ -3,23 +3,23 @@
             <div class="summary-grid" id="overall-summary-mount">
                 <div class="metric-card">
                     <div class="title">Total Net Worth</div>
-                    <div class="value" id="dash-net-worth">₹0.00</div>
-                    <div class="sub-value" style="color:#7f8c8d">Across all portfolios</div>
+                    <div class="value" id="dash-net-worth"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                    <div class="sub-value" style="color:var(--text-secondary)">Across all portfolios</div>
                 </div>
                 <div class="metric-card">
                     <div class="title">Total Invested</div>
-                    <div class="value" id="dash-invested">₹0.00</div>
-                    <div class="sub-value" style="color:#7f8c8d">Capital Deployed</div>
+                    <div class="value" id="dash-invested"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                    <div class="sub-value" style="color:var(--text-secondary)">Capital Deployed</div>
                 </div>
                 <div class="metric-card">
                     <div class="title">Overall Return (P&L)</div>
-                    <div class="value" id="dash-pnl">₹0.00</div>
-                    <div class="sub-value" id="dash-pnl-pct">0.00%</div>
+                    <div class="value" id="dash-pnl"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                    <div class="sub-value" id="dash-pnl-pct"><span class="skeleton-box" style="width: 50px; height: 12px;"></span></div>
                 </div>
                 <div class="metric-card">
                     <div class="title">Today's Return</div>
-                    <div class="value" id="dash-day-pnl">₹0.00</div>
-                    <div class="sub-value" id="dash-day-pnl-pct">0.00%</div>
+                    <div class="value" id="dash-day-pnl"><span class="skeleton-box" style="width: 85px; height: 18px;"></span></div>
+                    <div class="sub-value" id="dash-day-pnl-pct"><span class="skeleton-box" style="width: 50px; height: 12px;"></span></div>
                 </div>
             </div>
 
@@ -57,6 +57,7 @@
                             <span class="pa-title-icon">📊</span>
                             <span>Portfolio Analyser</span>
                         </h2>
+                        <p class="pa-subtitle">Market capitalization breakdown, sectoral exposure & top portfolio holdings</p>
                     </div>
                     <div class="pa-portfolio-selector-wrap" id="pa-portfolio-selector-container">
                         <!-- Populated dynamically: Dropdown if > 1 portfolio, single badge if 1 portfolio -->
@@ -80,7 +81,79 @@
 
                 <!-- Analysis Mount Area: Donut Chart + Breakdown Table -->
                 <div class="pa-analysis-content" id="pa-analysis-mount">
-                    <!-- Populated dynamically: Donut Chart & Legend + Breakdown Table -->
+                    <div class="pa-analysis-grid pa-skeleton-grid">
+                        <div class="pa-chart-card">
+                            <div class="pa-chart-canvas-box" style="display: flex; align-items: center; justify-content: center;">
+                                <div class="pa-skeleton-donut-ring">
+                                    <div class="pa-skeleton-donut-center">
+                                        <span class="skeleton-box" style="width: 48px; height: 10px; margin-bottom: 4px;"></span>
+                                        <span class="skeleton-box" style="width: 65px; height: 16px;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pa-table-card">
+                            <table class="pa-breakdown-table">
+                                <thead>
+                                    <tr>
+                                        <th class="pa-col-comp">Company / Segment</th>
+                                        <th class="pa-col-val">Market Value</th>
+                                        <th class="pa-col-pnl">Total G/L</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="pa-row-name-wrap">
+                                                <span class="skeleton-box" style="width: 10px; height: 10px; border-radius: 50%;"></span>
+                                                <span class="skeleton-box" style="width: 32px; height: 14px;"></span>
+                                                <span class="skeleton-box" style="width: 80px; height: 14px;"></span>
+                                            </div>
+                                        </td>
+                                        <td class="pa-row-val-cell">
+                                            <span class="skeleton-box" style="width: 75px; height: 14px; margin-bottom: 3px;"></span>
+                                            <span class="skeleton-box" style="width: 55px; height: 11px;"></span>
+                                        </td>
+                                        <td class="pa-row-pnl-cell">
+                                            <span class="skeleton-box" style="width: 60px; height: 20px; border-radius: 6px;"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="pa-row-name-wrap">
+                                                <span class="skeleton-box" style="width: 10px; height: 10px; border-radius: 50%;"></span>
+                                                <span class="skeleton-box" style="width: 32px; height: 14px;"></span>
+                                                <span class="skeleton-box" style="width: 70px; height: 14px;"></span>
+                                            </div>
+                                        </td>
+                                        <td class="pa-row-val-cell">
+                                            <span class="skeleton-box" style="width: 85px; height: 14px; margin-bottom: 3px;"></span>
+                                            <span class="skeleton-box" style="width: 50px; height: 11px;"></span>
+                                        </td>
+                                        <td class="pa-row-pnl-cell">
+                                            <span class="skeleton-box" style="width: 60px; height: 20px; border-radius: 6px;"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="pa-row-name-wrap">
+                                                <span class="skeleton-box" style="width: 10px; height: 10px; border-radius: 50%;"></span>
+                                                <span class="skeleton-box" style="width: 32px; height: 14px;"></span>
+                                                <span class="skeleton-box" style="width: 90px; height: 14px;"></span>
+                                            </div>
+                                        </td>
+                                        <td class="pa-row-val-cell">
+                                            <span class="skeleton-box" style="width: 80px; height: 14px; margin-bottom: 3px;"></span>
+                                            <span class="skeleton-box" style="width: 55px; height: 11px;"></span>
+                                        </td>
+                                        <td class="pa-row-pnl-cell">
+                                            <span class="skeleton-box" style="width: 60px; height: 20px; border-radius: 6px;"></span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
