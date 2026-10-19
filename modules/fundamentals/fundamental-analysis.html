@@ -1314,8 +1314,10 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   background: var(--bg-card);
   z-index: 2;
 }
-.web-nav-brand:hover {
+.web-nav-brand:hover,
+.web-nav-brand.active {
   color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 .web-nav-links {
   display: flex;
@@ -2216,8 +2218,8 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   <!-- Screener.in Web Sticky Top Navigation Bar (Web Only - Refer Screener.in Image 1) -->
   <nav id="screenerWebNav">
     <div class="web-nav-left">
-      <a href="#overviewSection" class="web-nav-brand" id="webNavBrand">
-        <span id="webNavCompanyName">Company</span>
+      <a href="#overviewSection" class="web-nav-brand" id="webNavBrand" data-section="overviewSection" title="Jump to KPI Data">
+        <span id="webNavCompanyName">KPI Data</span>
       </a>
       <div class="web-nav-links">
         <a href="#chartSection" class="web-nav-link" data-section="chartSection">Chart</a>
@@ -3089,12 +3091,12 @@ function initWebNavScrollSpy() {
     'ratiosSection', 'shareholdingSection', 'concallsSection', 'brokerResearchSection'
   ];
 
-  const links = document.querySelectorAll('.web-nav-link');
+  const links = document.querySelectorAll('.web-nav-link, .web-nav-brand');
 
   links.forEach(link => {
     link.onclick = (e) => {
       e.preventDefault();
-      const secId = link.getAttribute('data-section');
+      const secId = link.getAttribute('data-section') || link.getAttribute('href')?.replace('#', '');
       const el = document.getElementById(secId);
       if (el) {
         const navHeight = document.getElementById('screenerWebNav')?.offsetHeight || 50;
@@ -3347,7 +3349,7 @@ function render(d) {
 
   // Top Web Nav Brand Link
   const webNavName = document.getElementById('webNavCompanyName');
-  if (webNavName) webNavName.textContent = c.name || symbol;
+  if (webNavName) webNavName.textContent = 'KPI Data';
 
   // Sync mode buttons
   const isCons = (window.currentFundamentalMode === 'consolidated');
