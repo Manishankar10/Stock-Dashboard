@@ -266,7 +266,7 @@
 
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px;">
-                    <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 13.5px; color: var(--text-primary); text-decoration: none; line-height: 1.4;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
+                    <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 400; font-size: 12px; color: var(--text-primary); text-decoration: none; line-height: 1.45;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
                         ${escapeHtml(art.title)} ↗
                     </a>
                 </div>
