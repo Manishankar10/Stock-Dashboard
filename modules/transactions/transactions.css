@@ -559,7 +559,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-weight: 700;
+    font-weight: 400;
     color: #10b981;
     cursor: pointer;
     text-decoration: none;
@@ -571,7 +571,7 @@
 
 .tx-exch-tag {
     font-size: 9px;
-    font-weight: 700;
+    font-weight: 500;
     background: rgba(59, 130, 246, 0.12);
     color: #3b82f6;
     padding: 1px 4px;
@@ -588,12 +588,13 @@
 }
 
 .tx-client-cell {
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-primary);
     max-width: 260px;
 }
 
 .tx-client-name {
+    font-weight: 400;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -677,8 +678,20 @@
 
 .tx-date-cell {
     font-size: 11.5px;
+    font-weight: 400;
     color: var(--text-secondary);
     white-space: nowrap;
+}
+
+.tx-date-primary {
+    font-weight: 400;
+    color: var(--text-primary);
+}
+
+.tx-date-time {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-weight: 400;
 }
 
 .tx-source-link {
@@ -729,20 +742,23 @@
 }
 
 .tx-card-ticker {
-    font-size: 15px;
-    font-weight: 800;
+    font-size: 13.5px;
+    font-weight: 400;
     color: #10b981;
 }
 
 .tx-card-date {
     font-size: 11px;
+    font-weight: 400;
     color: var(--text-secondary);
 }
 
 .tx-card-company {
-    font-size: 12px;
+    font-size: 11.5px;
+    font-weight: 400;
     color: var(--text-secondary);
-    margin-top: -4px;
+    margin-top: -3px;
+    line-height: 1.3;
 }
 
 .tx-card-party-row {
@@ -750,14 +766,14 @@
     justify-content: space-between;
     align-items: center;
     background: var(--bg-body);
-    padding: 8px 10px;
+    padding: 7px 10px;
     border-radius: 8px;
     border: 1px solid var(--border-color);
 }
 
 .tx-card-client-name {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11.5px;
+    font-weight: 400;
     color: var(--text-primary);
     max-width: 65%;
     overflow: hidden;
@@ -932,7 +948,29 @@
     .tx-header-row {
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .tx-badge-label {
+        font-size: 9.5px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.05em !important;
+        padding: 2px 6px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .tx-main-title {
+        font-size: 19px !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.01em !important;
+        margin: 0 0 2px 0 !important;
+    }
+
+    .tx-subtitle {
+        font-size: 11.5px !important;
+        line-height: 1.4 !important;
+        color: var(--text-secondary) !important;
     }
 
     .tx-header-actions {
@@ -944,68 +982,122 @@
     }
 
     .tx-updated-tag {
-        font-size: 10.5px;
-        padding: 4px 8px;
+        font-size: 10px !important;
+        padding: 3px 8px !important;
         flex: 1;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-
+    /* KPI Cards on Mobile */
     .tx-kpi-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 14px !important;
     }
 
     .tx-kpi-card {
-        padding: 10px 12px;
+        padding: 9px 11px !important;
+        border-radius: 10px !important;
+    }
+
+    .tx-kpi-label {
+        font-size: 9px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.04em !important;
     }
 
     .tx-kpi-value {
-        font-size: 16px;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        margin-bottom: 1px !important;
     }
 
     .tx-kpi-sub {
-        font-size: 10px;
+        font-size: 9.5px !important;
+        line-height: 1.3 !important;
     }
 
+    /* Category Tabs on Mobile */
+    .tx-tabs-bar {
+        gap: 6px !important;
+        padding: 5px 6px !important;
+        margin-bottom: 12px !important;
+        border-radius: 10px !important;
+    }
+
+    .tx-tab-btn {
+        padding: 6px 11px !important;
+        font-size: 11.5px !important;
+        font-weight: 500 !important;
+        gap: 5px !important;
+        border-radius: 6px !important;
+    }
+
+    .tx-tab-icon {
+        font-size: 12px !important;
+    }
+
+    .tx-tab-badge {
+        font-size: 9.5px !important;
+        font-weight: 600 !important;
+        padding: 1px 5px !important;
+    }
+
+    /* Toolbar & Filter Controls on Mobile */
     .tx-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-        padding: 12px;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 10px 12px !important;
+        border-radius: 10px !important;
+        margin-bottom: 12px !important;
     }
 
     .tx-filter-block {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 5px !important;
+    }
+
+    .tx-filter-label {
+        font-size: 9px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.04em !important;
     }
 
     .tx-pill-group {
-        width: 100%;
-        display: flex;
+        width: 100% !important;
+        display: flex !important;
     }
 
     .tx-pill-btn {
-        flex: 1;
-        text-align: center;
-        padding: 6px 4px;
-        font-size: 11px;
+        flex: 1 !important;
+        text-align: center !important;
+        padding: 5px 4px !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
     }
 
     .tx-date-inputs-container {
-        width: 100%;
-        flex-wrap: wrap;
+        width: 100% !important;
+        flex-wrap: wrap !important;
     }
 
     .tx-date-input-group {
-        flex: 1;
+        flex: 1 !important;
+    }
+
+    .tx-date-input-group label {
+        font-size: 10.5px !important;
+        font-weight: 400 !important;
     }
 
     .tx-date-picker {
-        width: 100%;
+        width: 100% !important;
+        font-size: 11px !important;
+        padding: 4px 6px !important;
     }
 
     .tx-date-actions {
@@ -1021,8 +1113,117 @@
     .tx-btn-clear-date {
         padding: 5px 16px !important;
         font-size: 11.5px !important;
+        font-weight: 600 !important;
     }
 
+    .tx-search-block {
+        min-width: 100% !important;
+    }
+
+    .tx-search-block input[type="text"].tx-search-input,
+    .tx-search-input {
+        font-size: 11.5px !important;
+        padding: 7px 30px 7px 32px !important;
+    }
+
+    .tx-select {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        font-weight: 500 !important;
+    }
+
+    /* Mobile Deal Cards List */
+    .tx-mobile-cards-list {
+        gap: 10px !important;
+    }
+
+    .tx-card-item {
+        padding: 11px 12px !important;
+        border-radius: 10px !important;
+        gap: 8px !important;
+    }
+
+    .tx-card-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    .tx-card-stock {
+        display: flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+    }
+
+    .tx-card-ticker {
+        font-size: 13.5px !important;
+        font-weight: 400 !important;
+        color: #10b981 !important;
+        letter-spacing: 0.01em !important;
+    }
+
+    .tx-exch-tag {
+        font-size: 8.5px !important;
+        font-weight: 500 !important;
+        padding: 1px 4px !important;
+    }
+
+    .tx-action-pill {
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        padding: 2px 7px !important;
+        border-radius: 5px !important;
+    }
+
+    .tx-card-date {
+        font-size: 11px !important;
+        font-weight: 400 !important;
+        color: var(--text-secondary) !important;
+    }
+
+    .tx-card-company {
+        font-size: 11px !important;
+        font-weight: 400 !important;
+        color: var(--text-secondary) !important;
+        margin-top: -3px !important;
+        line-height: 1.3 !important;
+    }
+
+    .tx-card-party-row {
+        padding: 6px 8px !important;
+        border-radius: 6px !important;
+    }
+
+    .tx-card-client-name {
+        font-size: 11.5px !important;
+        font-weight: 400 !important;
+        color: var(--text-primary) !important;
+    }
+
+    .tx-category-badge {
+        font-size: 9.5px !important;
+        font-weight: 500 !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+    }
+
+    .tx-card-stats-grid {
+        gap: 6px !important;
+        padding-top: 5px !important;
+    }
+
+    .tx-card-stat-label {
+        font-size: 8.5px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.03em !important;
+    }
+
+    .tx-card-stat-val {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Mobile Pagination Bar */
     .tx-pagination-bar {
         display: flex !important;
         flex-direction: row !important;
@@ -1030,11 +1231,13 @@
         align-items: center !important;
         flex-wrap: wrap !important;
         gap: 8px !important;
-        padding: 10px 4px !important;
+        padding: 8px 2px !important;
+        margin-top: 8px !important;
     }
 
     .tx-pagination-info {
-        font-size: 12px !important;
+        font-size: 11px !important;
+        font-weight: 400 !important;
         white-space: nowrap !important;
     }
 
@@ -1044,9 +1247,28 @@
         gap: 8px !important;
     }
 
+    .tx-per-page-select {
+        font-size: 11px !important;
+        padding: 3px 6px !important;
+    }
+
     .tx-page-buttons {
         width: 100% !important;
         justify-content: center !important;
         margin-top: 4px !important;
+    }
+
+    .tx-page-btn {
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        padding: 3px 8px !important;
+    }
+
+    .tx-empty-title {
+        font-size: 14px !important;
+    }
+
+    .tx-empty-desc {
+        font-size: 11.5px !important;
     }
 }

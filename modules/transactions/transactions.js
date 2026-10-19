@@ -324,8 +324,8 @@
             html += `
             <tr>
                 <td class="tx-date-cell">
-                    <div><strong>${escapeHtml(deal.date_display || deal.date || '-')}</strong></div>
-                    <div style="font-size: 10px; color: var(--text-secondary);">${escapeHtml(deal.time_display || '')}</div>
+                    <div class="tx-date-primary">${escapeHtml(deal.date_display || deal.date || '-')}</div>
+                    <div class="tx-date-time">${escapeHtml(deal.time_display || '')}</div>
                 </td>
                 <td>
                     <div class="tx-stock-cell">
