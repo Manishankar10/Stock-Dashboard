@@ -343,12 +343,17 @@
                         </div>
                     </div>
 
-                    <!-- Category Pill Filter Bar (Scrollable) -->
-                    <div id="insights-category-pills" class="insights-category-pills">
-                        <button type="button" class="btn-primary" id="cat-pill-all" onclick="setNewsCategory('all')">📰 All Stories</button>
-                        <button type="button" class="btn-secondary" id="cat-pill-research" onclick="setNewsCategory('research')">📊 Research Reports & Ratings</button>
-                        <button type="button" class="btn-secondary" id="cat-pill-corporate" onclick="setNewsCategory('corporate')">📢 Earnings & Filings</button>
-                        <button type="button" class="btn-secondary" id="cat-pill-macro" onclick="setNewsCategory('macro')">💡 Macro & Economy</button>
+                    <!-- Category Pill Filter Bar (Scrollable with Nav Buttons) -->
+                    <div class="insights-category-wrapper">
+                        <button type="button" class="insights-pills-nav-btn" id="insights-pills-prev" onclick="window.scrollInsightsCategoryPills(-1)" title="Scroll categories left" aria-label="Scroll left">‹</button>
+                        <div id="insights-category-pills" class="insights-category-pills">
+                            <button type="button" class="btn-primary" id="cat-pill-all" onclick="setNewsCategory('all')">📰 All Stories</button>
+                            <button type="button" class="btn-secondary" id="cat-pill-research" onclick="setNewsCategory('research')">📊 Research Reports & Ratings</button>
+                            <button type="button" class="btn-secondary" id="cat-pill-corporate" onclick="setNewsCategory('corporate')">📢 Earnings & Filings</button>
+                            <button type="button" class="btn-secondary" id="cat-pill-macro" onclick="setNewsCategory('macro')">💡 Macro & Economy</button>
+                            <div class="insights-pills-end-spacer" style="width: 20px; flex-shrink: 0;"></div>
+                        </div>
+                        <button type="button" class="insights-pills-nav-btn" id="insights-pills-next" onclick="window.scrollInsightsCategoryPills(1)" title="Scroll categories right" aria-label="Scroll right">›</button>
                     </div>
 
                     <div id="insights-news-feed" class="insights-news-feed-scroll" style="display: flex; flex-direction: column; gap: 12px;">

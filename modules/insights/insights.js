@@ -54,16 +54,57 @@
         window.showNewsSkeletonsOnly = showNewsSkeletonsOnly;
         window.loadInsightsTab = loadInsightsTab;
 
+        function updateCategoryPillsNavBtns() {
+            const pills = document.getElementById('insights-category-pills');
+            const prevBtn = document.getElementById('insights-pills-prev');
+            const nextBtn = document.getElementById('insights-pills-next');
+            if (!pills || !prevBtn || !nextBtn) return;
+
+            const isScrollable = pills.scrollWidth > (pills.clientWidth + 4);
+            if (!isScrollable) {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+                return;
+            }
+
+            prevBtn.style.display = 'inline-flex';
+            nextBtn.style.display = 'inline-flex';
+
+            const atStart = pills.scrollLeft <= 3;
+            const atEnd = pills.scrollLeft + pills.clientWidth >= pills.scrollWidth - 5;
+
+            prevBtn.disabled = atStart;
+            prevBtn.classList.toggle('disabled', atStart);
+
+            nextBtn.disabled = atEnd;
+            nextBtn.classList.toggle('disabled', atEnd);
+        }
+        window.updateCategoryPillsNavBtns = updateCategoryPillsNavBtns;
+
+        window.scrollInsightsCategoryPills = function(direction) {
+            const pills = document.getElementById('insights-category-pills');
+            if (!pills) return;
+            const amount = 140 * direction;
+            pills.scrollBy({ left: amount, behavior: 'smooth' });
+            setTimeout(updateCategoryPillsNavBtns, 220);
+        };
+
         function initCategoryPillsScroll() {
             const pills = document.getElementById('insights-category-pills');
-            if (!pills || pills._hasScrollInit) return;
+            if (!pills || pills._hasScrollInit) {
+                updateCategoryPillsNavBtns();
+                return;
+            }
             pills._hasScrollInit = true;
+
+            pills.addEventListener('scroll', updateCategoryPillsNavBtns, { passive: true });
 
             // Mouse wheel listener: convert vertical wheel delta to horizontal scroll
             pills.addEventListener('wheel', (e) => {
                 if (e.deltaY !== 0) {
                     e.preventDefault();
                     pills.scrollLeft += (e.deltaY * 0.9);
+                    updateCategoryPillsNavBtns();
                 }
             }, { passive: false });
 
@@ -71,9 +112,11 @@
             let isDown = false;
             let startX = 0;
             let scrollLeft = 0;
+            let hasDragged = false;
 
             pills.addEventListener('mousedown', (e) => {
                 isDown = true;
+                hasDragged = false;
                 pills.style.cursor = 'grabbing';
                 startX = e.pageX - pills.offsetLeft;
                 scrollLeft = pills.scrollLeft;
@@ -82,6 +125,7 @@
             const stopDrag = () => {
                 isDown = false;
                 if (pills) pills.style.cursor = 'grab';
+                updateCategoryPillsNavBtns();
             };
 
             pills.addEventListener('mouseleave', stopDrag);
@@ -93,8 +137,24 @@
                 e.preventDefault();
                 const x = e.pageX - pills.offsetLeft;
                 const walk = (x - startX) * 1.5;
+                if (Math.abs(walk) > 4) {
+                    hasDragged = true;
+                }
                 pills.scrollLeft = scrollLeft - walk;
             });
+
+            // Prevent button click if dragging
+            pills.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (hasDragged) {
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+                        hasDragged = false;
+                    }
+                }, true);
+            });
+
+            updateCategoryPillsNavBtns();
         }
         window.initCategoryPillsScroll = initCategoryPillsScroll;
 
