@@ -49,6 +49,10 @@
         window.filterBullionCards = filterBullionCards;
         window.renderInsightsBullionUI = renderInsightsBullionUI;
         window.syncInsightsBullionSlot = syncInsightsBullionSlot;
+        window.showInsightsSkeletons = showInsightsSkeletons;
+        window.showTechnicalSkeletons = showTechnicalSkeletons;
+        window.showNewsSkeletonsOnly = showNewsSkeletonsOnly;
+        window.loadInsightsTab = loadInsightsTab;
 
         window.addEventListener('resize', syncInsightsBullionSlot);
         window.addEventListener('orientationchange', syncInsightsBullionSlot);
@@ -278,9 +282,59 @@
             }
         }
 
+        function showTechnicalSkeletons() {
+            const tableBody = document.getElementById('technical-screener-table-body');
+            const pillsContainer = document.getElementById('technical-screener-pills');
+            const scannedCountEl = document.getElementById('technicals-scanned-count');
+            const countEl = document.getElementById('screener-meta-count');
+
+            if (scannedCountEl) scannedCountEl.innerHTML = '<span class="skeleton-box" style="width: 55px; height: 12px; display: inline-block; vertical-align: middle;"></span>';
+            if (countEl) countEl.innerHTML = '<span class="skeleton-box" style="width: 45px; height: 12px; display: inline-block; vertical-align: middle;"></span>';
+
+            if (pillsContainer && (!technicalsData || !technicalsData.scanners)) {
+                pillsContainer.innerHTML = `
+                    <span class="skeleton-box" style="width: 100px; height: 26px; border-radius: 6px;"></span>
+                    <span class="skeleton-box" style="width: 90px; height: 26px; border-radius: 6px;"></span>
+                    <span class="skeleton-box" style="width: 95px; height: 26px; border-radius: 6px;"></span>
+                    <span class="skeleton-box" style="width: 105px; height: 26px; border-radius: 6px;"></span>
+                    <span class="skeleton-box" style="width: 85px; height: 26px; border-radius: 6px;"></span>
+                `;
+            }
+
+            if (tableBody) {
+                let rows = '';
+                for (let i = 0; i < 4; i++) {
+                    rows += `
+                        <tr>
+                            <td style="padding: 10px 12px;">
+                                <span class="skeleton-box" style="width: 85px; height: 14px;"></span><br>
+                                <span class="skeleton-box" style="width: 120px; height: 11px; margin-top: 4px;"></span>
+                            </td>
+                            <td style="text-align: right; padding: 10px 12px;">
+                                <span class="skeleton-box" style="width: 65px; height: 14px;"></span>
+                            </td>
+                            <td style="text-align: right; padding: 10px 12px;">
+                                <span class="skeleton-box" style="width: 55px; height: 18px; border-radius: 4px;"></span>
+                            </td>
+                            <td style="padding: 10px 12px;">
+                                <span class="skeleton-box" style="width: 155px; height: 12px;"></span>
+                            </td>
+                            <td style="text-align: center; padding: 10px 12px;">
+                                <span class="skeleton-box" style="width: 65px; height: 24px; border-radius: 6px;"></span>
+                            </td>
+                        </tr>
+                    `;
+                }
+                tableBody.innerHTML = rows;
+            }
+        }
+
         function showInsightsSkeletons() {
             // 1. News Feed Skeletons
             showNewsSkeletonsOnly();
+
+            // 1b. Technical Screener Skeletons
+            showTechnicalSkeletons();
 
             // 2. Market Indexes Grid Skeletons (8 cards)
             const idxGrid = document.getElementById('insights-indexes-grid');
@@ -403,6 +457,9 @@
 
         async function loadInsightsTab(scope = null) {
             syncInsightsBullionSlot();
+            if (scope === null) {
+                showInsightsSkeletons();
+            }
             await ensureWatchlistsAndPortfolios();
 
             const isScopeChange = (scope !== null);
@@ -560,14 +617,7 @@
             if (!pillsContainer || !tableBody) return;
 
             if (forceRefresh) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);">
-                            <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
-                            Rescanning live technical signals...
-                        </td>
-                    </tr>
-                `;
+                showTechnicalSkeletons();
             }
 
             try {
@@ -1409,14 +1459,7 @@
             const wlParam = currentInsightsScope === 'watchlist' && currentInsightsWatchlist ? `&watchlist=${encodeURIComponent(currentInsightsWatchlist)}` : '';
 
             if (stockFilter !== 'all') {
-                if (feedEl) {
-                    feedEl.innerHTML = `
-                        <div style="text-align: center; padding: 30px; color: var(--text-secondary); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
-                            <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
-                            Fetching dedicated live news stories for <strong>${escapeHtml(stockFilter)}</strong>...
-                        </div>
-                    `;
-                }
+                showNewsSkeletonsOnly();
                 try {
                     const res = await fetch(`/api/insights/news?scope=${encodeURIComponent(currentInsightsScope)}${wlParam}&stock=${encodeURIComponent(stockFilter)}&category=${encodeURIComponent(currentNewsCategory)}&limit=50`);
                     const data = await res.json();
@@ -1452,7 +1495,7 @@
             const stockFilter = document.getElementById('insights-stock-filter')?.value || 'all';
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Fetching More Stories...';
+                btn.innerHTML = '<svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 6px;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> Fetching More Stories...';
             }
 
             try {

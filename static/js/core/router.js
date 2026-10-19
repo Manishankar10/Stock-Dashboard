@@ -301,6 +301,7 @@ function switchTab(tabName, pushState = true) {
             if (typeof refreshPrices === 'function') refreshPrices();
         }
     } else if (tabName === 'insights') {
+        if (typeof showInsightsSkeletons === 'function') showInsightsSkeletons();
         if (!window.portfoliosLoaded && typeof fetchPortfolios === 'function') {
             fetchPortfolios().then(() => {
                 if (typeof loadInsightsTab === 'function') loadInsightsTab();

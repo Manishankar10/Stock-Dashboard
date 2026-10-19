@@ -10,6 +10,78 @@
     margin-bottom: 20px;
 }
 
+/* Institutional Header & Badge Styles matching Portfolio Analyser */
+.insights-header-card {
+    padding: 16px 20px !important;
+    margin-bottom: 20px !important;
+}
+
+.insights-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.insights-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.insights-badge-label {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    width: fit-content;
+}
+
+.insights-main-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.01em;
+}
+
+.insights-title-icon {
+    font-size: 1.15rem;
+}
+
+.insights-subtitle {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.insights-scope-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.insights-scope-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 .insights-grid {
     display: grid;
     grid-template-columns: 1.3fr 1fr;
@@ -426,6 +498,31 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    .insights-header-card {
+        padding: 14px 16px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .insights-header-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .insights-main-title {
+        font-size: 18px !important;
+    }
+
+    .insights-subtitle {
+        font-size: 11.5px !important;
+    }
+
+    .insights-scope-bar {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+    }
+
     .insights-mobile-bullion-slot {
         display: block !important;
         width: 100% !important;
