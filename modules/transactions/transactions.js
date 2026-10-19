@@ -329,10 +329,17 @@
                 </td>
                 <td>
                     <div class="tx-stock-cell">
-                        <a href="javascript:void(0)" class="tx-stock-ticker" onclick="window.openTxStockChart('${deal.symbol}')" title="Open interactive chart for ${deal.symbol}">
-                            ${escapeHtml(deal.symbol)} <span class="tx-exch-tag">NSE</span>
+                        <div class="tx-stock-top-row">
+                            <a href="javascript:void(0)" class="tx-stock-ticker" onclick="window.openTxStockChart('${deal.symbol}')" title="Open interactive chart for ${deal.symbol}">
+                                ${escapeHtml(deal.symbol)} <span class="tx-exch-tag">NSE</span>
+                            </a>
+                            <a href="javascript:void(0)" class="tx-fund-link" onclick="event.stopPropagation(); window.openTxStockFundamentals('${deal.symbol}')" title="Open Fundamental Analysis for ${deal.symbol}">
+                                Fundamentals ↗
+                            </a>
+                        </div>
+                        <a href="javascript:void(0)" class="tx-stock-name" onclick="event.stopPropagation(); window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${escapeHtml(deal.company || deal.symbol)}">
+                            ${escapeHtml(deal.company || deal.symbol)}
                         </a>
-                        <span class="tx-stock-name" title="${escapeHtml(deal.company || '')}">${escapeHtml(deal.company || deal.symbol)}</span>
                     </div>
                 </td>
                 ${clientColHtml}
@@ -394,7 +401,14 @@
                     </div>
                 </div>
 
-                <div class="tx-card-company">${escapeHtml(deal.company || deal.symbol)}</div>
+                <div class="tx-card-company-row">
+                    <div class="tx-card-company" onclick="event.stopPropagation(); window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${escapeHtml(deal.company || deal.symbol)}">
+                        ${escapeHtml(deal.company || deal.symbol)}
+                    </div>
+                    <a href="javascript:void(0)" class="tx-card-fund-link" onclick="event.stopPropagation(); window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${deal.symbol}">
+                        Fundamentals ↗
+                    </a>
+                </div>
 
                 <div class="tx-card-party-row">
                     <span class="tx-card-client-name" title="${escapeHtml(deal.client_name || '')}">
@@ -699,6 +713,20 @@
             window.openInHouseChart(clean);
         } else {
             console.log('Open chart for symbol:', clean);
+        }
+    };
+
+    window.openTxStockFundamentals = function (symbol) {
+        if (!symbol) return;
+        const clean = symbol.replace(/\.(?:NS|BO)$/i, '').trim();
+        if (typeof window.openFundamentalsModal === 'function') {
+            window.openFundamentalsModal(clean);
+        } else if (typeof openFundamentalsModal === 'function') {
+            openFundamentalsModal(clean);
+        } else if (typeof window.openStockFundamentals === 'function') {
+            window.openStockFundamentals(clean);
+        } else {
+            console.log('Open fundamentals for symbol:', clean);
         }
     };
 
