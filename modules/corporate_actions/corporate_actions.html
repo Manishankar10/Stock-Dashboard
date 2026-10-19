@@ -74,8 +74,8 @@
                 <span class="corp-section-tag" id="corp-upcoming-badge">0 upcoming</span>
             </div>
 
-            <!-- Desktop Table View -->
-            <div class="corp-table-responsive desktop-only-view">
+            <!-- Table View -->
+            <div class="corp-table-responsive">
                 <table class="corp-table" id="corp-upcoming-table">
                     <thead id="corp-table-head">
                         <tr>
@@ -104,18 +104,6 @@
                 </table>
             </div>
 
-            <!-- Mobile Cards List View (<= 768px, zero horizontal scrolling) -->
-            <div class="corp-mobile-cards-list mobile-only-view" id="corp-upcoming-mobile-cards">
-                <div class="corp-mobile-card skeleton-card">
-                    <span class="skeleton-box" style="width: 60%; height: 16px; margin-bottom: 6px;"></span>
-                    <span class="skeleton-box" style="width: 40%; height: 12px; margin-bottom: 8px;"></span>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <span class="skeleton-box" style="height: 36px; border-radius: 6px;"></span>
-                        <span class="skeleton-box" style="height: 36px; border-radius: 6px;"></span>
-                    </div>
-                </div>
-            </div>
-
             <div class="corp-empty-state" id="corp-upcoming-empty" style="display: none;">
                 <div class="corp-empty-icon">📂</div>
                 <div class="corp-empty-title">No upcoming corporate actions found</div>
@@ -137,8 +125,8 @@
             </button>
 
             <div class="corp-past-body" id="corp-past-body" style="display: none;">
-                <!-- Desktop Table View -->
-                <div class="corp-table-responsive desktop-only-view">
+                <!-- Table View -->
+                <div class="corp-table-responsive">
                     <table class="corp-table" id="corp-past-table">
                         <thead id="corp-past-table-head">
                             <!-- Cloned from main table head -->
@@ -147,10 +135,6 @@
                             <!-- Populated dynamically -->
                         </tbody>
                     </table>
-                </div>
-
-                <!-- Mobile Cards List View for Past Actions (<= 768px, zero horizontal scrolling) -->
-                <div class="corp-mobile-cards-list mobile-only-view" id="corp-past-mobile-cards">
                 </div>
 
                 <div class="corp-empty-state" id="corp-past-empty" style="display: none;">

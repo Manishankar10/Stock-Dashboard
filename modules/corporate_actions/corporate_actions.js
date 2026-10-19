@@ -39,7 +39,7 @@
                 { key: 'end_date_display', label: 'End date' },
                 { key: 'offer_type', label: 'Offer Type' },
                 { key: 'max_price', label: 'Max Price' },
-                { key: 'amount_cr', label: 'Amount in Cr' }
+                { key: 'amount_cr', label: 'Amt (Cr)' }
             ]
         },
         dividend: {
@@ -320,20 +320,18 @@
         const sym = cleanSymbol(item.symbol);
         const comp = item.company || sym;
 
-        let badges = '';
+        // Portfolio has 1st preference over Watchlist
+        let tagHtml = '';
         if (item.in_portfolio) {
-            badges += '<span class="corp-holding-badge portfolio" title="Stock in your Portfolio">Portfolio</span>';
-        }
-        if (item.in_watchlist) {
-            badges += '<span class="corp-holding-badge watchlist" title="Stock in your Watchlist">Watchlist</span>';
+            tagHtml = '<span class="corp-holding-badge portfolio" title="Stock in your Portfolio">Portfolio</span>';
+        } else if (item.in_watchlist) {
+            tagHtml = '<span class="corp-holding-badge watchlist" title="Stock in your Watchlist">Watchlist</span>';
         }
 
         const companyHtml = `
             <div class="corp-company-cell">
-                <span class="corp-company-name" onclick="window.openStockFundamentals('${sym}')" style="cursor: pointer;" title="View fundamentals for ${escapeHtml(comp)}">${escapeHtml(comp)}</span>
-                <span class="corp-symbol-badge" onclick="window.openStockFundamentals('${sym}')" title="View fundamentals for ${escapeHtml(sym)}">${escapeHtml(sym)}</span>
-                <span class="corp-link-icon" onclick="event.stopPropagation(); window.openStockOrChart('${sym}')" title="Open Interactive Chart">📈</span>
-                ${badges}
+                <a class="corp-company-name" href="javascript:void(0)" onclick="window.openStockOrChart('${sym}')" title="Open chart for ${escapeHtml(comp)}">${escapeHtml(comp)}</a>
+                ${tagHtml ? `<div class="corp-tag-row">${tagHtml}</div>` : ''}
             </div>
         `;
 
@@ -370,136 +368,7 @@
         return `<tr>${cellsHtml}</tr>`;
     }
 
-    function renderMobileCard(item, tabKey) {
-        const sym = cleanSymbol(item.symbol);
-        const comp = item.company || sym;
 
-        let badges = '';
-        if (item.in_portfolio) {
-            badges += '<span class="corp-holding-badge portfolio" title="Stock in your Portfolio">Portfolio</span>';
-        }
-        if (item.in_watchlist) {
-            badges += '<span class="corp-holding-badge watchlist" title="Stock in your Watchlist">Watchlist</span>';
-        }
-
-        const dateDisplay = item.ex_date_display || item.ex_date || '-';
-
-        let statsHtml = '';
-
-        if (tabKey === 'bonus') {
-            statsHtml = `
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">EX DATE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(dateDisplay)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">BONUS RATIO</span>
-                    <span class="corp-mcard-stat-val highlight-val">${escapeHtml(item.ratio || '-')}</span>
-                </div>
-            `;
-        } else if (tabKey === 'rights') {
-            const premVal = item.premium ? ('₹' + Number(item.premium).toFixed(2)) : '₹0.00';
-            statsHtml = `
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">EX DATE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(dateDisplay)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">PREMIUM</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(premVal)}</span>
-                </div>
-                <div class="corp-mcard-stat" style="grid-column: span 2;">
-                    <span class="corp-mcard-stat-label">RIGHTS RATIO</span>
-                    <span class="corp-mcard-stat-val highlight-val">${escapeHtml(item.ratio || '-')}</span>
-                </div>
-            `;
-        } else if (tabKey === 'split') {
-            const oldFv = item.old_fv ? ('₹' + Number(item.old_fv).toFixed(2)) : '-';
-            const newFv = item.new_fv ? ('₹' + Number(item.new_fv).toFixed(2)) : '-';
-            statsHtml = `
-                <div class="corp-mcard-stat" style="grid-column: span 2;">
-                    <span class="corp-mcard-stat-label">EX DATE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(dateDisplay)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">OLD FACE VALUE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(oldFv)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">NEW FACE VALUE</span>
-                    <span class="corp-mcard-stat-val highlight-val">${escapeHtml(newFv)}</span>
-                </div>
-            `;
-        } else if (tabKey === 'buyback') {
-            const endDateDisplay = item.end_date_display || item.end_date || '-';
-            const maxPrice = item.max_price && Number(item.max_price) > 0 ? ('₹' + Number(item.max_price).toFixed(2)) : '-';
-            const amtCr = item.amount_cr && Number(item.amount_cr) > 0 ? ('₹' + Number(item.amount_cr).toFixed(2) + ' Cr') : '-';
-            statsHtml = `
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">EX DATE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(dateDisplay)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">END DATE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(endDateDisplay)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">OFFER TYPE</span>
-                    <span class="corp-mcard-stat-val"><span class="corp-offer-type">${escapeHtml(item.offer_type || 'Tender Offer')}</span></span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">MAX PRICE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(maxPrice)}</span>
-                </div>
-                <div class="corp-mcard-stat" style="grid-column: span 2;">
-                    <span class="corp-mcard-stat-label">AMOUNT IN CR</span>
-                    <span class="corp-mcard-stat-val highlight-val">${escapeHtml(amtCr)}</span>
-                </div>
-            `;
-        } else if (tabKey === 'dividend') {
-            const rawAmt = item.amount !== undefined ? item.amount : (item.percent ? (Number(item.percent) * 0.1).toFixed(2) : '-');
-            const amtDisplay = (rawAmt !== '-' && !isNaN(Number(rawAmt))) ? `₹${Number(rawAmt).toFixed(2)}` : (rawAmt || '-');
-            const pctDisplay = item.percent ? (Number(item.percent).toFixed(2) + '%') : '-';
-            statsHtml = `
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">EX DATE</span>
-                    <span class="corp-mcard-stat-val">${escapeHtml(dateDisplay)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">DIVIDEND AMOUNT</span>
-                    <span class="corp-mcard-stat-val highlight-val text-buy">${escapeHtml(amtDisplay)}</span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">DIV TYPE</span>
-                    <span class="corp-mcard-stat-val"><span class="corp-div-type">${escapeHtml(item.div_type || 'Interim')}</span></span>
-                </div>
-                <div class="corp-mcard-stat">
-                    <span class="corp-mcard-stat-label">PERCENTAGE</span>
-                    <span class="corp-mcard-stat-val highlight-val">${escapeHtml(pctDisplay)}</span>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="corp-mobile-card">
-                <div class="corp-mcard-top">
-                    <div class="corp-mcard-company-wrap">
-                        <div class="corp-mcard-company-name" onclick="window.openStockFundamentals('${sym}')" title="View fundamentals for ${escapeHtml(comp)}">
-                            ${escapeHtml(comp)}
-                        </div>
-                        <div class="corp-mcard-ticker-row">
-                            <span class="corp-symbol-badge" onclick="window.openStockFundamentals('${sym}')" title="View fundamentals for ${escapeHtml(sym)}">${escapeHtml(sym)}</span>
-                            <span class="corp-link-icon" onclick="event.stopPropagation(); window.openStockOrChart('${sym}')" title="Open Interactive Chart">📈 Chart</span>
-                            ${badges}
-                        </div>
-                    </div>
-                </div>
-                <div class="corp-mcard-grid">
-                    ${statsHtml}
-                </div>
-            </div>
-        `;
-    }
 
     function renderCorporateActions() {
         const state = window.corpState;
@@ -562,11 +431,9 @@
         const upcomingTitleEl = document.getElementById('corp-upcoming-title');
         const upcomingBadgeEl = document.getElementById('corp-upcoming-badge');
         const tbodyEl = document.getElementById('corp-upcoming-tbody');
-        const upcomingCardsEl = document.getElementById('corp-upcoming-mobile-cards');
         const emptyEl = document.getElementById('corp-upcoming-empty');
 
         const pastTbodyEl = document.getElementById('corp-past-tbody');
-        const pastCardsEl = document.getElementById('corp-past-mobile-cards');
         const pastBadgeEl = document.getElementById('corp-past-badge');
         const pastEmptyEl = document.getElementById('corp-past-empty');
         const pastHeadingEl = document.getElementById('corp-past-heading');
@@ -584,10 +451,9 @@
                 : `Past ${tabConfig.title} Actions (Last 2 Months)`;
         }
 
-        // Upcoming table & mobile cards
+        // Upcoming table
         if (upcomingItems.length === 0) {
             if (tbodyEl) tbodyEl.innerHTML = '';
-            if (upcomingCardsEl) upcomingCardsEl.innerHTML = '';
             if (emptyEl) {
                 emptyEl.style.display = 'block';
                 let emptyMsg = `No upcoming ${tabConfig.title} actions`;
@@ -603,16 +469,12 @@
             if (tbodyEl) {
                 tbodyEl.innerHTML = upcomingItems.map(item => renderRow(item, tabKey)).join('');
             }
-            if (upcomingCardsEl) {
-                upcomingCardsEl.innerHTML = upcomingItems.map(item => renderMobileCard(item, tabKey)).join('');
-            }
         }
 
-        // Past table & mobile cards
+        // Past table
         if (pastBadgeEl) pastBadgeEl.textContent = pastItems.length;
         if (pastItems.length === 0) {
             if (pastTbodyEl) pastTbodyEl.innerHTML = '';
-            if (pastCardsEl) pastCardsEl.innerHTML = '';
             if (pastEmptyEl) {
                 pastEmptyEl.style.display = 'block';
                 let pastEmptyMsg = 'No records in the last 2 months';
@@ -628,9 +490,6 @@
             if (pastEmptyEl) pastEmptyEl.style.display = 'none';
             if (pastTbodyEl) {
                 pastTbodyEl.innerHTML = pastItems.map(item => renderRow(item, tabKey)).join('');
-            }
-            if (pastCardsEl) {
-                pastCardsEl.innerHTML = pastItems.map(item => renderMobileCard(item, tabKey)).join('');
             }
         }
     }

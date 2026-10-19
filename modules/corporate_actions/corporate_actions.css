@@ -155,120 +155,7 @@
     display: none !important;
 }
 
-/* ======================================================== */
-/* 2. Mobile Cards List View (<= 768px)                     */
-/* ======================================================== */
-.corp-mobile-cards-list {
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-    box-sizing: border-box;
-}
 
-.corp-mobile-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-    box-sizing: border-box;
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.corp-mobile-card:hover {
-    border-color: rgba(16, 185, 129, 0.4);
-}
-
-.corp-mcard-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.corp-mcard-company-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 0;
-    flex: 1 1 auto;
-}
-
-.corp-mcard-company-name {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--text-primary);
-    cursor: pointer;
-    line-height: 1.3;
-    transition: color 0.15s ease;
-    word-break: break-word;
-}
-
-.corp-mcard-company-name:hover {
-    color: #10b981 !important;
-    text-decoration: underline;
-}
-
-.corp-mcard-ticker-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.corp-mcard-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    background: rgba(148, 163, 184, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px 12px;
-    box-sizing: border-box;
-    width: 100%;
-}
-
-.corp-mcard-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.corp-mcard-stat-label {
-    font-size: 9.5px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.corp-mcard-stat-val {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', var(--font-sans);
-    line-height: 1.25;
-    word-break: break-word;
-}
-
-.corp-mcard-stat-val.highlight-val {
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.text-buy {
-    color: #10b981 !important;
-}
 
 /* ======================================================== */
 /* 3. Category Tabs Bar (Matching Transactions & Insights)  */
@@ -570,16 +457,19 @@
 /* Company Cell Elements */
 .corp-company-cell {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 120px;
 }
 
 .corp-company-name {
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
+    text-decoration: none;
     cursor: pointer;
+    line-height: 1.25;
     transition: color 0.15s ease;
 }
 
@@ -588,40 +478,19 @@
     text-decoration: underline;
 }
 
-.corp-symbol-badge {
-    font-size: 9.5px;
-    font-weight: 600;
-    padding: 1.5px 5px;
-    border-radius: 4px;
-    background: rgba(148, 163, 184, 0.12);
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    letter-spacing: 0.02em;
-    cursor: pointer;
-}
-
-.corp-symbol-badge:hover {
-    color: #10b981;
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.corp-link-icon {
-    font-size: 11px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: color 0.15s ease;
-}
-
-.corp-link-icon:hover {
-    color: #10b981;
+.corp-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .corp-holding-badge {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 600;
-    padding: 2px 6px;
+    padding: 1.5px 5.5px;
     border-radius: 4px;
     white-space: nowrap;
+    line-height: 1.2;
 }
 
 .corp-holding-badge.portfolio {
@@ -897,81 +766,114 @@
         padding: 1.5px 6px !important;
     }
 
-    /* Desktop/Mobile Layout Toggle */
-    .corporate-actions-container .desktop-only-view {
+    /* Minimal space table styles for mobile */
+    .corp-table-responsive {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 6px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .corp-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        font-size: 11.5px !important;
+        border-collapse: collapse !important;
+    }
+
+    .corp-table[data-tab="bonus"] .corp-col-company { width: 50% !important; }
+    .corp-table[data-tab="bonus"] .corp-col-ex-date-display { width: 28% !important; }
+    .corp-table[data-tab="bonus"] .corp-col-ratio { width: 22% !important; text-align: right !important; }
+
+    .corp-table[data-tab="rights"] .corp-col-company { width: 40% !important; }
+    .corp-table[data-tab="rights"] .corp-col-ex-date-display { width: 26% !important; }
+    .corp-table[data-tab="rights"] .corp-col-premium { width: 17% !important; text-align: right !important; }
+    .corp-table[data-tab="rights"] .corp-col-ratio { width: 17% !important; text-align: right !important; }
+
+    .corp-table[data-tab="split"] .corp-col-company { width: 40% !important; }
+    .corp-table[data-tab="split"] .corp-col-ex-date-display { width: 26% !important; }
+    .corp-table[data-tab="split"] .corp-col-old-fv { width: 17% !important; text-align: right !important; }
+    .corp-table[data-tab="split"] .corp-col-new-fv { width: 17% !important; text-align: right !important; }
+
+    .corp-table thead th {
+        padding: 7px 6px !important;
+        font-size: 9.5px !important;
+        letter-spacing: 0.02em !important;
+        white-space: nowrap !important;
+    }
+
+    .corp-table tbody td {
+        padding: 6px 6px !important;
+        font-size: 11px !important;
+        line-height: 1.25 !important;
+        vertical-align: middle !important;
+    }
+
+    .corp-company-cell {
+        min-width: 110px !important;
+        max-width: 160px !important;
+        gap: 2px !important;
+    }
+
+    .corp-company-name {
+        font-size: 11.5px !important;
+        line-height: 1.2 !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+
+    .corp-tag-row {
+        gap: 3px !important;
+    }
+
+    .corp-holding-badge {
+        font-size: 8.5px !important;
+        padding: 1px 4.5px !important;
+        line-height: 1.1 !important;
+    }
+
+    /* Compact date display on mobile */
+    .corp-date-full {
         display: none !important;
     }
 
-    .corporate-actions-container .mobile-only-view {
-        display: flex !important;
-    }
-
-    /* Mobile Cards List Layout - zero horizontal scrolling, full width details */
-    .corp-mobile-cards-list {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 10px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-    }
-
-    .corp-mobile-card {
-        padding: 12px 13px !important;
-        border-radius: 10px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-
-    .corp-mcard-top {
-        margin-bottom: 2px !important;
-    }
-
-    .corp-mcard-company-name {
-        font-size: 13px !important;
-        line-height: 1.25 !important;
-    }
-
-    .corp-mcard-ticker-row {
-        gap: 6px !important;
-    }
-
-    .corp-mcard-ticker-row .corp-symbol-badge {
-        display: inline-flex !important;
-        font-size: 9.5px !important;
-        padding: 1.5px 5px !important;
-    }
-
-    .corp-mcard-ticker-row .corp-link-icon {
-        display: inline-flex !important;
+    .corp-date-compact {
+        display: inline !important;
         font-size: 10.5px !important;
+        white-space: nowrap !important;
+        color: var(--text-secondary) !important;
     }
 
-    .corp-mcard-grid {
-        gap: 7px 10px !important;
-        padding: 9px 10px !important;
+    .corp-val-highlight {
+        font-size: 11px !important;
+        white-space: nowrap !important;
     }
 
-    .corp-mcard-stat-label {
+    .corp-offer-type,
+    .corp-div-type {
         font-size: 9px !important;
+        padding: 1px 4px !important;
+        white-space: nowrap !important;
     }
 
-    .corp-mcard-stat-val {
-        font-size: 11.5px !important;
+    /* Buyback and Dividend specific column widths so scroll works smoothly when needed */
+    .corp-table[data-tab="buyback"],
+    .corp-table[data-tab="dividend"] {
+        min-width: 440px !important;
     }
 
     .corp-past-card {
         border-radius: 10px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
+        margin-bottom: 12px !important;
     }
 
     .corp-past-header {
-        padding: 10px 12px !important;
+        padding: 8px 10px !important;
     }
 
     .corp-past-heading {
-        font-size: 12.5px !important;
+        font-size: 12px !important;
     }
 
     .corp-past-toggle-hint {
@@ -979,8 +881,6 @@
     }
 
     .corp-past-body {
-        padding: 0 8px 10px 8px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
+        padding: 0 6px 8px 6px !important;
     }
 }
