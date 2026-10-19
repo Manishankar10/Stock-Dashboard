@@ -555,6 +555,9 @@
 
 .pa-modal-table {
     width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
     border-collapse: collapse;
     font-size: 12px;
 }
@@ -578,8 +581,18 @@
     white-space: nowrap;
 }
 
-.pa-modal-table th.pa-th-mktval,
+.pa-modal-table th.pa-th-comp {
+    width: 44%;
+    text-align: left;
+}
+
+.pa-modal-table th.pa-th-mktval {
+    width: 28%;
+    text-align: right;
+}
+
 .pa-modal-table th.pa-th-pnl {
+    width: 28%;
     text-align: right;
 }
 
@@ -587,6 +600,7 @@
     padding: 11px 16px;
     border-bottom: 1px solid var(--border-color);
     color: var(--text-primary);
+    vertical-align: middle;
 }
 
 .pa-modal-table tbody tr:hover td {
@@ -598,9 +612,11 @@
     font-weight: 400; /* Unweighted */
     color: var(--text-primary);
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     transition: color 0.15s ease;
 }
 
@@ -612,6 +628,11 @@
     font-size: 10px;
     color: var(--text-secondary);
     margin-top: 1px;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .pa-modal-mktval-wrap {
@@ -623,12 +644,14 @@
     font-weight: 600;
     color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', var(--font-sans);
+    white-space: nowrap;
 }
 
 .pa-modal-weightage {
     font-size: 10px;
     color: var(--text-secondary);
     margin-top: 1px;
+    white-space: nowrap;
 }
 
 .pa-modal-pnl-wrap {
@@ -639,6 +662,7 @@
     font-size: 12px;
     font-weight: 600;
     font-family: 'Plus Jakarta Sans', var(--font-sans);
+    white-space: nowrap;
 }
 
 .pa-modal-pnl-pct.pos {
@@ -653,6 +677,15 @@
     font-size: 10px;
     color: var(--text-secondary);
     margin-top: 1px;
+    white-space: nowrap;
+}
+
+.pa-hdr-mobile {
+    display: none;
+}
+
+.pa-hdr-desktop {
+    display: inline;
 }
 
 /* Keyframes */
@@ -779,36 +812,162 @@
     .pa-modal-overlay {
         padding: 0 !important;
         align-items: flex-end !important;
+        justify-content: center !important;
     }
 
     .pa-modal-sheet {
         width: 100% !important;
         max-width: 100% !important;
-        max-height: 80vh !important;
+        max-height: 82vh !important;
         border-radius: 16px 16px 0 0 !important;
         border-bottom: none !important;
-        animation: paSlideUpSheet 0.25s ease-out !important;
+        border-left: none !important;
+        border-right: none !important;
+        margin: 0 !important;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3) !important;
+        animation: paSlideUpSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+        background: var(--bg-card) !important;
     }
 
     .pa-sheet-handle {
-        display: block;
+        display: block !important;
+        width: 38px !important;
+        height: 4px !important;
+        border-radius: 2px !important;
+        background: rgba(148, 163, 184, 0.4) !important;
+        margin: 10px auto 4px auto !important;
     }
 
     .pa-modal-header {
-        padding: 12px 16px;
+        padding: 10px 14px 12px 14px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    .pa-modal-title-wrap {
+        min-width: 0 !important;
+        flex: 1 !important;
+        padding-right: 8px !important;
     }
 
     .pa-modal-title {
-        font-size: 15px;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        color: var(--text-primary) !important;
+        line-height: 1.25 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
     }
 
     .pa-modal-subtitle {
-        font-size: 11px;
+        font-size: 10.5px !important;
+        color: var(--text-secondary) !important;
+        line-height: 1.3 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
     }
 
-    .pa-modal-table th,
+    .pa-modal-close-btn {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 12px !important;
+        border-radius: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .pa-modal-body {
+        max-height: calc(82vh - 80px) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 0 0 16px 0 !important;
+    }
+
+    .pa-modal-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        font-size: 11px !important;
+    }
+
+    .pa-modal-table th {
+        padding: 8px 10px !important;
+        font-size: 9.5px !important;
+        letter-spacing: 0.03em !important;
+    }
+
+    .pa-modal-table th.pa-th-comp {
+        width: 44% !important;
+        text-align: left !important;
+    }
+
+    .pa-modal-table th.pa-th-mktval {
+        width: 28% !important;
+        text-align: right !important;
+    }
+
+    .pa-modal-table th.pa-th-pnl {
+        width: 28% !important;
+        text-align: right !important;
+    }
+
     .pa-modal-table td {
-        padding: 10px 12px;
-        font-size: 11px;
+        padding: 9px 10px !important;
+        font-size: 11px !important;
+    }
+
+    .pa-modal-comp-name {
+        font-size: 11.5px !important;
+        font-weight: 400 !important;
+        display: block !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        line-height: 1.25 !important;
+    }
+
+    .pa-modal-comp-sym {
+        font-size: 9.5px !important;
+        color: var(--text-secondary) !important;
+        display: block !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        margin-top: 1px !important;
+    }
+
+    .pa-modal-mktval {
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+    }
+
+    .pa-modal-weightage {
+        font-size: 9.5px !important;
+        white-space: nowrap !important;
+    }
+
+    .pa-modal-pnl-pct {
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+    }
+
+    .pa-modal-pnl-amt {
+        font-size: 9.5px !important;
+        white-space: nowrap !important;
+    }
+
+    .pa-hdr-desktop {
+        display: none !important;
+    }
+
+    .pa-hdr-mobile {
+        display: inline !important;
     }
 }

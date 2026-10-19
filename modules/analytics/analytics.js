@@ -876,7 +876,7 @@
                 return `
                     <tr>
                         <td>
-                            <div class="pa-modal-comp-name" onclick="window.openStockFundamentals ? window.openStockFundamentals('${escapeHtml(item.symbol)}') : null" title="View Fundamentals">
+                            <div class="pa-modal-comp-name" onclick="(window.openStockFundamentals || window.openFundamentalsModal || function(){})('${escapeHtml(item.symbol)}')" title="View Fundamentals">
                                 ${escapeHtml(item.name || item.symbol)}
                             </div>
                             <div class="pa-modal-comp-sym">
