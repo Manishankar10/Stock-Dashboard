@@ -3,16 +3,65 @@
     <!-- Top Header & Banner -->
     <div class="corp-header-row">
         <div class="corp-header-info">
+            <div class="corp-badge-label">OFFICIAL EXCHANGE ANNOUNCEMENTS</div>
             <h1 class="corp-main-title">Corporate Actions</h1>
-            <p class="corp-subtitle">Official stock exchange announcements from NSE & BSE</p>
+            <p class="corp-subtitle">Official bonus issues, stock splits, rights, buybacks & dividend announcements from NSE & BSE</p>
         </div>
         <div class="corp-header-actions">
-            <button type="button" class="corp-btn-refresh corp-refresh-btn" id="corp-btn-refresh" onclick="refreshCorporateActions(true)" title="Fetch live data from NSE & BSE" aria-label="Refresh Corporate Actions">
+            <span class="corp-updated-tag" id="corp-last-updated-tag">🕒 Updated just now</span>
+            <button type="button" class="corp-refresh-btn" id="corp-btn-refresh" onclick="refreshCorporateActions(true)" title="Fetch live data from NSE & BSE" aria-label="Refresh Corporate Actions">
                 <svg class="corp-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
-                <span class="corp-refresh-text">Refresh Data</span>
             </button>
+        </div>
+    </div>
+
+    <!-- Top Summary KPI Statistics Cards -->
+    <div class="corp-kpi-grid">
+        <div class="corp-kpi-card active-tab-bonus" id="corp-kpi-card-bonus" onclick="switchCorpTab('bonus')" title="View Bonus Issues">
+            <div class="corp-kpi-top">
+                <span class="corp-kpi-label">BONUS ISSUES</span>
+                <span class="corp-kpi-icon">🎁</span>
+            </div>
+            <div class="corp-kpi-value" id="corp-kpi-bonus"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
+            <div class="corp-kpi-sub">Free share allocation</div>
+        </div>
+
+        <div class="corp-kpi-card" id="corp-kpi-card-rights" onclick="switchCorpTab('rights')" title="View Rights Issues">
+            <div class="corp-kpi-top">
+                <span class="corp-kpi-label">RIGHTS ISSUES</span>
+                <span class="corp-kpi-icon">📑</span>
+            </div>
+            <div class="corp-kpi-value" id="corp-kpi-rights"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
+            <div class="corp-kpi-sub">Existing shareholder offers</div>
+        </div>
+
+        <div class="corp-kpi-card" id="corp-kpi-card-split" onclick="switchCorpTab('split')" title="View Stock Splits">
+            <div class="corp-kpi-top">
+                <span class="corp-kpi-label">STOCK SPLITS</span>
+                <span class="corp-kpi-icon">✂️</span>
+            </div>
+            <div class="corp-kpi-value" id="corp-kpi-split"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
+            <div class="corp-kpi-sub">Face value subdivision</div>
+        </div>
+
+        <div class="corp-kpi-card" id="corp-kpi-card-buyback" onclick="switchCorpTab('buyback')" title="View Buybacks">
+            <div class="corp-kpi-top">
+                <span class="corp-kpi-label">BUYBACKS</span>
+                <span class="corp-kpi-icon">💼</span>
+            </div>
+            <div class="corp-kpi-value" id="corp-kpi-buyback"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
+            <div class="corp-kpi-sub">Tender & market purchases</div>
+        </div>
+
+        <div class="corp-kpi-card corp-kpi-dividend" id="corp-kpi-card-dividend" onclick="switchCorpTab('dividend')" title="View Dividends">
+            <div class="corp-kpi-top">
+                <span class="corp-kpi-label">DIVIDENDS</span>
+                <span class="corp-kpi-icon">💰</span>
+            </div>
+            <div class="corp-kpi-value text-buy" id="corp-kpi-dividend"><span class="skeleton-box" style="width: 32px; height: 18px;"></span></div>
+            <div class="corp-kpi-sub">Cash payout declarations</div>
         </div>
     </div>
 
@@ -20,43 +69,46 @@
     <div class="corp-tabs-bar" role="tablist" aria-label="Corporate Action Categories">
         <button type="button" class="corp-tab-btn active" data-tab="bonus" onclick="switchCorpTab('bonus')">
             <span class="corp-tab-label">Bonus</span>
-            <span class="corp-tab-count" id="corp-count-bonus">0</span>
+            <span class="corp-tab-count" id="corp-count-bonus"><span class="skeleton-box" style="width: 14px; height: 10px; display: inline-block;"></span></span>
         </button>
         <button type="button" class="corp-tab-btn" data-tab="rights" onclick="switchCorpTab('rights')">
             <span class="corp-tab-label">Rights</span>
-            <span class="corp-tab-count" id="corp-count-rights">0</span>
+            <span class="corp-tab-count" id="corp-count-rights"><span class="skeleton-box" style="width: 14px; height: 10px; display: inline-block;"></span></span>
         </button>
         <button type="button" class="corp-tab-btn" data-tab="split" onclick="switchCorpTab('split')">
             <span class="corp-tab-label">Split</span>
-            <span class="corp-tab-count" id="corp-count-split">0</span>
+            <span class="corp-tab-count" id="corp-count-split"><span class="skeleton-box" style="width: 14px; height: 10px; display: inline-block;"></span></span>
         </button>
         <button type="button" class="corp-tab-btn" data-tab="buyback" onclick="switchCorpTab('buyback')">
             <span class="corp-tab-label">Buy back</span>
-            <span class="corp-tab-count" id="corp-count-buyback">0</span>
+            <span class="corp-tab-count" id="corp-count-buyback"><span class="skeleton-box" style="width: 14px; height: 10px; display: inline-block;"></span></span>
         </button>
         <button type="button" class="corp-tab-btn" data-tab="dividend" onclick="switchCorpTab('dividend')">
             <span class="corp-tab-label">Dividend</span>
-            <span class="corp-tab-count" id="corp-count-dividend">0</span>
+            <span class="corp-tab-count" id="corp-count-dividend"><span class="skeleton-box" style="width: 14px; height: 10px; display: inline-block;"></span></span>
         </button>
     </div>
 
     <!-- Filter & Search Toolbar -->
     <div class="corp-toolbar">
-        <div class="corp-filter-group" role="group" aria-label="Filter stocks">
-            <button type="button" class="corp-filter-pill active" data-filter="all" onclick="setCorpFilter('all')">
-                All stocks
-            </button>
-            <button type="button" class="corp-filter-pill" data-filter="portfolio" onclick="setCorpFilter('portfolio')">
-                Portfolio
-            </button>
-            <button type="button" class="corp-filter-pill" data-filter="watchlist" onclick="setCorpFilter('watchlist')">
-                Watchlist
-            </button>
+        <div class="corp-filter-block">
+            <span class="corp-filter-label">SCOPE</span>
+            <div class="corp-filter-group" role="group" aria-label="Filter stocks">
+                <button type="button" class="corp-filter-pill active" data-filter="all" onclick="setCorpFilter('all')">
+                    All Stocks
+                </button>
+                <button type="button" class="corp-filter-pill" data-filter="portfolio" onclick="setCorpFilter('portfolio')">
+                    Portfolio
+                </button>
+                <button type="button" class="corp-filter-pill" data-filter="watchlist" onclick="setCorpFilter('watchlist')">
+                    Watchlist
+                </button>
+            </div>
         </div>
 
         <div class="corp-search-box">
             <span class="corp-search-icon">🔍</span>
-            <input type="text" id="corp-search-input" class="corp-search-input" placeholder="SEARCH" oninput="handleCorpSearch(this.value)" autocomplete="off" spellcheck="false" aria-label="Search corporate actions">
+            <input type="text" id="corp-search-input" class="corp-search-input" placeholder="Search by company or symbol (e.g. Reliance, TCS)..." oninput="handleCorpSearch(this.value)" autocomplete="off" spellcheck="false" aria-label="Search corporate actions">
             <button type="button" id="corp-search-clear" class="corp-search-clear" onclick="clearCorpSearch()" style="display: none;" title="Clear search">✕</button>
         </div>
     </div>
@@ -67,16 +119,34 @@
         <div class="corp-section-block" id="corp-upcoming-section">
             <div class="corp-section-header">
                 <h3 class="corp-section-title" id="corp-upcoming-title">Upcoming Actions</h3>
-                <span class="corp-section-tag" id="corp-upcoming-badge">0 events</span>
+                <span class="corp-section-tag" id="corp-upcoming-badge">0 upcoming</span>
             </div>
 
             <div class="corp-table-responsive">
                 <table class="corp-table" id="corp-upcoming-table">
                     <thead id="corp-table-head">
-                        <!-- Populated dynamically based on active tab -->
+                        <tr>
+                            <th>Company</th>
+                            <th>Ex Date ⇣</th>
+                            <th>Ratio</th>
+                        </tr>
                     </thead>
                     <tbody id="corp-upcoming-tbody">
-                        <!-- Populated dynamically -->
+                        <tr>
+                            <td><div style="display: flex; align-items: center; gap: 8px;"><span class="skeleton-box" style="width: 140px; height: 15px;"></span></div></td>
+                            <td><span class="skeleton-box" style="width: 80px; height: 14px;"></span></td>
+                            <td><span class="skeleton-box" style="width: 50px; height: 14px;"></span></td>
+                        </tr>
+                        <tr>
+                            <td><div style="display: flex; align-items: center; gap: 8px;"><span class="skeleton-box" style="width: 160px; height: 15px;"></span></div></td>
+                            <td><span class="skeleton-box" style="width: 80px; height: 14px;"></span></td>
+                            <td><span class="skeleton-box" style="width: 50px; height: 14px;"></span></td>
+                        </tr>
+                        <tr>
+                            <td><div style="display: flex; align-items: center; gap: 8px;"><span class="skeleton-box" style="width: 130px; height: 15px;"></span></div></td>
+                            <td><span class="skeleton-box" style="width: 80px; height: 14px;"></span></td>
+                            <td><span class="skeleton-box" style="width: 50px; height: 14px;"></span></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>

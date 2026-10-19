@@ -343,12 +343,12 @@
                         </div>
                     </div>
 
-                    <!-- Category Pill Filter Bar -->
-                    <div id="insights-category-pills" style="display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; background: var(--bg-card); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-color);">
-                        <button type="button" class="btn-primary" id="cat-pill-all" onclick="setNewsCategory('all')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px; white-space: nowrap; flex: 0 0 auto;">📰 All Stories</button>
-                        <button type="button" class="btn-secondary" id="cat-pill-research" onclick="setNewsCategory('research')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px; white-space: nowrap; flex: 0 0 auto;">📊 Research Reports & Ratings</button>
-                        <button type="button" class="btn-secondary" id="cat-pill-corporate" onclick="setNewsCategory('corporate')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px; white-space: nowrap; flex: 0 0 auto;">📢 Earnings & Filings</button>
-                        <button type="button" class="btn-secondary" id="cat-pill-macro" onclick="setNewsCategory('macro')" style="font-size: 11.5px; padding: 4px 12px; border-radius: 6px; white-space: nowrap; flex: 0 0 auto;">💡 Macro & Economy</button>
+                    <!-- Category Pill Filter Bar (Scrollable) -->
+                    <div id="insights-category-pills" class="insights-category-pills">
+                        <button type="button" class="btn-primary" id="cat-pill-all" onclick="setNewsCategory('all')">📰 All Stories</button>
+                        <button type="button" class="btn-secondary" id="cat-pill-research" onclick="setNewsCategory('research')">📊 Research Reports & Ratings</button>
+                        <button type="button" class="btn-secondary" id="cat-pill-corporate" onclick="setNewsCategory('corporate')">📢 Earnings & Filings</button>
+                        <button type="button" class="btn-secondary" id="cat-pill-macro" onclick="setNewsCategory('macro')">💡 Macro & Economy</button>
                     </div>
 
                     <div id="insights-news-feed" class="insights-news-feed-scroll" style="display: flex; flex-direction: column; gap: 12px;">

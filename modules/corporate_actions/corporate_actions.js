@@ -63,6 +63,16 @@
         loading: false
     };
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function cleanSymbol(sym) {
         if (!sym) return '';
         return String(sym).replace(/\.(NS|BO)$/i, '').trim().toUpperCase();
@@ -160,13 +170,23 @@
     function updateTabCounters() {
         if (!window.corpState.data || !window.corpState.data.tabs) return;
         const tabs = window.corpState.data.tabs;
-        const isWeb = window.innerWidth > 768;
         const { portfolioSymbols, watchlistSymbols } = getLiveClientSymbols();
         const filter = window.corpState.activeFilter || 'all';
 
+        // Update timestamp
+        const updateTag = document.getElementById('corp-last-updated-tag');
+        if (updateTag) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            updateTag.textContent = `🕒 Updated ${timeStr}`;
+        }
+
         Object.keys(TAB_CONFIGS).forEach(tabKey => {
             const counterEl = document.getElementById(`corp-count-${tabKey}`);
-            if (counterEl && tabs[tabKey]) {
+            const kpiEl = document.getElementById(`corp-kpi-${tabKey}`);
+            const kpiCard = document.getElementById(`corp-kpi-card-${tabKey}`);
+
+            if (tabs[tabKey]) {
                 let items = (tabs[tabKey].all || []).map(item => {
                     const sym = cleanSymbol(item.symbol);
                     const inPf = item.in_portfolio || portfolioSymbols.has(sym);
@@ -180,7 +200,11 @@
                 }
 
                 const count = items.filter(x => x.is_upcoming).length;
-                counterEl.textContent = count;
+                if (counterEl) counterEl.textContent = count;
+                if (kpiEl) kpiEl.textContent = count;
+                if (kpiCard) {
+                    kpiCard.classList.toggle('active-tab', tabKey === window.corpState.activeTab);
+                }
             }
         });
     }
@@ -193,6 +217,11 @@
             const isActive = btn.getAttribute('data-tab') === tabKey;
             btn.classList.toggle('active', isActive);
             btn.setAttribute('aria-selected', String(isActive));
+        });
+
+        document.querySelectorAll('.corp-kpi-card').forEach(card => {
+            const isCardActive = card.id === `corp-kpi-card-${tabKey}`;
+            card.classList.toggle('active-tab', isCardActive);
         });
 
         renderCorporateActions();
@@ -276,6 +305,16 @@
         theadEl.innerHTML = html;
     }
 
+    function openStockFundamentals(symbol) {
+        if (!symbol) return;
+        const clean = cleanSymbol(symbol);
+        if (typeof window.openFundamentalsModal === 'function') {
+            window.openFundamentalsModal(clean);
+        } else {
+            openStockOrChart(clean);
+        }
+    }
+
     function openStockOrChart(symbol) {
         if (!symbol) return;
         const clean = cleanSymbol(symbol);
@@ -302,9 +341,9 @@
 
         const companyHtml = `
             <div class="corp-company-cell">
-                <span class="corp-company-name" onclick="window.openStockOrChart('${sym}')" style="cursor: pointer;" title="View stock chart">${comp}</span>
-                <span class="corp-symbol-badge">${sym}</span>
-                <span class="corp-link-icon" onclick="window.openStockOrChart('${sym}')" title="Open chart">↗</span>
+                <span class="corp-company-name" onclick="window.openStockFundamentals('${sym}')" style="cursor: pointer;" title="View fundamentals for ${escapeHtml(comp)}">${escapeHtml(comp)}</span>
+                <span class="corp-symbol-badge" onclick="window.openStockFundamentals('${sym}')" title="View fundamentals for ${escapeHtml(sym)}">${escapeHtml(sym)}</span>
+                <span class="corp-link-icon" onclick="event.stopPropagation(); window.openStockOrChart('${sym}')" title="Open Interactive Chart">📈</span>
                 ${badges}
             </div>
         `;
@@ -474,6 +513,7 @@
     window.clearCorpSearch = clearCorpSearch;
     window.toggleCorpPastSection = toggleCorpPastSection;
     window.openStockOrChart = openStockOrChart;
+    window.openStockFundamentals = openStockFundamentals;
 
     // Viewport resize listener for responsive / web adaptations
     window.addEventListener('resize', () => {

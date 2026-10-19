@@ -582,3 +582,70 @@
         margin: 0 !important;
     }
 }
+
+/* Category Pill Filter Bar - Smoothly Horizontal Scrollable */
+.insights-category-pills {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(16, 185, 129, 0.35) transparent !important;
+    background: var(--bg-card) !important;
+    padding: 8px 12px !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--border-color) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    cursor: grab;
+    user-select: none;
+}
+
+.insights-category-pills::-webkit-scrollbar {
+    height: 4px !important;
+}
+
+.insights-category-pills::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.insights-category-pills::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.3) !important;
+    border-radius: 4px !important;
+}
+
+.insights-category-pills::-webkit-scrollbar-thumb:hover {
+    background: #10b981 !important;
+}
+
+.insights-category-pills button {
+    font-size: 11.5px !important;
+    padding: 4px 12px !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    cursor: pointer;
+}
+
+/* News Headline Text - Uniform 12px, font-weight normal (400) */
+.insights-news-title {
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+    line-height: 1.45 !important;
+    display: block !important;
+    margin-bottom: 8px !important;
+    transition: color 0.15s ease !important;
+}
+
+.insights-news-title:hover {
+    color: #10b981 !important;
+}
+

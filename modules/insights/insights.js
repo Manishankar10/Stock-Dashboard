@@ -54,12 +54,66 @@
         window.showNewsSkeletonsOnly = showNewsSkeletonsOnly;
         window.loadInsightsTab = loadInsightsTab;
 
-        window.addEventListener('resize', syncInsightsBullionSlot);
-        window.addEventListener('orientationchange', syncInsightsBullionSlot);
+        function initCategoryPillsScroll() {
+            const pills = document.getElementById('insights-category-pills');
+            if (!pills || pills._hasScrollInit) return;
+            pills._hasScrollInit = true;
+
+            // Mouse wheel listener: convert vertical wheel delta to horizontal scroll
+            pills.addEventListener('wheel', (e) => {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    pills.scrollLeft += (e.deltaY * 0.9);
+                }
+            }, { passive: false });
+
+            // Mouse drag-to-scroll
+            let isDown = false;
+            let startX = 0;
+            let scrollLeft = 0;
+
+            pills.addEventListener('mousedown', (e) => {
+                isDown = true;
+                pills.style.cursor = 'grabbing';
+                startX = e.pageX - pills.offsetLeft;
+                scrollLeft = pills.scrollLeft;
+            });
+
+            const stopDrag = () => {
+                isDown = false;
+                if (pills) pills.style.cursor = 'grab';
+            };
+
+            pills.addEventListener('mouseleave', stopDrag);
+            pills.addEventListener('mouseup', stopDrag);
+            window.addEventListener('mouseup', stopDrag);
+
+            pills.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - pills.offsetLeft;
+                const walk = (x - startX) * 1.5;
+                pills.scrollLeft = scrollLeft - walk;
+            });
+        }
+        window.initCategoryPillsScroll = initCategoryPillsScroll;
+
+        window.addEventListener('resize', () => {
+            syncInsightsBullionSlot();
+            initCategoryPillsScroll();
+        });
+        window.addEventListener('orientationchange', () => {
+            syncInsightsBullionSlot();
+            initCategoryPillsScroll();
+        });
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', syncInsightsBullionSlot);
+            document.addEventListener('DOMContentLoaded', () => {
+                syncInsightsBullionSlot();
+                initCategoryPillsScroll();
+            });
         } else {
             syncInsightsBullionSlot();
+            initCategoryPillsScroll();
         }
 
         async function ensureWatchlistsAndPortfolios() {
@@ -457,6 +511,7 @@
 
         async function loadInsightsTab(scope = null) {
             syncInsightsBullionSlot();
+            initCategoryPillsScroll();
             if (scope === null) {
                 showInsightsSkeletons();
             }
@@ -1440,7 +1495,7 @@
                         </div>
                         <span style="font-size: 11px; color: var(--text-secondary);">🕒 ${timeStr}</span>
                     </div>
-                    <a href="${art.link}" target="_blank" rel="noopener noreferrer" style="font-weight: 600; font-size: 14px; color: var(--text-primary); text-decoration: none; line-height: 1.4; display: block; margin-bottom: 8px;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-primary)'">
+                    <a href="${art.link}" target="_blank" rel="noopener noreferrer" class="insights-news-title" style="font-weight: 400; font-size: 12px; color: var(--text-primary); text-decoration: none; line-height: 1.45; display: block; margin-bottom: 8px;">
                         ${escapeHtml(art.title)} ↗
                     </a>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 6px;">
