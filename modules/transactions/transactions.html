@@ -125,8 +125,10 @@
                     <label for="tx-date-to">To</label>
                     <input type="date" id="tx-date-to" class="tx-date-picker" onchange="handleTxDateInputChange()">
                 </div>
-                <button type="button" class="tx-btn-apply-date" onclick="applyTxDateFilter()" title="Apply date filter">Apply</button>
-                <button type="button" class="tx-btn-clear-date" onclick="clearTxDateFilter()" title="Clear date filter">✕</button>
+                <div class="tx-date-actions">
+                    <button type="button" class="tx-btn-apply-date" onclick="applyTxDateFilter()" title="Apply date filter">Apply</button>
+                    <button type="button" class="tx-btn-clear-date" onclick="clearTxDateFilter()" title="Reset date filter">Reset</button>
+                </div>
             </div>
         </div>
 
