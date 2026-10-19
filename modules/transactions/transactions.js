@@ -18,7 +18,7 @@
         sortField: 'date',
         sortDir: 'desc',
         page: 1,
-        perPage: 'all',          // Don't limit deals: show all deals across all amounts
+        perPage: 30,             // Default 30 deals per page
         deals: [],
         filteredDeals: [],
         kpis: {},
@@ -445,12 +445,6 @@
 
         paginationBar.style.display = 'flex';
 
-        if (state.perPage === 'all') {
-            infoEl.innerText = `Showing all ${total.toLocaleString()} deals (all amounts)`;
-            buttonsEl.innerHTML = '';
-            return;
-        }
-
         const per = Number(state.perPage) || 30;
         const totalPages = Math.ceil(total / per);
         const start = (state.page - 1) * per + 1;
@@ -459,20 +453,22 @@
         infoEl.innerText = `Showing ${start}-${end} of ${total.toLocaleString()} deals`;
 
         let btnHtml = '';
-        btnHtml += `<button type="button" class="tx-page-btn" ${state.page <= 1 ? 'disabled' : ''} onclick="changeTxPage(${state.page - 1})">‹ Prev</button>`;
+        if (totalPages > 1) {
+            btnHtml += `<button type="button" class="tx-page-btn" ${state.page <= 1 ? 'disabled' : ''} onclick="changeTxPage(${state.page - 1})">‹ Prev</button>`;
 
-        const maxButtons = 5;
-        let startPage = Math.max(1, state.page - 2);
-        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-        if (endPage - startPage < maxButtons - 1) {
-            startPage = Math.max(1, endPage - maxButtons + 1);
+            const maxButtons = 5;
+            let startPage = Math.max(1, state.page - 2);
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                btnHtml += `<button type="button" class="tx-page-btn ${p === state.page ? 'active' : ''}" onclick="changeTxPage(${p})">${p}</button>`;
+            }
+
+            btnHtml += `<button type="button" class="tx-page-btn" ${state.page >= totalPages ? 'disabled' : ''} onclick="changeTxPage(${state.page + 1})">Next ›</button>`;
         }
-
-        for (let p = startPage; p <= endPage; p++) {
-            btnHtml += `<button type="button" class="tx-page-btn ${p === state.page ? 'active' : ''}" onclick="changeTxPage(${p})">${p}</button>`;
-        }
-
-        btnHtml += `<button type="button" class="tx-page-btn" ${state.page >= totalPages ? 'disabled' : ''} onclick="changeTxPage(${state.page + 1})">Next ›</button>`;
         buttonsEl.innerHTML = btnHtml;
     }
 
@@ -652,7 +648,7 @@
     };
 
     window.handleTxPerPageChange = function (val) {
-        state.perPage = val === 'all' ? 'all' : Number(val);
+        state.perPage = Number(val) || 30;
         state.page = 1;
         renderView();
     };

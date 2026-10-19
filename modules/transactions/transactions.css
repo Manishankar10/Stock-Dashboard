@@ -996,8 +996,29 @@
     }
 
     .tx-pagination-bar {
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        padding: 10px 4px !important;
+    }
+
+    .tx-pagination-info {
+        font-size: 12px !important;
+        white-space: nowrap !important;
+    }
+
+    .tx-pagination-controls {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .tx-page-buttons {
+        width: 100% !important;
+        justify-content: center !important;
+        margin-top: 4px !important;
     }
 }

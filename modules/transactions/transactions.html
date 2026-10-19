@@ -200,13 +200,11 @@
             <div class="tx-pagination-info" id="tx-pagination-info">Showing 0 of 0 deals</div>
             <div class="tx-pagination-controls">
                 <div class="tx-per-page-wrapper">
-                    <span>Show:</span>
-                    <select id="tx-per-page-select" class="tx-per-page-select" onchange="handleTxPerPageChange(this.value)">
-                        <option value="all" selected>All (No Limit)</option>
-                        <option value="100">100</option>
-                        <option value="50">50</option>
-                        <option value="30">30</option>
+                    <select id="tx-per-page-select" class="tx-per-page-select" onchange="handleTxPerPageChange(this.value)" aria-label="Deals per page">
                         <option value="15">15</option>
+                        <option value="30" selected>30</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
                     </select>
                 </div>
                 <div class="tx-page-buttons" id="tx-page-buttons">
