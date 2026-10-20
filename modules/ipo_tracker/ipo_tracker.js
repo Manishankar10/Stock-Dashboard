@@ -11,6 +11,101 @@
     let ipos = [];
     let statusFilter = 'all';
     let boardFilter = 'all';
+    let currentSortKey = 'gmp_pct'; // Always default sort by GMP %
+    let currentSortDir = 'desc';
+
+    function getGmpPctSortVal(ipo) {
+        if (ipo.gmp_pct == null || isNaN(Number(ipo.gmp_pct))) return -Infinity;
+        return Number(ipo.gmp_pct);
+    }
+
+    function getIssueSizeSortVal(ipo) {
+        if (!ipo.issue_size || typeof ipo.issue_size !== 'string') return -Infinity;
+        const clean = ipo.issue_size.replace(/,/g, '');
+        const match = clean.match(/([\d.]+)/);
+        if (!match) return -Infinity;
+        let num = parseFloat(match[1]);
+        if (isNaN(num)) return -Infinity;
+        if (/lakh/i.test(clean)) num = num / 100;
+        return num;
+    }
+
+    function parseDateStrToTime(str) {
+        if (!str) return 0;
+        const s = String(str).trim();
+        const m = s.match(/^(\d{1,2})[-/\s]+([A-Za-z]{3})(?:[-/\s]+(\d{2,4}))?/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const months = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+            const month = months[m[2].toLowerCase()];
+            let year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+            if (year < 100) year += 2000;
+            if (!isNaN(day) && month !== undefined) {
+                return new Date(year, month, day).getTime();
+            }
+        }
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? 0 : d.getTime();
+    }
+
+    function getDatesSortVal(ipo) {
+        if (ipo.open_date) {
+            const t = parseDateStrToTime(ipo.open_date);
+            if (t > 0) return t;
+        }
+        if (ipo.dates) {
+            const parts = ipo.dates.split(/\s+to\s+/i);
+            const t = parseDateStrToTime(parts[0]);
+            if (t > 0) return t;
+        }
+        if (ipo.listing_date) {
+            const t = parseDateStrToTime(ipo.listing_date);
+            if (t > 0) return t;
+        }
+        return 0;
+    }
+
+    function sortIpos(list) {
+        return list.slice().sort(function (a, b) {
+            let valA, valB;
+            if (currentSortKey === 'gmp_pct') {
+                valA = getGmpPctSortVal(a);
+                valB = getGmpPctSortVal(b);
+            } else if (currentSortKey === 'issue_size') {
+                valA = getIssueSizeSortVal(a);
+                valB = getIssueSizeSortVal(b);
+            } else if (currentSortKey === 'dates') {
+                valA = getDatesSortVal(a);
+                valB = getDatesSortVal(b);
+            } else {
+                return 0;
+            }
+
+            const isMissingA = valA === -Infinity || valA === 0;
+            const isMissingB = valB === -Infinity || valB === 0;
+            if (isMissingA && !isMissingB) return 1;
+            if (!isMissingA && isMissingB) return -1;
+            if (isMissingA && isMissingB) return 0;
+
+            if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    function updateSortHeaders() {
+        document.querySelectorAll('.sortable-th').forEach(function (th) {
+            const key = th.dataset.sortKey;
+            const icon = th.querySelector('.sort-icon');
+            if (key === currentSortKey) {
+                th.classList.add('active-sort');
+                if (icon) icon.textContent = currentSortDir === 'asc' ? '▲' : '▼';
+            } else {
+                th.classList.remove('active-sort');
+                if (icon) icon.textContent = '↕';
+            }
+        });
+    }
 
     function escapeHtml(value) {
         return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
@@ -94,7 +189,7 @@
 
         const percentage = ipo.gmp_pct == null
             ? '<span class="value-muted">—</span>'
-            : '<span class="value-main ' + gmpClass + '">' + (Number(ipo.gmp_pct) > 0 ? '+' : '') + escapeHtml(formatNumber(ipo.gmp_pct, 2)) + '%</span>';
+            : '<span class="value-main gmp-pct-val ' + gmpClass + '">' + (Number(ipo.gmp_pct) > 0 ? '+' : '') + escapeHtml(formatNumber(ipo.gmp_pct, 2)) + '%</span>';
         const upperPrice = ipo.upper_price == null
             ? '<span class="value-muted">Not reported</span>'
             : '<span class="value-main">' + escapeHtml(formatCurrency(ipo.upper_price)) + '</span><span class="secondary-line">upper band</span>';
@@ -164,11 +259,11 @@
         return '<tr data-status="' + group + '" data-segment="' + escapeHtml(classifySegment(segment)) + '" data-name="' + name.toLowerCase() + '">' +
             '<td>' + company + '<span class="secondary-line">' + escapeHtml(segment) + '</span></td>' +
             '<td><span class="value-main">' + datesText + '</span>' + statusBadge(ipo.status) + secondaryDate + '</td>' +
-            '<td>' + upperPrice + '</td>' +
+            '<td>' + percentage + '</td>' +
             '<td><span class="value-main">' + escapeHtml(ipo.issue_size || 'Not reported') + '</span>' + lotSize + '</td>' +
+            '<td>' + upperPrice + '</td>' +
             '<td>' + subscription + '</td>' +
             '<td>' + gmpHtml + '</td>' +
-            '<td>' + percentage + '</td>' +
             '<td>' + sourceDetails(ipo) + '</td>' +
             '</tr>';
     }
@@ -213,10 +308,13 @@
             return statusMatches && segmentMatches && nameMatches;
         });
 
-        rowsElement.innerHTML = visible.length
-            ? visible.map(renderRow).join('')
+        const sorted = sortIpos(visible);
+
+        rowsElement.innerHTML = sorted.length
+            ? sorted.map(renderRow).join('')
             : '<tr><td class="table-message" colspan="8">No IPOs match these filters.</td></tr>';
         emptyElement.hidden = true;
+        updateSortHeaders();
     }
 
     function setFreshness(data) {
@@ -333,6 +431,20 @@
             render();
         });
     }
+    document.querySelectorAll('.sortable-th').forEach(function (th) {
+        th.addEventListener('click', function () {
+            const key = th.dataset.sortKey;
+            if (currentSortKey === key) {
+                currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortKey = key;
+                currentSortDir = 'desc';
+            }
+            updateSortHeaders();
+            render();
+        });
+    });
+
     if (refreshButton) refreshButton.addEventListener('click', function () { load(true); });
     window.loadIpos = load;
 }());
