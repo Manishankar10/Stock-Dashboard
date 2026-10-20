@@ -10,6 +10,7 @@
 
     let currentBoard = 'all';
     let currentCategory = 'all';
+    let currentScope = 'all';
     let currentSearch = '';
     let currentSortKey = 'broadcastDate';
     let currentSortDir = 'desc';
@@ -94,6 +95,44 @@
         });
     }
 
+    function formatQuarterMonthYear(dateStr) {
+        if (!dateStr || typeof dateStr !== 'string') return '';
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const mon = parts[1].toUpperCase();
+            const yr = parts[2].slice(-2);
+            const monthNames = {
+                'JAN': 'January', 'FEB': 'February', 'MAR': 'March',
+                'APR': 'April', 'MAY': 'May', 'JUN': 'June',
+                'JUL': 'July', 'AUG': 'August', 'SEP': 'September',
+                'OCT': 'October', 'NOV': 'November', 'DEC': 'December'
+            };
+            const m = monthNames[mon] || mon;
+            return `${m} ${yr}`;
+        }
+        return dateStr;
+    }
+
+    function getChangeTooltip(chg, prevVal, prevDate) {
+        if (chg === null || chg === undefined || isNaN(Number(chg))) {
+            return 'Previous quarter comparison not available';
+        }
+        const num = Number(chg);
+        const qtrStr = formatQuarterMonthYear(prevDate);
+        const prevText = (prevVal != null && !isNaN(Number(prevVal)))
+            ? `${Number(prevVal).toFixed(2)}%${qtrStr ? ' ' + qtrStr : ''}`
+            : '';
+        const prevPart = prevText ? `(previous: ${prevText})` : '';
+
+        if (num > 0) {
+            return `Increased by ${num.toFixed(2)}% QoQ${prevPart}`;
+        } else if (num < 0) {
+            return `Decreased by ${Math.abs(num).toFixed(2)}% QoQ${prevPart}`;
+        } else {
+            return `Unchanged at 0.00% QoQ${prevPart}`;
+        }
+    }
+
     function formatPctCell(val, fillClass) {
         if (val === null || val === undefined || isNaN(Number(val))) {
             return '<span style="color: var(--text-secondary); opacity: 0.5;">—</span>';
@@ -110,18 +149,18 @@
         `;
     }
 
-    function formatChangePill(chg, prevVal) {
+    function formatChangePill(chg, prevVal, prevDate) {
         if (chg === null || chg === undefined || isNaN(Number(chg))) {
             return '<span class="shp-chg-pill na" title="Previous quarter comparison not available">—</span>';
         }
         const num = Number(chg);
-        const prevText = prevVal != null && !isNaN(Number(prevVal)) ? ` (Previous: ${Number(prevVal).toFixed(2)}%)` : '';
+        const tooltip = getChangeTooltip(chg, prevVal, prevDate);
         if (num > 0) {
-            return `<span class="shp-chg-pill pos" title="Increased by ${num.toFixed(2)}% QoQ${prevText}">+${num.toFixed(2)}%</span>`;
+            return `<span class="shp-chg-pill pos" title="${escapeHtml(tooltip)}">+${num.toFixed(2)}%</span>`;
         } else if (num < 0) {
-            return `<span class="shp-chg-pill neg" title="Decreased by ${Math.abs(num).toFixed(2)}% QoQ${prevText}">${num.toFixed(2)}%</span>`;
+            return `<span class="shp-chg-pill neg" title="${escapeHtml(tooltip)}">${num.toFixed(2)}%</span>`;
         } else {
-            return `<span class="shp-chg-pill zero" title="Unchanged QoQ${prevText}">0.00%</span>`;
+            return `<span class="shp-chg-pill zero" title="${escapeHtml(tooltip)}">0.00%</span>`;
         }
     }
 
@@ -136,6 +175,7 @@
         const prevQuarter = record.prev_date ? `vs ${escapeHtml(record.prev_date)}` : '';
         const submissionDate = escapeHtml(record.submissionDate || '—');
         const broadcastDate = escapeHtml(record.broadcastDate || record.systemDate || submissionDate);
+        const prevDate = record.prev_date || '';
 
         // Core Percentages
         const promoterPct = record.promoter_pct != null ? record.promoter_pct : (record.pr_and_prgrp != null ? Number(record.pr_and_prgrp) : null);
@@ -148,6 +188,11 @@
         const chgFii = record.change_fii_pct;
         const chgDii = record.change_dii_pct;
         const chgPublic = record.change_public_pct;
+
+        const tipPromoter = getChangeTooltip(chgPromoter, record.prev_promoter_pct, prevDate);
+        const tipFii = getChangeTooltip(chgFii, record.prev_fii_pct, prevDate);
+        const tipDii = getChangeTooltip(chgDii, record.prev_dii_pct, prevDate);
+        const tipPublic = getChangeTooltip(chgPublic, record.prev_public_pct, prevDate);
 
         // Remarks
         const rawRemarks = record.remarksWeb || '';
@@ -192,16 +237,16 @@
                 </td>
                 <!-- Promoter -->
                 <td>${formatPctCell(promoterPct, 'promoter')}</td>
-                <td>${formatChangePill(chgPromoter, record.prev_promoter_pct)}</td>
+                <td title="${escapeHtml(tipPromoter)}">${formatChangePill(chgPromoter, record.prev_promoter_pct, prevDate)}</td>
                 <!-- FII -->
                 <td>${formatPctCell(fiiPct, 'fii')}</td>
-                <td>${formatChangePill(chgFii, record.prev_fii_pct)}</td>
+                <td title="${escapeHtml(tipFii)}">${formatChangePill(chgFii, record.prev_fii_pct, prevDate)}</td>
                 <!-- DII -->
                 <td>${formatPctCell(diiPct, 'dii')}</td>
-                <td>${formatChangePill(chgDii, record.prev_dii_pct)}</td>
+                <td title="${escapeHtml(tipDii)}">${formatChangePill(chgDii, record.prev_dii_pct, prevDate)}</td>
                 <!-- Public -->
                 <td>${formatPctCell(publicPct, 'public')}</td>
-                <td>${formatChangePill(chgPublic, record.prev_public_pct)}</td>
+                <td title="${escapeHtml(tipPublic)}">${formatChangePill(chgPublic, record.prev_public_pct, prevDate)}</td>
                 <!-- Filing Date -->
                 <td>
                     <div style="font-weight: 600; color: var(--text-primary); font-size: 11.5px;">${submissionDate}</div>
@@ -225,6 +270,7 @@
         const params = new URLSearchParams({
             board: currentBoard,
             category: currentCategory,
+            scope: currentScope,
             search: currentSearch,
             sort_key: currentSortKey,
             sort_dir: currentSortDir,
@@ -245,16 +291,37 @@
                 if (updatedLabel && st.last_synced_display) {
                     updatedLabel.textContent = `Synced: ${st.last_synced_display}`;
                 }
-                if (countAllEl && st.total_records !== undefined) countAllEl.textContent = st.total_records.toLocaleString();
-                if (countMbEl && st.count_equities !== undefined) countMbEl.textContent = st.count_equities.toLocaleString();
-                if (countSmeEl && st.count_sme !== undefined) countSmeEl.textContent = st.count_sme.toLocaleString();
+                const counts = data.counts || st;
+                if (countAllEl && (counts.all !== undefined || st.total_records !== undefined)) {
+                    countAllEl.textContent = (counts.all !== undefined ? counts.all : st.total_records).toLocaleString();
+                }
+                if (countMbEl && (counts.mainboard !== undefined || st.count_equities !== undefined)) {
+                    countMbEl.textContent = (counts.mainboard !== undefined ? counts.mainboard : st.count_equities).toLocaleString();
+                }
+                if (countSmeEl && (counts.sme !== undefined || st.count_sme !== undefined)) {
+                    countSmeEl.textContent = (counts.sme !== undefined ? counts.sme : st.count_sme).toLocaleString();
+                }
+
+                // Dynamically update two-quarters chip label (e.g. Sep 26 vs Jun 26)
+                if (data.two_quarters_label) {
+                    const chip2Q = document.getElementById('shp-chip-two-qtrs');
+                    if (chip2Q) {
+                        chip2Q.textContent = data.two_quarters_label;
+                    }
+                }
 
                 const records = data.records || [];
                 const pag = data.pagination || {};
                 totalPages = pag.total_pages || 1;
 
                 if (records.length === 0) {
-                    rowsEl.innerHTML = '<tr><td class="table-message" colspan="13" style="text-align: center; padding: 40px; color: var(--text-secondary);">No shareholding records match your filter criteria. Click "Refresh" to fetch latest filings.</td></tr>';
+                    let emptyMsg = 'No shareholding records match your filter criteria.';
+                    if (currentScope === 'portfolio') {
+                        emptyMsg = 'No stocks in your portfolio found in shareholding records.';
+                    } else if (currentScope === 'watchlist') {
+                        emptyMsg = 'No stocks in your watchlists found in shareholding records.';
+                    }
+                    rowsEl.innerHTML = `<tr><td class="table-message" colspan="13" style="text-align: center; padding: 40px; color: var(--text-secondary);">${emptyMsg} Click "Refresh" to fetch latest filings.</td></tr>`;
                 } else {
                     rowsEl.innerHTML = records.map(renderRow).join('');
                 }
@@ -292,8 +359,11 @@
         if (isFetching) return;
         isFetching = true;
 
-        if (refreshBtn) refreshBtn.disabled = true;
-        if (refreshIcon) refreshIcon.classList.add('spinning-icon');
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.classList.add('shp-refreshing');
+        }
+        if (refreshIcon) refreshIcon.classList.add('spinning');
 
         fetch('/api/shareholding/refresh', { method: 'POST' })
             .then(res => res.json())
@@ -313,8 +383,11 @@
             })
             .finally(() => {
                 isFetching = false;
-                if (refreshBtn) refreshBtn.disabled = false;
-                if (refreshIcon) refreshIcon.classList.remove('spinning-icon');
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.classList.remove('shp-refreshing');
+                }
+                if (refreshIcon) refreshIcon.classList.remove('spinning');
             });
     }
 
@@ -353,6 +426,17 @@
             document.querySelectorAll('.shp-board-chips button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentBoard = btn.dataset.boardFilter || 'all';
+            currentPage = 1;
+            loadShareholding();
+        });
+    });
+
+    // Scope Filter Pills (All Stocks / All Portfolio / All Watchlists)
+    document.querySelectorAll('#tab-shareholding .shp-scope-pill').forEach(pill => {
+        pill.addEventListener('click', function () {
+            document.querySelectorAll('#tab-shareholding .shp-scope-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentScope = pill.dataset.scope || 'all';
             currentPage = 1;
             loadShareholding();
         });

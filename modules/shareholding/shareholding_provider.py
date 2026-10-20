@@ -404,31 +404,91 @@ class ShareholdingProvider:
             with self._lock:
                 self._is_refreshing = False
 
+    def get_two_quarters_info(self) -> Tuple[str, Tuple[str, str]]:
+        """Determine the top two comparative quarters across cached records dynamically."""
+        import collections
+        q_pairs = collections.Counter()
+        with self._lock:
+            for r in self._cache_records:
+                d = r.get("date")
+                pd = r.get("prev_date")
+                if d and pd:
+                    q_pairs[(d, pd)] += 1
+        if not q_pairs:
+            return "Sep 26 vs Jun 26", ("30-SEP-2026", "30-JUN-2026")
+        top_pair, _ = q_pairs.most_common(1)[0]
+        lbl = f"{self._format_qtr_label(top_pair[0])} vs {self._format_qtr_label(top_pair[1])}"
+        return lbl, top_pair
+
+    @staticmethod
+    def _format_qtr_label(date_str: str) -> str:
+        if not date_str or not isinstance(date_str, str):
+            return ""
+        parts = date_str.split("-")
+        if len(parts) == 3:
+            mon = parts[1].upper()
+            yr = parts[2][-2:]
+            month_map = {
+                "JAN": "Jan", "FEB": "Feb", "MAR": "Mar", "APR": "Apr",
+                "MAY": "May", "JUN": "Jun", "JUL": "Jul", "AUG": "Aug",
+                "SEP": "Sep", "OCT": "Oct", "NOV": "Nov", "DEC": "Dec"
+            }
+            m = month_map.get(mon, mon)
+            return f"{m} {yr}"
+        return date_str
+
     def query_records(
         self,
         board: str = "all",
         category_filter: str = "all",
+        scope: str = "all",
         search: str = "",
         sort_key: str = "broadcastDate",
         sort_dir: str = "desc",
         page: int = 1,
         page_size: int = 50,
+        portfolio_symbols: Optional[Set[str]] = None,
+        watchlist_symbols: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
         """Query, filter, and paginate shareholding records without hitting external networks."""
         with self._lock:
             records = list(self._cache_records)
             status_meta = self.get_status()
 
-        # 1. Filter by Board
+        # 1. Filter by Stock Scope (All Stocks / All Portfolio / All Watchlists)
+        scope_clean = (scope or "all").lower().strip()
+        if scope_clean in ("portfolio", "all_portfolio", "all_portfolios"):
+            pf_set = {clean_symbol(s) for s in (portfolio_symbols or set())}
+            records = [r for r in records if clean_symbol(r.get("symbol")) in pf_set]
+        elif scope_clean in ("watchlist", "all_watchlist", "all_watchlists"):
+            wl_set = {clean_symbol(s) for s in (watchlist_symbols or set())}
+            records = [r for r in records if clean_symbol(r.get("symbol")) in wl_set]
+
+        # Calculate board counts for the scoped records
+        counts = {
+            "all": len(records),
+            "mainboard": sum(1 for r in records if r.get("board", "").lower() != "sme"),
+            "sme": sum(1 for r in records if r.get("board", "").lower() == "sme"),
+        }
+
+        # 2. Filter by Board
         board_clean = board.lower().strip()
         if board_clean in ("mainboard", "eq", "equities"):
             records = [r for r in records if r.get("board", "").lower() != "sme"]
         elif board_clean in ("sme",):
             records = [r for r in records if r.get("board", "").lower() == "sme"]
 
-        # 2. Filter by Category / Holding Range / Shifts
+        # 3. Filter by Category / Holding Range / Shifts
         cat_clean = category_filter.lower().strip()
-        if cat_clean == "fii_inc":
+        two_qtrs_label, top_pair = self.get_two_quarters_info()
+
+        if cat_clean == "two_qtrs":
+            # Filter strictly by comparative two quarters
+            records = [
+                r for r in records
+                if r.get("date") == top_pair[0] and (r.get("prev_date") == top_pair[1] or r.get("change_promoter_pct") is not None)
+            ]
+        elif cat_clean == "fii_inc":
             # FII Increased QoQ
             records = [r for r in records if (r.get("change_fii_pct") or 0.0) > 0]
         elif cat_clean == "dii_inc":
@@ -465,7 +525,7 @@ class ShareholdingProvider:
                 if r.get("remarksWeb") and str(r.get("remarksWeb")).lower() not in ("n", "-", "")
             ]
 
-        # 3. Search Filter
+        # 4. Search Filter
         if search:
             query = search.strip().lower()
             records = [
@@ -476,7 +536,7 @@ class ShareholdingProvider:
                 or query in str(r.get("remarksWeb", "")).lower()
             ]
 
-        # 4. Sorting (Supports Every Percentage Metric & QoQ Changes)
+        # 5. Sorting (Supports Every Percentage Metric & QoQ Changes)
         def sort_val(r):
             if sort_key == "promoter":
                 val = r.get("promoter_pct")
@@ -520,7 +580,7 @@ class ShareholdingProvider:
         except Exception as e:
             logger.warning(f"Sort error on {sort_key}: {e}")
 
-        # 5. Pagination
+        # 6. Pagination
         total_filtered = len(records)
         page = max(1, int(page))
         page_size = max(10, min(200, int(page_size)))
@@ -538,5 +598,7 @@ class ShareholdingProvider:
                 "has_next": end_idx < total_filtered,
                 "has_prev": page > 1,
             },
+            "counts": counts,
+            "two_quarters_label": two_qtrs_label,
             "status": status_meta,
         }

@@ -14,6 +14,125 @@
     box-shadow: var(--shadow-sm);
 }
 
+/* Header One Row Layout */
+.shp-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 16px;
+    width: 100%;
+}
+
+.shp-title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.shp-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Refresh Spinning Animation */
+#shp-refresh-icon.spinning,
+.shp-refreshing #shp-refresh-icon {
+    animation: shp-spin 0.75s linear infinite;
+}
+
+@keyframes shp-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Icon-only Export Button */
+.shp-icon-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.shp-icon-btn:hover {
+    background: var(--bg-hover, rgba(0, 0, 0, 0.08));
+    transform: translateY(-1px);
+}
+
+/* Scope Pills */
+.shp-search-scope-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.shp-scope-pill-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--bg-secondary, #f1f5f9);
+    padding: 2.5px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.shp-scope-pill {
+    padding: 4px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.shp-scope-pill:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.shp-scope-pill.active {
+    background: var(--bg-card, #ffffff);
+    color: var(--accent-color, #2563eb);
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .shp-scope-pill-group {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .shp-scope-pill {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .shp-scope-pill:hover {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .shp-scope-pill.active {
+    background: #1e293b;
+    color: #38bdf8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
 .shp-table-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);

@@ -119,7 +119,7 @@ init_transactions(login_required, load_data, BASE_DATA_DIR)
 init_sector_rotation(login_required, load_data, BASE_DATA_DIR)
 init_broker_research(login_required, load_data)
 init_industries_overview(login_required, load_data, BASE_DATA_DIR)
-init_shareholding(login_required, BASE_DATA_DIR)
+init_shareholding(login_required, load_data, BASE_DATA_DIR)
 
 # Register Feature Blueprints
 app.register_blueprint(auth_admin_bp)

@@ -7,13 +7,10 @@
 <div id="tab-shareholding" class="tab-content" style="display: none;">
     <main class="page-shell shp-shell" style="width: 100%; margin: 0; padding: 0;">
         <!-- 1. Top Header Card -->
-        <div class="card-container shp-header-card" style="padding: 14px 20px; margin-bottom: 20px;">
-            <div class="shp-header-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div class="shp-title-group" style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="shp-brand-badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; letter-spacing: 0.5px;">NSE / BSE</span>
-                        <h2 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">Shareholding Patterns</h2>
-                    </div>
+        <div class="card-container shp-header-card" style="padding: 10px 18px; margin-bottom: 16px;">
+            <div class="shp-header-row">
+                <div class="shp-title-group">
+                    <h2 class="shp-title" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; white-space: nowrap;">Shareholding Patterns</h2>
                     <!-- Board Selector Chips -->
                     <div class="portfolio-selector-bar shp-board-chips" style="margin-bottom: 0;">
                         <button type="button" class="pf-select-btn active" data-board-filter="all">All (<span id="shp-count-all">—</span>)</button>
@@ -22,20 +19,25 @@
                     </div>
                 </div>
 
-                <div class="shp-header-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <div class="updated-card shp-status-card" style="padding: 5px 12px; margin: 0; min-width: auto; border-radius: 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 8px;" aria-live="polite">
+                <div class="shp-header-actions">
+                    <div class="updated-card shp-status-card" style="padding: 4px 10px; margin: 0; min-width: auto; border-radius: 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 6px;" aria-live="polite">
                         <span class="live-dot" id="shp-live-dot"></span>
-                        <div style="display: flex; flex-direction: column;">
-                            <strong id="shp-updated-label" style="font-size: 11px;">Loading shareholding data…</strong>
-                            <small id="shp-window-label" style="font-size: 10px; color: var(--text-secondary);">Manual refresh only • 15m window</small>
-                        </div>
+                        <strong id="shp-updated-label" style="font-size: 11px; font-weight: 600;">Loading…</strong>
+                        <span style="opacity: 0.35;">•</span>
+                        <small id="shp-window-label" style="font-size: 10.5px; color: var(--text-secondary);">15m window</small>
                     </div>
-                    <button type="button" id="shp-refresh-btn" class="btn-primary" style="font-size: 12.5px; padding: 6px 14px; border-radius: 7px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                        <span id="shp-refresh-icon">↻</span>
+                    <button type="button" id="shp-refresh-btn" class="btn-primary" style="font-size: 12px; padding: 6px 12px; border-radius: 7px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Refresh shareholding patterns (15m window)">
+                        <svg id="shp-refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
                         <span id="shp-refresh-text">Refresh</span>
                     </button>
-                    <a href="/api/shareholding/download" id="shp-export-btn" class="btn-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 7px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;" title="Download stored JSON file">
-                        <span>📥</span> Export JSON
+                    <a href="/api/shareholding/download" id="shp-export-btn" class="btn-secondary shp-icon-btn" style="padding: 6px 9px; border-radius: 7px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;" title="Export JSON" aria-label="Export JSON">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
                     </a>
                 </div>
             </div>
@@ -43,17 +45,29 @@
 
         <!-- 2. Table and Toolbar Card -->
         <section class="table-card shp-table-card">
-            <!-- Toolbar: Search & Category Chips -->
-            <div class="table-toolbar" style="padding: 14px 16px; border-bottom: 1px solid var(--border-color);">
-                <div class="table-tools" style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                    <label class="search-box shp-search-box" style="min-width: 280px; max-width: 400px; flex: 1;">
-                        <span aria-hidden="true" style="font-size: 13px; opacity: 0.6;">⌕</span>
-                        <input id="shp-search-input" type="search" placeholder="Search company name, symbol, or ISIN..." autocomplete="off">
-                    </label>
+            <!-- Toolbar: Scope, Search & Category Chips in same row -->
+            <div class="table-toolbar" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                <div class="table-tools shp-toolbar-tools" style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <!-- Left: Scope Pills & Search Box in same row -->
+                    <div class="shp-search-scope-row" style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 320px; max-width: 620px;">
+                        <!-- Stock Scope Filter (All Stocks / All Portfolio / All Watchlists) -->
+                        <div class="shp-scope-pill-group" role="group" aria-label="Stock Scope" style="display: inline-flex; align-items: center; gap: 2px; background: var(--bg-secondary, #f1f5f9); padding: 2.5px; border-radius: 8px; border: 1px solid var(--border-color); flex-shrink: 0;">
+                            <button type="button" class="shp-scope-pill active" data-scope="all">All Stocks</button>
+                            <button type="button" class="shp-scope-pill" data-scope="portfolio">All Portfolio</button>
+                            <button type="button" class="shp-scope-pill" data-scope="watchlist">All Watchlists</button>
+                        </div>
 
-                    <!-- Category Quick Filters -->
+                        <!-- Search Input -->
+                        <label class="search-box shp-search-box" style="flex: 1; margin: 0; min-width: 170px;">
+                            <span aria-hidden="true" style="font-size: 13px; opacity: 0.6;">⌕</span>
+                            <input id="shp-search-input" type="search" placeholder="Search company, symbol, ISIN..." autocomplete="off">
+                        </label>
+                    </div>
+
+                    <!-- Right: Category Quick Filters (with dynamic two qtrs chip between All & FII Buying) -->
                     <div class="shp-category-chips" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                         <button type="button" class="shp-filter-chip active" data-category="all">All</button>
+                        <button type="button" class="shp-filter-chip" id="shp-chip-two-qtrs" data-category="two_qtrs" title="Compare latest two quarters">Sep 26 vs Jun 26</button>
                         <button type="button" class="shp-filter-chip" data-category="fii_inc" title="FII / Foreign institutional stake increased QoQ">FII Buying ↑</button>
                         <button type="button" class="shp-filter-chip" data-category="dii_inc" title="DII / Mutual funds & domestic institutional stake increased QoQ">DII Buying ↑</button>
                         <button type="button" class="shp-filter-chip" data-category="promoter_inc" title="Promoter stake increased QoQ">Promoter Buying ↑</button>
