@@ -664,6 +664,8 @@
     window.changeTxPage = function (page) {
         state.page = page;
         renderView();
+        const tableContainer = document.querySelector('.tx-table-container');
+        if (tableContainer) tableContainer.scrollTop = 0;
         const content = document.getElementById('tx-content-wrapper');
         if (content) content.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
