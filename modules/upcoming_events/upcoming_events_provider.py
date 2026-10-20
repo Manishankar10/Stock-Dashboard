@@ -15,7 +15,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 _MODULE_DIR = Path(__file__).resolve().parent
-_SEED_FILE = _MODULE_DIR / "seed_upcoming_events.json"
+_SEED_FILE = Path("app_data/seed_upcoming_events.json") if Path("app_data/seed_upcoming_events.json").exists() else _MODULE_DIR / "seed_upcoming_events.json"
 
 NSE_HOME = "https://www.nseindia.com/"
 NSE_CALENDAR_API = "https://www.nseindia.com/api/event-calendar"
@@ -81,7 +81,7 @@ class UpcomingEventsProvider:
         self._last_fetch_time: float = 0
         self._session = requests.Session()
         self._session.headers.update(HTTP_HEADERS)
-        self._cache_file = os.path.join(data_dir, "user_data", "upcoming_events_cache.json")
+        self._cache_file = os.path.join(data_dir, "app_data", "upcoming_events_cache.json")
 
     def _load_seed(self) -> List[Dict[str, Any]]:
         if _SEED_FILE.exists():

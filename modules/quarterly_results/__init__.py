@@ -155,7 +155,7 @@ def get_quarterly_results_data():
 @quarterly_results_bp.get("/api/quarterly-results/download")
 @_guard
 def download_quarterly_results_data():
-    live_file = Path("user_data") / "quarterly_results_live.json"
+    live_file = Path("app_data") / "quarterly_results_live.json"
     if live_file.exists():
         return send_file(
             live_file.resolve(),

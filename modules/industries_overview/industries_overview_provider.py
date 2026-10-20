@@ -24,8 +24,8 @@ def clean_num(s):
 class IndustriesOverviewProvider:
     def __init__(self, data_dir="data"):
         self.data_dir = data_dir
-        self.overview_file = os.path.join(data_dir, "industries_overview.json")
-        self.stocks_cache_file = os.path.join(data_dir, "industry_stocks_cache.json")
+        self.overview_file = os.path.join(data_dir, "app_data", "industries_overview.json")
+        self.stocks_cache_file = os.path.join(data_dir, "app_data", "industry_stocks_cache.json")
         self._stocks_cache = {}
         self._load_stocks_cache()
 
@@ -47,21 +47,14 @@ class IndustriesOverviewProvider:
 
     def get_industries_overview(self, force_refresh=False):
         if not force_refresh:
-            candidate_paths = [
-                self.overview_file,
-                os.path.join("data", "industries_overview.json"),
-                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "industries_overview.json"),
-                "industries_overview.json"
-            ]
-            for p in candidate_paths:
-                if os.path.exists(p):
-                    try:
-                        with open(p, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if data and data.get("industries"):
-                                return data
-                    except Exception as e:
-                        print(f"Error reading overview file from {p}:", e)
+            if os.path.exists(self.overview_file):
+                try:
+                    with open(self.overview_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, dict):
+                            return data
+                except Exception as e:
+                    print(f"Error reading overview file from {self.overview_file}:", e)
 
         return self.refresh_overview()
 

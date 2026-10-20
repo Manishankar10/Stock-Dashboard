@@ -762,10 +762,7 @@ def get_insights_news_api():
         return jsonify({"success": False, "error": str(e), "articles": []})
 
 PRECOMPUTED_CANDIDATES = [
-    os.path.join(os.path.dirname(__file__), "precomputed_technicals.json"),
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "precomputed_technicals.json")),
-    os.path.join(BASE_DATA_DIR, "precomputed_technicals.json"),
-    os.path.join(os.getcwd(), "precomputed_technicals.json")
+    os.path.join("app_data", "precomputed_technicals.json")
 ]
 _PRECOMPUTED_TECHNICALS = None
 for p_candidate in PRECOMPUTED_CANDIDATES:

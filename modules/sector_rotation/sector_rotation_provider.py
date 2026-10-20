@@ -385,7 +385,7 @@ class SectorRotationProvider:
 
     def __init__(self, data_dir: str = "."):
         self.data_dir = Path(data_dir)
-        self.storage_file = self.data_dir / "sector_rotation_history.json"
+        self.storage_file = self.data_dir / "app_data" / "sector_rotation_history.json"
         self._lock = Lock()
         self._last_fetch_time: float = 0.0
         self._cached_data: Optional[Dict[str, Any]] = None

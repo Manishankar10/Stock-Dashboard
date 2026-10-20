@@ -141,9 +141,9 @@ class QuarterlyResultsProvider:
         self._last_fetch_time: float = 0
         self._is_updating: bool = False
 
-        self._session_file = os.path.join(data_dir, "user_data", "screener_session.json")
-        self._live_file = os.path.join(data_dir, "user_data", "quarterly_results_live.json")
-        self._cache_file = os.path.join(data_dir, "user_data", "quarterly_results_cache.json")
+        self._session_file = os.path.join(data_dir, "app_data", "screener_session.json")
+        self._live_file = os.path.join(data_dir, "app_data", "quarterly_results_live.json")
+        self._cache_file = os.path.join(data_dir, "app_data", "quarterly_results_cache.json")
 
         # Load existing disk cache if available (NO PARSING ON INIT)
         cached = self._load_disk_cache()
@@ -238,7 +238,7 @@ class QuarterlyResultsProvider:
                 logger.warning(f"Error reading disk cache {target}: {e}")
 
         # Fallback to bundled seed in production
-        seed_path = Path(__file__).resolve().parent / "seed_quarterly_results.json"
+        seed_path = Path("app_data/seed_quarterly_results.json") if Path("app_data/seed_quarterly_results.json").exists() else Path(__file__).resolve().parent / "seed_quarterly_results.json"
         if seed_path.exists():
             try:
                 with open(seed_path, "r", encoding="utf-8") as f:
@@ -481,6 +481,7 @@ class QuarterlyResultsProvider:
                     card = self._parse_card(table, header_div)
                     if not card:
                         continue
+                    card["updated_at"] = time.time()
 
                     sym = clean_symbol(card["symbol"])
                     latest_q = str(card["quarters"]["latest"]).strip().lower()
@@ -727,7 +728,7 @@ class QuarterlyResultsProvider:
         elif q_sort in ("ttm_pe", "qtr_pe"):
             filtered.sort(key=lambda x: float(x.get("pe") or 999999))
         else:
-            filtered.sort(key=lambda x: (x.get("date", ""), float(x.get("mcap_cr") or 0)), reverse=True)
+            filtered.sort(key=lambda x: (x.get("updated_at") or 0.0, x.get("date", ""), float(x.get("mcap_cr") or 0)), reverse=True)
 
         return {
             "results": filtered,

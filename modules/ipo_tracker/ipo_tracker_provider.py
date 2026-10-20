@@ -72,7 +72,8 @@ _cached_monotonic = 0.0
 
 def _load_fallback_seed():
     try:
-        seed_path = os.path.join(os.path.dirname(__file__), "seed_ipos.json")
+        app_seed = os.path.join("app_data", "seed_ipos.json")
+        seed_path = app_seed if os.path.exists(app_seed) else os.path.join(os.path.dirname(__file__), "seed_ipos.json")
         if os.path.exists(seed_path):
             with open(seed_path, "r", encoding="utf-8") as f:
                 data = json.load(f)

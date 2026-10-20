@@ -15,7 +15,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 _MODULE_DIR = Path(__file__).resolve().parent
-_SEED_FILE = _MODULE_DIR / "seed_corporate_actions.json"
+_SEED_FILE = Path("app_data/seed_corporate_actions.json") if Path("app_data/seed_corporate_actions.json").exists() else _MODULE_DIR / "seed_corporate_actions.json"
 
 NSE_HOME = "https://www.nseindia.com/"
 NSE_ACTIONS_API = "https://www.nseindia.com/api/corporates-corporateActions"
@@ -84,7 +84,7 @@ class CorporateActionsProvider:
         self._last_fetch_time: float = 0
         self._session = requests.Session()
         self._session.headers.update(HTTP_HEADERS)
-        self._cache_file = os.path.join(data_dir, "user_data", "corporate_actions_cache.json")
+        self._cache_file = os.path.join(data_dir, "app_data", "corporate_actions_cache.json")
 
     def _load_seed(self) -> Dict[str, List[Dict[str, Any]]]:
         if _SEED_FILE.exists():

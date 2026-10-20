@@ -96,54 +96,36 @@ def parse_date_to_display(raw_date: Any) -> str:
 class TransactionsProvider:
     def __init__(self, data_dir: str = "."):
         self.data_dir = Path(data_dir).resolve()
-        self.storage_file = self.data_dir / "transactions_deals.json"
+        self.storage_file = self.data_dir / "app_data" / "transactions_deals.json"
         self._lock = Lock()
         self._cache_deals: List[Dict[str, Any]] = []
         self._last_fetch_time: float = 0
         self._load_stored_deals()
 
     def _load_stored_deals(self):
-        """Load persisted deals from JSON storage."""
-        candidates = [
-            self.storage_file,
-            Path(__file__).resolve().parent / "transactions_deals.json",
-            Path("transactions_deals.json").resolve()
-        ]
-        for path in candidates:
-            if path.exists():
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if isinstance(data, list) and len(data) > 0:
-                            self._cache_deals = data
-                            if self._last_fetch_time == 0:
-                                try:
-                                    self._last_fetch_time = os.path.getmtime(path)
-                                except Exception:
-                                    self._last_fetch_time = time.time()
-                            return
-                except Exception as e:
-                    print(f"[TransactionsProvider] Warning loading storage file {path}: {e}")
+        """Load persisted deals from JSON storage in app_data."""
+        if self.storage_file.exists():
+            try:
+                with open(self.storage_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        self._cache_deals = data
+                        if self._last_fetch_time == 0:
+                            try:
+                                self._last_fetch_time = os.path.getmtime(self.storage_file)
+                            except Exception:
+                                self._last_fetch_time = time.time()
+            except Exception as e:
+                print(f"[TransactionsProvider] Warning loading storage file {self.storage_file}: {e}")
 
     def _persist_deals(self):
-        """Save accumulated deals to storage file."""
-        targets = [
-            self.storage_file,
-            Path(__file__).resolve().parent / "transactions_deals.json",
-            Path("transactions_deals.json").resolve()
-        ]
-        seen = set()
-        for path in targets:
-            str_path = str(path.resolve())
-            if str_path in seen:
-                continue
-            seen.add(str_path)
-            try:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                with open(path, "w", encoding="utf-8") as f:
-                    json.dump(self._cache_deals, f, indent=2)
-            except Exception as e:
-                print(f"[TransactionsProvider] Warning persisting deals to {path}: {e}")
+        """Save accumulated deals strictly to app_data storage file."""
+        try:
+            self.storage_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.storage_file, "w", encoding="utf-8") as f:
+                json.dump(self._cache_deals, f, indent=2)
+        except Exception as e:
+            print(f"[TransactionsProvider] Warning persisting deals to {self.storage_file}: {e}")
 
     def _create_nse_session(self) -> requests.Session:
         """Create a session with cookies initialized at NSE home."""

@@ -13,7 +13,8 @@ from modules.common.market_fetcher import news_cache, POPULAR_INDIAN_STOCKS
 
 news_bp = Blueprint("news_api", __name__)
 
-API_SETTINGS_FILE = os.path.join(BASE_DATA_DIR, "api_settings.json")
+from modules.common.data_paths import APP_DATA_DIR
+API_SETTINGS_FILE = os.path.join(APP_DATA_DIR, "api_settings.json")
 
 def load_api_settings():
     if os.path.exists(API_SETTINGS_FILE):
