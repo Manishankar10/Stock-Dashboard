@@ -117,6 +117,7 @@ def get_shareholding_data():
 
     board = request.args.get("board", "all")
     category_filter = request.args.get("category", "all")
+    custom_query = request.args.get("custom_query", "")
     scope = request.args.get("scope", "all")
     search = request.args.get("search", "")
     sort_key = request.args.get("sort_key", "broadcastDate")
@@ -130,6 +131,7 @@ def get_shareholding_data():
     data = _PROVIDER.query_records(
         board=board,
         category_filter=category_filter,
+        custom_query=custom_query,
         scope=scope,
         search=search,
         sort_key=sort_key,
@@ -140,6 +142,22 @@ def get_shareholding_data():
         watchlist_symbols=all_watchlist_symbols,
     )
     return jsonify(data)
+
+
+@shareholding_bp.route("/api/shareholding/validate-query", methods=["GET", "POST"])
+@_guard
+def validate_shareholding_query():
+    """Validate a custom query string and return syntax status, match count, and sample matches."""
+    if _PROVIDER is None:
+        return jsonify({"error": "Shareholding provider is not initialized."}), 500
+
+    if request.method == "POST" and request.is_json:
+        query_str = request.json.get("query", "")
+    else:
+        query_str = request.args.get("query", "")
+
+    result = _PROVIDER.validate_custom_query(query_str)
+    return jsonify(result)
 
 
 @shareholding_bp.post("/api/shareholding/refresh")

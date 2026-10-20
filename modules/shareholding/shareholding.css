@@ -911,3 +911,371 @@
         max-height: 90vh !important;
     }
 }
+
+/* =========================================================
+   CUSTOM QUERY BUILDER & SCREENER STYLES
+   ========================================================= */
+
+/* Custom Chip in Toolbar */
+.shp-custom-chip {
+    border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+.shp-custom-chip:hover {
+    border-color: #6366f1 !important;
+    color: #6366f1 !important;
+}
+
+.shp-custom-chip.active {
+    background: rgba(99, 102, 241, 0.16) !important;
+    color: #6366f1 !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35) !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="dark"] .shp-custom-chip.active {
+    background: rgba(99, 102, 241, 0.25) !important;
+    color: #818cf8 !important;
+    border-color: #818cf8 !important;
+}
+
+/* Custom Query Modal */
+.shp-custom-modal-content {
+    background: var(--bg-card, #ffffff);
+    border-radius: 14px;
+    max-width: 740px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    animation: shp-modal-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes shp-modal-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.shp-custom-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary, rgba(0, 0, 0, 0.02));
+}
+
+.shp-custom-modal-icon {
+    font-size: 20px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #6366f1;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shp-custom-modal-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.shp-custom-modal-subtitle {
+    margin: 2px 0 0 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.shp-modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.shp-modal-close-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+}
+
+.shp-custom-modal-body {
+    padding: 18px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.shp-query-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.shp-query-section-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.shp-query-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+/* Presets Grid */
+.shp-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+    gap: 8px;
+}
+
+.shp-preset-card {
+    text-align: left;
+    background: var(--bg-secondary, rgba(0, 0, 0, 0.03));
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.shp-preset-card:hover {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: #6366f1;
+    transform: translateY(-1px);
+}
+
+.shp-preset-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.shp-preset-desc {
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+/* Chipsets Groups */
+.shp-chipset-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.shp-chipset-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 135px;
+}
+
+.shp-chipset-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+}
+
+.shp-token-chip {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transition: all 0.12s ease;
+}
+
+.shp-token-chip:hover {
+    transform: translateY(-1px);
+}
+
+/* Distinct chip coloring */
+.shp-token-chip.field-chip {
+    background: rgba(16, 185, 129, 0.09);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #10b981;
+}
+
+.shp-token-chip.field-chip:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+}
+
+.shp-token-chip.logic-chip {
+    background: rgba(59, 130, 246, 0.09);
+    border-color: rgba(59, 130, 246, 0.35);
+    color: #3b82f6;
+}
+
+.shp-token-chip.logic-chip:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+}
+
+.shp-token-chip.op-chip {
+    background: rgba(245, 158, 11, 0.09);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #d97706;
+}
+
+.shp-token-chip.op-chip:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #d97706;
+}
+
+.shp-token-chip.paren-chip {
+    background: rgba(168, 85, 247, 0.09);
+    border-color: rgba(168, 85, 247, 0.35);
+    color: #a855f7;
+    font-weight: 700;
+}
+
+.shp-token-chip.paren-chip:hover {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: #a855f7;
+}
+
+.shp-token-chip.num-chip {
+    background: var(--bg-secondary, rgba(0, 0, 0, 0.04));
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.shp-token-chip.num-chip:hover {
+    border-color: var(--text-primary);
+}
+
+.shp-token-chip.field-chip-sec {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #6366f1;
+    font-size: 11.5px;
+}
+
+.shp-chipset-advanced {
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+.shp-chipset-adv-toggle {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.shp-chipset-adv-toggle:hover {
+    color: var(--text-primary);
+}
+
+/* Query Editor Textarea */
+.shp-query-input-wrap textarea {
+    width: 100%;
+    min-height: 72px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shp-query-input-wrap textarea:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.shp-text-btn {
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.shp-text-btn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Feedback Banner */
+.shp-query-feedback {
+    padding: 8px 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.shp-query-feedback.valid {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.shp-query-feedback.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Modal Footer */
+.shp-custom-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-secondary, rgba(0, 0, 0, 0.02));
+}
+
+.shp-apply-badge {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+}

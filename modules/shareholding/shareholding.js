@@ -10,6 +10,7 @@
 
     let currentBoard = 'all';
     let currentCategory = 'all';
+    let currentCustomQuery = '';
     let currentScope = 'all';
     let currentSearch = '';
     let currentSortKey = 'broadcastDate';
@@ -18,6 +19,7 @@
     let pageSize = 50;
     let totalPages = 1;
     let searchDebounceTimer = null;
+    let validationTimer = null;
     let isFetching = false;
 
     const rowsEl = document.getElementById('shp-rows');
@@ -44,6 +46,18 @@
     const remarksModalBody = document.getElementById('shp-modal-body');
     const remarksModalClose = document.getElementById('shp-modal-close');
     const remarksModalOk = document.getElementById('shp-modal-ok');
+
+    // Custom Query Modal elements
+    const customChip = document.getElementById('shp-chip-custom');
+    const customModal = document.getElementById('shp-custom-modal');
+    const customModalClose = document.getElementById('shp-custom-modal-close');
+    const customQueryInput = document.getElementById('shp-custom-query-input');
+    const customQueryFeedback = document.getElementById('shp-custom-query-feedback');
+    const customClearInput = document.getElementById('shp-custom-clear-input');
+    const customApplyBtn = document.getElementById('shp-custom-apply-btn');
+    const customResetBtn = document.getElementById('shp-custom-reset-btn');
+    const customCancelBtn = document.getElementById('shp-custom-cancel-btn');
+    const applyCountBadge = document.getElementById('shp-apply-count-badge');
 
     function escapeHtml(value) {
         return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
@@ -275,6 +289,9 @@
             page: currentPage,
             page_size: pageSize
         });
+        if (currentCustomQuery && currentCategory === 'custom') {
+            params.set('custom_query', currentCustomQuery);
+        }
 
         fetch(`/api/shareholding/data?${params.toString()}`)
             .then(res => res.json())
@@ -417,6 +434,111 @@
         if (remarksModal) remarksModal.style.display = 'none';
     }
 
+    // =========================================================
+    // Custom Query Screener Builder
+    // =========================================================
+    function openCustomModal() {
+        if (!customModal) return;
+        if (customQueryInput) {
+            customQueryInput.value = currentCustomQuery || '';
+        }
+        customModal.style.display = 'flex';
+        if (currentCustomQuery) {
+            validateQueryDebounced();
+        } else if (customQueryFeedback) {
+            customQueryFeedback.style.display = 'none';
+            if (applyCountBadge) applyCountBadge.style.display = 'none';
+        }
+        setTimeout(() => {
+            if (customQueryInput) customQueryInput.focus();
+        }, 100);
+    }
+
+    function closeCustomModal() {
+        if (customModal) customModal.style.display = 'none';
+    }
+
+    function insertTokenAtCursor(token) {
+        if (!customQueryInput) return;
+        customQueryInput.focus();
+        const start = customQueryInput.selectionStart;
+        const end = customQueryInput.selectionEnd;
+        const text = customQueryInput.value;
+
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+
+        let prefix = '';
+        let suffix = '';
+
+        if (before.length > 0 && !/[\s(]/.test(before.slice(-1))) {
+            prefix = ' ';
+        }
+
+        if (token === '(') {
+            suffix = '';
+        } else if (token === ')') {
+            suffix = ' ';
+        } else {
+            if (after.length > 0 && !/[\s)]/.test(after.charAt(0))) {
+                suffix = ' ';
+            } else if (after.length === 0) {
+                suffix = ' ';
+            }
+        }
+
+        const inserted = prefix + token + suffix;
+        customQueryInput.value = before + inserted + after;
+        const newPos = start + inserted.length;
+        customQueryInput.selectionStart = newPos;
+        customQueryInput.selectionEnd = newPos;
+
+        validateQueryDebounced();
+    }
+
+    function validateQueryDebounced() {
+        clearTimeout(validationTimer);
+        const val = customQueryInput ? customQueryInput.value.trim() : '';
+        if (!val) {
+            if (customQueryFeedback) customQueryFeedback.style.display = 'none';
+            if (applyCountBadge) applyCountBadge.style.display = 'none';
+            return;
+        }
+
+        validationTimer = setTimeout(() => {
+            fetch(`/api/shareholding/validate-query?query=${encodeURIComponent(val)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!customQueryFeedback) return;
+                    customQueryFeedback.style.display = 'block';
+                    if (data.valid) {
+                        customQueryFeedback.className = 'shp-query-feedback valid';
+                        const count = data.match_count || 0;
+                        const sample = (data.matches || []).slice(0, 5).map(m => m.symbol).join(', ');
+                        const sampleSuffix = count > 5 ? `, +${count - 5} more` : '';
+                        customQueryFeedback.innerHTML = `✓ <strong>Valid Query</strong> — matches <strong>${count}</strong> stocks${sample ? ` (${sample}${sampleSuffix})` : ''}`;
+                        if (applyCountBadge) {
+                            applyCountBadge.textContent = count;
+                            applyCountBadge.style.display = 'inline-block';
+                        }
+                    } else {
+                        customQueryFeedback.className = 'shp-query-feedback error';
+                        customQueryFeedback.innerHTML = `✗ <strong>Syntax Error:</strong> ${escapeHtml(data.error || 'Invalid query expression')}`;
+                        if (applyCountBadge) {
+                            applyCountBadge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (customQueryFeedback) {
+                        customQueryFeedback.style.display = 'block';
+                        customQueryFeedback.className = 'shp-query-feedback error';
+                        customQueryFeedback.textContent = `Validation error: ${err.message}`;
+                    }
+                });
+        }, 200);
+    }
+
     // Attach Event Handlers
     if (refreshBtn) refreshBtn.addEventListener('click', manualRefresh);
 
@@ -445,6 +567,10 @@
     // Category Filter Chips
     document.querySelectorAll('.shp-filter-chip').forEach(chip => {
         chip.addEventListener('click', function () {
+            if (chip.dataset.category === 'custom') {
+                openCustomModal();
+                return;
+            }
             document.querySelectorAll('.shp-filter-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             currentCategory = chip.dataset.category || 'all';
@@ -452,6 +578,119 @@
             loadShareholding();
         });
     });
+
+    // Token Chips (Click to append into query at cursor)
+    document.querySelectorAll('.shp-token-chip').forEach(chip => {
+        chip.addEventListener('click', function (e) {
+            e.preventDefault();
+            const token = chip.dataset.token;
+            if (token) insertTokenAtCursor(token);
+        });
+    });
+
+    // Preset Strategy Cards
+    document.querySelectorAll('.shp-preset-card').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const presetQuery = btn.dataset.preset;
+            if (presetQuery && customQueryInput) {
+                customQueryInput.value = presetQuery;
+                customQueryInput.focus();
+                validateQueryDebounced();
+            }
+        });
+    });
+
+    // Textarea input
+    if (customQueryInput) {
+        customQueryInput.addEventListener('input', validateQueryDebounced);
+        customQueryInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                if (customApplyBtn) customApplyBtn.click();
+            }
+        });
+    }
+
+    // Clear input button
+    if (customClearInput) {
+        customClearInput.addEventListener('click', function () {
+            if (customQueryInput) {
+                customQueryInput.value = '';
+                customQueryInput.focus();
+                validateQueryDebounced();
+            }
+        });
+    }
+
+    // Apply Filter
+    if (customApplyBtn) {
+        customApplyBtn.addEventListener('click', function () {
+            const queryVal = customQueryInput ? customQueryInput.value.trim() : '';
+            if (!queryVal) {
+                showNotice('Please write a query expression or select a preset strategy.', 'error', 4000);
+                return;
+            }
+
+            fetch(`/api/shareholding/validate-query?query=${encodeURIComponent(queryVal)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.valid) {
+                        if (customQueryFeedback) {
+                            customQueryFeedback.style.display = 'block';
+                            customQueryFeedback.className = 'shp-query-feedback error';
+                            customQueryFeedback.innerHTML = `✗ <strong>Cannot Apply:</strong> ${escapeHtml(data.error)}`;
+                        }
+                        return;
+                    }
+
+                    currentCustomQuery = queryVal;
+                    currentCategory = 'custom';
+
+                    document.querySelectorAll('.shp-filter-chip').forEach(c => c.classList.remove('active'));
+                    if (customChip) {
+                        customChip.classList.add('active');
+                        customChip.title = `Active Custom Query: ${currentCustomQuery}`;
+                    }
+
+                    closeCustomModal();
+                    currentPage = 1;
+                    loadShareholding();
+                })
+                .catch(err => {
+                    showNotice(`Error applying query: ${err.message}`, 'error', 5000);
+                });
+        });
+    }
+
+    // Reset Filter to All
+    if (customResetBtn) {
+        customResetBtn.addEventListener('click', function () {
+            currentCustomQuery = '';
+            if (customQueryInput) customQueryInput.value = '';
+            currentCategory = 'all';
+
+            document.querySelectorAll('.shp-filter-chip').forEach(c => c.classList.remove('active'));
+            const allChip = document.querySelector('.shp-filter-chip[data-category="all"]');
+            if (allChip) allChip.classList.add('active');
+            if (customChip) {
+                customChip.title = 'Build custom query screener';
+            }
+
+            closeCustomModal();
+            currentPage = 1;
+            loadShareholding();
+        });
+    }
+
+    // Close Custom Modal
+    if (customCancelBtn) customCancelBtn.addEventListener('click', closeCustomModal);
+    if (customModalClose) customModalClose.addEventListener('click', closeCustomModal);
+    if (customModal) {
+        customModal.addEventListener('click', function (e) {
+            if (e.target === customModal) closeCustomModal();
+        });
+    }
 
     // Search Input with Debounce
     if (searchInput) {

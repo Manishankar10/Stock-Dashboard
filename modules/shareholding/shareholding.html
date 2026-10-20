@@ -77,6 +77,7 @@
                         <button type="button" class="shp-filter-chip" data-category="dii_dec" title="DII stake decreased QoQ">DII Selling ↓</button>
                         <button type="button" class="shp-filter-chip" data-category="gt75" title="Promoter holding above 75% (Minimum Public Shareholding threshold)">Promoter &gt; 75%</button>
                         <button type="button" class="shp-filter-chip" data-category="with_remarks" title="Has corporate notes, pledge remarks, or lock-in disclosures">With Notes</button>
+                        <button type="button" class="shp-filter-chip shp-custom-chip" id="shp-chip-custom" data-category="custom" title="Build and run custom screener query (e.g. promoter = 0 and fii>0.5 and dii>0.5 and public < 0)">Custom ⚡</button>
                     </div>
                 </div>
             </div>
@@ -185,6 +186,146 @@
         </div>
         <div style="padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
             <button type="button" id="shp-modal-ok" class="btn-primary" style="padding: 6px 16px; border-radius: 6px; font-size: 12.5px;">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Custom Query Builder -->
+<div id="shp-custom-modal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 9999; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(4px);">
+    <div class="modal-content shp-custom-modal-content">
+        <!-- Header -->
+        <div class="shp-custom-modal-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="shp-custom-modal-icon">⚡</span>
+                <div>
+                    <h3 class="shp-custom-modal-title">Custom Shareholding Screener</h3>
+                    <p class="shp-custom-modal-subtitle">Screen institutional flows &amp; QoQ shifts using boolean logic</p>
+                </div>
+            </div>
+            <button type="button" id="shp-custom-modal-close" class="shp-modal-close-btn" aria-label="Close modal">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="shp-custom-modal-body">
+            <!-- 1. Analyzed Predefined Conditions / Strategies -->
+            <div class="shp-query-section">
+                <div class="shp-query-section-title">
+                    <span>💡 Predefined Institutional Strategies</span>
+                    <span class="shp-query-hint">Click any strategy to load query</span>
+                </div>
+                <div class="shp-preset-grid">
+                    <button type="button" class="shp-preset-card" data-preset="promoter = 0 and fii>0.5 and dii>0.5 and public < 0" data-label="FII &amp; DII Co-Buying">
+                        <div class="shp-preset-name">💎 FII &amp; DII Co-Buying</div>
+                        <div class="shp-preset-desc">Promoter steady, FII &gt;0.5%, DII &gt;0.5%, Public decreasing</div>
+                    </button>
+                    <button type="button" class="shp-preset-card" data-preset="fii > 1.0 and dii > 1.0 and public < -1.0" data-label="Smart Money Absorption">
+                        <div class="shp-preset-name">🌊 Smart Money Absorption</div>
+                        <div class="shp-preset-desc">Heavy institutional accumulation absorbing &gt;1% public float</div>
+                    </button>
+                    <button type="button" class="shp-preset-card" data-preset="promoter > 0.5 and public < 0" data-label="Promoter Accumulation">
+                        <div class="shp-preset-name">🏢 Promoter Accumulation</div>
+                        <div class="shp-preset-desc">Promoter expanding stake by &gt;0.5% QoQ with public reducing</div>
+                    </button>
+                    <button type="button" class="shp-preset-card" data-preset="fii > 1.5 and public < 0" data-label="FII Aggressive Buying">
+                        <div class="shp-preset-name">🚀 FII Aggressive Buying</div>
+                        <div class="shp-preset-desc">Foreign institutions adding &gt;1.5% stake QoQ</div>
+                    </button>
+                    <button type="button" class="shp-preset-card" data-preset="dii > 1.5 and fii >= 0" data-label="Domestic MF Accumulation">
+                        <div class="shp-preset-name">🏦 Domestic Mutual Funds Surge</div>
+                        <div class="shp-preset-desc">DIIs buying &gt;1.5% stake with no foreign selling</div>
+                    </button>
+                    <button type="button" class="shp-preset-card" data-preset="(fii > 0.2 or dii > 0.2) and public < -1.0" data-label="Public Float Capitulation">
+                        <div class="shp-preset-name">🎯 Retail Float Capitulation</div>
+                        <div class="shp-preset-desc">Public holding drops &gt;1% into institutional hands</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Interactive Clickable Chipsets for Fields, Operators, Logic, Values -->
+            <div class="shp-query-section">
+                <div class="shp-query-section-title">
+                    <span>🧩 Query Token Chips</span>
+                    <span class="shp-query-hint">Click chips to insert into query at cursor</span>
+                </div>
+
+                <!-- Fields (QoQ Shifts %) -->
+                <div class="shp-chipset-group">
+                    <span class="shp-chipset-label">QoQ Change Fields:</span>
+                    <div class="shp-chipset-items">
+                        <button type="button" class="shp-token-chip field-chip" data-token="promoter" title="Promoter QoQ change %">promoter</button>
+                        <button type="button" class="shp-token-chip field-chip" data-token="fii" title="FII / Foreign QoQ change %">fii</button>
+                        <button type="button" class="shp-token-chip field-chip" data-token="dii" title="DII / Domestic QoQ change %">dii</button>
+                        <button type="button" class="shp-token-chip field-chip" data-token="public" title="Public QoQ change %">public</button>
+                    </div>
+                </div>
+
+                <!-- Operators & Logic -->
+                <div class="shp-chipset-group">
+                    <span class="shp-chipset-label">Operators &amp; Logic:</span>
+                    <div class="shp-chipset-items">
+                        <button type="button" class="shp-token-chip logic-chip" data-token="and">and</button>
+                        <button type="button" class="shp-token-chip logic-chip" data-token="or">or</button>
+                        <button type="button" class="shp-token-chip logic-chip" data-token="not">not</button>
+                        <button type="button" class="shp-token-chip paren-chip" data-token="(">(</button>
+                        <button type="button" class="shp-token-chip paren-chip" data-token=")">)</button>
+                        <button type="button" class="shp-token-chip op-chip" data-token=">">&gt;</button>
+                        <button type="button" class="shp-token-chip op-chip" data-token="<">&lt;</button>
+                        <button type="button" class="shp-token-chip op-chip" data-token=">=">&gt;=</button>
+                        <button type="button" class="shp-token-chip op-chip" data-token="<=">&lt;=</button>
+                        <button type="button" class="shp-token-chip op-chip" data-token="=">=</button>
+                        <button type="button" class="shp-token-chip op-chip" data-token="!=">!=</button>
+                    </div>
+                </div>
+
+                <!-- Quick Numbers -->
+                <div class="shp-chipset-group">
+                    <span class="shp-chipset-label">Quick Values:</span>
+                    <div class="shp-chipset-items">
+                        <button type="button" class="shp-token-chip num-chip" data-token="0">0</button>
+                        <button type="button" class="shp-token-chip num-chip" data-token="0.5">0.5</button>
+                        <button type="button" class="shp-token-chip num-chip" data-token="1.0">1.0</button>
+                        <button type="button" class="shp-token-chip num-chip" data-token="1.5">1.5</button>
+                        <button type="button" class="shp-token-chip num-chip" data-token="2.0">2.0</button>
+                        <button type="button" class="shp-token-chip num-chip" data-token="-0.5">-0.5</button>
+                        <button type="button" class="shp-token-chip num-chip" data-token="-1.0">-1.0</button>
+                    </div>
+                </div>
+
+                <!-- Holding Level % Fields (Collapsible / Advanced) -->
+                <details class="shp-chipset-advanced">
+                    <summary class="shp-chipset-adv-toggle">Advanced: Absolute Holding % Fields</summary>
+                    <div class="shp-chipset-items" style="margin-top: 8px;">
+                        <button type="button" class="shp-token-chip field-chip-sec" data-token="promoter_holding" title="Total Promoter Holding %">promoter_holding</button>
+                        <button type="button" class="shp-token-chip field-chip-sec" data-token="fii_holding" title="Total FII Holding %">fii_holding</button>
+                        <button type="button" class="shp-token-chip field-chip-sec" data-token="dii_holding" title="Total DII Holding %">dii_holding</button>
+                        <button type="button" class="shp-token-chip field-chip-sec" data-token="public_holding" title="Total Public Holding %">public_holding</button>
+                    </div>
+                </details>
+            </div>
+
+            <!-- 3. Query Textarea -->
+            <div class="shp-query-section">
+                <div class="shp-query-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>✍️ Query Expression</span>
+                    <button type="button" id="shp-custom-clear-input" class="shp-text-btn" title="Clear expression text">Clear ⌫</button>
+                </div>
+                <div class="shp-query-input-wrap">
+                    <textarea id="shp-custom-query-input" rows="3" placeholder="e.g. promoter = 0 and fii>0.5 and dii>0.5 and public < 0" spellcheck="false" autocomplete="off"></textarea>
+                </div>
+            </div>
+
+            <!-- 4. Real-time Syntax Feedback & Match Preview -->
+            <div id="shp-custom-query-feedback" class="shp-query-feedback" style="display: none;"></div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="shp-custom-modal-footer">
+            <button type="button" id="shp-custom-reset-btn" class="btn-secondary" style="margin-right: auto;">Reset to All</button>
+            <button type="button" id="shp-custom-cancel-btn" class="btn-secondary">Cancel</button>
+            <button type="button" id="shp-custom-apply-btn" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+                <span>Apply Filter</span>
+                <span class="shp-apply-badge" id="shp-apply-count-badge"></span>
+            </button>
         </div>
     </div>
 </div>

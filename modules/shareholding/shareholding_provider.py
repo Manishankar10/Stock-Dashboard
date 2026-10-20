@@ -9,6 +9,7 @@ Cuts and stops parser immediately when existing records are reached.
 
 from __future__ import annotations
 
+import ast
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
@@ -455,10 +456,191 @@ class ShareholdingProvider:
             return f"{m} {yr}"
         return date_str
 
+    ALLOWED_AST_NODES = (
+        ast.Expression, ast.BoolOp, ast.BinOp, ast.UnaryOp,
+        ast.Compare, ast.Name, ast.Constant,
+        ast.And, ast.Or, ast.Not,
+        ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE,
+        ast.USub, ast.UAdd, ast.Load,
+    )
+
+    QUERY_FIELD_MAP = {
+        # QoQ percentage changes
+        "promoter": "change_promoter_pct",
+        "fii": "change_fii_pct",
+        "dii": "change_dii_pct",
+        "public": "change_public_pct",
+        "promoter_change": "change_promoter_pct",
+        "fii_change": "change_fii_pct",
+        "dii_change": "change_dii_pct",
+        "public_change": "change_public_pct",
+        "promoter_chg": "change_promoter_pct",
+        "fii_chg": "change_fii_pct",
+        "dii_chg": "change_dii_pct",
+        "public_chg": "change_public_pct",
+        # Level percentage holdings
+        "promoter_holding": "promoter_pct",
+        "fii_holding": "fii_pct",
+        "dii_holding": "dii_pct",
+        "public_holding": "public_pct",
+        "promoter_pct": "promoter_pct",
+        "fii_pct": "fii_pct",
+        "dii_pct": "dii_pct",
+        "public_pct": "public_pct",
+    }
+
+    def sanitize_custom_query(self, query_str: str) -> str:
+        """Sanitize query string to normalize operators and keywords for Python AST."""
+        if not query_str:
+            return ""
+        s = query_str.strip()
+        # Case-insensitive logic keywords
+        s = re.sub(r"\band\b", "and", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bor\b", "or", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bnot\b", "not", s, flags=re.IGNORECASE)
+        # Normalize single '=' to '==' without disturbing '<=', '>=', '!=', '=='
+        s = re.sub(r"(?<![<>=!])=(?!=)", "==", s)
+        return s
+
+    def compile_custom_query(self, query_str: str) -> Tuple[Optional[ast.AST], Optional[str]]:
+        """Compile and securely validate user-specified boolean shareholding query."""
+        if not query_str or not query_str.strip():
+            return None, "Query string is empty."
+        sanitized = self.sanitize_custom_query(query_str)
+        try:
+            tree = ast.parse(sanitized, mode="eval")
+        except Exception as e:
+            return None, f"Query syntax error: {e}"
+
+        for node in ast.walk(tree):
+            if not isinstance(node, self.ALLOWED_AST_NODES):
+                return None, f"Unsupported expression element: {type(node).__name__}"
+            if isinstance(node, ast.Name):
+                name_lower = node.id.lower()
+                if name_lower not in self.QUERY_FIELD_MAP and name_lower not in ("true", "false"):
+                    return (
+                        None,
+                        f"Unknown field '{node.id}'. Supported fields: promoter, fii, dii, public, "
+                        "promoter_holding, fii_holding, dii_holding, public_holding",
+                    )
+        return tree, None
+
+    def eval_custom_node(self, node: Any, record: Dict[str, Any]) -> Any:
+        """Evaluate validated AST expression against a shareholding record."""
+        if node is None:
+            return None
+        if isinstance(node, ast.Expression):
+            return self.eval_custom_node(node.body, record)
+        elif isinstance(node, ast.Constant):
+            return node.value
+        elif isinstance(node, ast.Name):
+            nid = node.id.lower()
+            if nid == "true":
+                return True
+            if nid == "false":
+                return False
+            field_attr = self.QUERY_FIELD_MAP.get(nid)
+            val = record.get(field_attr)
+            return float(val) if val is not None else None
+        elif isinstance(node, ast.UnaryOp):
+            operand = self.eval_custom_node(node.operand, record)
+            if operand is None:
+                return None
+            if isinstance(node.op, ast.Not):
+                return not bool(operand)
+            elif isinstance(node.op, ast.USub):
+                return -operand
+            elif isinstance(node.op, ast.UAdd):
+                return +operand
+            return None
+        elif isinstance(node, ast.BoolOp):
+            if isinstance(node.op, ast.And):
+                for v in node.values:
+                    res = self.eval_custom_node(v, record)
+                    if not res:
+                        return False
+                return True
+            elif isinstance(node.op, ast.Or):
+                for v in node.values:
+                    res = self.eval_custom_node(v, record)
+                    if res:
+                        return True
+                return False
+        elif isinstance(node, ast.Compare):
+            left = self.eval_custom_node(node.left, record)
+            if left is None:
+                return False
+            for op, comparator in zip(node.ops, node.comparators):
+                right = self.eval_custom_node(comparator, record)
+                if right is None:
+                    return False
+                matched = False
+                if isinstance(op, ast.Eq):
+                    matched = abs(left - right) < 0.001
+                elif isinstance(op, ast.NotEq):
+                    matched = abs(left - right) >= 0.001
+                elif isinstance(op, ast.Lt):
+                    matched = left < right
+                elif isinstance(op, ast.LtE):
+                    matched = left <= right
+                elif isinstance(op, ast.Gt):
+                    matched = left > right
+                elif isinstance(op, ast.GtE):
+                    matched = left >= right
+                if not matched:
+                    return False
+                left = right
+            return True
+        return False
+
+    def validate_custom_query(self, query_str: str) -> Dict[str, Any]:
+        """Validate query and return live match count and preview."""
+        if not query_str or not query_str.strip():
+            return {
+                "valid": False,
+                "error": "Query cannot be empty.",
+                "match_count": 0,
+                "matches": [],
+            }
+        tree, err = self.compile_custom_query(query_str)
+        if err or not tree:
+            return {
+                "valid": False,
+                "error": err or "Invalid query expression.",
+                "match_count": 0,
+                "matches": [],
+            }
+
+        with self._lock:
+            recs = list(self._cache_records)
+
+        matched_symbols = []
+        for r in recs:
+            try:
+                if self.eval_custom_node(tree, r):
+                    matched_symbols.append({
+                        "symbol": r.get("symbol"),
+                        "name": r.get("name"),
+                        "promoter_change": r.get("change_promoter_pct"),
+                        "fii_change": r.get("change_fii_pct"),
+                        "dii_change": r.get("change_dii_pct"),
+                        "public_change": r.get("change_public_pct"),
+                    })
+            except Exception:
+                pass
+
+        return {
+            "valid": True,
+            "error": None,
+            "match_count": len(matched_symbols),
+            "matches": matched_symbols[:8],
+        }
+
     def query_records(
         self,
         board: str = "all",
         category_filter: str = "all",
+        custom_query: str = "",
         scope: str = "all",
         search: str = "",
         sort_key: str = "broadcastDate",
@@ -499,8 +681,18 @@ class ShareholdingProvider:
         # 3. Filter by Category / Holding Range / Shifts
         cat_clean = category_filter.lower().strip()
         two_qtrs_label, top_pair = self.get_two_quarters_info()
+        custom_query_clean = (custom_query or "").strip()
+        custom_query_error = None
 
-        if cat_clean == "two_qtrs":
+        if cat_clean == "custom" or (cat_clean == "all" and custom_query_clean):
+            if custom_query_clean:
+                tree, err = self.compile_custom_query(custom_query_clean)
+                if tree:
+                    records = [r for r in records if self.eval_custom_node(tree, r)]
+                else:
+                    custom_query_error = err
+                    records = []
+        elif cat_clean == "two_qtrs":
             # Filter strictly by comparative two quarters
             records = [
                 r for r in records
@@ -619,4 +811,6 @@ class ShareholdingProvider:
             "counts": counts,
             "two_quarters_label": two_qtrs_label,
             "status": status_meta,
+            "custom_query": custom_query_clean,
+            "custom_query_error": custom_query_error,
         }
