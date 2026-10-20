@@ -178,7 +178,11 @@
                 renderWatchlists();
                 refreshPrices();
             } else {
-                alert(data.error);
+                if (typeof showToast === 'function') {
+                    showToast(data.error || 'Failed to create watchlist', 'error');
+                } else {
+                    alert(data.error || 'Failed to create watchlist');
+                }
             }
         }
 

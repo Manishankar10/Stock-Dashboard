@@ -1,3 +1,4 @@
+from modules.common.system_settings import get_system_settings
 import os
 import re
 import json
@@ -127,6 +128,14 @@ def create_watchlist():
     if target_key:
         return jsonify({"error": "Watchlist already exists"}), 400
 
+    # Enforce system settings limit on watchlists per user
+    settings = get_system_settings()
+    max_watchlists = settings.get("max_watchlists_per_user", 10)
+    if len(data) >= max_watchlists:
+        return jsonify({
+            "error": f"Watchlist limit reached. Maximum allowed watchlists is {max_watchlists}. (Current: {len(data)})"
+        }), 400
+
     clean_name = re.sub(r"\s+", " ", str(name)).strip()
     data[clean_name] = []
     save_data(data)
@@ -171,6 +180,14 @@ def add_stock(name):
         return jsonify({"error": "Watchlist not found"}), 404
 
     if resolved_symbol not in data[target_key]:
+        # Enforce system settings limit on stocks per watchlist
+        settings = get_system_settings()
+        max_stocks = settings.get("max_stocks_per_watchlist", 50)
+        if len(data[target_key]) >= max_stocks:
+            return jsonify({
+                "error": f"Stock limit reached. Maximum allowed stocks per watchlist is {max_stocks}. (Current: {len(data[target_key])})"
+            }), 400
+
         data[target_key].append(resolved_symbol)
         save_data(data)
 
@@ -213,6 +230,13 @@ def import_watchlist_txt(name):
     if not unique_symbols:
         return jsonify({"error": "The TXT file does not contain any stock symbols."}), 400
 
+    settings = get_system_settings()
+    max_stocks = settings.get("max_stocks_per_watchlist", 50)
+    if len(data[target_key]) >= max_stocks:
+        return jsonify({
+            "error": f"Stock limit reached. Maximum allowed stocks per watchlist is {max_stocks}. (Current: {len(data[target_key])})"
+        }), 400
+
     added_symbols = []
     not_added_symbols = []
     already_present_symbols = []
@@ -226,6 +250,10 @@ def import_watchlist_txt(name):
 
         if resolved_symbol in data[target_key]:
             already_present_symbols.append(raw_symbol)
+            continue
+
+        if len(data[target_key]) >= max_stocks:
+            not_added_symbols.append(f"{raw_symbol} (Limit reached: max {max_stocks})")
             continue
 
         data[target_key].append(resolved_symbol)
@@ -327,6 +355,13 @@ def move_stock():
         for s in data[target_key]
     }
     if sym_clean.upper() not in target_existing_clean:
+        settings = get_system_settings()
+        max_stocks = settings.get("max_stocks_per_watchlist", 50)
+        if len(data[target_key]) >= max_stocks:
+            return jsonify({
+                "error": f"Stock limit reached for target watchlist '{target_key}'. Maximum allowed stocks is {max_stocks}."
+            }), 400
+
         data[target_key].append(matched_sym)
 
     save_data(data)

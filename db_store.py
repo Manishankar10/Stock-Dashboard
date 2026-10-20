@@ -102,3 +102,44 @@ def save_user_doc_db(collection_name, username, data, filepath):
             col.replace_one({"_id": safe_user}, {"_id": safe_user, "username": username, "data": data}, upsert=True)
         except Exception as e:
             print(f"MongoDB save_{collection_name} error for {username}: {e}")
+
+def load_system_settings_db(settings_file, default_factory=dict):
+    if db is not None:
+        try:
+            col = db["system_settings"]
+            doc = col.find_one({"_id": "global_settings"})
+            if doc is not None and "settings" in doc:
+                res = default_factory()
+                res.update(doc["settings"])
+                return res
+        except Exception as e:
+            print(f"MongoDB load_system_settings error: {e}")
+
+    if not os.path.exists(settings_file):
+        return default_factory()
+    try:
+        with open(settings_file, "r", encoding="utf-8") as f:
+            res = default_factory()
+            loaded = json.load(f)
+            if isinstance(loaded, dict):
+                res.update(loaded)
+            return res
+    except Exception:
+        return default_factory()
+
+def save_system_settings_db(settings, settings_file):
+    try:
+        os.makedirs(os.path.dirname(settings_file), exist_ok=True)
+        tmp = settings_file + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=4, ensure_ascii=False)
+        os.replace(tmp, settings_file)
+    except Exception:
+        pass
+
+    if db is not None:
+        try:
+            col = db["system_settings"]
+            col.replace_one({"_id": "global_settings"}, {"_id": "global_settings", "settings": settings}, upsert=True)
+        except Exception as e:
+            print(f"MongoDB save_system_settings error: {e}")

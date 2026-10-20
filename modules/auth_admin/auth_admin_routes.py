@@ -1,3 +1,4 @@
+from modules.common.system_settings import get_system_settings, update_system_settings
 import os
 import json
 import datetime
@@ -308,6 +309,39 @@ def admin_get_logs():
             logs = []
     return jsonify(logs)
 
+
+@auth_admin_bp.route("/api/admin/system_settings", methods=["GET"])
+@admin_required
+def admin_get_system_settings():
+    return jsonify({
+        "success": True,
+        "settings": get_system_settings()
+    })
+
+@auth_admin_bp.route("/api/admin/system_settings", methods=["POST"])
+@admin_required
+def admin_save_system_settings():
+    data = request.get_json(silent=True) or {}
+    try:
+        updated = update_system_settings(data)
+        return jsonify({
+            "success": True,
+            "message": "System settings saved successfully.",
+            "settings": updated
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Failed to save system settings: {str(e)}"}), 500
+
+@auth_admin_bp.route("/api/system_settings", methods=["GET"])
+@login_required
+def get_public_system_settings():
+    return jsonify({
+        "success": True,
+        "settings": get_system_settings()
+    })
+
 @auth_admin_bp.route("/api/admin/system_backup/export", methods=["GET"])
 @admin_required
 def admin_export_system_backup():
@@ -325,6 +359,7 @@ def admin_export_system_backup():
     backup_data = {
         "users": users,
         "user_data": user_data_map,
+        "system_settings": get_system_settings(),
         "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     response = jsonify(backup_data)
@@ -355,6 +390,11 @@ def admin_import_system_backup():
                 _get_user_dependencies()["save_user_alerts"](udata["alerts"], uname)
             if "smallcases" in udata:
                 _get_user_dependencies()["save_user_smallcases"](udata["smallcases"], uname)
+        if "system_settings" in req_data and isinstance(req_data["system_settings"], dict):
+            try:
+                update_system_settings(req_data["system_settings"])
+            except Exception:
+                pass
                 
         try:
             with open(USERS_EXAMPLE_FILE, "w") as f:
