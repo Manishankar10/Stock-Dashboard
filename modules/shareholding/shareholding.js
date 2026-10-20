@@ -363,7 +363,7 @@
         }
         if (refreshIcon) refreshIcon.classList.add('spinning');
 
-        fetch('/api/shareholding/refresh', { method: 'POST' })
+        fetch('/api/shareholding/refresh?force=true', { method: 'POST' })
             .then(res => res.json())
             .then(result => {
                 if (result.status === 'throttled') {
@@ -374,6 +374,8 @@
                     loadShareholding();
                 } else {
                     showNotice(`Notice: ${result.message || 'Refresh completed.'}`, 'info', 6000);
+                    currentPage = 1;
+                    loadShareholding();
                 }
             })
             .catch(err => {

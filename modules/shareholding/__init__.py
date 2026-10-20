@@ -151,7 +151,7 @@ def refresh_shareholding_data():
     if _PROVIDER is None:
         return jsonify({"error": "Shareholding provider is not initialized."}), 500
 
-    force = request.args.get("force", "false").lower() in ("true", "1", "yes")
+    force = request.args.get("force", "true").lower() in ("true", "1", "yes")
     result = _PROVIDER.fetch_live_records(force=force)
     return jsonify(result)
 

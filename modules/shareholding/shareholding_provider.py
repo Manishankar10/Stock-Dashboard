@@ -140,6 +140,14 @@ class ShareholdingProvider:
                     self._cache_records = payload
                     self._last_synced = self.json_file.stat().st_mtime
                     self._last_synced_display = datetime.fromtimestamp(self._last_synced).strftime("%d %b %Y, %I:%M %p")
+
+            # Always sort recent records first
+            def get_rec_sort_key(r):
+                t = parse_date_to_timestamp(r.get("broadcastDate") or r.get("submissionDate"))
+                rec_id = int(r.get("recordId") or 0) if str(r.get("recordId") or "").isdigit() else 0
+                return (t, rec_id)
+
+            self._cache_records.sort(key=get_rec_sort_key, reverse=True)
         except Exception as e:
             logger.error(f"Error loading {self.json_file}: {e}")
 
@@ -150,6 +158,14 @@ class ShareholdingProvider:
             now_display = datetime.fromtimestamp(now).strftime("%d %b %Y, %I:%M %p")
             self._last_synced = now
             self._last_synced_display = now_display
+
+            # Ensure sorted recent first by broadcastDate / submissionDate descending
+            def get_rec_sort_key(r):
+                t = parse_date_to_timestamp(r.get("broadcastDate") or r.get("submissionDate"))
+                rec_id = int(r.get("recordId") or 0) if str(r.get("recordId") or "").isdigit() else 0
+                return (t, rec_id)
+
+            self._cache_records.sort(key=get_rec_sort_key, reverse=True)
 
             count_eq = sum(1 for r in self._cache_records if r.get("board", "").lower() != "sme")
             count_sme = sum(1 for r in self._cache_records if r.get("board", "").lower() == "sme")
@@ -255,23 +271,22 @@ class ShareholdingProvider:
                     for r in self._cache_records
                     if r.get("recordId") is not None
                 }
-                existing_keys = {
-                    (clean_symbol(r.get("symbol")), str(r.get("date") or "").strip().upper())
-                    for r in self._cache_records
-                }
 
-                # Cut when reached existing records
+                # Collect new filings from official exchange feed
                 new_raw_items: List[Dict[str, Any]] = []
+                consecutive_existing = 0
                 for item in tagged_raw:
                     rec_id = str(item.get("recordId") or "")
-                    sym = clean_symbol(item.get("symbol"))
-                    qtr_date = str(item.get("date") or "").strip().upper()
 
-                    # CUT CRITERION: If recordId already exists, or symbol+date exists
-                    if (rec_id and rec_id in existing_record_ids) or ((sym, qtr_date) in existing_keys):
-                        logger.info(f"Existing record reached (recordId={rec_id}, {sym} {qtr_date}). Cutting incoming stream.")
-                        break
+                    if rec_id and rec_id in existing_record_ids:
+                        consecutive_existing += 1
+                        # If we have reached 60 consecutive existing records, cut stream
+                        if consecutive_existing >= 60:
+                            logger.info(f"Stream cut reached after {consecutive_existing} consecutive existing records.")
+                            break
+                        continue
 
+                    consecutive_existing = 0
                     new_raw_items.append(item)
 
             if not new_raw_items:
@@ -383,7 +398,10 @@ class ShareholdingProvider:
                 enriched_records.append(rec)
 
             with self._lock:
-                self._cache_records = enriched_records + self._cache_records
+                # Merge new enriched records: replace matching (symbol, date) with newer filing
+                new_keys = {(r.get("symbol"), r.get("date")) for r in enriched_records}
+                retained_old = [r for r in self._cache_records if (r.get("symbol"), r.get("date")) not in new_keys]
+                self._cache_records = enriched_records + retained_old
                 self._save_to_disk()
 
             return {
