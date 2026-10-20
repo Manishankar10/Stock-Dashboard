@@ -1,7 +1,8 @@
 /**
  * Capital Desk - Shareholding Patterns Module
  * Location: modules/shareholding/shareholding.js
- * Handles data rendering, searching, filtering, sorting, pagination, and 15m manual refresh.
+ * Handles data rendering, searching, filtering, sorting on all percentage categories,
+ * QoQ comparison, pagination, and manual rate-limited refresh.
  */
 
 (function () {
@@ -93,6 +94,37 @@
         });
     }
 
+    function formatPctCell(val, fillClass) {
+        if (val === null || val === undefined || isNaN(Number(val))) {
+            return '<span style="color: var(--text-secondary); opacity: 0.5;">—</span>';
+        }
+        const num = Number(val);
+        const barClass = (fillClass === 'promoter' && num > 75) ? 'warning' : fillClass;
+        return `
+            <div class="shp-pct-cell">
+                <span class="shp-pct-val">${num.toFixed(2)}%</span>
+                <div class="shp-bar-wrap">
+                    <div class="shp-bar-fill ${barClass}" style="width: ${Math.min(100, Math.max(0, num))}%;"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    function formatChangePill(chg, prevVal) {
+        if (chg === null || chg === undefined || isNaN(Number(chg))) {
+            return '<span class="shp-chg-pill na" title="Previous quarter comparison not available">—</span>';
+        }
+        const num = Number(chg);
+        const prevText = prevVal != null && !isNaN(Number(prevVal)) ? ` (Previous: ${Number(prevVal).toFixed(2)}%)` : '';
+        if (num > 0) {
+            return `<span class="shp-chg-pill pos" title="Increased by ${num.toFixed(2)}% QoQ${prevText}">+${num.toFixed(2)}%</span>`;
+        } else if (num < 0) {
+            return `<span class="shp-chg-pill neg" title="Decreased by ${Math.abs(num).toFixed(2)}% QoQ${prevText}">${num.toFixed(2)}%</span>`;
+        } else {
+            return `<span class="shp-chg-pill zero" title="Unchanged QoQ${prevText}">0.00%</span>`;
+        }
+    }
+
     function renderRow(record) {
         const symbol = escapeHtml(record.symbol || '');
         const name = escapeHtml(record.name || symbol);
@@ -101,46 +133,28 @@
         const boardClass = board.toLowerCase();
 
         const quarter = escapeHtml(record.date || '—');
+        const prevQuarter = record.prev_date ? `vs ${escapeHtml(record.prev_date)}` : '';
         const submissionDate = escapeHtml(record.submissionDate || '—');
         const broadcastDate = escapeHtml(record.broadcastDate || record.systemDate || submissionDate);
 
-        const promoterPct = record.pr_and_prgrp != null && !isNaN(Number(record.pr_and_prgrp)) ? Number(record.pr_and_prgrp) : null;
-        const publicPct = record.public_val != null && !isNaN(Number(record.public_val)) ? Number(record.public_val) : null;
-        const employeeTrusts = record.employeeTrusts != null ? String(record.employeeTrusts).trim() : '0';
+        // Core Percentages
+        const promoterPct = record.promoter_pct != null ? record.promoter_pct : (record.pr_and_prgrp != null ? Number(record.pr_and_prgrp) : null);
+        const fiiPct = record.fii_pct != null ? record.fii_pct : 0.0;
+        const diiPct = record.dii_pct != null ? record.dii_pct : 0.0;
+        const publicPct = record.public_pct != null ? record.public_pct : (record.public_val != null ? Number(record.public_val) : null);
 
-        // Promoter bar
-        let promoterHtml = '<span class="value-muted">—</span>';
-        if (promoterPct !== null) {
-            const barFillClass = promoterPct > 75 ? 'warning' : 'promoter';
-            promoterHtml = `
-                <div class="shp-pct-cell">
-                    <span class="shp-pct-val">${promoterPct.toFixed(2)}%</span>
-                    <div class="shp-bar-wrap">
-                        <div class="shp-bar-fill ${barFillClass}" style="width: ${Math.min(100, Math.max(0, promoterPct))}%;"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Public bar
-        let publicHtml = '<span class="value-muted">—</span>';
-        if (publicPct !== null) {
-            publicHtml = `
-                <div class="shp-pct-cell">
-                    <span class="shp-pct-val" style="color: #10b981;">${publicPct.toFixed(2)}%</span>
-                    <div class="shp-bar-wrap">
-                        <div class="shp-bar-fill public" style="width: ${Math.min(100, Math.max(0, publicPct))}%;"></div>
-                    </div>
-                </div>
-            `;
-        }
+        // QoQ Changes
+        const chgPromoter = record.change_promoter_pct;
+        const chgFii = record.change_fii_pct;
+        const chgDii = record.change_dii_pct;
+        const chgPublic = record.change_public_pct;
 
         // Remarks
         const rawRemarks = record.remarksWeb || '';
         const hasRemarks = rawRemarks && rawRemarks.trim().toLowerCase() !== 'n' && rawRemarks.trim() !== '-';
-        let remarksHtml = '<span style="color: var(--text-secondary); opacity: 0.5;">—</span>';
+        let remarksHtml = '<span style="color: var(--text-secondary); opacity: 0.4;">—</span>';
         if (hasRemarks) {
-            const shortRemark = rawRemarks.length > 35 ? rawRemarks.substring(0, 32) + '…' : rawRemarks;
+            const shortRemark = rawRemarks.length > 25 ? rawRemarks.substring(0, 22) + '…' : rawRemarks;
             remarksHtml = `
                 <button type="button" class="shp-remarks-btn" data-record-id="${escapeHtml(record.recordId)}" title="Click to view complete disclosure note">
                     📝 ${escapeHtml(shortRemark)}
@@ -149,7 +163,7 @@
         }
 
         // XBRL link
-        let xbrlHtml = '<span style="color: var(--text-secondary); opacity: 0.5;">—</span>';
+        let xbrlHtml = '<span style="color: var(--text-secondary); opacity: 0.4;">—</span>';
         if (record.xbrl) {
             const sizeStr = record.xbrlFileSize ? ` (${escapeHtml(record.xbrlFileSize)})` : '';
             xbrlHtml = `
@@ -174,19 +188,28 @@
                 </td>
                 <td>
                     <span class="shp-quarter-badge">${quarter}</span>
+                    ${prevQuarter ? `<div class="shp-prev-date-sub">${prevQuarter}</div>` : ''}
                 </td>
-                <td>${promoterHtml}</td>
-                <td>${publicHtml}</td>
+                <!-- Promoter -->
+                <td>${formatPctCell(promoterPct, 'promoter')}</td>
+                <td>${formatChangePill(chgPromoter, record.prev_promoter_pct)}</td>
+                <!-- FII -->
+                <td>${formatPctCell(fiiPct, 'fii')}</td>
+                <td>${formatChangePill(chgFii, record.prev_fii_pct)}</td>
+                <!-- DII -->
+                <td>${formatPctCell(diiPct, 'dii')}</td>
+                <td>${formatChangePill(chgDii, record.prev_dii_pct)}</td>
+                <!-- Public -->
+                <td>${formatPctCell(publicPct, 'public')}</td>
+                <td>${formatChangePill(chgPublic, record.prev_public_pct)}</td>
+                <!-- Filing Date -->
                 <td>
-                    <span style="font-weight: ${Number(employeeTrusts) > 0 ? '700' : '500'}; color: ${Number(employeeTrusts) > 0 ? 'var(--text-primary)' : 'var(--text-secondary)'};">
-                        ${employeeTrusts !== '0' && employeeTrusts !== '' ? escapeHtml(employeeTrusts) + '%' : '0.00%'}
-                    </span>
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 11.5px;">${submissionDate}</div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">${broadcastDate}</div>
                 </td>
-                <td>
-                    <div style="font-weight: 600; color: var(--text-primary); font-size: 12px;">${submissionDate}</div>
-                    <div style="font-size: 10.5px; color: var(--text-secondary); margin-top: 2px;">${broadcastDate}</div>
-                </td>
+                <!-- Disclosures & Remarks -->
                 <td>${remarksHtml}</td>
+                <!-- Filing Download -->
                 <td style="text-align: center;">${xbrlHtml}</td>
             </tr>
         `;
@@ -196,7 +219,7 @@
         if (targetPage !== undefined) currentPage = targetPage;
         if (!rowsEl) return;
 
-        rowsEl.innerHTML = '<tr><td class="table-message" colspan="8" style="text-align: center; padding: 30px; color: var(--text-secondary);">Loading records…</td></tr>';
+        rowsEl.innerHTML = '<tr><td class="table-message" colspan="13" style="text-align: center; padding: 30px; color: var(--text-secondary);">Loading records…</td></tr>';
         updateSortHeaders();
 
         const params = new URLSearchParams({
@@ -213,7 +236,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    rowsEl.innerHTML = `<tr><td class="table-message" colspan="8" style="text-align: center; padding: 30px; color: #ef4444;">Error: ${escapeHtml(data.error)}</td></tr>`;
+                    rowsEl.innerHTML = `<tr><td class="table-message" colspan="13" style="text-align: center; padding: 30px; color: #ef4444;">Error: ${escapeHtml(data.error)}</td></tr>`;
                     return;
                 }
 
@@ -231,7 +254,7 @@
                 totalPages = pag.total_pages || 1;
 
                 if (records.length === 0) {
-                    rowsEl.innerHTML = '<tr><td class="table-message" colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">No shareholding records match your filter criteria.</td></tr>';
+                    rowsEl.innerHTML = '<tr><td class="table-message" colspan="13" style="text-align: center; padding: 40px; color: var(--text-secondary);">No shareholding records match your filter criteria. Click "Refresh" to fetch latest filings.</td></tr>';
                 } else {
                     rowsEl.innerHTML = records.map(renderRow).join('');
                 }
@@ -261,7 +284,7 @@
                 if (nextBtn) nextBtn.disabled = !pag.has_next;
             })
             .catch(err => {
-                rowsEl.innerHTML = `<tr><td class="table-message" colspan="8" style="text-align: center; padding: 30px; color: #ef4444;">Failed to load data: ${escapeHtml(err.message)}</td></tr>`;
+                rowsEl.innerHTML = `<tr><td class="table-message" colspan="13" style="text-align: center; padding: 30px; color: #ef4444;">Failed to load data: ${escapeHtml(err.message)}</td></tr>`;
             });
     }
 
@@ -366,7 +389,8 @@
                 currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSortKey = key;
-                currentSortDir = 'desc';
+                // Default to descending for percentage & change columns so biggest holding/gainers appear first
+                currentSortDir = (key === 'name' || key === 'symbol') ? 'asc' : 'desc';
             }
             currentPage = 1;
             loadShareholding();

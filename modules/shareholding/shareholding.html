@@ -46,7 +46,7 @@
             <!-- Toolbar: Search & Category Chips -->
             <div class="table-toolbar" style="padding: 14px 16px; border-bottom: 1px solid var(--border-color);">
                 <div class="table-tools" style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                    <label class="search-box shp-search-box" style="min-width: 280px; max-width: 420px; flex: 1;">
+                    <label class="search-box shp-search-box" style="min-width: 280px; max-width: 400px; flex: 1;">
                         <span aria-hidden="true" style="font-size: 13px; opacity: 0.6;">⌕</span>
                         <input id="shp-search-input" type="search" placeholder="Search company name, symbol, or ISIN..." autocomplete="off">
                     </label>
@@ -54,45 +54,82 @@
                     <!-- Category Quick Filters -->
                     <div class="shp-category-chips" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                         <button type="button" class="shp-filter-chip active" data-category="all">All</button>
+                        <button type="button" class="shp-filter-chip" data-category="fii_inc" title="FII / Foreign institutional stake increased QoQ">FII Buying ↑</button>
+                        <button type="button" class="shp-filter-chip" data-category="dii_inc" title="DII / Mutual funds & domestic institutional stake increased QoQ">DII Buying ↑</button>
+                        <button type="button" class="shp-filter-chip" data-category="promoter_inc" title="Promoter stake increased QoQ">Promoter Buying ↑</button>
+                        <button type="button" class="shp-filter-chip" data-category="fii_dec" title="FII stake decreased QoQ">FII Selling ↓</button>
+                        <button type="button" class="shp-filter-chip" data-category="dii_dec" title="DII stake decreased QoQ">DII Selling ↓</button>
                         <button type="button" class="shp-filter-chip" data-category="gt75" title="Promoter holding above 75% (Minimum Public Shareholding threshold)">Promoter &gt; 75%</button>
-                        <button type="button" class="shp-filter-chip" data-category="50_75" title="Majority promoter control">Promoter 50%–75%</button>
-                        <button type="button" class="shp-filter-chip" data-category="lt50" title="Low promoter or institutional majority">Promoter &lt; 50%</button>
-                        <button type="button" class="shp-filter-chip" data-category="public_gt50" title="Public & institutional holding exceeds 50%">Public &gt; 50%</button>
                         <button type="button" class="shp-filter-chip" data-category="with_remarks" title="Has corporate notes, pledge remarks, or lock-in disclosures">With Notes</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Notice / Banner Banner Area -->
+            <!-- Notice / Banner Area -->
             <div id="shp-notice" class="feed-notice" style="display: none; margin: 10px 16px; padding: 10px 14px; border-radius: 8px; font-size: 12px;"></div>
 
             <!-- Scrollable Table -->
             <div class="table-scroll" style="overflow-x: auto; max-height: calc(100vh - 280px);">
                 <table class="shp-table" style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th class="sortable-th" data-sort-key="name" style="min-width: 220px;" title="Sort by Company Name">
+                        <tr class="shp-header-top">
+                            <th rowspan="2" class="sortable-th" data-sort-key="name" style="min-width: 200px;" title="Sort by Company Name">
                                 Company / Symbol <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable-th" data-sort-key="quarter" style="min-width: 120px;" title="Sort by Quarter">
+                            <th rowspan="2" class="sortable-th" data-sort-key="quarter" style="min-width: 110px;" title="Sort by Quarter">
                                 Quarter End <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable-th" data-sort-key="promoter" style="min-width: 150px;" title="Sort by Promoter Holding %">
-                                Promoter % <span class="sort-icon">↕</span>
+                            <th colspan="2" class="shp-group-th promoter-grp">
+                                <span class="grp-label">Promoter</span>
                             </th>
-                            <th class="sortable-th" data-sort-key="public" style="min-width: 150px;" title="Sort by Public Holding %">
-                                Public % <span class="sort-icon">↕</span>
+                            <th colspan="2" class="shp-group-th fii-grp">
+                                <span class="grp-label">FII (Foreign)</span>
                             </th>
-                            <th style="min-width: 90px;">Employee Trusts %</th>
-                            <th class="sortable-th active-sort" data-sort-key="broadcastDate" style="min-width: 160px;" title="Sort by Filing Date">
-                                Filing / Broadcast <span class="sort-icon">▼</span>
+                            <th colspan="2" class="shp-group-th dii-grp">
+                                <span class="grp-label">DII (Domestic)</span>
                             </th>
-                            <th style="min-width: 200px;">Disclosures &amp; Notes</th>
-                            <th style="min-width: 100px; text-align: center;">Filing</th>
+                            <th colspan="2" class="shp-group-th public-grp">
+                                <span class="grp-label">Public / Other</span>
+                            </th>
+                            <th rowspan="2" class="sortable-th active-sort" data-sort-key="broadcastDate" style="min-width: 140px;" title="Sort by Filing Date">
+                                Filing Date <span class="sort-icon">▼</span>
+                            </th>
+                            <th rowspan="2" style="min-width: 140px;">Disclosures &amp; Notes</th>
+                            <th rowspan="2" style="min-width: 80px; text-align: center;">Filing</th>
+                        </tr>
+                        <tr class="shp-header-sub">
+                            <!-- Promoter -->
+                            <th class="sortable-th sub-th" data-sort-key="promoter" title="Sort by Promoter Holding %">
+                                Holding % <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable-th sub-th" data-sort-key="change_promoter" title="Sort by QoQ Promoter Change %">
+                                QoQ Chg <span class="sort-icon">↕</span>
+                            </th>
+                            <!-- FII -->
+                            <th class="sortable-th sub-th" data-sort-key="fii" title="Sort by FII Holding %">
+                                Holding % <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable-th sub-th" data-sort-key="change_fii" title="Sort by QoQ FII Change %">
+                                QoQ Chg <span class="sort-icon">↕</span>
+                            </th>
+                            <!-- DII -->
+                            <th class="sortable-th sub-th" data-sort-key="dii" title="Sort by DII Holding %">
+                                Holding % <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable-th sub-th" data-sort-key="change_dii" title="Sort by QoQ DII Change %">
+                                QoQ Chg <span class="sort-icon">↕</span>
+                            </th>
+                            <!-- Public -->
+                            <th class="sortable-th sub-th" data-sort-key="public" title="Sort by Public Holding %">
+                                Holding % <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable-th sub-th" data-sort-key="change_public" title="Sort by QoQ Public Change %">
+                                QoQ Chg <span class="sort-icon">↕</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="shp-rows">
-                        <tr><td class="table-message" colspan="8" style="text-align: center; padding: 30px; color: var(--text-secondary);">Loading shareholding patterns…</td></tr>
+                        <tr><td class="table-message" colspan="13" style="text-align: center; padding: 30px; color: var(--text-secondary);">Loading shareholding patterns…</td></tr>
                     </tbody>
                 </table>
             </div>
