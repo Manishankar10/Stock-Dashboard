@@ -10,6 +10,7 @@ Cuts and stops parser immediately when existing records are reached.
 from __future__ import annotations
 
 import ast
+import collections
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
@@ -28,10 +29,106 @@ logger = logging.getLogger(__name__)
 
 CACHE_TTL_SECONDS = 900  # 15 minutes rate-limit interval
 NSE_HOME = "https://www.nseindia.com"
-NSE_MASTER_EQ = "https://www.nseindia.com/api/corporate-share-holdings-master?index=equities"
-NSE_MASTER_SME = "https://www.nseindia.com/api/corporate-share-holdings-master?index=sme"
-NSE_MASTER_EQ_PREV = "https://www.nseindia.com/api/corporate-share-holdings-master?index=equities&from_date=01-06-2026&to_date=30-07-2026"
-NSE_MASTER_SME_PREV = "https://www.nseindia.com/api/corporate-share-holdings-master?index=sme&from_date=01-06-2026&to_date=30-07-2026"
+NSE_MASTER_BASE = "https://www.nseindia.com/api/corporate-share-holdings-master"
+NSE_MASTER_EQ = f"{NSE_MASTER_BASE}?index=equities"
+NSE_MASTER_SME = f"{NSE_MASTER_BASE}?index=sme"
+
+MONTH_MAP_NAME_TO_NUM = {
+    "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
+    "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
+}
+
+
+def parse_quarter_date(date_val: Optional[str]) -> Optional[Tuple[int, int]]:
+    """Parse Indian quarter-end date string into (year, month).
+    Supports formats like '30-SEP-2026', '30-09-2026', '2026-09-30'.
+    """
+    if not date_val:
+        return None
+    s = str(date_val).strip().upper()
+    # DD-MON-YYYY or DD-MM-YYYY
+    m = re.match(r"^(\d{1,2})[-/]([A-Z]{3}|\d{1,2})[-/](\d{4})$", s)
+    if m:
+        mon_str = m.group(2)
+        year = int(m.group(3))
+        mon = MONTH_MAP_NAME_TO_NUM.get(mon_str, int(mon_str) if mon_str.isdigit() else 0)
+        if 1 <= mon <= 12:
+            return year, mon
+    # YYYY-MM-DD
+    m = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$", s)
+    if m:
+        year = int(m.group(1))
+        mon = int(m.group(2))
+        if 1 <= mon <= 12:
+            return year, mon
+    return None
+
+
+def get_dynamic_quarter_windows(quarter_date_val: Optional[str] = None) -> Dict[str, str]:
+    """Dynamically determine the current reporting quarter, comparative previous quarter,
+    and exact filing submission window (from_date, to_date) to query the NSE API without hardcoded dates.
+
+    Under SEBI LODR Regulation 31, listed companies file shareholding patterns within 21 days
+    of quarter end. Filings for any quarter occur in the month immediately following the quarter end:
+      - Q1 (30-JUN): Filings submitted 01-JUN through 15-08
+      - Q2 (30-SEP): Filings submitted 01-09 through 15-11
+      - Q3 (31-DEC): Filings submitted 01-12 through 15-02 (next yr)
+      - Q4 (31-MAR): Filings submitted 01-03 through 15-05
+    """
+    parsed = parse_quarter_date(quarter_date_val) if quarter_date_val else None
+    if parsed:
+        year, mon = parsed
+    else:
+        # Fallback to current calendar date
+        now = datetime.now()
+        cur_m, cur_y = now.month, now.year
+        if cur_m in (10, 11, 12):
+            year, mon = cur_y, 9
+        elif cur_m in (1, 2, 3):
+            year, mon = cur_y - 1, 12
+        elif cur_m in (4, 5, 6):
+            year, mon = cur_y, 3
+        else:
+            year, mon = cur_y, 6
+
+    # Determine quarter bucket
+    if mon in (7, 8, 9):
+        curr_q = f"30-SEP-{year}"
+        prev_q = f"30-JUN-{year}"
+        prev_from = f"01-06-{year}"
+        prev_to = f"15-08-{year}"
+        label = f"Sep {str(year)[-2:]} vs Jun {str(year)[-2:]}"
+    elif mon in (10, 11, 12):
+        curr_q = f"31-DEC-{year}"
+        prev_q = f"30-SEP-{year}"
+        prev_from = f"01-09-{year}"
+        prev_to = f"15-11-{year}"
+        label = f"Dec {str(year)[-2:]} vs Sep {str(year)[-2:]}"
+    elif mon in (1, 2, 3):
+        curr_q = f"31-MAR-{year}"
+        prev_q = f"31-DEC-{year - 1}"
+        prev_from = f"01-12-{year - 1}"
+        prev_to = f"15-02-{year}"
+        label = f"Mar {str(year)[-2:]} vs Dec {str(year - 1)[-2:]}"
+    else:  # 4, 5, 6
+        curr_q = f"30-JUN-{year}"
+        prev_q = f"31-MAR-{year}"
+        prev_from = f"01-03-{year}"
+        prev_to = f"15-05-{year}"
+        label = f"Jun {str(year)[-2:]} vs Mar {str(year)[-2:]}"
+
+    eq_prev_url = f"{NSE_MASTER_BASE}?index=equities&from_date={prev_from}&to_date={prev_to}"
+    sme_prev_url = f"{NSE_MASTER_BASE}?index=sme&from_date={prev_from}&to_date={prev_to}"
+
+    return {
+        "curr_quarter": curr_q,
+        "prev_quarter": prev_q,
+        "prev_from_date": prev_from,
+        "prev_to_date": prev_to,
+        "eq_prev_url": eq_prev_url,
+        "sme_prev_url": sme_prev_url,
+        "comparison_label": label,
+    }
 
 HEADERS = {
     "User-Agent": (
@@ -303,12 +400,27 @@ class ShareholdingProvider:
                     **self.get_status(),
                 }
 
-            # 2. Fetch Previous Quarter Filings Map
-            logger.info("Fetching previous quarter filings for comparison...")
-            prev_eq_res = session.get(NSE_MASTER_EQ_PREV, timeout=15)
+            # Analyze incoming filings to dynamically detect current reporting quarter
+            incoming_dates = [r.get("date") for r in tagged_raw if r.get("date")]
+            detected_quarter = (
+                collections.Counter(incoming_dates).most_common(1)[0][0]
+                if incoming_dates
+                else None
+            )
+
+            # Dynamically compute previous quarter and filing query URLs
+            q_windows = get_dynamic_quarter_windows(detected_quarter)
+            current_quarter_date = q_windows["curr_quarter"]
+            prev_quarter_date = q_windows["prev_quarter"]
+            prev_eq_url = q_windows["eq_prev_url"]
+            prev_sme_url = q_windows["sme_prev_url"]
+
+            # 2. Fetch Previous Quarter Filings Map dynamically
+            logger.info(f"Dynamically fetching previous quarter ({prev_quarter_date}) filings from {prev_eq_url}...")
+            prev_eq_res = session.get(prev_eq_url, timeout=15)
             raw_prev_eq = prev_eq_res.json() if prev_eq_res.status_code == 200 else []
 
-            prev_sme_res = session.get(NSE_MASTER_SME_PREV, timeout=15)
+            prev_sme_res = session.get(prev_sme_url, timeout=15)
             raw_prev_sme = prev_sme_res.json() if prev_sme_res.status_code == 200 else []
 
             q1_map: Dict[str, Dict[str, Any]] = {}
@@ -316,6 +428,14 @@ class ShareholdingProvider:
                 s_key = clean_symbol(r.get("symbol"))
                 if s_key and s_key not in q1_map:
                     q1_map[s_key] = r
+
+            # Also seed q1_map with any existing cached records matching prev_quarter_date
+            with self._lock:
+                for r in self._cache_records:
+                    if r.get("date") == prev_quarter_date:
+                        s_key = clean_symbol(r.get("symbol"))
+                        if s_key and s_key not in q1_map:
+                            q1_map[s_key] = r
 
             # 3. Collect XBRL URLs to parse
             urls_to_fetch: Set[str] = set()
@@ -376,8 +496,8 @@ class ShareholdingProvider:
                     "name": item.get("name") or sym,
                     "isin": item.get("isin") or "",
                     "board": item.get("board", "Mainboard"),
-                    "date": item.get("date") or "30-SEP-2026",
-                    "prev_date": q1_item.get("date") or "30-JUN-2026",
+                    "date": item.get("date") or current_quarter_date,
+                    "prev_date": q1_item.get("date") or prev_quarter_date,
                     "submissionDate": item.get("submissionDate") or "",
                     "broadcastDate": item.get("broadcastDate") or item.get("submissionDate") or "",
                     "promoter_pct": promoter,
@@ -434,7 +554,8 @@ class ShareholdingProvider:
                 if d and pd:
                     q_pairs[(d, pd)] += 1
         if not q_pairs:
-            return "Sep 26 vs Jun 26", ("30-SEP-2026", "30-JUN-2026")
+            q_info = get_dynamic_quarter_windows()
+            return q_info["comparison_label"], (q_info["curr_quarter"], q_info["prev_quarter"])
         top_pair, _ = q_pairs.most_common(1)[0]
         lbl = f"{self._format_qtr_label(top_pair[0])} vs {self._format_qtr_label(top_pair[1])}"
         return lbl, top_pair
