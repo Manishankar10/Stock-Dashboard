@@ -22,7 +22,8 @@ const AppRouter = {
         'quarterly-results': '/quarterly-results',
         'transactions': '/transactions',
         'sector-rotation': '/sector-rotation',
-        'industries-overview': '/industries-overview'
+        'industries-overview': '/industries-overview',
+        'shareholding': '/shareholding'
     },
 
     reverseMap: {
@@ -40,7 +41,8 @@ const AppRouter = {
         '/quarterly-results': 'quarterly-results',
         '/transactions': 'transactions',
         '/sector-rotation': 'sector-rotation',
-        '/industries-overview': 'industries-overview'
+        '/industries-overview': 'industries-overview',
+        '/shareholding': 'shareholding'
     },
 
     closeAnyOpenModalOrDrawer() {
@@ -241,7 +243,7 @@ function switchTab(tabName, pushState = true) {
     if (sidebarNavEl) sidebarNavEl.classList.add('active');
 
     // Highlight parent Tools button if a tool tab is active
-    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator', 'corporate-actions', 'quarterly-results', 'transactions', 'sector-rotation', 'industries-overview'].includes(tabName);
+    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator', 'corporate-actions', 'quarterly-results', 'transactions', 'sector-rotation', 'industries-overview', 'shareholding'].includes(tabName);
     const toolsTrigger = document.getElementById('sidebar-nav-tools');
     if (toolsTrigger) {
         toolsTrigger.classList.toggle('active', isTool);
@@ -350,6 +352,8 @@ function switchTab(tabName, pushState = true) {
         if (typeof window.loadTransactionsModule === 'function') window.loadTransactionsModule();
     } else if (tabName === 'sector-rotation') {
         if (typeof window.loadSectorRotationModule === 'function') window.loadSectorRotationModule();
+    } else if (tabName === 'shareholding') {
+        if (typeof window.loadShareholding === 'function') window.loadShareholding();
     } else if (tabName === 'industries-overview') {
         if (typeof window.loadIndustriesOverviewModule === 'function') window.loadIndustriesOverviewModule();
     }
