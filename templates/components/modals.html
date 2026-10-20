@@ -5,7 +5,20 @@
     ========================================================= -->
     <!-- Create Smallcase Modal -->
     <div id="createSmallcaseModal" class="small-modal">
-        <div class="small-modal-content" style="width: 700px; max-width: 95vw;">
+        <div class="small-modal-content" style="width: 700px; max-width: 95vw; position: relative; overflow: hidden;">
+            <!-- Modal Brand Loader Overlay (shown while adding smallcase) -->
+            <div id="scCreateLoaderOverlay" style="display: none;" class="cd-brand-loader overlay">
+                <div class="chart-loader-brand-box">
+                    <div class="chart-loader-spinner-ring"></div>
+                    <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                </div>
+                <div class="cd-loader-text-box">
+                    <div class="cd-loader-title">Adding Smallcase...</div>
+                    <div class="cd-loader-badge">Portfolio Basket</div>
+                    <div class="cd-loader-subtitle">Creating new smallcase and setting up initial data...</div>
+                </div>
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 style="margin: 0; font-size: 18px;">Create Smallcase</h3>
                 <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('createSmallcaseModal')">&times;</span>
@@ -39,8 +52,8 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px;">
                 <span style="font-size: 12px; color: var(--text-secondary);">You can add stocks later via <strong>Buy/Sell Holding</strong> or <strong>Import Excel</strong>.</span>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn-secondary" onclick="closeSmallcaseModal('createSmallcaseModal')">Cancel</button>
-                    <button class="btn-primary" onclick="submitCreateSmallcase()">Create Smallcase</button>
+                    <button class="btn-secondary" id="scCreateCancelBtn" onclick="closeSmallcaseModal('createSmallcaseModal')">Cancel</button>
+                    <button class="btn-primary" id="scCreateSubmitBtn" onclick="submitCreateSmallcase()">Create Smallcase</button>
                 </div>
             </div>
         </div>
@@ -135,7 +148,20 @@
 
     <!-- Add Transaction Modal -->
     <div id="txSmallcaseModal" class="small-modal" style="z-index: 10012;">
-        <div class="small-modal-content">
+        <div class="small-modal-content" style="position: relative; overflow: hidden;">
+            <!-- Modal Brand Loader Overlay (shown while adding holding) -->
+            <div id="scTxLoaderOverlay" style="display: none;" class="cd-brand-loader overlay">
+                <div class="chart-loader-brand-box">
+                    <div class="chart-loader-spinner-ring"></div>
+                    <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                </div>
+                <div class="cd-loader-text-box">
+                    <div class="cd-loader-title">Adding Holding...</div>
+                    <div class="cd-loader-badge">Smallcase Transaction</div>
+                    <div class="cd-loader-subtitle">Recording trade and updating holdings...</div>
+                </div>
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 id="scTxTitle" style="margin: 0; font-size: 18px;">Add Transaction</h3>
                 <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary);" onclick="closeSmallcaseModal('txSmallcaseModal')">&times;</span>
@@ -177,8 +203,8 @@
                 </div>
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
-                <button class="btn-secondary" onclick="closeSmallcaseModal('txSmallcaseModal')">Cancel</button>
-                <button class="btn-primary" onclick="submitSaveSmallcaseTransaction()">Confirm Transaction</button>
+                <button class="btn-secondary" id="scTxCancelBtn" onclick="closeSmallcaseModal('txSmallcaseModal')">Cancel</button>
+                <button class="btn-primary" id="scTxSubmitBtn" onclick="submitSaveSmallcaseTransaction()">Confirm Transaction</button>
             </div>
         </div>
     </div>
@@ -225,7 +251,19 @@
 
     <!-- Add Bulk Stock (Equal Weight) Modal -->
     <div id="bulkStockSmallcaseModal" class="small-modal" style="z-index: 10015;">
-        <div class="small-modal-content sc-bulk-modal-content" style="width: 900px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 22px;">
+        <div class="small-modal-content sc-bulk-modal-content" style="width: 900px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 22px; position: relative;">
+            <!-- Modal Brand Loader Overlay (shown while adding bulk stocks) -->
+            <div id="scBulkLoaderOverlay" style="display: none;" class="cd-brand-loader overlay">
+                <div class="chart-loader-brand-box">
+                    <div class="chart-loader-spinner-ring"></div>
+                    <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                </div>
+                <div class="cd-loader-text-box">
+                    <div class="cd-loader-title">Adding Stocks to Smallcase...</div>
+                    <div class="cd-loader-badge">Equal Weight Basket</div>
+                    <div class="cd-loader-subtitle">Allocating quantities and recording transactions...</div>
+                </div>
+            </div>
             <!-- Modal Header -->
             <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 14px; flex-shrink: 0;">
                 <div>

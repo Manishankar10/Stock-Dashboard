@@ -330,6 +330,17 @@
             document.getElementById('scCreateBenchmark').value = '';
             document.getElementById('scCreateNotes').value = '';
             document.getElementById('scCreateDate').value = new Date().toISOString().slice(0, 10);
+            
+            const submitBtn = document.getElementById('scCreateSubmitBtn');
+            const cancelBtn = document.getElementById('scCreateCancelBtn');
+            const overlay = document.getElementById('scCreateLoaderOverlay');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Create Smallcase';
+            }
+            if (cancelBtn) cancelBtn.disabled = false;
+            if (overlay) overlay.style.display = 'none';
+
             openSmallcaseModal('createSmallcaseModal');
         }
 
@@ -355,6 +366,17 @@
                 return;
             }
 
+            const submitBtn = document.getElementById('scCreateSubmitBtn');
+            const cancelBtn = document.getElementById('scCreateCancelBtn');
+            const overlay = document.getElementById('scCreateLoaderOverlay');
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="sc-btn-spinner"></span> Adding Smallcase...';
+            }
+            if (cancelBtn) cancelBtn.disabled = true;
+            if (overlay) overlay.style.display = 'flex';
+
             try {
                 const res = await fetch('/api/smallcases', {
                     method: 'POST',
@@ -370,6 +392,13 @@
                 await loadSmallcasesTab();
             } catch (err) {
                 alert('Failed to create Smallcase: ' + err.message);
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Create Smallcase';
+                }
+                if (cancelBtn) cancelBtn.disabled = false;
+                if (overlay) overlay.style.display = 'none';
             }
         }
 
@@ -643,6 +672,16 @@
             if (isNaN(body.quantity) || body.quantity <= 0) { alert('Invalid quantity'); return; }
             if (isNaN(body.price) || body.price <= 0) { alert('Invalid price'); return; }
 
+            const txSubmitBtn = document.getElementById('scTxSubmitBtn');
+            const txCancelBtn = document.getElementById('scTxCancelBtn');
+            const txOverlay = document.getElementById('scTxLoaderOverlay');
+            if (txSubmitBtn) {
+                txSubmitBtn.disabled = true;
+                txSubmitBtn.innerHTML = '<span class="sc-btn-spinner"></span> Saving Holding...';
+            }
+            if (txCancelBtn) txCancelBtn.disabled = true;
+            if (txOverlay) txOverlay.style.display = 'flex';
+
             try {
                 const res = await fetch('/api/smallcases/' + encodeURIComponent(selectedSmallcaseId) + '/transactions', {
                     method: 'POST',
@@ -659,6 +698,13 @@
                 await viewSmallcaseDetails(selectedSmallcaseId);
             } catch (err) {
                 alert('Transaction error: ' + err.message);
+            } finally {
+                if (txSubmitBtn) {
+                    txSubmitBtn.disabled = false;
+                    txSubmitBtn.innerText = 'Confirm Transaction';
+                }
+                if (txCancelBtn) txCancelBtn.disabled = false;
+                if (txOverlay) txOverlay.style.display = 'none';
             }
         }
 
@@ -1258,10 +1304,12 @@
             }
 
             const submitBtn = document.getElementById('scBulkSubmitBtn');
+            const bulkOverlay = document.getElementById('scBulkLoaderOverlay');
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerText = 'Adding stocks...';
+                submitBtn.innerHTML = '<span class="sc-btn-spinner"></span> Adding stocks...';
             }
+            if (bulkOverlay) bulkOverlay.style.display = 'flex';
 
             const plannedAmount = document.getElementById('scBulkPlannedAmount')?.value || '';
             const txs = bulkStockBasket.map(s => ({
@@ -1304,6 +1352,7 @@
                     submitBtn.disabled = false;
                     submitBtn.innerText = '✓ Add All Stocks to Smallcase';
                 }
+                if (bulkOverlay) bulkOverlay.style.display = 'none';
             }
         }
 
