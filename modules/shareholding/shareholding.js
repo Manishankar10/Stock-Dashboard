@@ -220,15 +220,13 @@
 
         return `
             <tr>
-                <td>
-                    <a href="javascript:void(0)" class="shp-comp-title" onclick="if(window.openFundamentalsModal) window.openFundamentalsModal('${symbol}'); return false;" title="Click to view ${name} fundamentals">
+                <td class="shp-col-company">
+                    <span class="shp-comp-title" onclick="if(window.openFundamentalsModal) window.openFundamentalsModal('${symbol}');" title="Click to view ${name} fundamentals">
                         ${name}
-                    </a>
+                    </span>
                     <span class="shp-symbol-badge">${symbol}</span>
                     <div class="shp-sub-details">
                         <span class="shp-board-tag ${boardClass}">${board}</span>
-                        <span>•</span>
-                        <span>ISIN: ${isin || '—'}</span>
                     </div>
                 </td>
                 <td>

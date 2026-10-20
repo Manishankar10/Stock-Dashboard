@@ -26,19 +26,21 @@
                         <span style="opacity: 0.35;">•</span>
                         <small id="shp-window-label" style="font-size: 10.5px; color: var(--text-secondary);">15m window</small>
                     </div>
-                    <button type="button" id="shp-refresh-btn" class="btn-primary" style="font-size: 12px; padding: 6px 12px; border-radius: 7px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Refresh shareholding patterns (15m window)">
-                        <svg id="shp-refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                        </svg>
-                        <span id="shp-refresh-text">Refresh</span>
-                    </button>
-                    <a href="/api/shareholding/download" id="shp-export-btn" class="btn-secondary shp-icon-btn" style="padding: 6px 9px; border-radius: 7px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;" title="Export JSON" aria-label="Export JSON">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                    </a>
+                    <div class="shp-action-buttons" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <button type="button" id="shp-refresh-btn" class="btn-primary shp-refresh-btn" style="font-size: 12px; padding: 6px 12px; border-radius: 7px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Refresh shareholding patterns (15m window)">
+                            <svg id="shp-refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                            </svg>
+                            <span id="shp-refresh-text">Refresh</span>
+                        </button>
+                        <a href="/api/shareholding/download" id="shp-export-btn" class="btn-secondary shp-icon-btn" style="padding: 6px 9px; border-radius: 7px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;" title="Export JSON" aria-label="Export JSON">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -60,7 +62,7 @@
                         <!-- Search Input -->
                         <label class="search-box shp-search-box">
                             <span aria-hidden="true" style="font-size: 13px; opacity: 0.6;">⌕</span>
-                            <input id="shp-search-input" type="search" placeholder="Search company, symbol, ISIN..." autocomplete="off">
+                            <input id="shp-search-input" type="search" placeholder="Search company, symbol..." autocomplete="off">
                         </label>
                     </div>
 
@@ -87,7 +89,7 @@
                 <table class="shp-table">
                     <thead>
                         <tr class="shp-header-top">
-                            <th rowspan="2" class="sortable-th" data-sort-key="name" style="min-width: 200px;" title="Sort by Company Name">
+                            <th rowspan="2" class="sortable-th shp-col-company" data-sort-key="name" style="min-width: 200px;" title="Sort by Company Name">
                                 Company / Symbol <span class="sort-icon">↕</span>
                             </th>
                             <th rowspan="2" class="sortable-th" data-sort-key="quarter" style="min-width: 110px;" title="Sort by Quarter">

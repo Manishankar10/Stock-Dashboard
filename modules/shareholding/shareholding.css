@@ -43,6 +43,28 @@
     flex-shrink: 0;
 }
 
+.shp-action-buttons {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.shp-refresh-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.shp-refresh-btn:hover {
+    filter: brightness(1.08);
+}
+
 /* Refresh Spinning Animation */
 #shp-refresh-icon.spinning,
 .shp-refreshing #shp-refresh-icon {
@@ -322,6 +344,50 @@
     opacity: 1;
     color: #10b981;
     font-weight: 900;
+}
+
+/* Sticky Company Column (Static in table horizontally) */
+.shp-col-company {
+    min-width: 190px;
+}
+
+.shp-table thead th.shp-col-company {
+    position: sticky !important;
+    left: 0 !important;
+    top: 0 !important;
+    z-index: 35 !important;
+    background: var(--bg-secondary, #f8fafc) !important;
+    border-right: 2px solid var(--border-color) !important;
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.08);
+}
+
+.shp-table tbody td.shp-col-company {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 10;
+    background: var(--bg-card, #ffffff);
+    border-right: 2px solid var(--border-color);
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.06);
+}
+
+.shp-table tbody tr:hover td.shp-col-company {
+    background: var(--bg-hover, rgba(0, 0, 0, 0.03)) !important;
+}
+
+[data-theme="dark"] .shp-table thead th.shp-col-company {
+    background: #172235 !important;
+    border-right-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .shp-table tbody td.shp-col-company {
+    background: #0f172a !important;
+    border-right-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .shp-table tbody tr:hover td.shp-col-company {
+    background: #1e293b !important;
 }
 
 /* Company Cell Elements */
@@ -627,79 +693,106 @@
         margin-bottom: 12px !important;
     }
 
+    /* 2-Row Header Layout on Mobile:
+       Row 1: Title (left) & Refresh + Download Icons (right)
+       Row 2: Board Filter Chips (All, Mainboard, SME full width) */
     .shp-header-row {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 10px !important;
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-rows: auto auto !important;
+        align-items: center !important;
+        gap: 8px 10px !important;
         width: 100% !important;
     }
 
     .shp-title-group {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        flex-wrap: wrap !important;
-        gap: 8px !important;
-        width: 100% !important;
-        white-space: normal !important;
+        display: contents !important;
     }
 
     .shp-title {
-        font-size: 15px !important;
-    }
-
-    .shp-board-chips {
-        display: inline-flex !important;
-        gap: 4px !important;
-        margin-bottom: 0 !important;
-    }
-
-    .shp-board-chips .pf-select-btn {
-        padding: 3px 8px !important;
-        font-size: 11px !important;
+        grid-column: 1 / 2 !important;
+        grid-row: 1 / 2 !important;
+        margin: 0 !important;
+        font-size: 15.5px !important;
+        font-weight: 700 !important;
+        color: var(--text-primary) !important;
+        white-space: nowrap !important;
     }
 
     .shp-header-actions {
-        width: 100% !important;
+        grid-column: 2 / 3 !important;
+        grid-row: 1 / 2 !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: space-between !important;
-        gap: 8px !important;
-        flex-wrap: nowrap !important;
-        box-sizing: border-box !important;
+        justify-content: flex-end !important;
+        gap: 6px !important;
+        margin: 0 !important;
+        width: auto !important;
     }
 
+    /* Remove last updated info on mobile view */
     .shp-status-card {
-        flex: 1 !important;
-        min-width: 0 !important;
-        padding: 4px 8px !important;
-        overflow: hidden !important;
-        font-size: 10.5px !important;
+        display: none !important;
     }
 
-    #shp-updated-label {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        display: inline-block !important;
-        max-width: 120px !important;
+    .shp-action-buttons {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
     }
 
-    #shp-window-label {
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
+    /* Refresh button: icon only on mobile */
+    #shp-refresh-text {
+        display: none !important;
     }
 
-    #shp-refresh-btn {
-        padding: 5px 10px !important;
-        font-size: 11.5px !important;
+    .shp-refresh-btn {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 7px !important;
         flex-shrink: 0 !important;
     }
 
     .shp-icon-btn {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 7px !important;
         flex-shrink: 0 !important;
-        width: 30px !important;
-        height: 30px !important;
+    }
+
+    /* Board chips on row 2, spanning full width */
+    .shp-board-chips {
+        grid-column: 1 / 3 !important;
+        grid-row: 2 / 3 !important;
+        display: flex !important;
+        width: 100% !important;
+        gap: 4px !important;
+        margin: 0 !important;
+    }
+
+    .shp-board-chips .pf-select-btn {
+        flex: 1 !important;
+        text-align: center !important;
+        padding: 4px 6px !important;
+        font-size: 11px !important;
+    }
+
+    /* Sticky company column on mobile: static in table */
+    .shp-col-company {
+        min-width: 140px !important;
+        max-width: 170px !important;
+    }
+
+    .shp-comp-title {
+        font-size: 12px !important;
     }
 
     /* Toolbar & Search / Scope */
@@ -800,27 +893,8 @@
         padding: 8px 10px !important;
     }
 
-    .shp-title-group {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 6px !important;
-    }
-
-    .shp-board-chips {
-        width: 100% !important;
-        display: flex !important;
-        justify-content: space-between !important;
-    }
-
-    .shp-board-chips .pf-select-btn {
-        flex: 1 !important;
-        text-align: center !important;
-        padding: 4px 6px !important;
-        font-size: 10.5px !important;
-    }
-
-    #shp-updated-label {
-        max-width: 80px !important;
+    .shp-title {
+        font-size: 14.5px !important;
     }
 
     #shp-remarks-modal {
