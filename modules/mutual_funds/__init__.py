@@ -63,7 +63,7 @@ def _lock_for_user():
 
 
 def _data_path():
-    return os.path.join(_DATA_DIR, "app_data", f"{_safe_user()}_mutual_funds.json")
+    return os.path.join(_DATA_DIR, "user_data", f"{_safe_user()}_mutual_funds.json")
 
 
 def _empty_data():

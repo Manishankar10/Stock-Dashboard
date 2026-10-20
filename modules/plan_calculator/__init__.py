@@ -25,7 +25,7 @@ def init_plan_calculator(login_required, data_dir="."):
 def _state_path():
     username = str(session.get("username", "unknown"))
     safe_user = "".join(char for char in username if char.isalnum() or char in ("_", "-")).lower() or "unknown"
-    return os.path.join(_DATA_DIR, "app_data", f"{safe_user}_plan_calculator.json")
+    return os.path.join(_DATA_DIR, "user_data", f"{safe_user}_plan_calculator.json")
 
 
 def _load_state():

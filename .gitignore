@@ -3,13 +3,20 @@ users.json
 login_logs.json
 user_data/
 
-# Personal portfolio & watchlist data
+# Personal user data (moved to MongoDB - DO NOT commit to Git!)
 watchlists.json
 portfolios.json
 my_backup.json
 backup.json
 backup_*.json
 *.json.bak
+*_watchlists.json
+*_portfolios.json
+*_transactions.json
+*_alerts.json
+*_smallcases.json
+*_mutual_funds.json
+*_plan_calculator.json
 
 # Secrets & Environment variables
 .env

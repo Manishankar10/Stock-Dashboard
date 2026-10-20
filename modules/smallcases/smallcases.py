@@ -35,7 +35,7 @@ def _safe_user(username=None):
 
 
 def _file(username=None):
-    return os.path.join(_DATA_DIR, 'app_data', f'{_safe_user(username)}_smallcases.json')
+    return os.path.join(_DATA_DIR, 'user_data', f'{_safe_user(username)}_smallcases.json')
 
 
 def load_user_smallcases(username=None):
