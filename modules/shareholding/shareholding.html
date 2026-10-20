@@ -7,7 +7,7 @@
 <div id="tab-shareholding" class="tab-content" style="display: none;">
     <main class="page-shell shp-shell" style="width: 100%; margin: 0; padding: 0;">
         <!-- 1. Top Header Card -->
-        <div class="card-container shp-header-card" style="padding: 10px 18px; margin-bottom: 16px;">
+        <div class="card-container shp-header-card">
             <div class="shp-header-row">
                 <div class="shp-title-group">
                     <h2 class="shp-title" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; white-space: nowrap;">Shareholding Patterns</h2>
@@ -49,7 +49,7 @@
             <div class="table-toolbar" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
                 <div class="table-tools shp-toolbar-tools" style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                     <!-- Left: Scope Pills & Search Box in same row -->
-                    <div class="shp-search-scope-row" style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 320px; max-width: 620px;">
+                    <div class="shp-search-scope-row">
                         <!-- Stock Scope Filter (All Stocks / All Portfolio / All Watchlists) -->
                         <div class="shp-scope-pill-group" role="group" aria-label="Stock Scope">
                             <button type="button" class="shp-scope-pill active" data-scope="all">All Stocks</button>
@@ -58,14 +58,14 @@
                         </div>
 
                         <!-- Search Input -->
-                        <label class="search-box shp-search-box" style="flex: 1; margin: 0; min-width: 170px;">
+                        <label class="search-box shp-search-box">
                             <span aria-hidden="true" style="font-size: 13px; opacity: 0.6;">⌕</span>
                             <input id="shp-search-input" type="search" placeholder="Search company, symbol, ISIN..." autocomplete="off">
                         </label>
                     </div>
 
                     <!-- Right: Category Quick Filters (with dynamic two qtrs chip between All & FII Buying) -->
-                    <div class="shp-category-chips" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                    <div class="shp-category-chips">
                         <button type="button" class="shp-filter-chip active" data-category="all">All</button>
                         <button type="button" class="shp-filter-chip" id="shp-chip-two-qtrs" data-category="two_qtrs" title="Compare latest two quarters">Sep 26 vs Jun 26</button>
                         <button type="button" class="shp-filter-chip" data-category="fii_inc" title="FII / Foreign institutional stake increased QoQ">FII Buying ↑</button>
@@ -149,9 +149,9 @@
             </div>
 
             <!-- 3. Bottom Pagination Bar -->
-            <div class="shp-pagination-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--text-secondary);">
+            <div class="shp-pagination-bar">
                 <div id="shp-pagination-info">Showing 0 to 0 of 0 records</div>
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="shp-pagination-controls">
                     <label style="display: inline-flex; align-items: center; gap: 4px;">
                         <span>Per page:</span>
                         <select id="shp-page-size-select" style="padding: 3px 6px; border-radius: 5px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 12px;">

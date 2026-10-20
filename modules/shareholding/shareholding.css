@@ -12,6 +12,8 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
+    padding: 10px 18px;
+    margin-bottom: 16px;
 }
 
 /* Header One Row Layout */
@@ -70,12 +72,20 @@
     transform: translateY(-1px);
 }
 
-/* Scope Pills */
+/* Scope Pills & Search Box */
 .shp-search-scope-row {
     display: flex;
     align-items: center;
     gap: 10px;
     flex: 1;
+    min-width: 280px;
+    max-width: 620px;
+}
+
+.shp-search-box {
+    flex: 1;
+    margin: 0;
+    min-width: 140px;
 }
 
 .shp-scope-pill-group {
@@ -145,6 +155,13 @@
 }
 
 /* Category Filter Chips */
+.shp-category-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
 .shp-filter-chip {
     background: var(--bg-secondary, rgba(0, 0, 0, 0.04));
     color: var(--text-secondary);
@@ -571,23 +588,246 @@
     color: #60a5fa;
 }
 
-/* Mobile Responsive */
+/* Pagination Bar */
+.shp-pagination-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.shp-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* =========================================================
+   RESPONSIVE DESIGN (Tablets & Mobile)
+   Note: Table remains intact in .table-scroll per requirement
+   ========================================================= */
+
+@media (max-width: 1024px) {
+    .shp-toolbar-tools {
+        gap: 10px;
+    }
+    .shp-search-scope-row {
+        max-width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
+    .shp-header-card {
+        padding: 10px 12px !important;
+        margin-bottom: 12px !important;
+    }
+
     .shp-header-row {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        width: 100% !important;
     }
+
+    .shp-title-group {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+        white-space: normal !important;
+    }
+
+    .shp-title {
+        font-size: 15px !important;
+    }
+
+    .shp-board-chips {
+        display: inline-flex !important;
+        gap: 4px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .shp-board-chips .pf-select-btn {
+        padding: 3px 8px !important;
+        font-size: 11px !important;
+    }
+
     .shp-header-actions {
-        width: 100%;
-        justify-content: space-between;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+        box-sizing: border-box !important;
     }
-    .shp-search-box {
+
+    .shp-status-card {
+        flex: 1 !important;
+        min-width: 0 !important;
+        padding: 4px 8px !important;
+        overflow: hidden !important;
+        font-size: 10.5px !important;
+    }
+
+    #shp-updated-label {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        display: inline-block !important;
+        max-width: 120px !important;
+    }
+
+    #shp-window-label {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+    }
+
+    #shp-refresh-btn {
+        padding: 5px 10px !important;
+        font-size: 11.5px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .shp-icon-btn {
+        flex-shrink: 0 !important;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+    /* Toolbar & Search / Scope */
+    .shp-table-card .table-toolbar {
+        padding: 10px 12px !important;
+    }
+
+    .shp-toolbar-tools {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .shp-search-scope-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        width: 100% !important;
+        min-width: 0 !important;
         max-width: 100% !important;
-        width: 100%;
     }
+
+    .shp-scope-pill-group {
+        display: flex !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        justify-content: space-between !important;
+        padding: 3px !important;
+    }
+
+    .shp-scope-pill {
+        flex: 1 !important;
+        text-align: center !important;
+        padding: 5px 4px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    .shp-search-box {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .shp-search-box input {
+        width: 100% !important;
+        font-size: 12px !important;
+    }
+
+    /* Category Chips: Native horizontal touch-scroll strip */
     .shp-category-chips {
-        overflow-x: auto;
-        padding-bottom: 4px;
-        width: 100%;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        gap: 6px !important;
+        width: 100% !important;
+        padding: 2px 0 4px 0 !important;
+        scrollbar-width: none !important;
+        box-sizing: border-box !important;
+    }
+
+    .shp-category-chips::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .shp-filter-chip {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 5px 11px !important;
+        font-size: 11px !important;
+    }
+
+    /* Bottom pagination */
+    .shp-pagination-bar {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 10px 12px !important;
+        text-align: center !important;
+    }
+
+    .shp-pagination-controls {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .shp-header-card {
+        padding: 8px 10px !important;
+    }
+
+    .shp-title-group {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+
+    .shp-board-chips {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: space-between !important;
+    }
+
+    .shp-board-chips .pf-select-btn {
+        flex: 1 !important;
+        text-align: center !important;
+        padding: 4px 6px !important;
+        font-size: 10.5px !important;
+    }
+
+    #shp-updated-label {
+        max-width: 80px !important;
+    }
+
+    #shp-remarks-modal {
+        padding: 10px !important;
+    }
+
+    #shp-remarks-modal .modal-content {
+        max-height: 90vh !important;
     }
 }
