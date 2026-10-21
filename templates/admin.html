@@ -918,6 +918,72 @@
                     </div>
                 </form>
             </div>
+
+            <!-- CARD 2: Industries Overview Dataset Management -->
+            <div class="metric-card" style="margin-bottom: 24px; max-width: 850px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            🏭 Industries Overview Dataset Management
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                            Manage the local SEBI / NSE 4-tier industry classification and stocks directory (<code>industries_overview.json</code>).
+                        </p>
+                    </div>
+                    <span id="admin-ind-refresh-badge" class="badge" style="font-size: 12px; display: none;"></span>
+                </div>
+
+                <div class="settings-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Last Updated</span>
+                        <div id="admin-ind-last-updated" style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                    </div>
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Total Industries</span>
+                        <div id="admin-ind-total-industries" style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">188 Industries</div>
+                    </div>
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Cached Industry Stocks</span>
+                        <div id="admin-ind-cached-stocks" style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                    </div>
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Last Backup File</span>
+                        <div id="admin-ind-last-backup" style="font-size: 12.5px; font-weight: 500; color: var(--text-secondary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="Timestamped backup filename">None</div>
+                    </div>
+                </div>
+
+                <!-- Live Progress & Status Bar -->
+                <div id="admin-ind-progress-container" style="display: none; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span id="admin-ind-progress-text" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary);">Refreshing dataset...</span>
+                        <span id="admin-ind-progress-percent" style="font-size: 12px; font-weight: 700; color: #3b82f6;">0%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                        <div id="admin-ind-progress-bar" style="width: 0%; height: 100%; background: #3b82f6; transition: width 0.3s ease; border-radius: 4px;"></div>
+                    </div>
+                </div>
+
+                <!-- Callout Banner -->
+                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px;">
+                    <span style="font-size: 20px; line-height: 1;">⚡</span>
+                    <div style="font-size: 12.5px; color: var(--text-primary); line-height: 1.5;">
+                        <strong>Zero User Interruption Guarantee:</strong> All end-user requests read exclusively from the unified local JSON file without external calls. When you trigger a refresh, existing data is automatically archived to a timestamped backup (<code style="font-size: 11.5px; color: var(--accent-color);">industries_overview_backup_YYYYMMDD_HHMMSS.json</code>) and newly scraped data is written atomically so active users experience uninterrupted zero-latency browsing.
+                    </div>
+                </div>
+
+                <div class="settings-actions-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div id="admin-ind-status-msg" style="font-size: 12.5px; color: var(--text-secondary);"></div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn btn-secondary" onclick="loadAdminIndustriesStatus()">
+                            🔄 Check Status
+                        </button>
+                        <button type="button" id="btn-refresh-industries" class="btn" style="padding: 10px 22px; font-size: 13px; background: #3b82f6; border-color: #3b82f6;" onclick="triggerAdminIndustriesRefresh()">
+                            🚀 Refresh Industries Overview Dataset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- TAB 4: System Tools & Backup -->
@@ -1145,7 +1211,7 @@
             if (tabContent) tabContent.classList.add('active');
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
-            if (tabName === 'settings') loadSystemSettings();
+            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); }
         }
 
         async function checkAdminAuth() {
@@ -1590,6 +1656,131 @@
 
 
         // ==========================================
+        // ==========================================
+        // INDUSTRIES OVERVIEW DATASET CONTROLLERS
+        // ==========================================
+        let adminIndRefreshPollTimer = null;
+
+        async function loadAdminIndustriesStatus() {
+            try {
+                const res = await fetch('/api/admin/industries_overview/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                const lastUpEl = document.getElementById('admin-ind-last-updated');
+                const totalIndEl = document.getElementById('admin-ind-total-industries');
+                const stocksEl = document.getElementById('admin-ind-cached-stocks');
+                const backupEl = document.getElementById('admin-ind-last-backup');
+                const progContainer = document.getElementById('admin-ind-progress-container');
+                const progText = document.getElementById('admin-ind-progress-text');
+                const progPercent = document.getElementById('admin-ind-progress-percent');
+                const progBar = document.getElementById('admin-ind-progress-bar');
+                const refreshBtn = document.getElementById('btn-refresh-industries');
+                const badge = document.getElementById('admin-ind-refresh-badge');
+
+                if (lastUpEl) lastUpEl.innerText = s.last_updated || 'Never';
+                if (totalIndEl) totalIndEl.innerText = `${s.total_industries || 188} Industries`;
+                if (stocksEl) stocksEl.innerText = `${s.total_stocks_cached || 0} / ${s.total_industries || 188} Industries Cached`;
+                if (backupEl) {
+                    backupEl.innerText = s.last_backup || 'None';
+                    backupEl.title = s.last_backup || 'None';
+                }
+
+                if (s.is_refreshing) {
+                    if (progContainer) progContainer.style.display = 'block';
+                    if (progText) progText.innerText = s.progress || 'Scraping in progress...';
+                    if (progPercent) progPercent.innerText = `${s.percent || 0}%`;
+                    if (progBar) progBar.style.width = `${s.percent || 0}%`;
+                    if (refreshBtn) {
+                        refreshBtn.disabled = true;
+                        refreshBtn.innerHTML = '⏳ Scraping in Background...';
+                        refreshBtn.style.opacity = '0.7';
+                    }
+                    if (badge) {
+                        badge.style.display = 'inline-block';
+                        badge.className = 'badge badge-warning';
+                        badge.innerText = 'Refreshing...';
+                    }
+
+                    if (adminIndRefreshPollTimer) clearTimeout(adminIndRefreshPollTimer);
+                    adminIndRefreshPollTimer = setTimeout(loadAdminIndustriesStatus, 2500);
+                } else {
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.innerHTML = '🚀 Refresh Industries Overview Dataset';
+                        refreshBtn.style.opacity = '1';
+                    }
+
+                    if (s.percent === 100) {
+                        if (progContainer) progContainer.style.display = 'block';
+                        if (progText) progText.innerText = s.progress || 'Completed successfully.';
+                        if (progPercent) progPercent.innerText = '100%';
+                        if (progBar) progBar.style.width = '100%';
+                        if (badge) {
+                            badge.style.display = 'inline-block';
+                            badge.className = 'badge badge-success';
+                            badge.innerText = 'Up to date';
+                        }
+                    } else if (s.error) {
+                        if (progContainer) progContainer.style.display = 'block';
+                        if (progText) progText.innerText = `Error: ${s.error}`;
+                        if (badge) {
+                            badge.style.display = 'inline-block';
+                            badge.className = 'badge badge-danger';
+                            badge.innerText = 'Failed';
+                        }
+                    } else {
+                        if (progContainer) progContainer.style.display = 'none';
+                        if (badge) badge.style.display = 'none';
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching admin industries status:', e);
+            }
+        }
+
+        async function triggerAdminIndustriesRefresh() {
+            const confirmed = confirm(
+                'Are you sure you want to refresh the entire Industries Overview dataset?\n\n' +
+                'This will:\n' +
+                '1. Create a timestamped backup of industries_overview.json\n' +
+                '2. Scrape the latest industry metrics and company lists from Screener in a background thread\n' +
+                '3. Atomically update the dataset without disturbing active users.\n\n' +
+                'Proceed?'
+            );
+            if (!confirmed) return;
+
+            const refreshBtn = document.getElementById('btn-refresh-industries');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = 'Starting Refresh...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/industries_overview/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadAdminIndustriesStatus();
+                } else {
+                    alert('❌ Failed to start refresh: ' + (data.error || 'Unknown error'));
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.innerHTML = '🚀 Refresh Industries Overview Dataset';
+                    }
+                }
+            } catch (e) {
+                alert('❌ Error requesting refresh: ' + e.message);
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '🚀 Refresh Industries Overview Dataset';
+                }
+            }
+        }
+
         // EXTERNAL API / URL CALL LOGS CONTROLLERS
         // ==========================================
         let _allExternalApiLogs = [];
@@ -2192,6 +2383,7 @@
             await loadAdminStats();
             await loadAdminUsers();
             await loadSystemSettings();
+            await loadAdminIndustriesStatus();
             await loadExternalApiLogsBadge();
         }
 

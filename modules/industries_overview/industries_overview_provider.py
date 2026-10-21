@@ -2,6 +2,9 @@ import os
 import json
 import time
 import re
+import shutil
+import threading
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
@@ -159,25 +162,48 @@ class IndustriesOverviewProvider:
     def __init__(self, data_dir="data"):
         self.data_dir = data_dir
         self.overview_file = os.path.join(data_dir, "app_data", "industries_overview.json")
-        self.stocks_cache_file = os.path.join(data_dir, "app_data", "industry_stocks_cache.json")
-        self._stocks_cache = {}
-        self._load_stocks_cache()
+        self._overview_data = {}
+        self._lock = threading.Lock()
+        self._is_refreshing = False
+        self._refresh_progress = ""
+        self._refresh_percent = 0
+        self._refresh_error = None
+        self._last_backup_file = None
 
-    def _load_stocks_cache(self):
-        if os.path.exists(self.stocks_cache_file):
+        # Load single unified JSON file into memory
+        self._load_overview_data()
+
+        # Remove deprecated industry_stocks_cache.json if present
+        deprecated_cache = os.path.join(data_dir, "app_data", "industry_stocks_cache.json")
+        if os.path.exists(deprecated_cache):
             try:
-                with open(self.stocks_cache_file, "r", encoding="utf-8") as f:
-                    self._stocks_cache = json.load(f)
+                os.remove(deprecated_cache)
             except Exception:
-                self._stocks_cache = {}
+                pass
 
-    def _save_stocks_cache(self):
+    def _load_overview_data(self):
+        with self._lock:
+            if os.path.exists(self.overview_file):
+                try:
+                    with open(self.overview_file, "r", encoding="utf-8") as f:
+                        self._overview_data = json.load(f)
+                    if not isinstance(self._overview_data, dict):
+                        self._overview_data = {}
+                    if 'industry_stocks' not in self._overview_data:
+                        self._overview_data['industry_stocks'] = {}
+                except Exception as e:
+                    print(f"Error loading {self.overview_file}: {e}")
+                    self._overview_data = {}
+
+    def _save_overview_data(self):
         try:
-            os.makedirs(os.path.dirname(self.stocks_cache_file), exist_ok=True)
-            with open(self.stocks_cache_file, "w", encoding="utf-8") as f:
-                json.dump(self._stocks_cache, f, ensure_ascii=False)
+            os.makedirs(os.path.dirname(self.overview_file), exist_ok=True)
+            tmp_path = self.overview_file + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(self._overview_data, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, self.overview_file)
         except Exception as e:
-            print("Error saving stocks cache:", e)
+            print("Error saving overview data:", e)
 
     def _enrich_taxonomy(self, data):
         if not isinstance(data, dict) or 'industries' not in data:
@@ -242,19 +268,331 @@ class IndustriesOverviewProvider:
         return data
 
     def get_industries_overview(self, force_refresh=False):
-        if not force_refresh:
-            if os.path.exists(self.overview_file):
+        """Strictly serve from local app_data/industries_overview.json. Zero external calls."""
+        with self._lock:
+            if not self._overview_data or not self._overview_data.get('industries'):
+                self._load_overview_data()
+
+            if self._overview_data and self._overview_data.get('industries'):
+                return self._enrich_taxonomy(self._overview_data)
+
+        # Only if file is completely missing on disk, scrape initially once
+        return self._scrape_master_directory_initial()
+
+    def get_industry_stocks(self, path_or_code, force_refresh=False):
+        """Retrieve stocks for this industry strictly from single app_data/industries_overview.json.
+        No 1-hour expiration. Zero external calls when already in file.
+        """
+        overview = self.get_industries_overview()
+        industries = overview.get('industries', [])
+
+        target_ind = None
+        for ind in industries:
+            if ind['code'] == path_or_code or ind['path'] == path_or_code or ind['path'].strip('/') == path_or_code.strip('/'):
+                target_ind = ind
+                break
+            if ind['name'].lower() == path_or_code.lower():
+                target_ind = ind
+                break
+
+        if not target_ind:
+            for ind in industries:
+                if ind['code'].endswith(path_or_code) or path_or_code in ind['path']:
+                    target_ind = ind
+                    break
+
+        if target_ind:
+            target_ind['macro_name'] = SEBI_NSE_MACROS.get(target_ind.get('macro_code'), target_ind.get('macro_name'))
+            target_ind['sector_name'] = SEBI_NSE_SECTORS.get(target_ind.get('sector_code'), target_ind.get('sector_name'))
+            target_ind['industry_group_name'] = SEBI_NSE_GROUPS.get(target_ind.get('group_code'), target_ind.get('industry_group_name'))
+
+        clean_path = target_ind['path'] if target_ind else path_or_code.strip('/')
+
+        # 1. Check if stocks exist in single file
+        with self._lock:
+            cached_stocks = self._overview_data.get('industry_stocks', {}).get(clean_path)
+
+        if cached_stocks is not None and len(cached_stocks) > 0:
+            breadcrumbs = [{'name': 'Industries', 'path': ''}]
+            if target_ind:
+                target_ind['company_count'] = len(cached_stocks)
+                breadcrumbs.append({'name': target_ind['macro_name'], 'code': target_ind['macro_code'], 'type': 'macro'})
+                breadcrumbs.append({'name': target_ind['sector_name'], 'code': target_ind['sector_code'], 'type': 'sector'})
+                breadcrumbs.append({'name': target_ind['industry_group_name'], 'code': target_ind['group_code'], 'type': 'group'})
+                breadcrumbs.append({'name': target_ind['name'], 'code': target_ind['code'], 'type': 'industry'})
+
+            return {
+                'success': True,
+                'industry': target_ind,
+                'breadcrumbs': breadcrumbs,
+                'stocks': cached_stocks,
+                'count': len(cached_stocks),
+                'fetched_at': self._overview_data.get('last_updated_display') or self._overview_data.get('last_updated')
+            }
+
+        # 2. Fallback: if not yet stored in file, scrape once and save to single file
+        stocks = self._scrape_stocks_for_industry(clean_path)
+
+        with self._lock:
+            if 'industry_stocks' not in self._overview_data:
+                self._overview_data['industry_stocks'] = {}
+            self._overview_data['industry_stocks'][clean_path] = stocks
+            self._save_overview_data()
+
+        breadcrumbs = [{'name': 'Industries', 'path': ''}]
+        if target_ind:
+            target_ind['company_count'] = len(stocks)
+            breadcrumbs.append({'name': target_ind['macro_name'], 'code': target_ind['macro_code'], 'type': 'macro'})
+            breadcrumbs.append({'name': target_ind['sector_name'], 'code': target_ind['sector_code'], 'type': 'sector'})
+            breadcrumbs.append({'name': target_ind['industry_group_name'], 'code': target_ind['group_code'], 'type': 'group'})
+            breadcrumbs.append({'name': target_ind['name'], 'code': target_ind['code'], 'type': 'industry'})
+
+        return {
+            'success': True,
+            'industry': target_ind,
+            'breadcrumbs': breadcrumbs,
+            'stocks': stocks,
+            'count': len(stocks),
+            'fetched_at': time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+    def _scrape_stocks_for_industry(self, clean_path):
+        target_url = f"https://www.screener.in/market/{clean_path}/"
+        r = requests.get(target_url, headers=HEADERS, timeout=12)
+        if r.status_code != 200:
+            raise Exception(f"Failed to fetch stocks for {clean_path}: HTTP {r.status_code}")
+
+        soup = BeautifulSoup(r.text, 'html.parser')
+        stocks = _parse_stocks_table_rows(soup)
+
+        total_pages = 1
+        page_info = soup.find('div', attrs={'data-page-info': True})
+        if page_info:
+            m = re.search(r'Showing page \d+ of (\d+)', page_info.get_text())
+            if m:
+                total_pages = int(m.group(1))
+        else:
+            pag = soup.find(class_='pagination')
+            if pag:
+                for a in pag.find_all('a'):
+                    href = a.get('href', '')
+                    if 'limit=' in href:
+                        continue
+                    m = re.search(r'page=(\d+)', href)
+                    if m:
+                        total_pages = max(total_pages, int(m.group(1)))
+
+        if total_pages > 1:
+            def _fetch_page(p):
                 try:
-                    with open(self.overview_file, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if isinstance(data, dict) and data.get('industries'):
-                            return self._enrich_taxonomy(data)
+                    p_url = f"{target_url}?page={p}"
+                    pr = requests.get(p_url, headers=HEADERS, timeout=12)
+                    if pr.status_code == 200:
+                        psoup = BeautifulSoup(pr.text, 'html.parser')
+                        return p, _parse_stocks_table_rows(psoup)
                 except Exception as e:
-                    print(f"Error reading overview file from {self.overview_file}:", e)
+                    print(f"Failed to fetch page {p} of {clean_path}: {e}")
+                return p, []
 
-        return self.refresh_overview()
+            workers = min(6, total_pages - 1)
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                page_results = list(executor.map(_fetch_page, range(2, total_pages + 1)))
+                page_results.sort(key=lambda x: x[0])
+                for _, p_stocks in page_results:
+                    stocks.extend(p_stocks)
 
-    def refresh_overview(self):
+        for idx, stk in enumerate(stocks):
+            stk['sno'] = idx + 1
+
+        return stocks
+
+    def start_admin_background_refresh(self):
+        """Initiate background refresh by Admin. Does not block or disturb browsing users."""
+        with self._lock:
+            if self._is_refreshing:
+                return {
+                    "success": False,
+                    "status": "in_progress",
+                    "message": "A data refresh is already in progress.",
+                    **self.get_refresh_status()
+                }
+            self._is_refreshing = True
+            self._refresh_progress = "Starting background refresh..."
+            self._refresh_percent = 5
+            self._refresh_error = None
+
+        thread = threading.Thread(target=self._run_background_refresh, daemon=True)
+        thread.start()
+
+        return {
+            "success": True,
+            "status": "started",
+            "message": "Background refresh started. Users can continue browsing without interruption.",
+            **self.get_refresh_status()
+        }
+
+    def _run_background_refresh(self):
+        try:
+            # 1. Immediate timestamped backup of existing file before any scraping
+            backup_filename = None
+            if os.path.exists(self.overview_file):
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_filename = f"industries_overview_backup_{ts}.json"
+                backup_path = os.path.join(os.path.dirname(self.overview_file), backup_filename)
+                try:
+                    shutil.copy2(self.overview_file, backup_path)
+                    self._last_backup_file = backup_filename
+                    print(f"Backed up industries_overview.json to: {backup_path}")
+                except Exception as e:
+                    print(f"Warning: backup error: {e}")
+
+            self._refresh_progress = "Fetching latest master directory (188 industries)..."
+            self._refresh_percent = 5
+
+            r = requests.get('https://www.screener.in/market/', headers=HEADERS, timeout=15)
+            if r.status_code != 200:
+                raise Exception(f"Failed to fetch screener market page: HTTP {r.status_code}")
+
+            soup = BeautifulSoup(r.text, 'html.parser')
+            table = soup.find('table')
+            if not table:
+                raise Exception("Table not found on market page")
+
+            raw_industries = []
+            for tr in table.find_all('tr')[1:]:
+                tds = tr.find_all('td')
+                if len(tds) >= 10:
+                    a = tds[1].find('a')
+                    if a:
+                        href = a.get('href', '').strip('/')
+                        parts = href.split('/')
+                        if len(parts) == 5:
+                            macro_code = parts[1]
+                            sector_code = parts[2]
+                            group_code = parts[3]
+                            ind_code = parts[4]
+
+                            macro_name = SEBI_NSE_MACROS.get(macro_code, macro_code)
+                            sector_name = SEBI_NSE_SECTORS.get(sector_code, sector_code)
+                            industry_group_name = SEBI_NSE_GROUPS.get(group_code, group_code)
+
+                            stats = [td.get_text(strip=True) for td in tds]
+                            raw_industries.append({
+                                'code': ind_code,
+                                'name': a.get_text(strip=True),
+                                'path': f"{macro_code}/{sector_code}/{group_code}/{ind_code}",
+                                'macro_code': macro_code,
+                                'sector_code': sector_code,
+                                'group_code': group_code,
+                                'macro_name': macro_name,
+                                'sector_name': sector_name,
+                                'industry_group_name': industry_group_name,
+                                'company_count': int(clean_num(stats[2]) or 0),
+                                'total_market_cap': clean_num(stats[3]) or 0.0,
+                                'median_market_cap': clean_num(stats[4]) or 0.0,
+                                'median_pe': clean_num(stats[5]),
+                                'sales_growth': clean_num(stats[6]),
+                                'opm': clean_num(stats[7]),
+                                'wtd_roce': clean_num(stats[8]),
+                                'return_1y': clean_num(stats[9])
+                            })
+
+            macro_map = {}
+            for ind in raw_industries:
+                m_code = ind['macro_code']
+                if m_code not in macro_map:
+                    macro_map[m_code] = {'code': m_code, 'name': ind['macro_name'], 'sectors': {}}
+                s_code = ind['sector_code']
+                if s_code not in macro_map[m_code]['sectors']:
+                    macro_map[m_code]['sectors'][s_code] = {'code': s_code, 'name': ind['sector_name']}
+
+            macro_sectors_list = []
+            for m_code in sorted(macro_map.keys()):
+                m = macro_map[m_code]
+                sectors_list = [m['sectors'][s_k] for s_k in sorted(m['sectors'].keys())]
+                macro_sectors_list.append({'code': m['code'], 'name': m['name'], 'sectors': sectors_list})
+
+            self._refresh_progress = "Directory scraped. Refreshing industry stocks..."
+            self._refresh_percent = 15
+
+            # 2. Scrape industry stocks
+            new_industry_stocks = {}
+            total = len(raw_industries)
+            completed = 0
+
+            def scrape_worker(item):
+                idx, ind = item
+                p = ind['path']
+                try:
+                    stks = self._scrape_stocks_for_industry(p)
+                    return p, stks
+                except Exception:
+                    # Preserve previous stocks if failed
+                    prev = self._overview_data.get('industry_stocks', {}).get(p, [])
+                    return p, prev
+
+            with ThreadPoolExecutor(max_workers=5) as ex:
+                for p, stks in ex.map(scrape_worker, enumerate(raw_industries)):
+                    new_industry_stocks[p] = stks
+                    completed += 1
+                    self._refresh_percent = 15 + int((completed / total) * 75)
+                    self._refresh_progress = f"Scraped stocks for {completed}/{total} industries..."
+
+            # 3. Existing file was already backed up at the start of refresh
+            self._refresh_progress = "Finalizing dataset..."
+            self._refresh_percent = 92
+
+            # 4. Atomic write of new single file
+            self._refresh_progress = "Saving fresh dataset to single JSON file..."
+            self._refresh_percent = 96
+
+            final_output = {
+                'count': len(raw_industries),
+                'last_updated': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'last_updated_display': datetime.now().strftime('%d %b %Y, %I:%M %p'),
+                'last_backup': backup_filename,
+                'industries': raw_industries,
+                'macro_sectors': macro_sectors_list,
+                'industry_stocks': new_industry_stocks
+            }
+
+            tmp_path = self.overview_file + ".tmp"
+            with open(tmp_path, 'w', encoding='utf-8') as fp:
+                json.dump(final_output, fp, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, self.overview_file)
+
+            with self._lock:
+                self._overview_data = final_output
+
+            self._refresh_progress = "Completed successfully. All industries & stocks updated."
+            self._refresh_percent = 100
+        except Exception as e:
+            self._refresh_error = str(e)
+            self._refresh_progress = f"Refresh failed: {str(e)}"
+            print(f"Error in background industries refresh: {e}")
+        finally:
+            with self._lock:
+                self._is_refreshing = False
+
+    def get_refresh_status(self):
+        with self._lock:
+            last_up = self._overview_data.get('last_updated_display') or self._overview_data.get('last_updated') or "Never"
+            backup = self._last_backup_file or self._overview_data.get('last_backup')
+            total_inds = len(self._overview_data.get('industries', []))
+            total_cached_stocks = len(self._overview_data.get('industry_stocks', {}))
+
+        return {
+            "is_refreshing": self._is_refreshing,
+            "progress": self._refresh_progress or ("Idle" if not self._is_refreshing else "In progress"),
+            "percent": self._refresh_percent,
+            "error": self._refresh_error,
+            "total_industries": total_inds,
+            "total_stocks_cached": total_cached_stocks,
+            "last_updated": last_up,
+            "last_backup": backup
+        }
+
+    def _scrape_master_directory_initial(self):
         r = requests.get('https://www.screener.in/market/', headers=HEADERS, timeout=15)
         if r.status_code != 200:
             raise Exception(f"Failed to fetch screener market page: HTTP {r.status_code}")
@@ -265,7 +603,6 @@ class IndustriesOverviewProvider:
             raise Exception("Table not found on market page")
 
         raw_industries = []
-
         for tr in table.find_all('tr')[1:]:
             tds = tr.find_all('td')
             if len(tds) >= 10:
@@ -308,156 +645,31 @@ class IndustriesOverviewProvider:
         for ind in raw_industries:
             m_code = ind['macro_code']
             if m_code not in macro_map:
-                macro_map[m_code] = {
-                    'code': m_code,
-                    'name': ind['macro_name'],
-                    'sectors': {}
-                }
+                macro_map[m_code] = {'code': m_code, 'name': ind['macro_name'], 'sectors': {}}
             s_code = ind['sector_code']
             if s_code not in macro_map[m_code]['sectors']:
-                macro_map[m_code]['sectors'][s_code] = {
-                    'code': s_code,
-                    'name': ind['sector_name']
-                }
+                macro_map[m_code]['sectors'][s_code] = {'code': s_code, 'name': ind['sector_name']}
 
         macro_sectors_list = []
         for m_code in sorted(macro_map.keys()):
             m = macro_map[m_code]
             sectors_list = [m['sectors'][s_k] for s_k in sorted(m['sectors'].keys())]
-            macro_sectors_list.append({
-                'code': m['code'],
-                'name': m['name'],
-                'sectors': sectors_list
-            })
+            macro_sectors_list.append({'code': m['code'], 'name': m['name'], 'sectors': sectors_list})
 
         final_output = {
             'count': len(raw_industries),
             'last_updated': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'last_updated_display': datetime.now().strftime('%d %b %Y, %I:%M %p'),
             'industries': raw_industries,
-            'macro_sectors': macro_sectors_list
+            'macro_sectors': macro_sectors_list,
+            'industry_stocks': {}
         }
 
         os.makedirs(os.path.dirname(self.overview_file), exist_ok=True)
         with open(self.overview_file, 'w', encoding='utf-8') as fp:
             json.dump(final_output, fp, indent=2, ensure_ascii=False)
 
+        with self._lock:
+            self._overview_data = final_output
+
         return final_output
-
-    def get_industry_stocks(self, path_or_code, force_refresh=False):
-        # Resolve industry record from overview
-        overview = self.get_industries_overview()
-        industries = overview.get('industries', [])
-        
-        target_ind = None
-        for ind in industries:
-            if ind['code'] == path_or_code or ind['path'] == path_or_code or ind['path'].strip('/') == path_or_code.strip('/'):
-                target_ind = ind
-                break
-            if ind['name'].lower() == path_or_code.lower():
-                target_ind = ind
-                break
-
-        if not target_ind:
-            # Fallback search by partial code
-            for ind in industries:
-                if ind['code'].endswith(path_or_code) or path_or_code in ind['path']:
-                    target_ind = ind
-                    break
-
-        if target_ind:
-            target_ind['macro_name'] = SEBI_NSE_MACROS.get(target_ind.get('macro_code'), target_ind.get('macro_name'))
-            target_ind['sector_name'] = SEBI_NSE_SECTORS.get(target_ind.get('sector_code'), target_ind.get('sector_name'))
-            target_ind['industry_group_name'] = SEBI_NSE_GROUPS.get(target_ind.get('group_code'), target_ind.get('industry_group_name'))
-
-        clean_path = target_ind['path'] if target_ind else path_or_code.strip('/')
-        now = time.time()
-
-        # Check cache (1 hour TTL)
-        cached = self._stocks_cache.get(clean_path)
-        if not force_refresh and cached and (now - cached.get('timestamp', 0) < 3600):
-            cached_data = cached.get('data', {})
-            expected_count = target_ind.get('company_count', 0) if target_ind else 0
-            cached_count = len(cached_data.get('stocks', []))
-            # If the cached data was truncated (e.g. only 25 items while industry has more), bypass cache and fetch full list
-            if not (expected_count > 25 and cached_count <= 25):
-                if cached_data.get('industry') and target_ind:
-                    cached_data['industry'] = target_ind
-                return cached_data
-
-        # Scrape Screener stocks table for this industry (handling multi-page pagination)
-        target_url = f"https://www.screener.in/market/{clean_path}/"
-        r = requests.get(target_url, headers=HEADERS, timeout=12)
-        if r.status_code != 200:
-            raise Exception(f"Failed to fetch stocks for {clean_path}: HTTP {r.status_code}")
-
-        soup = BeautifulSoup(r.text, 'html.parser')
-        stocks = _parse_stocks_table_rows(soup)
-
-        # Detect total pages from page info or pagination links
-        total_pages = 1
-        page_info = soup.find('div', attrs={'data-page-info': True})
-        if page_info:
-            m = re.search(r'Showing page \d+ of (\d+)', page_info.get_text())
-            if m:
-                total_pages = int(m.group(1))
-        else:
-            pag = soup.find(class_='pagination')
-            if pag:
-                for a in pag.find_all('a'):
-                    href = a.get('href', '')
-                    if 'limit=' in href:
-                        continue
-                    m = re.search(r'page=(\d+)', href)
-                    if m:
-                        total_pages = max(total_pages, int(m.group(1)))
-
-        # Fetch remaining pages concurrently if more than 1 page exists
-        if total_pages > 1:
-            def _fetch_page(p):
-                try:
-                    p_url = f"{target_url}?page={p}"
-                    pr = requests.get(p_url, headers=HEADERS, timeout=12)
-                    if pr.status_code == 200:
-                        psoup = BeautifulSoup(pr.text, 'html.parser')
-                        return p, _parse_stocks_table_rows(psoup)
-                except Exception as e:
-                    print(f"Failed to fetch page {p} of {clean_path}: {e}")
-                return p, []
-
-            workers = min(6, total_pages - 1)
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                page_results = list(executor.map(_fetch_page, range(2, total_pages + 1)))
-                page_results.sort(key=lambda x: x[0])
-                for _, p_stocks in page_results:
-                    stocks.extend(p_stocks)
-
-        # Normalize sequential S.No.
-        for idx, stk in enumerate(stocks):
-            stk['sno'] = idx + 1
-
-        breadcrumbs = [
-            {'name': 'Industries', 'path': ''}
-        ]
-        if target_ind:
-            target_ind['company_count'] = len(stocks)
-            breadcrumbs.append({'name': target_ind['macro_name'], 'code': target_ind['macro_code'], 'type': 'macro'})
-            breadcrumbs.append({'name': target_ind['sector_name'], 'code': target_ind['sector_code'], 'type': 'sector'})
-            breadcrumbs.append({'name': target_ind['industry_group_name'], 'code': target_ind['group_code'], 'type': 'group'})
-            breadcrumbs.append({'name': target_ind['name'], 'code': target_ind['code'], 'type': 'industry'})
-
-        result_payload = {
-            'success': True,
-            'industry': target_ind,
-            'breadcrumbs': breadcrumbs,
-            'stocks': stocks,
-            'count': len(stocks),
-            'fetched_at': time.strftime('%Y-%m-%d %H:%M:%S')
-        }
-
-        self._stocks_cache[clean_path] = {
-            'timestamp': now,
-            'data': result_payload
-        }
-        self._save_stocks_cache()
-
-        return result_payload

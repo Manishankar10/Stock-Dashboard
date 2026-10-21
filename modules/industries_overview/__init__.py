@@ -26,6 +26,11 @@ def init_industries_overview(login_required: Callable, load_data_fn: Optional[Ca
     _PROVIDER = IndustriesOverviewProvider(data_dir=data_dir)
 
 
+def get_provider() -> Optional[IndustriesOverviewProvider]:
+    global _PROVIDER
+    return _PROVIDER
+
+
 def _guard(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
@@ -89,10 +94,6 @@ def get_industry_stocks():
 @industries_overview_bp.post("/api/industries-overview/refresh")
 @_guard
 def refresh_industries_overview():
-    if _PROVIDER is None:
-        return jsonify({"error": "Industries Overview provider is not initialized."}), 500
-    try:
-        data = _PROVIDER.refresh_overview()
-        return jsonify({"success": True, "count": data.get("count", 0), "message": "Industries Overview refreshed successfully."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "error": "Dataset refreshes are restricted to Admin in System Settings only."
+    }), 403

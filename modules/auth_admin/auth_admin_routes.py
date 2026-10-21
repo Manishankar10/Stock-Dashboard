@@ -515,3 +515,29 @@ def save_favorite_tools():
     users[uname]["favorite_tools"] = favorite_tools
     save_users(users)
     return jsonify({"success": True, "favorite_tools": favorite_tools})
+
+
+@auth_admin_bp.route("/api/admin/industries_overview/status", methods=["GET"])
+@admin_required
+def admin_industries_overview_status():
+    from modules.industries_overview import get_provider
+    provider = get_provider()
+    if not provider:
+        return jsonify({"error": "Industries Overview provider not initialized."}), 500
+    return jsonify({
+        "success": True,
+        "status": provider.get_refresh_status()
+    })
+
+
+@auth_admin_bp.route("/api/admin/industries_overview/refresh", methods=["POST"])
+@admin_required
+def admin_industries_overview_refresh():
+    from modules.industries_overview import get_provider
+    provider = get_provider()
+    if not provider:
+        return jsonify({"error": "Industries Overview provider not initialized."}), 500
+    res = provider.start_admin_background_refresh()
+    if not res.get("success"):
+        return jsonify(res), 400
+    return jsonify(res)
