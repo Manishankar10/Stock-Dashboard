@@ -17,6 +17,7 @@ import requests
 
 NSE_HOME = "https://www.nseindia.com"
 NSE_LARGEDEAL_API = "https://www.nseindia.com/api/snapshot-capital-market-largedeal"
+NSE_HISTORICAL_DEALS_API = "https://www.nseindia.com/api/historicalOR/bulk-block-short-deals"
 NSE_INSIDER_API = "https://www.nseindia.com/api/corporates-pit"
 CACHE_TTL = 900  # 15 minutes (900 seconds) in-memory cache
 
@@ -54,6 +55,8 @@ def parse_date_to_iso(raw_date: Any) -> str:
         return ""
     val = str(raw_date).strip()
     # Remove time if present
+    if "T" in val:
+        val = val.split("T")[0].strip()
     if " " in val:
         val = val.split(" ")[0].strip()
     
@@ -163,6 +166,47 @@ class TransactionsProvider:
         except Exception as e:
             print(f"[TransactionsProvider] Error fetching bulk/block deals: {e}")
 
+        # 1b. Fetch Historical Block Deals & Bulk Deals across rolling 30-day windows
+        try:
+            today_d = date.today()
+            windows = []
+            for i in range(4):
+                t_end = today_d - timedelta(days=i * 30)
+                t_start = today_d - timedelta(days=(i + 1) * 30)
+                windows.append((t_start.strftime("%d-%m-%Y"), t_end.strftime("%d-%m-%Y")))
+
+            def fetch_block_window(w):
+                url = f"{NSE_HISTORICAL_DEALS_API}?optionType=block_deals&from={w[0]}&to={w[1]}"
+                res = session.get(url, headers=HEADERS, timeout=10)
+                if res.status_code == 200:
+                    return res.json().get("data", [])
+                return []
+
+            def fetch_bulk_window(w):
+                url = f"{NSE_HISTORICAL_DEALS_API}?optionType=bulk_deals&from={w[0]}&to={w[1]}"
+                res = session.get(url, headers=HEADERS, timeout=10)
+                if res.status_code == 200:
+                    return res.json().get("data", [])
+                return []
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                block_results = list(executor.map(fetch_block_window, windows))
+                bulk_results = list(executor.map(fetch_bulk_window, windows))
+
+            for batch in block_results:
+                for item in batch:
+                    deal = self._normalize_largedeal(item, "block")
+                    if deal:
+                        new_deals.append(deal)
+
+            for batch in bulk_results:
+                for item in batch:
+                    deal = self._normalize_largedeal(item, "bulk")
+                    if deal:
+                        new_deals.append(deal)
+        except Exception as e:
+            print(f"[TransactionsProvider] Error fetching historical bulk/block deals: {e}")
+
         # 2. Fetch Insider Trading Deals (PIT Regulation 7(2))
         try:
             today = date.today()
@@ -238,27 +282,29 @@ class TransactionsProvider:
 
     def _normalize_largedeal(self, item: Dict[str, Any], deal_type: str) -> Optional[Dict[str, Any]]:
         """Normalize a block or bulk deal row from NSE."""
-        symbol = clean_symbol(item.get("symbol"))
+        symbol = clean_symbol(item.get("symbol") or item.get("BD_SYMBOL"))
         if not symbol:
             return None
 
-        name = str(item.get("name") or symbol).strip()
-        client = str(item.get("clientName") or "Undisclosed Client").strip()
-        action_raw = str(item.get("buySell") or "BUY").strip().upper()
+        name = str(item.get("name") or item.get("BD_SCRIP_NAME") or symbol).strip()
+        client = str(item.get("clientName") or item.get("BD_CLIENT_NAME") or "Undisclosed Client").strip()
+        action_raw = str(item.get("buySell") or item.get("BD_BUY_SELL") or "BUY").strip().upper()
         action = "BUY" if "BUY" in action_raw else "SELL"
 
         try:
-            qty = int(float(str(item.get("qty") or "0").replace(",", "")))
+            qty_raw = item.get("qty") or item.get("BD_QTY_TRD") or "0"
+            qty = int(float(str(qty_raw).replace(",", "")))
         except (ValueError, TypeError):
             qty = 0
 
         try:
-            price = float(str(item.get("watp") or "0").replace(",", ""))
+            price_raw = item.get("watp") or item.get("BD_TP_WATP") or "0"
+            price = float(str(price_raw).replace(",", ""))
         except (ValueError, TypeError):
             price = 0.0
 
         val = round(qty * price, 2)
-        raw_date = str(item.get("date") or "")
+        raw_date = str(item.get("date") or item.get("BD_DT_DATE") or "")
         iso_date = parse_date_to_iso(raw_date)
 
         deal_id = f"{deal_type}_{symbol}_{iso_date}_{re.sub(r'[^a-zA-Z0-9]', '', client)[:20]}_{qty}_{action}"
@@ -281,13 +327,13 @@ class TransactionsProvider:
             "time_display": "Market Close",
             "mode": "Block Window" if deal_type == "block" else "Normal Market",
             "source": "NSE Official",
-            "remarks": str(item.get("remarks") or "").strip(),
+            "remarks": str(item.get("remarks") or item.get("BD_REMARKS") or "").strip(),
             "filing_url": ""
         }
 
     def _normalize_insider_deal(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Normalize an insider trading / PIT regulation 7(2) row from NSE."""
-        symbol = clean_symbol(item.get("symbol"))
+        symbol = clean_symbol(item.get("symbol") or item.get("BD_SYMBOL"))
         if not symbol:
             return None
 
@@ -340,7 +386,7 @@ class TransactionsProvider:
             "time_display": time_part or "18:00",
             "mode": mode,
             "source": "SEBI PIT Reg 7(2)",
-            "remarks": str(item.get("remarks") or "").strip(),
+            "remarks": str(item.get("remarks") or item.get("BD_REMARKS") or "").strip(),
             "filing_url": filing_url
         }
 
