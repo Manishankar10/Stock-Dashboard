@@ -44,31 +44,39 @@
         function updateWatchlistRefreshButtonsState(isSpinning) {
             const btns = document.querySelectorAll('.wl-refresh-btn, .wl-mobile-refresh-btn');
             btns.forEach(b => {
+                const svg = b.querySelector('svg');
                 if (isSpinning) {
-                    b.classList.add('refreshing', 'spinning');
+                    b.classList.add('refreshing');
+                    b.classList.remove('spinning'); // Outer button box strictly never rotates
                     b.setAttribute('aria-busy', 'true');
                     b.title = 'Updating watchlist quotes...';
+                    if (svg) svg.classList.add('spinning');
                 } else {
                     b.classList.remove('refreshing', 'spinning');
                     b.removeAttribute('aria-busy');
                     b.title = 'Refresh Watchlist Quotes';
+                    if (svg) svg.classList.remove('spinning');
                 }
             });
 
-            // Also synchronize sidebar refresh icon if on watchlist tab
-            if (typeof currentTab !== 'undefined' && currentTab === 'watchlists') {
-                const sidebarIcon = document.getElementById('refresh-icon');
-                if (sidebarIcon) {
-                    if (isSpinning) sidebarIcon.classList.add('spinning');
-                    else sidebarIcon.classList.remove('spinning');
-                }
-            }
+            // Strictly do NOT spin overall sidebar/header refresh icon in watchlist refresh
+            // Sidebar icon remains untouched
 
-            const wlTable = document.querySelector('#watchlist-view-mount table, #watchlist-table-mount table, .watchlist-container, #tab-watchlists table');
-            if (wlTable) {
-                wlTable.style.opacity = isSpinning ? '0.7' : '1';
-                wlTable.style.transition = 'opacity 0.2s ease';
-            }
+            // Fade the watchlist during refresh, show as normal when finished
+            const tableContainers = document.querySelectorAll('.wl-table-container, #watchlist-view-mount .wl-table-container, #watchlist-view-mount table, #watchlist-table-mount table, .watchlist-container table');
+            tableContainers.forEach(container => {
+                if (isSpinning) {
+                    container.classList.add('faded');
+                    container.style.opacity = '0.55';
+                    container.style.pointerEvents = 'none';
+                    container.style.transition = 'opacity 0.25s ease';
+                } else {
+                    container.classList.remove('faded');
+                    container.style.opacity = '1';
+                    container.style.pointerEvents = '';
+                    container.style.transition = 'opacity 0.25s ease';
+                }
+            });
         }
 
         window.startWatchlistSpin = startWatchlistSpin;
@@ -447,9 +455,15 @@
         async function triggerWatchlistRefresh(btnEl) {
             if (window._isWlRefreshing) return;
             startWatchlistSpin();
+            const minSpinTime = new Promise(resolve => setTimeout(resolve, 500));
             try {
                 if (typeof refreshPrices === 'function') {
-                    await refreshPrices({ force_refresh: true });
+                    await Promise.allSettled([
+                        refreshPrices({ force_refresh: true }),
+                        minSpinTime
+                    ]);
+                } else {
+                    await minSpinTime;
                 }
             } catch (err) {
                 console.warn('Watchlist refresh error:', err);
@@ -662,14 +676,15 @@
             const mobRefreshBtn = document.createElement('button');
             mobRefreshBtn.type = 'button';
             mobRefreshBtn.className = 'wl-refresh-btn wl-mobile-refresh-btn';
-            if (window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0)) {
-                mobRefreshBtn.classList.add('refreshing', 'spinning');
+            const isMobSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
+            if (isMobSpinning) {
+                mobRefreshBtn.classList.add('refreshing');
                 mobRefreshBtn.setAttribute('aria-busy', 'true');
             }
             mobRefreshBtn.title = 'Refresh Watchlist Quotes';
             mobRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
             mobRefreshBtn.innerHTML = `
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="${isMobSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
             `;
@@ -718,14 +733,15 @@
             const wlRefreshBtn = document.createElement('button');
             wlRefreshBtn.type = 'button';
             wlRefreshBtn.className = 'wl-refresh-btn';
-            if (window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0)) {
-                wlRefreshBtn.classList.add('refreshing', 'spinning');
+            const isWebSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
+            if (isWebSpinning) {
+                wlRefreshBtn.classList.add('refreshing');
                 wlRefreshBtn.setAttribute('aria-busy', 'true');
             }
             wlRefreshBtn.title = 'Refresh Watchlist Quotes';
             wlRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
             wlRefreshBtn.innerHTML = `
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="${isWebSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
             `;
@@ -749,6 +765,12 @@
             // Table of stocks in active watchlist
             const scrollContainer = document.createElement('div');
             scrollContainer.className = 'table-responsive-container wl-table-container';
+            if (window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0)) {
+                scrollContainer.classList.add('faded');
+                scrollContainer.style.opacity = '0.55';
+                scrollContainer.style.pointerEvents = 'none';
+                scrollContainer.style.transition = 'opacity 0.25s ease';
+            }
 
             const getSortIcon = (col) => {
                 if (wlSortColumn !== col) return '<span style="opacity:0.3; margin-left:4px;">↕</span>';

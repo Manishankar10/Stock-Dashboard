@@ -280,6 +280,7 @@
         padding: 0 !important;
         transition: all 0.2s ease !important;
         box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+        animation: none !important;
     }
 
     :root:not([data-theme="dark"]) .wl-mobile-refresh-btn {
@@ -299,9 +300,16 @@
     }
 
     .wl-mobile-refresh-btn.refreshing svg,
-    .wl-mobile-refresh-btn.spinning svg {
+    .wl-mobile-refresh-btn.spinning svg,
+    .wl-mobile-refresh-btn svg.spinning {
         animation: pf-spin 0.75s linear infinite !important;
         transform-origin: center center !important;
+    }
+
+    .wl-mobile-refresh-btn.refreshing,
+    .wl-mobile-refresh-btn.spinning {
+        animation: none !important;
+        pointer-events: none;
     }
 
     /* Menu Icon Button at Right End */

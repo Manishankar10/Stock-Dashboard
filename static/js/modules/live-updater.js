@@ -50,14 +50,6 @@
 
             if (allSymbols.size === 0) return;
 
-            const isWatchlist = (typeof currentTab !== 'undefined' && currentTab === 'watchlists') ||
-                                (window.location.pathname === '/' || window.location.pathname === '/watchlists');
-            let spinWl = false;
-            if (isWatchlist && typeof window.startWatchlistSpin === 'function') {
-                window.startWatchlistSpin();
-                spinWl = true;
-            }
-
             try {
                 const res = await fetch('/api/stock_data', {
                 method: 'POST',
@@ -341,10 +333,8 @@
                 const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 badge.innerHTML = `✅ Updated: ${timeStr}`;
             }
-            } finally {
-                if (spinWl && typeof window.stopWatchlistSpin === 'function') {
-                    window.stopWatchlistSpin();
-                }
+            } catch (err) {
+                console.warn('Live updater error:', err);
             }
         }
 
@@ -356,14 +346,6 @@
             if (btn) btn.disabled = true;
             if (icon) icon.classList.add('spinning');
             if (badge) badge.innerHTML = '⏳ Fetching live prices...';
-
-            const isWatchlist = (typeof currentTab !== 'undefined' && currentTab === 'watchlists') ||
-                                (window.location.pathname === '/' || window.location.pathname === '/watchlists');
-            let spinWl = false;
-            if (isWatchlist && typeof window.startWatchlistSpin === 'function') {
-                window.startWatchlistSpin();
-                spinWl = true;
-            }
 
             try {
                 if ((window.currentTab === 'transactions' || window.location.pathname === '/transactions') && typeof window.refreshTransactionsData === 'function') {
@@ -377,9 +359,6 @@
             } catch (err) {
                 if (badge) badge.innerHTML = '⚠️ Refresh failed';
             } finally {
-                if (spinWl && typeof window.stopWatchlistSpin === 'function') {
-                    window.stopWatchlistSpin();
-                }
                 if (icon) icon.classList.remove('spinning');
                 if (btn) btn.disabled = false;
             }

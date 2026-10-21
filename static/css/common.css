@@ -753,6 +753,7 @@
             transition: all 0.2s ease;
             padding: 0;
             box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+            animation: none !important; /* Button box never rotates */
         }
 
         :root:not([data-theme="dark"]) .wl-refresh-btn,
@@ -784,10 +785,13 @@
             background: rgba(16, 185, 129, 0.25);
         }
 
+        /* Spin only the SVG symbol alone */
         .wl-refresh-btn.refreshing svg,
         .wl-refresh-btn.spinning svg,
+        .wl-refresh-btn svg.spinning,
         .wl-mobile-refresh-btn.refreshing svg,
         .wl-mobile-refresh-btn.spinning svg,
+        .wl-mobile-refresh-btn svg.spinning,
         .pf-refresh-btn.refreshing svg,
         .pf-refresh-btn.spinning svg {
             animation: pf-spin 0.75s linear infinite !important;
@@ -799,7 +803,18 @@
         .wl-mobile-refresh-btn.refreshing,
         .wl-mobile-refresh-btn.spinning {
             pointer-events: none;
-            opacity: 0.9;
+            opacity: 0.95;
+            animation: none !important; /* Button box strictly never spins */
+        }
+
+        /* Watchlist fade during refresh */
+        .wl-table-container {
+            transition: opacity 0.25s ease;
+        }
+
+        .wl-table-container.faded {
+            opacity: 0.55 !important;
+            pointer-events: none !important;
         }
 
         /* Watchlist Row Hover Tooltip (Web Only) */
