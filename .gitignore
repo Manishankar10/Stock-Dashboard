@@ -18,15 +18,11 @@ backup_*.json
 *_mutual_funds.json
 *_plan_calculator.json
 
-# Local user chart drawings (DO NOT sync with production!)
-app_data/drawings/**/*.json
-app_data/drawings/*.json
-!app_data/drawings/.gitkeep
-
-# Local external API logs (DO NOT sync with production!)
-app_data/external_api_logs/*.json
-app_data/external_api_logs.json
-!app_data/external_api_logs/.gitkeep
+# Application data local JSON files (DO NOT sync with production!)
+app_data/**/*.json
+app_data/*.json
+!app_data/**/.gitkeep
+!app_data/.gitkeep
 
 # Secrets & Environment variables
 .env
