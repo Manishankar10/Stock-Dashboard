@@ -41,6 +41,30 @@ def _get_pf_data(uname=None):
     from modules.portfolio.portfolio_routes import load_portfolios as _fetch_pf
     return _fetch_pf(uname)
 
+def _extract_pf_holdings_list(portfolios):
+    items = []
+    if not portfolios:
+        return items
+    if isinstance(portfolios, dict):
+        for p_name, holdings in portfolios.items():
+            if isinstance(holdings, list):
+                items.extend(holdings)
+            elif isinstance(holdings, dict):
+                items.append(holdings)
+    elif isinstance(portfolios, list):
+        items.extend(portfolios)
+    return items
+
+def _extract_pf_symbols_set(portfolios):
+    syms = set()
+    for item in _extract_pf_holdings_list(portfolios):
+        if isinstance(item, dict):
+            s = item.get("symbol", "")
+            if s: syms.add(s)
+        elif isinstance(item, str) and item:
+            syms.add(item)
+    return syms
+
 def fetch_fii_dii_data():
     cached = fiidii_cache.get("fii_dii")
     if cached:
@@ -176,8 +200,8 @@ def get_insights_summary_api():
         pf_items = []
 
         # Compare across ALL user portfolios for active holdings (quantity > 0)
-        for p_name, holdings in portfolios.items():
-            for item in holdings:
+        for item in _extract_pf_holdings_list(portfolios):
+            if isinstance(item, dict):
                 sym = item.get("symbol", "")
                 qty = float(item.get("quantity", 0))
                 if sym and qty > 0:
@@ -506,11 +530,7 @@ def get_insights_news_api():
         for w_name, sym_list in watchlists.items():
             for s in sym_list: wl_symbols.add(s)
 
-        pf_symbols = set()
-        for p_name, holdings in portfolios.items():
-            for item in holdings:
-                sym = item.get("symbol", "")
-                if sym: pf_symbols.add(sym)
+        pf_symbols = _extract_pf_symbols_set(portfolios)
 
         all_symbols = list(wl_symbols.union(pf_symbols))
 
@@ -793,12 +813,9 @@ def _run_technicals_scan(uname="admin"):
                                 target_symbols.add(format_financial_symbol(s))
 
                 portfolios = _get_pf_data(uname) if uname else {}
-                if portfolios:
-                    for p_name, holdings in portfolios.items():
-                        for item in holdings:
-                            sym = item.get("symbol", "")
-                            if sym and not sym.startswith("^") and "=F" not in sym:
-                                target_symbols.add(format_financial_symbol(sym))
+                for sym in _extract_pf_symbols_set(portfolios):
+                    if sym and not sym.startswith("^") and "=F" not in sym:
+                        target_symbols.add(format_financial_symbol(sym))
             except Exception:
                 pass
 
@@ -887,15 +904,17 @@ def _run_technicals_scan(uname="admin"):
                 }
             }
 
+            y_session = requests.Session()
+            y_session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'})
+
             def analyze_stock_technical(symbol):
                 try:
                     hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']
-                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                     data = None
                     for host in hosts:
                         url = f'https://{host}/v8/finance/chart/{symbol}?interval=1d&range=1y&includeAdjustedClose=true'
                         try:
-                            r = requests.get(url, headers=headers, timeout=4)
+                            r = y_session.get(url, timeout=3.5)
                             if r.status_code == 200:
                                 j = r.json()
                                 res = j.get('chart', {}).get('result')
@@ -1037,7 +1056,7 @@ def _run_technicals_scan(uname="admin"):
                 except Exception:
                     return None
 
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            with ThreadPoolExecutor(max_workers=12) as executor:
                 results = list(executor.map(analyze_stock_technical, symbols_list))
 
             valid_count = 0
@@ -1060,8 +1079,15 @@ def _run_technicals_scan(uname="admin"):
 
             if valid_count > 0:
                 _LAST_SUCCESSFUL_TECHNICALS_CACHE = payload
-                technicals_cache.set(f"technicals_{uname}", payload, ttl=300)
-                technicals_cache.set("technicals_global", payload, ttl=300)
+                technicals_cache.set(f"technicals_{uname}", payload, ttl=600)
+                technicals_cache.set("technicals_global", payload, ttl=600)
+                try:
+                    for p_candidate in PRECOMPUTED_CANDIDATES:
+                        os.makedirs(os.path.dirname(p_candidate), exist_ok=True)
+                        with open(p_candidate, "w", encoding="utf-8") as pf:
+                            json.dump(payload, pf, indent=2)
+                except Exception as ex_save:
+                    pass
                 return payload
         except Exception:
             pass
@@ -1069,25 +1095,47 @@ def _run_technicals_scan(uname="admin"):
 
 @insights_bp.route("/api/insights/technicals", methods=["GET"])
 def get_insights_technicals_api():
+    global _LAST_SUCCESSFUL_TECHNICALS_CACHE
     try:
         uname = session.get("username", "admin")
         cache_key = f"technicals_{uname}"
         cached = technicals_cache.get(cache_key) or technicals_cache.get("technicals_global")
-        if cached:
-            return jsonify(cached)
-
         force_refresh = request.args.get("refresh") == "1"
 
-        if not _TECHNICALS_UPDATE_LOCK.locked():
-            thread = threading.Thread(target=_run_technicals_scan, args=(uname,), daemon=True)
-            thread.start()
+        if cached and not force_refresh:
+            return jsonify(cached)
 
+        # Look up in-memory or disk fallback
         fallback = _LAST_SUCCESSFUL_TECHNICALS_CACHE or _PRECOMPUTED_TECHNICALS
-        if fallback:
+        if not fallback or not fallback.get("scanners"):
+            for p_candidate in PRECOMPUTED_CANDIDATES:
+                if os.path.exists(p_candidate):
+                    try:
+                        with open(p_candidate, "r", encoding="utf-8") as pf:
+                            disk_data = json.load(pf)
+                            if disk_data and disk_data.get("scanners"):
+                                fallback = disk_data
+                                _LAST_SUCCESSFUL_TECHNICALS_CACHE = disk_data
+                                break
+                    except Exception:
+                        pass
+
+        # If we have precomputed data and NOT forcing refresh: return immediately (<10ms!)
+        # and launch background scanner without locking main thread
+        if fallback and fallback.get("scanners") and not force_refresh:
+            if not _TECHNICALS_UPDATE_LOCK.locked():
+                threading.Thread(target=_run_technicals_scan, args=(uname,), daemon=True).start()
             return jsonify(fallback)
 
+        # If forcing refresh or empty disk: spawn thread and return fallback if available
+        if not _TECHNICALS_UPDATE_LOCK.locked():
+            threading.Thread(target=_run_technicals_scan, args=(uname,), daemon=True).start()
+            if fallback and fallback.get("scanners"):
+                return jsonify(fallback)
+
+        # Cold start fallback
         res = _run_technicals_scan(uname)
-        return jsonify(res or {"success": True, "scanners": {}, "total_scanned": 0})
+        return jsonify(res or fallback or {"success": True, "scanners": {}, "total_scanned": 0})
     except Exception as e:
         fallback = _LAST_SUCCESSFUL_TECHNICALS_CACHE or _PRECOMPUTED_TECHNICALS
         if fallback:
@@ -1106,11 +1154,7 @@ def get_insights_api():
         for w_name, sym_list in watchlists.items():
             for s in sym_list: wl_symbols.add(s)
 
-        pf_symbols = set()
-        for p_name, holdings in portfolios.items():
-            for item in holdings:
-                sym = item.get("symbol", "")
-                if sym: pf_symbols.add(sym)
+        pf_symbols = _extract_pf_symbols_set(portfolios)
 
         all_symbols = list(wl_symbols.union(pf_symbols))
 

@@ -784,7 +784,7 @@
                 if (!scanner) return;
                 const isActive = key === activeScreenerId;
                 const btnClass = isActive ? 'btn-primary' : 'btn-secondary';
-                const activeStyle = isActive ? 'background: var(--accent-color); color: #fff; border-color: var(--accent-color);' : '';
+                const activeStyle = isActive ? 'background: var(--btn-primary-bg, #10b981); color: #fff; border-color: var(--btn-primary-bg, #10b981);' : '';
                 
                 const scopedStocks = getScopedScannerStocks(scanner.stocks);
                 const count = scopedStocks.length;
