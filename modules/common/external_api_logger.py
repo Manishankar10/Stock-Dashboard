@@ -7,6 +7,7 @@ import datetime
 import urllib.parse
 import threading
 import logging
+import contextvars
 
 from modules.common.data_paths import APP_DATA_DIR
 
@@ -27,6 +28,21 @@ MAX_INDEXED_LOGS = 1000
 _ORIG_REQUESTS_SESSION_REQUEST = None
 _ORIG_CURL_SESSION_REQUEST = None
 _ORIG_URLLIB_URLOPEN = None
+_ORIG_TPE_SUBMIT = None
+
+# Context tracking for user attribution
+_CURRENT_USER_VAR = contextvars.ContextVar("current_user", default="system")
+_LAST_ACTIVE_USER = "system"
+_LAST_ACTIVE_USER_TIME = 0.0
+
+
+def set_current_user(username):
+    """Explicitly set user attribution for the current execution context."""
+    global _LAST_ACTIVE_USER, _LAST_ACTIVE_USER_TIME
+    if username and username != "system":
+        _LAST_ACTIVE_USER = str(username)
+        _LAST_ACTIVE_USER_TIME = time.time()
+    return _CURRENT_USER_VAR.set(str(username) if username else "system")
 
 
 def _ensure_dirs():
@@ -148,6 +164,35 @@ def _extract_caller_info():
     }
 
 
+def _get_current_username():
+    """Retrieve current logged-in username across Flask request, worker thread, or recent activity."""
+    # 1. Try active Flask request session
+    try:
+        from flask import has_request_context, session
+        if has_request_context():
+            user = session.get("username") or session.get("user")
+            if user:
+                set_current_user(str(user))
+                return str(user)
+    except Exception:
+        pass
+
+    # 2. Try ContextVar (propagated to worker threads via contextvars)
+    try:
+        var_user = _CURRENT_USER_VAR.get()
+        if var_user and var_user != "system":
+            return var_user
+    except Exception:
+        pass
+
+    # 3. Fallback to recent active user if call occurred within last 20 seconds
+    global _LAST_ACTIVE_USER, _LAST_ACTIVE_USER_TIME
+    if _LAST_ACTIVE_USER and _LAST_ACTIVE_USER != "system" and (time.time() - _LAST_ACTIVE_USER_TIME) < 20.0:
+        return _LAST_ACTIVE_USER
+
+    return "system"
+
+
 def record_external_call(
     method,
     url,
@@ -240,10 +285,12 @@ def record_external_call(
         else:
             status_text = "Failed" if error else "Unknown"
 
+        current_user = _get_current_username()
         log_record = {
             "id": log_id,
             "timestamp": timestamp_iso,
             "datetime": datetime_str,
+            "username": current_user,
             "method": str(method).upper(),
             "url": clean_url,
             "domain": domain,
@@ -418,12 +465,23 @@ def _hooked_urllib_urlopen(url, *args, **kwargs):
             logger.debug(f"Failed to log urllib call: {log_err}")
 
 
-def install_external_api_logger():
+def install_external_api_logger(app=None):
     """
-    Install hooks across requests, curl_cffi, and urllib.
+    Install hooks across requests, curl_cffi, urllib, and thread executors.
     Captures all external HTTP requests made across the entire application.
     """
-    global _INSTALLED, _ORIG_REQUESTS_SESSION_REQUEST, _ORIG_CURL_SESSION_REQUEST, _ORIG_URLLIB_URLOPEN
+    global _INSTALLED, _ORIG_REQUESTS_SESSION_REQUEST, _ORIG_CURL_SESSION_REQUEST, _ORIG_URLLIB_URLOPEN, _ORIG_TPE_SUBMIT
+
+    if app is not None and hasattr(app, "before_request"):
+        @app.before_request
+        def _track_request_user_for_api_logger():
+            try:
+                from flask import session
+                u = session.get("username") or session.get("user")
+                if u:
+                    set_current_user(str(u))
+            except Exception:
+                pass
 
     if _INSTALLED:
         return
@@ -457,6 +515,18 @@ def install_external_api_logger():
             urllib.request.urlopen = _hooked_urllib_urlopen
     except Exception as e:
         logger.warning(f"Could not hook urllib.request.urlopen: {e}")
+
+    # 4. Patch concurrent.futures.ThreadPoolExecutor.submit to preserve contextvars across threads
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+        if _ORIG_TPE_SUBMIT is None and hasattr(ThreadPoolExecutor, "submit"):
+            _ORIG_TPE_SUBMIT = ThreadPoolExecutor.submit
+            def _hooked_tpe_submit(self, fn, *args, **kwargs):
+                ctx = contextvars.copy_context()
+                return _ORIG_TPE_SUBMIT(self, ctx.run, fn, *args, **kwargs)
+            ThreadPoolExecutor.submit = _hooked_tpe_submit
+    except Exception as e:
+        logger.debug(f"Could not hook ThreadPoolExecutor.submit: {e}")
 
     _INSTALLED = True
     logger.info("External API call interceptor successfully installed.")
@@ -499,10 +569,10 @@ def _init_logs_cache():
                 _LOGS_CACHE = []
 
 
-def get_external_api_logs(limit=200, search=None, method=None):
+def get_external_api_logs(limit=200, search=None, method=None, domain=None):
     """
     Retrieve logged external API calls.
-    Supports filtering by search query and HTTP method.
+    Supports filtering by search query, HTTP method, and target domain.
     """
     _init_logs_cache()
 
@@ -514,6 +584,11 @@ def get_external_api_logs(limit=200, search=None, method=None):
         method_upper = method.upper()
         logs = [l for l in logs if l.get("method", "").upper() == method_upper]
 
+    # Filter by domain / target API
+    if domain and domain.upper() != "ALL":
+        d_lower = domain.strip().lower()
+        logs = [l for l in logs if d_lower in str(l.get("domain", "")).lower() or d_lower in str(l.get("url", "")).lower()]
+
     # Filter by search string
     if search:
         s = search.strip().lower()
@@ -523,9 +598,10 @@ def get_external_api_logs(limit=200, search=None, method=None):
             file_match = s in str(l.get("python_file", "")).lower()
             caller_match = s in str(l.get("caller_path", "")).lower() or s in str(l.get("caller_function", "")).lower()
             domain_match = s in str(l.get("domain", "")).lower()
+            user_match = s in str(l.get("username", "")).lower()
             params_match = s in json.dumps(l.get("parameters", {})).lower()
             status_match = s in str(l.get("status_text", "")).lower() or s in str(l.get("status_code", "")).lower()
-            if url_match or file_match or caller_match or domain_match or params_match or status_match:
+            if url_match or file_match or caller_match or domain_match or user_match or params_match or status_match:
                 filtered.append(l)
         logs = filtered
 

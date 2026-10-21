@@ -323,7 +323,8 @@ def admin_get_external_api_logs():
     limit = request.args.get("limit", 200, type=int)
     search = request.args.get("search", None)
     method = request.args.get("method", None)
-    logs = get_external_api_logs(limit=limit, search=search, method=method)
+    domain = request.args.get("domain", None) or request.args.get("target", None)
+    logs = get_external_api_logs(limit=limit, search=search, method=method, domain=domain)
     stats = get_external_api_stats()
     return jsonify({
         "success": True,

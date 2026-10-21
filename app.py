@@ -69,6 +69,7 @@ from modules.shareholding import shareholding_bp, init_shareholding
 
 # Initialize Flask Application
 app = Flask(__name__)
+install_external_api_logger(app)
 app.secret_key = os.environ.get("SECRET_KEY", "capital_desk_secret_key_2026_x89a")
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=1)
 app.config["SESSION_REFRESH_EACH_REQUEST"] = True

@@ -665,6 +665,54 @@
             color: var(--text-primary);
             box-shadow: 0 1px 3px rgba(0,0,0,0.12);
         }
+
+        /* Standard App Spin Animation & Refresh Button for Admin */
+        @keyframes pf-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .wl-refresh-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+            animation: none !important;
+        }
+        :root:not([data-theme="dark"]) .wl-refresh-btn {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.25);
+            color: #059669;
+        }
+        .wl-refresh-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            transform: translateY(-1px);
+        }
+        .wl-refresh-btn:active {
+            transform: scale(0.92);
+        }
+        .wl-refresh-btn svg {
+            transition: transform 0.2s ease;
+            transform-origin: center center !important;
+        }
+        .wl-refresh-btn.refreshing svg,
+        .wl-refresh-btn svg.spinning {
+            animation: pf-spin 0.75s linear infinite !important;
+            transform-origin: center center !important;
+        }
+        .wl-refresh-btn.refreshing {
+            pointer-events: none;
+            opacity: 0.95;
+            animation: none !important;
+        }
     </style>
 </head>
 <body>
@@ -771,8 +819,10 @@
                         <span>🌐</span> External API / URL Call Logs
                         <span id="external-api-logs-badge" class="badge" style="background: rgba(255,255,255,0.28); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700;">0</span>
                     </button>
-                    <button class="btn btn-secondary" onclick="loadAdminLogs()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 12.5px;" title="Refresh Login Logs">
-                        <span>🔄</span> Refresh
+                    <button type="button" class="wl-refresh-btn" id="btn-admin-login-logs-refresh" onclick="loadAdminLogs()" title="Refresh Login Logs" aria-label="Refresh Login Logs" style="width: 34px; height: 34px; border-radius: 8px;">
+                        <svg id="admin-login-logs-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin: center center;">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -942,18 +992,26 @@
             </div>
 
             <!-- Toolbar / Filters / Action Controls -->
-            <div class="ext-logs-controls" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; flex-shrink: 0;">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; min-width: 280px;">
+            <div class="ext-logs-controls" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px;">
                     <!-- Search input -->
-                    <div style="position: relative; flex: 1; min-width: 200px; max-width: 380px;">
-                        <input type="text" id="ext-logs-search" placeholder="Search by URL, Python file, parameter..." 
+                    <div style="position: relative; flex: 1; min-width: 160px; max-width: 280px;">
+                        <input type="text" id="ext-logs-search" placeholder="Search URL, file, params..." 
                             oninput="filterExternalApiLogs()" 
-                            style="width: 100%; padding: 7px 12px 7px 32px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
-                        <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-secondary); pointer-events: none;">🔍</span>
+                            style="width: 100%; padding: 6px 10px 6px 30px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary); height: 34px;">
+                        <span style="position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-secondary); pointer-events: none;">🔍</span>
+                    </div>
+
+                    <!-- Target API Dropdown Filter -->
+                    <div style="position: relative; min-width: 190px; max-width: 260px; flex: 1;">
+                        <select id="ext-logs-target-filter" onchange="filterExternalApiLogs()" 
+                            style="width: 100%; padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary); cursor: pointer; height: 34px; outline: none;" title="Filter by Target API / Domain (NSE, Yahoo Finance, Screener, etc.)">
+                            <option value="ALL">🌐 All Target APIs</option>
+                        </select>
                     </div>
 
                     <!-- Method Filter Pills -->
-                    <div class="method-filter-group" style="display: flex; gap: 4px; background: var(--bg-subtle); padding: 3px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div class="method-filter-group" style="display: flex; gap: 3px; background: var(--bg-subtle); padding: 3px; border-radius: 8px; border: 1px solid var(--border-color); height: 34px; align-items: center;">
                         <button class="method-pill-btn active" id="btn-method-all" onclick="setExternalApiMethodFilter('ALL', this)">All</button>
                         <button class="method-pill-btn" id="btn-method-get" onclick="setExternalApiMethodFilter('GET', this)" style="color: #10b981;">GET</button>
                         <button class="method-pill-btn" id="btn-method-post" onclick="setExternalApiMethodFilter('POST', this)" style="color: #3b82f6;">POST</button>
@@ -962,13 +1020,15 @@
 
                 <!-- Right Action Buttons -->
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" onclick="loadExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px;" title="Refresh API Logs">
-                        <span id="ext-logs-refresh-icon">🔄</span> Refresh
+                    <button type="button" class="wl-refresh-btn" id="btn-ext-logs-refresh" onclick="loadExternalApiLogs()" title="Refresh External API Logs" aria-label="Refresh External API Logs" style="width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;">
+                        <svg id="ext-logs-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin: center center;">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
                     </button>
-                    <button class="btn btn-secondary" onclick="exportExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px;" title="Export all logs as JSON file">
+                    <button class="btn btn-secondary" onclick="exportExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px; height: 34px;" title="Export all logs as JSON file">
                         <span>⬇️</span> Export JSON
                     </button>
-                    <button class="btn btn-danger" onclick="confirmDeleteAllExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px; font-weight: 600;" title="Permanently delete all external API logs from app_data">
+                    <button class="btn btn-danger" onclick="confirmDeleteAllExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px; font-weight: 600; height: 34px;" title="Permanently delete all external API logs from app_data">
                         <span>🗑️</span> Delete All Logs
                     </button>
                 </div>
@@ -1180,6 +1240,8 @@
         }
 
         async function loadAdminLogs() {
+            const svg = document.getElementById('admin-login-logs-refresh-svg');
+            if (svg) svg.classList.add('spinning');
             try {
                 const res = await fetch('/api/admin/logs');
                 const logs = await res.json();
@@ -1236,6 +1298,9 @@
                 });
             } catch (e) {
                 console.error('Failed to load logs', e);
+            } finally {
+                const svg = document.getElementById('admin-login-logs-refresh-svg');
+                if (svg) svg.classList.remove('spinning');
             }
         }
 
@@ -1513,8 +1578,10 @@
         }
 
         async function loadExternalApiLogs() {
-            const refreshIcon = document.getElementById('ext-logs-refresh-icon');
-            if (refreshIcon) refreshIcon.style.animation = 'spin 0.8s linear infinite';
+            const btn = document.getElementById('btn-ext-logs-refresh');
+            const svg = document.getElementById('ext-logs-refresh-svg');
+            if (btn) btn.classList.add('refreshing');
+            if (svg) svg.classList.add('spinning');
 
             try {
                 const res = await fetch('/api/admin/external_api_logs?limit=500');
@@ -1544,6 +1611,7 @@
                 const statErrors = document.getElementById('ext-stat-errors');
                 if (statErrors) statErrors.innerText = stats.error_count || 0;
 
+                populateExternalApiTargetDropdown();
                 renderExternalApiLogsTable();
 
             } catch (err) {
@@ -1553,7 +1621,62 @@
                     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 25px; color: #ef4444;">⚠️ Error loading external logs. Please try again.</td></tr>';
                 }
             } finally {
-                if (refreshIcon) refreshIcon.style.animation = 'none';
+                if (btn) btn.classList.remove('refreshing');
+                if (svg) svg.classList.remove('spinning');
+            }
+        }
+
+        function populateExternalApiTargetDropdown() {
+            const select = document.getElementById('ext-logs-target-filter');
+            if (!select) return;
+            const currentVal = select.value || 'ALL';
+
+            const domainCounts = {};
+            (_allExternalApiLogs || []).forEach(l => {
+                let d = (l.domain || '').trim().toLowerCase();
+                if (d && d !== 'unknown') {
+                    domainCounts[d] = (domainCounts[d] || 0) + 1;
+                }
+            });
+
+            // Target API presets (e.g. Yahoo Finance, NSE, Screener, BSE)
+            const priorityDefaults = [
+                'query2.finance.yahoo.com',
+                'query1.finance.yahoo.com',
+                'www.nseindia.com',
+                'nsearchives.nseindia.com',
+                'www.screener.in',
+                'www.bseindia.com',
+                'api.bseindia.com',
+                'www.investorgain.com'
+            ];
+            priorityDefaults.forEach(pd => {
+                if (!(pd in domainCounts)) {
+                    domainCounts[pd] = 0;
+                }
+            });
+
+            // Sort: active domains with calls > 0 first, then alphabetically
+            const sortedDomains = Object.keys(domainCounts).sort((a, b) => {
+                const countA = domainCounts[a] || 0;
+                const countB = domainCounts[b] || 0;
+                if (countB !== countA) return countB - countA;
+                return a.localeCompare(b);
+            });
+
+            select.innerHTML = '<option value="ALL">🌐 All Target APIs (' + _allExternalApiLogs.length + ')</option>';
+            sortedDomains.forEach(domain => {
+                const count = domainCounts[domain] || 0;
+                const opt = document.createElement('option');
+                opt.value = domain;
+                opt.textContent = count > 0 ? `${domain} (${count})` : domain;
+                select.appendChild(opt);
+            });
+
+            if (currentVal && (currentVal === 'ALL' || sortedDomains.includes(currentVal))) {
+                select.value = currentVal;
+            } else {
+                select.value = 'ALL';
             }
         }
 
@@ -1580,7 +1703,17 @@
                 filtered = filtered.filter(l => (l.method || '').toUpperCase() === _currentExternalMethodFilter);
             }
 
-            // 2. Search filter
+            // 2. Target API / Domain dropdown filter
+            const targetFilter = (document.getElementById('ext-logs-target-filter')?.value || 'ALL').trim().toLowerCase();
+            if (targetFilter !== 'all') {
+                filtered = filtered.filter(l => {
+                    const d = (l.domain || '').toLowerCase();
+                    const u = (l.url || '').toLowerCase();
+                    return d === targetFilter || d.includes(targetFilter) || u.includes(targetFilter);
+                });
+            }
+
+            // 3. Search filter (also matches username)
             if (searchQuery) {
                 filtered = filtered.filter(l => {
                     const u = (l.url || '').toLowerCase();
@@ -1588,9 +1721,10 @@
                     const p = (l.caller_path || '').toLowerCase();
                     const fn = (l.caller_function || '').toLowerCase();
                     const d = (l.domain || '').toLowerCase();
+                    const usr = (l.username || '').toLowerCase();
                     const s = (l.status_text || '').toLowerCase();
                     const paramStr = JSON.stringify(l.parameters || {}).toLowerCase();
-                    return u.includes(searchQuery) || f.includes(searchQuery) || p.includes(searchQuery) || fn.includes(searchQuery) || d.includes(searchQuery) || s.includes(searchQuery) || paramStr.includes(searchQuery);
+                    return u.includes(searchQuery) || f.includes(searchQuery) || p.includes(searchQuery) || fn.includes(searchQuery) || d.includes(searchQuery) || usr.includes(searchQuery) || s.includes(searchQuery) || paramStr.includes(searchQuery);
                 });
             }
 
@@ -1707,10 +1841,14 @@
             let html = `
                 <div style="display: flex; flex-direction: column; gap: 14px;">
                     <!-- Top Meta Grid -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div>
                             <span style="font-size: 11px; color: var(--text-secondary); display: block;">Timestamp</span>
                             <strong style="font-size: 13px;">${log.datetime || log.timestamp}</strong>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-secondary); display: block;">Initiated By (User)</span>
+                            <strong style="font-size: 13px; color: #10b981;">👤 ${escapeHtml(log.username || 'system')}</strong>
                         </div>
                         <div>
                             <span style="font-size: 11px; color: var(--text-secondary); display: block;">Python Caller</span>
