@@ -2,6 +2,7 @@ import os
 import json
 import time
 import re
+from concurrent.futures import ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
 
@@ -121,6 +122,38 @@ def clean_num(s):
         return float(s)
     except:
         return None
+
+def _parse_stocks_table_rows(soup):
+    table = soup.find('table')
+    stocks = []
+    if table:
+        for tr in table.find_all('tr')[1:]:
+            tds = tr.find_all('td')
+            if tds:
+                a = tds[1].find('a')
+                name = a.get_text(strip=True) if a else tds[1].get_text(strip=True)
+                href = a.get('href', '') if a else ''
+                m = re.search(r'/company/([^/]+)/', href)
+                sym = m.group(1) if m else ''
+                cols = [td.get_text(strip=True) for td in tds]
+
+                stocks.append({
+                    'sno': int(clean_num(cols[0]) or len(stocks) + 1),
+                    'name': name,
+                    'symbol': sym,
+                    'href': href,
+                    'cmp': clean_num(cols[2]) if len(cols) > 2 else None,
+                    'pe': clean_num(cols[3]) if len(cols) > 3 else None,
+                    'mar_cap': clean_num(cols[4]) if len(cols) > 4 else None,
+                    'div_yield': clean_num(cols[5]) if len(cols) > 5 else None,
+                    'np_qtr': clean_num(cols[6]) if len(cols) > 6 else None,
+                    'qtr_profit_var': clean_num(cols[7]) if len(cols) > 7 else None,
+                    'sales_qtr': clean_num(cols[8]) if len(cols) > 8 else None,
+                    'qtr_sales_var': clean_num(cols[9]) if len(cols) > 9 else None,
+                    'roce': clean_num(cols[10]) if len(cols) > 10 else None
+                })
+    return stocks
+
 
 class IndustriesOverviewProvider:
     def __init__(self, data_dir="data"):
@@ -342,53 +375,71 @@ class IndustriesOverviewProvider:
         # Check cache (1 hour TTL)
         cached = self._stocks_cache.get(clean_path)
         if not force_refresh and cached and (now - cached.get('timestamp', 0) < 3600):
-            # Ensure cached record industry metadata has fresh taxonomy names
-            cached_data = cached['data']
-            if cached_data.get('industry') and target_ind:
-                cached_data['industry'] = target_ind
-            return cached_data
+            cached_data = cached.get('data', {})
+            expected_count = target_ind.get('company_count', 0) if target_ind else 0
+            cached_count = len(cached_data.get('stocks', []))
+            # If the cached data was truncated (e.g. only 25 items while industry has more), bypass cache and fetch full list
+            if not (expected_count > 25 and cached_count <= 25):
+                if cached_data.get('industry') and target_ind:
+                    cached_data['industry'] = target_ind
+                return cached_data
 
-        # Scrape Screener stocks table for this industry
+        # Scrape Screener stocks table for this industry (handling multi-page pagination)
         target_url = f"https://www.screener.in/market/{clean_path}/"
         r = requests.get(target_url, headers=HEADERS, timeout=12)
         if r.status_code != 200:
             raise Exception(f"Failed to fetch stocks for {clean_path}: HTTP {r.status_code}")
 
         soup = BeautifulSoup(r.text, 'html.parser')
-        table = soup.find('table')
-        stocks = []
+        stocks = _parse_stocks_table_rows(soup)
 
-        if table:
-            for tr in table.find_all('tr')[1:]:
-                tds = tr.find_all('td')
-                if tds:
-                    a = tds[1].find('a')
-                    name = a.get_text(strip=True) if a else tds[1].get_text(strip=True)
-                    href = a.get('href', '') if a else ''
-                    m = re.search(r'/company/([^/]+)/', href)
-                    sym = m.group(1) if m else ''
-                    cols = [td.get_text(strip=True) for td in tds]
+        # Detect total pages from page info or pagination links
+        total_pages = 1
+        page_info = soup.find('div', attrs={'data-page-info': True})
+        if page_info:
+            m = re.search(r'Showing page \d+ of (\d+)', page_info.get_text())
+            if m:
+                total_pages = int(m.group(1))
+        else:
+            pag = soup.find(class_='pagination')
+            if pag:
+                for a in pag.find_all('a'):
+                    href = a.get('href', '')
+                    if 'limit=' in href:
+                        continue
+                    m = re.search(r'page=(\d+)', href)
+                    if m:
+                        total_pages = max(total_pages, int(m.group(1)))
 
-                    stocks.append({
-                        'sno': int(clean_num(cols[0]) or len(stocks) + 1),
-                        'name': name,
-                        'symbol': sym,
-                        'href': href,
-                        'cmp': clean_num(cols[2]) if len(cols) > 2 else None,
-                        'pe': clean_num(cols[3]) if len(cols) > 3 else None,
-                        'mar_cap': clean_num(cols[4]) if len(cols) > 4 else None,
-                        'div_yield': clean_num(cols[5]) if len(cols) > 5 else None,
-                        'np_qtr': clean_num(cols[6]) if len(cols) > 6 else None,
-                        'qtr_profit_var': clean_num(cols[7]) if len(cols) > 7 else None,
-                        'sales_qtr': clean_num(cols[8]) if len(cols) > 8 else None,
-                        'qtr_sales_var': clean_num(cols[9]) if len(cols) > 9 else None,
-                        'roce': clean_num(cols[10]) if len(cols) > 10 else None
-                    })
+        # Fetch remaining pages concurrently if more than 1 page exists
+        if total_pages > 1:
+            def _fetch_page(p):
+                try:
+                    p_url = f"{target_url}?page={p}"
+                    pr = requests.get(p_url, headers=HEADERS, timeout=12)
+                    if pr.status_code == 200:
+                        psoup = BeautifulSoup(pr.text, 'html.parser')
+                        return p, _parse_stocks_table_rows(psoup)
+                except Exception as e:
+                    print(f"Failed to fetch page {p} of {clean_path}: {e}")
+                return p, []
+
+            workers = min(6, total_pages - 1)
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                page_results = list(executor.map(_fetch_page, range(2, total_pages + 1)))
+                page_results.sort(key=lambda x: x[0])
+                for _, p_stocks in page_results:
+                    stocks.extend(p_stocks)
+
+        # Normalize sequential S.No.
+        for idx, stk in enumerate(stocks):
+            stk['sno'] = idx + 1
 
         breadcrumbs = [
             {'name': 'Industries', 'path': ''}
         ]
         if target_ind:
+            target_ind['company_count'] = len(stocks)
             breadcrumbs.append({'name': target_ind['macro_name'], 'code': target_ind['macro_code'], 'type': 'macro'})
             breadcrumbs.append({'name': target_ind['sector_name'], 'code': target_ind['sector_code'], 'type': 'sector'})
             breadcrumbs.append({'name': target_ind['industry_group_name'], 'code': target_ind['group_code'], 'type': 'group'})

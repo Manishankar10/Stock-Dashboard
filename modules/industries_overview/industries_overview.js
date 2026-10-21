@@ -506,7 +506,7 @@
             const roceStr = stk.roce !== null ? `${stk.roce.toFixed(2)}%` : '-';
 
             const sym = stk.symbol || '';
-            const nseSym = sym ? (sym.endsWith('.NS') ? sym : `${sym}.NS`) : '';
+            const nseSym = sym ? (sym.endsWith('.NS') || sym.endsWith('.BO') ? sym : (/^\d+$/.test(sym) ? `${sym}.BO` : `${sym}.NS`)) : '';
 
             html += `
                 <tr class="stock-row">
