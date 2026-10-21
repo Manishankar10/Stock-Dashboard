@@ -29,3 +29,10 @@ USERS_FILE = os.path.join(USER_DATA_DIR, "users.json")
 USERS_EXAMPLE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "users.example.json")
 LOGS_FILE = os.path.join(USER_DATA_DIR, "login_logs.json")
 SYSTEM_SETTINGS_FILE = os.path.join(APP_DATA_DIR, "system_settings.json")
+
+DRAWINGS_DIR = os.path.join(APP_DATA_DIR, "drawings")
+if not os.path.exists(DRAWINGS_DIR):
+    try:
+        os.makedirs(DRAWINGS_DIR, exist_ok=True)
+    except Exception:
+        pass

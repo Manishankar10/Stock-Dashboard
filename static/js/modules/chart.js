@@ -188,32 +188,219 @@
         }
 
         // =========================================================
-        // DRAWINGS STORAGE & INDIVIDUAL MANAGEMENT
+        // DRAWINGS STORAGE & INDIVIDUAL MANAGEMENT (Synced to app_data/drawings/{user_name})
         // =========================================================
+        const _serverDrawingsCache = {};
+        let _drawingsSyncDebounceTimer = null;
+
         function getSavedPriceLines(sym) {
+            if (!sym) return [];
+            if (_serverDrawingsCache[sym] && Array.isArray(_serverDrawingsCache[sym].lines)) {
+                return _serverDrawingsCache[sym].lines;
+            }
             try {
                 const data = localStorage.getItem('capital_desk_chart_lines_' + sym);
-                return data ? JSON.parse(data) : [];
+                const lines = data ? JSON.parse(data) : [];
+                if (!_serverDrawingsCache[sym]) _serverDrawingsCache[sym] = {};
+                _serverDrawingsCache[sym].lines = lines;
+                return lines;
             } catch(e) { return []; }
         }
 
+        function getSavedChartShapes(sym) {
+            if (!sym) return [];
+            if (_serverDrawingsCache[sym] && Array.isArray(_serverDrawingsCache[sym].shapes)) {
+                return _serverDrawingsCache[sym].shapes;
+            }
+            try {
+                const data = localStorage.getItem('capital_desk_chart_shapes_' + sym);
+                const shapes = data ? JSON.parse(data) : [];
+                if (!_serverDrawingsCache[sym]) _serverDrawingsCache[sym] = {};
+                _serverDrawingsCache[sym].shapes = shapes;
+                return shapes;
+            } catch(e) { return []; }
+        }
+
+        function persistLinesForSymbol(sym, lines) {
+            if (!sym) return;
+            if (!_serverDrawingsCache[sym]) _serverDrawingsCache[sym] = {};
+            _serverDrawingsCache[sym].lines = lines;
+            try {
+                localStorage.setItem('capital_desk_chart_lines_' + sym, JSON.stringify(lines));
+            } catch(e){}
+            scheduleDrawingsSaveToServer(sym);
+        }
+
+        function persistShapesForSymbol(sym, shapes) {
+            if (!sym) return;
+            if (!_serverDrawingsCache[sym]) _serverDrawingsCache[sym] = {};
+            _serverDrawingsCache[sym].shapes = shapes;
+            try {
+                localStorage.setItem('capital_desk_chart_shapes_' + sym, JSON.stringify(shapes));
+            } catch(e){}
+            scheduleDrawingsSaveToServer(sym);
+        }
+
         function savePriceLineForSymbol(sym, lineData) {
+            if (!sym) return;
             try {
                 if (!lineData.id) {
                     lineData.id = 'pl_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
                 }
                 const existing = getSavedPriceLines(sym);
-                existing.push(lineData);
-                localStorage.setItem('capital_desk_chart_lines_' + sym, JSON.stringify(existing));
+                const existingIdx = existing.findIndex(l => l.id === lineData.id);
+                if (existingIdx !== -1) {
+                    existing[existingIdx] = lineData;
+                } else {
+                    existing.push(lineData);
+                }
+                persistLinesForSymbol(sym, existing);
                 renderActiveDrawingsList();
             } catch(e){}
         }
 
         function clearSavedPriceLines(sym) {
+            if (!sym) return;
             try {
+                if (_serverDrawingsCache[sym]) _serverDrawingsCache[sym].lines = [];
                 localStorage.removeItem('capital_desk_chart_lines_' + sym);
                 renderActiveDrawingsList();
+                scheduleDrawingsSaveToServer(sym);
             } catch(e){}
+        }
+
+        function saveChartShapeForSymbol(sym, shapeData) {
+            if (!sym) return;
+            try {
+                if (!shapeData.id) {
+                    shapeData.id = 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                }
+                const existing = getSavedChartShapes(sym);
+                const existingIdx = existing.findIndex(s => s.id === shapeData.id);
+                if (existingIdx !== -1) {
+                    existing[existingIdx] = shapeData;
+                } else {
+                    existing.push(shapeData);
+                }
+                persistShapesForSymbol(sym, existing);
+                renderActiveDrawingsList();
+            } catch(e){}
+        }
+
+        function clearSavedChartShapes(sym) {
+            if (!sym) return;
+            try {
+                if (_serverDrawingsCache[sym]) _serverDrawingsCache[sym].shapes = [];
+                localStorage.removeItem('capital_desk_chart_shapes_' + sym);
+                renderActiveDrawingsList();
+                scheduleDrawingsSaveToServer(sym);
+            } catch(e){}
+        }
+
+        function scheduleDrawingsSaveToServer(sym) {
+            if (!sym) return;
+            if (_drawingsSyncDebounceTimer) clearTimeout(_drawingsSyncDebounceTimer);
+            _drawingsSyncDebounceTimer = setTimeout(() => {
+                syncSymbolDrawingsToServer(sym);
+            }, 250);
+        }
+
+        async function syncSymbolDrawingsToServer(sym) {
+            if (!sym) return;
+            const lines = getSavedPriceLines(sym);
+            const shapes = getSavedChartShapes(sym);
+
+            try {
+                if (lines.length === 0 && shapes.length === 0) {
+                    await fetch('/api/drawings?symbol=' + encodeURIComponent(sym), {
+                        method: 'DELETE'
+                    });
+                } else {
+                    await fetch('/api/drawings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            symbol: sym,
+                            lines: lines,
+                            shapes: shapes
+                        })
+                    });
+                }
+            } catch (err) {
+                console.warn('Failed to save chart drawings to server:', err);
+            }
+        }
+
+        async function fetchSymbolDrawingsFromServer(sym) {
+            if (!sym) return;
+            try {
+                const res = await fetch('/api/drawings?symbol=' + encodeURIComponent(sym));
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success && (data.lines || data.shapes)) {
+                    const serverLines = data.lines || [];
+                    const serverShapes = data.shapes || [];
+
+                    if (!_serverDrawingsCache[sym]) _serverDrawingsCache[sym] = {};
+                    _serverDrawingsCache[sym].lines = serverLines;
+                    _serverDrawingsCache[sym].shapes = serverShapes;
+
+                    localStorage.setItem('capital_desk_chart_lines_' + sym, JSON.stringify(serverLines));
+                    localStorage.setItem('capital_desk_chart_shapes_' + sym, JSON.stringify(serverShapes));
+
+                    if (currentChartSymbol === sym) {
+                        restoreSavedPriceLines(sym);
+                        redrawCanvasOverlay();
+                        renderActiveDrawingsList();
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed to fetch symbol drawings from server:', err);
+            }
+        }
+
+        async function initServerDrawingsSync() {
+            try {
+                const res = await fetch('/api/drawings');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success && data.drawings) {
+                    const serverMap = data.drawings;
+                    for (const [sym, rec] of Object.entries(serverMap)) {
+                        if (!sym) continue;
+                        const sLines = rec.lines || [];
+                        const sShapes = rec.shapes || [];
+                        _serverDrawingsCache[sym] = { lines: sLines, shapes: sShapes };
+                        localStorage.setItem('capital_desk_chart_lines_' + sym, JSON.stringify(sLines));
+                        localStorage.setItem('capital_desk_chart_shapes_' + sym, JSON.stringify(sShapes));
+                    }
+                }
+
+                // Initial migration: check if client has local drawings that server does not have yet
+                const localToMigrate = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('capital_desk_chart_lines_')) {
+                        const sym = k.replace('capital_desk_chart_lines_', '');
+                        if (sym && (!_serverDrawingsCache[sym] || (_serverDrawingsCache[sym].lines || []).length === 0)) {
+                            const lines = JSON.parse(localStorage.getItem(k) || '[]');
+                            const shapes = JSON.parse(localStorage.getItem('capital_desk_chart_shapes_' + sym) || '[]');
+                            if (lines.length > 0 || shapes.length > 0) {
+                                localToMigrate[sym] = { lines, shapes };
+                            }
+                        }
+                    }
+                }
+                if (Object.keys(localToMigrate).length > 0) {
+                    await fetch('/api/drawings/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ drawings: localToMigrate })
+                    });
+                }
+            } catch (err) {
+                console.warn('Error during initial server drawings sync:', err);
+            }
         }
 
         let isAllDrawingsHidden = false;
@@ -223,7 +410,7 @@
             const item = lines.find(x => x.id === id);
             if (item) {
                 item.hidden = !item.hidden;
-                localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                persistLinesForSymbol(currentChartSymbol, lines);
                 restoreSavedPriceLines(currentChartSymbol);
                 redrawCanvasOverlay();
                 renderActiveDrawingsList();
@@ -235,7 +422,7 @@
             const shape = shapes.find(s => s.id === id);
             if (shape) {
                 shape.hidden = !shape.hidden;
-                localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                persistShapesForSymbol(currentChartSymbol, shapes);
                 redrawCanvasOverlay();
                 renderActiveDrawingsList();
             }
@@ -302,7 +489,7 @@
             }
             const lines = getSavedPriceLines(currentChartSymbol);
             const updated = lines.filter(item => item.id !== id);
-            localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(updated));
+            persistLinesForSymbol(currentChartSymbol, updated);
             redrawCanvasOverlay();
             renderActiveDrawingsList();
         }
@@ -312,42 +499,18 @@
             const item = lines.find(x => x.id === id);
             if (item) {
                 item.color = newColor;
-                localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                persistLinesForSymbol(currentChartSymbol, lines);
                 restoreSavedPriceLines(currentChartSymbol);
                 redrawCanvasOverlay();
             }
         }
 
-        function getSavedChartShapes(sym) {
-            try {
-                const data = localStorage.getItem('capital_desk_chart_shapes_' + sym);
-                return data ? JSON.parse(data) : [];
-            } catch(e) { return []; }
-        }
-
-        function saveChartShapeForSymbol(sym, shapeData) {
-            try {
-                if (!shapeData.id) {
-                    shapeData.id = 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-                }
-                const existing = getSavedChartShapes(sym);
-                existing.push(shapeData);
-                localStorage.setItem('capital_desk_chart_shapes_' + sym, JSON.stringify(existing));
-                renderActiveDrawingsList();
-            } catch(e){}
-        }
-
-        function clearSavedChartShapes(sym) {
-            try {
-                localStorage.removeItem('capital_desk_chart_shapes_' + sym);
-                renderActiveDrawingsList();
-            } catch(e){}
-        }
+// getSavedChartShapes, saveChartShapeForSymbol, clearSavedChartShapes defined above
 
         function deleteShapeById(id) {
             const shapes = getSavedChartShapes(currentChartSymbol);
             const updated = shapes.filter(s => s.id !== id);
-            localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(updated));
+            persistShapesForSymbol(currentChartSymbol, updated);
             redrawCanvasOverlay();
             renderActiveDrawingsList();
         }
@@ -360,7 +523,7 @@
                 if (shape.type === 'rectangle') {
                     shape.fillColor = hexToRgba(newColor, 0.18);
                 }
-                localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                persistShapesForSymbol(currentChartSymbol, shapes);
                 redrawCanvasOverlay();
                 renderActiveDrawingsList();
             }
@@ -692,7 +855,7 @@
                     line.color = chosenColor;
                     line.lineWidth = chosenWidth;
                     line.lineStyle = chosenStyle;
-                    localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                    persistLinesForSymbol(currentChartSymbol, lines);
                     restoreSavedPriceLines(currentChartSymbol);
                     redrawCanvasOverlay();
                     renderActiveDrawingsList();
@@ -727,7 +890,7 @@
                         shape.lineWidth = chosenWidth;
                         shape.lineStyle = chosenStyle;
                     }
-                    localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                    persistShapesForSymbol(currentChartSymbol, shapes);
                     redrawCanvasOverlay();
                     renderActiveDrawingsList();
                     showToast('Drawing shape updated successfully', 'success');
@@ -2168,7 +2331,7 @@
                                     }
                                 }
                             }
-                            localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                            persistShapesForSymbol(currentChartSymbol, shapes);
                             redrawCanvasOverlay();
                         }
                     }
@@ -2202,7 +2365,7 @@
                             const line = lines.find(x => x.id === activeDrawingDrag.target.id);
                             if (line) {
                                 line.price = newPrice;
-                                localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                                persistLinesForSymbol(currentChartSymbol, lines);
                             }
                             const pl = activePriceLines.find(p => p.id === activeDrawingDrag.target.id);
                             if (pl && pl.data) {
@@ -3093,7 +3256,7 @@
                 const line = lines.find(l => l.id === objId);
                 if (line) {
                     line.lineWidth = width;
-                    localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                    persistLinesForSymbol(currentChartSymbol, lines);
                     const pl = activePriceLines.find(p => p.id === objId);
                     if (pl) {
                         pl.data.lineWidth = width;
@@ -3107,7 +3270,7 @@
                 const shape = shapes.find(s => s.id === objId);
                 if (shape) {
                     shape.lineWidth = width;
-                    localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                    persistShapesForSymbol(currentChartSymbol, shapes);
                     redrawCanvasOverlay();
                 }
             }
@@ -3149,7 +3312,7 @@
                 const line = lines.find(l => l.id === objId);
                 if (line) {
                     line.lineStyle = style;
-                    localStorage.setItem('capital_desk_chart_lines_' + currentChartSymbol, JSON.stringify(lines));
+                    persistLinesForSymbol(currentChartSymbol, lines);
                     const pl = activePriceLines.find(p => p.id === objId);
                     if (pl) {
                         pl.data.lineStyle = style;
@@ -3166,7 +3329,7 @@
                 const shape = shapes.find(s => s.id === objId);
                 if (shape) {
                     shape.lineStyle = style;
-                    localStorage.setItem('capital_desk_chart_shapes_' + currentChartSymbol, JSON.stringify(shapes));
+                    persistShapesForSymbol(currentChartSymbol, shapes);
                     redrawCanvasOverlay();
                 }
             }
@@ -5092,6 +5255,7 @@
 
             // Restore active drawing lines saved for this stock
             restoreSavedPriceLines(currentChartSymbol);
+            fetchSymbolDrawingsFromServer(currentChartSymbol);
 
             setupCanvasOverlay();
             if (mainChart) {
@@ -6029,6 +6193,7 @@
         window.setDrawingTool = activateDrawingTool;
         window.deleteSelectedDrawing = deleteCurrentEditDrawing;
         window.clearAllChartDrawings = clearDrawings;
+        initServerDrawingsSync();
         window.resetChartZoom = () => zoomChart(1);
         window.renderFavoriteToolsShortcuts = renderFavoriteToolsShortcuts;
         window.toggleFavoriteTool = toggleFavoriteTool;

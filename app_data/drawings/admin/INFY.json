@@ -1,0 +1,30 @@
+{
+  "symbol": "INFY",
+  "lines": [
+    {
+      "id": "pl_infy_1",
+      "price": 1825.5,
+      "color": "#10b981",
+      "lineWidth": 2,
+      "label": "Support"
+    },
+    {
+      "id": "test_selenium_line",
+      "price": 1860.25,
+      "color": "#c084fc",
+      "lineWidth": 2,
+      "label": "Resistance Level"
+    }
+  ],
+  "shapes": [
+    {
+      "id": "sh_infy_1",
+      "type": "trendline",
+      "price1": 1780,
+      "price2": 1890,
+      "color": "#3b82f6",
+      "lineWidth": 2
+    }
+  ],
+  "updated_at": "2026-10-21T12:14:19.307995"
+}
