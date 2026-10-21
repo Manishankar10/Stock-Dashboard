@@ -50,7 +50,16 @@
 
             if (allSymbols.size === 0) return;
 
-            const res = await fetch('/api/stock_data', {
+            const isWatchlist = (typeof currentTab !== 'undefined' && currentTab === 'watchlists') ||
+                                (window.location.pathname === '/' || window.location.pathname === '/watchlists');
+            let spinWl = false;
+            if (isWatchlist && typeof window.startWatchlistSpin === 'function') {
+                window.startWatchlistSpin();
+                spinWl = true;
+            }
+
+            try {
+                const res = await fetch('/api/stock_data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ symbols: Array.from(allSymbols), force_refresh: force })
@@ -332,6 +341,11 @@
                 const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 badge.innerHTML = `✅ Updated: ${timeStr}`;
             }
+            } finally {
+                if (spinWl && typeof window.stopWatchlistSpin === 'function') {
+                    window.stopWatchlistSpin();
+                }
+            }
         }
 
         async function manualRefreshPrices() {
@@ -343,6 +357,14 @@
             if (icon) icon.classList.add('spinning');
             if (badge) badge.innerHTML = '⏳ Fetching live prices...';
 
+            const isWatchlist = (typeof currentTab !== 'undefined' && currentTab === 'watchlists') ||
+                                (window.location.pathname === '/' || window.location.pathname === '/watchlists');
+            let spinWl = false;
+            if (isWatchlist && typeof window.startWatchlistSpin === 'function') {
+                window.startWatchlistSpin();
+                spinWl = true;
+            }
+
             try {
                 if ((window.currentTab === 'transactions' || window.location.pathname === '/transactions') && typeof window.refreshTransactionsData === 'function') {
                     await Promise.allSettled([
@@ -350,11 +372,14 @@
                         window.refreshTransactionsData(true)
                     ]);
                 } else {
-                    await refreshPrices();
+                    await refreshPrices({ force_refresh: true });
                 }
             } catch (err) {
                 if (badge) badge.innerHTML = '⚠️ Refresh failed';
             } finally {
+                if (spinWl && typeof window.stopWatchlistSpin === 'function') {
+                    window.stopWatchlistSpin();
+                }
                 if (icon) icon.classList.remove('spinning');
                 if (btn) btn.disabled = false;
             }

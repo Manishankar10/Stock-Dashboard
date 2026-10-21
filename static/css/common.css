@@ -763,10 +763,12 @@
         }
 
         .wl-refresh-btn svg,
+        .wl-mobile-refresh-btn svg,
         .pf-refresh-btn svg {
             width: 13px;
             height: 13px;
             transition: transform 0.2s ease;
+            transform-origin: center center !important;
         }
 
         .wl-refresh-btn:hover,
@@ -784,9 +786,20 @@
 
         .wl-refresh-btn.refreshing svg,
         .wl-refresh-btn.spinning svg,
+        .wl-mobile-refresh-btn.refreshing svg,
+        .wl-mobile-refresh-btn.spinning svg,
         .pf-refresh-btn.refreshing svg,
         .pf-refresh-btn.spinning svg {
             animation: pf-spin 0.75s linear infinite !important;
+            transform-origin: center center !important;
+        }
+
+        .wl-refresh-btn.refreshing,
+        .wl-refresh-btn.spinning,
+        .wl-mobile-refresh-btn.refreshing,
+        .wl-mobile-refresh-btn.spinning {
+            pointer-events: none;
+            opacity: 0.9;
         }
 
         /* Watchlist Row Hover Tooltip (Web Only) */

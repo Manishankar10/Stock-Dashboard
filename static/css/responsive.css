@@ -301,6 +301,7 @@
     .wl-mobile-refresh-btn.refreshing svg,
     .wl-mobile-refresh-btn.spinning svg {
         animation: pf-spin 0.75s linear infinite !important;
+        transform-origin: center center !important;
     }
 
     /* Menu Icon Button at Right End */

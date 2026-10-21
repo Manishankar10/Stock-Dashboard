@@ -19,7 +19,64 @@
             }
         } catch(e) {}
 
+
+        // =========================================================
+        // WATCHLIST REFRESH BUTTON SPIN CONTROLLER
+        // Spins refresh button during any watchlist API call until finished
+        // =========================================================
+        window._wlActiveApiCount = window._wlActiveApiCount || 0;
+        window._isWlRefreshing = false;
+
+        function startWatchlistSpin() {
+            window._wlActiveApiCount = (window._wlActiveApiCount || 0) + 1;
+            window._isWlRefreshing = true;
+            updateWatchlistRefreshButtonsState(true);
+        }
+
+        function stopWatchlistSpin() {
+            window._wlActiveApiCount = Math.max(0, (window._wlActiveApiCount || 1) - 1);
+            if (window._wlActiveApiCount === 0) {
+                window._isWlRefreshing = false;
+                updateWatchlistRefreshButtonsState(false);
+            }
+        }
+
+        function updateWatchlistRefreshButtonsState(isSpinning) {
+            const btns = document.querySelectorAll('.wl-refresh-btn, .wl-mobile-refresh-btn');
+            btns.forEach(b => {
+                if (isSpinning) {
+                    b.classList.add('refreshing', 'spinning');
+                    b.setAttribute('aria-busy', 'true');
+                    b.title = 'Updating watchlist quotes...';
+                } else {
+                    b.classList.remove('refreshing', 'spinning');
+                    b.removeAttribute('aria-busy');
+                    b.title = 'Refresh Watchlist Quotes';
+                }
+            });
+
+            // Also synchronize sidebar refresh icon if on watchlist tab
+            if (typeof currentTab !== 'undefined' && currentTab === 'watchlists') {
+                const sidebarIcon = document.getElementById('refresh-icon');
+                if (sidebarIcon) {
+                    if (isSpinning) sidebarIcon.classList.add('spinning');
+                    else sidebarIcon.classList.remove('spinning');
+                }
+            }
+
+            const wlTable = document.querySelector('#watchlist-view-mount table, #watchlist-table-mount table, .watchlist-container, #tab-watchlists table');
+            if (wlTable) {
+                wlTable.style.opacity = isSpinning ? '0.7' : '1';
+                wlTable.style.transition = 'opacity 0.2s ease';
+            }
+        }
+
+        window.startWatchlistSpin = startWatchlistSpin;
+        window.stopWatchlistSpin = stopWatchlistSpin;
+        window.updateWatchlistRefreshButtonsState = updateWatchlistRefreshButtonsState;
+
         async function fetchWatchlists() {
+            startWatchlistSpin();
             try {
                 const res = await fetch('/api/watchlists');
                 if (!res.ok) {
@@ -49,7 +106,11 @@
                 if (typeof refreshPrices === 'function') {
                     refreshPrices().then(() => {
                         renderWatchlists();
+                    }).finally(() => {
+                        stopWatchlistSpin();
                     });
+                } else {
+                    stopWatchlistSpin();
                 }
             }
         }
@@ -165,24 +226,31 @@
             const name = input.value.trim();
             if (!name) return;
             
-            const res = await fetch('/api/watchlists', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            const data = await res.json();
-            if (data.success) {
-                input.value = '';
-                watchlistsData = data.watchlists;
-                activeWatchlistName = name;
-                renderWatchlists();
-                refreshPrices();
-            } else {
-                if (typeof showToast === 'function') {
-                    showToast(data.error || 'Failed to create watchlist', 'error');
+            startWatchlistSpin();
+            try {
+                const res = await fetch('/api/watchlists', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    input.value = '';
+                    watchlistsData = data.watchlists;
+                    activeWatchlistName = name;
+                    renderWatchlists();
+                    if (typeof refreshPrices === 'function') await refreshPrices();
                 } else {
-                    alert(data.error || 'Failed to create watchlist');
+                    if (typeof showToast === 'function') {
+                        showToast(data.error || 'Failed to create watchlist', 'error');
+                    } else {
+                        alert(data.error || 'Failed to create watchlist');
+                    }
                 }
+            } catch (err) {
+                console.error('Error creating watchlist:', err);
+            } finally {
+                stopWatchlistSpin();
             }
         }
 
@@ -215,6 +283,7 @@
 
             if (!confirmed) return;
 
+            startWatchlistSpin();
             try {
                 const res = await fetch(`/api/watchlists/${encodeURIComponent(nameToDelete)}`, { method: 'DELETE' });
                 const data = await res.json();
@@ -229,13 +298,15 @@
                         activeWatchlistName = names.length > 0 ? names[0] : '';
                     }
                     renderWatchlists();
-                    refreshPrices();
+                    if (typeof refreshPrices === 'function') await refreshPrices();
                 } else {
                     showToast(data.error || 'Failed to delete watchlist', 'error');
                 }
             } catch (err) {
                 console.error('Delete watchlist error:', err);
                 showToast('Error deleting watchlist. Please check network connection.', 'error');
+            } finally {
+                stopWatchlistSpin();
             }
         }
         window.deleteActiveWatchlist = deleteActiveWatchlist;
@@ -247,20 +318,28 @@
             const symbol = symbolInputValue || (input ? input.value.trim() : "");
             if (!symbol) return;
             
-            const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol })
-            });
-            const data = await res.json();
-            if (data.success) {
-                if (input) input.value = '';
-                showToast(`Added ${cleanDisplaySymbol(symbol)} to ${targetName}`, 'success');
-                watchlistsData = data.watchlists;
-                renderWatchlists();
-                refreshPrices();
-            } else {
-                showToast(data.error || 'Failed to add stock', 'error');
+            startWatchlistSpin();
+            try {
+                const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (input) input.value = '';
+                    showToast(`Added ${cleanDisplaySymbol(symbol)} to ${targetName}`, 'success');
+                    watchlistsData = data.watchlists;
+                    renderWatchlists();
+                    if (typeof refreshPrices === 'function') await refreshPrices();
+                } else {
+                    showToast(data.error || 'Failed to add stock', 'error');
+                }
+            } catch (err) {
+                console.error('Error adding stock:', err);
+                showToast('Failed to add stock.', 'error');
+            } finally {
+                stopWatchlistSpin();
             }
         }
         window.addWatchlistStock = addWatchlistStock;
@@ -291,6 +370,7 @@
 
             if (!confirmed) return;
 
+            startWatchlistSpin();
             try {
                 const res = await fetch(`/api/watchlists/${encodeURIComponent(targetName)}/stocks/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
                 const data = await res.json();
@@ -298,13 +378,15 @@
                     showToast(`Removed ${cleanDisplaySymbol(symbol)} from ${targetName}`, 'info');
                     watchlistsData = data.watchlists;
                     renderWatchlists();
-                    refreshPrices();
+                    if (typeof refreshPrices === 'function') await refreshPrices();
                 } else {
                     showToast(data.error || 'Failed to remove stock', 'error');
                 }
             } catch (err) {
                 console.error('Remove stock error:', err);
                 showToast('Failed to remove stock. Please check network connection.', 'error');
+            } finally {
+                stopWatchlistSpin();
             }
         }
         window.removeWatchlistStock = removeWatchlistStock;
@@ -364,18 +446,7 @@
 
         async function triggerWatchlistRefresh(btnEl) {
             if (window._isWlRefreshing) return;
-            window._isWlRefreshing = true;
-
-            const btns = document.querySelectorAll('.wl-refresh-btn, .wl-mobile-refresh-btn');
-            btns.forEach(b => b.classList.add('refreshing'));
-            if (btnEl) btnEl.classList.add('refreshing');
-
-            const wlTable = document.querySelector('#watchlist-view-mount table, #watchlist-table-mount table, .watchlist-container, #tab-watchlists table');
-            if (wlTable) {
-                wlTable.style.opacity = '0.65';
-                wlTable.style.transition = 'opacity 0.2s ease';
-            }
-
+            startWatchlistSpin();
             try {
                 if (typeof refreshPrices === 'function') {
                     await refreshPrices({ force_refresh: true });
@@ -383,14 +454,7 @@
             } catch (err) {
                 console.warn('Watchlist refresh error:', err);
             } finally {
-                setTimeout(() => {
-                    btns.forEach(b => b.classList.remove('refreshing'));
-                    if (btnEl) btnEl.classList.remove('refreshing');
-                    if (wlTable) {
-                        wlTable.style.opacity = '1';
-                    }
-                    window._isWlRefreshing = false;
-                }, 400);
+                stopWatchlistSpin();
             }
         }
         window.triggerWatchlistRefresh = triggerWatchlistRefresh;
@@ -598,6 +662,10 @@
             const mobRefreshBtn = document.createElement('button');
             mobRefreshBtn.type = 'button';
             mobRefreshBtn.className = 'wl-refresh-btn wl-mobile-refresh-btn';
+            if (window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0)) {
+                mobRefreshBtn.classList.add('refreshing', 'spinning');
+                mobRefreshBtn.setAttribute('aria-busy', 'true');
+            }
             mobRefreshBtn.title = 'Refresh Watchlist Quotes';
             mobRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
             mobRefreshBtn.innerHTML = `
@@ -650,6 +718,10 @@
             const wlRefreshBtn = document.createElement('button');
             wlRefreshBtn.type = 'button';
             wlRefreshBtn.className = 'wl-refresh-btn';
+            if (window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0)) {
+                wlRefreshBtn.classList.add('refreshing', 'spinning');
+                wlRefreshBtn.setAttribute('aria-busy', 'true');
+            }
             wlRefreshBtn.title = 'Refresh Watchlist Quotes';
             wlRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
             wlRefreshBtn.innerHTML = `
