@@ -95,13 +95,11 @@ def shareholding_page():
 
 
 @shareholding_bp.get("/shareholding-patterns.css")
-@_guard
 def shareholding_stylesheet():
     return send_from_directory(_MODULE_DIR, "shareholding.css", mimetype="text/css")
 
 
 @shareholding_bp.get("/shareholding-patterns.js")
-@_guard
 def shareholding_javascript():
     return send_from_directory(_MODULE_DIR, "shareholding.js", mimetype="application/javascript")
 

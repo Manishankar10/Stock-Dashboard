@@ -346,6 +346,9 @@ class ShareholdingProvider:
             sme_res = session.get(NSE_MASTER_SME, timeout=15)
             raw_sme = sme_res.json() if sme_res.status_code == 200 else []
 
+            if eq_res.status_code != 200 and sme_res.status_code != 200:
+                raise Exception(f"NSE corporate shareholdings endpoint returned HTTP {eq_res.status_code}/{sme_res.status_code}. Possible WAF restriction.")
+
             # Tag boards
             tagged_raw: List[Dict[str, Any]] = []
             for r in raw_eq:
@@ -387,12 +390,65 @@ class ShareholdingProvider:
                     consecutive_existing = 0
                     new_raw_items.append(item)
 
+            def fetch_single_xbrl(u: str) -> Tuple[str, Dict[str, float]]:
+                try:
+                    r = session.get(u, timeout=7)
+                    if r.status_code == 200:
+                        return u, parse_xbrl_content(r.content)
+                except Exception:
+                    pass
+                return u, {}
+
+            xbrl_cache: Dict[str, Dict[str, float]] = {}
+
+            # Self-healing: also identify existing cached records with missing/pending XBRL data
+            pending_cached = [
+                r for r in self._cache_records
+                if r.get("xbrl") and (r.get("fii_pct") is None or r.get("xbrl_status") == "pending" or (r.get("fii_pct") == 0.0 and r.get("dii_pct") == 0.0 and (r.get("change_fii_pct") or 0) < -2.0))
+            ]
+
             if not new_raw_items:
+                # If no new records, check if any pending cached records can be healed
+                if pending_cached:
+                    logger.info(f"Checking {len(pending_cached)} pending XBRL records for newly replicated disclosures...")
+                    heal_urls = {r.get("xbrl") for r in pending_cached[:30]}
+                    with ThreadPoolExecutor(max_workers=8) as ex:
+                        for u, parsed_dict in ex.map(fetch_single_xbrl, heal_urls):
+                            xbrl_cache[u] = parsed_dict
+                    healed_any = False
+                    for r in pending_cached:
+                        x_url = r.get("xbrl")
+                        if x_url and x_url in xbrl_cache and xbrl_cache[x_url]:
+                            p = xbrl_cache[x_url]
+                            if "fii" in p or "dii" in p:
+                                fii = p.get("fii", 0.0)
+                                dii = p.get("dii", 0.0)
+                                prom = p.get("promoter", r.get("promoter_pct", 0.0))
+                                pub = p.get("public", round(max(0.0, 100.0 - prom - dii - fii), 2))
+                                r["promoter_pct"] = prom
+                                r["fii_pct"] = fii
+                                r["dii_pct"] = dii
+                                r["public_pct"] = pub
+                                r["xbrl_status"] = "ok"
+                                if r.get("prev_fii_pct") is not None:
+                                    r["change_fii_pct"] = round(fii - r["prev_fii_pct"], 2)
+                                if r.get("prev_dii_pct") is not None:
+                                    r["change_dii_pct"] = round(dii - r["prev_dii_pct"], 2)
+                                if r.get("prev_promoter_pct") is not None:
+                                    r["change_promoter_pct"] = round(prom - r["prev_promoter_pct"], 2)
+                                if r.get("prev_public_pct") is not None:
+                                    r["change_public_pct"] = round(pub - r["prev_public_pct"], 2)
+                                healed_any = True
+                    if healed_any:
+                        with self._lock:
+                            self._save_to_disk()
+
                 logger.info("No new shareholding records found. Existing records are completely up-to-date.")
                 with self._lock:
                     self._last_synced = time.time()
                     self._last_synced_display = datetime.fromtimestamp(self._last_synced).strftime("%d %b %Y, %I:%M %p")
                     self._save_to_disk()
+                    self._is_refreshing = False
                 return {
                     "status": "success",
                     "message": "All latest shareholding patterns are already up-to-date.",
@@ -446,49 +502,86 @@ class ShareholdingProvider:
                 if sym in q1_map and q1_map[sym].get("xbrl"):
                     urls_to_fetch.add(q1_map[sym].get("xbrl"))
 
+            # Also queue any pending cached items for re-fetch
+            for r in pending_cached[:30]:
+                urls_to_fetch.add(r.get("xbrl"))
+
             logger.info(f"Parsing {len(urls_to_fetch)} XBRL documents for FII, DII, Promoter, and Public...")
-            xbrl_cache: Dict[str, Dict[str, float]] = {}
 
-            def fetch_single_xbrl(u: str) -> Tuple[str, Dict[str, float]]:
-                try:
-                    r = session.get(u, timeout=7)
-                    if r.status_code == 200:
-                        return u, parse_xbrl_content(r.content)
-                except Exception:
-                    pass
-                return u, {}
-
-            with ThreadPoolExecutor(max_workers=30) as ex:
+            with ThreadPoolExecutor(max_workers=8) as ex:
                 for u, parsed_dict in ex.map(fetch_single_xbrl, urls_to_fetch):
                     xbrl_cache[u] = parsed_dict
+
+            # Heal pending cached records
+            for r in pending_cached:
+                x_url = r.get("xbrl")
+                if x_url and x_url in xbrl_cache and xbrl_cache[x_url]:
+                    p = xbrl_cache[x_url]
+                    if "fii" in p or "dii" in p:
+                        fii = p.get("fii", 0.0)
+                        dii = p.get("dii", 0.0)
+                        prom = p.get("promoter", r.get("promoter_pct", 0.0))
+                        pub = p.get("public", round(max(0.0, 100.0 - prom - dii - fii), 2))
+                        r["promoter_pct"] = prom
+                        r["fii_pct"] = fii
+                        r["dii_pct"] = dii
+                        r["public_pct"] = pub
+                        r["xbrl_status"] = "ok"
+                        if r.get("prev_fii_pct") is not None:
+                            r["change_fii_pct"] = round(fii - r["prev_fii_pct"], 2)
+                        if r.get("prev_dii_pct") is not None:
+                            r["change_dii_pct"] = round(dii - r["prev_dii_pct"], 2)
+                        if r.get("prev_promoter_pct") is not None:
+                            r["change_promoter_pct"] = round(prom - r["prev_promoter_pct"], 2)
+                        if r.get("prev_public_pct") is not None:
+                            r["change_public_pct"] = round(pub - r["prev_public_pct"], 2)
 
             # 4. Enrich new records with FII, DII, and QoQ change metrics
             enriched_records: List[Dict[str, Any]] = []
             for item in new_raw_items:
                 sym = clean_symbol(item.get("symbol"))
-                q2_xbrl_data = xbrl_cache.get(item.get("xbrl"), {})
+                q2_xbrl_url = item.get("xbrl")
+                q2_xbrl_data = xbrl_cache.get(q2_xbrl_url, {}) if q2_xbrl_url else {}
 
                 q1_item = q1_map.get(sym, {})
-                q1_xbrl_data = xbrl_cache.get(q1_item.get("xbrl"), {})
+                q1_xbrl_url = q1_item.get("xbrl")
+                q1_xbrl_data = xbrl_cache.get(q1_xbrl_url, {}) if q1_xbrl_url else {}
 
                 # Current quarter values
                 promoter = q2_xbrl_data.get("promoter", float(item.get("pr_and_prgrp") or 0))
-                dii = q2_xbrl_data.get("dii", 0.0)
-                fii = q2_xbrl_data.get("fii", 0.0)
-                pub = q2_xbrl_data.get("public", round(max(0.0, 100.0 - promoter - dii - fii), 2))
+
+                has_q2_inst = bool(q2_xbrl_data and ("fii" in q2_xbrl_data or "dii" in q2_xbrl_data))
+                if has_q2_inst:
+                    dii = q2_xbrl_data.get("dii", 0.0)
+                    fii = q2_xbrl_data.get("fii", 0.0)
+                    pub = q2_xbrl_data.get("public", round(max(0.0, 100.0 - promoter - dii - fii), 2))
+                    xbrl_status = "ok"
+                else:
+                    # XBRL document not yet replicated onto public archive
+                    dii = None
+                    fii = None
+                    pub = float(item.get("public_val") or 0) if item.get("public_val") is not None else None
+                    xbrl_status = "pending" if q2_xbrl_url else "none"
 
                 # Prev quarter values
                 has_prev = bool(q1_item or q1_xbrl_data)
                 prev_promoter = q1_xbrl_data.get("promoter", float(q1_item.get("pr_and_prgrp") or 0)) if has_prev else None
-                prev_dii = q1_xbrl_data.get("dii", 0.0) if has_prev else None
-                prev_fii = q1_xbrl_data.get("fii", 0.0) if has_prev else None
-                prev_pub = q1_xbrl_data.get("public", round(max(0.0, 100.0 - (prev_promoter or 0) - (prev_dii or 0) - (prev_fii or 0)), 2)) if has_prev else None
 
-                # Calculate QoQ changes
-                chg_promoter = round(promoter - prev_promoter, 2) if prev_promoter is not None else None
-                chg_fii = round(fii - prev_fii, 2) if prev_fii is not None else None
-                chg_dii = round(dii - prev_dii, 2) if prev_dii is not None else None
-                chg_pub = round(pub - prev_pub, 2) if prev_pub is not None else None
+                has_q1_inst = bool(q1_xbrl_data and ("fii" in q1_xbrl_data or "dii" in q1_xbrl_data))
+                if has_q1_inst:
+                    prev_dii = q1_xbrl_data.get("dii", 0.0)
+                    prev_fii = q1_xbrl_data.get("fii", 0.0)
+                    prev_pub = q1_xbrl_data.get("public", round(max(0.0, 100.0 - (prev_promoter or 0) - prev_dii - prev_fii), 2))
+                else:
+                    prev_dii = None
+                    prev_fii = None
+                    prev_pub = float(q1_item.get("public_val") or 0) if (has_prev and q1_item.get("public_val") is not None) else None
+
+                # Calculate QoQ changes only when both current and prev values are present
+                chg_promoter = round(promoter - prev_promoter, 2) if (prev_promoter is not None and promoter is not None) else None
+                chg_fii = round(fii - prev_fii, 2) if (fii is not None and prev_fii is not None) else None
+                chg_dii = round(dii - prev_dii, 2) if (dii is not None and prev_dii is not None) else None
+                chg_pub = round(pub - prev_pub, 2) if (pub is not None and prev_pub is not None) else None
 
                 rec = {
                     "recordId": str(item.get("recordId") or ""),
@@ -512,6 +605,7 @@ class ShareholdingProvider:
                     "change_fii_pct": chg_fii,
                     "change_dii_pct": chg_dii,
                     "change_public_pct": chg_pub,
+                    "xbrl_status": xbrl_status,
                     "remarksWeb": item.get("remarksWeb") or "N",
                     "xbrl": item.get("xbrl") or "",
                     "xbrlFileSize": item.get("xbrlFileSize") or "",
@@ -519,11 +613,13 @@ class ShareholdingProvider:
                 enriched_records.append(rec)
 
             with self._lock:
-                # Merge new enriched records: replace matching (symbol, date) with newer filing
+                self._last_synced = time.time()
+                self._last_synced_display = datetime.fromtimestamp(self._last_synced).strftime("%d %b %Y, %I:%M %p")
                 new_keys = {(r.get("symbol"), r.get("date")) for r in enriched_records}
                 retained_old = [r for r in self._cache_records if (r.get("symbol"), r.get("date")) not in new_keys]
                 self._cache_records = enriched_records + retained_old
                 self._save_to_disk()
+                self._is_refreshing = False
 
             return {
                 "status": "success",
@@ -533,6 +629,8 @@ class ShareholdingProvider:
             }
         except Exception as e:
             logger.error(f"Error during shareholding refresh: {e}")
+            with self._lock:
+                self._is_refreshing = False
             return {
                 "status": "error",
                 "message": f"Refresh failed: {str(e)}",

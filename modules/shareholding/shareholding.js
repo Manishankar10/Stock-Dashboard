@@ -136,7 +136,7 @@
         const prevText = (prevVal != null && !isNaN(Number(prevVal)))
             ? `${Number(prevVal).toFixed(2)}%${qtrStr ? ' ' + qtrStr : ''}`
             : '';
-        const prevPart = prevText ? `(previous: ${prevText})` : '';
+        const prevPart = prevText ? ` (previous: ${prevText})` : '';
 
         if (num > 0) {
             return `Increased by ${num.toFixed(2)}% QoQ${prevPart}`;
@@ -193,8 +193,8 @@
 
         // Core Percentages
         const promoterPct = record.promoter_pct != null ? record.promoter_pct : (record.pr_and_prgrp != null ? Number(record.pr_and_prgrp) : null);
-        const fiiPct = record.fii_pct != null ? record.fii_pct : 0.0;
-        const diiPct = record.dii_pct != null ? record.dii_pct : 0.0;
+        const fiiPct = record.fii_pct != null ? record.fii_pct : null;
+        const diiPct = record.dii_pct != null ? record.dii_pct : null;
         const publicPct = record.public_pct != null ? record.public_pct : (record.public_val != null ? Number(record.public_val) : null);
 
         // QoQ Changes
@@ -758,6 +758,10 @@
     window.loadShareholding = loadShareholding;
 
     if (window.INITIAL_TAB === 'shareholding' || window.currentTab === 'shareholding' || window.location.pathname === '/shareholding') {
-        loadShareholding();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => loadShareholding());
+        } else {
+            loadShareholding();
+        }
     }
 }());
