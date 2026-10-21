@@ -6,6 +6,9 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from modules.app_config import load_local_environment
 load_local_environment()
 
+from modules.common.external_api_logger import install_external_api_logger
+install_external_api_logger()
+
 # Core Data Paths & Utilities
 from modules.common.data_paths import (
     BASE_DATA_DIR,

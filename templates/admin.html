@@ -555,6 +555,116 @@
                 font-size: 10px !important;
             }
         }
+
+        /* External API Logs Styles */
+        .badge-method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            text-align: center;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+        .badge-method-get {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .badge-method-post {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+        }
+        .badge-method-put {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+        .badge-method-delete {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+        .ext-caller-pill {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+            max-width: 100%;
+        }
+        .ext-caller-file {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .ext-caller-func {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+        .ext-url-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            max-width: 320px;
+        }
+        .ext-domain-tag {
+            display: inline-block;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            width: fit-content;
+        }
+        .ext-url-text {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11.5px;
+            color: var(--text-primary);
+            word-break: break-all;
+            line-height: 1.35;
+        }
+        .ext-params-preview {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 4px 8px;
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .ext-params-preview:hover {
+            border-color: var(--btn-primary-bg);
+            color: var(--text-primary);
+        }
+        .method-pill-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .method-pill-btn.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
     </style>
 </head>
 <body>
@@ -646,6 +756,26 @@
 
         <!-- TAB 2: Login Logs -->
         <div id="tab-logs" class="tab-content">
+            <!-- Header Action Bar with External API Logs Trigger -->
+            <div class="logs-header-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; flex-wrap: wrap; gap: 12px; box-shadow: var(--shadow-sm);">
+                <div>
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        <span>📜</span> Real-Time Login Audit Logs
+                    </h3>
+                    <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                        Live audit records of all user authentication events and login sessions
+                    </p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <button id="btn-external-api-logs" class="btn btn-primary" onclick="openExternalApiLogsModal()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; padding: 8px 16px; border-radius: 8px; box-shadow: 0 2px 6px rgba(16,185,129,0.25); cursor: pointer;">
+                        <span>🌐</span> External API / URL Call Logs
+                        <span id="external-api-logs-badge" class="badge" style="background: rgba(255,255,255,0.28); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700;">0</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadAdminLogs()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 12.5px;" title="Refresh Login Logs">
+                        <span>🔄</span> Refresh
+                    </button>
+                </div>
+            </div>
             <!-- Desktop Table View -->
             <div class="table-responsive-container desktop-only-view">
                 <table>
@@ -791,6 +921,110 @@
         </div>
     </div>
 
+    <!-- MODAL: External API / URL Call Logs -->
+    <div id="externalApiLogsModal" class="modal">
+        <div class="modal-content" style="width: 1180px; max-width: 96vw; max-height: 90vh; padding: 22px 24px; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header" style="flex-shrink: 0; padding-bottom: 14px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">🌐</span>
+                    <div>
+                        <h3 class="modal-title" style="margin: 0; font-size: 17.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 9px; flex-wrap: wrap;">
+                            External API / URL Call Logs
+                            <span id="ext-logs-stats-pill" class="badge badge-success" style="font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;">0 Calls Recorded</span>
+                        </h3>
+                        <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                            Live log of all outbound Python requests to third-party endpoints (NSE, BSE, Yahoo Finance, TradingView, Concalls, etc.)
+                        </p>
+                    </div>
+                </div>
+                <span class="close-btn" onclick="closeExternalApiLogsModal()" style="font-size: 28px; line-height: 1; cursor: pointer;">&times;</span>
+            </div>
+
+            <!-- Toolbar / Filters / Action Controls -->
+            <div class="ext-logs-controls" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; min-width: 280px;">
+                    <!-- Search input -->
+                    <div style="position: relative; flex: 1; min-width: 200px; max-width: 380px;">
+                        <input type="text" id="ext-logs-search" placeholder="Search by URL, Python file, parameter..." 
+                            oninput="filterExternalApiLogs()" 
+                            style="width: 100%; padding: 7px 12px 7px 32px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
+                        <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-secondary); pointer-events: none;">🔍</span>
+                    </div>
+
+                    <!-- Method Filter Pills -->
+                    <div class="method-filter-group" style="display: flex; gap: 4px; background: var(--bg-subtle); padding: 3px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <button class="method-pill-btn active" id="btn-method-all" onclick="setExternalApiMethodFilter('ALL', this)">All</button>
+                        <button class="method-pill-btn" id="btn-method-get" onclick="setExternalApiMethodFilter('GET', this)" style="color: #10b981;">GET</button>
+                        <button class="method-pill-btn" id="btn-method-post" onclick="setExternalApiMethodFilter('POST', this)" style="color: #3b82f6;">POST</button>
+                    </div>
+                </div>
+
+                <!-- Right Action Buttons -->
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="loadExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px;" title="Refresh API Logs">
+                        <span id="ext-logs-refresh-icon">🔄</span> Refresh
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px;" title="Export all logs as JSON file">
+                        <span>⬇️</span> Export JSON
+                    </button>
+                    <button class="btn btn-danger" onclick="confirmDeleteAllExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px; font-weight: 600;" title="Permanently delete all external API logs from app_data">
+                        <span>🗑️</span> Delete All Logs
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Container (Scrollable) -->
+            <div class="ext-logs-table-container" style="flex: 1; overflow-y: auto; overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; min-height: 280px; max-height: calc(90vh - 230px); background: var(--bg-card);">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 900px;">
+                    <thead style="position: sticky; top: 0; background: var(--table-header-bg); z-index: 5; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
+                        <tr>
+                            <th style="padding: 10px 12px; text-align: left; width: 145px; white-space: nowrap;">Timestamp</th>
+                            <th style="padding: 10px 10px; text-align: center; width: 75px;">Method</th>
+                            <th style="padding: 10px 12px; text-align: left; width: 220px;">Python Caller File</th>
+                            <th style="padding: 10px 12px; text-align: left; min-width: 260px;">Target External API / URL</th>
+                            <th style="padding: 10px 12px; text-align: left; width: 220px;">Parameters</th>
+                            <th style="padding: 10px 10px; text-align: center; width: 110px;">Status / Time</th>
+                            <th style="padding: 10px 10px; text-align: center; width: 75px;">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ext-logs-table-body">
+                        <tr><td colspan="7" style="text-align:center; padding: 35px; color: var(--text-secondary);">Loading external API call logs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modal Footer / Summary Info -->
+            <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
+                <div id="ext-logs-footer-summary" style="display: flex; align-items: center; gap: 6px;">
+                    <span>📁 Storage: Individual JSON files in</span>
+                    <code style="background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 11px;">app_data/external_api_logs/</code>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px; font-weight: 500;">
+                    <span>🟢 GET: <strong id="ext-stat-get" style="color: #10b981;">0</strong></span>
+                    <span>🔵 POST: <strong id="ext-stat-post" style="color: #3b82f6;">0</strong></span>
+                    <span>⚠️ Errors: <strong id="ext-stat-errors" style="color: #ef4444;">0</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUB-MODAL: External API Call Details -->
+    <div id="externalApiLogDetailModal" class="modal">
+        <div class="modal-content" style="width: 740px; max-width: 95vw; max-height: 88vh; padding: 22px 24px;">
+            <div class="modal-header" style="margin-bottom: 14px; padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="detail-method-tag" class="badge-method badge-method-get">GET</span>
+                    <h3 class="modal-title" style="font-size: 16px; margin: 0;">External Call Inspection</h3>
+                </div>
+                <span class="close-btn" onclick="closeExternalApiLogDetail()">&times;</span>
+            </div>
+            <div id="detail-modal-body" style="font-size: 13px;">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
     <script>
         function switchAdminTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -806,7 +1040,7 @@
             }
             if (tabContent) tabContent.classList.add('active');
 
-            if (tabName === 'logs') loadAdminLogs();
+            if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
             if (tabName === 'settings') loadSystemSettings();
         }
 
@@ -1245,12 +1479,375 @@
             }
         }
 
+
+        // ==========================================
+        // EXTERNAL API / URL CALL LOGS CONTROLLERS
+        // ==========================================
+        let _allExternalApiLogs = [];
+        let _currentExternalMethodFilter = 'ALL';
+
+        function openExternalApiLogsModal() {
+            const modal = document.getElementById('externalApiLogsModal');
+            if (modal) {
+                modal.style.display = 'block';
+                loadExternalApiLogs();
+            }
+        }
+
+        function closeExternalApiLogsModal() {
+            const modal = document.getElementById('externalApiLogsModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function loadExternalApiLogsBadge() {
+            try {
+                const res = await fetch('/api/admin/external_api_logs?limit=1');
+                const data = await res.json();
+                if (data.success && data.stats) {
+                    const badge = document.getElementById('external-api-logs-badge');
+                    if (badge) badge.innerText = data.stats.total || 0;
+                }
+            } catch (e) {
+                console.debug('Failed to load external logs badge', e);
+            }
+        }
+
+        async function loadExternalApiLogs() {
+            const refreshIcon = document.getElementById('ext-logs-refresh-icon');
+            if (refreshIcon) refreshIcon.style.animation = 'spin 0.8s linear infinite';
+
+            try {
+                const res = await fetch('/api/admin/external_api_logs?limit=500');
+                const data = await res.json();
+
+                if (!data.success) {
+                    alert('❌ Failed to fetch external API logs: ' + (data.error || 'Server error'));
+                    return;
+                }
+
+                _allExternalApiLogs = data.logs || [];
+                const stats = data.stats || {};
+
+                // Update count badges
+                const tabBadge = document.getElementById('external-api-logs-badge');
+                if (tabBadge) tabBadge.innerText = stats.total || 0;
+
+                const statsPill = document.getElementById('ext-logs-stats-pill');
+                if (statsPill) statsPill.innerText = `${stats.total || 0} Calls Recorded`;
+
+                const statGet = document.getElementById('ext-stat-get');
+                if (statGet) statGet.innerText = stats.get_count || 0;
+
+                const statPost = document.getElementById('ext-stat-post');
+                if (statPost) statPost.innerText = stats.post_count || 0;
+
+                const statErrors = document.getElementById('ext-stat-errors');
+                if (statErrors) statErrors.innerText = stats.error_count || 0;
+
+                renderExternalApiLogsTable();
+
+            } catch (err) {
+                console.error('Error loading external API logs:', err);
+                const tbody = document.getElementById('ext-logs-table-body');
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 25px; color: #ef4444;">⚠️ Error loading external logs. Please try again.</td></tr>';
+                }
+            } finally {
+                if (refreshIcon) refreshIcon.style.animation = 'none';
+            }
+        }
+
+        function setExternalApiMethodFilter(method, btnEl) {
+            _currentExternalMethodFilter = method;
+            document.querySelectorAll('.method-pill-btn').forEach(b => b.classList.remove('active'));
+            if (btnEl) btnEl.classList.add('active');
+            renderExternalApiLogsTable();
+        }
+
+        function filterExternalApiLogs() {
+            renderExternalApiLogsTable();
+        }
+
+        function renderExternalApiLogsTable() {
+            const tbody = document.getElementById('ext-logs-table-body');
+            if (!tbody) return;
+
+            const searchQuery = (document.getElementById('ext-logs-search')?.value || '').trim().toLowerCase();
+            let filtered = _allExternalApiLogs;
+
+            // 1. Method filter
+            if (_currentExternalMethodFilter !== 'ALL') {
+                filtered = filtered.filter(l => (l.method || '').toUpperCase() === _currentExternalMethodFilter);
+            }
+
+            // 2. Search filter
+            if (searchQuery) {
+                filtered = filtered.filter(l => {
+                    const u = (l.url || '').toLowerCase();
+                    const f = (l.python_file || '').toLowerCase();
+                    const p = (l.caller_path || '').toLowerCase();
+                    const fn = (l.caller_function || '').toLowerCase();
+                    const d = (l.domain || '').toLowerCase();
+                    const s = (l.status_text || '').toLowerCase();
+                    const paramStr = JSON.stringify(l.parameters || {}).toLowerCase();
+                    return u.includes(searchQuery) || f.includes(searchQuery) || p.includes(searchQuery) || fn.includes(searchQuery) || d.includes(searchQuery) || s.includes(searchQuery) || paramStr.includes(searchQuery);
+                });
+            }
+
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                const emptyMsg = _allExternalApiLogs.length === 0
+                    ? 'No external API calls logged yet. All outbound Python requests will appear here in real-time.'
+                    : 'No external API calls match your search and filter criteria.';
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 35px 20px; color: var(--text-secondary);"><div style="font-size: 24px; margin-bottom: 6px;">🌐</div><div>${emptyMsg}</div></td></tr>`;
+                return;
+            }
+
+            filtered.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border-color)';
+
+                const method = (log.method || 'GET').toUpperCase();
+                let methodClass = 'badge-method-get';
+                if (method === 'POST') methodClass = 'badge-method-post';
+                else if (method === 'PUT') methodClass = 'badge-method-put';
+                else if (method === 'DELETE') methodClass = 'badge-method-delete';
+
+                const statusNum = parseInt(log.status_code, 10);
+                const isSuccess = statusNum && statusNum >= 200 && statusNum < 300;
+                const statusStyle = isSuccess 
+                    ? 'color: #10b981; font-weight: 600;' 
+                    : (statusNum && statusNum >= 400 ? 'color: #ef4444; font-weight: 600;' : 'color: var(--text-secondary); font-weight: 600;');
+                const statusIcon = isSuccess ? '🟢' : (log.error || (statusNum && statusNum >= 400) ? '🔴' : '⚪');
+
+                // Parameters display preview
+                let paramsDisplay = '<span style="color:var(--text-secondary);">—</span>';
+                const hasParams = log.parameters && Object.keys(log.parameters).length > 0;
+                const hasPayload = log.payload && Object.keys(log.payload).length > 0;
+
+                if (hasParams || hasPayload) {
+                    let previewText = '';
+                    if (hasParams) {
+                        const pairs = Object.entries(log.parameters).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`);
+                        previewText = pairs.join(', ');
+                    } else if (hasPayload) {
+                        previewText = JSON.stringify(log.payload);
+                    }
+                    paramsDisplay = `
+                        <div class="ext-params-preview" onclick="openExternalApiLogDetail('${log.id}')" title="Click to inspect full parameters JSON">
+                            🔍 ${escapeHtml(previewText)}
+                        </div>
+                    `;
+                }
+
+                const callerPath = log.caller_path || log.python_file || 'unknown';
+                const callerFn = log.caller_function ? `fn: ${log.caller_function}` : '';
+                const callerLine = log.caller_line ? `:${log.caller_line}` : '';
+
+                tr.innerHTML = `
+                    <td style="padding: 10px 12px; white-space: nowrap;">
+                        <div style="font-weight: 600; font-size: 12px; color: var(--text-primary);">${log.datetime || log.timestamp || 'N/A'}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${log.duration_ms ? log.duration_ms + ' ms' : ''}</div>
+                    </td>
+                    <td style="padding: 10px; text-align: center;">
+                        <span class="badge-method ${methodClass}">${method}</span>
+                    </td>
+                    <td style="padding: 10px 12px;">
+                        <div class="ext-caller-pill" title="${escapeHtml(callerPath)}${callerLine}">
+                            <div class="ext-caller-file">
+                                <span>🐍</span>
+                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">${escapeHtml(log.python_file || 'unknown')}${callerLine}</span>
+                            </div>
+                            <div class="ext-caller-func">${escapeHtml(callerFn)}</div>
+                        </div>
+                    </td>
+                    <td style="padding: 10px 12px;">
+                        <div class="ext-url-cell">
+                            <span class="ext-domain-tag">${escapeHtml(log.domain || 'external')}</span>
+                            <a href="${escapeHtml(log.url)}" target="_blank" rel="noopener noreferrer" class="ext-url-text" title="${escapeHtml(log.url)}" style="text-decoration: none;">
+                                ${escapeHtml(log.endpoint || log.url)}
+                            </a>
+                        </div>
+                    </td>
+                    <td style="padding: 10px 12px;">
+                        ${paramsDisplay}
+                    </td>
+                    <td style="padding: 10px; text-align: center;">
+                        <div style="${statusStyle}">
+                            <span>${statusIcon}</span> ${log.status_text || log.status_code || 'Done'}
+                        </div>
+                    </td>
+                    <td style="padding: 10px; text-align: center;">
+                        <button onclick="openExternalApiLogDetail('${log.id}')" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="View full request & payload details">
+                            🔍
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openExternalApiLogDetail(logId) {
+            const log = _allExternalApiLogs.find(l => l.id === logId);
+            if (!log) return;
+
+            const modal = document.getElementById('externalApiLogDetailModal');
+            const body = document.getElementById('detail-modal-body');
+            const tagEl = document.getElementById('detail-method-tag');
+
+            const method = (log.method || 'GET').toUpperCase();
+            if (tagEl) {
+                tagEl.className = 'badge-method ' + (method === 'POST' ? 'badge-method-post' : (method === 'DELETE' ? 'badge-method-delete' : 'badge-method-get'));
+                tagEl.innerText = method;
+            }
+
+            const jsonStr = JSON.stringify(log, null, 2);
+
+            let html = `
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <!-- Top Meta Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-secondary); display: block;">Timestamp</span>
+                            <strong style="font-size: 13px;">${log.datetime || log.timestamp}</strong>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-secondary); display: block;">Python Caller</span>
+                            <code style="font-size: 12px; color: #10b981;">${escapeHtml(log.caller_full || log.python_file)}</code>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-secondary); display: block;">Status & Latency</span>
+                            <strong>${log.status_text || log.status_code || 'OK'} (${log.duration_ms || 0} ms)</strong>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-secondary); display: block;">JSON File in app_data</span>
+                            <code style="font-size: 11.5px;">${escapeHtml(log.log_file || log.id + '.json')}</code>
+                        </div>
+                    </div>
+
+                    <!-- Target URL -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <label style="font-size: 12px; font-weight: 700; color: var(--text-primary);">🌐 Target URL</label>
+                            <button onclick="copyExternalText('${escapeHtml(log.url)}', this)" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;">📋 Copy URL</button>
+                        </div>
+                        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px; font-family: monospace; font-size: 12px; word-break: break-all; color: var(--text-primary);">
+                            ${escapeHtml(log.url)}
+                        </div>
+                    </div>
+
+                    <!-- Query Parameters -->
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 5px; display: block;">⚙️ Query Parameters</label>
+                        <pre style="background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin: 0; font-size: 12px; overflow-x: auto; color: var(--text-primary);">${escapeHtml(JSON.stringify(log.parameters || {}, null, 2))}</pre>
+                    </div>
+
+                    ${log.payload ? `
+                    <!-- Body Payload -->
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 5px; display: block;">📦 Request Body / Payload</label>
+                        <pre style="background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin: 0; font-size: 12px; overflow-x: auto; color: var(--text-primary);">${escapeHtml(JSON.stringify(log.payload, null, 2))}</pre>
+                    </div>` : ''}
+
+                    ${log.error ? `
+                    <!-- Error Info -->
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #ef4444; margin-bottom: 5px; display: block;">⚠️ Error Details</label>
+                        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 10px; color: #ef4444; font-family: monospace; font-size: 12px;">
+                            ${escapeHtml(log.error)}
+                        </div>
+                    </div>` : ''}
+
+                    <!-- Full Raw JSON Accordion -->
+                    <details style="margin-top: 4px;">
+                        <summary style="font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-secondary); margin-bottom: 6px;">📄 View Complete JSON Record</summary>
+                        <pre style="background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin: 0; font-size: 11px; max-height: 200px; overflow: auto; color: var(--text-primary);">${escapeHtml(jsonStr)}</pre>
+                    </details>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                        <button onclick="copyExternalText('${escapeHtml(jsonStr.replace(/'/g, "\'"))}', this)" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">📋 Copy Full JSON</button>
+                        <button onclick="closeExternalApiLogDetail()" class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;">Close</button>
+                    </div>
+                </div>
+            `;
+
+            body.innerHTML = html;
+            modal.style.display = 'block';
+        }
+
+        function closeExternalApiLogDetail() {
+            const modal = document.getElementById('externalApiLogDetailModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function confirmDeleteAllExternalApiLogs() {
+            const confirmed = confirm('⚠️ Are you sure you want to permanently delete ALL external API call logs and individual JSON files stored in app_data?\n\nThis action cannot be undone.');
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/admin/external_api_logs/clear', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ ${data.message || 'All external API logs deleted successfully!'}`);
+                    _allExternalApiLogs = [];
+                    renderExternalApiLogsTable();
+                    loadExternalApiLogs();
+                } else {
+                    alert('❌ Failed to delete logs: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Delete logs error:', err);
+                alert('❌ Error deleting external API logs. Please check server logs.');
+            }
+        }
+
+        async function exportExternalApiLogs() {
+            try {
+                const res = await fetch('/api/admin/external_api_logs/export');
+                const data = await res.json();
+                const jsonStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `external_api_logs_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                alert('❌ Failed to export external API logs: ' + err.message);
+            }
+        }
+
+        function copyExternalText(text, btnEl) {
+            navigator.clipboard.writeText(text).then(() => {
+                const orig = btnEl.innerText;
+                btnEl.innerText = '✅ Copied!';
+                setTimeout(() => { btnEl.innerText = orig; }, 1800);
+            }).catch(e => {
+                prompt('Copy text manually:', text);
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         async function initAdmin() {
             initTheme();
             await checkAdminAuth();
             await loadAdminStats();
             await loadAdminUsers();
             await loadSystemSettings();
+            await loadExternalApiLogsBadge();
         }
 
         initAdmin();

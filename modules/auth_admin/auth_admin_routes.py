@@ -15,6 +15,13 @@ from modules.common.data_paths import (
     LOGS_FILE,
     USERS_EXAMPLE_FILE
 )
+from modules.common.external_api_logger import (
+    get_external_api_logs,
+    get_external_api_stats,
+    delete_all_external_api_logs,
+    EXTERNAL_LOGS_DIR,
+    EXTERNAL_LOGS_INDEX
+)
 
 auth_admin_bp = Blueprint("auth_admin", __name__)
 
@@ -308,6 +315,52 @@ def admin_get_logs():
         except Exception:
             logs = []
     return jsonify(logs)
+
+
+@auth_admin_bp.route("/api/admin/external_api_logs", methods=["GET"])
+@admin_required
+def admin_get_external_api_logs():
+    limit = request.args.get("limit", 200, type=int)
+    search = request.args.get("search", None)
+    method = request.args.get("method", None)
+    logs = get_external_api_logs(limit=limit, search=search, method=method)
+    stats = get_external_api_stats()
+    return jsonify({
+        "success": True,
+        "logs": logs,
+        "stats": stats
+    })
+
+
+@auth_admin_bp.route("/api/admin/external_api_logs/clear", methods=["POST", "DELETE"])
+@admin_required
+def admin_clear_external_api_logs():
+    result = delete_all_external_api_logs()
+    return jsonify(result)
+
+
+@auth_admin_bp.route("/api/admin/external_api_logs/export", methods=["GET"])
+@admin_required
+def admin_export_external_api_logs():
+    logs = get_external_api_logs(limit=0)
+    return jsonify(logs)
+
+
+@auth_admin_bp.route("/api/admin/external_api_logs/<log_id>", methods=["GET"])
+@admin_required
+def admin_get_external_api_log_detail(log_id):
+    safe_id = os.path.basename(log_id)
+    if not safe_id.endswith(".json"):
+        safe_id = f"{safe_id}.json"
+    file_path = os.path.join(EXTERNAL_LOGS_DIR, safe_id)
+    if not os.path.exists(file_path):
+        return jsonify({"error": "Log file not found"}), 404
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return jsonify({"success": True, "log": data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @auth_admin_bp.route("/api/admin/system_settings", methods=["GET"])
