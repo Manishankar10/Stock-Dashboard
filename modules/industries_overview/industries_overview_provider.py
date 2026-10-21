@@ -4,12 +4,113 @@ import time
 import re
 import requests
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept-Language': 'en-US,en;q=0.9',
     'Referer': 'https://www.screener.in/'
+}
+
+# Standardized SEBI / NSE 4-tier Industry Classification (12 Macros, 22 Sectors, 58 Industry Groups)
+SEBI_NSE_MACROS = {
+    "IN01": "Commodities",
+    "IN02": "Consumer Discretionary",
+    "IN03": "Energy",
+    "IN04": "Fast Moving Consumer Goods",
+    "IN05": "Financial Services",
+    "IN06": "Healthcare",
+    "IN07": "Industrials",
+    "IN08": "Information Technology",
+    "IN09": "Services",
+    "IN10": "Telecommunication",
+    "IN11": "Utilities",
+    "IN12": "Diversified"
+}
+
+SEBI_NSE_SECTORS = {
+    "IN0101": "Chemicals",
+    "IN0102": "Construction Materials",
+    "IN0103": "Metals & Mining",
+    "IN0104": "Forest Materials",
+    "IN0201": "Automobile and Auto Components",
+    "IN0202": "Consumer Durables",
+    "IN0203": "Textiles",
+    "IN0204": "Media, Entertainment & Publication",
+    "IN0205": "Realty",
+    "IN0206": "Consumer Services",
+    "IN0301": "Oil, Gas & Consumable Fuels",
+    "IN0401": "Fast Moving Consumer Goods",
+    "IN0501": "Financial Services",
+    "IN0601": "Healthcare",
+    "IN0701": "Construction",
+    "IN0702": "Capital Goods",
+    "IN0801": "Information Technology",
+    "IN0901": "Services",
+    "IN1001": "Telecommunication",
+    "IN1101": "Power",
+    "IN1102": "Utilities",
+    "IN1201": "Diversified"
+}
+
+SEBI_NSE_GROUPS = {
+    "IN010101": "Chemicals & Petrochemicals",
+    "IN010102": "Fertilizers & Agrochemicals",
+    "IN010203": "Cement & Cement Products",
+    "IN010204": "Other Construction Materials",
+    "IN010301": "Ferrous Metals",
+    "IN010302": "Non - Ferrous Metals",
+    "IN010303": "Diversified Metals",
+    "IN010304": "Minerals & Mining",
+    "IN010305": "Metals & Minerals Trading",
+    "IN010401": "Paper, Forest & Jute Products",
+    "IN020101": "Automobiles",
+    "IN020102": "Auto Components",
+    "IN020201": "Consumer Durables",
+    "IN020301": "Textiles & Apparels",
+    "IN020401": "Media",
+    "IN020402": "Entertainment",
+    "IN020403": "Printing & Publication",
+    "IN020501": "Realty",
+    "IN020601": "Leisure Services",
+    "IN020602": "Other Consumer Services",
+    "IN020603": "Retailing",
+    "IN030101": "Gas",
+    "IN030102": "Oil",
+    "IN030103": "Petroleum Products",
+    "IN030104": "Consumable Fuels",
+    "IN040101": "Agricultural Food & other Products",
+    "IN040102": "Beverages",
+    "IN040103": "Cigarettes & Tobacco Products",
+    "IN040104": "Food Products",
+    "IN040105": "Personal Products",
+    "IN040106": "Household Products",
+    "IN040107": "Diversified FMCG",
+    "IN050101": "Finance",
+    "IN050102": "Banks",
+    "IN050103": "Capital Markets",
+    "IN050104": "Insurance",
+    "IN050105": "Financial Technology (Fintech)",
+    "IN060101": "Pharmaceuticals & Biotechnology",
+    "IN060102": "Healthcare Equipment & Supplies",
+    "IN060103": "Healthcare Services",
+    "IN070101": "Construction",
+    "IN070201": "Aerospace & Defense",
+    "IN070202": "Agricultural, Commercial & Construction Vehicles",
+    "IN070203": "Electrical Equipment",
+    "IN070204": "Industrial Manufacturing",
+    "IN070205": "Industrial Products",
+    "IN080101": "IT - Software",
+    "IN080102": "IT - Services",
+    "IN080103": "IT - Hardware",
+    "IN090101": "Engineering Services",
+    "IN090102": "Transport Services",
+    "IN090103": "Transport Infrastructure",
+    "IN090104": "Commercial Services & Supplies",
+    "IN100101": "Telecom - Services",
+    "IN100102": "Telecom -  Equipment & Accessories",
+    "IN110101": "Power",
+    "IN110201": "Other Utilities",
+    "IN120101": "Diversified"
 }
 
 def clean_num(s):
@@ -39,11 +140,73 @@ class IndustriesOverviewProvider:
 
     def _save_stocks_cache(self):
         try:
-            os.makedirs(self.data_dir, exist_ok=True)
+            os.makedirs(os.path.dirname(self.stocks_cache_file), exist_ok=True)
             with open(self.stocks_cache_file, "w", encoding="utf-8") as f:
                 json.dump(self._stocks_cache, f, ensure_ascii=False)
         except Exception as e:
             print("Error saving stocks cache:", e)
+
+    def _enrich_taxonomy(self, data):
+        if not isinstance(data, dict) or 'industries' not in data:
+            return data
+
+        changed = False
+        for ind in data['industries']:
+            m_code = ind.get('macro_code')
+            s_code = ind.get('sector_code')
+            g_code = ind.get('group_code')
+
+            correct_macro = SEBI_NSE_MACROS.get(m_code, ind.get('macro_name') or m_code)
+            correct_sector = SEBI_NSE_SECTORS.get(s_code, ind.get('sector_name') or s_code)
+            correct_group = SEBI_NSE_GROUPS.get(g_code, ind.get('industry_group_name') or g_code)
+
+            if ind.get('macro_name') != correct_macro:
+                ind['macro_name'] = correct_macro
+                changed = True
+            if ind.get('sector_name') != correct_sector:
+                ind['sector_name'] = correct_sector
+                changed = True
+            if ind.get('industry_group_name') != correct_group:
+                ind['industry_group_name'] = correct_group
+                changed = True
+
+        # Rebuild macro_sectors canonically
+        macro_map = {}
+        for ind in data['industries']:
+            m_code = ind['macro_code']
+            if m_code not in macro_map:
+                macro_map[m_code] = {
+                    'code': m_code,
+                    'name': ind['macro_name'],
+                    'sectors': {}
+                }
+            s_code = ind['sector_code']
+            if s_code not in macro_map[m_code]['sectors']:
+                macro_map[m_code]['sectors'][s_code] = {
+                    'code': s_code,
+                    'name': ind['sector_name']
+                }
+
+        macro_sectors_list = []
+        for m_code in sorted(macro_map.keys()):
+            m = macro_map[m_code]
+            sectors_list = [m['sectors'][s_k] for s_k in sorted(m['sectors'].keys())]
+            macro_sectors_list.append({
+                'code': m['code'],
+                'name': m['name'],
+                'sectors': sectors_list
+            })
+        data['macro_sectors'] = macro_sectors_list
+
+        if changed or not os.path.exists(self.overview_file):
+            try:
+                os.makedirs(os.path.dirname(self.overview_file), exist_ok=True)
+                with open(self.overview_file, 'w', encoding='utf-8') as fp:
+                    json.dump(data, fp, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print("Error updating overview_file after enrichment:", e)
+
+        return data
 
     def get_industries_overview(self, force_refresh=False):
         if not force_refresh:
@@ -51,8 +214,8 @@ class IndustriesOverviewProvider:
                 try:
                     with open(self.overview_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                        if isinstance(data, dict):
-                            return data
+                        if isinstance(data, dict) and data.get('industries'):
+                            return self._enrich_taxonomy(data)
                 except Exception as e:
                     print(f"Error reading overview file from {self.overview_file}:", e)
 
@@ -69,7 +232,6 @@ class IndustriesOverviewProvider:
             raise Exception("Table not found on market page")
 
         raw_industries = []
-        group_urls = set()
 
         for tr in table.find_all('tr')[1:]:
             tds = tr.find_all('td')
@@ -84,8 +246,9 @@ class IndustriesOverviewProvider:
                         group_code = parts[3]
                         ind_code = parts[4]
 
-                        group_url = f"https://www.screener.in/market/{macro_code}/{sector_code}/{group_code}/"
-                        group_urls.add((macro_code, sector_code, group_code, group_url))
+                        macro_name = SEBI_NSE_MACROS.get(macro_code, macro_code)
+                        sector_name = SEBI_NSE_SECTORS.get(sector_code, sector_code)
+                        industry_group_name = SEBI_NSE_GROUPS.get(group_code, group_code)
 
                         stats = [td.get_text(strip=True) for td in tds]
                         raw_industries.append({
@@ -95,6 +258,9 @@ class IndustriesOverviewProvider:
                             'macro_code': macro_code,
                             'sector_code': sector_code,
                             'group_code': group_code,
+                            'macro_name': macro_name,
+                            'sector_name': sector_name,
+                            'industry_group_name': industry_group_name,
                             'company_count': int(clean_num(stats[2]) or 0),
                             'total_market_cap': clean_num(stats[3]) or 0.0,
                             'median_market_cap': clean_num(stats[4]) or 0.0,
@@ -104,49 +270,6 @@ class IndustriesOverviewProvider:
                             'wtd_roce': clean_num(stats[8]),
                             'return_1y': clean_num(stats[9])
                         })
-
-        hierarchy_dict = {}
-
-        def fetch_group_meta(item):
-            macro_code, sector_code, group_code, g_url = item
-            try:
-                res = requests.get(g_url, headers=HEADERS, timeout=12)
-                if res.status_code == 200:
-                    sp = BeautifulSoup(res.text, 'html.parser')
-                    h1 = sp.find('h1')
-                    g_title = h1.get_text(strip=True) if h1 else ''
-                    g_title = re.sub(r'\s*Companies\s*$', '', g_title, flags=re.I).strip()
-
-                    macro_name = ''
-                    sector_name = ''
-                    for anc in sp.find_all('a'):
-                        hr = anc.get('href', '')
-                        if hr == f"/market/{macro_code}/":
-                            macro_name = anc.get_text(strip=True)
-                        elif hr == f"/market/{macro_code}/{sector_code}/":
-                            sector_name = anc.get_text(strip=True)
-
-                    return group_code, {
-                        'macro_name': macro_name,
-                        'sector_name': sector_name,
-                        'group_name': g_title
-                    }
-            except Exception as err:
-                print(f"Error fetching group {g_url}: {err}")
-            return group_code, None
-
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(fetch_group_meta, item) for item in group_urls]
-            for f in as_completed(futures):
-                g_code, meta = f.result()
-                if meta:
-                    hierarchy_dict[g_code] = meta
-
-        for ind in raw_industries:
-            g_meta = hierarchy_dict.get(ind['group_code'], {})
-            ind['macro_name'] = g_meta.get('macro_name') or ind['macro_code']
-            ind['sector_name'] = g_meta.get('sector_name') or ind['sector_code']
-            ind['industry_group_name'] = g_meta.get('group_name') or ind['group_code']
 
         macro_map = {}
         for ind in raw_industries:
@@ -164,21 +287,24 @@ class IndustriesOverviewProvider:
                     'name': ind['sector_name']
                 }
 
+        macro_sectors_list = []
+        for m_code in sorted(macro_map.keys()):
+            m = macro_map[m_code]
+            sectors_list = [m['sectors'][s_k] for s_k in sorted(m['sectors'].keys())]
+            macro_sectors_list.append({
+                'code': m['code'],
+                'name': m['name'],
+                'sectors': sectors_list
+            })
+
         final_output = {
             'count': len(raw_industries),
             'last_updated': time.strftime('%Y-%m-%d %H:%M:%S'),
             'industries': raw_industries,
-            'macro_sectors': [
-                {
-                    'code': m['code'],
-                    'name': m['name'],
-                    'sectors': list(m['sectors'].values())
-                }
-                for m in macro_map.values()
-            ]
+            'macro_sectors': macro_sectors_list
         }
 
-        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(self.overview_file), exist_ok=True)
         with open(self.overview_file, 'w', encoding='utf-8') as fp:
             json.dump(final_output, fp, indent=2, ensure_ascii=False)
 
@@ -205,13 +331,22 @@ class IndustriesOverviewProvider:
                     target_ind = ind
                     break
 
+        if target_ind:
+            target_ind['macro_name'] = SEBI_NSE_MACROS.get(target_ind.get('macro_code'), target_ind.get('macro_name'))
+            target_ind['sector_name'] = SEBI_NSE_SECTORS.get(target_ind.get('sector_code'), target_ind.get('sector_name'))
+            target_ind['industry_group_name'] = SEBI_NSE_GROUPS.get(target_ind.get('group_code'), target_ind.get('industry_group_name'))
+
         clean_path = target_ind['path'] if target_ind else path_or_code.strip('/')
         now = time.time()
 
         # Check cache (1 hour TTL)
         cached = self._stocks_cache.get(clean_path)
         if not force_refresh and cached and (now - cached.get('timestamp', 0) < 3600):
-            return cached['data']
+            # Ensure cached record industry metadata has fresh taxonomy names
+            cached_data = cached['data']
+            if cached_data.get('industry') and target_ind:
+                cached_data['industry'] = target_ind
+            return cached_data
 
         # Scrape Screener stocks table for this industry
         target_url = f"https://www.screener.in/market/{clean_path}/"
