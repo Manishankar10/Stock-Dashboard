@@ -62,20 +62,13 @@
             // Strictly do NOT spin overall sidebar/header refresh icon in watchlist refresh
             // Sidebar icon remains untouched
 
-            // Fade the watchlist during refresh, show as normal when finished
+            // Keep watchlist appearance completely normal during refresh (no fading or color alteration)
             const tableContainers = document.querySelectorAll('.wl-table-container, #watchlist-view-mount .wl-table-container, #watchlist-view-mount table, #watchlist-table-mount table, .watchlist-container table');
             tableContainers.forEach(container => {
-                if (isSpinning) {
-                    container.classList.add('faded');
-                    container.style.opacity = '0.55';
-                    container.style.pointerEvents = 'none';
-                    container.style.transition = 'opacity 0.25s ease';
-                } else {
-                    container.classList.remove('faded');
-                    container.style.opacity = '1';
-                    container.style.pointerEvents = '';
-                    container.style.transition = 'opacity 0.25s ease';
-                }
+                container.classList.remove('faded');
+                container.style.opacity = '';
+                container.style.pointerEvents = '';
+                container.style.transition = '';
             });
         }
 
@@ -765,12 +758,6 @@
             // Table of stocks in active watchlist
             const scrollContainer = document.createElement('div');
             scrollContainer.className = 'table-responsive-container wl-table-container';
-            if (window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0)) {
-                scrollContainer.classList.add('faded');
-                scrollContainer.style.opacity = '0.55';
-                scrollContainer.style.pointerEvents = 'none';
-                scrollContainer.style.transition = 'opacity 0.25s ease';
-            }
 
             const getSortIcon = (col) => {
                 if (wlSortColumn !== col) return '<span style="opacity:0.3; margin-left:4px;">↕</span>';

@@ -803,18 +803,18 @@
         .wl-mobile-refresh-btn.refreshing,
         .wl-mobile-refresh-btn.spinning {
             pointer-events: none;
-            opacity: 0.95;
+            opacity: 1;
             animation: none !important; /* Button box strictly never spins */
         }
 
-        /* Watchlist fade during refresh */
+        /* Watchlist remains normal during refresh (no fading) */
         .wl-table-container {
-            transition: opacity 0.25s ease;
+            opacity: 1;
         }
 
         .wl-table-container.faded {
-            opacity: 0.55 !important;
-            pointer-events: none !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
         }
 
         /* Watchlist Row Hover Tooltip (Web Only) */
