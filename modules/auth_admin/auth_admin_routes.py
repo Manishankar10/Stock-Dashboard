@@ -17,6 +17,7 @@ from modules.common.data_paths import (
 )
 from modules.common.external_api_logger import (
     get_external_api_logs,
+    get_external_api_logs_paginated,
     get_external_api_stats,
     delete_all_external_api_logs,
     EXTERNAL_LOGS_DIR,
@@ -320,16 +321,36 @@ def admin_get_logs():
 @auth_admin_bp.route("/api/admin/external_api_logs", methods=["GET"])
 @admin_required
 def admin_get_external_api_logs():
-    limit = request.args.get("limit", 200, type=int)
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 20, type=int)
     search = request.args.get("search", None)
     method = request.args.get("method", None)
     domain = request.args.get("domain", None) or request.args.get("target", None)
-    logs = get_external_api_logs(limit=limit, search=search, method=method, domain=domain)
+    sort_by = request.args.get("sort_by", "timestamp")
+    order = request.args.get("order", "desc")
+    result = get_external_api_logs_paginated(
+        page=page,
+        limit=limit,
+        search=search,
+        method=method,
+        domain=domain,
+        sort_by=sort_by,
+        order=order
+    )
     stats = get_external_api_stats()
     return jsonify({
         "success": True,
-        "logs": logs,
-        "stats": stats
+        "logs": result["logs"],
+        "pagination": {
+            "page": result["page"],
+            "limit": result["limit"],
+            "total_count": result["total_count"],
+            "total_pages": result["total_pages"],
+            "has_next": result["has_next"],
+            "has_prev": result["has_prev"]
+        },
+        "stats": stats,
+        "domains": result["domains"]
     })
 
 

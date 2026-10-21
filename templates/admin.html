@@ -997,7 +997,7 @@
                     <!-- Search input -->
                     <div style="position: relative; flex: 1; min-width: 160px; max-width: 280px;">
                         <input type="text" id="ext-logs-search" placeholder="Search URL, file, params..." 
-                            oninput="filterExternalApiLogs()" 
+                            oninput="onExternalApiSearchInput()" 
                             style="width: 100%; padding: 6px 10px 6px 30px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary); height: 34px;">
                         <span style="position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-secondary); pointer-events: none;">🔍</span>
                     </div>
@@ -1020,16 +1020,35 @@
 
                 <!-- Right Action Buttons -->
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <!-- Sort Dropdown -->
+                    <div style="position: relative; min-width: 170px; max-width: 220px; flex: 1;">
+                        <select id="ext-logs-sort" onchange="changeExternalApiSort(this.value)" 
+                            style="width: 100%; padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary); cursor: pointer; height: 34px; outline: none;" title="Sort logs by Time, Duration, or Status">
+                            <option value="timestamp_desc">🕒 Newest First</option>
+                            <option value="timestamp_asc">🕒 Oldest First</option>
+                            <option value="duration_desc">⚡ Time Taken (Slowest First)</option>
+                            <option value="duration_asc">⚡ Time Taken (Fastest First)</option>
+                            <option value="status_desc">🟢 Status (Errors First)</option>
+                        </select>
+                    </div>
+
                     <button type="button" class="wl-refresh-btn" id="btn-ext-logs-refresh" onclick="loadExternalApiLogs()" title="Refresh External API Logs" aria-label="Refresh External API Logs" style="width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;">
                         <svg id="ext-logs-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin: center center;">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                     </button>
-                    <button class="btn btn-secondary" onclick="exportExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px; height: 34px;" title="Export all logs as JSON file">
-                        <span>⬇️</span> Export JSON
+                    <button class="btn btn-secondary" id="btn-ext-logs-download" onclick="exportExternalApiLogs()" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0;" title="Download JSON Logs" aria-label="Download JSON Logs">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
                     </button>
-                    <button class="btn btn-danger" onclick="confirmDeleteAllExternalApiLogs()" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; font-size: 12px; font-weight: 600; height: 34px;" title="Permanently delete all external API logs from app_data">
-                        <span>🗑️</span> Delete All Logs
+                    <button class="btn btn-danger" id="btn-ext-logs-delete" onclick="confirmDeleteAllExternalApiLogs()" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0;" title="Delete All Logs" aria-label="Delete All Logs">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -1039,13 +1058,17 @@
                 <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 900px;">
                     <thead style="position: sticky; top: 0; background: var(--table-header-bg); z-index: 5; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
                         <tr>
-                            <th style="padding: 10px 12px; text-align: left; width: 145px; white-space: nowrap;">Timestamp</th>
+                            <th onclick="toggleExternalApiSort('timestamp')" style="padding: 10px 12px; text-align: left; width: 175px; white-space: nowrap; cursor: pointer; user-select: none;" title="Click to sort by Timestamp">
+                                Timestamp <span id="ext-sort-time-icon" style="color: #10b981; font-size: 11px; margin-left: 3px;">▼</span>
+                            </th>
                             <th style="padding: 10px 10px; text-align: center; width: 75px;">Method</th>
-                            <th style="padding: 10px 12px; text-align: left; width: 220px;">Python Caller File</th>
-                            <th style="padding: 10px 12px; text-align: left; min-width: 260px;">Target External API / URL</th>
-                            <th style="padding: 10px 12px; text-align: left; width: 220px;">Parameters</th>
-                            <th style="padding: 10px 10px; text-align: center; width: 110px;">Status / Time</th>
-                            <th style="padding: 10px 10px; text-align: center; width: 75px;">Details</th>
+                            <th style="padding: 10px 12px; text-align: left; width: 210px;">Python Caller File</th>
+                            <th style="padding: 10px 12px; text-align: left; min-width: 250px;">Target External API / URL</th>
+                            <th style="padding: 10px 12px; text-align: left; width: 200px;">Parameters</th>
+                            <th onclick="toggleExternalApiSort('duration')" style="padding: 10px 10px; text-align: center; width: 125px; cursor: pointer; user-select: none;" title="Click to sort by Time Taken (like 655.2ms) / Status">
+                                Status / Time <span id="ext-sort-status-icon" style="font-size: 11px; margin-left: 3px; color: var(--text-secondary);">↕</span>
+                            </th>
+                            <th style="padding: 10px 10px; text-align: center; width: 65px;">Details</th>
                         </tr>
                     </thead>
                     <tbody id="ext-logs-table-body">
@@ -1054,12 +1077,33 @@
                 </table>
             </div>
 
-            <!-- Modal Footer / Summary Info -->
-            <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
-                <div id="ext-logs-footer-summary" style="display: flex; align-items: center; gap: 6px;">
-                    <span>📁 Storage: Individual JSON files in</span>
-                    <code style="background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 11px;">app_data/external_api_logs/</code>
+            <!-- Modal Footer / Pagination Controls & Summary -->
+            <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; gap: 10px; flex-shrink: 0;">
+                <!-- Left: Page Size Selector (20, 50, 100) & Page Navigation -->
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>Show</span>
+                        <select id="ext-logs-limit" onchange="changeExternalApiLimit(this.value)" 
+                            style="padding: 3px 8px; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary); cursor: pointer; height: 28px; outline: none;" title="Records per page">
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span>per page</span>
+                    </div>
+
+                    <div style="height: 16px; width: 1px; background: var(--border-color);"></div>
+
+                    <!-- Page Navigation Buttons -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span id="ext-logs-pagination-info" style="font-weight: 500; margin-right: 4px;">Showing 0–0 of 0</span>
+                        <button class="btn btn-secondary" id="btn-ext-prev" onclick="prevExternalApiPage()" style="padding: 3px 8px; font-size: 11.5px; height: 28px;" title="Previous Page">‹ Prev</button>
+                        <span id="ext-logs-page-indicator" style="font-weight: 600; padding: 0 4px; color: var(--text-primary);">Page 1 of 1</span>
+                        <button class="btn btn-secondary" id="btn-ext-next" onclick="nextExternalApiPage()" style="padding: 3px 8px; font-size: 11.5px; height: 28px;" title="Next Page">Next ›</button>
+                    </div>
                 </div>
+
+                <!-- Right: Counters -->
                 <div style="display: flex; align-items: center; gap: 14px; font-weight: 500;">
                     <span>🟢 GET: <strong id="ext-stat-get" style="color: #10b981;">0</strong></span>
                     <span>🔵 POST: <strong id="ext-stat-post" style="color: #3b82f6;">0</strong></span>
@@ -1549,13 +1593,61 @@
         // EXTERNAL API / URL CALL LOGS CONTROLLERS
         // ==========================================
         let _allExternalApiLogs = [];
+        let _allDomainsCounter = {};
         let _currentExternalMethodFilter = 'ALL';
+        let _extCurrentPage = 1;
+        let _extCurrentLimit = 20;
+        let _extTotalPages = 1;
+        let _extTotalCount = 0;
+        let _extSortBy = 'timestamp';
+        let _extSortOrder = 'desc';
+        let _extSearchDebounceTimer = null;
+
+        function formatLogDateTime(val) {
+            if (!val) return '—';
+            try {
+                const str = String(val).trim();
+                if (str.includes(' AM') || str.includes(' PM')) {
+                    return str;
+                }
+                const dmyMatch = str.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+                if (dmyMatch) {
+                    const day = dmyMatch[1];
+                    const month = dmyMatch[2];
+                    const year = dmyMatch[3];
+                    let hours = parseInt(dmyMatch[4], 10);
+                    const minutes = dmyMatch[5];
+                    const seconds = dmyMatch[6];
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    const h12 = String(hours % 12 || 12).padStart(2, '0');
+                    return `${day}-${month}-${year} ${h12}:${minutes}:${seconds} ${ampm}`;
+                }
+                let d;
+                if (str.includes(' ') && !str.includes('T')) {
+                    d = new Date(str.replace(' ', 'T'));
+                } else {
+                    d = new Date(str);
+                }
+                if (!d || isNaN(d.getTime())) return str;
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                let hours = d.getHours();
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                const seconds = String(d.getSeconds()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const h12 = String(hours % 12 || 12).padStart(2, '0');
+                return `${day}-${month}-${year} ${h12}:${minutes}:${seconds} ${ampm}`;
+            } catch (e) {
+                return String(val || '—');
+            }
+        }
 
         function openExternalApiLogsModal() {
             const modal = document.getElementById('externalApiLogsModal');
             if (modal) {
                 modal.style.display = 'block';
-                loadExternalApiLogs();
+                loadExternalApiLogs(true);
             }
         }
 
@@ -1577,14 +1669,33 @@
             }
         }
 
-        async function loadExternalApiLogs() {
+        async function loadExternalApiLogs(resetPage = false) {
+            if (resetPage) {
+                _extCurrentPage = 1;
+            }
+
             const btn = document.getElementById('btn-ext-logs-refresh');
             const svg = document.getElementById('ext-logs-refresh-svg');
             if (btn) btn.classList.add('refreshing');
             if (svg) svg.classList.add('spinning');
 
+            const searchVal = (document.getElementById('ext-logs-search')?.value || '').trim();
+            const targetVal = (document.getElementById('ext-logs-target-filter')?.value || 'ALL').trim();
+
+            const queryParams = new URLSearchParams({
+                page: _extCurrentPage,
+                limit: _extCurrentLimit,
+                method: _currentExternalMethodFilter,
+                domain: targetVal,
+                sort_by: _extSortBy,
+                order: _extSortOrder
+            });
+            if (searchVal) {
+                queryParams.append('search', searchVal);
+            }
+
             try {
-                const res = await fetch('/api/admin/external_api_logs?limit=500');
+                const res = await fetch(`/api/admin/external_api_logs?${queryParams.toString()}`);
                 const data = await res.json();
 
                 if (!data.success) {
@@ -1593,7 +1704,16 @@
                 }
 
                 _allExternalApiLogs = data.logs || [];
+                const pagination = data.pagination || {};
+                _extCurrentPage = pagination.page || 1;
+                _extCurrentLimit = pagination.limit || _extCurrentLimit;
+                _extTotalPages = pagination.total_pages || 1;
+                _extTotalCount = pagination.total_count || 0;
+
                 const stats = data.stats || {};
+                if (data.domains) {
+                    _allDomainsCounter = data.domains;
+                }
 
                 // Update count badges
                 const tabBadge = document.getElementById('external-api-logs-badge');
@@ -1612,6 +1732,8 @@
                 if (statErrors) statErrors.innerText = stats.error_count || 0;
 
                 populateExternalApiTargetDropdown();
+                updateSortHeaderIndicators();
+                updateExternalApiPaginationControls();
                 renderExternalApiLogsTable();
 
             } catch (err) {
@@ -1626,18 +1748,123 @@
             }
         }
 
+        function updateExternalApiPaginationControls() {
+            const infoEl = document.getElementById('ext-logs-pagination-info');
+            const pageEl = document.getElementById('ext-logs-page-indicator');
+            const prevBtn = document.getElementById('btn-ext-prev');
+            const nextBtn = document.getElementById('btn-ext-next');
+            const limitSelect = document.getElementById('ext-logs-limit');
+
+            if (limitSelect && String(limitSelect.value) !== String(_extCurrentLimit)) {
+                limitSelect.value = String(_extCurrentLimit);
+            }
+
+            if (_extTotalCount === 0) {
+                if (infoEl) infoEl.innerText = 'Showing 0 of 0';
+                if (pageEl) pageEl.innerText = 'Page 1 of 1';
+                if (prevBtn) prevBtn.disabled = true;
+                if (nextBtn) nextBtn.disabled = true;
+                return;
+            }
+
+            const start = (_extCurrentPage - 1) * _extCurrentLimit + 1;
+            const end = Math.min(_extCurrentPage * _extCurrentLimit, _extTotalCount);
+
+            if (infoEl) infoEl.innerText = `Showing ${start}–${end} of ${_extTotalCount}`;
+            if (pageEl) pageEl.innerText = `Page ${_extCurrentPage} of ${_extTotalPages}`;
+            if (prevBtn) prevBtn.disabled = (_extCurrentPage <= 1);
+            if (nextBtn) nextBtn.disabled = (_extCurrentPage >= _extTotalPages);
+        }
+
+        function changeExternalApiLimit(val) {
+            _extCurrentLimit = parseInt(val, 10) || 20;
+            _extCurrentPage = 1;
+            loadExternalApiLogs();
+        }
+
+        function prevExternalApiPage() {
+            if (_extCurrentPage > 1) {
+                _extCurrentPage--;
+                loadExternalApiLogs();
+            }
+        }
+
+        function nextExternalApiPage() {
+            if (_extCurrentPage < _extTotalPages) {
+                _extCurrentPage++;
+                loadExternalApiLogs();
+            }
+        }
+
+        function onExternalApiSearchInput() {
+            if (_extSearchDebounceTimer) clearTimeout(_extSearchDebounceTimer);
+            _extSearchDebounceTimer = setTimeout(() => {
+                _extCurrentPage = 1;
+                loadExternalApiLogs();
+            }, 280);
+        }
+
+        function filterExternalApiLogs() {
+            _extCurrentPage = 1;
+            loadExternalApiLogs();
+        }
+
+        function toggleExternalApiSort(field) {
+            if (_extSortBy === field) {
+                _extSortOrder = (_extSortOrder === 'desc') ? 'asc' : 'desc';
+            } else {
+                _extSortBy = field;
+                _extSortOrder = 'desc';
+            }
+            _extCurrentPage = 1;
+            updateSortHeaderIndicators();
+            loadExternalApiLogs();
+        }
+
+        function changeExternalApiSort(val) {
+            if (!val) return;
+            const parts = val.split('_');
+            _extSortBy = parts[0] || 'timestamp';
+            _extSortOrder = parts[1] || 'desc';
+            _extCurrentPage = 1;
+            updateSortHeaderIndicators();
+            loadExternalApiLogs();
+        }
+
+        function updateSortHeaderIndicators() {
+            const timeIcon = document.getElementById('ext-sort-time-icon');
+            const statusIcon = document.getElementById('ext-sort-status-icon');
+            const sortSelect = document.getElementById('ext-logs-sort');
+
+            if (timeIcon) {
+                if (_extSortBy === 'timestamp') {
+                    timeIcon.innerHTML = _extSortOrder === 'desc' ? '▼' : '▲';
+                    timeIcon.style.color = '#10b981';
+                } else {
+                    timeIcon.innerHTML = '↕';
+                    timeIcon.style.color = 'var(--text-secondary)';
+                }
+            }
+            if (statusIcon) {
+                if (_extSortBy === 'duration' || _extSortBy === 'status') {
+                    statusIcon.innerHTML = _extSortOrder === 'desc' ? '▼' : '▲';
+                    statusIcon.style.color = '#10b981';
+                } else {
+                    statusIcon.innerHTML = '↕';
+                    statusIcon.style.color = 'var(--text-secondary)';
+                }
+            }
+            if (sortSelect) {
+                sortSelect.value = `${_extSortBy}_${_extSortOrder}`;
+            }
+        }
+
         function populateExternalApiTargetDropdown() {
             const select = document.getElementById('ext-logs-target-filter');
             if (!select) return;
             const currentVal = select.value || 'ALL';
 
-            const domainCounts = {};
-            (_allExternalApiLogs || []).forEach(l => {
-                let d = (l.domain || '').trim().toLowerCase();
-                if (d && d !== 'unknown') {
-                    domainCounts[d] = (domainCounts[d] || 0) + 1;
-                }
-            });
+            const domainCounts = Object.assign({}, _allDomainsCounter);
 
             // Target API presets (e.g. Yahoo Finance, NSE, Screener, BSE)
             const priorityDefaults = [
@@ -1664,7 +1891,7 @@
                 return a.localeCompare(b);
             });
 
-            select.innerHTML = '<option value="ALL">🌐 All Target APIs (' + _allExternalApiLogs.length + ')</option>';
+            select.innerHTML = '<option value="ALL">🌐 All Target APIs</option>';
             sortedDomains.forEach(domain => {
                 const count = domainCounts[domain] || 0;
                 const opt = document.createElement('option');
@@ -1684,61 +1911,25 @@
             _currentExternalMethodFilter = method;
             document.querySelectorAll('.method-pill-btn').forEach(b => b.classList.remove('active'));
             if (btnEl) btnEl.classList.add('active');
-            renderExternalApiLogsTable();
-        }
-
-        function filterExternalApiLogs() {
-            renderExternalApiLogsTable();
+            _extCurrentPage = 1;
+            loadExternalApiLogs();
         }
 
         function renderExternalApiLogsTable() {
             const tbody = document.getElementById('ext-logs-table-body');
             if (!tbody) return;
 
-            const searchQuery = (document.getElementById('ext-logs-search')?.value || '').trim().toLowerCase();
-            let filtered = _allExternalApiLogs;
-
-            // 1. Method filter
-            if (_currentExternalMethodFilter !== 'ALL') {
-                filtered = filtered.filter(l => (l.method || '').toUpperCase() === _currentExternalMethodFilter);
-            }
-
-            // 2. Target API / Domain dropdown filter
-            const targetFilter = (document.getElementById('ext-logs-target-filter')?.value || 'ALL').trim().toLowerCase();
-            if (targetFilter !== 'all') {
-                filtered = filtered.filter(l => {
-                    const d = (l.domain || '').toLowerCase();
-                    const u = (l.url || '').toLowerCase();
-                    return d === targetFilter || d.includes(targetFilter) || u.includes(targetFilter);
-                });
-            }
-
-            // 3. Search filter (also matches username)
-            if (searchQuery) {
-                filtered = filtered.filter(l => {
-                    const u = (l.url || '').toLowerCase();
-                    const f = (l.python_file || '').toLowerCase();
-                    const p = (l.caller_path || '').toLowerCase();
-                    const fn = (l.caller_function || '').toLowerCase();
-                    const d = (l.domain || '').toLowerCase();
-                    const usr = (l.username || '').toLowerCase();
-                    const s = (l.status_text || '').toLowerCase();
-                    const paramStr = JSON.stringify(l.parameters || {}).toLowerCase();
-                    return u.includes(searchQuery) || f.includes(searchQuery) || p.includes(searchQuery) || fn.includes(searchQuery) || d.includes(searchQuery) || usr.includes(searchQuery) || s.includes(searchQuery) || paramStr.includes(searchQuery);
-                });
-            }
-
             tbody.innerHTML = '';
 
-            if (filtered.length === 0) {
-                const emptyMsg = _allExternalApiLogs.length === 0
+            if (!_allExternalApiLogs || _allExternalApiLogs.length === 0) {
+                const emptyMsg = _extTotalCount === 0
                     ? 'No external API calls logged yet. All outbound Python requests will appear here in real-time.'
-                    : 'No external API calls match your search and filter criteria.';
+                    : 'No external API calls match your search and filter criteria on this page.';
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 35px 20px; color: var(--text-secondary);"><div style="font-size: 24px; margin-bottom: 6px;">🌐</div><div>${emptyMsg}</div></td></tr>`;
                 return;
             }
 
-            filtered.forEach(log => {
+            _allExternalApiLogs.forEach(log => {
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid var(--border-color)';
 
@@ -1778,11 +1969,12 @@
                 const callerPath = log.caller_path || log.python_file || 'unknown';
                 const callerFn = log.caller_function ? `fn: ${log.caller_function}` : '';
                 const callerLine = log.caller_line ? `:${log.caller_line}` : '';
+                const formattedTime = formatLogDateTime(log.datetime_formatted || log.datetime || log.timestamp);
+                const durationDisplay = (log.duration_ms !== undefined && log.duration_ms !== null) ? `${log.duration_ms}ms` : '—';
 
                 tr.innerHTML = `
                     <td style="padding: 10px 12px; white-space: nowrap;">
-                        <div style="font-weight: 600; font-size: 12px; color: var(--text-primary);">${log.datetime || log.timestamp || 'N/A'}</div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">${log.duration_ms ? log.duration_ms + ' ms' : ''}</div>
+                        <div style="font-weight: 600; font-size: 12px; color: var(--text-primary);">${formattedTime}</div>
                     </td>
                     <td style="padding: 10px; text-align: center;">
                         <span class="badge-method ${methodClass}">${method}</span>
@@ -1807,9 +1999,12 @@
                     <td style="padding: 10px 12px;">
                         ${paramsDisplay}
                     </td>
-                    <td style="padding: 10px; text-align: center;">
+                    <td style="padding: 10px; text-align: center; white-space: nowrap;">
                         <div style="${statusStyle}">
-                            <span>${statusIcon}</span> ${log.status_text || log.status_code || 'Done'}
+                            <span>${statusIcon}</span> ${escapeHtml(log.status_text || log.status_code || 'Done')}
+                        </div>
+                        <div style="font-size: 11px; font-weight: 600; color: #10b981; font-family: monospace; margin-top: 2px;" title="Execution Latency: ${durationDisplay}">
+                            ⚡ ${durationDisplay}
                         </div>
                     </td>
                     <td style="padding: 10px; text-align: center;">
@@ -1822,8 +2017,18 @@
             });
         }
 
-        function openExternalApiLogDetail(logId) {
-            const log = _allExternalApiLogs.find(l => l.id === logId);
+        async function openExternalApiLogDetail(logId) {
+            let log = (_allExternalApiLogs || []).find(l => l.id === logId);
+            if (!log) {
+                try {
+                    const res = await fetch(`/api/admin/external_api_logs/${encodeURIComponent(logId)}`);
+                    if (res.ok) {
+                        log = await res.json();
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch log detail', e);
+                }
+            }
             if (!log) return;
 
             const modal = document.getElementById('externalApiLogDetailModal');
@@ -1837,6 +2042,8 @@
             }
 
             const jsonStr = JSON.stringify(log, null, 2);
+            const formattedTime = formatLogDateTime(log.datetime_formatted || log.datetime || log.timestamp);
+            const durationDisplay = (log.duration_ms !== undefined && log.duration_ms !== null) ? `${log.duration_ms}ms` : '—';
 
             let html = `
                 <div style="display: flex; flex-direction: column; gap: 14px;">
@@ -1844,7 +2051,7 @@
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; background: var(--bg-subtle); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div>
                             <span style="font-size: 11px; color: var(--text-secondary); display: block;">Timestamp</span>
-                            <strong style="font-size: 13px;">${log.datetime || log.timestamp}</strong>
+                            <strong style="font-size: 13px;">${formattedTime}</strong>
                         </div>
                         <div>
                             <span style="font-size: 11px; color: var(--text-secondary); display: block;">Initiated By (User)</span>
@@ -1855,8 +2062,8 @@
                             <code style="font-size: 12px; color: #10b981;">${escapeHtml(log.caller_full || log.python_file)}</code>
                         </div>
                         <div>
-                            <span style="font-size: 11px; color: var(--text-secondary); display: block;">Status & Latency</span>
-                            <strong>${log.status_text || log.status_code || 'OK'} (${log.duration_ms || 0} ms)</strong>
+                            <span style="font-size: 11px; color: var(--text-secondary); display: block;">Status & Time Taken</span>
+                            <strong>${escapeHtml(log.status_text || log.status_code || 'OK')} (⚡ ${durationDisplay})</strong>
                         </div>
                         <div>
                             <span style="font-size: 11px; color: var(--text-secondary); display: block;">JSON File in app_data</span>

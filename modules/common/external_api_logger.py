@@ -1,4 +1,5 @@
 import os
+import math
 import sys
 import time
 import json
@@ -217,7 +218,8 @@ def record_external_call(
         _ensure_dirs()
         now = datetime.datetime.now()
         timestamp_iso = now.isoformat()
-        datetime_str = now.strftime("%Y-%m-%d %H:%M:%S")
+        datetime_str = now.strftime("%d-%m-%Y %H:%M:%S")
+        datetime_formatted = now.strftime("%d-%m-%Y %I:%M:%S %p")
         log_id = f"ext_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
 
         parsed = urllib.parse.urlparse(str(url))
@@ -290,6 +292,7 @@ def record_external_call(
             "id": log_id,
             "timestamp": timestamp_iso,
             "datetime": datetime_str,
+            "datetime_formatted": datetime_formatted,
             "username": current_user,
             "method": str(method).upper(),
             "url": clean_url,
@@ -569,15 +572,29 @@ def _init_logs_cache():
                 _LOGS_CACHE = []
 
 
-def get_external_api_logs(limit=200, search=None, method=None, domain=None):
+def get_external_api_logs_paginated(
+    page=1,
+    limit=20,
+    search=None,
+    method=None,
+    domain=None,
+    sort_by="timestamp",
+    order="desc",
+):
     """
-    Retrieve logged external API calls.
-    Supports filtering by search query, HTTP method, and target domain.
+    Retrieve logged external API calls with server-side filtering, sorting, and pagination.
     """
     _init_logs_cache()
 
     with _LOGS_LOCK:
         logs = list(_LOGS_CACHE)
+
+    # Collect domains counter from raw logs before filters
+    domains_counter = {}
+    for l in logs:
+        d = (l.get("domain") or "unknown").strip().lower()
+        if d and d != "unknown":
+            domains_counter[d] = domains_counter.get(d, 0) + 1
 
     # Filter by method
     if method and method.upper() != "ALL":
@@ -587,7 +604,10 @@ def get_external_api_logs(limit=200, search=None, method=None, domain=None):
     # Filter by domain / target API
     if domain and domain.upper() != "ALL":
         d_lower = domain.strip().lower()
-        logs = [l for l in logs if d_lower in str(l.get("domain", "")).lower() or d_lower in str(l.get("url", "")).lower()]
+        logs = [
+            l for l in logs
+            if d_lower in str(l.get("domain", "")).lower() or d_lower in str(l.get("url", "")).lower()
+        ]
 
     # Filter by search string
     if search:
@@ -601,14 +621,76 @@ def get_external_api_logs(limit=200, search=None, method=None, domain=None):
             user_match = s in str(l.get("username", "")).lower()
             params_match = s in json.dumps(l.get("parameters", {})).lower()
             status_match = s in str(l.get("status_text", "")).lower() or s in str(l.get("status_code", "")).lower()
-            if url_match or file_match or caller_match or domain_match or user_match or params_match or status_match:
+            time_match = s in str(l.get("datetime", "")).lower() or s in str(l.get("datetime_formatted", "")).lower()
+            if url_match or file_match or caller_match or domain_match or user_match or params_match or status_match or time_match:
                 filtered.append(l)
         logs = filtered
 
-    if limit and limit > 0:
-        logs = logs[:limit]
+    total_filtered = len(logs)
 
-    return logs
+    # Sorting
+    is_desc = str(order).lower() == "desc"
+    sb = str(sort_by or "timestamp").lower()
+
+    if sb in ("duration", "duration_ms", "time_taken", "latency"):
+        def _get_duration(x):
+            try:
+                return float(x.get("duration_ms") or 0.0)
+            except Exception:
+                return 0.0
+        logs.sort(key=_get_duration, reverse=is_desc)
+    elif sb in ("status", "status_code"):
+        def _get_status(x):
+            try:
+                return int(x.get("status_code") or 0)
+            except Exception:
+                return 0
+        logs.sort(key=_get_status, reverse=is_desc)
+    else:  # default 'timestamp'
+        def _get_time_key(x):
+            return str(x.get("timestamp") or x.get("datetime") or "")
+        logs.sort(key=_get_time_key, reverse=is_desc)
+
+    # Pagination
+    if limit is None or int(limit) <= 0:
+        paged_logs = logs
+        page = 1
+        limit = total_filtered
+        total_pages = 1
+    else:
+        limit = max(1, int(limit))
+        total_pages = max(1, math.ceil(total_filtered / limit))
+        page = max(1, min(int(page), total_pages))
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paged_logs = logs[start_idx:end_idx]
+
+    return {
+        "logs": paged_logs,
+        "page": page,
+        "limit": limit,
+        "total_count": total_filtered,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1,
+        "domains": domains_counter,
+    }
+
+
+def get_external_api_logs(limit=200, search=None, method=None, domain=None, sort_by="timestamp", order="desc"):
+    """
+    Retrieve logged external API calls (convenience wrapper around paginated query).
+    """
+    res = get_external_api_logs_paginated(
+        page=1,
+        limit=limit,
+        search=search,
+        method=method,
+        domain=domain,
+        sort_by=sort_by,
+        order=order,
+    )
+    return res["logs"]
 
 
 def get_external_api_stats():
