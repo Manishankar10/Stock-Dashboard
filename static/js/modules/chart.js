@@ -4721,18 +4721,24 @@
             });
         }
 
-        function openInHouseChart(sym) {
+        function openInHouseChart(sym, targetInterval, patternMarkers) {
             if (!sym) return;
             clearTempMeasure();
             currentChartSymbol = sym;
             currentChartRange = '3y';
-            try {
-                const saved = localStorage.getItem('capital_desk_chart_interval');
-                if (saved) {
-                    currentChartInterval = saved;
-                }
-            } catch(e) {}
+            if (targetInterval) {
+                currentChartInterval = targetInterval;
+            } else {
+                try {
+                    const saved = localStorage.getItem('capital_desk_chart_interval');
+                    if (saved) {
+                        currentChartInterval = saved;
+                    }
+                } catch(e) {}
+            }
             if (!currentChartInterval) currentChartInterval = '1d';
+
+            window.activePatternMarkers = (Array.isArray(patternMarkers) && patternMarkers.length > 0) ? patternMarkers : [];
             
             const modal = document.getElementById('chartModal');
             if (modal) {
@@ -4765,8 +4771,8 @@
             loadChartData();
         }
 
-        function openChart(sym) {
-            openInHouseChart(sym);
+        function openChart(sym, targetInterval, patternMarkers) {
+            openInHouseChart(sym, targetInterval, patternMarkers);
         }
 
         function changeRange(rangeStr) {
@@ -6301,6 +6307,9 @@
                 if (showStTrigger && cachedStTriggerMarkers && cachedStTriggerMarkers.length > 0) {
                     combinedMarkers.push(...cachedStTriggerMarkers);
                 }
+                if (window.activePatternMarkers && window.activePatternMarkers.length > 0) {
+                    combinedMarkers.push(...window.activePatternMarkers);
+                }
                 combinedMarkers.sort((a, b) => {
                     const ta = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() || 0);
                     const tb = typeof b.time === 'number' ? b.time : (new Date(b.time).getTime() || 0);
@@ -6344,6 +6353,7 @@
         }
 
         function closeChartModal() {
+            window.activePatternMarkers = [];
             const modal = document.getElementById('chartModal');
             if (modal) {
                 modal.style.display = 'none';

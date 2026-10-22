@@ -691,7 +691,7 @@ def _get_target_symbols_for_scope(scope="all", watchlist_id=None, uname="admin")
 
     return clean_syms
 
-def _analyze_trendlines_for_stock(closes, highs, lows, symbol, name, ltp, prev_close):
+def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close):
     """
     Mathematical Trendline & Channel Extrema Algorithm.
     Detects Rising, Falling, and Horizontal lines + Testing / Breakouts / Breakdowns.
@@ -705,6 +705,8 @@ def _analyze_trendlines_for_stock(closes, highs, lows, symbol, name, ltp, prev_c
     sub_closes = closes[-lookback:]
     sub_highs = highs[-lookback:]
     sub_lows = lows[-lookback:]
+    sub_dates = dates[-lookback:] if dates else []
+    curr_time = sub_dates[-1] if sub_dates else ""
     m_len = len(sub_closes)
 
     w = 3
@@ -780,28 +782,34 @@ def _analyze_trendlines_for_stock(closes, highs, lows, symbol, name, ltp, prev_c
             if abs(diff) <= 2.2:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Rising Support ₹{tl_c:.1f} ({t_count} touches, {diff:+.1f}%)"
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Rising Support"}]
                 matched["rising_support"] = item
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Rising Support ₹{tl_c:.1f} ({diff:+.1f}%)"
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Support Breakdown"}]
                 matched["support_rising_breakdown"] = item
         elif slope < -eps_slope:  # Falling Support
             if abs(diff) <= 2.2:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Falling Channel Support ₹{tl_c:.1f} ({t_count} touches)"
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Falling Support"}]
                 matched["falling_support"] = item
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Falling Support ₹{tl_c:.1f} ({diff:+.1f}%)"
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Support Breakdown"}]
                 matched["support_falling_breakdown"] = item
         else:  # Horizontal Support
             if abs(diff) <= 2.2:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Horizontal Floor ₹{tl_c:.1f} ({t_count} touches)"
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Horizontal Support"}]
                 matched["horizontal_support"] = item
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Horizontal Support ₹{tl_c:.1f} ({diff:+.1f}%)"
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Floor Breakdown"}]
                 matched["support_trendline_breakdown"] = item
 
     # Resistance Trendline fit (Swing Highs)
@@ -849,33 +857,39 @@ def _analyze_trendlines_for_stock(closes, highs, lows, symbol, name, ltp, prev_c
             if abs(diff) <= 2.2 and ltp <= tl_c * 1.008:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Rising Resistance ₹{tl_c:.1f} ({t_count} touches)"
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Rising Resistance"}]
                 matched["resistance_rising"] = item
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakout Above Rising Resistance ₹{tl_c:.1f} ({diff:+.1f}%)"
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Resistance Breakout"}]
                 matched["resistance_rising_breakout"] = item
         elif slope < -eps_slope:  # Falling Resistance
             if abs(diff) <= 2.2 and ltp <= tl_c * 1.008:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Falling Resistance ₹{tl_c:.1f} ({t_count} touches)"
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Falling Resistance"}]
                 matched["resistance_falling"] = item
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Reversal Breakout Above Descending Resistance ₹{tl_c:.1f} ({diff:+.1f}%)"
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Reversal Breakout"}]
                 matched["resistance_falling_breakout"] = item
         else:  # Horizontal Resistance
             if abs(diff) <= 2.2 and ltp <= tl_c * 1.008:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Horizontal Ceiling ₹{tl_c:.1f} ({t_count} touches)"
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Horizontal Ceiling"}]
                 matched["horizontal_resistance"] = item
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakout Above Horizontal Ceiling ₹{tl_c:.1f} ({diff:+.1f}%)"
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Ceiling Breakout"}]
                 matched["resistance_trendline_breakout"] = item
 
     return matched
 
-def _analyze_triangles_for_stock(closes, highs, lows, symbol, name, ltp, prev_close):
+def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close):
     """
     Mathematical Geometric Triangle Detection Engine.
     Detects Ascending, Descending, and Symmetrical Triangles + Breakouts & Breakdowns.
@@ -888,6 +902,8 @@ def _analyze_triangles_for_stock(closes, highs, lows, symbol, name, ltp, prev_cl
     sub_closes = closes[-lookback:]
     sub_highs = highs[-lookback:]
     sub_lows = lows[-lookback:]
+    sub_dates = dates[-lookback:] if dates else []
+    curr_time = sub_dates[-1] if sub_dates else ""
     m_len = len(sub_closes)
 
     w = 3
@@ -957,14 +973,17 @@ def _analyze_triangles_for_stock(closes, highs, lows, symbol, name, ltp, prev_cl
                 if ltp > r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Triangle Breakout > Ceiling ₹{r_curr:.1f} (+{((ltp - r_curr)/r_curr)*100:.1f}%)"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Ascending Breakout"}]
                     matched["ascending_triangle_breakout"] = item
                 elif ltp < s_curr * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Triangle Breakdown < Support ₹{s_curr:.1f}"
+                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Ascending Breakdown"}]
                     matched["ascending_triangle_breakdown"] = item
                 elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Triangle Active (Spread: {spread_pct:.1f}%, Resistance ₹{r_curr:.1f})"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}]
                     matched["ascending_triangle"] = item
 
             # 2. Descending Triangle: Flat floor + falling upper resistance
@@ -972,10 +991,12 @@ def _analyze_triangles_for_stock(closes, highs, lows, symbol, name, ltp, prev_cl
                 if ltp < s_curr * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Triangle Breakdown < Floor ₹{s_curr:.1f} ({((ltp - s_curr)/s_curr)*100:.1f}%)"
+                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Descending Breakdown"}]
                     matched["descending_triangle_breakdown"] = item
                 elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Triangle Active (Floor: ₹{s_curr:.1f}, Resistance ₹{r_curr:.1f})"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}]
                     matched["descending_triangle"] = item
 
             # 3. Symmetrical Triangle: Converging lines
@@ -983,19 +1004,22 @@ def _analyze_triangles_for_stock(closes, highs, lows, symbol, name, ltp, prev_cl
                 if ltp > r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Symmetric Triangle Breakout > ₹{r_curr:.1f} (+{((ltp - r_curr)/r_curr)*100:.1f}%)"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Symmetric Breakout"}]
                     matched["symmetrical_triangle_breakout"] = item
                 elif ltp < s_curr * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Symmetric Triangle Breakdown < ₹{s_curr:.1f} ({((ltp - s_curr)/s_curr)*100:.1f}%)"
+                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Symmetric Breakdown"}]
                     matched["symmetrical_triangle_breakdown"] = item
                 elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Symmetric Triangle Coil (Spread: {spread_pct:.1f}%, Apex Converging)"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Symmetric Coil"}]
                     matched["symmetrical_triangle"] = item
 
     return matched
 
-def _analyze_channels_for_stock(closes, highs, lows, symbol, name, ltp, prev_close):
+def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close):
     """
     Parallel Channels & Rectangle Box Trading Engine.
     Detects Ascending, Descending, and Rectangle Channels + Breakouts/Breakdowns.
@@ -1008,6 +1032,8 @@ def _analyze_channels_for_stock(closes, highs, lows, symbol, name, ltp, prev_clo
     sub_closes = closes[-lookback:]
     sub_highs = highs[-lookback:]
     sub_lows = lows[-lookback:]
+    sub_dates = dates[-lookback:] if dates else []
+    curr_time = sub_dates[-1] if sub_dates else ""
     m_len = len(sub_closes)
 
     w = 3
@@ -1078,14 +1104,17 @@ def _analyze_channels_for_stock(closes, highs, lows, symbol, name, ltp, prev_clo
                 if ltp > r_c * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Channel Expansion Breakout > ₹{r_c:.1f}"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Channel Breakout"}]
                     matched["ascending_channel_breakout"] = item
                 elif ltp < s_c * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Channel Breakdown < Support ₹{s_c:.1f}"
+                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}]
                     matched["ascending_channel_breakdown"] = item
                 elif s_c * 0.985 <= ltp <= r_c * 1.015:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Active Ascending Channel (Slope +{((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Ascending Channel"}]
                     matched["ascending_channel"] = item
 
             # 2. Descending Channel
@@ -1093,14 +1122,17 @@ def _analyze_channels_for_stock(closes, highs, lows, symbol, name, ltp, prev_clo
                 if ltp > r_c * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Channel Reversal Breakout > ₹{r_c:.1f}"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Reversal Breakout"}]
                     matched["descending_channel_breakout"] = item
                 elif ltp < s_c * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Channel Accelerating Breakdown < ₹{s_c:.1f}"
+                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}]
                     matched["descending_channel_breakdown"] = item
                 elif s_c * 0.985 <= ltp <= r_c * 1.015:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Active Descending Channel (Slope {((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Descending Channel"}]
                     matched["descending_channel"] = item
 
             # 3. Rectangle Channel
@@ -1108,23 +1140,27 @@ def _analyze_channels_for_stock(closes, highs, lows, symbol, name, ltp, prev_clo
                 if ltp > r_c * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Rectangle Range Breakout > Ceiling ₹{r_c:.1f} (+{((ltp - r_c)/r_c)*100:.1f}%)"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Rectangle Breakout"}]
                     matched["rectangle_channel_breakout"] = item
                 elif ltp < s_c * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Rectangle Range Breakdown < Floor ₹{s_c:.1f} ({((ltp - s_c)/s_c)*100:.1f}%)"
+                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Rectangle Breakdown"}]
                     matched["rectangle_channel_breakdown"] = item
                 elif s_c * 0.99 <= ltp <= r_c * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Active Rectangle Range (Floor ₹{s_c:.1f} · Ceiling ₹{r_c:.1f}, Width {channel_width:.1f}%)"
+                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Rectangle"}]
                     matched["rectangle_channel"] = item
                     if abs(ltp - s_c) / s_c <= 0.02 or abs(ltp - r_c) / r_c <= 0.02:
                         pot_item = dict(base_scanner_result)
                         pot_item["metric"] = f"Testing Rectangle Boundary Zone (LTP ₹{ltp:.1f} near Band)"
+                        pot_item["markers"] = [{"time": curr_time, "position": "belowBar" if abs(ltp - s_c) < abs(ltp - r_c) else "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Boundary Test"}]
                         matched["rectangle_channel_potential"] = pot_item
 
     return matched
 
-def _analyze_nr_wr_for_stock(closes, highs, lows, opens, symbol, name, ltp, prev_close):
+def _analyze_nr_wr_for_stock(closes, highs, lows, opens, dates, symbol, name, ltp, prev_close):
     """
     Toby Crabel Volatility Compression (NR) & Expansion (WR) Engine.
     Detects NR 4, 7, 11, 15 and WR 7, 14, 20 + Breakouts & Continuations.
@@ -1132,6 +1168,9 @@ def _analyze_nr_wr_for_stock(closes, highs, lows, opens, symbol, name, ltp, prev
     n = len(closes)
     if n < 25:
         return {}
+
+    curr_time = dates[-1] if dates else ""
+    prev_time = dates[-2] if len(dates) >= 2 else curr_time
 
     ranges = [highs[i] - lows[i] for i in range(n)]
     curr_r = ranges[-1]
@@ -1151,31 +1190,43 @@ def _analyze_nr_wr_for_stock(closes, highs, lows, opens, symbol, name, ltp, prev
     def test_nr(period, key_base):
         if len(ranges) >= period and curr_r < min(ranges[-period:-1]):
             m = dict(base_scanner_result)
-            m["metric"] = f"NR {period} Squeeze: Daily range ₹{curr_r:.1f} is smallest of {period} sessions"
+            m["metric"] = f"NR {period} Squeeze: Range ₹{curr_r:.1f} is smallest of {period} bars"
+            m["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#f59e0b", "shape": "circle", "text": f"NR {period}"}]
             matched[key_base] = m
         elif len(ranges) >= period + 1 and prev_r < min(ranges[-(period + 1):-2]):
             if ltp > prev_high:
                 m = dict(base_scanner_result)
                 m["metric"] = f"NR {period} Bullish Breakout > Prev High ₹{prev_high:.1f} (LTP ₹{ltp:.1f})"
+                m["markers"] = [
+                    {"time": prev_time, "position": "belowBar", "color": "#f59e0b", "shape": "circle", "text": f"NR {period}"},
+                    {"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Breakout"}
+                ]
                 matched[f"{key_base}_breakout"] = m
             elif ltp < prev_low:
                 m = dict(base_scanner_result)
                 m["metric"] = f"NR {period} Bearish Breakdown < Prev Low ₹{prev_low:.1f} (LTP ₹{ltp:.1f})"
+                m["markers"] = [
+                    {"time": prev_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": f"NR {period}"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Breakdown"}
+                ]
                 matched[f"{key_base}_breakdown"] = m
 
     def test_wr(period, key_base):
         if len(ranges) >= period and curr_r > max(ranges[-period:-1]):
             m = dict(base_scanner_result)
-            m["metric"] = f"WR {period} Expansion: Range ₹{curr_r:.1f} is largest of {period} sessions"
+            m["metric"] = f"WR {period} Expansion: Range ₹{curr_r:.1f} is largest of {period} bars"
+            m["markers"] = [{"time": curr_time, "position": "belowBar" if closes[-1] >= opens[-1] else "aboveBar", "color": "#8b5cf6", "shape": "circle", "text": f"WR {period}"}]
             matched[key_base] = m
         elif len(ranges) >= period + 1 and prev_r > max(ranges[-(period + 1):-2]):
             if ltp > prev_close and closes[-2] >= opens[-2]:
                 m = dict(base_scanner_result)
-                m["metric"] = f"WR {period} Bullish Continuation: Advancing past WR expansion day"
+                m["metric"] = f"WR {period} Bullish Continuation: Advancing past WR expansion bar"
+                m["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Continuation"}]
                 matched[f"{key_base}_bull_cont"] = m
             elif ltp < prev_close and closes[-2] <= opens[-2]:
                 m = dict(base_scanner_result)
-                m["metric"] = f"WR {period} Bearish Continuation: Selling follow-through past WR down-day"
+                m["metric"] = f"WR {period} Bearish Continuation: Selling follow-through past WR down-bar"
+                m["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Continuation"}]
                 matched[f"{key_base}_bear_cont"] = m
 
     test_nr(4, "nr4")
@@ -1189,7 +1240,7 @@ def _analyze_nr_wr_for_stock(closes, highs, lows, opens, symbol, name, ltp, prev
 
     return matched
 
-def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name, ltp, prev_close):
+def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbol, name, ltp, prev_close):
     """
     Multi-Leg Classical Chart Pattern Engine.
     Detects Double/Triple Tops & Bottoms (Init/Potential/Confirmed), H&S, Flags, Cups, V-Patterns.
@@ -1202,6 +1253,8 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
     sub_closes = closes[-lookback:]
     sub_highs = highs[-lookback:]
     sub_lows = lows[-lookback:]
+    sub_dates = dates[-lookback:] if dates else []
+    curr_time = sub_dates[-1] if sub_dates else ""
     m_len = len(sub_closes)
 
     w = 3
@@ -1235,6 +1288,12 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
         if h3 > h2 > h1 and l3 > l2 > l1:
             m = dict(base_scanner_result)
             m["metric"] = f"Higher Highs & Higher Lows Uptrend (Swings: ₹{l3:.1f} > ₹{l2:.1f} > ₹{l1:.1f})"
+            m["markers"] = [
+                {"time": sub_dates[p_lows[-2][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "HL"},
+                {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#10b981", "shape": "arrowUp", "text": "HH"},
+                {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "HL"},
+                {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#10b981", "shape": "arrowUp", "text": "HH"}
+            ]
             matched["higher_highs_lows"] = m
 
     # 2. Lower Highs & Lower Lows (Dow Theory Downtrend)
@@ -1244,6 +1303,12 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
         if h3 < h2 < h1 and l3 < l2 < l1:
             m = dict(base_scanner_result)
             m["metric"] = f"Lower Highs & Lower Lows Downtrend (Swings: ₹{h3:.1f} < ₹{h2:.1f} < ₹{h1:.1f})"
+            m["markers"] = [
+                {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "LH"},
+                {"time": sub_dates[p_lows[-2][0]], "position": "belowBar", "color": "#ef5350", "shape": "arrowDown", "text": "LL"},
+                {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "LH"},
+                {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#ef5350", "shape": "arrowDown", "text": "LL"}
+            ]
             matched["lower_highs_lows"] = m
 
     # 3. Double Bottom (Init, Potential, Confirmed)
@@ -1254,17 +1319,24 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
         neckline = max(mid_highs) if mid_highs else (max(sub_highs[idx1:idx2]) if idx2 > idx1 else None)
 
         if neckline and abs(l1 - l2) / float(l1) <= 0.025:
+            db_markers = [
+                {"time": sub_dates[idx1], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Bottom 1"},
+                {"time": sub_dates[idx2], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Bottom 2"}
+            ]
             if ltp > neckline * 1.008:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Bottom Confirmed: Breakout > Neckline ₹{neckline:.1f} (Troughs ₹{l1:.1f}, ₹{l2:.1f})"
+                m["markers"] = db_markers + [{"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Breakout"}]
                 matched["double_bottom"] = m
             elif ltp > l2 and ltp <= neckline:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Bottom Potential: Rebounding from Trough ₹{l2:.1f} toward Neckline ₹{neckline:.1f}"
+                m["markers"] = db_markers
                 matched["double_bottom_potential"] = m
             elif abs(ltp - l2) / float(l2) <= 0.015:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Bottom Init: Testing Support Base around ₹{l2:.1f}"
+                m["markers"] = db_markers
                 matched["double_bottom_init"] = m
 
     # 4. Double Top (Init, Potential, Confirmed)
@@ -1275,17 +1347,24 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
         neckline = min(mid_lows) if mid_lows else (min(sub_lows[idx1:idx2]) if idx2 > idx1 else None)
 
         if neckline and abs(h1 - h2) / float(h1) <= 0.025:
+            dt_markers = [
+                {"time": sub_dates[idx1], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Top 1"},
+                {"time": sub_dates[idx2], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Top 2"}
+            ]
             if ltp < neckline * 0.992:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Top Confirmed: Breakdown < Neckline ₹{neckline:.1f} (Peaks ₹{h1:.1f}, ₹{h2:.1f})"
+                m["markers"] = dt_markers + [{"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Breakdown"}]
                 matched["double_top"] = m
             elif ltp < h2 and ltp >= neckline:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Top Potential: Declining from Peak ₹{h2:.1f} toward Neckline ₹{neckline:.1f}"
+                m["markers"] = dt_markers
                 matched["double_top_potential"] = m
             elif abs(ltp - h2) / float(h2) <= 0.015:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Top Init: Testing Resistance Ceiling around ₹{h2:.1f}"
+                m["markers"] = dt_markers
                 matched["double_top_init"] = m
 
     # 5. Triple Bottom (Potential & Confirmed)
@@ -1294,13 +1373,20 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
         spread = (max(l1, l2, l3) - min(l1, l2, l3)) / float(min(l1, l2, l3))
         if spread <= 0.03:
             nl = max(p_highs[-2][1], p_highs[-1][1]) if len(p_highs) >= 2 else max(l1, l2, l3) * 1.05
+            tb_markers = [
+                {"time": sub_dates[p_lows[-3][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Trough 1"},
+                {"time": sub_dates[p_lows[-2][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Trough 2"},
+                {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Trough 3"}
+            ]
             if ltp > nl * 1.008:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Triple Bottom Confirmed: Breakout > Neckline ₹{nl:.1f} (3 Lows ~₹{l3:.1f})"
+                m["markers"] = tb_markers + [{"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Breakout"}]
                 matched["triple_bottom"] = m
             elif ltp > l3 and ltp <= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Triple Bottom Potential: Bouncing off 3rd Low ₹{l3:.1f}"
+                m["markers"] = tb_markers
                 matched["triple_bottom_potential"] = m
 
     # 6. Triple Top (Potential & Confirmed)
@@ -1309,13 +1395,20 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
         spread = (max(h1, h2, h3) - min(h1, h2, h3)) / float(min(h1, h2, h3))
         if spread <= 0.03:
             nl = min(p_lows[-2][1], p_lows[-1][1]) if len(p_lows) >= 2 else min(h1, h2, h3) * 0.95
+            tt_markers = [
+                {"time": sub_dates[p_highs[-3][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Peak 1"},
+                {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Peak 2"},
+                {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Peak 3"}
+            ]
             if ltp < nl * 0.992:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Triple Top Confirmed: Breakdown < Neckline ₹{nl:.1f} (3 Peaks ~₹{h3:.1f})"
+                m["markers"] = tt_markers + [{"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Breakdown"}]
                 matched["triple_top"] = m
             elif ltp < h3 and ltp >= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Triple Top Potential: Falling from 3rd Peak ₹{h3:.1f}"
+                m["markers"] = tt_markers
                 matched["triple_top_potential"] = m
 
     # 7. Head & Shoulders & Reverse H&S
@@ -1323,26 +1416,40 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
         s1, head, s2 = p_highs[-3][1], p_highs[-2][1], p_highs[-1][1]
         if head > s1 and head > s2 and abs(s1 - s2) / float(s1) <= 0.05:
             nl = (p_lows[-2][1] + p_lows[-1][1]) / 2.0
+            hs_markers = [
+                {"time": sub_dates[p_highs[-3][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "L-Shoulder"},
+                {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Head"},
+                {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "R-Shoulder"}
+            ]
             if ltp < nl * 0.992:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Head & Shoulder Breakdown < Neckline ₹{nl:.1f} (Head ₹{head:.1f})"
+                m["markers"] = hs_markers + [{"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Breakdown"}]
                 matched["head_shoulder"] = m
             elif ltp < s2 and ltp >= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Head & Shoulder Potential: Right Shoulder Rejection at ₹{s2:.1f}"
+                m["markers"] = hs_markers
                 matched["head_shoulder_potential"] = m
 
     if len(p_lows) >= 3 and len(p_highs) >= 2:
         s1, head, s2 = p_lows[-3][1], p_lows[-2][1], p_lows[-1][1]
         if head < s1 and head < s2 and abs(s1 - s2) / float(s1) <= 0.05:
             nl = (p_highs[-2][1] + p_highs[-1][1]) / 2.0
+            rhs_markers = [
+                {"time": sub_dates[p_lows[-3][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "L-Shoulder"},
+                {"time": sub_dates[p_lows[-2][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Head"},
+                {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "R-Shoulder"}
+            ]
             if ltp > nl * 1.008:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Reverse Head & Shoulder Breakout > Neckline ₹{nl:.1f} (Head ₹{head:.1f})"
+                m["markers"] = rhs_markers + [{"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Breakout"}]
                 matched["reverse_head_shoulder"] = m
             elif ltp > s2 and ltp <= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Reverse H&S Potential: Right Shoulder Bouncing at ₹{s2:.1f}"
+                m["markers"] = rhs_markers
                 matched["reverse_head_shoulder_potential"] = m
 
     # 8. V Pattern & Inverse V Pattern
@@ -1356,6 +1463,10 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
             if drop_pct >= 0.06 and rec_pct >= 0.05 and abs(drop_pct - rec_pct) <= 0.035:
                 m = dict(base_scanner_result)
                 m["metric"] = f"V Pattern Recovery: Rapid V-Bottom Recovery from ₹{min_10:.1f} to ₹{ltp:.1f}"
+                m["markers"] = [
+                    {"time": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "V-Bottom"},
+                    {"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Recovery"}
+                ]
                 matched["v_pattern"] = m
 
         max_10 = max(sub_highs[-10:-4])
@@ -1367,6 +1478,10 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
             if rally_pct >= 0.06 and dump_pct >= 0.05 and abs(rally_pct - dump_pct) <= 0.035:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Inverse V Pattern: Rapid Spike & Rejection from Peak ₹{max_10:.1f}"
+                m["markers"] = [
+                    {"time": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "V-Top"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Rejection"}
+                ]
                 matched["inverse_v_pattern"] = m
 
     # 9. Bullish & Bearish Flags & Pennants
@@ -1381,10 +1496,18 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
                 if ltp > recent_high * 0.995:
                     m = dict(base_scanner_result)
                     m["metric"] = f"Bullish Flag Breakout: Flagpole +{pole_gain*100:.1f}% with Breakout at ₹{ltp:.1f}"
+                    m["markers"] = [
+                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Flagpole"},
+                        {"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Flag Breakout"}
+                    ]
                     matched["bullish_flag"] = m
                 else:
                     m = dict(base_scanner_result)
                     m["metric"] = f"Bullish Pennant Consolidation (Pole +{pole_gain*100:.1f}%, tight coil ₹{recent_low:.1f} - ₹{recent_high:.1f})"
+                    m["markers"] = [
+                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Pennant Pole"},
+                        {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Pennant Coil"}
+                    ]
                     matched["bullish_pennant"] = m
 
         pole_top_b = sub_highs[-20]
@@ -1397,10 +1520,18 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
                 if ltp < recent_low_b * 1.005:
                     m = dict(base_scanner_result)
                     m["metric"] = f"Bearish Flag Breakdown: Dump -{pole_drop*100:.1f}% with Breakdown at ₹{ltp:.1f}"
+                    m["markers"] = [
+                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Flagpole"},
+                        {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Flag Breakdown"}
+                    ]
                     matched["bearish_flag"] = m
                 else:
                     m = dict(base_scanner_result)
                     m["metric"] = f"Bearish Pennant Consolidation (Dump -{pole_drop*100:.1f}%, coil ₹{recent_low_b:.1f} - ₹{recent_high_b:.1f})"
+                    m["markers"] = [
+                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Pennant Pole"},
+                        {"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Pennant Coil"}
+                    ]
                     matched["bearish_pennant"] = m
 
     # 10. Cup and Handle & Rounding Bottom
@@ -1416,10 +1547,19 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
                 if ltp >= rim_right * 0.995:
                     m = dict(base_scanner_result)
                     m["metric"] = f"Cup and Handle Breakout: Base depth -{depth*100:.1f}%, Breakout > Rim ₹{rim_right:.1f}"
+                    m["markers"] = [
+                        {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Cup Base"},
+                        {"time": sub_dates[-3] if len(sub_dates) >= 3 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Handle Low"},
+                        {"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Cup Breakout"}
+                    ]
                     matched["cup_and_handle"] = m
                 else:
                     m = dict(base_scanner_result)
                     m["metric"] = f"Rounding Bottom Base (Saucer Accumulation, Base ₹{bottom_val:.1f} to Rim ₹{rim_left:.1f})"
+                    m["markers"] = [
+                        {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Saucer Base"},
+                        {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Accumulation"}
+                    ]
                     matched["rounding_bottom"] = m
 
         inv_rim_left = min(sub_lows[-45:-30])
@@ -1431,11 +1571,21 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name
             if ltp <= inv_rim_right * 1.005:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Inverse Cup and Handle Breakdown: Inverted Dome Peak ₹{inv_top_val:.1f}"
+                m["markers"] = [
+                    {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Dome Peak"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Breakdown"}
+                ]
                 matched["cup_and_handle_inverse"] = m
             else:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Rounding Top Distribution (Inverted Saucer, Peak ₹{inv_top_val:.1f})"
+                m["markers"] = [
+                    {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Dome Peak"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Distribution"}
+                ]
                 matched["rounding_top"] = m
+
+    return matched
 
     return matched
 
@@ -1477,6 +1627,9 @@ def run_technical_screener_scan_api():
     uname = session.get("username", "admin") if hasattr(session, "get") else "admin"
     category = request.args.get("category", "smart_scanners").strip().lower()
     scope = request.args.get("scope", "all").strip().lower()
+    timeframe = request.args.get("timeframe", "daily").strip().lower()
+    if timeframe not in ("daily", "weekly", "monthly"):
+        timeframe = "daily"
     watchlist_id = request.args.get("watchlist_id", "").strip()
     force_refresh = request.args.get("force_refresh", "false").lower() in ("true", "1", "yes")
 
@@ -1504,18 +1657,19 @@ def run_technical_screener_scan_api():
             "success": True,
             "category": category,
             "scope": scope,
+            "timeframe": timeframe,
             "total_scanned": 0,
             "scanners": {},
             "stocks": {}
         })
 
-    # All categories (smart_scanners, trendlines, triangles, channels, nr_wr, chart_patterns) active
-    cache_key = f"{uname}_{category}_{scope}_{watchlist_id}"
+    # All categories active
+    cache_key = f"{uname}_{category}_{scope}_{watchlist_id}_{timeframe}"
     now_ts = time.time()
 
     if not force_refresh:
-        # Check if we already have recent data in Collection 2
-        existing_info = load_technical_screener_info_db(symbols=target_symbols)
+        # Check if we already have recent data in Collection 2 for this timeframe
+        existing_info = load_technical_screener_info_db(symbols=target_symbols, timeframe=timeframe)
         valid_cached_stocks = 0
         for sym in target_symbols:
             doc = existing_info.get(sym.upper())
@@ -1529,11 +1683,23 @@ def run_technical_screener_scan_api():
                 "success": True,
                 "category": category,
                 "scope": scope,
+                "timeframe": timeframe,
                 "total_scanned": len(target_symbols),
                 "from_cache": True,
                 "scanners": scanners_result,
                 "stocks": existing_info
             })
+
+    # Determine YF interval and range based on timeframe
+    if timeframe == "weekly":
+        yf_interval = "1wk"
+        yf_range = "5y"
+    elif timeframe == "monthly":
+        yf_interval = "1mo"
+        yf_range = "10y"
+    else:
+        yf_interval = "1d"
+        yf_range = "1y"
 
     # Run on-demand calculation for target symbols
     with _SCREENER_LOCK:
@@ -1549,7 +1715,7 @@ def run_technical_screener_scan_api():
                 yf_sym = f"{symbol}.NS"
                 data = None
                 for host in hosts:
-                    url = f'https://{host}/v8/finance/chart/{yf_sym}?interval=1d&range=1y&includeAdjustedClose=true'
+                    url = f'https://{host}/v8/finance/chart/{yf_sym}?interval={yf_interval}&range={yf_range}&includeAdjustedClose=true'
                     try:
                         r = y_session.get(url, timeout=3.5)
                         if r.status_code == 200:
@@ -1571,7 +1737,9 @@ def run_technical_screener_scan_api():
                 raw_closes = quote.get('close', []) or []
                 raw_highs = quote.get('high', []) or []
                 raw_lows = quote.get('low', []) or []
+                raw_opens = quote.get('open', []) or []
                 raw_vols = quote.get('volume', []) or []
+                raw_timestamps = data.get('timestamp', []) or []
 
                 valid_idx = [
                     i for i, c in enumerate(raw_closes)
@@ -1583,12 +1751,31 @@ def run_technical_screener_scan_api():
                 closes = [raw_closes[i] for i in valid_idx]
                 highs = [raw_highs[i] for i in valid_idx]
                 lows = [raw_lows[i] for i in valid_idx]
+                opens = [raw_opens[i] if (i < len(raw_opens) and raw_opens[i] is not None) else closes[i] for i in valid_idx]
                 volumes = [raw_vols[i] if (i < len(raw_vols) and raw_vols[i] is not None) else 0 for i in valid_idx]
+
+                # Convert timestamps to exact candle dates aligned with Lightweight Charts
+                dates = []
+                for i in valid_idx:
+                    raw_ts = raw_timestamps[i] if i < len(raw_timestamps) else None
+                    if raw_ts:
+                        dt = datetime.datetime.fromtimestamp(raw_ts, datetime.timezone.utc)
+                        if timeframe == "weekly":
+                            monday = dt - datetime.timedelta(days=dt.weekday())
+                            dates.append(monday.strftime('%Y-%m-%d'))
+                        elif timeframe == "monthly":
+                            dates.append(dt.strftime('%Y-%m-01'))
+                        else:
+                            dates.append(dt.strftime('%Y-%m-%d'))
+                    else:
+                        dates.append("")
 
                 ltp = round(closes[-1], 2)
                 prev_close = round(closes[-2], 2) if len(closes) >= 2 else ltp
                 change_pct = round(((ltp - prev_close) / prev_close) * 100.0, 2)
                 vol_latest = volumes[-1]
+                curr_date = dates[-1] if dates else ""
+                prev_date = dates[-2] if len(dates) >= 2 else curr_date
 
                 # Moving averages
                 sma20_latest = sum(closes[-20:]) / 20.0 if len(closes) >= 20 else None
@@ -1655,62 +1842,70 @@ def run_technical_screener_scan_api():
                 matched_scanners = {}
 
                 if category == "trendlines":
-                    matched_scanners = _analyze_trendlines_for_stock(closes, highs, lows, symbol, name, ltp, prev_close)
+                    matched_scanners = _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close)
                 elif category == "triangles":
-                    matched_scanners = _analyze_triangles_for_stock(closes, highs, lows, symbol, name, ltp, prev_close)
+                    matched_scanners = _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close)
                 elif category == "channels":
-                    matched_scanners = _analyze_channels_for_stock(closes, highs, lows, symbol, name, ltp, prev_close)
+                    matched_scanners = _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close)
                 elif category == "nr_wr":
-                    matched_scanners = _analyze_nr_wr_for_stock(closes, highs, lows, raw_opens, symbol, name, ltp, prev_close)
+                    matched_scanners = _analyze_nr_wr_for_stock(closes, highs, lows, opens, dates, symbol, name, ltp, prev_close)
                 elif category == "chart_patterns":
-                    matched_scanners = _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, symbol, name, ltp, prev_close)
+                    matched_scanners = _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbol, name, ltp, prev_close)
                 else:
                     # 1. Golden Crossover
                     if sma50_latest and sma200_latest and sma50_latest > sma200_latest:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) > 200 DMA (₹{sma200_latest:.1f})"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Golden Cross"}]
                         matched_scanners["golden_cross"] = s_item
 
                     # 2. Supertrend BUY
                     if ltp > st_lower and ltp > (highs[-1] + lows[-1]) / 2.0:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"LTP ₹{ltp:.2f} > Supertrend ₹{st_lower:.2f}"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "ST BUY"}]
                         matched_scanners["supertrend_buy"] = s_item
 
                     # 3. RSI Momentum
                     if rsi14 is not None and 55 <= rsi14 <= 72:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"RSI(14) at {rsi14:.1f} (Bullish Momentum Range)"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#3b82f6", "shape": "arrowUp", "text": f"RSI {rsi14:.1f}"}]
                         matched_scanners["rsi_momentum"] = s_item
 
                     # 4. EMA Bullish Cross
                     if ema9_latest > ema21_latest:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"9 EMA (₹{ema9_latest:.1f}) > 21 EMA (₹{ema21_latest:.1f})"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "EMA Cross"}]
                         matched_scanners["ema_bull_cross"] = s_item
 
                     # 5. MACD Bullish Cross
                     if macd_val > signal_val and macd_val > -10.0:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"MACD ({macd_val:+.1f}) > Signal ({signal_val:+.1f})"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "MACD Cross"}]
                         matched_scanners["macd_bullish"] = s_item
 
                     # 6. Bollinger Band Breakout
                     if upper_bb and ltp >= upper_bb * 0.995:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"LTP ₹{ltp:.2f} ≥ Upper BB ₹{upper_bb:.2f}"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#3b82f6", "shape": "arrowUp", "text": "BB Breakout"}]
                         matched_scanners["bollinger_breakout"] = s_item
 
                     # 7. Donchian Channel Breakout
                     if donchian_high and ltp >= donchian_high * 0.995:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"LTP ₹{ltp:.2f} at 20D High ₹{donchian_high:.2f}"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#3b82f6", "shape": "arrowUp", "text": "20D High"}]
                         matched_scanners["donchian_breakout"] = s_item
 
                     # 8. ST Trigger Bullish
                     if ltp > prev_close and ltp > (highs[-1] + lows[-1]) / 2.0 and highs[-1] >= highs[-2]:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"ST Trigger Bullish (Higher High ₹{highs[-1]:.2f})"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "ST Bull"}]
                         matched_scanners["st_trigger_bull"] = s_item
 
                     # 9. Bullish Engulfing
@@ -1719,6 +1914,10 @@ def run_technical_screener_scan_api():
                     if is_curr_green and is_prev_red and ltp >= highs[-2] * 0.995:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"Engulfing: Green ₹{ltp:.2f} vs Prior Red ₹{prev_close:.2f}"
+                        s_item["markers"] = [
+                            {"time": prev_date, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Prior Red"},
+                            {"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Engulfing"}
+                        ]
                         matched_scanners["bullish_engulfing"] = s_item
 
                     # 10. Near 52W High
@@ -1726,36 +1925,42 @@ def run_technical_screener_scan_api():
                         away_pct = round(((high_52w - ltp) / high_52w) * 100.0, 1)
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"52W High ₹{high_52w:.2f} ({away_pct}% away)"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#f59e0b", "shape": "arrowUp", "text": "52W High"}]
                         matched_scanners["high_52w"] = s_item
 
                     # 11. Volume Surge
                     if vol_surge >= 1.8 and vol_latest > 5000:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"{vol_surge:.1f}x vs 20d Avg Vol"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#8b5cf6", "shape": "arrowUp", "text": f"{vol_surge:.1f}x Vol"}]
                         matched_scanners["volume_surge"] = s_item
 
                     # 12. Triple Confluence
                     if ema9_latest > ema21_latest and (rsi14 is not None and rsi14 >= 50) and (sma50_latest and ltp > sma50_latest):
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"EMA Cross + RSI {rsi14:.1f} + Above 50 DMA"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Triple Confluence"}]
                         matched_scanners["triple_confluence"] = s_item
 
                     # 13. RSI Oversold Rebound
                     if rsi14 is not None and rsi14 <= 38:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"RSI(14) at {rsi14:.1f} (Oversold Range)"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"RSI {rsi14:.1f}"}]
                         matched_scanners["rsi_oversold"] = s_item
 
                     # 14. Extreme Oversold
                     if rsi14 is not None and rsi14 < 30.0:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"RSI(14) at {rsi14:.1f} (< 30 Extreme)"
+                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"RSI {rsi14:.1f} (<30)"}]
                         matched_scanners["oversold_extreme"] = s_item
 
                     # 15. Death Cross
                     if sma50_latest and sma200_latest and sma50_latest < sma200_latest:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) < 200 DMA (₹{sma200_latest:.1f})"
+                        s_item["markers"] = [{"time": curr_date, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Death Cross"}]
                         matched_scanners["death_cross"] = s_item
 
                     # 16. Near 52W Low
@@ -1763,6 +1968,7 @@ def run_technical_screener_scan_api():
                         away_pct = round(((ltp - low_52w) / low_52w) * 100.0, 1)
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"52W Low ₹{low_52w:.2f} ({away_pct}% away)"
+                        s_item["markers"] = [{"time": curr_date, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "52W Low"}]
                         matched_scanners["low_52w"] = s_item
 
                 return {
@@ -1789,17 +1995,18 @@ def run_technical_screener_scan_api():
                 sym = stock_res["symbol"]
                 stock_updates_to_save[sym] = stock_res
 
-        # Append to Collection 2: technical_screener_info
-        batch_append_technical_screener_info_db(stock_updates_to_save, category_id=category)
+        # Append to Collection 2: technical_screener_info (scoped by timeframe)
+        batch_append_technical_screener_info_db(stock_updates_to_save, category_id=category, timeframe=timeframe)
 
-        # Load updated state from Collection 2
-        all_info = load_technical_screener_info_db(symbols=target_symbols)
+        # Load updated state from Collection 2 for the requested timeframe
+        all_info = load_technical_screener_info_db(symbols=target_symbols, timeframe=timeframe)
         scanners_result = _build_category_scanners_response(hierarchy, category, all_info, target_symbols)
 
         return jsonify({
             "success": True,
             "category": category,
             "scope": scope,
+            "timeframe": timeframe,
             "total_scanned": len(target_symbols),
             "from_cache": False,
             "scanners": scanners_result,
@@ -1858,7 +2065,8 @@ def get_stock_technical_summary_api(symbol):
     Collection 2: technical_screener_info
     """
     clean_sym = symbol.upper().replace(".NS", "").replace(".BO", "").strip()
-    data = load_technical_screener_info_db(symbols=[clean_sym])
+    timeframe = request.args.get("timeframe", "").strip().lower()
+    data = load_technical_screener_info_db(symbols=[clean_sym], timeframe=timeframe if timeframe else None)
     stock_doc = data.get(clean_sym)
     if not stock_doc:
         return jsonify({"success": False, "error": f"No technical data found for {clean_sym}"}), 404

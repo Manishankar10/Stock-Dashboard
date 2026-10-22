@@ -172,6 +172,54 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+.ts-timeframe-segmented-bar {
+    display: inline-flex;
+    background: var(--ts-pill-bg);
+    border: 1px solid var(--ts-glass-border);
+    padding: 3.5px;
+    border-radius: 12px;
+    gap: 3px;
+}
+
+.ts-tf-btn {
+    border: none;
+    background: transparent;
+    color: var(--ts-pill-text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+
+.ts-tf-btn:hover {
+    color: var(--text-primary);
+}
+
+.ts-tf-btn .ts-tf-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.4);
+    transition: all 0.2s ease;
+}
+
+.ts-tf-btn.active {
+    background: var(--ts-pill-active);
+    color: var(--ts-pill-active-text);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ts-tf-btn.active .ts-tf-dot {
+    background: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+}
+
 .ts-action-btn {
     display: inline-flex;
     align-items: center;

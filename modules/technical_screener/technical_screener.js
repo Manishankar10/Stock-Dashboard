@@ -9,6 +9,7 @@
 
     let currentCategory = 'smart_scanners';
     let currentScope = 'all';
+    let currentTimeframe = 'daily';
     let currentWatchlistId = null;
     let hierarchyData = null;
     let scanResults = null;
@@ -18,9 +19,13 @@
     window.loadTechnicalScreenerModule = loadTechnicalScreenerModule;
     window.switchTechnicalScreenerCategory = switchTechnicalScreenerCategory;
     window.setTechnicalScreenerScope = setTechnicalScreenerScope;
+    window.setTechnicalScreenerTimeframe = setTechnicalScreenerTimeframe;
     window.setTechnicalScreenerWatchlist = setTechnicalScreenerWatchlist;
     window.triggerTechnicalScreenerScan = triggerTechnicalScreenerScan;
     window.filterTechnicalScreenerResults = filterTechnicalScreenerResults;
+    window.openTechnicalStockChart = openTechnicalStockChart;
+    window.openStockChartSafely = openTechnicalStockChart;
+    window.openFundamentalsSafely = openFundamentalsSafely;
 
     /**
      * Entry point called on tab activation
@@ -166,6 +171,25 @@
     }
 
     /**
+     * Set Timeframe Filter ('daily', 'weekly', 'monthly')
+     */
+    async function setTechnicalScreenerTimeframe(tf) {
+        if (isScanning) return;
+        const validTfs = ['daily', 'weekly', 'monthly'];
+        if (!validTfs.includes(tf)) tf = 'daily';
+        if (currentTimeframe === tf) return;
+
+        currentTimeframe = tf;
+
+        // Update button active state
+        document.querySelectorAll('.ts-tf-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.id === `ts-tf-${tf}`);
+        });
+
+        await triggerTechnicalScreenerScan(false);
+    }
+
+    /**
      * Trigger On-Demand Scan
      */
     async function triggerTechnicalScreenerScan(forceRefresh = false) {
@@ -185,7 +209,7 @@
         renderSkeletons();
 
         try {
-            let url = `/api/technical-screener/scan?category=${encodeURIComponent(currentCategory)}&scope=${encodeURIComponent(currentScope)}`;
+            let url = `/api/technical-screener/scan?category=${encodeURIComponent(currentCategory)}&scope=${encodeURIComponent(currentScope)}&timeframe=${encodeURIComponent(currentTimeframe)}`;
             if (currentWatchlistId && currentScope === 'watchlist') {
                 url += `&watchlist_id=${encodeURIComponent(currentWatchlistId)}`;
             }
@@ -204,7 +228,8 @@
                     const totalScanners = Object.keys(data.scanners || {}).length;
                     const totalMatched = Object.values(data.scanners || {}).reduce((acc, s) => acc + (s.stocks ? s.stocks.length : 0), 0);
                     const cacheNotice = data.from_cache ? ' · <span style="color:#10b981;">⚡ Cached Instant</span>' : '';
-                    statsEl.innerHTML = `Showing <b>${totalScanners}</b> scanners · Analyzed <b>${data.total_scanned || 0}</b> stocks · <b>${totalMatched}</b> active signals${cacheNotice}`;
+                    const tfLabel = currentTimeframe === 'weekly' ? 'Weekly 1W' : (currentTimeframe === 'monthly' ? 'Monthly 1M' : 'Daily 1D');
+                    statsEl.innerHTML = `Timeframe: <b>${tfLabel}</b> · Showing <b>${totalScanners}</b> scanners · Analyzed <b>${data.total_scanned || 0}</b> stocks · <b>${totalMatched}</b> active signals${cacheNotice}`;
                 }
             } else {
                 renderError(data.error || 'Unable to complete technical scan');
@@ -308,7 +333,7 @@
                             <div class="ts-stock-row" data-stock-symbol="${escapeHtml(sym)}" data-stock-name="${escapeHtml(name)}">
                                 <div class="ts-stock-meta">
                                     <div class="ts-stock-symbol-row">
-                                        <span class="ts-stock-sym" onclick="openStockChartSafely('${escapeHtml(sym)}')">${escapeHtml(sym)}</span>
+                                        <span class="ts-stock-sym" onclick="openTechnicalStockChart('${escapeHtml(sym)}', '${escapeHtml(scId)}')">${escapeHtml(sym)}</span>
                                         <span class="ts-stock-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
                                     </div>
                                     ${metric ? `<span class="ts-stock-metric-pill" title="${escapeHtml(metric)}">${escapeHtml(metric)}</span>` : ''}
@@ -317,7 +342,7 @@
                                     <span class="ts-stock-ltp">${ltp}</span>
                                     <span class="ts-stock-chg ${chgClass}">${chgSign}${chg.toFixed(2)}%</span>
                                     <div class="ts-stock-actions">
-                                        <button type="button" class="ts-mini-btn" onclick="openStockChartSafely('${escapeHtml(sym)}')">Chart</button>
+                                        <button type="button" class="ts-mini-btn" onclick="openTechnicalStockChart('${escapeHtml(sym)}', '${escapeHtml(scId)}')">Chart</button>
                                         <button type="button" class="ts-mini-btn" onclick="openFundamentalsSafely('${escapeHtml(sym)}')">Info</button>
                                     </div>
                                 </div>
@@ -485,23 +510,46 @@
         `;
     }
 
-    function openStockChartSafely(symbol) {
+    function openTechnicalStockChart(symbol, scannerId) {
         if (!symbol) return;
-        if (typeof window.openChart === 'function') {
-            window.openChart(symbol);
-        } else if (typeof window.openInHouseChart === 'function') {
-            window.openInHouseChart(symbol);
-        } else {
-            console.log('Opening chart for:', symbol);
+        const cleanSym = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+
+        let markers = [];
+        if (scanResults && scanResults.scanners && scannerId && scanResults.scanners[scannerId]) {
+            const sc = scanResults.scanners[scannerId];
+            if (Array.isArray(sc.stocks)) {
+                const match = sc.stocks.find(s => (s.symbol || '').toUpperCase() === cleanSym);
+                if (match && Array.isArray(match.markers)) {
+                    markers = match.markers;
+                }
+            }
         }
+
+        // Map timeframe to chart interval
+        let chartInterval = '1d';
+        if (currentTimeframe === 'weekly') chartInterval = '1wk';
+        else if (currentTimeframe === 'monthly') chartInterval = '1mo';
+
+        if (typeof window.openInHouseChart === 'function') {
+            window.openInHouseChart(cleanSym, chartInterval, markers);
+        } else if (typeof window.openChart === 'function') {
+            window.openChart(cleanSym, chartInterval, markers);
+        } else {
+            console.log('Opening chart for:', cleanSym, chartInterval, markers);
+        }
+    }
+
+    function openStockChartSafely(symbol) {
+        openTechnicalStockChart(symbol, null);
     }
 
     function openFundamentalsSafely(symbol) {
         if (!symbol) return;
+        const cleanSym = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
         if (typeof window.openFundamentalsModal === 'function') {
-            window.openFundamentalsModal(symbol);
+            window.openFundamentalsModal(cleanSym);
         } else {
-            console.log('Opening fundamentals for:', symbol);
+            console.log('Opening fundamentals for:', cleanSym);
         }
     }
 

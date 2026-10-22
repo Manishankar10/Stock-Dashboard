@@ -304,12 +304,17 @@ def save_technical_screener_hierarchy_db(data):
     except Exception as e:
         print(f"SQLite save_technical_screener_hierarchy error: {e}")
 
-def load_technical_screener_info_db(symbols=None):
+def load_technical_screener_info_db(symbols=None, timeframe=None):
     """
     Load stock technical info from Collection 2: technical_screener_info.
-    Returns dict: { symbol: { scanners: { ... }, ltp: ..., change_pct: ... } }
+    If timeframe is provided ('daily', 'weekly', 'monthly'), returns dict scoped to that timeframe:
+      { symbol: { scanners: { ... }, ltp: ..., change_pct: ..., ... } }
+    If timeframe is None, returns complete document with all timeframes:
+      { symbol: { "daily": {...}, "weekly": {...}, "monthly": {...} } }
     """
     results = {}
+    tf_key = (timeframe or "").strip().lower() if timeframe else None
+
     if db is not None:
         try:
             col = db["technical_screener_info"]
@@ -320,9 +325,22 @@ def load_technical_screener_info_db(symbols=None):
             for doc in docs:
                 sym = doc.get("_id") or doc.get("symbol")
                 if sym:
+                    clean_sym = sym.upper()
                     d = dict(doc)
                     d.pop("_id", None)
-                    results[sym.upper()] = d
+                    if tf_key:
+                        if tf_key in d and isinstance(d[tf_key], dict):
+                            tf_item = dict(d[tf_key])
+                            tf_item["symbol"] = clean_sym
+                            tf_item["name"] = d.get("name", clean_sym)
+                            results[clean_sym] = tf_item
+                        elif "scanners" in d and tf_key == "daily":
+                            # Fallback for legacy flat doc
+                            results[clean_sym] = d
+                        else:
+                            results[clean_sym] = {"symbol": clean_sym, "name": d.get("name", clean_sym), "scanners": {}}
+                    else:
+                        results[clean_sym] = d
             return results
         except Exception as e:
             print(f"MongoDB load_technical_screener_info error: {e}")
@@ -341,7 +359,20 @@ def load_technical_screener_info_db(symbols=None):
                 sym = row[0]
                 if row[1]:
                     try:
-                        results[sym.upper()] = json.loads(row[1])
+                        clean_sym = sym.upper()
+                        d = json.loads(row[1])
+                        if tf_key:
+                            if tf_key in d and isinstance(d[tf_key], dict):
+                                tf_item = dict(d[tf_key])
+                                tf_item["symbol"] = clean_sym
+                                tf_item["name"] = d.get("name", clean_sym)
+                                results[clean_sym] = tf_item
+                            elif "scanners" in d and tf_key == "daily":
+                                results[clean_sym] = d
+                            else:
+                                results[clean_sym] = {"symbol": clean_sym, "name": d.get("name", clean_sym), "scanners": {}}
+                        else:
+                            results[clean_sym] = d
                     except Exception:
                         pass
         return results
@@ -350,23 +381,11 @@ def load_technical_screener_info_db(symbols=None):
 
     return results
 
-def batch_append_technical_screener_info_db(stock_updates, category_id="smart_scanners"):
+def batch_append_technical_screener_info_db(stock_updates, category_id="smart_scanners", timeframe="daily"):
     """
     Append/update calculated technical scanners for stocks in Collection 2: technical_screener_info.
-    Preserves all existing scanners previously calculated under other categories.
-    stock_updates: dict {
-        "BETA": {
-            "name": "Beta Drugs Ltd.",
-            "ltp": 1971.0,
-            "change_pct": 18.4,
-            "volume": 566876,
-            "rsi": 51.4,
-            "new_scanners": {
-                "golden_cross": { "ltp": 1971, "change_pct": 18.4, "volume": 566876, "rsi": 51.4, "metric": "..." },
-                "supertrend_buy": { ... }
-            }
-        }
-    }
+    Structured by timeframe: stockname: { timeframe: { ltp, change_pct, volume, rsi, categories_scanned, scanners: { ... } } }
+    Preserves all existing scanners previously calculated under other categories or timeframes.
     """
     if not stock_updates:
         return
@@ -374,6 +393,7 @@ def batch_append_technical_screener_info_db(stock_updates, category_id="smart_sc
     import datetime
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    tf = (timeframe or "daily").strip().lower()
 
     # 1. MongoDB Atlas update
     if db is not None:
@@ -384,16 +404,17 @@ def batch_append_technical_screener_info_db(stock_updates, category_id="smart_sc
                 update_fields = {
                     "symbol": clean_sym,
                     "name": item.get("name", clean_sym),
-                    "ltp": item.get("ltp"),
-                    "change_pct": item.get("change_pct"),
-                    "volume": item.get("volume"),
-                    "rsi": item.get("rsi"),
                     "updated_at": now_iso,
-                    f"categories_scanned.{category_id}": now_iso
+                    f"{tf}.ltp": item.get("ltp"),
+                    f"{tf}.change_pct": item.get("change_pct"),
+                    f"{tf}.volume": item.get("volume"),
+                    f"{tf}.rsi": item.get("rsi"),
+                    f"{tf}.updated_at": now_iso,
+                    f"{tf}.categories_scanned.{category_id}": now_iso
                 }
                 new_scanners = item.get("new_scanners", {})
                 for sc_id, sc_val in new_scanners.items():
-                    update_fields[f"scanners.{sc_id}"] = sc_val
+                    update_fields[f"{tf}.scanners.{sc_id}"] = sc_val
                 
                 col.update_one({"_id": clean_sym}, {"$set": update_fields}, upsert=True)
         except Exception as e:
@@ -417,16 +438,19 @@ def batch_append_technical_screener_info_db(stock_updates, category_id="smart_sc
 
                 existing_doc["symbol"] = clean_sym
                 existing_doc["name"] = item.get("name", existing_doc.get("name", clean_sym))
-                if item.get("ltp") is not None: existing_doc["ltp"] = item.get("ltp")
-                if item.get("change_pct") is not None: existing_doc["change_pct"] = item.get("change_pct")
-                if item.get("volume") is not None: existing_doc["volume"] = item.get("volume")
-                if item.get("rsi") is not None: existing_doc["rsi"] = item.get("rsi")
                 existing_doc["updated_at"] = now_iso
 
-                cats = existing_doc.setdefault("categories_scanned", {})
+                tf_doc = existing_doc.setdefault(tf, {})
+                if item.get("ltp") is not None: tf_doc["ltp"] = item.get("ltp")
+                if item.get("change_pct") is not None: tf_doc["change_pct"] = item.get("change_pct")
+                if item.get("volume") is not None: tf_doc["volume"] = item.get("volume")
+                if item.get("rsi") is not None: tf_doc["rsi"] = item.get("rsi")
+                tf_doc["updated_at"] = now_iso
+
+                cats = tf_doc.setdefault("categories_scanned", {})
                 cats[category_id] = now_iso
 
-                scanners_dict = existing_doc.setdefault("scanners", {})
+                scanners_dict = tf_doc.setdefault("scanners", {})
                 new_scanners = item.get("new_scanners", {})
                 for sc_id, sc_val in new_scanners.items():
                     scanners_dict[sc_id] = sc_val
