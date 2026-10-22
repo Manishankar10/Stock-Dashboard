@@ -144,12 +144,31 @@ def save_system_settings_db(settings, settings_file):
         except Exception as e:
             print(f"MongoDB save_system_settings error: {e}")
 
-DEFAULT_TECH_SIGNALS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data", "technical_signals.json")
+import sqlite3
+
+_SQLITE_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data", "capital_desk.db")
+
+def _init_sqlite_db():
+    try:
+        os.makedirs(os.path.dirname(_SQLITE_DB_PATH), exist_ok=True)
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS technical_signals (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite init error: {e}")
 
 def load_technical_signals_db(filepath=None, default_factory=dict):
-    if filepath is None:
-        filepath = DEFAULT_TECH_SIGNALS_FILE
-
+    """
+    Load technical signals strictly and only from the database:
+    1. Primary: MongoDB Atlas (if _MONGO_URI connected)
+    2. Local: SQLite database 'user_data/capital_desk.db'
+    """
     if db is not None:
         try:
             col = db["technical_signals"]
@@ -163,28 +182,25 @@ def load_technical_signals_db(filepath=None, default_factory=dict):
         except Exception as e:
             print(f"MongoDB load_technical_signals error: {e}")
 
-    if filepath and os.path.exists(filepath):
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data FROM technical_signals WHERE id = 'latest_signals'")
+            row = cursor.fetchone()
+            if row and row[0]:
+                return json.loads(row[0])
+    except Exception as e:
+        print(f"SQLite load_technical_signals error: {e}")
+
     return default_factory()
 
 def save_technical_signals_db(data, filepath=None):
-    if filepath is None:
-        filepath = DEFAULT_TECH_SIGNALS_FILE
-
-    if filepath:
-        try:
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            tmp = filepath + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            os.replace(tmp, filepath)
-        except Exception:
-            pass
-
+    """
+    Save technical signals strictly and only in the database:
+    1. Primary: MongoDB Atlas (if _MONGO_URI connected)
+    2. Local: SQLite database 'user_data/capital_desk.db'
+    """
     if db is not None:
         try:
             col = db["technical_signals"]
@@ -192,3 +208,14 @@ def save_technical_signals_db(data, filepath=None):
             col.replace_one({"_id": "latest_signals"}, doc, upsert=True)
         except Exception as e:
             print(f"MongoDB save_technical_signals error: {e}")
+
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO technical_signals (id, data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+                ('latest_signals', json.dumps(data, ensure_ascii=False))
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_technical_signals error: {e}")

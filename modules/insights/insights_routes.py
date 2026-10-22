@@ -782,7 +782,6 @@ def get_insights_news_api():
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "articles": []})
 
-TECHNICAL_SIGNALS_FALLBACK_FILE = os.path.join(USER_DATA_DIR, "technical_signals.json")
 technicals_cache = HighPerformanceCache(default_ttl=300)
 _TECHNICALS_UPDATE_LOCK = threading.Lock()
 
@@ -949,10 +948,19 @@ def _run_technicals_scan(uname="admin"):
                 pass
 
             popular_subset = [
-                "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "ROLEXRINGS",
-                "TATAMOTORS", "TATASTEEL", "SBIN", "BHARTIARTL", "ITC", "KOTAKBANK",
-                "LT", "BAJFINANCE", "MARUTI", "SUNPHARMA", "TITAN", "BSE", "ZOMATO", "SUZLON",
-                "ASIANPAINT", "HINDUNILVR", "AXISBANK", "WIPRO", "HCLTECH", "NTPC", "ONGC", "ADANIENT"
+                # Nifty 50 & Heavyweights
+                "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "BHARTIARTL", "ITC", "SBIN", "LT", "HINDUNILVR",
+                "BAJFINANCE", "HCLTECH", "MARUTI", "SUNPHARMA", "ADANIENT", "TATAMOTORS", "NTPC", "KOTAKBANK", "TITAN",
+                "ONGC", "TATASTEEL", "POWERGRID", "AXISBANK", "ADANIPORTS", "COALINDIA", "M&M", "BAJAJFINSV", "WIPRO",
+                "TECHM", "BPCL", "TRENT", "BEL", "ULTRACEMCO", "NESTLEIND", "GRASIM", "JSWSTEEL", "CIPLA", "ASIANPAINT",
+                "INDUSINDBK", "TATACONSUM", "HEROMOTOCO", "DRREDDY", "EICHERMOT", "HINDALCO", "APOLLOHOSP", "DIVISLAB",
+                "SBILIFE", "HDFCLIFE", "BRITANNIA", "LTIM",
+                # High-Momentum & Liquid Midcap Leaders
+                "ZOMATO", "JIOFIN", "HAL", "VEDL", "CHOLAFIN", "DLF", "MOTHERSON", "GAIL", "SIEMENS", "ABB", "BHEL",
+                "AMBUJACEM", "BANKBARODA", "PFC", "RECLTD", "TVSMOTOR", "CANBK", "TATACHEM", "PERSISTENT", "VOLTAS",
+                "POLYCAB", "CUMMINSIND", "COFORGE", "DIXON", "SUZLON", "BSE", "CDSL", "MCX", "ANGELONE", "TATAELXSI",
+                "KPITTECH", "FEDERALBNK", "IDFCFIRSTB", "AUROPHARMA", "LUPIN", "ALKEM", "TORNTPHARM", "DEEPAKNTR",
+                "PIIND", "SRF", "ASTRAL", "HAVELLS", "INDHOTEL", "SUPRIYA", "ROLEXRINGS", "MAZDOCK", "COCHINSHIP"
             ]
             for pop_sym in popular_subset:
                 target_symbols.add(format_financial_symbol(pop_sym))
@@ -1197,7 +1205,7 @@ def _run_technicals_scan(uname="admin"):
 
             if valid_count > 0:
                 # Save to MongoDB and local fallback file
-                save_technical_signals_db(payload, TECHNICAL_SIGNALS_FALLBACK_FILE)
+                save_technical_signals_db(payload)
                 technicals_cache.set(f"technicals_{uname}", payload, ttl=600)
                 technicals_cache.set("technicals_global", payload, ttl=600)
                 return payload
@@ -1205,7 +1213,7 @@ def _run_technicals_scan(uname="admin"):
             print(f"Error in _run_technicals_scan: {e}")
 
     # Fallback to DB stored data if scan had issues
-    return load_technical_signals_db(TECHNICAL_SIGNALS_FALLBACK_FILE, default_factory=dict)
+    return load_technical_signals_db(default_factory=dict)
 
 @insights_bp.route("/api/insights/technicals", methods=["GET"])
 def get_insights_technicals_api():
@@ -1219,7 +1227,7 @@ def get_insights_technicals_api():
             return jsonify(cached)
 
         # 1. Fetch from Database (MongoDB Atlas / local fallback)
-        db_data = load_technical_signals_db(TECHNICAL_SIGNALS_FALLBACK_FILE, default_factory=dict)
+        db_data = load_technical_signals_db(default_factory=dict)
         has_db_data = bool(db_data and db_data.get("scanners"))
 
         # If we have stored data and NOT forcing refresh: return immediately (<5ms!)
@@ -1251,7 +1259,7 @@ def get_insights_technicals_api():
         res = _run_technicals_scan(uname)
         return jsonify(res or db_data or {"success": True, "scanners": _get_scanner_definitions(), "total_scanned": 0})
     except Exception as e:
-        db_fallback = load_technical_signals_db(TECHNICAL_SIGNALS_FALLBACK_FILE, default_factory=dict)
+        db_fallback = load_technical_signals_db(default_factory=dict)
         if db_fallback and db_fallback.get("scanners"):
             return jsonify(db_fallback)
         return jsonify({"success": False, "error": str(e), "scanners": _get_scanner_definitions()})
