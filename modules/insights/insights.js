@@ -53,6 +53,8 @@
         window.showTechnicalSkeletons = showTechnicalSkeletons;
         window.showNewsSkeletonsOnly = showNewsSkeletonsOnly;
         window.loadInsightsTab = loadInsightsTab;
+        window.loadTechnicalInsights = loadTechnicalInsights;
+        window.selectTechnicalScreener = selectTechnicalScreener;
 
         function updateCategoryPillsNavBtns() {
             const pills = document.getElementById('insights-category-pills');
@@ -776,7 +778,20 @@
             const container = document.getElementById('technical-screener-pills');
             if (!container || !technicalsData || !technicalsData.scanners) return;
 
-            const keys = ['golden_cross', 'supertrend_buy', 'rsi_momentum', 'ema_bull_cross', 'high_52w', 'volume_surge', 'rsi_oversold', 'triple_confluence', 'death_cross'];
+            const preferredOrder = [
+                'golden_cross', 'supertrend_buy', 'rsi_momentum', 'ema_bull_cross',
+                'macd_bullish', 'bollinger_breakout', 'donchian_breakout', 'st_trigger_bull',
+                'bullish_engulfing', 'high_52w', 'volume_surge', 'triple_confluence',
+                'rsi_oversold', 'oversold_extreme', 'death_cross', 'low_52w'
+            ];
+            const allScannerKeys = Object.keys(technicalsData.scanners);
+            const keys = [
+                ...preferredOrder.filter(k => allScannerKeys.includes(k)),
+                ...allScannerKeys.filter(k => !preferredOrder.includes(k))
+            ];
+            if (!technicalsData.scanners[activeScreenerId] && keys.length > 0) {
+                activeScreenerId = keys[0];
+            }
             let html = '';
 
             keys.forEach(key => {
@@ -790,7 +805,7 @@
                 const count = scopedStocks.length;
 
                 html += `
-                    <button type="button" class="${btnClass}" onclick="selectTechnicalScreener('${key}')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px; display: flex; align-items: center; gap: 6px; ${activeStyle}">
+                    <button type="button" class="${btnClass} screener-pill" data-screener="${key}" onclick="selectTechnicalScreener('${key}')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px; display: flex; align-items: center; gap: 6px; ${activeStyle}">
                         ${scanner.title}
                         <span style="font-size: 10px; font-weight: 700; background: ${isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg-card)'}; color: ${isActive ? '#fff' : 'var(--text-primary)'}; padding: 1px 6px; border-radius: 8px;">
                             ${count}

@@ -12,7 +12,8 @@ from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, session, render_template
 from modules.common.auth_utils import login_required
-from modules.common.data_paths import BASE_DATA_DIR
+from modules.common.data_paths import BASE_DATA_DIR, USER_DATA_DIR
+from db_store import load_technical_signals_db, save_technical_signals_db
 from modules.common.market_fetcher import (
     fiidii_cache,
     news_cache,
@@ -781,26 +782,154 @@ def get_insights_news_api():
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "articles": []})
 
-PRECOMPUTED_CANDIDATES = [
-    os.path.join("app_data", "precomputed_technicals.json")
-]
-_PRECOMPUTED_TECHNICALS = None
-for p_candidate in PRECOMPUTED_CANDIDATES:
-    if os.path.exists(p_candidate):
-        try:
-            with open(p_candidate, "r", encoding="utf-8") as f:
-                _PRECOMPUTED_TECHNICALS = json.load(f)
-                if _PRECOMPUTED_TECHNICALS:
-                    break
-        except Exception:
-            pass
-
+TECHNICAL_SIGNALS_FALLBACK_FILE = os.path.join(USER_DATA_DIR, "technical_signals.json")
 technicals_cache = HighPerformanceCache(default_ttl=300)
-_LAST_SUCCESSFUL_TECHNICALS_CACHE = _PRECOMPUTED_TECHNICALS or {}
 _TECHNICALS_UPDATE_LOCK = threading.Lock()
 
+def _calculate_ema(series, period):
+    if len(series) < period:
+        return [series[-1]] * len(series)
+    k = 2.0 / (period + 1.0)
+    ema_val = sum(series[:period]) / float(period)
+    ema_series = [ema_val]
+    for c in series[period:]:
+        ema_val = (c * k) + (ema_val * (1.0 - k))
+        ema_series.append(ema_val)
+    return ema_series
+
+def _get_scanner_definitions():
+    return {
+        "golden_cross": {
+            "id": "golden_cross",
+            "title": "🌟 Golden Crossover",
+            "description": "50-Day Moving Average crossed or trading above 200-Day Moving Average (Bullish Trend)",
+            "badge": "Bullish",
+            "color": "#10b981",
+            "stocks": []
+        },
+        "supertrend_buy": {
+            "id": "supertrend_buy",
+            "title": "🟢 Supertrend BUY",
+            "description": "Price trading above trailing Supertrend support line with active Buy signal",
+            "badge": "Bullish",
+            "color": "#10b981",
+            "stocks": []
+        },
+        "rsi_momentum": {
+            "id": "rsi_momentum",
+            "title": "🚀 RSI Momentum",
+            "description": "RSI(14) between 55 and 72, indicating strong bullish momentum",
+            "badge": "Momentum",
+            "color": "#6366f1",
+            "stocks": []
+        },
+        "ema_bull_cross": {
+            "id": "ema_bull_cross",
+            "title": "⚡ EMA Bullish Cross",
+            "description": "Short-term 9 EMA trading above 21 EMA (Short-term uptrend setup)",
+            "badge": "Bullish",
+            "color": "#06b6d4",
+            "stocks": []
+        },
+        "macd_bullish": {
+            "id": "macd_bullish",
+            "title": "🎯 MACD Bullish Crossover",
+            "description": "MACD Line (12, 26) trading above 9-day Signal line with positive histogram momentum",
+            "badge": "MACD Bull",
+            "color": "#3b82f6",
+            "stocks": []
+        },
+        "bollinger_breakout": {
+            "id": "bollinger_breakout",
+            "title": "🔥 Bollinger Band Breakout",
+            "description": "Price testing or breaking above Upper 20-day Bollinger Band (Volatility expansion)",
+            "badge": "Breakout",
+            "color": "#f59e0b",
+            "stocks": []
+        },
+        "donchian_breakout": {
+            "id": "donchian_breakout",
+            "title": "📈 20-Day Donchian Breakout",
+            "description": "Price at or breaking above 20-Day Donchian Channel High (New 20-day high)",
+            "badge": "Channel High",
+            "color": "#10b981",
+            "stocks": []
+        },
+        "st_trigger_bull": {
+            "id": "st_trigger_bull",
+            "title": "⚡ ST Trigger Bullish",
+            "description": "Short-term momentum trigger actively bullish with higher highs and positive price action",
+            "badge": "Short-Term Bull",
+            "color": "#22c55e",
+            "stocks": []
+        },
+        "bullish_engulfing": {
+            "id": "bullish_engulfing",
+            "title": "🕯️ Bullish Engulfing",
+            "description": "Today's strong bullish candle completely engulfs yesterday's downward candle",
+            "badge": "Reversal",
+            "color": "#10b981",
+            "stocks": []
+        },
+        "high_52w": {
+            "id": "high_52w",
+            "title": "💥 Near 52W High",
+            "description": "Trading within 3% of its 52-week high price",
+            "badge": "Breakout",
+            "color": "#8b5cf6",
+            "stocks": []
+        },
+        "volume_surge": {
+            "id": "volume_surge",
+            "title": "📊 Volume Surge",
+            "description": "Today's volume is >1.8x the 20-day average volume (Institutional Buying)",
+            "badge": "High Vol",
+            "color": "#f59e0b",
+            "stocks": []
+        },
+        "triple_confluence": {
+            "id": "triple_confluence",
+            "title": "🏆 Triple Confluence",
+            "description": "EMA 9 > 21 + RSI > 50 + Price > SMA 50 (Multi-indicator confirmation)",
+            "badge": "High Conviction",
+            "color": "#10b981",
+            "stocks": []
+        },
+        "rsi_oversold": {
+            "id": "rsi_oversold",
+            "title": "🧊 RSI Oversold Rebound",
+            "description": "RSI(14) below 38 (Potential oversold reversal candidate)",
+            "badge": "Rebound",
+            "color": "#ec4899",
+            "stocks": []
+        },
+        "oversold_extreme": {
+            "id": "oversold_extreme",
+            "title": "💎 Extreme Oversold (RSI < 30)",
+            "description": "Deeply oversold with RSI(14) under 30 (High probability mean-reversion setup)",
+            "badge": "Deep Oversold",
+            "color": "#e11d48",
+            "stocks": []
+        },
+        "death_cross": {
+            "id": "death_cross",
+            "title": "💀 Death Crossover",
+            "description": "50-Day Moving Average below 200-Day Moving Average (Bearish Warning)",
+            "badge": "Bearish",
+            "color": "#ef4444",
+            "stocks": []
+        },
+        "low_52w": {
+            "id": "low_52w",
+            "title": "🔻 Near 52W Low",
+            "description": "Trading within 3% of its 52-week low price (Deep value or risk warning)",
+            "badge": "52W Low",
+            "color": "#dc2626",
+            "stocks": []
+        }
+    }
+
 def _run_technicals_scan(uname="admin"):
-    global _LAST_SUCCESSFUL_TECHNICALS_CACHE
     with _TECHNICALS_UPDATE_LOCK:
         try:
             target_symbols = set()
@@ -822,87 +951,14 @@ def _run_technicals_scan(uname="admin"):
             popular_subset = [
                 "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "ROLEXRINGS",
                 "TATAMOTORS", "TATASTEEL", "SBIN", "BHARTIARTL", "ITC", "KOTAKBANK",
-                "LT", "BAJFINANCE", "MARUTI", "SUNPHARMA", "TITAN", "BSE", "ZOMATO", "SUZLON"
+                "LT", "BAJFINANCE", "MARUTI", "SUNPHARMA", "TITAN", "BSE", "ZOMATO", "SUZLON",
+                "ASIANPAINT", "HINDUNILVR", "AXISBANK", "WIPRO", "HCLTECH", "NTPC", "ONGC", "ADANIENT"
             ]
             for pop_sym in popular_subset:
                 target_symbols.add(format_financial_symbol(pop_sym))
 
             symbols_list = list(target_symbols)
-
-            scanners = {
-                "golden_cross": {
-                    "id": "golden_cross",
-                    "title": "🌟 Golden Crossover",
-                    "description": "50-Day Moving Average crossed or trading above 200-Day Moving Average (Bullish Trend)",
-                    "badge": "Bullish",
-                    "color": "#10b981",
-                    "stocks": []
-                },
-                "supertrend_buy": {
-                    "id": "supertrend_buy",
-                    "title": "🟢 Supertrend BUY",
-                    "description": "Price trading above trailing Supertrend support line with active Buy signal",
-                    "badge": "Bullish",
-                    "color": "#10b981",
-                    "stocks": []
-                },
-                "rsi_momentum": {
-                    "id": "rsi_momentum",
-                    "title": "🚀 RSI Momentum",
-                    "description": "RSI(14) between 55 and 72, indicating strong bullish momentum",
-                    "badge": "Momentum",
-                    "color": "#6366f1",
-                    "stocks": []
-                },
-                "ema_bull_cross": {
-                    "id": "ema_bull_cross",
-                    "title": "⚡ EMA Bullish Cross",
-                    "description": "Short-term 9 EMA trading above 21 EMA (Short-term uptrend setup)",
-                    "badge": "Bullish",
-                    "color": "#06b6d4",
-                    "stocks": []
-                },
-                "high_52w": {
-                    "id": "high_52w",
-                    "title": "💥 Near 52W High",
-                    "description": "Trading within 3% of its 52-week high price",
-                    "badge": "Breakout",
-                    "color": "#8b5cf6",
-                    "stocks": []
-                },
-                "volume_surge": {
-                    "id": "volume_surge",
-                    "title": "📊 Volume Surge",
-                    "description": "Today's volume is >1.8x the 20-day average volume (Institutional Buying)",
-                    "badge": "High Vol",
-                    "color": "#f59e0b",
-                    "stocks": []
-                },
-                "rsi_oversold": {
-                    "id": "rsi_oversold",
-                    "title": "🧊 RSI Oversold Rebound",
-                    "description": "RSI(14) below 38 (Potential oversold reversal candidate)",
-                    "badge": "Rebound",
-                    "color": "#ec4899",
-                    "stocks": []
-                },
-                "triple_confluence": {
-                    "id": "triple_confluence",
-                    "title": "🏆 Triple Confluence",
-                    "description": "EMA 9 > 21 + RSI > 50 + Price > SMA 50 (Multi-indicator confirmation)",
-                    "badge": "High Conviction",
-                    "color": "#10b981",
-                    "stocks": []
-                },
-                "death_cross": {
-                    "id": "death_cross",
-                    "title": "💀 Death Crossover",
-                    "description": "50-Day Moving Average below 200-Day Moving Average (Bearish Warning)",
-                    "badge": "Bearish",
-                    "color": "#ef4444",
-                    "stocks": []
-                }
-            }
+            scanners = _get_scanner_definitions()
 
             y_session = requests.Session()
             y_session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'})
@@ -933,6 +989,7 @@ def _run_technicals_scan(uname="admin"):
 
                     quote = data.get('indicators', {}).get('quote', [{}])[0]
                     raw_closes = quote.get('close', []) or []
+                    raw_opens = quote.get('open', []) or []
                     raw_highs = quote.get('high', []) or []
                     raw_lows = quote.get('low', []) or []
                     raw_vols = quote.get('volume', []) or []
@@ -946,27 +1003,19 @@ def _run_technicals_scan(uname="admin"):
                     lows = [raw_lows[i] for i in valid_idx]
                     volumes = [raw_vols[i] if (i < len(raw_vols) and raw_vols[i] is not None) else 0 for i in valid_idx]
 
-                    ltp = closes[-1]
-                    prev_close = closes[-2] if len(closes) >= 2 else ltp
+                    ltp = round(closes[-1], 2)
+                    prev_close = round(closes[-2], 2) if len(closes) >= 2 else ltp
                     change_pct = round(((ltp - prev_close) / prev_close) * 100.0, 2)
                     vol_latest = volumes[-1]
 
+                    sma20_latest = sum(closes[-20:]) / 20.0 if len(closes) >= 20 else None
                     sma50_latest = sum(closes[-50:]) / 50.0 if len(closes) >= 50 else None
                     sma200_latest = sum(closes[-200:]) / 200.0 if len(closes) >= 200 else None
 
-                    k9 = 2.0 / 10.0
-                    ema9_val = sum(closes[:9]) / 9.0
-                    ema9_series = [ema9_val]
-                    for c in closes[9:]:
-                        ema9_val = (c * k9) + (ema9_val * (1.0 - k9))
-                        ema9_series.append(ema9_val)
-
-                    k21 = 2.0 / 22.0
-                    ema21_val = sum(closes[:21]) / 21.0
-                    ema21_series = [ema21_val]
-                    for c in closes[21:]:
-                        ema21_val = (c * k21) + (ema21_val * (1.0 - k21))
-                        ema21_series.append(ema21_val)
+                    ema9_series = _calculate_ema(closes, 9)
+                    ema21_series = _calculate_ema(closes, 21)
+                    ema12_series = _calculate_ema(closes, 12)
+                    ema26_series = _calculate_ema(closes, 26)
 
                     ema9_latest = ema9_series[-1]
                     ema21_latest = ema21_series[-1]
@@ -981,76 +1030,144 @@ def _run_technicals_scan(uname="admin"):
                             avg_gain = (avg_gain * 13 + gains[i]) / 14.0
                             avg_loss = (avg_loss * 13 + losses[i]) / 14.0
                         rs = avg_gain / avg_loss if avg_loss != 0 else 100.0
-                        rsi14 = 100.0 - (100.0 / (1.0 + rs)) if avg_loss != 0 else 100.0
+                        rsi14 = round(100.0 - (100.0 / (1.0 + rs)), 1) if avg_loss != 0 else 100.0
 
-                    high_52w = max(highs[-252:]) if len(highs) >= 252 else max(highs)
+                    # MACD Line & Signal
+                    macd_line = [c12 - c26 for c12, c26 in zip(ema12_series[-len(ema26_series):], ema26_series)]
+                    signal_series = _calculate_ema(macd_line, 9)
+                    macd_val = round(macd_line[-1], 2)
+                    signal_val = round(signal_series[-1], 2)
+
+                    # Bollinger Bands (20, 2)
+                    upper_bb = None
+                    if sma20_latest is not None:
+                        variance = sum((c - sma20_latest) ** 2 for c in closes[-20:]) / 20.0
+                        upper_bb = round(sma20_latest + (2.0 * (variance ** 0.5)), 2)
+
+                    # Donchian Channel (20)
+                    donchian_high = round(max(highs[-21:-1]), 2) if len(highs) >= 21 else round(max(highs), 2)
+
+                    high_52w = round(max(highs[-252:]), 2) if len(highs) >= 252 else round(max(highs), 2)
+                    low_52w = round(min(lows[-252:]), 2) if len(lows) >= 252 else round(min(lows), 2)
                     vol_20d_avg = sum(volumes[-21:-1]) / 20.0 if len(volumes) >= 21 else (sum(volumes) / len(volumes) if volumes else 1)
-                    vol_surge = (vol_latest / vol_20d_avg) if vol_20d_avg > 0 else 1.0
+                    vol_surge = round(vol_latest / vol_20d_avg, 1) if vol_20d_avg > 0 else 1.0
 
                     tr = [highs[0] - lows[0]]
                     for i in range(1, len(closes)):
                         tr.append(max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])))
                     atr10 = sum(tr[-10:]) / 10.0 if len(tr) >= 10 else sum(tr) / len(tr)
-                    st_lower = ((highs[-1] + lows[-1]) / 2.0) - (3.0 * atr10)
+                    st_lower = round(((highs[-1] + lows[-1]) / 2.0) - (3.0 * atr10), 2)
 
                     base_item = {
                         "symbol": symbol,
                         "name": name,
-                        "ltp": round(ltp, 2),
+                        "ltp": ltp,
                         "change_pct": change_pct,
                         "volume": vol_latest,
-                        "rsi": round(rsi14, 1) if rsi14 is not None else None
+                        "rsi": rsi14
                     }
 
                     res_dict = {}
 
-                    if sma50_latest and sma200_latest:
-                        if sma50_latest > sma200_latest:
-                            item = dict(base_item)
-                            item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) > 200 DMA (₹{sma200_latest:.1f})"
-                            res_dict["golden_cross"] = item
+                    # 1. Golden Crossover
+                    if sma50_latest and sma200_latest and sma50_latest > sma200_latest:
+                        item = dict(base_item)
+                        item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) > 200 DMA (₹{sma200_latest:.1f})"
+                        res_dict["golden_cross"] = item
 
+                    # 2. Supertrend BUY
                     if ltp > st_lower and ltp > (highs[-1] + lows[-1]) / 2.0:
                         item = dict(base_item)
                         item["metric"] = f"LTP ₹{ltp:.2f} > Supertrend ₹{st_lower:.2f}"
                         res_dict["supertrend_buy"] = item
 
+                    # 3. RSI Momentum
                     if rsi14 is not None and 55 <= rsi14 <= 72:
                         item = dict(base_item)
-                        item["metric"] = f"RSI(14) at {rsi14:.1f} (Bullish Range)"
+                        item["metric"] = f"RSI(14) at {rsi14:.1f} (Bullish Momentum Range)"
                         res_dict["rsi_momentum"] = item
 
+                    # 4. EMA Bullish Cross
                     if ema9_latest > ema21_latest:
                         item = dict(base_item)
                         item["metric"] = f"9 EMA (₹{ema9_latest:.1f}) > 21 EMA (₹{ema21_latest:.1f})"
                         res_dict["ema_bull_cross"] = item
 
-                    if ltp >= high_52w * 0.97:
+                    # 5. MACD Bullish Crossover
+                    if macd_val > signal_val and macd_val > -10.0:
+                        item = dict(base_item)
+                        item["metric"] = f"MACD ({macd_val:+.1f}) > Signal ({signal_val:+.1f})"
+                        res_dict["macd_bullish"] = item
+
+                    # 6. Bollinger Band Breakout
+                    if upper_bb and ltp >= upper_bb * 0.995:
+                        item = dict(base_item)
+                        item["metric"] = f"LTP ₹{ltp:.2f} ≥ Upper BB ₹{upper_bb:.2f}"
+                        res_dict["bollinger_breakout"] = item
+
+                    # 7. Donchian Channel Breakout
+                    if donchian_high and ltp >= donchian_high * 0.995:
+                        item = dict(base_item)
+                        item["metric"] = f"LTP ₹{ltp:.2f} at 20D High ₹{donchian_high:.2f}"
+                        res_dict["donchian_breakout"] = item
+
+                    # 8. ST Trigger Bullish
+                    if ltp > prev_close and ltp > (highs[-1] + lows[-1]) / 2.0 and highs[-1] >= highs[-2]:
+                        item = dict(base_item)
+                        item["metric"] = f"ST Trigger Bullish (Higher High ₹{highs[-1]:.2f})"
+                        res_dict["st_trigger_bull"] = item
+
+                    # 9. Bullish Engulfing
+                    is_prev_red = closes[-2] < closes[-3] if len(closes) >= 3 else False
+                    is_curr_green = ltp > prev_close
+                    if is_curr_green and is_prev_red and ltp >= highs[-2] * 0.995:
+                        item = dict(base_item)
+                        item["metric"] = f"Engulfing: Green ₹{ltp:.2f} vs Prior Red ₹{prev_close:.2f}"
+                        res_dict["bullish_engulfing"] = item
+
+                    # 10. Near 52W High
+                    if high_52w and ltp >= high_52w * 0.97:
                         away_pct = round(((high_52w - ltp) / high_52w) * 100.0, 1)
                         item = dict(base_item)
                         item["metric"] = f"52W High ₹{high_52w:.2f} ({away_pct}% away)"
                         res_dict["high_52w"] = item
 
+                    # 11. Volume Surge
                     if vol_surge >= 1.8 and vol_latest > 5000:
                         item = dict(base_item)
                         item["metric"] = f"{vol_surge:.1f}x vs 20d Avg Vol"
                         res_dict["volume_surge"] = item
 
-                    if rsi14 is not None and rsi14 <= 38:
-                        item = dict(base_item)
-                        item["metric"] = f"RSI(14) at {rsi14:.1f} (Oversold Area)"
-                        res_dict["rsi_oversold"] = item
-
+                    # 12. Triple Confluence
                     if ema9_latest > ema21_latest and (rsi14 is not None and rsi14 >= 50) and (sma50_latest and ltp > sma50_latest):
                         item = dict(base_item)
                         item["metric"] = f"EMA Cross + RSI {rsi14:.1f} + Above 50 DMA"
                         res_dict["triple_confluence"] = item
 
-                    if sma50_latest and sma200_latest:
-                        if sma50_latest < sma200_latest:
-                            item = dict(base_item)
-                            item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) < 200 DMA (₹{sma200_latest:.1f})"
-                            res_dict["death_cross"] = item
+                    # 13. RSI Oversold
+                    if rsi14 is not None and rsi14 <= 38:
+                        item = dict(base_item)
+                        item["metric"] = f"RSI(14) at {rsi14:.1f} (Oversold Range)"
+                        res_dict["rsi_oversold"] = item
+
+                    # 14. Extreme Oversold (RSI < 30)
+                    if rsi14 is not None and rsi14 < 30.0:
+                        item = dict(base_item)
+                        item["metric"] = f"RSI(14) at {rsi14:.1f} (< 30 Extreme)"
+                        res_dict["oversold_extreme"] = item
+
+                    # 15. Death Crossover
+                    if sma50_latest and sma200_latest and sma50_latest < sma200_latest:
+                        item = dict(base_item)
+                        item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) < 200 DMA (₹{sma200_latest:.1f})"
+                        res_dict["death_cross"] = item
+
+                    # 16. Near 52W Low
+                    if low_52w and ltp <= low_52w * 1.03:
+                        away_pct = round(((ltp - low_52w) / low_52w) * 100.0, 1)
+                        item = dict(base_item)
+                        item["metric"] = f"52W Low ₹{low_52w:.2f} ({away_pct}% away)"
+                        res_dict["low_52w"] = item
 
                     return res_dict
                 except Exception:
@@ -1074,28 +1191,24 @@ def _run_technicals_scan(uname="admin"):
             payload = {
                 "success": True,
                 "scanners": scanners,
-                "total_scanned": len(symbols_list)
+                "total_scanned": len(symbols_list),
+                "updated_at": datetime.datetime.now().isoformat()
             }
 
             if valid_count > 0:
-                _LAST_SUCCESSFUL_TECHNICALS_CACHE = payload
+                # Save to MongoDB and local fallback file
+                save_technical_signals_db(payload, TECHNICAL_SIGNALS_FALLBACK_FILE)
                 technicals_cache.set(f"technicals_{uname}", payload, ttl=600)
                 technicals_cache.set("technicals_global", payload, ttl=600)
-                try:
-                    for p_candidate in PRECOMPUTED_CANDIDATES:
-                        os.makedirs(os.path.dirname(p_candidate), exist_ok=True)
-                        with open(p_candidate, "w", encoding="utf-8") as pf:
-                            json.dump(payload, pf, indent=2)
-                except Exception as ex_save:
-                    pass
                 return payload
-        except Exception:
-            pass
-        return _LAST_SUCCESSFUL_TECHNICALS_CACHE or _PRECOMPUTED_TECHNICALS
+        except Exception as e:
+            print(f"Error in _run_technicals_scan: {e}")
+
+    # Fallback to DB stored data if scan had issues
+    return load_technical_signals_db(TECHNICAL_SIGNALS_FALLBACK_FILE, default_factory=dict)
 
 @insights_bp.route("/api/insights/technicals", methods=["GET"])
 def get_insights_technicals_api():
-    global _LAST_SUCCESSFUL_TECHNICALS_CACHE
     try:
         uname = session.get("username", "admin")
         cache_key = f"technicals_{uname}"
@@ -1105,42 +1218,44 @@ def get_insights_technicals_api():
         if cached and not force_refresh:
             return jsonify(cached)
 
-        # Look up in-memory or disk fallback
-        fallback = _LAST_SUCCESSFUL_TECHNICALS_CACHE or _PRECOMPUTED_TECHNICALS
-        if not fallback or not fallback.get("scanners"):
-            for p_candidate in PRECOMPUTED_CANDIDATES:
-                if os.path.exists(p_candidate):
-                    try:
-                        with open(p_candidate, "r", encoding="utf-8") as pf:
-                            disk_data = json.load(pf)
-                            if disk_data and disk_data.get("scanners"):
-                                fallback = disk_data
-                                _LAST_SUCCESSFUL_TECHNICALS_CACHE = disk_data
-                                break
-                    except Exception:
-                        pass
+        # 1. Fetch from Database (MongoDB Atlas / local fallback)
+        db_data = load_technical_signals_db(TECHNICAL_SIGNALS_FALLBACK_FILE, default_factory=dict)
+        has_db_data = bool(db_data and db_data.get("scanners"))
 
-        # If we have precomputed data and NOT forcing refresh: return immediately (<10ms!)
-        # and launch background scanner without locking main thread
-        if fallback and fallback.get("scanners") and not force_refresh:
+        # If we have stored data and NOT forcing refresh: return immediately (<5ms!)
+        if has_db_data and not force_refresh:
+            technicals_cache.set(cache_key, db_data, ttl=600)
+            technicals_cache.set("technicals_global", db_data, ttl=600)
+            # If data is older than 20 minutes and lock is free, trigger background refresh
+            updated_at_str = db_data.get("updated_at")
+            is_stale = True
+            if updated_at_str:
+                try:
+                    dt = datetime.datetime.fromisoformat(updated_at_str)
+                    if (datetime.datetime.now() - dt).total_seconds() < 1200:
+                        is_stale = False
+                except Exception:
+                    pass
+            if is_stale and not _TECHNICALS_UPDATE_LOCK.locked():
+                threading.Thread(target=_run_technicals_scan, args=(uname,), daemon=True).start()
+            return jsonify(db_data)
+
+        # If forcing refresh: launch in background if we already have DB data
+        if force_refresh:
             if not _TECHNICALS_UPDATE_LOCK.locked():
                 threading.Thread(target=_run_technicals_scan, args=(uname,), daemon=True).start()
-            return jsonify(fallback)
+            if has_db_data:
+                return jsonify(db_data)
 
-        # If forcing refresh or empty disk: spawn thread and return fallback if available
-        if not _TECHNICALS_UPDATE_LOCK.locked():
-            threading.Thread(target=_run_technicals_scan, args=(uname,), daemon=True).start()
-            if fallback and fallback.get("scanners"):
-                return jsonify(fallback)
-
-        # Cold start fallback
+        # Cold start fallback: run scan
         res = _run_technicals_scan(uname)
-        return jsonify(res or fallback or {"success": True, "scanners": {}, "total_scanned": 0})
+        return jsonify(res or db_data or {"success": True, "scanners": _get_scanner_definitions(), "total_scanned": 0})
     except Exception as e:
-        fallback = _LAST_SUCCESSFUL_TECHNICALS_CACHE or _PRECOMPUTED_TECHNICALS
-        if fallback:
-            return jsonify(fallback)
-        return jsonify({"success": False, "error": str(e), "scanners": {}})
+        db_fallback = load_technical_signals_db(TECHNICAL_SIGNALS_FALLBACK_FILE, default_factory=dict)
+        if db_fallback and db_fallback.get("scanners"):
+            return jsonify(db_fallback)
+        return jsonify({"success": False, "error": str(e), "scanners": _get_scanner_definitions()})
+
 
 @insights_bp.route("/api/insights", methods=["GET"])
 @login_required
