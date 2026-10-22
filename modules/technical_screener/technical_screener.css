@@ -514,6 +514,24 @@
     border: 1px solid var(--ts-glass-border);
 }
 
+.ts-badge.support {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.ts-badge.resistance {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.ts-badge.breakdown {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
 /* Stock Match Counter */
 .ts-match-pill {
     font-size: 11px;

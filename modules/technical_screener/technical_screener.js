@@ -229,8 +229,8 @@
 
         const catMeta = hierarchyData?.categories?.find(c => c.id === currentCategory);
 
-        // If category is in a planned phase (Phase 2 to 6)
-        if (currentCategory !== 'smart_scanners') {
+        // If category is planned, show planned roadmap banner
+        if (catMeta?.status === 'planned') {
             renderPlannedCategoryView(container, catMeta, data);
             return;
         }
