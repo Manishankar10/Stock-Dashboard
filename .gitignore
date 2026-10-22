@@ -24,6 +24,17 @@ app_data/*.json
 !app_data/**/.gitkeep
 !app_data/.gitkeep
 
+# Data folder local JSON files (DO NOT commit or sync with Git!)
+data/
+data/**/*.json
+data/*.json
+
+# Persistent backups & local cache JSON files
+*.backup.json
+*_backup_*.json
+industries_overview_backup_*.json
+
+
 # Secrets & Environment variables
 .env
 *.env
