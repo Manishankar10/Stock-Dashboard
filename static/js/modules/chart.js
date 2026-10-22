@@ -441,6 +441,74 @@
             }
         }
 
+        function togglePriceLineLock(id) {
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const item = lines.find(x => x.id === id);
+            if (item) {
+                item.locked = !item.locked;
+                persistLinesForSymbol(currentChartSymbol, lines);
+                restoreSavedPriceLines(currentChartSymbol);
+                redrawCanvasOverlay();
+                renderActiveDrawingsList();
+                const popup = document.getElementById('canvasObjectPopup');
+                if (popup && popup.dataset.activeObjId === String(id)) {
+                    updateCanvasObjectPopupLockState(item.locked);
+                }
+                showToast(item.locked ? 'Drawing line locked' : 'Drawing line unlocked', 'info');
+            }
+        }
+        window.togglePriceLineLock = togglePriceLineLock;
+
+        function toggleShapeLock(id) {
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            const shape = shapes.find(s => s.id === id);
+            if (shape) {
+                shape.locked = !shape.locked;
+                persistShapesForSymbol(currentChartSymbol, shapes);
+                redrawCanvasOverlay();
+                renderActiveDrawingsList();
+                const popup = document.getElementById('canvasObjectPopup');
+                if (popup && popup.dataset.activeObjId === String(id)) {
+                    updateCanvasObjectPopupLockState(shape.locked);
+                }
+                showToast(shape.locked ? 'Drawing shape locked' : 'Drawing shape unlocked', 'info');
+            }
+        }
+        window.toggleShapeLock = toggleShapeLock;
+
+        function toggleLockAllDrawings() {
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            if (lines.length === 0 && shapes.length === 0) {
+                showToast('No active drawings to lock.', 'info');
+                return;
+            }
+            const hasAnyUnlocked = lines.some(l => !l.locked) || shapes.some(s => !s.locked);
+            const targetState = hasAnyUnlocked; // Lock all if any unlocked, else unlock all
+
+            lines.forEach(l => { l.locked = targetState; });
+            shapes.forEach(s => { s.locked = targetState; });
+
+            persistLinesForSymbol(currentChartSymbol, lines);
+            persistShapesForSymbol(currentChartSymbol, shapes);
+            restoreSavedPriceLines(currentChartSymbol);
+            redrawCanvasOverlay();
+            renderActiveDrawingsList();
+
+            const popup = document.getElementById('canvasObjectPopup');
+            if (popup && popup.dataset.activeObjId) {
+                updateCanvasObjectPopupLockState(targetState);
+            }
+
+            const btn = document.getElementById('btnToggleLockAllDrawings');
+            if (btn) {
+                btn.innerText = targetState ? '🔓 Unlock All' : '🔒 Lock All';
+                btn.style.color = targetState ? '#3b82f6' : '#d1d4dc';
+            }
+            showToast(targetState ? 'All drawings locked' : 'All drawings unlocked', 'info');
+        }
+        window.toggleLockAllDrawings = toggleLockAllDrawings;
+
         function restoreSavedPriceLines(sym) {
             if (!mainSeries || !sym) return;
             // Remove existing line objects from series first
@@ -466,13 +534,14 @@
                         else if (item.lineStyle === 'dotted') ls = LightweightCharts.LineStyle.Dotted;
                         else if (item.lineStyle === 'dashed') ls = LightweightCharts.LineStyle.Dashed;
 
+                        const lockPrefix = item.locked ? '🔒 ' : '';
                         const priceLine = mainSeries.createPriceLine({
                             price: item.price,
                             color: item.color || '#10b981',
                             lineWidth: lw,
                             lineStyle: ls,
                             axisLabelVisible: true,
-                            title: `${item.label || 'Line'}: ₹${item.price}`
+                            title: `${lockPrefix}${item.label || 'Line'}: ₹${item.price}`
                         });
                         activePriceLines.push({ id: item.id, lineObj: priceLine, data: item });
                     } catch(e){}
@@ -482,12 +551,17 @@
         }
 
         function deletePriceLineById(id) {
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const item = lines.find(x => x.id === id);
+            if (item && item.locked) {
+                showToast('This line is locked. Please unlock it to delete.', 'warning');
+                return;
+            }
             const idx = activePriceLines.findIndex(pl => pl.id === id);
             if (idx !== -1) {
                 try { mainSeries.removePriceLine(activePriceLines[idx].lineObj); } catch(e){}
                 activePriceLines.splice(idx, 1);
             }
-            const lines = getSavedPriceLines(currentChartSymbol);
             const updated = lines.filter(item => item.id !== id);
             persistLinesForSymbol(currentChartSymbol, updated);
             redrawCanvasOverlay();
@@ -509,6 +583,11 @@
 
         function deleteShapeById(id) {
             const shapes = getSavedChartShapes(currentChartSymbol);
+            const shape = shapes.find(s => s.id === id);
+            if (shape && shape.locked) {
+                showToast('This shape is locked. Please unlock it to delete.', 'warning');
+                return;
+            }
             const updated = shapes.filter(s => s.id !== id);
             persistShapesForSymbol(currentChartSymbol, updated);
             redrawCanvasOverlay();
@@ -541,6 +620,13 @@
             if (countEl) countEl.innerText = totalCount;
             if (countNavEl) countNavEl.innerText = totalCount;
 
+            const btnLockAll = document.getElementById('btnToggleLockAllDrawings');
+            if (btnLockAll) {
+                const allLocked = totalCount > 0 && lines.every(l => l.locked) && shapes.every(s => s.locked);
+                btnLockAll.innerText = allLocked ? '🔓 Unlock All' : '🔒 Lock All';
+                btnLockAll.style.color = allLocked ? '#3b82f6' : '#d1d4dc';
+            }
+
             if (!mount) return;
 
             if (totalCount === 0) {
@@ -554,6 +640,7 @@
                 const labelName = l.label || 'Support';
                 const itemColor = l.color || '#10b981';
                 const isHidden = !!l.hidden;
+                const isLocked = !!l.locked;
                 html += `
                     <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc; opacity: ${isHidden ? '0.6' : '1'};">
                         <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
@@ -561,9 +648,10 @@
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${itemColor}; cursor: pointer;" title="Change line color"></span>
                                 <input type="color" value="${itemColor}" onchange="updatePriceLineColorById('${l.id}', this.value)" style="position: absolute; top: 0; left: 0; width: 12px; height: 12px; opacity: 0; cursor: pointer;">
                             </div>
-                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${escapeHtml(labelName)}: ₹${l.price}</span>
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${isLocked ? '<span style="color: #60a5fa; font-size: 11px; margin-right: 2px;" title="Locked">🔒</span>' : ''}${escapeHtml(labelName)}: ₹${l.price}</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <button class="active-drawing-lock-btn" onclick="togglePriceLineLock('${l.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isLocked ? '#60a5fa' : '#787b86'}; padding: 2px 4px;" title="${isLocked ? 'Unlock this line' : 'Lock this line'}">${isLocked ? '🔒' : '🔓'}</button>
                             <button class="active-drawing-edit-btn" onclick="openEditDrawingModal('line', '${l.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: #60a5fa; padding: 2px 4px;" title="Edit this line">✏️</button>
                             <button onclick="togglePriceLineVisibility('${l.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isHidden ? '#787b86' : '#10b981'}; padding: 2px 4px;" title="${isHidden ? 'Show this line' : 'Hide this line'}">${isHidden ? '🙈' : '👁️'}</button>
                             <button class="active-drawing-delete-btn" onclick="deletePriceLineById('${l.id}')" title="Delete this line">🗑️</button>
@@ -586,6 +674,7 @@
 
                 const itemColor = s.color || '#3b82f6';
                 const isHidden = !!s.hidden;
+                const isLocked = !!s.locked;
                 html += `
                     <div class="active-drawing-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #1a1e29; border: 1px solid #2a2e39; border-radius: 6px; font-size: 12px; color: #d1d4dc; opacity: ${isHidden ? '0.6' : '1'};">
                         <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
@@ -593,9 +682,10 @@
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${itemColor}; cursor: pointer;" title="Change shape color"></span>
                                 <input type="color" value="${itemColor}" onchange="updateShapeColorById('${s.id}', this.value)" style="position: absolute; top: 0; left: 0; width: 12px; height: 12px; opacity: 0; cursor: pointer;">
                             </div>
-                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${icon} ${escapeHtml(name)}</span>
+                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: ${isHidden ? '#787b86' : '#e1e3e6'}; text-decoration: ${isHidden ? 'line-through' : 'none'};">${isLocked ? '<span style="color: #60a5fa; font-size: 11px; margin-right: 2px;" title="Locked">🔒</span>' : ''}${icon} ${escapeHtml(name)}</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <button class="active-drawing-lock-btn" onclick="toggleShapeLock('${s.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isLocked ? '#60a5fa' : '#787b86'}; padding: 2px 4px;" title="${isLocked ? 'Unlock this shape' : 'Lock this shape'}">${isLocked ? '🔒' : '🔓'}</button>
                             <button class="active-drawing-edit-btn" onclick="openEditDrawingModal('shape', '${s.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: #60a5fa; padding: 2px 4px;" title="Edit this shape">✏️</button>
                             <button onclick="toggleShapeVisibility('${s.id}')" style="background: none; border: none; cursor: pointer; font-size: 13px; color: ${isHidden ? '#787b86' : '#10b981'}; padding: 2px 4px;" title="${isHidden ? 'Show this shape' : 'Hide this shape'}">${isHidden ? '🙈' : '👁️'}</button>
                             <button class="active-drawing-delete-btn" onclick="deleteShapeById('${s.id}')" title="Delete this shape">🗑️</button>
@@ -670,6 +760,9 @@
                 if (styleSelect) styleSelect.value = currentStyle;
                 const propsGroup = document.getElementById('editDrawingLinePropsGroup');
                 if (propsGroup) propsGroup.style.display = 'block';
+
+                const lockInput = document.getElementById('editDrawingLocked');
+                if (lockInput) lockInput.checked = !!line.locked;
             } else if (kind === 'shape') {
                 const shapes = getSavedChartShapes(currentChartSymbol);
                 const shape = shapes.find(s => s.id === id);
@@ -692,6 +785,9 @@
                     const styleSelect = document.getElementById('editDrawingLineStyle');
                     if (styleSelect) styleSelect.value = currentStyle;
                 }
+
+                const lockInput = document.getElementById('editDrawingLocked');
+                if (lockInput) lockInput.checked = !!shape.locked;
 
                 if (shape.type === 'note') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Note Callout</span>`;
@@ -833,8 +929,10 @@
             const chosenColor = colorPicker ? colorPicker.value : '#10b981';
             const widthInput = document.getElementById('editDrawingLineWidth');
             const styleInput = document.getElementById('editDrawingLineStyle');
+            const lockInput = document.getElementById('editDrawingLocked');
             const chosenWidth = widthInput ? (parseInt(widthInput.value) || 2) : 2;
             const chosenStyle = styleInput ? (styleInput.value || 'solid') : 'solid';
+            const chosenLocked = lockInput ? !!lockInput.checked : false;
 
             if (kind === 'line') {
                 const labelInput = document.getElementById('editDrawingLabel');
@@ -855,10 +953,15 @@
                     line.color = chosenColor;
                     line.lineWidth = chosenWidth;
                     line.lineStyle = chosenStyle;
+                    line.locked = chosenLocked;
                     persistLinesForSymbol(currentChartSymbol, lines);
                     restoreSavedPriceLines(currentChartSymbol);
                     redrawCanvasOverlay();
                     renderActiveDrawingsList();
+                    const popup = document.getElementById('canvasObjectPopup');
+                    if (popup && popup.dataset.activeObjId === String(id)) {
+                        updateCanvasObjectPopupLockState(chosenLocked);
+                    }
                     showToast('Price line updated successfully', 'success');
                 }
             } else if (kind === 'shape') {
@@ -866,6 +969,7 @@
                 const shape = shapes.find(s => s.id === id);
                 if (shape) {
                     shape.color = chosenColor;
+                    shape.locked = chosenLocked;
                     if (shape.type === 'note') {
                         const textInput = document.getElementById('editDrawingLabel');
                         const priceInput = document.getElementById('editDrawingPrice1');
@@ -893,6 +997,10 @@
                     persistShapesForSymbol(currentChartSymbol, shapes);
                     redrawCanvasOverlay();
                     renderActiveDrawingsList();
+                    const popup = document.getElementById('canvasObjectPopup');
+                    if (popup && popup.dataset.activeObjId === String(id)) {
+                        updateCanvasObjectPopupLockState(chosenLocked);
+                    }
                     showToast('Drawing shape updated successfully', 'success');
                 }
             }
@@ -903,12 +1011,25 @@
         function deleteCurrentEditDrawing() {
             if (!currentEditDrawingTarget) return;
             const { kind, id } = currentEditDrawingTarget;
-            closeEditDrawingModal();
 
             if (kind === 'line') {
+                const lines = getSavedPriceLines(currentChartSymbol);
+                const l = lines.find(x => x.id === id);
+                if (l && l.locked) {
+                    showToast('This drawing is locked. Please unlock it to delete.', 'warning');
+                    return;
+                }
+                closeEditDrawingModal();
                 deletePriceLineById(id);
                 showToast('Price line deleted', 'info');
             } else if (kind === 'shape') {
+                const shapes = getSavedChartShapes(currentChartSymbol);
+                const s = shapes.find(x => x.id === id);
+                if (s && s.locked) {
+                    showToast('This drawing is locked. Please unlock it to delete.', 'warning');
+                    return;
+                }
+                closeEditDrawingModal();
                 deleteShapeById(id);
                 showToast('Drawing shape deleted', 'info');
             }
@@ -988,6 +1109,37 @@
 
         function clearDrawings() {
             clearTempMeasure();
+            const lines = getSavedPriceLines(currentChartSymbol);
+            const shapes = getSavedChartShapes(currentChartSymbol);
+            const hasLocked = lines.some(l => l.locked) || shapes.some(s => s.locked);
+
+            if (hasLocked) {
+                // Remove unlocked lines from series
+                if (mainSeries && activePriceLines.length > 0) {
+                    activePriceLines.forEach(item => {
+                        const l = lines.find(x => x.id === item.id);
+                        if (!l || !l.locked) {
+                            try { mainSeries.removePriceLine(item.lineObj); } catch(e){}
+                        }
+                    });
+                    activePriceLines = activePriceLines.filter(item => {
+                        const l = lines.find(x => x.id === item.id);
+                        return l && l.locked;
+                    });
+                }
+                const remainingLines = lines.filter(l => l.locked);
+                const remainingShapes = shapes.filter(s => s.locked);
+                persistLinesForSymbol(currentChartSymbol, remainingLines);
+                persistShapesForSymbol(currentChartSymbol, remainingShapes);
+                restoreSavedPriceLines(currentChartSymbol);
+                cancelDrawingTool();
+                hideCanvasObjectMenu();
+                redrawCanvasOverlay();
+                renderActiveDrawingsList();
+                showToast('Unlocked drawings cleared. Locked drawings kept safe.', 'info');
+                return;
+            }
+
             if (mainSeries && activePriceLines.length > 0) {
                 activePriceLines.forEach(item => {
                     try { mainSeries.removePriceLine(item.lineObj); } catch(e){}
@@ -999,6 +1151,7 @@
             cancelDrawingTool();
             hideCanvasObjectMenu();
             redrawCanvasOverlay();
+            renderActiveDrawingsList();
         }
 
         // =========================================================
@@ -2100,7 +2253,7 @@
             if (drawingCanvas) {
                 if (clickedObj) {
                     drawingCanvas.style.pointerEvents = 'auto';
-                    drawingCanvas.style.cursor = clickedObj.cursor || 'grab';
+                    drawingCanvas.style.cursor = clickedObj.locked ? 'pointer' : (clickedObj.cursor || 'grab');
                     syncCrosshairToPoint(pt);
                 } else {
                     drawingCanvas.style.pointerEvents = 'none';
@@ -2163,6 +2316,9 @@
 
             const onWindowDrawingMove = (moveEvt) => {
                 if (!activeDrawingDrag) return;
+                if (activeDrawingDrag.target && activeDrawingDrag.target.locked) {
+                    return; // Locked drawings cannot be moved or dragged
+                }
                 const curPt = getChartPointFromEvent(moveEvt);
                 if (!curPt) return;
 
@@ -2939,7 +3095,8 @@
                 if (l.hidden) continue;
                 const lineY = mainSeries.priceToCoordinate(l.price);
                 if (lineY !== null && Math.abs(y - lineY) < 10) {
-                    return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color, hidden: !!l.hidden, price: l.price, subPart: 'body', cursor: 'ns-resize' };
+                    const isLocked = !!l.locked;
+                    return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color, hidden: !!l.hidden, locked: isLocked, price: l.price, subPart: 'body', cursor: isLocked ? 'pointer' : 'ns-resize' };
                 }
             }
 
@@ -2947,16 +3104,17 @@
             const shapes = getSavedChartShapes(currentChartSymbol);
             for (let s of shapes) {
                 if (s.hidden) continue;
+                const isLocked = !!s.locked;
                 if (s.type === 'vertical') {
                     const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                     if (shapeX !== null && Math.abs(x - shapeX) < 10) {
-                        return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'ew-resize' };
+                        return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'ew-resize' };
                     }
                 } else if (s.type === 'note') {
                     const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
                     const shapeY = mainSeries.priceToCoordinate(s.price);
                     if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 35 && Math.abs(y - shapeY) < 22) {
-                        return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
+                        return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'grab' };
                     }
                 } else if (s.type === 'trendline') {
                     const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
@@ -2967,14 +3125,14 @@
                         const d1 = Math.hypot(x - x1, y - y1);
                         const d2 = Math.hypot(x - x2, y - y2);
                         if (d1 <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p1', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         if (d2 <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p2', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         const dist = distanceToSegment(x, y, x1, y1, x2, y2);
                         if (dist < 10) {
-                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
+                            return { kind: 'shape', id: s.id, name: 'Trendline', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'grab' };
                         }
                     }
                 } else if (s.type === 'rectangle' || s.type === 'pricerange') {
@@ -3004,36 +3162,36 @@
                         // 1. Check corners first (for precision resize)
                         const C_PAD = 14;
                         if (Math.hypot(x - minX, y - topY) <= C_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-top-left', cursor: 'nwse-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'corner-top-left', cursor: isLocked ? 'pointer' : 'nwse-resize' };
                         }
                         if (Math.hypot(x - maxX, y - topY) <= C_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-top-right', cursor: 'nesw-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'corner-top-right', cursor: isLocked ? 'pointer' : 'nesw-resize' };
                         }
                         if (Math.hypot(x - minX, y - bottomY) <= C_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-bottom-left', cursor: 'nesw-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'corner-bottom-left', cursor: isLocked ? 'pointer' : 'nesw-resize' };
                         }
                         if (Math.hypot(x - maxX, y - bottomY) <= C_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'corner-bottom-right', cursor: 'nwse-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'corner-bottom-right', cursor: isLocked ? 'pointer' : 'nwse-resize' };
                         }
 
                         // 2. Check borders (edges for resizing boundaries)
                         const B_PAD = 9;
                         if (Math.abs(y - topY) <= B_PAD && x >= minX - B_PAD && x <= maxX + B_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-top', cursor: 'ns-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'border-top', cursor: isLocked ? 'pointer' : 'ns-resize' };
                         }
                         if (Math.abs(y - bottomY) <= B_PAD && x >= minX - B_PAD && x <= maxX + B_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-bottom', cursor: 'ns-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'border-bottom', cursor: isLocked ? 'pointer' : 'ns-resize' };
                         }
                         if (Math.abs(x - minX) <= B_PAD && y >= topY - B_PAD && y <= bottomY + B_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-left', cursor: 'ew-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'border-left', cursor: isLocked ? 'pointer' : 'ew-resize' };
                         }
                         if (Math.abs(x - maxX) <= B_PAD && y >= topY - B_PAD && y <= bottomY + B_PAD) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'border-right', cursor: 'ew-resize' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'border-right', cursor: isLocked ? 'pointer' : 'ew-resize' };
                         }
 
                         // 3. Interior is the body (strictly for moving the whole drawing)
                         if (x > minX && x < maxX && y > topY && y < bottomY) {
-                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
+                            return { kind: 'shape', id: s.id, name, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'grab' };
                         }
                     }
                 } else if (s.type === 'fib') {
@@ -3045,16 +3203,16 @@
                         const d1 = Math.hypot(x - x1, y - y1);
                         const d2 = Math.hypot(x - x2, y - y2);
                         if (d1 <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p1', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         if (d2 <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p2', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         const dist = distanceToSegment(x, y, x1, y1, x2, y2);
                         const minX = Math.min(x1, x2) - 15, maxX = Math.max(x1, x2) + 90;
                         const minY = Math.min(y1, y2) - 20, maxY = Math.max(y1, y2) + 20;
                         if (dist < 12 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
-                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
+                            return { kind: 'shape', id: s.id, name: 'Fib Retracement', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'grab' };
                         }
                     }
                 } else if (s.type === 'parallelchannel') {
@@ -3072,33 +3230,33 @@
                         }
                         // Check anchor handles
                         if (Math.hypot(x - x1, y - y1) <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p1', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         if (Math.hypot(x - x2, y - y2) <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p2', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         // Check parallel handle and parallel line (border)
                         const midX = (x1 + x2) / 2;
                         const midY = (y1 + y2) / 2 + dy;
                         if (Math.hypot(x - midX, y - midY) <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'parallel', cursor: 'ns-resize' };
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'parallel', cursor: isLocked ? 'pointer' : 'ns-resize' };
                         }
                         const dist2 = distanceToSegment(x, y, x1, y1 + dy, x2, y2 + dy);
                         if (dist2 <= 8) {
-                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'parallel', cursor: 'ns-resize' };
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'parallel', cursor: isLocked ? 'pointer' : 'ns-resize' };
                         }
                         // Check baseline
                         const dist1 = distanceToSegment(x, y, x1, y1, x2, y2);
                         if (dist1 <= 8) {
                             const d1 = Math.hypot(x - x1, y - y1);
                             const d2 = Math.hypot(x - x2, y - y2);
-                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: (d1 < d2 ? 'p1' : 'p2'), cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: (d1 < d2 ? 'p1' : 'p2'), cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         // Interior check for body
                         const minX = Math.min(x1, x2) - 5, maxX = Math.max(x1, x2) + 5;
                         const minY = Math.min(y1, y2, y1 + dy, y2 + dy) - 5, maxY = Math.max(y1, y2, y1 + dy, y2 + dy) + 5;
                         if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
+                            return { kind: 'shape', id: s.id, name: 'Parallel Channel', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'grab' };
                         }
                     }
                 } else if (s.type === 'fibext') {
@@ -3110,13 +3268,13 @@
                     const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         if (Math.hypot(x - x1, y - y1) <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p1', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p1', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         if (Math.hypot(x - x2, y - y2) <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p2', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p2', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         if (x3 !== null && y3 !== null && Math.hypot(x - x3, y - y3) <= 12) {
-                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'p3', cursor: 'crosshair' };
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'p3', cursor: isLocked ? 'pointer' : 'crosshair' };
                         }
                         const dist1 = distanceToSegment(x, y, x1, y1, x2, y2);
                         let dist2 = 999;
@@ -3124,7 +3282,7 @@
                         const minX = Math.min(x1, x2, x3 || x2) - 15, maxX = Math.max(x1, x2, x3 || x2) + 160;
                         const minY = Math.min(y1, y2, y3 || y2) - 30, maxY = Math.max(y1, y2, y3 || y2) + 30;
                         if (dist1 < 10 || dist2 < 10 || (x >= minX && x <= maxX && y >= minY && y <= maxY)) {
-                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, type: s.type, subPart: 'body', cursor: 'grab' };
+                            return { kind: 'shape', id: s.id, name: 'Trend Fib Extension', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'grab' };
                         }
                     }
                 }
@@ -3379,7 +3537,7 @@
 
             if (popup && mainContainer) {
                 const isMobile = window.innerWidth <= 768;
-                const estimatedWidth = isMobile ? 240 : 280;
+                const estimatedWidth = isMobile ? 265 : 315;
                 popup.style.left = Math.max(10, Math.min(x - 20, mainContainer.clientWidth - estimatedWidth - 10)) + 'px';
                 popup.style.top = Math.max(10, (y > 55 ? (y - 46) : (y + 16))) + 'px';
                 popup.dataset.activeObjId = String(obj.id);
@@ -3388,6 +3546,7 @@
                 let currentWidth = 2;
                 let currentStyle = 'solid';
                 let currentColor = obj.color || '#10b981';
+                let isLocked = false;
 
                 if (obj.kind === 'line') {
                     const lines = getSavedPriceLines(currentChartSymbol);
@@ -3396,6 +3555,7 @@
                         currentWidth = l.lineWidth ? parseInt(l.lineWidth) : 2;
                         currentStyle = l.lineStyle || 'dashed';
                         currentColor = l.color || currentColor;
+                        isLocked = !!l.locked;
                     }
                 } else if (obj.kind === 'shape') {
                     const shapes = getSavedChartShapes(currentChartSymbol);
@@ -3404,12 +3564,15 @@
                         currentWidth = s.lineWidth ? parseInt(s.lineWidth) : (s.type === 'rectangle' ? 1 : 2);
                         currentStyle = s.lineStyle || (s.type === 'vertical' ? 'dashed' : 'solid');
                         currentColor = s.color || currentColor;
+                        isLocked = !!s.locked;
                     }
                 }
 
                 const deleteFn = obj.kind === 'line' ? `deletePriceLineById('${obj.id}'); hideCanvasObjectMenu();` : `deleteShapeById('${obj.id}'); hideCanvasObjectMenu();`;
                 const toggleVisFn = obj.kind === 'line' ? `togglePriceLineVisibility('${obj.id}'); hideCanvasObjectMenu();` : `toggleShapeVisibility('${obj.id}'); hideCanvasObjectMenu();`;
+                const toggleLockFn = obj.kind === 'line' ? `togglePriceLineLock('${obj.id}');` : `toggleShapeLock('${obj.id}');`;
                 const visLabel = obj.hidden ? 'Show' : 'Hide';
+                const lockTitle = isLocked ? 'Unlock Drawing' : 'Lock Drawing';
                 const isNote = (obj.kind === 'shape' && obj.type === 'note');
 
                 popup.innerHTML = `
@@ -3496,6 +3659,17 @@
                             <circle cx="12" cy="12" r="3"/>
                         </svg>`}
                     </button>
+                    <button type="button" class="canvas-obj-btn canvas-obj-lock-btn ${isLocked ? 'canvas-obj-locked active' : ''}" onclick="${toggleLockFn}" title="${lockTitle}" aria-label="${lockTitle}">
+                        ${isLocked ? `
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>` : `
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                        </svg>`}
+                    </button>
                     <span class="canvas-obj-divider"></span>
                     <button type="button" class="canvas-obj-btn canvas-obj-delete-btn" onclick="${deleteFn}" title="Delete Drawing" aria-label="Delete">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3517,6 +3691,15 @@
                         <button type="button" class="canvas-obj-more-item" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.5l7.36 4.25v8.5L12 19.5l-7.36-4.25v-8.5L12 2.5z"/><circle cx="12" cy="11" r="3.2"/></svg>
                             <span>Settings...</span>
+                        </button>
+                        <button type="button" class="canvas-obj-more-item canvas-obj-more-item-lock" onclick="${toggleLockFn}">
+                            ${isLocked ? `
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                            <span>Unlock Drawing</span>
+                            ` : `
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <span>Lock Drawing</span>
+                            `}
                         </button>
                         <button type="button" class="canvas-obj-more-item" onclick="${toggleVisFn}">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -3584,6 +3767,47 @@
                 if (styleMenu) styleMenu.style.display = 'none';
             }
         }
+
+        function updateCanvasObjectPopupLockState(isLocked) {
+            const popup = document.getElementById('canvasObjectPopup');
+            if (!popup) return;
+            const lockBtn = popup.querySelector('.canvas-obj-lock-btn');
+            if (lockBtn) {
+                const title = isLocked ? 'Unlock Drawing' : 'Lock Drawing';
+                lockBtn.title = title;
+                lockBtn.setAttribute('aria-label', title);
+                if (isLocked) {
+                    lockBtn.classList.add('canvas-obj-locked', 'active');
+                    lockBtn.innerHTML = `
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>`;
+                } else {
+                    lockBtn.classList.remove('canvas-obj-locked', 'active');
+                    lockBtn.innerHTML = `
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                        </svg>`;
+                }
+            }
+            const moreMenuLockItem = popup.querySelector('.canvas-obj-more-item-lock');
+            if (moreMenuLockItem) {
+                if (isLocked) {
+                    moreMenuLockItem.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                        <span>Unlock Drawing</span>
+                    `;
+                } else {
+                    moreMenuLockItem.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <span>Lock Drawing</span>
+                    `;
+                }
+            }
+        }
+        window.updateCanvasObjectPopupLockState = updateCanvasObjectPopupLockState;
 
         function redrawCanvasOverlay() {
             if (!drawingCanvas) return;

@@ -1841,6 +1841,23 @@
             opacity: 0.7 !important;
         }
 
+        .canvas-obj-btn.canvas-obj-locked {
+            color: #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.15) !important;
+        }
+
+        [data-theme="light"] .canvas-obj-btn.canvas-obj-locked {
+            color: #2563eb !important;
+            background: rgba(37, 99, 235, 0.12) !important;
+        }
+
+        .active-drawing-lock-btn {
+            transition: transform 0.15s ease;
+        }
+        .active-drawing-lock-btn:hover {
+            transform: scale(1.15);
+        }
+
         .canvas-obj-color-tool {
             position: relative !important;
             overflow: hidden !important;
