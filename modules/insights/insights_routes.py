@@ -947,26 +947,20 @@ def _run_technicals_scan(uname="admin"):
             except Exception:
                 pass
 
-            popular_subset = [
-                # Nifty 50 & Heavyweights
-                "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "BHARTIARTL", "ITC", "SBIN", "LT", "HINDUNILVR",
-                "BAJFINANCE", "HCLTECH", "MARUTI", "SUNPHARMA", "ADANIENT", "TATAMOTORS", "NTPC", "KOTAKBANK", "TITAN",
-                "ONGC", "TATASTEEL", "POWERGRID", "AXISBANK", "ADANIPORTS", "COALINDIA", "M&M", "BAJAJFINSV", "WIPRO",
-                "TECHM", "BPCL", "TRENT", "BEL", "ULTRACEMCO", "NESTLEIND", "GRASIM", "JSWSTEEL", "CIPLA", "ASIANPAINT",
-                "INDUSINDBK", "TATACONSUM", "HEROMOTOCO", "DRREDDY", "EICHERMOT", "HINDALCO", "APOLLOHOSP", "DIVISLAB",
-                "SBILIFE", "HDFCLIFE", "BRITANNIA", "LTIM",
-                # High-Momentum & Liquid Midcap Leaders
-                "ZOMATO", "JIOFIN", "HAL", "VEDL", "CHOLAFIN", "DLF", "MOTHERSON", "GAIL", "SIEMENS", "ABB", "BHEL",
-                "AMBUJACEM", "BANKBARODA", "PFC", "RECLTD", "TVSMOTOR", "CANBK", "TATACHEM", "PERSISTENT", "VOLTAS",
-                "POLYCAB", "CUMMINSIND", "COFORGE", "DIXON", "SUZLON", "BSE", "CDSL", "MCX", "ANGELONE", "TATAELXSI",
-                "KPITTECH", "FEDERALBNK", "IDFCFIRSTB", "AUROPHARMA", "LUPIN", "ALKEM", "TORNTPHARM", "DEEPAKNTR",
-                "PIIND", "SRF", "ASTRAL", "HAVELLS", "INDHOTEL", "SUPRIYA", "ROLEXRINGS", "MAZDOCK", "COCHINSHIP"
-            ]
-            for pop_sym in popular_subset:
-                target_symbols.add(format_financial_symbol(pop_sym))
-
+            # Only logged-in user's watchlist and portfolio stocks are included
             symbols_list = list(target_symbols)
             scanners = _get_scanner_definitions()
+
+            if not symbols_list:
+                payload = {
+                    "success": True,
+                    "scanners": scanners,
+                    "total_scanned": 0,
+                    "updated_at": datetime.datetime.now().isoformat()
+                }
+                save_technical_signals_db(payload, username=uname)
+                technicals_cache.set(f"technicals_{uname}", payload, ttl=600)
+                return payload
 
             y_session = requests.Session()
             y_session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'})
@@ -1203,37 +1197,34 @@ def _run_technicals_scan(uname="admin"):
                 "updated_at": datetime.datetime.now().isoformat()
             }
 
-            if valid_count > 0:
-                # Save to MongoDB and local fallback file
-                save_technical_signals_db(payload)
-                technicals_cache.set(f"technicals_{uname}", payload, ttl=600)
-                technicals_cache.set("technicals_global", payload, ttl=600)
-                return payload
+            # Save to Database for logged in user
+            save_technical_signals_db(payload, username=uname)
+            technicals_cache.set(f"technicals_{uname}", payload, ttl=600)
+            return payload
         except Exception as e:
-            print(f"Error in _run_technicals_scan: {e}")
+            print(f"Error in _run_technicals_scan for {uname}: {e}")
 
-    # Fallback to DB stored data if scan had issues
-    return load_technical_signals_db(default_factory=dict)
+    # Fallback to DB stored data for logged in user if scan had issues
+    return load_technical_signals_db(username=uname, default_factory=dict)
 
 @insights_bp.route("/api/insights/technicals", methods=["GET"])
 def get_insights_technicals_api():
     try:
         uname = session.get("username", "admin")
         cache_key = f"technicals_{uname}"
-        cached = technicals_cache.get(cache_key) or technicals_cache.get("technicals_global")
+        cached = technicals_cache.get(cache_key)
         force_refresh = request.args.get("refresh") == "1"
 
         if cached and not force_refresh:
             return jsonify(cached)
 
-        # 1. Fetch from Database (MongoDB Atlas / local fallback)
-        db_data = load_technical_signals_db(default_factory=dict)
+        # 1. Fetch from Database for logged-in user
+        db_data = load_technical_signals_db(username=uname, default_factory=dict)
         has_db_data = bool(db_data and db_data.get("scanners"))
 
         # If we have stored data and NOT forcing refresh: return immediately (<5ms!)
         if has_db_data and not force_refresh:
             technicals_cache.set(cache_key, db_data, ttl=600)
-            technicals_cache.set("technicals_global", db_data, ttl=600)
             # If data is older than 20 minutes and lock is free, trigger background refresh
             updated_at_str = db_data.get("updated_at")
             is_stale = True
@@ -1255,11 +1246,11 @@ def get_insights_technicals_api():
             if has_db_data:
                 return jsonify(db_data)
 
-        # Cold start fallback: run scan
+        # Cold start fallback: run scan for logged-in user
         res = _run_technicals_scan(uname)
         return jsonify(res or db_data or {"success": True, "scanners": _get_scanner_definitions(), "total_scanned": 0})
     except Exception as e:
-        db_fallback = load_technical_signals_db(default_factory=dict)
+        db_fallback = load_technical_signals_db(username=uname, default_factory=dict)
         if db_fallback and db_fallback.get("scanners"):
             return jsonify(db_fallback)
         return jsonify({"success": False, "error": str(e), "scanners": _get_scanner_definitions()})

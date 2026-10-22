@@ -163,16 +163,23 @@ def _init_sqlite_db():
     except Exception as e:
         print(f"SQLite init error: {e}")
 
-def load_technical_signals_db(filepath=None, default_factory=dict):
+def load_technical_signals_db(username="admin", default_factory=dict):
     """
-    Load technical signals strictly and only from the database:
+    Load technical signals strictly and only from the database for the given user:
     1. Primary: MongoDB Atlas (if _MONGO_URI connected)
     2. Local: SQLite database 'user_data/capital_desk.db'
     """
+    if isinstance(username, dict) or callable(username):
+        default_factory = username
+        username = "admin"
+
+    safe_user = "".join(c for c in str(username or 'admin') if c.isalnum() or c in ('_', '-')).lower()
+    doc_id = f"signals_{safe_user}"
+
     if db is not None:
         try:
             col = db["technical_signals"]
-            doc = col.find_one({"_id": "latest_signals"})
+            doc = col.find_one({"_id": doc_id})
             if doc is not None and "data" in doc:
                 return doc["data"]
             elif doc is not None and "scanners" in doc:
@@ -180,42 +187,45 @@ def load_technical_signals_db(filepath=None, default_factory=dict):
                 res.pop("_id", None)
                 return res
         except Exception as e:
-            print(f"MongoDB load_technical_signals error: {e}")
+            print(f"MongoDB load_technical_signals error for {username}: {e}")
 
     try:
         _init_sqlite_db()
         with sqlite3.connect(_SQLITE_DB_PATH) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT data FROM technical_signals WHERE id = 'latest_signals'")
+            cursor.execute("SELECT data FROM technical_signals WHERE id = ?", (doc_id,))
             row = cursor.fetchone()
             if row and row[0]:
                 return json.loads(row[0])
     except Exception as e:
-        print(f"SQLite load_technical_signals error: {e}")
+        print(f"SQLite load_technical_signals error for {username}: {e}")
 
     return default_factory()
 
-def save_technical_signals_db(data, filepath=None):
+def save_technical_signals_db(data, username="admin"):
     """
-    Save technical signals strictly and only in the database:
+    Save technical signals strictly and only in the database for the given user:
     1. Primary: MongoDB Atlas (if _MONGO_URI connected)
     2. Local: SQLite database 'user_data/capital_desk.db'
     """
+    safe_user = "".join(c for c in str(username or 'admin') if c.isalnum() or c in ('_', '-')).lower()
+    doc_id = f"signals_{safe_user}"
+
     if db is not None:
         try:
             col = db["technical_signals"]
-            doc = {"_id": "latest_signals", "data": data}
-            col.replace_one({"_id": "latest_signals"}, doc, upsert=True)
+            doc = {"_id": doc_id, "username": username, "data": data}
+            col.replace_one({"_id": doc_id}, doc, upsert=True)
         except Exception as e:
-            print(f"MongoDB save_technical_signals error: {e}")
+            print(f"MongoDB save_technical_signals error for {username}: {e}")
 
     try:
         _init_sqlite_db()
         with sqlite3.connect(_SQLITE_DB_PATH) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO technical_signals (id, data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
-                ('latest_signals', json.dumps(data, ensure_ascii=False))
+                (doc_id, json.dumps(data, ensure_ascii=False))
             )
             conn.commit()
     except Exception as e:
-        print(f"SQLite save_technical_signals error: {e}")
+        print(f"SQLite save_technical_signals error for {username}: {e}")
