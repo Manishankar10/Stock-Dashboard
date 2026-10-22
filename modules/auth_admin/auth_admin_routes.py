@@ -1,8 +1,10 @@
 from modules.common.system_settings import get_system_settings, update_system_settings
 import os
+import io
+import zipfile
 import json
 import datetime
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from modules.common.auth_utils import (
     load_users,
@@ -12,6 +14,9 @@ from modules.common.auth_utils import (
     admin_required
 )
 from modules.common.data_paths import (
+    BASE_DATA_DIR,
+    APP_DATA_DIR,
+    USER_DATA_DIR,
     LOGS_FILE,
     USERS_EXAMPLE_FILE
 )
@@ -541,3 +546,170 @@ def admin_industries_overview_refresh():
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
+
+
+# ==============================================================================
+# PRODUCTION JSON FILES DOWNLOAD & MANAGEMENT
+# ==============================================================================
+def _scan_json_files(include_external_logs=False):
+    """Scan all valid JSON files in BASE_DATA_DIR, APP_DATA_DIR, and USER_DATA_DIR."""
+    found_files = []
+    seen_rel_paths = set()
+    dirs_to_scan = [
+        ("app_data", APP_DATA_DIR),
+        ("user_data", USER_DATA_DIR),
+        ("root", BASE_DATA_DIR)
+    ]
+    for category, base_dir in dirs_to_scan:
+        if not os.path.exists(base_dir):
+            continue
+        for root_dir, _, files in os.walk(base_dir):
+            norm_root = root_dir.replace('\\', '/')
+            if any(skip in norm_root for skip in ['/venv', '/.git', '/__pycache__', '/site-packages', '/scratch', '/.gemini']):
+                continue
+            if not include_external_logs and 'external_api_logs' in norm_root:
+                continue
+            for f in files:
+                if f.endswith('.json'):
+                    abs_path = os.path.join(root_dir, f)
+                    try:
+                        rel_path = os.path.relpath(abs_path, BASE_DATA_DIR).replace('\\', '/')
+                    except Exception:
+                        rel_path = f
+                    if rel_path in seen_rel_paths:
+                        continue
+                    seen_rel_paths.add(rel_path)
+                    try:
+                        stat = os.stat(abs_path)
+                        sz = stat.st_size
+                        mtime = stat.st_mtime
+                    except Exception:
+                        sz = 0
+                        mtime = 0
+                    if sz < 1024:
+                        sz_str = f"{sz} B"
+                    elif sz < 1024 * 1024:
+                        sz_str = f"{sz / 1024:.1f} KB"
+                    else:
+                        sz_str = f"{sz / (1024 * 1024):.2f} MB"
+                    cat = category
+                    if 'drawings' in rel_path:
+                        cat = 'drawings'
+                    elif 'external_api_logs' in rel_path:
+                        cat = 'logs'
+                    elif 'user_data' in rel_path:
+                        cat = 'user_data'
+                    elif 'app_data' in rel_path:
+                        cat = 'app_data'
+                    else:
+                        cat = 'root'
+                    found_files.append({
+                        "name": f,
+                        "rel_path": rel_path,
+                        "abs_path": abs_path,
+                        "category": cat,
+                        "size_bytes": sz,
+                        "size_formatted": sz_str,
+                        "modified": datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S") if mtime else "-"
+                    })
+    cat_order = {'app_data': 1, 'user_data': 2, 'drawings': 3, 'root': 4, 'logs': 5}
+    found_files.sort(key=lambda x: (cat_order.get(x['category'], 99), x['name'].lower()))
+    return found_files
+
+
+@auth_admin_bp.route("/api/admin/json_files/list", methods=["GET"])
+@admin_required
+def admin_list_json_files():
+    include_logs = request.args.get("include_logs", "").lower() in ["1", "true", "yes"]
+    files = _scan_json_files(include_external_logs=include_logs)
+    
+    total_bytes = sum(f["size_bytes"] for f in files)
+    if total_bytes < 1024:
+        total_formatted = f"{total_bytes} B"
+    elif total_bytes < 1024 * 1024:
+        total_formatted = f"{total_bytes / 1024:.1f} KB"
+    else:
+        total_formatted = f"{total_bytes / (1024 * 1024):.2f} MB"
+        
+    clean_files = []
+    for f in files:
+        clean_files.append({
+            "name": f["name"],
+            "rel_path": f["rel_path"],
+            "category": f["category"],
+            "size_bytes": f["size_bytes"],
+            "size_formatted": f["size_formatted"],
+            "modified": f["modified"],
+            "download_url": f"/api/admin/json_files/download?file={f['rel_path']}"
+        })
+        
+    return jsonify({
+        "success": True,
+        "total_files": len(clean_files),
+        "total_size_bytes": total_bytes,
+        "total_size_formatted": total_formatted,
+        "files": clean_files
+    })
+
+
+@auth_admin_bp.route("/api/admin/json_files/download", methods=["GET"])
+@admin_required
+def admin_download_single_json_file():
+    rel_path = request.args.get("file", "").strip()
+    if not rel_path or not rel_path.endswith(".json"):
+        return jsonify({"error": "Invalid or missing file parameter. Must be a .json file."}), 400
+    
+    clean_rel = rel_path.replace("\\", "/").lstrip("/")
+    if ".." in clean_rel or clean_rel.startswith("/"):
+        return jsonify({"error": "Access denied: Invalid path traversal."}), 403
+        
+    abs_path = os.path.abspath(os.path.join(BASE_DATA_DIR, clean_rel))
+    allowed_bases = [
+        os.path.abspath(BASE_DATA_DIR),
+        os.path.abspath(APP_DATA_DIR),
+        os.path.abspath(USER_DATA_DIR)
+    ]
+    if not any(abs_path.startswith(b) for b in allowed_bases):
+        return jsonify({"error": "Access denied: Path outside allowed directories."}), 403
+        
+    if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
+        return jsonify({"error": f"File '{clean_rel}' not found on server."}), 404
+        
+    return send_file(
+        abs_path,
+        as_attachment=True,
+        download_name=os.path.basename(abs_path),
+        mimetype="application/json"
+    )
+
+
+@auth_admin_bp.route("/api/admin/json_files/download_all_zip", methods=["GET"])
+@admin_required
+def admin_download_all_json_zip():
+    scope = request.args.get("scope", "core").strip().lower()
+    include_logs = (scope == "all" or request.args.get("include_logs", "").lower() in ["1", "true", "yes"])
+    
+    files = _scan_json_files(include_external_logs=include_logs)
+    if scope in ["app_data", "user_data", "drawings", "root"]:
+        files = [f for f in files if f["category"] == scope]
+        
+    if not files:
+        return jsonify({"error": "No JSON files found for the requested scope."}), 404
+        
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in files:
+            if os.path.exists(f["abs_path"]):
+                zf.write(f["abs_path"], f["rel_path"])
+                
+    buf.seek(0)
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    zip_name = f"capital_desk_production_json_files_{scope}_{ts}.zip"
+    
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=zip_name,
+        mimetype="application/zip"
+    )
+

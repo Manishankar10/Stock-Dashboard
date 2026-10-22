@@ -988,6 +988,71 @@
 
         <!-- TAB 4: System Tools & Backup -->
         <div id="tab-system" class="tab-content">
+            <!-- Production JSON Files (Live Storage Download) -->
+            <div class="metric-card" style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; flex-wrap: wrap; margin-bottom: 16px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            🗄️ Production JSON Files (Live Storage Download)
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                            Download all or individual live JSON dataset and user files directly from production server storage.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <a href="/api/admin/json_files/download_all_zip?scope=core" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Download all datasets & user JSONs as single ZIP">
+                            📦 Download All JSON Files (.ZIP)
+                        </a>
+                        <a href="/api/admin/json_files/download_all_zip?scope=app_data" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Download app_data directory JSONs">
+                            📁 app_data (.ZIP)
+                        </a>
+                        <a href="/api/admin/json_files/download_all_zip?scope=user_data" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Download user_data directory JSONs">
+                            👤 user_data (.ZIP)
+                        </a>
+                        <button type="button" class="btn btn-secondary" onclick="loadProductionJsonFilesList()" style="display: inline-flex; align-items: center; gap: 6px;">
+                            🔄 Refresh List
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Summary Badges & Search Filter -->
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;">
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 14px;">
+                        <span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: 700; display: block;">Total Available Files</span>
+                        <strong id="admin-json-total-files" style="color: var(--text-primary); font-size: 14px;">Loading...</strong>
+                    </div>
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 14px;">
+                        <span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: 700; display: block;">Total Storage Size</span>
+                        <strong id="admin-json-total-size" style="color: #3b82f6; font-size: 14px;">Loading...</strong>
+                    </div>
+                    <div style="flex: 1; min-width: 240px;">
+                        <input type="text" id="admin-json-search" placeholder="🔍 Search JSON files (e.g. shareholding, industries, admin, transactions)..." oninput="filterAdminJsonFiles(this.value)" style="width: 100%; padding: 9px 12px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                    </div>
+                </div>
+
+                <!-- Table of Live JSON Files -->
+                <div style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+                        <thead>
+                            <tr style="position: sticky; top: 0; background: var(--bg-surface); z-index: 10; border-bottom: 1px solid var(--border-color);">
+                                <th style="text-align: left; padding: 10px 14px;">File Name & Relative Path</th>
+                                <th style="text-align: left; padding: 10px 14px; width: 110px;">Folder</th>
+                                <th style="text-align: right; padding: 10px 14px; width: 100px;">Size</th>
+                                <th style="text-align: right; padding: 10px 14px; width: 160px;">Last Modified</th>
+                                <th style="text-align: center; padding: 10px 14px; width: 120px;">Download</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-json-files-tbody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                                    Loading production JSON files list...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="metric-card" style="margin-bottom: 20px;">
                 <h3 style="margin-top: 0; margin-bottom: 12px;">🖥️ Server Environment & Health</h3>
                 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;"><strong>Engine:</strong> Flask (Python 3.11+ WSGI Backend)</p>
@@ -1212,6 +1277,7 @@
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
             if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); }
+            if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); }
         }
 
         async function checkAdminAuth() {
@@ -2377,6 +2443,94 @@
                 .replace(/'/g, '&#39;');
         }
 
+        // Production JSON Files Manager
+        let allProductionJsonFiles = [];
+
+        async function loadProductionJsonFilesList() {
+            const tbody = document.getElementById('admin-json-files-tbody');
+            const totalFilesEl = document.getElementById('admin-json-total-files');
+            const totalSizeEl = document.getElementById('admin-json-total-size');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);"><div class="ind-spinner" style="display:inline-block;width:18px;height:18px;border:2px solid var(--border-color);border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:8px;"></div> Loading production JSON files...</td></tr>`;
+            }
+            try {
+                const res = await fetch('/api/admin/json_files/list');
+                const data = await res.json();
+                if (!data.success) {
+                    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 24px; color: #ef4444;">Failed to load JSON files: ${escapeHtml(data.error || 'Server error')}</td></tr>`;
+                    return;
+                }
+                allProductionJsonFiles = data.files || [];
+                if (totalFilesEl) totalFilesEl.innerText = `${data.total_files} Files`;
+                if (totalSizeEl) totalSizeEl.innerText = data.total_size_formatted || '0 B';
+                renderAdminJsonFilesTable(allProductionJsonFiles);
+            } catch (err) {
+                console.error('Failed to load production JSON files:', err);
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 24px; color: #ef4444;">Network error loading JSON files list.</td></tr>`;
+            }
+        }
+
+        function filterAdminJsonFiles(query) {
+            const q = (query || '').toLowerCase().trim();
+            if (!q) {
+                renderAdminJsonFilesTable(allProductionJsonFiles);
+                return;
+            }
+            const filtered = allProductionJsonFiles.filter(f => 
+                f.name.toLowerCase().includes(q) || 
+                f.rel_path.toLowerCase().includes(q) || 
+                f.category.toLowerCase().includes(q)
+            );
+            renderAdminJsonFilesTable(filtered);
+        }
+
+        function renderAdminJsonFilesTable(files) {
+            const tbody = document.getElementById('admin-json-files-tbody');
+            if (!tbody) return;
+            if (!files || files.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);">No matching JSON files found.</td></tr>`;
+                return;
+            }
+
+            const catBadgeStyles = {
+                app_data: 'background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);',
+                user_data: 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);',
+                drawings: 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);',
+                root: 'background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3);',
+                logs: 'background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3);'
+            };
+
+            let html = '';
+            files.forEach(f => {
+                const badgeStyle = catBadgeStyles[f.category] || catBadgeStyles.root;
+                html += `
+                    <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
+                        <td style="padding: 10px 14px;">
+                            <div style="font-weight: 600; color: var(--text-primary); font-size: 13px;">${escapeHtml(f.name)}</div>
+                            <div style="font-size: 11px; color: var(--text-secondary); font-family: monospace; margin-top: 2px;">${escapeHtml(f.rel_path)}</div>
+                        </td>
+                        <td style="padding: 10px 14px;">
+                            <span style="font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.3px; ${badgeStyle}">
+                                ${escapeHtml(f.category)}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 14px; text-align: right; font-weight: 600; color: var(--text-primary); font-family: monospace;">
+                            ${escapeHtml(f.size_formatted)}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: right; color: var(--text-secondary); font-size: 11.5px; font-family: monospace;">
+                            ${escapeHtml(f.modified)}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <a href="${escapeHtml(f.download_url)}" class="btn" style="padding: 5px 12px; font-size: 11.5px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;" download title="Download ${escapeHtml(f.name)}">
+                                ⬇ Download
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
         async function initAdmin() {
             initTheme();
             await checkAdminAuth();
@@ -2385,6 +2539,7 @@
             await loadSystemSettings();
             await loadAdminIndustriesStatus();
             await loadExternalApiLogsBadge();
+            await loadProductionJsonFilesList();
         }
 
         initAdmin();
