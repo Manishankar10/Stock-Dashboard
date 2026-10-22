@@ -5886,7 +5886,8 @@
                     timeStr = `${dateFormatted} (IST)`;
                 }
             }
-            document.getElementById('legDate').innerText = timeStr;
+            const elLegDate = document.getElementById('legDate');
+            if (elLegDate) elLegDate.innerText = timeStr;
             document.getElementById('legOpen').innerText = '₹' + (o ? o.toFixed(2) : '-');
             document.getElementById('legHigh').innerText = '₹' + (h ? h.toFixed(2) : '-');
             document.getElementById('legLow').innerText = '₹' + (l ? l.toFixed(2) : '-');
