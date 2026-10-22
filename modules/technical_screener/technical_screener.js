@@ -20,7 +20,8 @@
     window.switchTechnicalScreenerCategory = switchTechnicalScreenerCategory;
     window.setTechnicalScreenerScope = setTechnicalScreenerScope;
     window.setTechnicalScreenerTimeframe = setTechnicalScreenerTimeframe;
-    window.setTechnicalScreenerWatchlist = setTechnicalScreenerWatchlist;
+    window.setTechnicalScreenerWatchlist = onTechnicalScreenerWatchlistChange;
+    window.onTechnicalScreenerWatchlistChange = onTechnicalScreenerWatchlistChange;
     window.triggerTechnicalScreenerScan = triggerTechnicalScreenerScan;
     window.filterTechnicalScreenerResults = filterTechnicalScreenerResults;
     window.openTechnicalStockChart = openTechnicalStockChart;
@@ -102,15 +103,15 @@
         const activeBtn = document.getElementById(`ts-scope-${scope}`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        // Watchlist sub-bar visibility
-        const wlSubbar = document.getElementById('ts-watchlist-subbar');
+        // Watchlist dropdown visibility
+        const wlWrap = document.getElementById('ts-watchlist-dropdown-wrap');
         if (scope === 'watchlist') {
-            if (wlSubbar) {
-                wlSubbar.style.display = 'flex';
-                await populateWatchlistChips();
+            if (wlWrap) {
+                wlWrap.style.display = 'inline-flex';
+                await populateWatchlistDropdown();
             }
         } else {
-            if (wlSubbar) wlSubbar.style.display = 'none';
+            if (wlWrap) wlWrap.style.display = 'none';
             currentWatchlistId = null;
         }
 
@@ -118,55 +119,44 @@
     }
 
     /**
-     * Populate Watchlist selection pills
+     * Populate Watchlist selection dropdown
      */
-    async function populateWatchlistChips() {
-        const chipsList = document.getElementById('ts-watchlist-chips-list');
-        if (!chipsList) return;
+    async function populateWatchlistDropdown() {
+        const select = document.getElementById('ts-watchlist-select');
+        if (!select) return;
 
         try {
-            let wlData = window.watchlists || null;
-            if (!wlData) {
-                const r = await fetch('/api/watchlist');
-                if (r.ok) {
-                    const j = await r.json();
-                    wlData = j.watchlists || j;
-                }
-            }
+            const resp = await fetch('/api/technical-screener/watchlists');
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const json = await resp.json();
 
-            if (!wlData || typeof wlData !== 'object' || Object.keys(wlData).length === 0) {
-                chipsList.innerHTML = `<span style="font-size: 11.5px; color: var(--text-muted);">No custom watchlists found</span>`;
+            const watchlists = (json && json.watchlists) || [];
+            const totalCombined = json.total_combined || 0;
+
+            if (watchlists.length === 0) {
+                select.innerHTML = `<option value="__all__">📂 No watchlists found</option>`;
                 return;
             }
 
-            const keys = Object.keys(wlData);
-            if (!currentWatchlistId || !keys.includes(currentWatchlistId)) {
-                currentWatchlistId = keys[0];
-            }
+            let html = `<option value="__all__" ${(!currentWatchlistId || currentWatchlistId === '__all__') ? 'selected' : ''}>📂 All Watchlists (${totalCombined} stocks)</option>`;
 
-            let html = '';
-            keys.forEach(k => {
-                const count = Array.isArray(wlData[k]) ? wlData[k].length : 0;
-                const isSel = k === currentWatchlistId;
-                html += `
-                    <button type="button" class="ts-wl-chip ${isSel ? 'active' : ''}" 
-                            onclick="setTechnicalScreenerWatchlist('${escapeHtml(k)}')">
-                        ${escapeHtml(k)} (${count})
-                    </button>
-                `;
+            watchlists.forEach(w => {
+                const isSel = w.name === currentWatchlistId;
+                html += `<option value="${escapeHtml(w.name)}" ${isSel ? 'selected' : ''}>⭐ ${escapeHtml(w.name)} (${w.count} stocks)</option>`;
             });
-            chipsList.innerHTML = html;
+
+            select.innerHTML = html;
         } catch (e) {
-            chipsList.innerHTML = `<span style="font-size: 11.5px; color: var(--text-muted);">Watchlists unavailable</span>`;
+            console.error('Error loading screener watchlists:', e);
+            select.innerHTML = `<option value="__all__">📂 All Watchlists (Combined)</option>`;
         }
     }
 
     /**
-     * Select a specific watchlist
+     * Handle user changing Watchlist dropdown
      */
-    async function setTechnicalScreenerWatchlist(wlId) {
-        currentWatchlistId = wlId;
-        await populateWatchlistChips();
+    async function onTechnicalScreenerWatchlistChange(wlId) {
+        currentWatchlistId = (wlId && wlId !== '__all__') ? wlId : null;
         await triggerTechnicalScreenerScan(false);
     }
 

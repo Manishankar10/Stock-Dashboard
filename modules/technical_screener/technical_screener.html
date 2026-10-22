@@ -38,6 +38,14 @@
                     </button>
                 </div>
 
+                <!-- Watchlist Dropdown (Revealed when Scope is 'watchlist') -->
+                <div id="ts-watchlist-dropdown-wrap" class="ts-watchlist-dropdown-wrap" style="display: none;" title="Choose Watchlist">
+                    <span class="ts-wl-icon">📂</span>
+                    <select id="ts-watchlist-select" class="ts-watchlist-select" onchange="onTechnicalScreenerWatchlistChange(this.value)">
+                        <option value="__all__">All Watchlists (Combined)</option>
+                    </select>
+                </div>
+
                 <!-- Timeframe Segmented Control (Daily, Weekly, Monthly) -->
                 <div class="ts-timeframe-segmented-bar" role="group" aria-label="Screener Timeframe">
                     <button type="button" class="ts-tf-btn active" id="ts-tf-daily" onclick="setTechnicalScreenerTimeframe('daily')" title="Daily Timeframe (1D)">
@@ -55,16 +63,6 @@
                     <span id="ts-refresh-icon">🔄</span>
                     <span id="ts-refresh-label">Scan Now</span>
                 </button>
-            </div>
-
-            <!-- Dynamic Watchlist Pills Sub-Bar (Revealed when Scope is 'watchlist') -->
-            <div id="ts-watchlist-subbar" class="ts-watchlist-subbar" style="display: none;">
-                <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
-                    <span>📂 Select Watchlist:</span>
-                </span>
-                <div id="ts-watchlist-chips-list" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <!-- Rendered by JS -->
-                </div>
             </div>
         </header>
 

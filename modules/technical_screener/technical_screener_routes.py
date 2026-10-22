@@ -653,10 +653,23 @@ def _get_target_symbols_for_scope(scope="all", watchlist_id=None, uname="admin")
             from modules.watchlist.watchlist_routes import load_data as load_watchlists
             wl_data = load_watchlists(uname)
             if isinstance(wl_data, dict):
-                if watchlist_id and watchlist_id in wl_data:
-                    wl_items = wl_data.get(watchlist_id, [])
-                    symbols = [item.get("symbol", "") for item in wl_items if isinstance(item, dict) and item.get("symbol")]
+                matched_key = None
+                if watchlist_id and watchlist_id != "__all__":
+                    for k in wl_data.keys():
+                        if k.strip().lower() == watchlist_id.strip().lower():
+                            matched_key = k
+                            break
+
+                if matched_key:
+                    wl_items = wl_data.get(matched_key, [])
+                    if isinstance(wl_items, list):
+                        for it in wl_items:
+                            if isinstance(it, dict) and it.get("symbol"):
+                                symbols.append(it["symbol"])
+                            elif isinstance(it, str):
+                                symbols.append(it)
                 else:
+                    # All watchlists combined
                     for w_name, items in wl_data.items():
                         if isinstance(items, list):
                             for it in items:
@@ -668,7 +681,7 @@ def _get_target_symbols_for_scope(scope="all", watchlist_id=None, uname="admin")
             print(f"Error loading watchlist symbols for screener: {e}")
             symbols = []
 
-    if not symbols or scope == "all":
+    if scope == "all":
         # All market universe + user's active holdings/watchlists merged
         target_set = set(POPULAR_INDIAN_STOCKS.keys())
         try:
@@ -679,6 +692,9 @@ def _get_target_symbols_for_scope(scope="all", watchlist_id=None, uname="admin")
         except Exception:
             pass
         symbols = list(target_set)
+    elif not symbols:
+        # User selected portfolio or watchlist but it has 0 stocks
+        return []
 
     # Clean & normalize symbols
     clean_syms = []
@@ -1616,6 +1632,39 @@ def get_technical_screener_hierarchy_api():
             save_technical_screener_hierarchy_db(hierarchy)
 
     return jsonify({"success": True, "hierarchy": hierarchy})
+
+@technical_screener_bp.route("/api/technical-screener/watchlists", methods=["GET"])
+def get_technical_screener_watchlists_api():
+    """
+    Returns user's watchlists and item counts for screener dropdown selection.
+    """
+    uname = session.get("username", "admin") if hasattr(session, "get") else "admin"
+    try:
+        from modules.watchlist.watchlist_routes import load_data as load_watchlists
+        wl_data = load_watchlists(uname) or {}
+    except Exception as e:
+        print(f"Error loading watchlists for screener dropdown: {e}")
+        wl_data = {}
+
+    summary = []
+    total_combined = 0
+    all_symbols_set = set()
+    if isinstance(wl_data, dict):
+        for name, items in wl_data.items():
+            stk_count = 0
+            if isinstance(items, list):
+                for it in items:
+                    sym = it.get("symbol") if isinstance(it, dict) else it
+                    if sym:
+                        stk_count += 1
+                        all_symbols_set.add(sym.upper().replace(".NS", "").replace(".BO", "").strip())
+            summary.append({"name": name, "count": stk_count})
+
+    return jsonify({
+        "success": True,
+        "watchlists": summary,
+        "total_combined": len(all_symbols_set)
+    })
 
 @technical_screener_bp.route("/api/technical-screener/scan", methods=["GET"])
 def run_technical_screener_scan_api():
