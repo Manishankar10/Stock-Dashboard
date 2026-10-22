@@ -7,7 +7,7 @@
             savedChartInterval = localStorage.getItem('capital_desk_chart_interval') || window.currentChartInterval || '1d';
         } catch(e) {}
         var currentChartInterval = savedChartInterval;
-        var currentChartRange = window.currentChartRange || '1y';
+        var currentChartRange = window.currentChartRange || '3y';
         var chartType = window.chartType || 'candlestick';
 
         function getIntervalDisplayLabel(intVal) {
@@ -4731,7 +4731,7 @@
             if (!sym) return;
             clearTempMeasure();
             currentChartSymbol = sym;
-            currentChartRange = '1y';
+            currentChartRange = '3y';
             try {
                 const saved = localStorage.getItem('capital_desk_chart_interval');
                 if (saved) {
@@ -4759,7 +4759,11 @@
             });
 
             const rangeLabel = document.getElementById('rangeBtnLabel');
-            if (rangeLabel) rangeLabel.innerHTML = '<span class="btn-icon">📅</span><span class="btn-text"> 1Y</span>';
+            if (rangeLabel) rangeLabel.innerHTML = '<span class="btn-icon">📅</span><span class="btn-text"> 3Y</span>';
+
+            document.querySelectorAll('#popover-range .tf-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === 'tf-3y');
+            });
 
             renderFavoriteToolsShortcuts();
             initMobileFavBarDrag();
@@ -4829,7 +4833,7 @@
                 if (symLabel) {
                     const symTxt = symbol || currentChartSymbol || 'Stock';
                     const intTxt = (interval || currentChartInterval || '1d').toUpperCase();
-                    const rngTxt = (range || currentChartRange || '1y').toUpperCase();
+                    const rngTxt = (range || currentChartRange || '3y').toUpperCase();
                     symLabel.innerText = `${symTxt} · ${intTxt} · ${rngTxt}`;
                 }
                 overlay.style.display = 'flex';
@@ -5076,6 +5080,7 @@
 
         function renderInHouseCharts(data) {
             cachedChartData = data;
+            window.cachedChartData = data;
             buildIndicatorDataMap(data);
 
             const mainContainer = document.getElementById('mainChartPane');
@@ -6414,6 +6419,7 @@
         window.setChartInterval = setChartInterval;
         window.setChartType = setChartType;
         window.setChartRange = changeRange;
+        window.getCurrentChartRange = () => currentChartRange;
         window.toggleChartIndicator = toggleIndicators;
         window.setDrawingTool = activateDrawingTool;
         window.deleteSelectedDrawing = deleteCurrentEditDrawing;

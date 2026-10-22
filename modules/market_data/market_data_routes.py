@@ -150,7 +150,7 @@ def get_stock_data():
 @market_data_bp.route("/api/chart_history", methods=["GET"])
 def get_chart_history():
     raw_symbol = request.args.get("symbol", "").strip()
-    time_range = request.args.get("range", "1y").strip()
+    time_range = request.args.get("range", "3y").strip()
     interval_raw = request.args.get("interval", "1d").strip().lower()
     
     if not raw_symbol:

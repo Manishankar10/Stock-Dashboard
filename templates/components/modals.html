@@ -560,15 +560,16 @@
                         <!-- 5. Timeframe Range Popover -->
                         <div class="chart-popover-wrapper">
                             <button class="chart-popover-btn" onclick="toggleChartPopover('popover-range', event)" title="Time Range">
-                                <span id="rangeBtnLabel"><span class="btn-icon">📅</span> <span class="btn-text">1Y</span></span> <span class="popover-arrow">▾</span>
+                                <span id="rangeBtnLabel"><span class="btn-icon">📅</span> <span class="btn-text">3Y</span></span> <span class="popover-arrow">▾</span>
                             </button>
                             <div class="chart-popover-menu" id="popover-range">
                                 <div class="popover-menu-title">Time Range</div>
                                 <button class="popover-menu-item tf-btn" id="tf-1mo" onclick="changeRange('1mo'); closeAllChartPopovers();">1 Month (1M)</button>
                                 <button class="popover-menu-item tf-btn" id="tf-3mo" onclick="changeRange('3mo'); closeAllChartPopovers();">3 Months (3M)</button>
                                 <button class="popover-menu-item tf-btn" id="tf-6mo" onclick="changeRange('6mo'); closeAllChartPopovers();">6 Months (6M)</button>
-                                <button class="popover-menu-item tf-btn active" id="tf-1y" onclick="changeRange('1y'); closeAllChartPopovers();">1 Year (1Y)</button>
+                                <button class="popover-menu-item tf-btn" id="tf-1y" onclick="changeRange('1y'); closeAllChartPopovers();">1 Year (1Y)</button>
                                 <button class="popover-menu-item tf-btn" id="tf-2y" onclick="changeRange('2y'); closeAllChartPopovers();">2 Years (2Y)</button>
+                                <button class="popover-menu-item tf-btn active" id="tf-3y" onclick="changeRange('3y'); closeAllChartPopovers();">3 Years (3Y)</button>
                                 <button class="popover-menu-item tf-btn" id="tf-5y" onclick="changeRange('5y'); closeAllChartPopovers();">5 Years (5Y)</button>
                                 <button class="popover-menu-item tf-btn" id="tf-max" onclick="changeRange('max'); closeAllChartPopovers();">All History (ALL)</button>
                                 <div class="popover-divider"></div>
