@@ -3642,12 +3642,6 @@
                         </div>
                     </div>
                     `}
-                    <button type="button" class="canvas-obj-btn canvas-obj-settings-btn" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();" title="Settings" aria-label="Settings">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2.5l7.36 4.25v8.5L12 19.5l-7.36-4.25v-8.5L12 2.5z"/>
-                            <circle cx="12" cy="11" r="3.2"/>
-                        </svg>
-                    </button>
                     <button type="button" class="canvas-obj-btn canvas-obj-vis-btn ${obj.hidden ? 'canvas-obj-hidden' : ''}" onclick="${toggleVisFn}" title="${visLabel} Drawing" aria-label="${visLabel}">
                         ${obj.hidden ? `
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3689,7 +3683,7 @@
                     <div id="canvasObjMoreMenu" class="canvas-obj-more-menu" style="display: none;">
                         <div class="canvas-obj-more-header" title="${escapeHtml(obj.name)}">${escapeHtml(obj.name)}</div>
                         <button type="button" class="canvas-obj-more-item" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.5l7.36 4.25v8.5L12 19.5l-7.36-4.25v-8.5L12 2.5z"/><circle cx="12" cy="11" r="3.2"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                             <span>Settings...</span>
                         </button>
                         <button type="button" class="canvas-obj-more-item canvas-obj-more-item-lock" onclick="${toggleLockFn}">
