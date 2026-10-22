@@ -23,7 +23,8 @@ const AppRouter = {
         'transactions': '/transactions',
         'sector-rotation': '/sector-rotation',
         'industries-overview': '/industries-overview',
-        'shareholding': '/shareholding'
+        'shareholding': '/shareholding',
+        'technical-screener': '/technical-screener'
     },
 
     reverseMap: {
@@ -42,7 +43,8 @@ const AppRouter = {
         '/transactions': 'transactions',
         '/sector-rotation': 'sector-rotation',
         '/industries-overview': 'industries-overview',
-        '/shareholding': 'shareholding'
+        '/shareholding': 'shareholding',
+        '/technical-screener': 'technical-screener'
     },
 
     closeAnyOpenModalOrDrawer() {
@@ -243,7 +245,7 @@ function switchTab(tabName, pushState = true) {
     if (sidebarNavEl) sidebarNavEl.classList.add('active');
 
     // Highlight parent Tools button if a tool tab is active
-    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator', 'corporate-actions', 'quarterly-results', 'transactions', 'sector-rotation', 'industries-overview', 'shareholding'].includes(tabName);
+    const isTool = ['mutual-funds', 'mutual-fund-detail', 'ipos', 'plan-calculator', 'corporate-actions', 'quarterly-results', 'transactions', 'sector-rotation', 'industries-overview', 'shareholding', 'technical-screener'].includes(tabName);
     const toolsTrigger = document.getElementById('sidebar-nav-tools');
     if (toolsTrigger) {
         toolsTrigger.classList.toggle('active', isTool);
@@ -356,6 +358,8 @@ function switchTab(tabName, pushState = true) {
         if (typeof window.loadShareholding === 'function') window.loadShareholding();
     } else if (tabName === 'industries-overview') {
         if (typeof window.loadIndustriesOverviewModule === 'function') window.loadIndustriesOverviewModule();
+    } else if (tabName === 'technical-screener') {
+        if (typeof window.loadTechnicalScreenerModule === 'function') window.loadTechnicalScreenerModule();
     }
 
     // 5. Automatically close tools submenu and mobile drawer if open

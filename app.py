@@ -67,6 +67,7 @@ from modules.broker_research import broker_research_bp, init_broker_research
 from modules.industries_overview import industries_overview_bp, init_industries_overview
 from modules.shareholding import shareholding_bp, init_shareholding
 from modules.drawings import drawings_bp
+from modules.technical_screener import technical_screener_bp
 
 # Initialize Flask Application
 app = Flask(__name__)
@@ -151,6 +152,7 @@ app.register_blueprint(broker_research_bp)
 app.register_blueprint(industries_overview_bp)
 app.register_blueprint(shareholding_bp)
 app.register_blueprint(drawings_bp)
+app.register_blueprint(technical_screener_bp)
 
 # Static Asset Serving for Modules
 @app.route("/modules/<path:filename>")
@@ -207,6 +209,11 @@ def sector_rotation_page():
 @login_required
 def industries_overview_page():
     return render_template("index.html", initial_tab="industries-overview")
+
+@app.route("/technical-screener")
+@login_required
+def technical_screener_page():
+    return render_template("index.html", initial_tab="technical-screener")
 
 @app.route("/login", endpoint="login_page")
 def login_page():

@@ -1,0 +1,110 @@
+<!-- ==============================================================================
+     CAPITAL DESK - TECHNICAL SCREENER TAB VIEW (PHASE 1)
+     Ultra-Modern Glassmorphic Terminal UX
+     Location: modules/technical_screener/technical_screener.html
+     ============================================================================== -->
+
+<div id="tab-technical-screener" class="tab-content" style="display: none;">
+    <div class="technical-screener-shell">
+
+        <!-- 1. Top Glass Hero Strip with Controls & Scope Filter -->
+        <header class="ts-hero-strip">
+            <div class="ts-hero-title-area">
+                <div class="ts-hero-title-row">
+                    <h2 class="ts-hero-title">
+                        <span>📐 Technical Screener</span>
+                    </h2>
+                    <span class="ts-live-pulse-badge">
+                        <span class="ts-pulse-dot"></span>
+                        <span id="ts-status-label">Live Radar</span>
+                    </span>
+                </div>
+                <p class="ts-hero-subtitle">
+                    Institutional momentum signals, multi-indicator algorithms &amp; algorithmic chart pattern screening
+                </p>
+            </div>
+
+            <!-- Scope Segmented Control & Actions -->
+            <div class="ts-hero-controls">
+                <div class="ts-scope-segmented-bar" role="group" aria-label="Screener Scope Filter">
+                    <button type="button" class="ts-scope-btn active" id="ts-scope-all" onclick="setTechnicalScreenerScope('all')">
+                        <span>🌐</span><span>All Market</span>
+                    </button>
+                    <button type="button" class="ts-scope-btn" id="ts-scope-portfolio" onclick="setTechnicalScreenerScope('portfolio')">
+                        <span>💼</span><span>Portfolio</span>
+                    </button>
+                    <button type="button" class="ts-scope-btn" id="ts-scope-watchlist" onclick="setTechnicalScreenerScope('watchlist')">
+                        <span>⭐</span><span>Watchlist</span>
+                    </button>
+                </div>
+
+                <button type="button" class="ts-action-btn primary" id="ts-btn-refresh-scan" onclick="triggerTechnicalScreenerScan(true)" title="Run real-time scan">
+                    <span id="ts-refresh-icon">🔄</span>
+                    <span id="ts-refresh-label">Scan Now</span>
+                </button>
+            </div>
+
+            <!-- Dynamic Watchlist Pills Sub-Bar (Revealed when Scope is 'watchlist') -->
+            <div id="ts-watchlist-subbar" class="ts-watchlist-subbar" style="display: none;">
+                <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                    <span>📂 Select Watchlist:</span>
+                </span>
+                <div id="ts-watchlist-chips-list" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+        </header>
+
+        <!-- 2. Floating Parent Category Navigation Deck -->
+        <nav class="ts-category-deck" id="ts-category-deck" aria-label="Screener Parent Categories">
+            <!-- Dynamically populated from Collection 1 hierarchy -->
+            <button type="button" class="ts-cat-tab-btn active" onclick="switchTechnicalScreenerCategory('smart_scanners')">
+                <span>⚡</span><span>Smart Scanners</span>
+                <span class="ts-cat-tab-badge">16 Active</span>
+            </button>
+            <button type="button" class="ts-cat-tab-btn" onclick="switchTechnicalScreenerCategory('trendlines')">
+                <span>📈</span><span>Trendlines</span>
+                <span class="ts-cat-tab-badge planned">Phase 2</span>
+            </button>
+            <button type="button" class="ts-cat-tab-btn" onclick="switchTechnicalScreenerCategory('triangles')">
+                <span>📐</span><span>Triangles</span>
+                <span class="ts-cat-tab-badge planned">Phase 3</span>
+            </button>
+            <button type="button" class="ts-cat-tab-btn" onclick="switchTechnicalScreenerCategory('channels')">
+                <span>⏸️</span><span>Channels</span>
+                <span class="ts-cat-tab-badge planned">Phase 4</span>
+            </button>
+            <button type="button" class="ts-cat-tab-btn" onclick="switchTechnicalScreenerCategory('nr_wr')">
+                <span>📏</span><span>NR / WR</span>
+                <span class="ts-cat-tab-badge planned">Phase 5</span>
+            </button>
+            <button type="button" class="ts-cat-tab-btn" onclick="switchTechnicalScreenerCategory('chart_patterns')">
+                <span>📊</span><span>Popular Patterns</span>
+                <span class="ts-cat-tab-badge planned">Phase 6</span>
+            </button>
+        </nav>
+
+        <!-- 3. Real-Time Filter & Search Strip -->
+        <div class="ts-filter-strip">
+            <div class="ts-search-box">
+                <span style="color: var(--text-muted); font-size: 13px;">🔍</span>
+                <input type="text" id="ts-search-input" class="ts-search-input" placeholder="Filter by symbol, name, or metric..." oninput="filterTechnicalScreenerResults()">
+            </div>
+            <div class="ts-stats-counter" id="ts-stats-counter">
+                <span>Loading technical intelligence...</span>
+            </div>
+        </div>
+
+        <!-- 4. Dynamic Screener Content Container -->
+        <main id="ts-scanners-container">
+            <!-- Rendered by technical_screener.js -->
+            <div class="ts-screeners-grid">
+                <div class="ts-screener-card ts-skeleton" style="height: 240px;"></div>
+                <div class="ts-screener-card ts-skeleton" style="height: 240px;"></div>
+                <div class="ts-screener-card ts-skeleton" style="height: 240px;"></div>
+                <div class="ts-screener-card ts-skeleton" style="height: 240px;"></div>
+            </div>
+        </main>
+
+    </div>
+</div>

@@ -1,0 +1,740 @@
+/* ==============================================================================
+   CAPITAL DESK - TECHNICAL SCREENER & PATTERN INTELLIGENCE (PHASE 1)
+   Ultra-Modern Glassmorphic Terminal UX (Dark & Light Theme Adaptive)
+   Location: modules/technical_screener/technical_screener.css
+   ============================================================================== */
+
+:root {
+    --ts-glass-bg: rgba(255, 255, 255, 0.75);
+    --ts-glass-card: rgba(255, 255, 255, 0.85);
+    --ts-glass-hover: rgba(255, 255, 255, 0.95);
+    --ts-glass-border: rgba(226, 232, 240, 0.8);
+    --ts-glass-border-focus: rgba(99, 102, 241, 0.4);
+    --ts-glass-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    --ts-pill-bg: #f1f5f9;
+    --ts-pill-active: #ffffff;
+    --ts-pill-text: #475569;
+    --ts-pill-active-text: #0f172a;
+    --ts-accent-glow: rgba(16, 185, 129, 0.15);
+    --ts-metric-bg: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="dark"] {
+    --ts-glass-bg: rgba(15, 23, 42, 0.65);
+    --ts-glass-card: rgba(30, 41, 59, 0.6);
+    --ts-glass-hover: rgba(51, 65, 85, 0.7);
+    --ts-glass-border: rgba(255, 255, 255, 0.08);
+    --ts-glass-border-focus: rgba(99, 102, 241, 0.5);
+    --ts-glass-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+    --ts-pill-bg: rgba(15, 23, 42, 0.6);
+    --ts-pill-active: rgba(30, 41, 59, 0.9);
+    --ts-pill-text: #94a3b8;
+    --ts-pill-active-text: #f8fafc;
+    --ts-accent-glow: rgba(16, 185, 129, 0.25);
+    --ts-metric-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* Base Container */
+.technical-screener-shell {
+    padding: 24px 28px 48px 28px;
+    max-width: 1680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Hero Header Strip */
+.ts-hero-strip {
+    background: var(--ts-glass-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--ts-glass-border);
+    border-radius: 20px;
+    padding: 22px 26px;
+    margin-bottom: 22px;
+    box-shadow: var(--ts-glass-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ts-hero-strip::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #8b5cf6 100%);
+    opacity: 0.85;
+}
+
+.ts-hero-title-area {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ts-hero-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ts-hero-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ts-live-pulse-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.ts-pulse-dot {
+    width: 6.5px;
+    height: 6.5px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: tsPulseAnim 2s infinite ease-in-out;
+}
+
+@keyframes tsPulseAnim {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.4; }
+}
+
+.ts-hero-subtitle {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Controls: Scope Segmented Switch & Actions */
+.ts-hero-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ts-scope-segmented-bar {
+    display: inline-flex;
+    background: var(--ts-pill-bg);
+    border: 1px solid var(--ts-glass-border);
+    padding: 3.5px;
+    border-radius: 12px;
+    gap: 3px;
+}
+
+.ts-scope-btn {
+    border: none;
+    background: transparent;
+    color: var(--ts-pill-text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ts-scope-btn:hover {
+    color: var(--text-primary);
+}
+
+.ts-scope-btn.active {
+    background: var(--ts-pill-active);
+    color: var(--ts-pill-active-text);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ts-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--ts-glass-card);
+    border: 1px solid var(--ts-glass-border);
+    color: var(--text-primary);
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ts-action-btn:hover {
+    background: var(--ts-glass-hover);
+    border-color: var(--ts-glass-border-focus);
+    transform: translateY(-1px);
+}
+
+.ts-action-btn.primary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: 1px solid #10b981;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.ts-action-btn.primary:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+/* Watchlist Selector Sub-Bar */
+.ts-watchlist-subbar {
+    width: 100%;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--ts-glass-border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    animation: tsFadeIn 0.25s ease-out;
+}
+
+.ts-wl-chip {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--ts-pill-bg);
+    color: var(--ts-pill-text);
+    border: 1px solid var(--ts-glass-border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ts-wl-chip:hover {
+    color: var(--text-primary);
+    border-color: var(--ts-glass-border-focus);
+}
+
+.ts-wl-chip.active {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Parent Category Navigation Deck (Glass Rails) */
+.ts-category-deck {
+    background: var(--ts-glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--ts-glass-border);
+    border-radius: 16px;
+    padding: 8px 10px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: var(--ts-glass-shadow);
+}
+
+.ts-category-deck::-webkit-scrollbar {
+    display: none;
+}
+
+.ts-cat-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+}
+
+.ts-cat-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ts-cat-tab-btn.active {
+    background: var(--ts-glass-hover);
+    color: var(--text-primary);
+    border-color: var(--ts-glass-border-focus);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.ts-cat-tab-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+}
+
+.ts-cat-tab-btn.active .ts-cat-tab-badge {
+    background: #6366f1;
+    color: #ffffff;
+}
+
+.ts-cat-tab-badge.planned {
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-muted);
+}
+
+/* Filter & Search Bar */
+.ts-filter-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.ts-search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ts-glass-card);
+    border: 1px solid var(--ts-glass-border);
+    border-radius: 10px;
+    padding: 6px 14px;
+    width: 280px;
+    transition: all 0.2s ease;
+}
+
+.ts-search-box:focus-within {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.ts-search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    width: 100%;
+    outline: none;
+}
+
+.ts-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.ts-stats-counter {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Sub-Group Section */
+.ts-subgroup-block {
+    margin-bottom: 32px;
+}
+
+.ts-subgroup-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-left: 2px;
+}
+
+.ts-subgroup-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+    margin: 0;
+}
+
+.ts-subgroup-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: var(--ts-pill-bg);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+/* Grid of Screener Glass Cards */
+.ts-screeners-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 18px;
+}
+
+@media (max-width: 768px) {
+    .ts-screeners-grid {
+        grid-template-columns: 1fr;
+    }
+    .technical-screener-shell {
+        padding: 16px;
+    }
+}
+
+/* Individual Screener Card */
+.ts-screener-card {
+    background: var(--ts-glass-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--ts-glass-border);
+    border-radius: 16px;
+    padding: 18px 20px;
+    box-shadow: var(--ts-glass-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+}
+
+.ts-screener-card:hover {
+    border-color: var(--ts-glass-border-focus);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.12);
+}
+
+.ts-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.ts-card-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ts-card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ts-card-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.2px;
+}
+
+.ts-card-desc {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.ts-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ts-badge.bullish {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.ts-badge.bearish {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.ts-badge.momentum {
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.ts-badge.breakout {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.ts-badge.volume {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.ts-badge.reversal {
+    background: rgba(236, 72, 153, 0.12);
+    color: #ec4899;
+    border: 1px solid rgba(236, 72, 153, 0.25);
+}
+
+.ts-badge.neutral {
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-secondary);
+    border: 1px solid var(--ts-glass-border);
+}
+
+/* Stock Match Counter */
+.ts-match-pill {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: var(--ts-pill-bg);
+    border: 1px solid var(--ts-glass-border);
+    padding: 3px 8px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ts-match-pill.has-matches {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Stocks List inside Card */
+.ts-stocks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.ts-stocks-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ts-stocks-list::-webkit-scrollbar-thumb {
+    background: var(--ts-glass-border);
+    border-radius: 4px;
+}
+
+/* Individual Stock Row in Card */
+.ts-stock-row {
+    background: var(--ts-metric-bg);
+    border: 1px solid var(--ts-glass-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.18s ease;
+}
+
+.ts-stock-row:hover {
+    background: var(--ts-glass-hover);
+    border-color: var(--ts-glass-border-focus);
+}
+
+.ts-stock-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.ts-stock-symbol-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ts-stock-sym {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.ts-stock-sym:hover {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+.ts-stock-name {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.ts-stock-metric-pill {
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-top: 2px;
+    display: inline-block;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ts-stock-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.ts-stock-ltp {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.ts-stock-chg {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.ts-stock-chg.pos {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.ts-stock-chg.neg {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.ts-stock-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.ts-mini-btn {
+    border: none;
+    background: var(--ts-pill-bg);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ts-mini-btn:hover {
+    background: #3b82f6;
+    color: #ffffff;
+}
+
+/* Empty Card State */
+.ts-card-empty {
+    padding: 20px 10px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Planned Phase Banner */
+.ts-planned-banner {
+    background: var(--ts-glass-card);
+    backdrop-filter: blur(16px);
+    border: 1px dashed var(--ts-glass-border);
+    border-radius: 16px;
+    padding: 36px 24px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.ts-planned-icon {
+    font-size: 32px;
+}
+
+.ts-planned-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.ts-planned-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-width: 520px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Animations & Skeletons */
+@keyframes tsFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ts-skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: tsShimmer 1.5s infinite;
+    border-radius: 6px;
+}
+
+@keyframes tsShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
