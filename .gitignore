@@ -17,6 +17,8 @@ backup_*.json
 *_smallcases.json
 *_mutual_funds.json
 *_plan_calculator.json
+*_drawings.json
+drawings.json
 
 # Application data local JSON files (DO NOT sync with production!)
 app_data/**/*.json
