@@ -1642,6 +1642,12 @@
             border-color: #10b981;
             color: #10b981;
         }
+        .chart-web-fav-btn svg {
+            width: 16px;
+            height: 16px;
+            display: block;
+            pointer-events: none;
+        }
 
         [data-theme="light"] #chartModal .chart-web-fav-btn {
             color: #334155;
@@ -2109,8 +2115,8 @@
             color: #10b981 !important;
         }
         .chart-mobile-fav-btn svg {
-            width: 16px !important;
-            height: 16px !important;
+            width: 18px !important;
+            height: 18px !important;
             display: block !important;
             pointer-events: none !important;
         }

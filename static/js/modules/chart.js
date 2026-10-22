@@ -1007,79 +1007,79 @@
         const CHART_TOOL_META = {
             'trendline': {
                 id: 'trendline',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="13" x2="13" y2="3"/><circle cx="3" cy="13" r="1.5" fill="currentColor"/><circle cx="13" cy="3" r="1.5" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="13" x2="13" y2="3"/><circle cx="3" cy="13" r="1.5" fill="currentColor"/><circle cx="13" cy="3" r="1.5" fill="currentColor"/></svg>',
                 title: 'Diagonal Trendline',
                 action: () => activateDrawingTool('trendline')
             },
             'support_click': {
                 id: 'support_click',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="currentColor"/></svg>',
                 title: 'Support Line (Click)',
                 action: () => activateDrawingTool('support_click')
             },
             'support': {
                 id: 'support',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="currentColor"/></svg>',
                 title: 'Support Line (Price)',
                 action: () => addHorizontalLinePrompt('support')
             },
             'target': {
                 id: 'target',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="5" x2="15" y2="5"/><path d="M8 5 L8 12 M5 9 L8 12 L11 9"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="5" x2="15" y2="5"/><path d="M8 5 L8 12 M5 9 L8 12 L11 9"/></svg>',
                 title: 'Target Price Line',
                 action: () => addHorizontalLinePrompt('target')
             },
             'stoploss': {
                 id: 'stoploss',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#ef5350" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="11" x2="15" y2="11"/><path d="M8 11 L8 4 M5 7 L8 4 L11 7"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#ef5350" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="11" x2="15" y2="11"/><path d="M8 11 L8 4 M5 7 L8 4 L11 7"/></svg>',
                 title: 'StopLoss Line',
                 action: () => addHorizontalLinePrompt('stoploss')
             },
             'rectangle': {
                 id: 'rectangle',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><circle cx="2.5" cy="3.5" r="1" fill="currentColor"/><circle cx="13.5" cy="3.5" r="1" fill="currentColor"/><circle cx="2.5" cy="12.5" r="1" fill="currentColor"/><circle cx="13.5" cy="12.5" r="1" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><circle cx="2.5" cy="3.5" r="1" fill="currentColor"/><circle cx="13.5" cy="3.5" r="1" fill="currentColor"/><circle cx="2.5" cy="12.5" r="1" fill="currentColor"/><circle cx="13.5" cy="12.5" r="1" fill="currentColor"/></svg>',
                 title: 'Rectangle Zone',
                 action: () => activateDrawingTool('rectangle')
             },
             'pricerange': {
                 id: 'pricerange',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2.5" x2="13" y2="2.5"/><line x1="3" y1="13.5" x2="13" y2="13.5"/><line x1="8" y1="2.5" x2="8" y2="13.5"/><polyline points="5.5,5 8,2.5 10.5,5"/><polyline points="5.5,11 8,13.5 10.5,11"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2.5" x2="13" y2="2.5"/><line x1="3" y1="13.5" x2="13" y2="13.5"/><line x1="8" y1="2.5" x2="8" y2="13.5"/><polyline points="5.5,5 8,2.5 10.5,5"/><polyline points="5.5,11 8,13.5 10.5,11"/></svg>',
                 title: 'Price Range %',
                 action: () => activateDrawingTool('pricerange')
             },
             'parallelchannel': {
                 id: 'parallelchannel',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="12" x2="14" y2="6"/><line x1="2" y1="7" x2="14" y2="1"/><line x1="2" y1="9.5" x2="14" y2="3.5" stroke-dasharray="2 2" stroke-width="1.2"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="12" x2="14" y2="6"/><line x1="2" y1="7" x2="14" y2="1"/><line x1="2" y1="9.5" x2="14" y2="3.5" stroke-dasharray="2 2" stroke-width="1.2"/></svg>',
                 title: 'Parallel Channel',
                 action: () => activateDrawingTool('parallelchannel')
             },
             'measure': {
                 id: 'measure',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><line x1="5" y1="3" x2="5" y2="6"/><line x1="8" y1="3" x2="8" y2="8"/><line x1="11" y1="3" x2="11" y2="6"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><line x1="5" y1="3" x2="5" y2="6"/><line x1="8" y1="3" x2="8" y2="8"/><line x1="11" y1="3" x2="11" y2="6"/></svg>',
                 title: 'Measure (Temp Scale)',
                 action: () => activateDrawingTool('measure')
             },
             'fib': {
                 id: 'fib',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="2" x2="14" y2="2"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="2" y1="14" x2="14" y2="14"/><line x1="2" y1="14" x2="14" y2="2" stroke-dasharray="2 2" stroke-width="1"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="2" x2="14" y2="2"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="2" y1="14" x2="14" y2="14"/><line x1="2" y1="14" x2="14" y2="2" stroke-dasharray="2 2" stroke-width="1"/></svg>',
                 title: 'Fib Retracement',
                 action: () => activateDrawingTool('fib')
             },
             'fibext': {
                 id: 'fibext',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><polyline points="2,13 6,5 9,10"/><line x1="9" y1="3" x2="15" y2="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><circle cx="2" cy="13" r="1.2" fill="currentColor"/><circle cx="6" cy="5" r="1.2" fill="currentColor"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><polyline points="2,13 6,5 9,10"/><line x1="9" y1="3" x2="15" y2="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><circle cx="2" cy="13" r="1.2" fill="currentColor"/><circle cx="6" cy="5" r="1.2" fill="currentColor"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/></svg>',
                 title: 'Trend-Based Fib Extension',
                 action: () => activateDrawingTool('fibext')
             },
             'vertical': {
                 id: 'vertical',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="8" y1="1.5" x2="8" y2="14.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="8" y1="1.5" x2="8" y2="14.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>',
                 title: 'Time Line Marker',
                 action: () => activateDrawingTool('vertical')
             },
             'note': {
                 id: 'note',
-                icon: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="3"/><line x1="8" y1="3" x2="8" y2="13.5"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="3"/><line x1="8" y1="3" x2="8" y2="13.5"/></svg>',
                 title: 'Text Note / Callout',
                 action: () => activateDrawingTool('note')
             }
