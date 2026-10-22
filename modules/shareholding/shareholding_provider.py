@@ -207,6 +207,26 @@ def parse_xbrl_content(xml_bytes: bytes) -> Dict[str, float]:
         return {}
 
 
+def _parse_nse_json_safely(res: Optional[requests.Response]) -> List[Dict[str, Any]]:
+    if res is None or res.status_code != 200:
+        return []
+    try:
+        text = res.text.strip()
+        if text.startswith("<") or text.startswith("<!DOCTYPE") or "<html" in text.lower()[:120]:
+            logger.warning(f"NSE returned HTML (status {res.status_code}) instead of JSON: {text[:150]}")
+            return []
+        data = res.json()
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            if "data" in data and isinstance(data["data"], list):
+                return data["data"]
+            return [data]
+    except Exception as e:
+        logger.warning(f"Error parsing JSON from NSE (status {res.status_code}): {e}")
+    return []
+
+
 class ShareholdingProvider:
     def __init__(self, data_dir: str = "."):
         self.data_dir = Path(data_dir).resolve()
@@ -219,6 +239,9 @@ class ShareholdingProvider:
         self._last_synced: float = 0
         self._last_synced_display: str = ""
         self._is_refreshing: bool = False
+        self._refresh_progress: str = ""
+        self._refresh_error: Optional[str] = None
+        self._last_refresh_result: Optional[Dict[str, Any]] = None
 
         # Load initial records from disk if present
         self._load_from_disk()
@@ -302,19 +325,19 @@ class ShareholdingProvider:
             "remaining_seconds": remaining,
             "rate_limit_minutes": 15,
             "is_refreshing": self._is_refreshing,
+            "progress": self._refresh_progress or ("Idle" if not self._is_refreshing else "Refreshing..."),
+            "last_error": self._refresh_error,
+            "last_result": self._last_refresh_result,
         }
 
-    def fetch_live_records(self, force: bool = False) -> Dict[str, Any]:
-        """Fetch latest records from NSE, enrich with FII/DII and QoQ comparison.
-        Enforces 15-minute rate limit window.
-        Cuts immediately when existing records are reached.
-        """
+    def start_background_refresh(self, force: bool = False) -> Dict[str, Any]:
+        """Start refresh in an isolated background thread so HTTP client never times out (504/502)."""
         now = time.time()
         with self._lock:
             if self._is_refreshing:
                 return {
                     "status": "in_progress",
-                    "message": "Refresh is already in progress.",
+                    "message": "Refresh is already in progress in the background.",
                     "added_count": 0,
                     **self.get_status(),
                 }
@@ -330,6 +353,66 @@ class ShareholdingProvider:
                 }
 
             self._is_refreshing = True
+            self._refresh_error = None
+            self._refresh_progress = "Connecting to NSE corporate feeds..."
+
+        thread = threading.Thread(target=self._run_background_refresh, daemon=True)
+        thread.start()
+
+        return {
+            "status": "started",
+            "message": "Shareholding refresh started in the background. Polling for updates...",
+            "added_count": 0,
+            **self.get_status(),
+        }
+
+    def _run_background_refresh(self) -> None:
+        try:
+            res = self.fetch_live_records(force=True, is_worker=True)
+            with self._lock:
+                self._last_refresh_result = res
+                if res.get("status") == "error":
+                    self._refresh_error = res.get("message")
+                else:
+                    self._refresh_error = None
+        except Exception as e:
+            with self._lock:
+                self._refresh_error = str(e)
+            logger.error(f"Error in background shareholding refresh: {e}")
+        finally:
+            with self._lock:
+                self._is_refreshing = False
+                self._refresh_progress = ""
+
+    def fetch_live_records(self, force: bool = False, is_worker: bool = False) -> Dict[str, Any]:
+        """Fetch latest records from NSE, enrich with FII/DII and QoQ comparison.
+        Enforces 15-minute rate limit window.
+        Cuts immediately when existing records are reached.
+        """
+        now = time.time()
+        with self._lock:
+            if not is_worker:
+                if self._is_refreshing:
+                    return {
+                        "status": "in_progress",
+                        "message": "Refresh is already in progress.",
+                        "added_count": 0,
+                        **self.get_status(),
+                    }
+
+                elapsed = now - self._last_synced if self._last_synced > 0 else 999999
+                if not force and elapsed < CACHE_TTL_SECONDS:
+                    remaining_min = int((CACHE_TTL_SECONDS - elapsed) // 60) + 1
+                    return {
+                        "status": "throttled",
+                        "message": f"Data was refreshed recently ({self._last_synced_display}). Next refresh allowed in ~{remaining_min} mins.",
+                        "added_count": 0,
+                        **self.get_status(),
+                    }
+
+                self._is_refreshing = True
+            self._refresh_progress = "Fetching master Equities and SME corporate feeds from NSE..."
+            self._refresh_error = None
 
         try:
             logger.info("Starting manual refresh of Shareholding Patterns from NSE...")
@@ -340,14 +423,25 @@ class ShareholdingProvider:
             session.get(NSE_HOME, timeout=8)
 
             # 1. Fetch Current Quarter Equities & SME
-            eq_res = session.get(NSE_MASTER_EQ, timeout=15)
-            raw_eq = eq_res.json() if eq_res.status_code == 200 else []
+            eq_res = None
+            sme_res = None
+            try:
+                eq_res = session.get(NSE_MASTER_EQ, timeout=15)
+            except Exception as e:
+                logger.warning(f"Failed to connect to NSE equities master: {e}")
 
-            sme_res = session.get(NSE_MASTER_SME, timeout=15)
-            raw_sme = sme_res.json() if sme_res.status_code == 200 else []
+            try:
+                sme_res = session.get(NSE_MASTER_SME, timeout=15)
+            except Exception as e:
+                logger.warning(f"Failed to connect to NSE SME master: {e}")
 
-            if eq_res.status_code != 200 and sme_res.status_code != 200:
-                raise Exception(f"NSE corporate shareholdings endpoint returned HTTP {eq_res.status_code}/{sme_res.status_code}. Possible WAF restriction.")
+            raw_eq = _parse_nse_json_safely(eq_res)
+            raw_sme = _parse_nse_json_safely(sme_res)
+
+            if not raw_eq and not raw_sme:
+                eq_code = getattr(eq_res, 'status_code', 'error')
+                sme_code = getattr(sme_res, 'status_code', 'error')
+                raise Exception(f"NSE corporate shareholdings endpoint returned HTTP {eq_code}/{sme_code}. Feed temporarily unavailable or restricted.")
 
             # Tag boards
             tagged_raw: List[Dict[str, Any]] = []
@@ -473,11 +567,21 @@ class ShareholdingProvider:
 
             # 2. Fetch Previous Quarter Filings Map dynamically
             logger.info(f"Dynamically fetching previous quarter ({prev_quarter_date}) filings from {prev_eq_url}...")
-            prev_eq_res = session.get(prev_eq_url, timeout=15)
-            raw_prev_eq = prev_eq_res.json() if prev_eq_res.status_code == 200 else []
+            self._refresh_progress = f"Fetching previous quarter ({prev_quarter_date}) filings..."
+            prev_eq_res = None
+            prev_sme_res = None
+            try:
+                prev_eq_res = session.get(prev_eq_url, timeout=15)
+            except Exception as e:
+                logger.warning(f"Failed to connect to prev quarter equities: {e}")
 
-            prev_sme_res = session.get(prev_sme_url, timeout=15)
-            raw_prev_sme = prev_sme_res.json() if prev_sme_res.status_code == 200 else []
+            try:
+                prev_sme_res = session.get(prev_sme_url, timeout=15)
+            except Exception as e:
+                logger.warning(f"Failed to connect to prev quarter SME: {e}")
+
+            raw_prev_eq = _parse_nse_json_safely(prev_eq_res)
+            raw_prev_sme = _parse_nse_json_safely(prev_sme_res)
 
             q1_map: Dict[str, Dict[str, Any]] = {}
             for r in (raw_prev_eq + raw_prev_sme):
@@ -507,6 +611,7 @@ class ShareholdingProvider:
                 urls_to_fetch.add(r.get("xbrl"))
 
             logger.info(f"Parsing {len(urls_to_fetch)} XBRL documents for FII, DII, Promoter, and Public...")
+            self._refresh_progress = f"Parsing {len(urls_to_fetch)} XBRL documents for FII/DII holdings..." 
 
             with ThreadPoolExecutor(max_workers=8) as ex:
                 for u, parsed_dict in ex.map(fetch_single_xbrl, urls_to_fetch):

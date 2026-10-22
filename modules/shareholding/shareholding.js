@@ -272,6 +272,55 @@
         `;
     }
 
+    let refreshPollTimer = null;
+
+    async function safeFetchJson(url, options = {}) {
+        const res = await fetch(url, {
+            ...options,
+            headers: {
+                'Accept': 'application/json',
+                ...(options.headers || {})
+            }
+        });
+
+        if (res.status === 401) {
+            showNotice('Your session has expired. Please log in again.', 'warning', 6000);
+            setTimeout(() => { window.location.href = '/login'; }, 1500);
+            throw new Error('Session expired (HTTP 401). Redirecting to login...');
+        }
+
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        let data;
+        if (contentType.includes('application/json')) {
+            try {
+                data = await res.json();
+            } catch (err) {
+                throw new Error('Malformed JSON received from server.');
+            }
+        } else {
+            const rawText = await res.text();
+            if (rawText.trim().startsWith('<') || rawText.includes('<html')) {
+                if (res.status === 504 || rawText.includes('504')) {
+                    throw new Error('Gateway Timeout (504). External exchange feed took too long to respond.');
+                }
+                if (res.status === 502 || rawText.includes('502')) {
+                    throw new Error('Bad Gateway (502). Upstream server is temporarily unavailable.');
+                }
+                throw new Error(`Server returned an HTML response (HTTP ${res.status}). Service may be temporarily busy; please retry shortly.`);
+            }
+            try {
+                data = JSON.parse(rawText);
+            } catch (err) {
+                throw new Error(`Invalid response format from server (HTTP ${res.status}).`);
+            }
+        }
+
+        if (!res.ok && data && (data.error || data.message)) {
+            throw new Error(data.error || data.message);
+        }
+        return data;
+    }
+
     function loadShareholding(targetPage) {
         if (targetPage !== undefined) currentPage = targetPage;
         if (!rowsEl) return;
@@ -293,8 +342,7 @@
             params.set('custom_query', currentCustomQuery);
         }
 
-        fetch(`/api/shareholding/data?${params.toString()}`)
-            .then(res => res.json())
+        safeFetchJson(`/api/shareholding/data?${params.toString()}`)
             .then(data => {
                 if (data.error) {
                     rowsEl.innerHTML = `<tr><td class="table-message" colspan="13" style="text-align: center; padding: 30px; color: #ef4444;">Error: ${escapeHtml(data.error)}</td></tr>`;
@@ -370,7 +418,7 @@
             });
     }
 
-    function manualRefresh() {
+    async function manualRefresh() {
         if (isFetching) return;
         isFetching = true;
 
@@ -380,32 +428,82 @@
         }
         if (refreshIcon) refreshIcon.classList.add('spinning');
 
-        fetch('/api/shareholding/refresh?force=true', { method: 'POST' })
-            .then(res => res.json())
-            .then(result => {
-                if (result.status === 'throttled') {
-                    showNotice(`⏳ ${result.message}`, 'info', 7000);
-                } else if (result.status === 'success') {
-                    showNotice(`✓ ${result.message}`, 'success', 6000);
-                    currentPage = 1;
-                    loadShareholding();
-                } else {
-                    showNotice(`Notice: ${result.message || 'Refresh completed.'}`, 'info', 6000);
-                    currentPage = 1;
-                    loadShareholding();
-                }
-            })
-            .catch(err => {
-                showNotice(`Refresh error: ${err.message}`, 'error', 6000);
-            })
-            .finally(() => {
+        try {
+            const result = await safeFetchJson('/api/shareholding/refresh?force=true', { method: 'POST' });
+
+            if (result.status === 'throttled') {
+                showNotice(`⏳ ${result.message}`, 'info', 7000);
                 isFetching = false;
                 if (refreshBtn) {
                     refreshBtn.disabled = false;
                     refreshBtn.classList.remove('shp-refreshing');
                 }
                 if (refreshIcon) refreshIcon.classList.remove('spinning');
-            });
+                return;
+            }
+
+            if (result.status === 'started' || result.status === 'in_progress') {
+                showNotice(`⏳ ${result.message || 'Refreshing shareholding filings in the background...'}`, 'info', 6000);
+                pollRefreshStatus();
+                return;
+            }
+
+            if (result.status === 'success') {
+                showNotice(`✓ ${result.message}`, 'success', 6000);
+                currentPage = 1;
+                loadShareholding();
+            } else {
+                showNotice(`Notice: ${result.message || 'Refresh completed.'}`, 'info', 6000);
+                currentPage = 1;
+                loadShareholding();
+            }
+
+            isFetching = false;
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.classList.remove('shp-refreshing');
+            }
+            if (refreshIcon) refreshIcon.classList.remove('spinning');
+        } catch (err) {
+            showNotice(`Refresh error: ${err.message}`, 'error', 6000);
+            isFetching = false;
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.classList.remove('shp-refreshing');
+            }
+            if (refreshIcon) refreshIcon.classList.remove('spinning');
+        }
+    }
+
+    async function pollRefreshStatus() {
+        if (refreshPollTimer) clearTimeout(refreshPollTimer);
+
+        try {
+            const data = await safeFetchJson('/api/shareholding/status');
+            if (data.is_refreshing) {
+                refreshPollTimer = setTimeout(pollRefreshStatus, 2500);
+            } else {
+                isFetching = false;
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.classList.remove('shp-refreshing');
+                }
+                if (refreshIcon) refreshIcon.classList.remove('spinning');
+
+                if (data.last_error) {
+                    showNotice(`Refresh note: ${data.last_error}`, 'warning', 7000);
+                } else if (data.last_result && data.last_result.message) {
+                    showNotice(`✓ ${data.last_result.message}`, 'success', 5000);
+                } else {
+                    showNotice('✓ Latest shareholding filings synchronized!', 'success', 5000);
+                }
+                currentPage = 1;
+                loadShareholding();
+            }
+        } catch (e) {
+            console.error('Error polling shareholding status:', e);
+            refreshPollTimer = setTimeout(pollRefreshStatus, 3000);
+        }
     }
 
     function openRemarksModal(record) {
@@ -506,8 +604,7 @@
         }
 
         validationTimer = setTimeout(() => {
-            fetch(`/api/shareholding/validate-query?query=${encodeURIComponent(val)}`)
-                .then(res => res.json())
+            safeFetchJson(`/api/shareholding/validate-query?query=${encodeURIComponent(val)}`)
                 .then(data => {
                     if (!customQueryFeedback) return;
                     customQueryFeedback.style.display = 'block';
@@ -632,8 +729,7 @@
                 return;
             }
 
-            fetch(`/api/shareholding/validate-query?query=${encodeURIComponent(queryVal)}`)
-                .then(res => res.json())
+            safeFetchJson(`/api/shareholding/validate-query?query=${encodeURIComponent(queryVal)}`)
                 .then(data => {
                     if (!data.valid) {
                         if (customQueryFeedback) {

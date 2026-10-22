@@ -162,14 +162,17 @@ def validate_shareholding_query():
 @_guard
 def refresh_shareholding_data():
     """Trigger manual refresh of shareholding patterns from official exchange feeds.
-    Enforces 15-minute rate-limit window. Stops immediately when existing records are met.
+    Runs asynchronously in the background so HTTP client never times out (504/502).
     """
     if _PROVIDER is None:
-        return jsonify({"error": "Shareholding provider is not initialized."}), 500
+        return jsonify({"status": "error", "error": "Shareholding provider is not initialized."}), 500
 
-    force = request.args.get("force", "true").lower() in ("true", "1", "yes")
-    result = _PROVIDER.fetch_live_records(force=force)
-    return jsonify(result)
+    try:
+        force = request.args.get("force", "true").lower() in ("true", "1", "yes")
+        result = _PROVIDER.start_background_refresh(force=force)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "error": f"Refresh failed: {str(e)}"}), 500
 
 
 @shareholding_bp.get("/api/shareholding/status")
