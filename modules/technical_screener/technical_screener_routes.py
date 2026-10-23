@@ -723,6 +723,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
                 best_support = {
                     'm': m, 'c': c, 'pct_slope': pct_slope,
                     'touches': touches, 'score': score,
+                    'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
                     'tl_curr': m * curr_idx + c,
                     'tl_prev': m * (curr_idx - 1) + c
                 }
@@ -734,38 +735,61 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
         t_count = best_support['touches']
         diff = ((ltp - tl_c) / tl_c) * 100.0 if tl_c else 0.0
 
+        sup_start_time = sub_dates[best_support['x1']] if best_support['x1'] < len(sub_dates) else curr_time
+        sup_start_price = round(best_support['y1'], 2)
+        sup_end_price = round(tl_c, 2)
+
+        def make_sup_drawing(color, name):
+            return [{
+                "type": "trendline",
+                "time1": sup_start_time,
+                "price1": sup_start_price,
+                "time2": curr_time,
+                "price2": sup_end_price,
+                "color": color,
+                "lineWidth": 2,
+                "lineStyle": "solid",
+                "name": name
+            }]
+
         if slope > eps_slope:  # Rising Support
             if abs(diff) <= 2.2:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Rising Support ₹{tl_c:.1f} ({t_count} touches, {diff:+.1f}%)"
-                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Rising Support"}]
+                item["markers"] = []
+                item["drawings"] = make_sup_drawing("#10b981", "Rising Support Line")
                 matched["rising_support"] = item
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Rising Support ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Support Breakdown"}]
+                item["markers"] = []
+                item["drawings"] = make_sup_drawing("#ef5350", "Broken Rising Support")
                 matched["support_rising_breakdown"] = item
         elif slope < -eps_slope:  # Falling Support
             if abs(diff) <= 2.2:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Falling Channel Support ₹{tl_c:.1f} ({t_count} touches)"
-                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Falling Support"}]
+                item["markers"] = []
+                item["drawings"] = make_sup_drawing("#10b981", "Falling Support Line")
                 matched["falling_support"] = item
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Falling Support ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Support Breakdown"}]
+                item["markers"] = []
+                item["drawings"] = make_sup_drawing("#ef5350", "Broken Falling Support")
                 matched["support_falling_breakdown"] = item
         else:  # Horizontal Support
             if abs(diff) <= 2.2:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Horizontal Floor ₹{tl_c:.1f} ({t_count} touches)"
-                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Horizontal Support"}]
+                item["markers"] = []
+                item["drawings"] = make_sup_drawing("#10b981", "Horizontal Floor")
                 matched["horizontal_support"] = item
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Horizontal Support ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Floor Breakdown"}]
+                item["markers"] = []
+                item["drawings"] = make_sup_drawing("#ef5350", "Broken Floor")
                 matched["support_trendline_breakdown"] = item
 
     # Resistance Trendline fit (Swing Highs)
@@ -798,6 +822,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
                 best_resistance = {
                     'm': m, 'c': c, 'pct_slope': pct_slope,
                     'touches': touches, 'score': score,
+                    'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
                     'tl_curr': m * curr_idx + c,
                     'tl_prev': m * (curr_idx - 1) + c
                 }
@@ -809,38 +834,61 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
         t_count = best_resistance['touches']
         diff = ((ltp - tl_c) / tl_c) * 100.0 if tl_c else 0.0
 
+        res_start_time = sub_dates[best_resistance['x1']] if best_resistance['x1'] < len(sub_dates) else curr_time
+        res_start_price = round(best_resistance['y1'], 2)
+        res_end_price = round(tl_c, 2)
+
+        def make_res_drawing(color, name):
+            return [{
+                "type": "trendline",
+                "time1": res_start_time,
+                "price1": res_start_price,
+                "time2": curr_time,
+                "price2": res_end_price,
+                "color": color,
+                "lineWidth": 2,
+                "lineStyle": "solid",
+                "name": name
+            }]
+
         if slope > eps_slope:  # Rising Resistance
             if abs(diff) <= 2.2 and ltp <= tl_c * 1.008:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Rising Resistance ₹{tl_c:.1f} ({t_count} touches)"
-                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Rising Resistance"}]
+                item["markers"] = []
+                item["drawings"] = make_res_drawing("#ef5350", "Rising Resistance Ceiling")
                 matched["resistance_rising"] = item
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakout Above Rising Resistance ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Resistance Breakout"}]
+                item["markers"] = []
+                item["drawings"] = make_res_drawing("#10b981", "Rising Resistance Breakout")
                 matched["resistance_rising_breakout"] = item
         elif slope < -eps_slope:  # Falling Resistance
             if abs(diff) <= 2.2 and ltp <= tl_c * 1.008:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Falling Resistance ₹{tl_c:.1f} ({t_count} touches)"
-                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Falling Resistance"}]
+                item["markers"] = []
+                item["drawings"] = make_res_drawing("#ef5350", "Falling Resistance Line")
                 matched["resistance_falling"] = item
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Reversal Breakout Above Descending Resistance ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Reversal Breakout"}]
+                item["markers"] = []
+                item["drawings"] = make_res_drawing("#10b981", "Descending Line Breakout")
                 matched["resistance_falling_breakout"] = item
         else:  # Horizontal Resistance
             if abs(diff) <= 2.2 and ltp <= tl_c * 1.008:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Testing Horizontal Ceiling ₹{tl_c:.1f} ({t_count} touches)"
-                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Horizontal Ceiling"}]
+                item["markers"] = []
+                item["drawings"] = make_res_drawing("#ef5350", "Horizontal Ceiling")
                 matched["horizontal_resistance"] = item
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakout Above Horizontal Ceiling ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Ceiling Breakout"}]
+                item["markers"] = []
+                item["drawings"] = make_res_drawing("#10b981", "Ceiling Breakout")
                 matched["resistance_trendline_breakout"] = item
 
     return matched
@@ -900,7 +948,7 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
             c = y1 - m * x1
             touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_highs[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
             if touches >= 2 and (best_res is None or touches > best_res['touches']):
-                best_res = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'tl_curr': m * curr_idx + c}
+                best_res = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
 
     best_sup = None
     for i in range(len(p_lows)):
@@ -913,7 +961,7 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
             c = y1 - m * x1
             touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_lows[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
             if touches >= 2 and (best_sup is None or touches > best_sup['touches']):
-                best_sup = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'tl_curr': m * curr_idx + c}
+                best_sup = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
 
     if best_res and best_sup:
         r_slope = best_res['slope']
@@ -924,22 +972,47 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
         if r_curr > s_curr:
             spread_pct = ((r_curr - s_curr) / s_curr) * 100.0
 
+            t_top_start = sub_dates[best_res['x1']] if best_res['x1'] < len(sub_dates) else curr_time
+            p_top_start = round(best_res['y1'], 2)
+            t_bot_start = sub_dates[best_sup['x1']] if best_sup['x1'] < len(sub_dates) else curr_time
+            p_bot_start = round(best_sup['y1'], 2)
+
+            def make_triangle_drawing(title):
+                return [{
+                    "type": "triangle",
+                    "time1_top": t_top_start,
+                    "price1_top": p_top_start,
+                    "time2_top": curr_time,
+                    "price2_top": round(r_curr, 2),
+                    "time1_bot": t_bot_start,
+                    "price1_bot": p_bot_start,
+                    "time2_bot": curr_time,
+                    "price2_bot": round(s_curr, 2),
+                    "topColor": "#ef4444",
+                    "botColor": "#10b981",
+                    "fillColor": "rgba(99, 102, 241, 0.12)",
+                    "name": title
+                }]
+
             # 1. Ascending Triangle: Flat upper ceiling + rising lower support
             if abs(r_slope) <= eps_slope and s_slope > 0.05:
                 if ltp > r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Triangle Breakout > Ceiling ₹{r_curr:.1f} (+{((ltp - r_curr)/r_curr)*100:.1f}%)"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Ascending Breakout"}]
+                    item["drawings"] = make_triangle_drawing("Ascending Triangle Breakout")
                     matched["ascending_triangle_breakout"] = item
                 elif ltp < s_curr * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Triangle Breakdown < Support ₹{s_curr:.1f}"
                     item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Ascending Breakdown"}]
+                    item["drawings"] = make_triangle_drawing("Ascending Triangle Breakdown")
                     matched["ascending_triangle_breakdown"] = item
                 elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Triangle Active (Spread: {spread_pct:.1f}%, Resistance ₹{r_curr:.1f})"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}]
+                    item["drawings"] = make_triangle_drawing("Ascending Triangle")
                     matched["ascending_triangle"] = item
 
             # 2. Descending Triangle: Flat floor + falling upper resistance
@@ -948,11 +1021,13 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Triangle Breakdown < Floor ₹{s_curr:.1f} ({((ltp - s_curr)/s_curr)*100:.1f}%)"
                     item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Descending Breakdown"}]
+                    item["drawings"] = make_triangle_drawing("Descending Triangle Breakdown")
                     matched["descending_triangle_breakdown"] = item
                 elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Triangle Active (Floor: ₹{s_curr:.1f}, Resistance ₹{r_curr:.1f})"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}]
+                    item["drawings"] = make_triangle_drawing("Descending Triangle")
                     matched["descending_triangle"] = item
 
             # 3. Symmetrical Triangle: Converging lines
@@ -961,16 +1036,19 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
                     item = dict(base_scanner_result)
                     item["metric"] = f"Symmetric Triangle Breakout > ₹{r_curr:.1f} (+{((ltp - r_curr)/r_curr)*100:.1f}%)"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Symmetric Breakout"}]
+                    item["drawings"] = make_triangle_drawing("Symmetrical Triangle Breakout")
                     matched["symmetrical_triangle_breakout"] = item
                 elif ltp < s_curr * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Symmetric Triangle Breakdown < ₹{s_curr:.1f} ({((ltp - s_curr)/s_curr)*100:.1f}%)"
                     item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Symmetric Breakdown"}]
+                    item["drawings"] = make_triangle_drawing("Symmetrical Triangle Breakdown")
                     matched["symmetrical_triangle_breakdown"] = item
                 elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Symmetric Triangle Coil (Spread: {spread_pct:.1f}%, Apex Converging)"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Symmetric Coil"}]
+                    item["drawings"] = make_triangle_drawing("Symmetrical Triangle")
                     matched["symmetrical_triangle"] = item
 
     return matched
@@ -1030,7 +1108,7 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
             c = y1 - m * x1
             touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_highs[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
             if touches >= 2 and (best_res is None or touches > best_res['touches']):
-                best_res = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'tl_curr': m * curr_idx + c}
+                best_res = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
 
     best_sup = None
     for i in range(len(p_lows)):
@@ -1043,7 +1121,7 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
             c = y1 - m * x1
             touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_lows[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
             if touches >= 2 and (best_sup is None or touches > best_sup['touches']):
-                best_sup = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'tl_curr': m * curr_idx + c}
+                best_sup = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
 
     if best_res and best_sup:
         r_s = best_res['slope']
@@ -1055,22 +1133,47 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
             channel_width = ((r_c - s_c) / s_c) * 100.0
             slope_diff = abs(r_s - s_s)
 
+            c_top_start = sub_dates[best_res['x1']] if best_res['x1'] < len(sub_dates) else curr_time
+            c_top_price = round(best_res['y1'], 2)
+            c_bot_start = sub_dates[best_sup['x1']] if best_sup['x1'] < len(sub_dates) else curr_time
+            c_bot_price = round(best_sup['y1'], 2)
+
+            def make_channel_drawing(title):
+                return [{
+                    "type": "channel",
+                    "time1_top": c_top_start,
+                    "price1_top": c_top_price,
+                    "time2_top": curr_time,
+                    "price2_top": round(r_c, 2),
+                    "time1_bot": c_bot_start,
+                    "price1_bot": c_bot_price,
+                    "time2_bot": curr_time,
+                    "price2_bot": round(s_c, 2),
+                    "topColor": "#38bdf8",
+                    "botColor": "#38bdf8",
+                    "fillColor": "rgba(56, 189, 248, 0.10)",
+                    "name": title
+                }]
+
             # 1. Ascending Channel
             if r_s > 0.06 and s_s > 0.06 and slope_diff <= 0.16:
                 if ltp > r_c * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Channel Expansion Breakout > ₹{r_c:.1f}"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Channel Breakout"}]
+                    item["drawings"] = make_channel_drawing("Ascending Channel Breakout")
                     matched["ascending_channel_breakout"] = item
                 elif ltp < s_c * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Ascending Channel Breakdown < Support ₹{s_c:.1f}"
                     item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}]
+                    item["drawings"] = make_channel_drawing("Ascending Channel Breakdown")
                     matched["ascending_channel_breakdown"] = item
                 elif s_c * 0.985 <= ltp <= r_c * 1.015:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Active Ascending Channel (Slope +{((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Ascending Channel"}]
+                    item["drawings"] = make_channel_drawing("Ascending Channel")
                     matched["ascending_channel"] = item
 
             # 2. Descending Channel
@@ -1079,16 +1182,19 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Channel Reversal Breakout > ₹{r_c:.1f}"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Reversal Breakout"}]
+                    item["drawings"] = make_channel_drawing("Descending Channel Breakout")
                     matched["descending_channel_breakout"] = item
                 elif ltp < s_c * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Descending Channel Accelerating Breakdown < ₹{s_c:.1f}"
                     item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}]
+                    item["drawings"] = make_channel_drawing("Descending Channel Breakdown")
                     matched["descending_channel_breakdown"] = item
                 elif s_c * 0.985 <= ltp <= r_c * 1.015:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Active Descending Channel (Slope {((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Descending Channel"}]
+                    item["drawings"] = make_channel_drawing("Descending Channel")
                     matched["descending_channel"] = item
 
             # 3. Rectangle Channel
@@ -1097,21 +1203,25 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
                     item = dict(base_scanner_result)
                     item["metric"] = f"Rectangle Range Breakout > Ceiling ₹{r_c:.1f} (+{((ltp - r_c)/r_c)*100:.1f}%)"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Rectangle Breakout"}]
+                    item["drawings"] = make_channel_drawing("Rectangle Channel Breakout")
                     matched["rectangle_channel_breakout"] = item
                 elif ltp < s_c * 0.985:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Rectangle Range Breakdown < Floor ₹{s_c:.1f} ({((ltp - s_c)/s_c)*100:.1f}%)"
                     item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Rectangle Breakdown"}]
+                    item["drawings"] = make_channel_drawing("Rectangle Channel Breakdown")
                     matched["rectangle_channel_breakdown"] = item
                 elif s_c * 0.99 <= ltp <= r_c * 1.01:
                     item = dict(base_scanner_result)
                     item["metric"] = f"Active Rectangle Range (Floor ₹{s_c:.1f} · Ceiling ₹{r_c:.1f}, Width {channel_width:.1f}%)"
                     item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Rectangle"}]
+                    item["drawings"] = make_channel_drawing("Rectangle Channel")
                     matched["rectangle_channel"] = item
                     if abs(ltp - s_c) / s_c <= 0.02 or abs(ltp - r_c) / r_c <= 0.02:
                         pot_item = dict(base_scanner_result)
                         pot_item["metric"] = f"Testing Rectangle Boundary Zone (LTP ₹{ltp:.1f} near Band)"
                         pot_item["markers"] = [{"time": curr_time, "position": "belowBar" if abs(ltp - s_c) < abs(ltp - r_c) else "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Boundary Test"}]
+                        pot_item["drawings"] = make_channel_drawing("Rectangle Boundary Zone")
                         matched["rectangle_channel_potential"] = pot_item
 
     return matched
@@ -1860,7 +1970,20 @@ def run_technical_screener_scan_api():
                     if sma50_latest and sma200_latest and sma50_latest > sma200_latest:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) > 200 DMA (₹{sma200_latest:.1f})"
-                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Golden Cross"}]
+                        
+                        cross_date = curr_date
+                        if len(closes) >= 200:
+                            for k in range(len(closes) - 1, max(199, len(closes) - 120), -1):
+                                s50_now = sum(closes[k-49:k+1]) / 50.0
+                                s200_now = sum(closes[k-199:k+1]) / 200.0
+                                s50_prev = sum(closes[k-50:k]) / 50.0
+                                s200_prev = sum(closes[k-200:k]) / 200.0
+                                if s50_now >= s200_now and s50_prev < s200_prev:
+                                    if k < len(dates) and dates[k]:
+                                        cross_date = dates[k]
+                                    break
+                        s_item["markers"] = [{"time": cross_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Golden Cross"}]
+                        s_item["indicators"] = {"showDmaCross": True, "showSma50": True, "showSma200": True}
                         matched_scanners["golden_cross"] = s_item
 
                     # 2. Supertrend BUY
@@ -1881,7 +2004,16 @@ def run_technical_screener_scan_api():
                     if ema9_latest > ema21_latest:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"9 EMA (₹{ema9_latest:.1f}) > 21 EMA (₹{ema21_latest:.1f})"
-                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "EMA Cross"}]
+                        
+                        cross_date = curr_date
+                        max_offset = min(len(ema21_series) - 1, 60, len(dates) - 1)
+                        if max_offset > 1:
+                            for offset in range(1, max_offset):
+                                if ema9_series[-offset] >= ema21_series[-offset] and ema9_series[-(offset + 1)] < ema21_series[-(offset + 1)]:
+                                    cross_date = dates[-offset]
+                                    break
+                        s_item["markers"] = [{"time": cross_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "EMA Cross"}]
+                        s_item["indicators"] = {"showEmaCross": True, "showEma9": True, "showEma21": True}
                         matched_scanners["ema_bull_cross"] = s_item
 
                     # 5. MACD Bullish Cross
@@ -1943,7 +2075,16 @@ def run_technical_screener_scan_api():
                     if ema9_latest > ema21_latest and (rsi14 is not None and rsi14 >= 50) and (sma50_latest and ltp > sma50_latest):
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"EMA Cross + RSI {rsi14:.1f} + Above 50 DMA"
-                        s_item["markers"] = [{"time": curr_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Triple Confluence"}]
+                        
+                        cross_date = curr_date
+                        max_offset = min(len(ema21_series) - 1, 60, len(dates) - 1)
+                        if max_offset > 1:
+                            for offset in range(1, max_offset):
+                                if ema9_series[-offset] >= ema21_series[-offset] and ema9_series[-(offset + 1)] < ema21_series[-(offset + 1)]:
+                                    cross_date = dates[-offset]
+                                    break
+                        s_item["markers"] = [{"time": cross_date, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Triple Confluence"}]
+                        s_item["indicators"] = {"showEmaCross": True, "showEma9": True, "showEma21": True, "showSma50": True}
                         matched_scanners["triple_confluence"] = s_item
 
                     # 13. RSI Oversold Rebound
@@ -1964,7 +2105,20 @@ def run_technical_screener_scan_api():
                     if sma50_latest and sma200_latest and sma50_latest < sma200_latest:
                         s_item = dict(base_scanner_result)
                         s_item["metric"] = f"50 DMA (₹{sma50_latest:.1f}) < 200 DMA (₹{sma200_latest:.1f})"
-                        s_item["markers"] = [{"time": curr_date, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Death Cross"}]
+                        
+                        cross_date = curr_date
+                        if len(closes) >= 200:
+                            for k in range(len(closes) - 1, max(199, len(closes) - 120), -1):
+                                s50_now = sum(closes[k-49:k+1]) / 50.0
+                                s200_now = sum(closes[k-199:k+1]) / 200.0
+                                s50_prev = sum(closes[k-50:k]) / 50.0
+                                s200_prev = sum(closes[k-200:k]) / 200.0
+                                if s50_now <= s200_now and s50_prev > s200_prev:
+                                    if k < len(dates) and dates[k]:
+                                        cross_date = dates[k]
+                                    break
+                        s_item["markers"] = [{"time": cross_date, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Death Cross"}]
+                        s_item["indicators"] = {"showDmaCross": True, "showSma50": True, "showSma200": True}
                         matched_scanners["death_cross"] = s_item
 
                     # 16. Near 52W Low

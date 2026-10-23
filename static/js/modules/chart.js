@@ -41,6 +41,7 @@
         var sma50Series = null;
         var sma200Series = null;
         var ema9Series = null;
+        var ema21Series = null;
         var gann2DaySeries = null;
 
         // Sub-pane Charts
@@ -3821,6 +3822,13 @@
                 });
             }
 
+            // Draw active screener pattern shapes (trendlines, triangles, channels)
+            if (window.activePatternShapes && Array.isArray(window.activePatternShapes) && window.activePatternShapes.length > 0) {
+                window.activePatternShapes.forEach(s => {
+                    drawSingleShape(ctx, s);
+                });
+            }
+
             // Draw temporary measure if present
             if (tempMeasureData) {
                 drawSingleShape(ctx, tempMeasureData);
@@ -4464,6 +4472,188 @@
                     const handleR = Math.max(3.5, lw + 1.5);
                     ctx.beginPath(); ctx.arc(x1, y1, handleR, 0, 2 * Math.PI); ctx.fill();
                     ctx.beginPath(); ctx.arc(x2, y2, handleR, 0, 2 * Math.PI); ctx.fill();
+
+                    // Pattern Name Pill
+                    if (s.name) {
+                        ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                        const textW = ctx.measureText(s.name).width;
+                        const badgeW = textW + 12;
+                        const badgeH = 18;
+                        const badgeX = Math.max(10, Math.min(drawingCanvas.width - badgeW - 10, x2 - badgeW - 8));
+                        const badgeY = Math.max(10, y2 - badgeH / 2);
+
+                        ctx.fillStyle = isDark ? 'rgba(30, 34, 45, 0.92)' : 'rgba(255, 255, 255, 0.92)';
+                        ctx.strokeStyle = s.color || '#3b82f6';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+                        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = s.color || '#3b82f6';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(s.name, badgeX + badgeW / 2, badgeY + badgeH / 2);
+                    }
+                    ctx.restore();
+                }
+            } else if (s.type === 'triangle') {
+                const xTop1 = getShapeX(timeScale, s.time1_top, s.logical1_top, 0);
+                const yTop1 = mainSeries.priceToCoordinate(s.price1_top);
+                const xTop2 = getShapeX(timeScale, s.time2_top, s.logical2_top, 0);
+                const yTop2 = mainSeries.priceToCoordinate(s.price2_top);
+
+                const xBot1 = getShapeX(timeScale, s.time1_bot, s.logical1_bot, 0);
+                const yBot1 = mainSeries.priceToCoordinate(s.price1_bot);
+                const xBot2 = getShapeX(timeScale, s.time2_bot, s.logical2_bot, 0);
+                const yBot2 = mainSeries.priceToCoordinate(s.price2_bot);
+
+                if (xTop1 !== null && yTop1 !== null && xTop2 !== null && yTop2 !== null &&
+                    xBot1 !== null && yBot1 !== null && xBot2 !== null && yBot2 !== null) {
+                    ctx.save();
+
+                    // Shaded Triangle Area
+                    ctx.beginPath();
+                    ctx.moveTo(xTop1, yTop1);
+                    ctx.lineTo(xTop2, yTop2);
+                    ctx.lineTo(xBot2, yBot2);
+                    ctx.lineTo(xBot1, yBot1);
+                    ctx.closePath();
+                    ctx.fillStyle = s.fillColor || 'rgba(99, 102, 241, 0.12)';
+                    ctx.fill();
+
+                    // Upper Resistance Line
+                    ctx.beginPath();
+                    ctx.moveTo(xTop1, yTop1);
+                    ctx.lineTo(xTop2, yTop2);
+                    ctx.strokeStyle = s.topColor || '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Lower Support Line
+                    ctx.beginPath();
+                    ctx.moveTo(xBot1, yBot1);
+                    ctx.lineTo(xBot2, yBot2);
+                    ctx.strokeStyle = s.botColor || '#10b981';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Vertex handle dots
+                    ctx.fillStyle = s.topColor || '#ef4444';
+                    ctx.beginPath(); ctx.arc(xTop1, yTop1, 3.5, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(xTop2, yTop2, 3.5, 0, 2 * Math.PI); ctx.fill();
+
+                    ctx.fillStyle = s.botColor || '#10b981';
+                    ctx.beginPath(); ctx.arc(xBot1, yBot1, 3.5, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(xBot2, yBot2, 3.5, 0, 2 * Math.PI); ctx.fill();
+
+                    // Label badge
+                    if (s.name) {
+                        ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                        const textW = ctx.measureText(s.name).width;
+                        const badgeW = textW + 14;
+                        const badgeH = 18;
+                        const badgeX = Math.max(10, Math.min(drawingCanvas.width - badgeW - 10, (xTop2 + xBot2) / 2 - badgeW / 2));
+                        const badgeY = Math.max(10, (yTop2 + yBot2) / 2 - badgeH / 2);
+
+                        ctx.fillStyle = isDark ? 'rgba(30, 34, 45, 0.92)' : 'rgba(255, 255, 255, 0.92)';
+                        ctx.strokeStyle = '#6366f1';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+                        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = isDark ? '#e0e7ff' : '#4338ca';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(s.name, badgeX + badgeW / 2, badgeY + badgeH / 2);
+                    }
+                    ctx.restore();
+                }
+            } else if (s.type === 'channel') {
+                const xTop1 = getShapeX(timeScale, s.time1_top, s.logical1_top, 0);
+                const yTop1 = mainSeries.priceToCoordinate(s.price1_top);
+                const xTop2 = getShapeX(timeScale, s.time2_top, s.logical2_top, 0);
+                const yTop2 = mainSeries.priceToCoordinate(s.price2_top);
+
+                const xBot1 = getShapeX(timeScale, s.time1_bot, s.logical1_bot, 0);
+                const yBot1 = mainSeries.priceToCoordinate(s.price1_bot);
+                const xBot2 = getShapeX(timeScale, s.time2_bot, s.logical2_bot, 0);
+                const yBot2 = mainSeries.priceToCoordinate(s.price2_bot);
+
+                if (xTop1 !== null && yTop1 !== null && xTop2 !== null && yTop2 !== null &&
+                    xBot1 !== null && yBot1 !== null && xBot2 !== null && yBot2 !== null) {
+                    ctx.save();
+
+                    // Shaded Channel Body
+                    ctx.beginPath();
+                    ctx.moveTo(xTop1, yTop1);
+                    ctx.lineTo(xTop2, yTop2);
+                    ctx.lineTo(xBot2, yBot2);
+                    ctx.lineTo(xBot1, yBot1);
+                    ctx.closePath();
+                    ctx.fillStyle = s.fillColor || 'rgba(56, 189, 248, 0.10)';
+                    ctx.fill();
+
+                    // Upper Channel Line
+                    ctx.beginPath();
+                    ctx.moveTo(xTop1, yTop1);
+                    ctx.lineTo(xTop2, yTop2);
+                    ctx.strokeStyle = s.topColor || '#38bdf8';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Lower Channel Line
+                    ctx.beginPath();
+                    ctx.moveTo(xBot1, yBot1);
+                    ctx.lineTo(xBot2, yBot2);
+                    ctx.strokeStyle = s.botColor || '#38bdf8';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Midline dashed
+                    ctx.beginPath();
+                    ctx.moveTo((xTop1 + xBot1) / 2, (yTop1 + yBot1) / 2);
+                    ctx.lineTo((xTop2 + xBot2) / 2, (yTop2 + yBot2) / 2);
+                    ctx.strokeStyle = s.topColor || '#38bdf8';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Vertex handle dots
+                    ctx.fillStyle = s.topColor || '#38bdf8';
+                    ctx.beginPath(); ctx.arc(xTop1, yTop1, 3.5, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(xTop2, yTop2, 3.5, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(xBot1, yBot1, 3.5, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(xBot2, yBot2, 3.5, 0, 2 * Math.PI); ctx.fill();
+
+                    // Channel Label
+                    if (s.name) {
+                        ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                        const textW = ctx.measureText(s.name).width;
+                        const badgeW = textW + 14;
+                        const badgeH = 18;
+                        const badgeX = Math.max(10, Math.min(drawingCanvas.width - badgeW - 10, (xTop2 + xBot2) / 2 - badgeW / 2));
+                        const badgeY = Math.max(10, (yTop2 + yBot2) / 2 - badgeH / 2);
+
+                        ctx.fillStyle = isDark ? 'rgba(30, 34, 45, 0.92)' : 'rgba(255, 255, 255, 0.92)';
+                        ctx.strokeStyle = '#38bdf8';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+                        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = isDark ? '#bae6fd' : '#0369a1';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(s.name, badgeX + badgeW / 2, badgeY + badgeH / 2);
+                    }
                     ctx.restore();
                 }
             } else if (s.type === 'rectangle') {
@@ -4721,7 +4911,7 @@
             });
         }
 
-        function openInHouseChart(sym, targetInterval, patternMarkers) {
+        function openInHouseChart(sym, targetInterval, patternMarkers, patternDrawings, patternIndicators) {
             if (!sym) return;
             clearTempMeasure();
             currentChartSymbol = sym;
@@ -4739,6 +4929,8 @@
             if (!currentChartInterval) currentChartInterval = '1d';
 
             window.activePatternMarkers = (Array.isArray(patternMarkers) && patternMarkers.length > 0) ? patternMarkers : [];
+            window.activePatternShapes = (Array.isArray(patternDrawings) && patternDrawings.length > 0) ? patternDrawings : [];
+            window.activePatternIndicators = patternIndicators || null;
             
             const modal = document.getElementById('chartModal');
             if (modal) {
@@ -4771,8 +4963,8 @@
             loadChartData();
         }
 
-        function openChart(sym, targetInterval, patternMarkers) {
-            openInHouseChart(sym, targetInterval, patternMarkers);
+        function openChart(sym, targetInterval, patternMarkers, patternDrawings, patternIndicators) {
+            openInHouseChart(sym, targetInterval, patternMarkers, patternDrawings, patternIndicators);
         }
 
         function changeRange(rangeStr) {
@@ -5307,6 +5499,9 @@
 
             ema9Series = mainChart.addLineSeries({ color: '#06b6d4', lineWidth: 2, title: 'EMA 9', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.ema9) ema9Series.setData(data.ema9);
+
+            ema21Series = mainChart.addLineSeries({ color: '#a855f7', lineWidth: 2, title: 'EMA 21', autoscaleInfoProvider: indicatorAutoscaleInfo });
+            if (data.ema21) ema21Series.setData(data.ema21);
 
             gann2DaySeries = mainChart.addLineSeries({ color: themeColors.gannColor, lineWidth: 2, title: 'Gann 2-Day Low', autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.gann_2day) gann2DaySeries.setData(data.gann_2day);
@@ -6186,6 +6381,9 @@
             const elEma9 = document.getElementById('legEma9');
             if (elEma9) elEma9.innerText = (rec && rec.ema9 !== undefined) ? '₹' + rec.ema9.toFixed(2) : '-';
 
+            const elEma21 = document.getElementById('legEma21');
+            if (elEma21) elEma21.innerText = (rec && rec.ema21 !== undefined) ? '₹' + rec.ema21.toFixed(2) : '-';
+
             const elGann = document.getElementById('legGann2Day');
             if (elGann) elGann.innerText = (rec && rec.gann_2day !== undefined) ? '₹' + rec.gann_2day.toFixed(2) : '-';
 
@@ -6317,11 +6515,32 @@
                 });
                 mainSeries.setMarkers(combinedMarkers);
             }
+            let effectiveShowSma50 = showSma50;
+            let effectiveShowSma200 = showSma200;
+            let effectiveShowEma9 = showEma9;
+            let effectiveShowEma21 = false;
+
+            if (window.activePatternIndicators) {
+                if (window.activePatternIndicators.showDmaCross) {
+                    effectiveShowSma50 = true;
+                    effectiveShowSma200 = true;
+                }
+                if (window.activePatternIndicators.showEmaCross) {
+                    effectiveShowEma9 = true;
+                    effectiveShowEma21 = true;
+                }
+                if (window.activePatternIndicators.showSma50) effectiveShowSma50 = true;
+                if (window.activePatternIndicators.showSma200) effectiveShowSma200 = true;
+                if (window.activePatternIndicators.showEma9) effectiveShowEma9 = true;
+                if (window.activePatternIndicators.showEma21) effectiveShowEma21 = true;
+            }
+
             volumeSeries.applyOptions({ visible: showVol });
             if (volumeMaSeries) volumeMaSeries.applyOptions({ visible: showVol && showVolMa });
-            if (sma50Series) sma50Series.applyOptions({ visible: showSma50 });
-            if (sma200Series) sma200Series.applyOptions({ visible: showSma200 });
-            if (ema9Series) ema9Series.applyOptions({ visible: showEma9 });
+            if (sma50Series) sma50Series.applyOptions({ visible: effectiveShowSma50 });
+            if (sma200Series) sma200Series.applyOptions({ visible: effectiveShowSma200 });
+            if (ema9Series) ema9Series.applyOptions({ visible: effectiveShowEma9 });
+            if (ema21Series) ema21Series.applyOptions({ visible: effectiveShowEma21 });
             if (gann2DaySeries) gann2DaySeries.applyOptions({ visible: showGann2Day });
 
             if (document.getElementById('legCdRiderGroup')) {
@@ -6332,6 +6551,11 @@
             }
             if (document.getElementById('legBsDonchianGroup')) {
                 document.getElementById('legBsDonchianGroup').style.display = showBsDonchian ? 'inline' : 'none';
+            }
+
+            const legEma21Wrap = document.getElementById('legEma21Wrapper');
+            if (legEma21Wrap) {
+                legEma21Wrap.style.display = effectiveShowEma21 ? 'inline' : 'none';
             }
 
             if (document.getElementById('legVolGroup')) {
@@ -6347,13 +6571,15 @@
             document.getElementById('macdChartPane').style.display = showMacd ? 'block' : 'none';
             document.getElementById('legMacdGroup').style.display = showMacd ? 'inline-block' : 'none';
 
-            document.getElementById('legSmaGroup').style.display = (showCdRider || showStTrigger || showBsDonchian || showSma50 || showSma200 || showEma9 || showGann2Day) ? 'inline-block' : 'none';
+            document.getElementById('legSmaGroup').style.display = (showCdRider || showStTrigger || showBsDonchian || effectiveShowSma50 || effectiveShowSma200 || effectiveShowEma9 || effectiveShowEma21 || showGann2Day) ? 'inline-block' : 'none';
 
             resizeChartPanes();
         }
 
         function closeChartModal() {
             window.activePatternMarkers = [];
+            window.activePatternShapes = [];
+            window.activePatternIndicators = null;
             const modal = document.getElementById('chartModal');
             if (modal) {
                 modal.style.display = 'none';

@@ -574,12 +574,22 @@
         const cleanSym = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
 
         let markers = [];
+        let drawings = [];
+        let indicators = null;
         if (scanResults && scanResults.scanners && scannerId && scanResults.scanners[scannerId]) {
             const sc = scanResults.scanners[scannerId];
             if (Array.isArray(sc.stocks)) {
                 const match = sc.stocks.find(s => (s.symbol || '').toUpperCase() === cleanSym);
-                if (match && Array.isArray(match.markers)) {
-                    markers = match.markers;
+                if (match) {
+                    if (Array.isArray(match.markers)) {
+                        markers = match.markers;
+                    }
+                    if (Array.isArray(match.drawings)) {
+                        drawings = match.drawings;
+                    }
+                    if (match.indicators) {
+                        indicators = match.indicators;
+                    }
                 }
             }
         }
@@ -590,11 +600,11 @@
         else if (currentTimeframe === 'monthly') chartInterval = '1mo';
 
         if (typeof window.openInHouseChart === 'function') {
-            window.openInHouseChart(cleanSym, chartInterval, markers);
+            window.openInHouseChart(cleanSym, chartInterval, markers, drawings, indicators);
         } else if (typeof window.openChart === 'function') {
-            window.openChart(cleanSym, chartInterval, markers);
+            window.openChart(cleanSym, chartInterval, markers, drawings, indicators);
         } else {
-            console.log('Opening chart for:', cleanSym, chartInterval, markers);
+            console.log('Opening chart for:', cleanSym, chartInterval, markers, drawings, indicators);
         }
     }
 
