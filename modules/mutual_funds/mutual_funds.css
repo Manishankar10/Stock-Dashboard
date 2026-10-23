@@ -77,9 +77,11 @@ h1, h2, p { margin-top: 0; }
 .mf-section-title h2, .mf-panel-heading h2 { margin: 0; font: 700 14px 'Plus Jakarta Sans', 'Inter', sans-serif; }
 .mf-section-title p, .mf-panel-heading p { margin: 5px 0 0; color: var(--mf-secondary); font-size: 10px; }
 .mf-table-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.mf-search-box { display: flex; flex: 1 1 230px; align-items: center; gap: 7px; min-width: 190px; height: 35px; padding: 0 9px; border: 1px solid var(--mf-input-border); border-radius: 8px; background: var(--mf-card); color: var(--mf-secondary); }
+.mf-search-box { display: flex; flex: 1 1 230px; align-items: center; gap: 7px; min-width: 190px; height: 35px; padding: 0 9px; border: 1px solid var(--mf-input-border); border-radius: 8px; background: var(--mf-card); color: var(--mf-secondary); transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; }
+.mf-search-box:focus-within { border-color: #10b981 !important; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important; }
 .mf-search-box span { font-size: 18px; }
-.mf-search-box input { width: 100%; border: 0; outline: 0; color: var(--mf-text); background: transparent; font-size: 11px; }
+.mf-search-box input { width: 100%; border: none !important; outline: none !important; color: var(--mf-text); background: transparent !important; box-shadow: none !important; font-size: 11px; padding: 0 !important; margin: 0 !important; border-radius: 0 !important; }
+.mf-search-box input:focus { border: none !important; outline: none !important; background: transparent !important; box-shadow: none !important; }
 .mf-table-tools select, .mf-panel-tools select { height: 35px; max-width: 210px; padding: 0 9px; border: 1px solid var(--mf-input-border); border-radius: 8px; background: var(--mf-card); color: var(--mf-text); font-size: 10px; }
 .mf-refresh-button, .mf-primary-button, .mf-secondary-button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 35px; padding: 0 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor: pointer; transition: background .15s, transform .15s; }
 .mf-refresh-button, .mf-secondary-button { border: 1px solid var(--mf-border); background: var(--mf-card); color: var(--mf-text); }

@@ -110,6 +110,23 @@
     min-width: 140px;
 }
 
+.shp-search-box input {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+.shp-search-box input:focus {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
 /* Stock Scope Filter Chips (Matches Category Chips) */
 .shp-scope-pill-group {
     display: inline-flex;

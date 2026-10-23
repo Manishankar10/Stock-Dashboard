@@ -313,6 +313,84 @@
             border-color: #10b981;
             box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
         }
+
+        /* ==========================================================================
+           UNIFIED SINGLE-BOX SEARCH MODEL (Removes Double Box Artifacts Everywhere)
+           ========================================================================== */
+        .search-box,
+        .corp-search-box,
+        .ts-search-box,
+        .shp-search-box,
+        .mf-search-box,
+        label.search-box,
+        .search-box-wrapper {
+            box-sizing: border-box !important;
+        }
+
+        .search-box input,
+        .search-box input[type="text"],
+        .search-box input[type="search"],
+        .corp-search-box input,
+        .corp-search-box input[type="text"],
+        .corp-search-box input[type="search"],
+        .ts-search-box input,
+        .ts-search-box input[type="text"],
+        .ts-search-box input[type="search"],
+        .shp-search-box input,
+        .shp-search-box input[type="text"],
+        .shp-search-box input[type="search"],
+        .mf-search-box input,
+        .mf-search-box input[type="text"],
+        .mf-search-box input[type="search"],
+        label.search-box input,
+        label.search-box input[type="text"],
+        label.search-box input[type="search"] {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            height: auto !important;
+            line-height: normal !important;
+            width: 100% !important;
+            color: var(--text-primary) !important;
+        }
+
+        .search-box input:focus,
+        .search-box input[type="text"]:focus,
+        .search-box input[type="search"]:focus,
+        .corp-search-box input:focus,
+        .corp-search-box input[type="text"]:focus,
+        .corp-search-box input[type="search"]:focus,
+        .ts-search-box input:focus,
+        .ts-search-box input[type="text"]:focus,
+        .ts-search-box input[type="search"]:focus,
+        .shp-search-box input:focus,
+        .shp-search-box input[type="text"]:focus,
+        .shp-search-box input[type="search"]:focus,
+        .mf-search-box input:focus,
+        .mf-search-box input[type="text"]:focus,
+        .mf-search-box input[type="search"]:focus,
+        label.search-box input:focus,
+        label.search-box input[type="text"]:focus,
+        label.search-box input[type="search"]:focus {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+        .search-box:focus-within,
+        .corp-search-box:focus-within,
+        .ts-search-box:focus-within,
+        .shp-search-box:focus-within,
+        .mf-search-box:focus-within,
+        label.search-box:focus-within {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+        }
         
         /* Mild Green Primary Buttons */
         button, .btn-primary {

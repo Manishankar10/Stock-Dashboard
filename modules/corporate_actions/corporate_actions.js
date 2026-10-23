@@ -409,9 +409,9 @@
             return true;
         });
 
-        // 2. Separate Upcoming and Past (last 2 months)
+        // 2. Separate Upcoming and Past
         let upcomingItems = filtered.filter(x => x.is_upcoming);
-        let pastItems = filtered.filter(x => x.is_past_2m);
+        let pastItems = filtered.filter(x => !x.is_upcoming);
 
         // Sort upcoming: soonest ex-date first
         upcomingItems.sort((a, b) => (a.ex_date || '').localeCompare(b.ex_date || ''));
@@ -431,7 +431,7 @@
         const rootContainer = document.getElementById('tab-corporate-actions');
         if (rootContainer) rootContainer.setAttribute('data-active-tab', tabKey);
 
-        // 4. Render Upcoming Actions and Past Actions (Last 2 Months)
+        // 4. Render Upcoming Actions and Past Actions
         const pastCardEl = document.getElementById('corp-past-section');
         const upcomingTitleEl = document.getElementById('corp-upcoming-title');
         const upcomingBadgeEl = document.getElementById('corp-upcoming-badge');
@@ -452,8 +452,8 @@
         }
         if (pastHeadingEl) {
             pastHeadingEl.textContent = tabKey === 'dividend' 
-                ? 'Past Dividends (Last 2 Months)' 
-                : `Past ${tabConfig.title} Actions (Last 2 Months)`;
+                ? 'Past Dividends' 
+                : `Past ${tabConfig.title} Actions`;
         }
 
         // Upcoming table
@@ -482,11 +482,11 @@
             if (pastTbodyEl) pastTbodyEl.innerHTML = '';
             if (pastEmptyEl) {
                 pastEmptyEl.style.display = 'block';
-                let pastEmptyMsg = 'No records in the last 2 months';
+                let pastEmptyMsg = 'No past actions recorded';
                 if (filter === 'portfolio') {
-                    pastEmptyMsg = 'No past actions in the last 2 months for your Portfolio stocks';
+                    pastEmptyMsg = 'No past actions recorded for your Portfolio stocks';
                 } else if (filter === 'watchlist') {
-                    pastEmptyMsg = 'No past actions in the last 2 months for your Watchlist stocks';
+                    pastEmptyMsg = 'No past actions recorded for your Watchlist stocks';
                 }
                 const titleNode = pastEmptyEl.querySelector('.corp-empty-title');
                 if (titleNode) titleNode.textContent = pastEmptyMsg;

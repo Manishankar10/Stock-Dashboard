@@ -405,10 +405,11 @@ class CorporateActionsProvider:
                 ex = item.get("ex_date", "")
                 sym = clean_symbol(item.get("symbol", ""))
                 is_upcoming = ex >= today_iso
-                is_past_2m = (ex < today_iso) and (ex >= past_60d_iso)
+                is_past = (ex < today_iso)
 
                 item["is_upcoming"] = is_upcoming
-                item["is_past_2m"] = is_past_2m
+                item["is_past"] = is_past
+                item["is_past_2m"] = is_past
                 item["in_portfolio"] = sym in portfolio_clean
                 item["in_watchlist"] = sym in watchlist_clean
 
@@ -427,7 +428,7 @@ class CorporateActionsProvider:
                 key=lambda x: x.get("ex_date", ""),
             )
             past_items = sorted(
-                [x for x in items if x["is_past_2m"]],
+                [x for x in items if not x["is_upcoming"]],
                 key=lambda x: x.get("ex_date", ""),
                 reverse=True,
             )
@@ -435,9 +436,11 @@ class CorporateActionsProvider:
             result["tabs"][tab_name] = {
                 "all": items,
                 "upcoming": upcoming_items,
+                "past": past_items,
                 "past_2m": past_items,
                 "counts": {
                     "upcoming": len(upcoming_items),
+                    "past": len(past_items),
                     "past_2m": len(past_items),
                     "total": len(items),
                 },
