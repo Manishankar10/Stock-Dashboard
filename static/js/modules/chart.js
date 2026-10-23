@@ -4940,8 +4940,16 @@
             const info = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
             const symDisplay = document.getElementById('chartSymbolDisplay');
             const nameDisplay = document.getElementById('chartNameDisplay');
-            if (symDisplay) symDisplay.innerText = sym;
-            if (nameDisplay) nameDisplay.innerText = info.name || sym;
+            const cleanSym = sym ? sym.replace('.NS', '').replace('.BO', '') : '';
+            if (symDisplay) {
+                symDisplay.innerText = cleanSym || sym;
+                symDisplay.setAttribute('data-full-symbol', sym);
+            }
+            if (nameDisplay) nameDisplay.innerText = info.name || cleanSym || sym;
+
+            // Remove any existing empty chart overlay when opening new symbol
+            const existingEmptyOverlay = document.getElementById('chartEmptyStateOverlay');
+            if (existingEmptyOverlay) existingEmptyOverlay.remove();
 
             const intervalLabel = document.getElementById('intervalBtnLabel');
             if (intervalLabel) intervalLabel.innerHTML = '<span class="btn-icon">⏱️</span><span class="btn-text"> ' + getIntervalDisplayLabel(currentChartInterval) + '</span>';
@@ -5053,17 +5061,27 @@
 
                 if (data.error) {
                     hideChartLoader();
-                    alert('Could not load chart data: ' + data.error);
+                    showEmptyChartState(data.error);
                     return;
                 }
 
-                document.getElementById('chartSymbolDisplay').innerText = data.symbol;
-                document.getElementById('chartNameDisplay').innerText = data.name;
+                const cleanSym = data.symbol ? data.symbol.replace('.NS', '').replace('.BO', '') : '';
+                const symDisplay = document.getElementById('chartSymbolDisplay');
+                const nameDisplay = document.getElementById('chartNameDisplay');
+                if (symDisplay) {
+                    symDisplay.innerText = cleanSym || data.symbol;
+                    symDisplay.setAttribute('data-full-symbol', data.symbol);
+                }
+                if (nameDisplay) nameDisplay.innerText = data.name || cleanSym || data.symbol;
+
+                const emptyOverlay = document.getElementById('chartEmptyStateOverlay');
+                if (emptyOverlay) emptyOverlay.remove();
 
                 renderInHouseCharts(data);
             } catch (err) {
                 console.error('Chart fetch error:', err);
                 hideChartLoader();
+                showEmptyChartState(err.message || 'Error loading chart data');
             } finally {
                 hideChartLoader();
             }
@@ -6577,6 +6595,7 @@
         }
 
         function closeChartModal() {
+            closeChartSymbolSearch();
             window.activePatternMarkers = [];
             window.activePatternShapes = [];
             window.activePatternIndicators = null;
@@ -6633,6 +6652,421 @@
             const infoBox = document.getElementById('stTriggerInfoBox');
             if (infoBox) infoBox.style.display = 'none';
         };
+
+        // =========================================================
+        // IN-CHART ELEGANT SYMBOL SEARCH (TRADINGVIEW IN-SCREEN DESIGN)
+        // =========================================================
+        let chartSearchDebounceTimer = null;
+        let chartSearchResults = [];
+        let chartSearchActiveIndex = -1;
+
+        function openChartSymbolSearch(initialChar = '') {
+            setupChartSymbolSearchEvents();
+            const dropdown = document.getElementById('chartSymbolSearchDropdown');
+            const pillBox = document.getElementById('chartSymbolPillBox');
+            const input = document.getElementById('chartSymbolSearchInput');
+            if (!dropdown || !input) return;
+
+            dropdown.style.display = 'flex';
+            if (pillBox) pillBox.classList.add('active');
+
+            if (initialChar) {
+                input.value = initialChar;
+                triggerChartSymbolSearch(initialChar);
+            } else {
+                const cur = currentChartSymbol ? currentChartSymbol.replace('.NS', '').replace('.BO', '') : '';
+                input.value = cur;
+                input.focus();
+                input.select();
+                triggerChartSymbolSearch(cur);
+            }
+
+            setTimeout(() => {
+                input.focus();
+            }, 30);
+        }
+
+        function closeChartSymbolSearch() {
+            const dropdown = document.getElementById('chartSymbolSearchDropdown');
+            const pillBox = document.getElementById('chartSymbolPillBox');
+            if (dropdown) dropdown.style.display = 'none';
+            if (pillBox) pillBox.classList.remove('active');
+            chartSearchActiveIndex = -1;
+        }
+
+        function toggleChartSymbolSearch(e) {
+            if (e) e.stopPropagation();
+            const dropdown = document.getElementById('chartSymbolSearchDropdown');
+            if (dropdown && dropdown.style.display === 'flex') {
+                closeChartSymbolSearch();
+            } else {
+                openChartSymbolSearch();
+            }
+        }
+
+        function clearChartSymbolSearch(e) {
+            if (e) e.stopPropagation();
+            const input = document.getElementById('chartSymbolSearchInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+                triggerChartSymbolSearch('');
+            }
+        }
+
+        function triggerChartSymbolSearch(query) {
+            clearTimeout(chartSearchDebounceTimer);
+            const clearBtn = document.getElementById('chartSymbolSearchClear');
+            if (clearBtn) clearBtn.style.display = query ? 'block' : 'none';
+
+            // Instant local render from known stocks
+            renderChartSearchLocal(query);
+
+            // Debounced API fetch for comprehensive universe
+            chartSearchDebounceTimer = setTimeout(() => {
+                fetchChartSearchResults(query);
+            }, 120);
+        }
+
+        function renderChartSearchLocal(query) {
+            const listEl = document.getElementById('chartSearchResultsList');
+            if (!listEl) return;
+
+            const cleanQ = (query || '').trim().toUpperCase();
+            let matches = [];
+
+            // 1. Gather all local candidate symbols from stockPricesData, watchlists, etc.
+            const candidateMap = new Map();
+
+            if (typeof stockPricesData !== 'undefined' && stockPricesData) {
+                Object.entries(stockPricesData).forEach(([sym, info]) => {
+                    if (!sym || sym.startsWith('^') || sym.includes('=F')) return;
+                    const clean = sym.replace('.NS', '').replace('.BO', '');
+                    const name = (info && info.name) ? info.name : clean;
+                    candidateMap.set(sym, {
+                        symbol: sym,
+                        cleanSymbol: clean,
+                        name: name,
+                        exchange: sym.endsWith('.BO') ? 'BSE' : 'NSE'
+                    });
+                });
+            }
+
+            if (typeof watchlistsData !== 'undefined' && watchlistsData) {
+                Object.values(watchlistsData).forEach(arr => {
+                    (arr || []).forEach(s => {
+                        if (!s || candidateMap.has(s)) return;
+                        const clean = s.replace('.NS', '').replace('.BO', '');
+                        candidateMap.set(s, {
+                            symbol: s,
+                            cleanSymbol: clean,
+                            name: clean,
+                            exchange: s.endsWith('.BO') ? 'BSE' : 'NSE'
+                        });
+                    });
+                });
+            }
+
+            // Popular defaults if empty query
+            if (!cleanQ) {
+                const popularDefaults = ['POCL.NS', 'RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'TATAMOTORS.NS', 'ZOMATO.NS', 'SUZLON.NS', 'BSE.NS'];
+                popularDefaults.forEach(defSym => {
+                    if (candidateMap.has(defSym)) {
+                        matches.push(candidateMap.get(defSym));
+                    } else {
+                        const clean = defSym.replace('.NS', '');
+                        matches.push({ symbol: defSym, cleanSymbol: clean, name: clean, exchange: 'NSE' });
+                    }
+                });
+            } else {
+                candidateMap.forEach(item => {
+                    if (item.cleanSymbol.includes(cleanQ) || item.name.toUpperCase().includes(cleanQ)) {
+                        matches.push(item);
+                    }
+                });
+                // Sort by exact prefix match first
+                matches.sort((a, b) => {
+                    const aExact = a.cleanSymbol === cleanQ ? 2 : (a.cleanSymbol.startsWith(cleanQ) ? 1 : 0);
+                    const bExact = b.cleanSymbol === cleanQ ? 2 : (b.cleanSymbol.startsWith(cleanQ) ? 1 : 0);
+                    return bExact - aExact;
+                });
+            }
+
+            chartSearchResults = matches.slice(0, 15);
+            chartSearchActiveIndex = chartSearchResults.length > 0 ? 0 : -1;
+            renderChartSearchResultsList(chartSearchResults, cleanQ);
+        }
+
+        async function fetchChartSearchResults(query) {
+            const cleanQ = (query || '').trim();
+            if (!cleanQ) return;
+
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(cleanQ)}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const serverMatches = data.map(item => {
+                        const sym = item.symbol || '';
+                        const clean = sym.replace('.NS', '').replace('.BO', '');
+                        return {
+                            symbol: sym,
+                            cleanSymbol: clean,
+                            name: item.name || clean,
+                            exchange: item.exchange || (sym.endsWith('.BO') ? 'BSE' : 'NSE')
+                        };
+                    });
+
+                    // Merge server results with existing matching current query
+                    const seen = new Set();
+                    const merged = [];
+                    serverMatches.forEach(item => {
+                        if (!seen.has(item.symbol)) {
+                            seen.add(item.symbol);
+                            merged.push(item);
+                        }
+                    });
+                    const qUpper = cleanQ.toUpperCase();
+                    chartSearchResults.forEach(item => {
+                        if (!item) return;
+                        const sym = item.symbol || '';
+                        const clean = (item.cleanSymbol || sym.replace('.NS', '').replace('.BO', '')).toUpperCase();
+                        const name = (item.name || '').toUpperCase();
+                        if (!seen.has(sym) && (clean.includes(qUpper) || name.includes(qUpper))) {
+                            seen.add(sym);
+                            merged.push(item);
+                        }
+                    });
+
+                    // Sort results: Exact match first, then prefix, then substring
+                    merged.sort((a, b) => {
+                        const aClean = (a.cleanSymbol || a.symbol || '').replace('.NS', '').replace('.BO', '').toUpperCase();
+                        const bClean = (b.cleanSymbol || b.symbol || '').replace('.NS', '').replace('.BO', '').toUpperCase();
+                        const aExact = aClean === qUpper ? 3 : (aClean.startsWith(qUpper) ? 2 : (aClean.includes(qUpper) ? 1 : 0));
+                        const bExact = bClean === qUpper ? 3 : (bClean.startsWith(qUpper) ? 2 : (bClean.includes(qUpper) ? 1 : 0));
+                        return bExact - aExact;
+                    });
+
+                    chartSearchResults = merged.slice(0, 20);
+                    chartSearchActiveIndex = chartSearchResults.length > 0 ? 0 : -1;
+                    renderChartSearchResultsList(chartSearchResults, qUpper);
+                }
+            } catch (err) {
+                console.warn('Symbol search fetch warning:', err);
+            }
+        }
+
+        function renderChartSearchResultsList(results, query) {
+            const listEl = document.getElementById('chartSearchResultsList');
+            const statusEl = document.getElementById('chartSearchStatusBar');
+            if (!listEl) return;
+
+            if (!results || results.length === 0) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.innerHTML = query ? `No stocks found matching "<strong>${escapeHtml(query)}</strong>"` : 'Type to search stocks...';
+                }
+                listEl.innerHTML = '';
+                return;
+            }
+
+            if (statusEl) statusEl.style.display = 'none';
+
+            let html = '';
+            results.forEach((item, idx) => {
+                const isActive = idx === chartSearchActiveIndex;
+                const activeClass = isActive ? 'active' : '';
+                const badgeClass = item.exchange.toUpperCase() === 'BSE' ? 'search-badge-bse' : 'search-badge-nse';
+
+                html += `
+                    <div class="chart-search-result-item ${activeClass}" data-index="${idx}" data-symbol="${escapeHtml(item.symbol)}" onclick="selectChartSymbol('${escapeHtml(item.symbol)}')">
+                        <div class="search-item-left">
+                            <div class="search-item-header">
+                                <span class="search-item-symbol">${escapeHtml(item.cleanSymbol)}</span>
+                                <span class="search-item-badge ${badgeClass}">${escapeHtml(item.exchange)}</span>
+                            </div>
+                            <div class="search-item-name">${escapeHtml(item.name)}</div>
+                        </div>
+                        <div class="search-item-right">
+                            <span class="search-item-action">↵ View</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listEl.innerHTML = html;
+        }
+
+        function selectChartSymbol(symbol) {
+            if (!symbol) return;
+            let targetSym = String(symbol).trim().toUpperCase();
+            if (!targetSym.includes('.') && !targetSym.startsWith('^') && !targetSym.includes('=F')) {
+                targetSym += '.NS';
+            }
+            closeChartSymbolSearch();
+            openInHouseChart(targetSym);
+        }
+
+        function showEmptyChartState(errorMsg = '') {
+            const container = document.getElementById('mainChartPane');
+            if (!container) return;
+
+            let overlay = document.getElementById('chartEmptyStateOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'chartEmptyStateOverlay';
+                overlay.className = 'chart-empty-state-overlay';
+                container.appendChild(overlay);
+            }
+
+            const cleanSym = currentChartSymbol ? currentChartSymbol.replace('.NS', '').replace('.BO', '') : 'Stock';
+            overlay.innerHTML = `
+                <div class="chart-empty-state-card">
+                    <div style="font-size: 32px;">📊</div>
+                    <div style="font-weight: 700; font-size: 15px; color: #ffffff;">No Chart Data for "${escapeHtml(cleanSym)}"</div>
+                    <div style="font-size: 12.5px; color: #94a3b8; line-height: 1.4;">
+                        ${escapeHtml(errorMsg || 'Type any stock name or symbol on your keyboard, or click below to search.')}
+                    </div>
+                    <button type="button" class="chart-empty-state-btn" onclick="openChartSymbolSearch()">🔍 Search Stock (POCL, TCS, RELIANCE...)</button>
+                </div>
+            `;
+            overlay.style.display = 'flex';
+        }
+
+        function openEmptyChart() {
+            currentChartSymbol = '';
+            const modal = document.getElementById('chartModal');
+            if (modal) modal.style.display = 'block';
+            const symDisplay = document.getElementById('chartSymbolDisplay');
+            const nameDisplay = document.getElementById('chartNameDisplay');
+            if (symDisplay) symDisplay.innerText = 'SELECT';
+            if (nameDisplay) nameDisplay.innerText = 'Click to search or type any letter';
+            showEmptyChartState('Type any stock name or symbol to start charting.');
+            setTimeout(() => {
+                openChartSymbolSearch();
+            }, 100);
+        }
+
+        function updateActiveSearchItem() {
+            const items = document.querySelectorAll('.chart-search-result-item');
+            items.forEach((item, idx) => {
+                const isAct = idx === chartSearchActiveIndex;
+                item.classList.toggle('active', isAct);
+                if (isAct) {
+                    item.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        }
+
+        let chartSearchEventsInitialized = false;
+        function setupChartSymbolSearchEvents() {
+            const input = document.getElementById('chartSymbolSearchInput');
+            if (input && !input._chartEventsBound) {
+                input._chartEventsBound = true;
+
+                input.addEventListener('input', (e) => {
+                    triggerChartSymbolSearch(e.target.value);
+                });
+
+                input.addEventListener('keyup', (e) => {
+                    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter' && e.key !== 'Escape') {
+                        triggerChartSymbolSearch(e.target.value);
+                    }
+                });
+
+                input.addEventListener('keydown', (e) => {
+                    const dropdown = document.getElementById('chartSymbolSearchDropdown');
+                    if (!dropdown || dropdown.style.display !== 'flex') return;
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (chartSearchResults.length > 0) {
+                            chartSearchActiveIndex = (chartSearchActiveIndex + 1) % chartSearchResults.length;
+                            updateActiveSearchItem();
+                        }
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (chartSearchResults.length > 0) {
+                            chartSearchActiveIndex = (chartSearchActiveIndex - 1 + chartSearchResults.length) % chartSearchResults.length;
+                            updateActiveSearchItem();
+                        }
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (chartSearchActiveIndex >= 0 && chartSearchActiveIndex < chartSearchResults.length) {
+                            selectChartSymbol(chartSearchResults[chartSearchActiveIndex].symbol);
+                        } else if (chartSearchResults.length > 0) {
+                            selectChartSymbol(chartSearchResults[0].symbol);
+                        } else if (input.value.trim()) {
+                            selectChartSymbol(input.value.trim());
+                        }
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeChartSymbolSearch();
+                    }
+                });
+            }
+
+            if (!chartSearchEventsInitialized) {
+                chartSearchEventsInitialized = true;
+
+                // Global Keystroke search when on chart (TradingView desktop & web style)
+                document.addEventListener('keydown', (e) => {
+                    const modal = document.getElementById('chartModal');
+                    if (!modal || (modal.style.display !== 'block' && !modal.classList.contains('show'))) return;
+
+                    const dropdown = document.getElementById('chartSymbolSearchDropdown');
+                    const isDropdownOpen = dropdown && dropdown.style.display === 'flex';
+
+                    // If dropdown is open and Escape is pressed, close only dropdown
+                    if (isDropdownOpen && e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeChartSymbolSearch();
+                        return;
+                    }
+
+                    // If user is already focused on an input/textarea/select/editable, don't intercept
+                    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+                    if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) {
+                        return;
+                    }
+
+                    // If modifier keys are held (Ctrl, Alt, Meta), don't intercept
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+                    // Any printable alphanumeric key (a-z, A-Z, 0-9) immediately triggers symbol search!
+                    if (e.key && e.key.length === 1 && /^[a-zA-Z0-9]$/.test(e.key)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openChartSymbolSearch(e.key);
+                    }
+                }, true);
+
+                // Close search when clicking outside
+                document.addEventListener('click', (e) => {
+                    const container = document.getElementById('chartSymbolSearchContainer');
+                    if (container && !container.contains(e.target)) {
+                        closeChartSymbolSearch();
+                    }
+                });
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupChartSymbolSearchEvents);
+        } else {
+            setupChartSymbolSearchEvents();
+        }
+
+        window.openChartSymbolSearch = openChartSymbolSearch;
+        window.closeChartSymbolSearch = closeChartSymbolSearch;
+        window.toggleChartSymbolSearch = toggleChartSymbolSearch;
+        window.clearChartSymbolSearch = clearChartSymbolSearch;
+        window.triggerChartSymbolSearch = triggerChartSymbolSearch;
+        window.selectChartSymbol = selectChartSymbol;
+        window.showEmptyChartState = showEmptyChartState;
+        window.openEmptyChart = openEmptyChart;
 
         window.openInHouseChart = openInHouseChart;
         window.closeChartModal = closeChartModal;

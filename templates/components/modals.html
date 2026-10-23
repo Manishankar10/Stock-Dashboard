@@ -406,9 +406,29 @@
             <!-- Top Controls Bar -->
             <div class="chart-topbar">
                 <div class="chart-header-left">
-                    <div class="stock-title">
-                        <span id="chartSymbolDisplay" class="chart-symbol-text">ROLEXRINGS.NS</span>
-                        <span id="chartNameDisplay" class="chart-name-text">Rolex Rings Ltd</span>
+                    <div class="stock-title chart-symbol-search-container" id="chartSymbolSearchContainer">
+                        <!-- Clickable Symbol Pill Button (TradingView style as in attached design) -->
+                        <div class="chart-symbol-pill-box" id="chartSymbolPillBox" onclick="toggleChartSymbolSearch(event)" title="Click to search stock or type any key on chart">
+                            <span id="chartSymbolDisplay" class="chart-symbol-pill-text">ROLEXRINGS</span>
+                            <span class="chart-symbol-pill-arrow">▾</span>
+                        </div>
+                        <span id="chartNameDisplay" class="chart-name-text" onclick="toggleChartSymbolSearch(event)" title="Click to search stock">Rolex Rings Ltd</span>
+
+                        <!-- Elegant In-Screen Floating Search Panel (stays right on the same chart screen, NO separate popup!) -->
+                        <div class="chart-symbol-search-dropdown" id="chartSymbolSearchDropdown" style="display: none;" onclick="event.stopPropagation();">
+                            <div class="chart-search-input-wrapper">
+                                <span class="chart-search-input-icon">🔍</span>
+                                <input type="text" id="chartSymbolSearchInput" class="chart-symbol-search-input" placeholder="Search symbol or name (e.g. POCL, TCS)..." autocomplete="off" spellcheck="false" oninput="window.triggerChartSymbolSearch && window.triggerChartSymbolSearch(this.value)" onkeyup="window.triggerChartSymbolSearch && window.triggerChartSymbolSearch(this.value)">
+                                <span class="chart-search-keyboard-hint">ESC</span>
+                                <button type="button" class="chart-search-clear-btn" id="chartSymbolSearchClear" onclick="clearChartSymbolSearch(event)" title="Clear">✕</button>
+                            </div>
+                            <div class="chart-search-dropdown-body">
+                                <div class="chart-search-status-bar" id="chartSearchStatusBar" style="display: none;">Searching...</div>
+                                <div class="chart-search-results-list" id="chartSearchResultsList">
+                                    <!-- Dynamically populated stock items -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <!-- Mobile Tool Hint (Decreased Size, Shown at Top Header) -->
                     <div id="chartMobileToolHint" class="chart-mobile-tool-hint" style="display: none;">

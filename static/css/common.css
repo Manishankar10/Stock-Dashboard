@@ -1586,9 +1586,48 @@
         .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15,23,42,0.85); backdrop-filter: blur(4px); }
         .modal-content { background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #d1d4dc; }
         .chart-topbar { padding: 10px 16px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: space-between; align-items: center; gap: 12px; position: relative; z-index: 100; flex-wrap: nowrap; text-align: left; overflow: visible; }
-        .chart-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 0; }
+        .chart-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 0; overflow: visible; }
+        .chart-symbol-search-container { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .chart-symbol-pill-box { display: inline-flex; align-items: center; gap: 6px; background: #1e222d; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 6px; padding: 4px 10px; height: 28px; cursor: pointer; user-select: none; transition: all 0.15s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); flex-shrink: 0; }
+        .chart-symbol-pill-box:hover { background: #2a2e39; border-color: rgba(255, 255, 255, 0.32); }
+        .chart-symbol-pill-box.active { background: #181c27; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
+        .chart-symbol-pill-text { font-weight: 800; font-size: 15px; color: #ffffff; letter-spacing: 0.5px; line-height: 1; text-transform: uppercase; }
+        .chart-symbol-pill-arrow { font-size: 10px; color: #94a3b8; transition: transform 0.2s ease; margin-left: 2px; }
+        .chart-symbol-pill-box.active .chart-symbol-pill-arrow { transform: rotate(180deg); color: #3b82f6; }
         .chart-symbol-text { font-weight: 800; font-size: 16px; color: #ffffff; letter-spacing: 0.5px; }
-        .chart-name-text { font-size: 13px; color: #787b86; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .chart-name-text { font-size: 13px; color: #94a3b8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; cursor: pointer; transition: color 0.15s ease; }
+        .chart-name-text:hover { color: #cbd5e1; }
+        .chart-symbol-search-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 380px; max-width: 90vw; background: #1e222d; border: 1px solid #363a45; border-radius: 10px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05); z-index: 2000; overflow: hidden; display: flex; flex-direction: column; animation: chartSearchSlideDown 0.15s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes chartSearchSlideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        .chart-search-input-wrapper { position: relative; display: flex; align-items: center; padding: 9px 12px; border-bottom: 1px solid #2a2e39; background: #141722; gap: 8px; }
+        .chart-search-input-icon { font-size: 13px; color: #64748b; flex-shrink: 0; }
+        .chart-symbol-search-input { flex: 1; background: transparent; border: none; outline: none; font-size: 13px; font-weight: 600; color: #ffffff; padding: 2px 0; }
+        .chart-symbol-search-input::placeholder { color: #64748b; font-weight: 400; }
+        .chart-search-keyboard-hint { font-size: 10px; font-weight: 700; color: #64748b; background: rgba(255, 255, 255, 0.06); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.08); user-select: none; flex-shrink: 0; }
+        .chart-search-clear-btn { background: transparent; border: none; color: #94a3b8; font-size: 13px; cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1; display: none; flex-shrink: 0; }
+        .chart-search-clear-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+        .chart-search-dropdown-body { max-height: 320px; overflow-y: auto; overflow-x: hidden; }
+        .chart-search-dropdown-body::-webkit-scrollbar { width: 5px; }
+        .chart-search-dropdown-body::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 4px; }
+        .chart-search-status-bar { padding: 10px 14px; font-size: 12px; color: #787b86; text-align: center; }
+        .chart-search-results-list { display: flex; flex-direction: column; }
+        .chart-search-result-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.04); transition: all 0.12s ease; gap: 12px; text-align: left; }
+        .chart-search-result-item:last-child { border-bottom: none; }
+        .chart-search-result-item:hover, .chart-search-result-item.active { background: #2a2e39; border-left: 3px solid #3b82f6; padding-left: 11px; }
+        .chart-search-result-item .search-item-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+        .chart-search-result-item .search-item-header { display: flex; align-items: center; gap: 8px; }
+        .chart-search-result-item .search-item-symbol { font-weight: 800; font-size: 13.5px; color: #ffffff; letter-spacing: 0.4px; }
+        .chart-search-result-item .search-item-badge { font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 4px; letter-spacing: 0.4px; display: inline-block; }
+        .search-badge-nse { background: rgba(59, 130, 246, 0.18); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); }
+        .search-badge-bse { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
+        .chart-search-result-item .search-item-name { font-size: 11.5px; color: #94a3b8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
+        .chart-search-result-item .search-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .chart-search-result-item .search-item-action { font-size: 11px; color: #64748b; font-weight: 600; }
+        .chart-search-result-item:hover .search-item-action, .chart-search-result-item.active .search-item-action { color: #3b82f6; }
+        .chart-empty-state-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #131722; color: #94a3b8; z-index: 15; text-align: center; padding: 20px; user-select: none; }
+        .chart-empty-state-card { background: #1e222d; border: 1px solid #2a2e39; border-radius: 12px; padding: 24px 30px; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .chart-empty-state-btn { background: #2563eb; color: #ffffff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: background 0.15s ease; }
+        .chart-empty-state-btn:hover { background: #1d4ed8; }
         .chart-header-right { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; text-align: left; min-width: 0; flex: 1; overflow: visible; }
         .chart-popovers-container { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; justify-content: flex-start; text-align: left; overflow: visible; }
         .chart-popover-wrapper { position: relative; display: inline-block; text-align: left; flex-shrink: 0; }
@@ -2344,8 +2383,54 @@
         [data-theme="light"] #chartModal .chart-symbol-text {
             color: #0f172a !important;
         }
+        [data-theme="light"] #chartModal .chart-symbol-pill-box {
+            background: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        }
+        [data-theme="light"] #chartModal .chart-symbol-pill-box:hover {
+            background: #f1f5f9 !important;
+            border-color: #94a3b8 !important;
+        }
+        [data-theme="light"] #chartModal .chart-symbol-pill-box.active {
+            background: #eff6ff !important;
+            border-color: #2563eb !important;
+        }
+        [data-theme="light"] #chartModal .chart-symbol-pill-text {
+            color: #0f172a !important;
+        }
         [data-theme="light"] #chartModal .chart-name-text {
             color: #64748b !important;
+        }
+        [data-theme="light"] #chartModal .chart-symbol-search-dropdown {
+            background: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15) !important;
+        }
+        [data-theme="light"] #chartModal .chart-search-input-wrapper {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+        }
+        [data-theme="light"] #chartModal .chart-symbol-search-input {
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #chartModal .chart-search-result-item {
+            border-color: #f1f5f9 !important;
+        }
+        [data-theme="light"] #chartModal .chart-search-result-item:hover,
+        [data-theme="light"] #chartModal .chart-search-result-item.active {
+            background: #f1f5f9 !important;
+            border-left-color: #2563eb !important;
+        }
+        [data-theme="light"] #chartModal .search-item-symbol {
+            color: #0f172a !important;
+        }
+        [data-theme="light"] #chartModal .chart-empty-state-overlay {
+            background: #ffffff !important;
+        }
+        [data-theme="light"] #chartModal .chart-empty-state-card {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
         }
         [data-theme="light"] #chartModal .chart-popover-btn {
             background: #ffffff !important;

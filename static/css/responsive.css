@@ -3122,8 +3122,20 @@
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        max-width: 160px !important;
+        max-width: 140px !important;
         color: #787b86 !important;
+    }
+    .chart-symbol-pill-box {
+        padding: 3px 8px !important;
+        height: 26px !important;
+    }
+    .chart-symbol-pill-text {
+        font-size: 13.5px !important;
+    }
+    .chart-symbol-search-dropdown {
+        width: calc(100vw - 36px) !important;
+        max-width: 360px !important;
+        left: 0 !important;
     }
 
     /* Mobile Close Icon: Top Right on same Stock Name Row */
