@@ -1,6 +1,6 @@
 """Official corporate actions provider for NSE and BSE disclosures."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import json
 import logging
 import os
@@ -11,6 +11,7 @@ import time
 from typing import Any, Dict, List, Optional, Set
 
 import requests
+from db_store import load_corporate_actions_db, save_corporate_actions_db
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +83,41 @@ class CorporateActionsProvider:
         self._lock = threading.Lock()
         self._cache_data: Optional[Dict[str, List[Dict[str, Any]]]] = None
         self._last_fetch_time: float = 0
+        self._last_updated_iso: Optional[str] = None
+        self._last_updated_display: Optional[str] = None
         self._session = requests.Session()
         self._session.headers.update(HTTP_HEADERS)
         self._cache_file = os.path.join(data_dir, "app_data", "corporate_actions_cache.json")
+
+        # Admin Background Refresh states
+        self._is_refreshing = False
+        self._refresh_progress = ""
+        self._refresh_percent = 0
+        self._refresh_error = None
+
+        # Initialize from MongoDB Atlas / SQLite
+        self._init_data_from_db()
+
+    def _init_data_from_db(self):
+        try:
+            db_res = load_corporate_actions_db()
+            if db_res and db_res.get("categories"):
+                self._cache_data = db_res["categories"]
+                self._last_updated_iso = db_res.get("last_updated")
+                self._last_updated_display = db_res.get("last_updated_display")
+                return
+        except Exception as e:
+            logger.warning(f"Error loading corporate actions from db: {e}")
+
+        # Fallback to disk cache or seed file, and seed into MongoDB
+        seed = self._load_disk_cache() or self._load_seed()
+        self._cache_data = seed
+        try:
+            saved = save_corporate_actions_db(seed)
+            self._last_updated_iso = saved.get("last_updated")
+            self._last_updated_display = saved.get("last_updated_display")
+        except Exception as e:
+            logger.warning(f"Error seeding corporate actions to db: {e}")
 
     def _load_seed(self) -> Dict[str, List[Dict[str, Any]]]:
         if _SEED_FILE.exists():
@@ -100,9 +133,8 @@ class CorporateActionsProvider:
             try:
                 with open(self._cache_file, "r", encoding="utf-8") as f:
                     payload = json.load(f)
-                    if isinstance(payload, dict) and "data" in payload and "time" in payload:
-                        if time.time() - payload["time"] < CACHE_TTL_SECONDS * 4:
-                            return payload["data"]
+                    if isinstance(payload, dict) and "data" in payload and isinstance(payload["data"], dict):
+                        return payload["data"]
             except Exception as e:
                 logger.warning(f"Error reading disk cache: {e}")
         return None
@@ -147,13 +179,13 @@ class CorporateActionsProvider:
         return []
 
     def _process_records(self, nse_raw: List[Dict[str, Any]], bse_raw: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-        seed = self._load_seed()
+        base_source = self._cache_data or self._load_seed()
         categories: Dict[str, List[Dict[str, Any]]] = {
-            "bonus": list(seed.get("bonus", [])),
-            "rights": list(seed.get("rights", [])),
-            "split": list(seed.get("split", [])),
-            "buyback": list(seed.get("buyback", [])),
-            "dividend": list(seed.get("dividend", [])),
+            "bonus": list(base_source.get("bonus", [])),
+            "rights": list(base_source.get("rights", [])),
+            "split": list(base_source.get("split", [])),
+            "buyback": list(base_source.get("buyback", [])),
+            "dividend": list(base_source.get("dividend", [])),
         }
 
         # Helper set for deduplication
@@ -344,25 +376,12 @@ class CorporateActionsProvider:
         force_refresh: bool = False,
     ) -> Dict[str, Any]:
         """Return categorized corporate actions, marked with upcoming / past status and user filters."""
-        now = time.time()
         portfolio_clean = {clean_symbol(s) for s in (portfolio_symbols or set()) if s}
         watchlist_clean = {clean_symbol(s) for s in (watchlist_symbols or set()) if s}
 
         with self._lock:
-            needs_fetch = force_refresh or self._cache_data is None or (now - self._last_fetch_time > CACHE_TTL_SECONDS)
-            if needs_fetch:
-                cached_disk = None if force_refresh else self._load_disk_cache()
-                if cached_disk:
-                    self._cache_data = cached_disk
-                    self._last_fetch_time = now
-                else:
-                    nse_items = self.fetch_live_nse()
-                    bse_items = self.fetch_live_bse()
-                    processed = self._process_records(nse_items, bse_items)
-                    self._cache_data = processed
-                    self._last_fetch_time = now
-                    self._save_disk_cache(processed)
-
+            if self._cache_data is None:
+                self._init_data_from_db()
             raw_categories = self._cache_data or self._load_seed()
 
         today_iso = date.today().strftime("%Y-%m-%d")
@@ -372,6 +391,8 @@ class CorporateActionsProvider:
             "meta": {
                 "today": today_iso,
                 "cached_at": datetime.fromtimestamp(self._last_fetch_time).isoformat() if self._last_fetch_time else today_iso,
+                "last_updated": self._last_updated_iso or today_iso,
+                "last_updated_display": self._last_updated_display or "Recently",
             },
             "tabs": {},
         }
@@ -423,3 +444,106 @@ class CorporateActionsProvider:
             }
 
         return result
+
+    def start_admin_background_refresh(self) -> Dict[str, Any]:
+        """Initiate background refresh from official NSE & BSE by Admin."""
+        with self._lock:
+            if self._is_refreshing:
+                return {
+                    "success": False,
+                    "status": "in_progress",
+                    "message": "A corporate actions refresh is already in progress.",
+                    **self.get_refresh_status()
+                }
+            self._is_refreshing = True
+            self._refresh_progress = "Connecting to official stock exchange portals..."
+            self._refresh_percent = 5
+            self._refresh_error = None
+
+        thread = threading.Thread(target=self._run_admin_background_refresh, daemon=True)
+        thread.start()
+
+        return {
+            "success": True,
+            "status": "started",
+            "message": "Background refresh started. Official NSE & BSE corporate actions are being fetched.",
+            **self.get_refresh_status()
+        }
+
+    def _run_admin_background_refresh(self):
+        try:
+            logger.info("Admin initiated Corporate Actions live official refresh...")
+            with self._lock:
+                self._refresh_percent = 15
+                self._refresh_progress = "Connecting to NSE corporate actions portal..."
+
+            nse_items = []
+            try:
+                nse_items = self.fetch_live_nse()
+            except Exception as e:
+                logger.warning(f"NSE corporate actions fetch error: {e}")
+
+            with self._lock:
+                self._refresh_percent = 45
+                self._refresh_progress = f"Fetched {len(nse_items)} records from NSE. Connecting to BSE portal..."
+
+            bse_items = []
+            try:
+                bse_items = self.fetch_live_bse()
+            except Exception as e:
+                logger.warning(f"BSE corporate actions fetch error: {e}")
+
+            with self._lock:
+                self._refresh_percent = 70
+                self._refresh_progress = f"Parsing and deduplicating announcements ({len(nse_items)} NSE + {len(bse_items)} BSE)..."
+
+            processed = self._process_records(nse_items, bse_items)
+
+            with self._lock:
+                self._refresh_percent = 85
+                self._refresh_progress = "Persisting updated dataset into MongoDB Atlas..."
+
+            now_iso = datetime.now(timezone.utc).isoformat()
+            now_display = datetime.now().strftime("%d %b %Y, %I:%M %p")
+            db_res = save_corporate_actions_db(processed, last_updated_iso=now_iso, last_updated_display=now_display)
+
+            with self._lock:
+                self._cache_data = processed
+                self._last_fetch_time = time.time()
+                self._last_updated_iso = db_res.get("last_updated") or now_iso
+                self._last_updated_display = db_res.get("last_updated_display") or now_display
+                self._save_disk_cache(processed)
+
+                total_count = sum(len(v) for v in processed.values())
+                self._refresh_percent = 100
+                self._refresh_progress = f"Completed successfully! {total_count} announcements stored in MongoDB Atlas."
+                self._refresh_error = None
+                logger.info(f"Corporate Actions refresh completed: {total_count} records saved.")
+        except Exception as exc:
+            logger.error(f"Error during Corporate Actions background refresh: {exc}", exc_info=True)
+            with self._lock:
+                self._refresh_error = str(exc)
+                self._refresh_progress = f"Refresh failed: {str(exc)}"
+        finally:
+            with self._lock:
+                self._is_refreshing = False
+
+    def get_refresh_status(self) -> Dict[str, Any]:
+        """Return the current refresh status, counts, and last updated timestamps."""
+        with self._lock:
+            data = self._cache_data or {}
+            counts = {k: len(v) for k, v in data.items() if isinstance(v, list)}
+            total_count = sum(counts.values())
+            return {
+                "is_refreshing": self._is_refreshing,
+                "progress": self._refresh_progress or ("Idle" if not self._is_refreshing else "In progress"),
+                "percent": self._refresh_percent,
+                "error": self._refresh_error,
+                "last_updated": self._last_updated_iso or "Never",
+                "last_updated_display": self._last_updated_display or "Never",
+                "total_actions": total_count,
+                "counts": counts,
+            }
+
+    def get_stats(self) -> Dict[str, Any]:
+        return self.get_refresh_status()

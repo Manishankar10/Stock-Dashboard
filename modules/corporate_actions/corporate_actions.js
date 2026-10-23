@@ -176,9 +176,14 @@
         // Update timestamp
         const updateTag = document.getElementById('corp-last-updated-tag');
         if (updateTag) {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            updateTag.textContent = `🕒 Updated ${timeStr}`;
+            const meta = window.corpState.data && window.corpState.data.meta;
+            if (meta && meta.last_updated_display) {
+                updateTag.textContent = `🕒 Updated ${meta.last_updated_display}`;
+            } else {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                updateTag.textContent = `🕒 Updated ${timeStr}`;
+            }
         }
 
         Object.keys(TAB_CONFIGS).forEach(tabKey => {

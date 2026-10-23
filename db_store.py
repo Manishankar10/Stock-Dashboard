@@ -1,6 +1,12 @@
 import os
 import json
 
+try:
+    from modules.app_config import load_local_environment
+    load_local_environment()
+except Exception:
+    pass
+
 _MONGO_URI = os.environ.get("MONGO_URI") or os.environ.get("MONGODB_URI")
 db = None
 
@@ -170,6 +176,15 @@ def _init_sqlite_db():
                 CREATE TABLE IF NOT EXISTS technical_screener_info (
                     symbol TEXT PRIMARY KEY,
                     data TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS corporate_actions (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    last_updated TEXT,
+                    last_updated_display TEXT,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -462,4 +477,94 @@ def batch_append_technical_screener_info_db(stock_updates, category_id="smart_sc
             conn.commit()
     except Exception as e:
         print(f"SQLite batch_append_technical_screener_info error: {e}")
+
+def load_corporate_actions_db():
+    """
+    Loads latest corporate actions records from MongoDB Atlas collection 'corporate_actions'.
+    Falls back to SQLite local storage if MongoDB is unavailable.
+    """
+    if db is not None:
+        try:
+            col = db["corporate_actions"]
+            doc = col.find_one({"_id": "latest"})
+            if doc and "categories" in doc:
+                return {
+                    "categories": doc.get("categories", {}),
+                    "last_updated": doc.get("last_updated"),
+                    "last_updated_display": doc.get("last_updated_display"),
+                    "stats": doc.get("stats", {})
+                }
+        except Exception as e:
+            print(f"MongoDB load_corporate_actions error: {e}")
+
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data, last_updated, last_updated_display FROM corporate_actions WHERE id = 'latest'")
+            row = cursor.fetchone()
+            if row and row[0]:
+                categories = json.loads(row[0])
+                stats = {cat: len(items) for cat, items in categories.items() if isinstance(items, list)}
+                stats["total"] = sum(stats.values())
+                return {
+                    "categories": categories,
+                    "last_updated": row[1],
+                    "last_updated_display": row[2],
+                    "stats": stats
+                }
+    except Exception as e:
+        print(f"SQLite load_corporate_actions error: {e}")
+
+    return None
+
+def save_corporate_actions_db(categories, last_updated_iso=None, last_updated_display=None):
+    """
+    Saves corporate actions categorized dictionary and timestamp to MongoDB Atlas collection 'corporate_actions'.
+    Also syncs to SQLite local storage.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    last_updated_iso = last_updated_iso or now_utc.isoformat()
+    last_updated_display = last_updated_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+
+    stats = {cat: len(items) for cat, items in categories.items() if isinstance(items, list)}
+    stats["total"] = sum(stats.values())
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["corporate_actions"]
+            col.update_one(
+                {"_id": "latest"},
+                {"$set": {
+                    "categories": categories,
+                    "last_updated": last_updated_iso,
+                    "last_updated_display": last_updated_display,
+                    "stats": stats,
+                    "updated_at": last_updated_iso
+                }},
+                upsert=True
+            )
+        except Exception as e:
+            print(f"MongoDB save_corporate_actions error: {e}")
+
+    # 2. SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO corporate_actions (id, data, last_updated, last_updated_display, updated_at) VALUES ('latest', ?, ?, ?, CURRENT_TIMESTAMP)",
+                (json.dumps(categories, ensure_ascii=False), last_updated_iso, last_updated_display)
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_corporate_actions error: {e}")
+
+    return {
+        "last_updated": last_updated_iso,
+        "last_updated_display": last_updated_display,
+        "stats": stats
+    }
+
 

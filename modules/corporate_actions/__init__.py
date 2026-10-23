@@ -24,6 +24,12 @@ def init_corporate_actions(login_required: Callable, load_data_fn: Optional[Call
     _PROVIDER = CorporateActionsProvider(data_dir=data_dir)
 
 
+def get_provider() -> Optional[CorporateActionsProvider]:
+    """Retrieve the singleton CorporateActionsProvider instance."""
+    global _PROVIDER
+    return _PROVIDER
+
+
 def _guard(view):
     @wraps(view)
     def wrapper(*args, **kwargs):

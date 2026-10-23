@@ -548,6 +548,32 @@ def admin_industries_overview_refresh():
     return jsonify(res)
 
 
+@auth_admin_bp.route("/api/admin/corporate_actions/status", methods=["GET"])
+@admin_required
+def admin_corporate_actions_status():
+    from modules.corporate_actions import get_provider
+    provider = get_provider()
+    if not provider:
+        return jsonify({"error": "Corporate Actions provider not initialized."}), 500
+    return jsonify({
+        "success": True,
+        "status": provider.get_refresh_status()
+    })
+
+
+@auth_admin_bp.route("/api/admin/corporate_actions/refresh", methods=["POST"])
+@admin_required
+def admin_corporate_actions_refresh():
+    from modules.corporate_actions import get_provider
+    provider = get_provider()
+    if not provider:
+        return jsonify({"error": "Corporate Actions provider not initialized."}), 500
+    res = provider.start_admin_background_refresh()
+    if not res.get("success"):
+        return jsonify(res), 400
+    return jsonify(res)
+
+
 # ==============================================================================
 # PRODUCTION JSON FILES DOWNLOAD & MANAGEMENT
 # ==============================================================================

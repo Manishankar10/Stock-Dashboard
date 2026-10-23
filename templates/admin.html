@@ -984,6 +984,71 @@
                 </div>
             </div>
 
+            <!-- CARD 3: Corporate Actions Dataset Management -->
+            <div class="metric-card" style="margin-bottom: 24px; max-width: 850px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            🏛️ Corporate Actions Dataset Management
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                            Manage and synchronize official exchange disclosures (Bonus, Rights, Split, Buyback, Dividend) from NSE &amp; BSE stored in MongoDB Atlas.
+                        </p>
+                    </div>
+                    <span id="admin-corp-refresh-badge" class="badge" style="font-size: 12px; display: none;"></span>
+                </div>
+
+                <div class="settings-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Last Updated</span>
+                        <div id="admin-corp-last-updated" style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                    </div>
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Total Announcements</span>
+                        <div id="admin-corp-total-actions" style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                    </div>
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Database Storage</span>
+                        <div style="font-size: 14px; font-weight: 600; color: #10b981; margin-top: 4px;">MongoDB Atlas (Synced)</div>
+                    </div>
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Category Breakdown</span>
+                        <div id="admin-corp-category-breakdown" style="font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Live Progress & Status Bar -->
+                <div id="admin-corp-progress-container" style="display: none; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span id="admin-corp-progress-text" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary);">Refreshing from official stock exchange portals...</span>
+                        <span id="admin-corp-progress-percent" style="font-size: 12px; font-weight: 700; color: #10b981;">0%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                        <div id="admin-corp-progress-bar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.3s ease; border-radius: 4px;"></div>
+                    </div>
+                </div>
+
+                <!-- Callout Banner -->
+                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px;">
+                    <span style="font-size: 20px; line-height: 1;">⚡</span>
+                    <div style="font-size: 12.5px; color: var(--text-primary); line-height: 1.5;">
+                        <strong>Centralized Official Exchange Disclosures:</strong> End users access corporate actions directly from MongoDB Atlas without making live outbound requests. When you trigger a refresh here, the system connects to official NSE and BSE corporate action portals in a background thread, deduplicates the data, records the last updated date, and writes atomically to MongoDB Atlas.
+                    </div>
+                </div>
+
+                <div class="settings-actions-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div id="admin-corp-status-msg" style="font-size: 12.5px; color: var(--text-secondary);"></div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn btn-secondary" onclick="loadAdminCorporateActionsStatus()">
+                            🔄 Check Status
+                        </button>
+                        <button type="button" id="btn-refresh-corp" class="btn" style="padding: 10px 22px; font-size: 13px; background: #10b981; border-color: #10b981;" onclick="triggerAdminCorporateActionsRefresh()">
+                            🚀 Refresh from Official Sites (NSE &amp; BSE)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- TAB 4: System Tools & Backup -->
@@ -1276,7 +1341,7 @@
             if (tabContent) tabContent.classList.add('active');
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
-            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); }
+            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); }
             if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); }
         }
 
@@ -1843,6 +1908,135 @@
                 if (refreshBtn) {
                     refreshBtn.disabled = false;
                     refreshBtn.innerHTML = '🚀 Refresh Industries Overview Dataset';
+                }
+            }
+        }
+
+        // ==========================================
+        // CORPORATE ACTIONS CONTROLLERS & POLLER
+        // ==========================================
+        let adminCorpRefreshPollTimer = null;
+
+        async function loadAdminCorporateActionsStatus() {
+            try {
+                const res = await fetch('/api/admin/corporate_actions/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                const lastUpEl = document.getElementById('admin-corp-last-updated');
+                const totalActionsEl = document.getElementById('admin-corp-total-actions');
+                const breakdownEl = document.getElementById('admin-corp-category-breakdown');
+                const progContainer = document.getElementById('admin-corp-progress-container');
+                const progText = document.getElementById('admin-corp-progress-text');
+                const progPercent = document.getElementById('admin-corp-progress-percent');
+                const progBar = document.getElementById('admin-corp-progress-bar');
+                const refreshBtn = document.getElementById('btn-refresh-corp');
+                const badge = document.getElementById('admin-corp-refresh-badge');
+
+                if (lastUpEl) lastUpEl.innerText = s.last_updated_display || s.last_updated || 'Never';
+                if (totalActionsEl) totalActionsEl.innerText = `${s.total_actions || 0} Announcements`;
+                if (breakdownEl && s.counts) {
+                    const parts = [];
+                    if (s.counts.bonus) parts.push(`${s.counts.bonus} Bonus`);
+                    if (s.counts.rights) parts.push(`${s.counts.rights} Rights`);
+                    if (s.counts.split) parts.push(`${s.counts.split} Split`);
+                    if (s.counts.buyback) parts.push(`${s.counts.buyback} Buyback`);
+                    if (s.counts.dividend) parts.push(`${s.counts.dividend} Dividend`);
+                    breakdownEl.innerText = parts.join(' • ') || 'None';
+                    breakdownEl.title = parts.join(' • ') || 'None';
+                }
+
+                if (s.is_refreshing) {
+                    if (progContainer) progContainer.style.display = 'block';
+                    if (progText) progText.innerText = s.progress || 'Connecting to official stock exchange portals...';
+                    if (progPercent) progPercent.innerText = `${s.percent || 0}%`;
+                    if (progBar) progBar.style.width = `${s.percent || 0}%`;
+                    if (refreshBtn) {
+                        refreshBtn.disabled = true;
+                        refreshBtn.innerHTML = '⏳ Fetching Official Disclosures...';
+                        refreshBtn.style.opacity = '0.7';
+                    }
+                    if (badge) {
+                        badge.style.display = 'inline-block';
+                        badge.className = 'badge badge-warning';
+                        badge.innerText = 'Refreshing...';
+                    }
+
+                    if (adminCorpRefreshPollTimer) clearTimeout(adminCorpRefreshPollTimer);
+                    adminCorpRefreshPollTimer = setTimeout(loadAdminCorporateActionsStatus, 2500);
+                } else {
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.innerHTML = '🚀 Refresh from Official Sites (NSE &amp; BSE)';
+                        refreshBtn.style.opacity = '1';
+                    }
+
+                    if (s.percent === 100) {
+                        if (progContainer) progContainer.style.display = 'block';
+                        if (progText) progText.innerText = s.progress || 'Completed successfully.';
+                        if (progPercent) progPercent.innerText = '100%';
+                        if (progBar) progBar.style.width = '100%';
+                        if (badge) {
+                            badge.style.display = 'inline-block';
+                            badge.className = 'badge badge-success';
+                            badge.innerText = 'Up to date';
+                        }
+                    } else if (s.error) {
+                        if (progContainer) progContainer.style.display = 'block';
+                        if (progText) progText.innerText = `Error: ${s.error}`;
+                        if (badge) {
+                            badge.style.display = 'inline-block';
+                            badge.className = 'badge badge-danger';
+                            badge.innerText = 'Failed';
+                        }
+                    } else {
+                        if (progContainer) progContainer.style.display = 'none';
+                        if (badge) badge.style.display = 'none';
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching admin corporate actions status:', e);
+            }
+        }
+
+        async function triggerAdminCorporateActionsRefresh() {
+            const confirmed = confirm(
+                'Are you sure you want to refresh Corporate Actions from official sites?\n\n' +
+                'This will:\n' +
+                '1. Query official NSE & BSE exchange announcement APIs in a background thread\n' +
+                '2. Parse and deduplicate Bonus, Rights, Split, Buyback, and Dividend disclosures\n' +
+                '3. Update MongoDB Atlas and timestamp the dataset without interrupting browsing users.\n\n' +
+                'Proceed?'
+            );
+            if (!confirmed) return;
+
+            const refreshBtn = document.getElementById('btn-refresh-corp');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = 'Starting Official Refresh...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/corporate_actions/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadAdminCorporateActionsStatus();
+                } else {
+                    alert('❌ Failed to start refresh: ' + (data.error || data.message || 'Unknown error'));
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.innerHTML = '🚀 Refresh from Official Sites (NSE &amp; BSE)';
+                    }
+                }
+            } catch (e) {
+                alert('❌ Error requesting refresh: ' + e.message);
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '🚀 Refresh from Official Sites (NSE &amp; BSE)';
                 }
             }
         }
@@ -2538,6 +2732,7 @@
             await loadAdminUsers();
             await loadSystemSettings();
             await loadAdminIndustriesStatus();
+            await loadAdminCorporateActionsStatus();
             await loadExternalApiLogsBadge();
             await loadProductionJsonFilesList();
         }
