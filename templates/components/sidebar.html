@@ -56,6 +56,39 @@
             <span class="sidebar-nav-text">Smallcases</span>
         </button>
 
+        <!-- Market Pulse Main Menu with Submenu -->
+        <div class="market-pulse-menu-item sidebar-tools-nav">
+            <button type="button" class="sidebar-nav-item tools-menu-trigger" id="sidebar-nav-market-pulse" aria-expanded="false" aria-haspopup="true" onclick="toggleMarketPulseSubmenu(event)">
+                <span class="sidebar-nav-icon">💓</span>
+                <span class="sidebar-nav-text">Market Pulse</span>
+                <span class="sidebar-nav-arrow" aria-hidden="true">›</span>
+            </button>
+            <div class="market-pulse-submenu sidebar-tools-submenu" aria-label="Market Pulse">
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-ipos" onclick="switchTab('ipos'); closeMarketPulseSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">📈</span><span class="sidebar-nav-text">IPO GMP</span>
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-corporate-actions" onclick="switchTab('corporate-actions'); closeMarketPulseSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">🏛️</span><span class="sidebar-nav-text">Corporate Actions</span>
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-quarterly-results" onclick="switchTab('quarterly-results'); closeMarketPulseSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">📑</span><span class="sidebar-nav-text">Quarterly Results</span>
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-transactions" onclick="switchTab('transactions'); closeMarketPulseSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">⚡</span><span class="sidebar-nav-text">Transactions</span>
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-sector-rotation" onclick="switchTab('sector-rotation'); closeMarketPulseSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">🔄</span><span class="sidebar-nav-text">Sector Rotation</span>
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-industries-overview" onclick="switchTab('industries-overview'); closeMarketPulseSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">🏭</span><span class="sidebar-nav-text">Industries Overview</span>
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-shareholding" onclick="switchTab('shareholding'); closeMarketPulseSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">🤝</span><span class="sidebar-nav-text">Shareholding Patterns</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tools Main Menu with Submenu (MF, Plan Calculator, Technical Screener) -->
         <div class="tools-menu-item sidebar-tools-nav">
             <button type="button" class="sidebar-nav-item tools-menu-trigger" id="sidebar-nav-tools" aria-expanded="false" aria-haspopup="true" onclick="toggleToolsSubmenu(event)">
                 <span class="sidebar-nav-icon">🧰</span>
@@ -66,29 +99,8 @@
                 <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-mutual-funds" onclick="switchTab('mutual-funds'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
                     <span class="sidebar-nav-icon">📊</span><span class="sidebar-nav-text">Mutual Funds</span>
                 </button>
-                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-ipos" onclick="switchTab('ipos'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
-                    <span class="sidebar-nav-icon">📈</span><span class="sidebar-nav-text">IPO GMP</span>
-                </button>
                 <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-plan-calculator" onclick="switchTab('plan-calculator'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
                     <span class="sidebar-nav-icon">🧮</span><span class="sidebar-nav-text">Plan Calculator</span>
-                </button>
-                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-corporate-actions" onclick="switchTab('corporate-actions'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
-                    <span class="sidebar-nav-icon">🏛️</span><span class="sidebar-nav-text">Corporate Actions</span>
-                </button>
-                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-quarterly-results" onclick="switchTab('quarterly-results'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
-                    <span class="sidebar-nav-icon">📑</span><span class="sidebar-nav-text">Quarterly Results</span>
-                </button>
-                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-transactions" onclick="switchTab('transactions'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
-                    <span class="sidebar-nav-icon">⚡</span><span class="sidebar-nav-text">Transactions</span>
-                </button>
-                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-sector-rotation" onclick="switchTab('sector-rotation'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
-                    <span class="sidebar-nav-icon">🔄</span><span class="sidebar-nav-text">Sector Rotation</span>
-                </button>
-                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-industries-overview" onclick="switchTab('industries-overview'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
-                    <span class="sidebar-nav-icon">🏭</span><span class="sidebar-nav-text">Industries Overview</span>
-                </button>
-                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-shareholding" onclick="switchTab('shareholding'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
-                    <span class="sidebar-nav-icon">🤝</span><span class="sidebar-nav-text">Shareholding Patterns</span>
                 </button>
                 <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-technical-screener" onclick="switchTab('technical-screener'); closeToolsSubmenu(); closeMobileSidebarOnSelect();">
                     <span class="sidebar-nav-icon">📐</span><span class="sidebar-nav-text">Technical Screener</span>
@@ -206,8 +218,9 @@
 .menu-item:hover { background: var(--table-hover-bg); color: var(--btn-primary-bg); }
 .menu-divider { height: 1px; margin: 4px 0; background: var(--border-color); }
 
-/* Tools Menu Item & Submenu Accordion */
-.tools-menu-item { position: relative; width: 100%; }
+/* Tools & Market Pulse Menu Items & Submenu Accordion */
+.tools-menu-item,
+.market-pulse-menu-item { position: relative; width: 100%; }
 .tools-menu-trigger {
     width: 100%;
     justify-content: space-between;
@@ -229,15 +242,17 @@
     line-height: 1;
     transition: transform 0.2s ease;
 }
-.tools-menu-item.open .sidebar-nav-arrow {
+.tools-menu-item.open .sidebar-nav-arrow,
+.market-pulse-menu-item.open .sidebar-nav-arrow {
     transform: rotate(90deg);
 }
 
 /* =========================================================
-   TOOLS SUBMENU FLYOUT (Desktop: Hover right; Mobile: Accordion)
+   TOOLS & MARKET PULSE SUBMENU FLYOUT (Desktop: Hover right; Mobile: Accordion)
    ========================================================= */
 @media (min-width: 769px) {
-    .tools-submenu {
+    .tools-submenu,
+    .market-pulse-submenu {
         display: none;
         position: fixed;
         left: 240px;
@@ -253,12 +268,14 @@
         margin: 0;
     }
 
-    .app-sidebar.collapsed .tools-submenu {
+    .app-sidebar.collapsed .tools-submenu,
+    .app-sidebar.collapsed .market-pulse-submenu {
         left: 66px;
     }
 
     /* Invisible hover bridge to eliminate gap jitter when moving mouse into flyout */
-    .tools-submenu::before {
+    .tools-submenu::before,
+    .market-pulse-submenu::before {
         content: "";
         position: absolute;
         top: -8px;
@@ -270,16 +287,20 @@
 
     /* Open submenu to the right on hover or when open class is active */
     .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
-    .tools-menu-item.open > .tools-submenu:not(.force-hidden) {
+    .tools-menu-item.open > .tools-submenu:not(.force-hidden),
+    .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
+    .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
         display: flex !important;
     }
 
     /* Instantly disappear when clicked even if cursor is still hovering */
-    .tools-submenu.force-hidden {
+    .tools-submenu.force-hidden,
+    .market-pulse-submenu.force-hidden {
         display: none !important;
     }
 
-    .tools-submenu .sidebar-nav-item {
+    .tools-submenu .sidebar-nav-item,
+    .market-pulse-submenu .sidebar-nav-item {
         padding: 8px 12px;
         font-size: 13px;
         border-radius: 6px;
@@ -294,23 +315,28 @@
     }
 
     .tools-submenu .sidebar-nav-text,
-    .app-sidebar.collapsed .tools-submenu .sidebar-nav-text {
+    .market-pulse-submenu .sidebar-nav-text,
+    .app-sidebar.collapsed .tools-submenu .sidebar-nav-text,
+    .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-text {
         display: inline !important;
     }
 
-    .app-sidebar.collapsed .tools-submenu .sidebar-nav-item {
+    .app-sidebar.collapsed .tools-submenu .sidebar-nav-item,
+    .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-item {
         justify-content: flex-start !important;
         padding: 8px 12px !important;
     }
 
-    .tools-submenu .sidebar-nav-item:hover {
+    .tools-submenu .sidebar-nav-item:hover,
+    .market-pulse-submenu .sidebar-nav-item:hover {
         background-color: var(--table-hover-bg);
         color: var(--text-primary);
     }
 }
 
 @media (max-width: 768px) {
-    .tools-submenu {
+    .tools-submenu,
+    .market-pulse-submenu {
         display: none;
         position: static;
         min-width: 0;
@@ -325,15 +351,18 @@
         gap: 3px;
     }
 
-    .tools-menu-item.open > .tools-submenu:not(.force-hidden) {
+    .tools-menu-item.open > .tools-submenu:not(.force-hidden),
+    .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
         display: flex !important;
     }
 
-    .tools-submenu.force-hidden {
+    .tools-submenu.force-hidden,
+    .market-pulse-submenu.force-hidden {
         display: none !important;
     }
 
-    .tools-submenu .sidebar-nav-item {
+    .tools-submenu .sidebar-nav-item,
+    .market-pulse-submenu .sidebar-nav-item {
         padding: 7px 10px;
         font-size: 12.5px;
         border-radius: 6px;
@@ -345,7 +374,8 @@
         justify-content: flex-start;
     }
 
-    .tools-submenu .sidebar-nav-item:hover {
+    .tools-submenu .sidebar-nav-item:hover,
+    .market-pulse-submenu .sidebar-nav-item:hover {
         background-color: var(--table-hover-bg);
         color: var(--text-primary);
     }
@@ -760,7 +790,9 @@ body.sidebar-collapsed .sidebar-user-arrow {
 }
 
 .app-sidebar.collapsed .tools-menu-item,
-body.sidebar-collapsed .tools-menu-item {
+body.sidebar-collapsed .tools-menu-item,
+.app-sidebar.collapsed .market-pulse-menu-item,
+body.sidebar-collapsed .market-pulse-menu-item {
     width: 100% !important;
     display: flex !important;
     justify-content: center !important;
@@ -917,11 +949,59 @@ body.sidebar-collapsed .sidebar-nav-icon {
         if (shouldOpen) dropdown.classList.add('show');
     }
 
+    function toggleMarketPulseSubmenu(event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        closeToolsSubmenu();
+        const item = document.querySelector('.market-pulse-menu-item');
+        const trigger = document.getElementById('sidebar-nav-market-pulse');
+        if (!item) return;
+        const submenu = item.querySelector('.market-pulse-submenu');
+        if (submenu) submenu.classList.remove('force-hidden');
+        const open = item.classList.toggle('open');
+        if (trigger) trigger.setAttribute('aria-expanded', String(open));
+        if (open && window.innerWidth > 768) {
+            positionMarketPulseSubmenu();
+        }
+    }
+
+    function positionMarketPulseSubmenu() {
+        if (window.innerWidth <= 768) return;
+        const item = document.querySelector('.market-pulse-menu-item');
+        if (!item) return;
+        const submenu = item.querySelector('.market-pulse-submenu');
+        if (!submenu) return;
+        const bounds = item.getBoundingClientRect();
+        const sidebar = document.getElementById('app-sidebar');
+        const isCollapsed = sidebar && sidebar.classList.contains('collapsed');
+        
+        const submenuHeight = submenu.offsetHeight || 220;
+        const maxTop = window.innerHeight - submenuHeight - 10;
+        submenu.style.top = Math.max(10, Math.min(bounds.top, maxTop)) + 'px';
+        submenu.style.left = (isCollapsed ? 66 : 240) + 'px';
+    }
+
+    function closeMarketPulseSubmenu() {
+        const item = document.querySelector('.market-pulse-menu-item');
+        if (item) {
+            item.classList.remove('open');
+            const submenu = item.querySelector('.market-pulse-submenu');
+            if (submenu) {
+                submenu.classList.add('force-hidden');
+            }
+        }
+        const trigger = document.getElementById('sidebar-nav-market-pulse');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
+
     function toggleToolsSubmenu(event) {
         if (event) {
             event.stopPropagation();
             event.preventDefault();
         }
+        closeMarketPulseSubmenu();
         const item = document.querySelector('.tools-menu-item');
         const trigger = document.getElementById('sidebar-nav-tools');
         if (!item) return;
@@ -963,6 +1043,14 @@ body.sidebar-collapsed .sidebar-nav-icon {
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
     }
 
+    // Expose submenu functions to global scope
+    window.toggleMarketPulseSubmenu = toggleMarketPulseSubmenu;
+    window.positionMarketPulseSubmenu = positionMarketPulseSubmenu;
+    window.closeMarketPulseSubmenu = closeMarketPulseSubmenu;
+    window.toggleToolsSubmenu = toggleToolsSubmenu;
+    window.positionToolsSubmenu = positionToolsSubmenu;
+    window.closeToolsSubmenu = closeToolsSubmenu;
+
     function closeSettingsMenu() {
         document.querySelectorAll('.menu-dropdown-content.show').forEach(menu => menu.classList.remove('show'));
     }
@@ -996,13 +1084,31 @@ body.sidebar-collapsed .sidebar-nav-icon {
         if (!event.target.closest('.tools-menu-item')) {
             closeToolsSubmenu();
         }
+        if (!event.target.closest('.market-pulse-menu-item')) {
+            closeMarketPulseSubmenu();
+        }
     });
 
-    // Restore saved collapse preference on load & bind tools submenu hover
+    // Restore saved collapse preference on load & bind submenu hover
     document.addEventListener('DOMContentLoaded', function() {
         const saved = localStorage.getItem('sidebarCollapsed');
         if (saved === 'true' && window.innerWidth > 768) {
             toggleSidebarCollapse(true);
+        }
+
+        const pulseItem = document.querySelector('.market-pulse-menu-item');
+        if (pulseItem) {
+            pulseItem.addEventListener('mouseenter', function() {
+                if (window.innerWidth > 768) {
+                    positionMarketPulseSubmenu();
+                    const submenu = pulseItem.querySelector('.market-pulse-submenu');
+                    if (submenu) submenu.classList.remove('force-hidden');
+                }
+            });
+            pulseItem.addEventListener('mouseleave', function() {
+                const submenu = pulseItem.querySelector('.market-pulse-submenu');
+                if (submenu) submenu.classList.remove('force-hidden');
+            });
         }
 
         const toolsItem = document.querySelector('.tools-menu-item');
@@ -1024,6 +1130,7 @@ body.sidebar-collapsed .sidebar-nav-icon {
         if (sidebarNav) {
             sidebarNav.addEventListener('scroll', function() {
                 if (window.innerWidth > 768) {
+                    positionMarketPulseSubmenu();
                     positionToolsSubmenu();
                 }
             }, { passive: true });
