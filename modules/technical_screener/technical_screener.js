@@ -79,6 +79,23 @@
             `;
         });
         deck.innerHTML = html;
+        initCategoryDeckWheelScroll();
+    }
+
+    /**
+     * Enable smooth horizontal wheel scrolling on category deck for desktop web
+     */
+    function initCategoryDeckWheelScroll() {
+        const deck = document.getElementById('ts-category-deck');
+        if (deck && !deck.dataset.wheelBound) {
+            deck.dataset.wheelBound = 'true';
+            deck.addEventListener('wheel', (e) => {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    deck.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
+        }
     }
 
     /**
@@ -171,10 +188,11 @@
 
         currentTimeframe = tf;
 
-        // Update button active state
-        document.querySelectorAll('.ts-tf-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.id === `ts-tf-${tf}`);
-        });
+        // Sync dropdown selection if changed programmatically
+        const select = document.getElementById('ts-timeframe-select');
+        if (select && select.value !== tf) {
+            select.value = tf;
+        }
 
         await triggerTechnicalScreenerScan(false);
     }
@@ -215,11 +233,17 @@
                 scanResults = data;
                 renderScreenerView(data);
                 if (statsEl) {
-                    const totalScanners = Object.keys(data.scanners || {}).length;
-                    const totalMatched = Object.values(data.scanners || {}).reduce((acc, s) => acc + (s.stocks ? s.stocks.length : 0), 0);
-                    const cacheNotice = data.from_cache ? ' · <span style="color:#10b981;">⚡ Cached Instant</span>' : '';
                     const tfLabel = currentTimeframe === 'weekly' ? 'Weekly 1W' : (currentTimeframe === 'monthly' ? 'Monthly 1M' : 'Daily 1D');
-                    statsEl.innerHTML = `Timeframe: <b>${tfLabel}</b> · Showing <b>${totalScanners}</b> scanners · Analyzed <b>${data.total_scanned || 0}</b> stocks · <b>${totalMatched}</b> active signals${cacheNotice}`;
+                    if (data.no_stocks) {
+                        statsEl.innerHTML = `No stocks found in <b>${escapeHtml(formatScopeLabel(currentScope))}</b>`;
+                    } else if (data.needs_scan) {
+                        statsEl.innerHTML = `Timeframe: <b>${tfLabel}</b> · Universe: <b>${data.total_scanned || 0}</b> stocks · Click 'Scan Now' to run`;
+                    } else {
+                        const totalScanners = Object.keys(data.scanners || {}).length;
+                        const totalMatched = Object.values(data.scanners || {}).reduce((acc, s) => acc + (s.stocks ? s.stocks.length : 0), 0);
+                        const cacheNotice = data.from_cache ? ' · <span style="color:#10b981;">⚡ Cached Instant</span>' : '';
+                        statsEl.innerHTML = `Timeframe: <b>${tfLabel}</b> · Showing <b>${totalScanners}</b> scanners · Analyzed <b>${data.total_scanned || 0}</b> stocks · <b>${totalMatched}</b> active signals${cacheNotice}`;
+                    }
                 }
             } else {
                 renderError(data.error || 'Unable to complete technical scan');
@@ -236,6 +260,17 @@
     }
 
     /**
+     * Format scope human readable label
+     */
+    function formatScopeLabel(scope) {
+        if (scope === 'portfolio') return 'Portfolio Holdings';
+        if (scope === 'watchlist') {
+            return currentWatchlistId ? `Watchlist (${currentWatchlistId})` : 'All Watchlists';
+        }
+        return 'All Tracked Stocks';
+    }
+
+    /**
      * Render Screener View based on Category
      */
     function renderScreenerView(data) {
@@ -243,6 +278,40 @@
         if (!container) return;
 
         const catMeta = hierarchyData?.categories?.find(c => c.id === currentCategory);
+
+        // Check if user has no stocks tracked in selected scope
+        if (data.no_stocks) {
+            container.innerHTML = `
+                <div class="ts-scan-prompt-wrap">
+                    <div class="ts-scan-prompt-card">
+                        <div class="ts-prompt-icon">💼</div>
+                        <h3 class="ts-prompt-title">No Stocks in ${escapeHtml(formatScopeLabel(currentScope))}</h3>
+                        <p class="ts-prompt-desc">Add stocks to your Portfolio or Watchlists to start screening them with institutional technical signals.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        // Check if on-demand scan is required (not loaded by default)
+        if (data.needs_scan) {
+            const catName = catMeta ? catMeta.name : 'Technical Signals';
+            const tfLabel = currentTimeframe === 'weekly' ? 'Weekly (1W)' : (currentTimeframe === 'monthly' ? 'Monthly (1M)' : 'Daily (1D)');
+            container.innerHTML = `
+                <div class="ts-scan-prompt-wrap">
+                    <div class="ts-scan-prompt-card">
+                        <div class="ts-prompt-icon">📡</div>
+                        <h3 class="ts-prompt-title">Ready to Scan ${escapeHtml(catName)}</h3>
+                        <p class="ts-prompt-desc">Found <strong>${data.total_scanned || 0}</strong> stocks in <strong>${escapeHtml(formatScopeLabel(currentScope))}</strong> for <strong>${escapeHtml(tfLabel)}</strong> timeframe.</p>
+                        <p class="ts-prompt-subdesc">Click <strong>Scan Now</strong> to compute real-time technical signals.</p>
+                        <button type="button" class="ts-action-btn primary ts-prompt-btn" onclick="triggerTechnicalScreenerScan(true)">
+                            <span>🔄</span> <span>Scan Now</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
 
         // If category is planned, show planned roadmap banner
         if (catMeta?.status === 'planned') {

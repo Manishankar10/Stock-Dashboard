@@ -20,81 +20,6 @@ technical_screener_bp = Blueprint("technical_screener", __name__)
 _SCREENER_CACHE = {}
 _SCREENER_LOCK = threading.Lock()
 
-# Standard Liquid Universe for "All Market" scope
-POPULAR_INDIAN_STOCKS = {
-    'RELIANCE': 'Reliance Industries Ltd.',
-    'TCS': 'Tata Consultancy Services Ltd.',
-    'HDFCBANK': 'HDFC Bank Ltd.',
-    'INFY': 'Infosys Ltd.',
-    'ICICIBANK': 'ICICI Bank Ltd.',
-    'HINDUNILVR': 'Hindustan Unilever Ltd.',
-    'ITC': 'ITC Ltd.',
-    'SBIN': 'State Bank of India',
-    'BHARTIARTL': 'Bharti Airtel Ltd.',
-    'KOTAKBANK': 'Kotak Mahindra Bank Ltd.',
-    'LT': 'Larsen & Toubro Ltd.',
-    'AXISBANK': 'Axis Bank Ltd.',
-    'ASIANPAINT': 'Asian Paints Ltd.',
-    'HCLTECH': 'HCL Technologies Ltd.',
-    'BAJFINANCE': 'Bajaj Finance Ltd.',
-    'MARUTI': 'Maruti Suzuki India Ltd.',
-    'SUNPHARMA': 'Sun Pharmaceutical Industries Ltd.',
-    'TITAN': 'Titan Company Ltd.',
-    'ULTRACEMCO': 'UltraTech Cement Ltd.',
-    'TATASTEEL': 'Tata Steel Ltd.',
-    'NTPC': 'NTPC Ltd.',
-    'POWERGRID': 'Power Grid Corporation of India Ltd.',
-    'M&M': 'Mahindra & Mahindra Ltd.',
-    'TATAMOTORS': 'Tata Motors Ltd.',
-    'ADANIENT': 'Adani Enterprises Ltd.',
-    'ADANIPORTS': 'Adani Ports and Special Economic Zone Ltd.',
-    'COALINDIA': 'Coal India Ltd.',
-    'BAJAJFINSV': 'Bajaj Finserv Ltd.',
-    'ONGC': 'Oil and Natural Gas Corporation Ltd.',
-    'JSWSTEEL': 'JSW Steel Ltd.',
-    'GRASIM': 'Grasim Industries Ltd.',
-    'HINDALCO': 'Hindalco Industries Ltd.',
-    'TECHM': 'Tech Mahindra Ltd.',
-    'INDUSINDBK': 'IndusInd Bank Ltd.',
-    'WIPRO': 'Wipro Ltd.',
-    'NESTLEIND': 'Nestle India Ltd.',
-    'DRREDDY': 'Dr. Reddy\'s Laboratories Ltd.',
-    'CIPLA': 'Cipla Ltd.',
-    'BPCL': 'Bharat Petroleum Corporation Ltd.',
-    'EICHERMOT': 'Eicher Motors Ltd.',
-    'HEROMOTOCO': 'Hero MotoCorp Ltd.',
-    'BRITANNIA': 'Britannia Industries Ltd.',
-    'APOLLOHOSP': 'Apollo Hospitals Enterprise Ltd.',
-    'DIVISLAB': 'Divi\'s Laboratories Ltd.',
-    'TATACONSUM': 'Tata Consumer Products Ltd.',
-    'BAJAJ-AUTO': 'Bajaj Auto Ltd.',
-    'SBILIFE': 'SBI Life Insurance Company Ltd.',
-    'HDFCLIFE': 'HDFC Life Insurance Company Ltd.',
-    'SHRIRAMFIN': 'Shriram Finance Ltd.',
-    'LTIM': 'LTIMindtree Ltd.',
-    'BEL': 'Bharat Electronics Ltd.',
-    'HAL': 'Hindustan Aeronautics Ltd.',
-    'ZOMATO': 'Zomato Ltd.',
-    'JIOFIN': 'Jio Financial Services Ltd.',
-    'VEDL': 'Vedanta Ltd.',
-    'TRENT': 'Trent Ltd.',
-    'VBL': 'Varun Beverages Ltd.',
-    'POLYCAB': 'Polycab India Ltd.',
-    'CHOLAFIN': 'Cholamandalam Investment and Finance',
-    'PIDILITIND': 'Pidilite Industries Ltd.',
-    'SIEMENS': 'Siemens Ltd.',
-    'ABB': 'ABB India Ltd.',
-    'DLF': 'DLF Ltd.',
-    'BSE': 'BSE Ltd.',
-    'CDSL': 'Central Depository Services Ltd.',
-    'MCX': 'Multi Commodity Exchange of India',
-    'DIXON': 'Dixon Technologies (India) Ltd.',
-    'KALYANKJIL': 'Kalyan Jewellers India Ltd.',
-    'SUZLON': 'Suzlon Energy Ltd.',
-    'IREDA': 'Indian Renewable Energy Dev Agency',
-    'IRFC': 'Indian Railway Finance Corp'
-}
-
 def _get_master_screener_hierarchy():
     """
     Returns the complete hierarchy of the 6 parent categories and all screener definitions.
@@ -682,15 +607,30 @@ def _get_target_symbols_for_scope(scope="all", watchlist_id=None, uname="admin")
             symbols = []
 
     if scope == "all":
-        # All market universe + user's active holdings/watchlists merged
-        target_set = set(POPULAR_INDIAN_STOCKS.keys())
+        # All tracked stocks across portfolio and all watchlists
+        target_set = set()
         try:
             from modules.portfolio.portfolio_routes import load_portfolios
             from modules.insights.insights_routes import _extract_pf_symbols_set
             pf_syms = _extract_pf_symbols_set(load_portfolios(uname))
             target_set.update(pf_syms)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error loading portfolio symbols for all scope: {e}")
+
+        try:
+            from modules.watchlist.watchlist_routes import load_data as load_watchlists
+            wl_data = load_watchlists(uname)
+            if isinstance(wl_data, dict):
+                for w_name, items in wl_data.items():
+                    if isinstance(items, list):
+                        for it in items:
+                            if isinstance(it, dict) and it.get("symbol"):
+                                target_set.add(it["symbol"])
+                            elif isinstance(it, str):
+                                target_set.add(it)
+        except Exception as e:
+            print(f"Error loading watchlist symbols for all scope: {e}")
+
         symbols = list(target_set)
     elif not symbols:
         # User selected portfolio or watchlist but it has 0 stocks
@@ -1708,6 +1648,7 @@ def run_technical_screener_scan_api():
             "scope": scope,
             "timeframe": timeframe,
             "total_scanned": 0,
+            "no_stocks": True,
             "scanners": {},
             "stocks": {}
         })
@@ -1725,8 +1666,8 @@ def run_technical_screener_scan_api():
             if doc and doc.get("scanners") and doc.get("categories_scanned", {}).get(category):
                 valid_cached_stocks += 1
 
-        # If >= 80% of targets are already cached in DB, build response directly from Collection 2
-        if valid_cached_stocks >= max(1, int(len(target_symbols) * 0.8)):
+        # If we have cached results for at least 1 stock, build response directly from Collection 2
+        if valid_cached_stocks > 0:
             scanners_result = _build_category_scanners_response(hierarchy, category, existing_info, target_symbols)
             return jsonify({
                 "success": True,
@@ -1735,8 +1676,22 @@ def run_technical_screener_scan_api():
                 "timeframe": timeframe,
                 "total_scanned": len(target_symbols),
                 "from_cache": True,
+                "needs_scan": False,
                 "scanners": scanners_result,
                 "stocks": existing_info
+            })
+        else:
+            # Don't auto-load heavy network scans by default! Wait for explicit "Scan Now" click
+            return jsonify({
+                "success": True,
+                "category": category,
+                "scope": scope,
+                "timeframe": timeframe,
+                "total_scanned": len(target_symbols),
+                "from_cache": False,
+                "needs_scan": True,
+                "scanners": {},
+                "stocks": {}
             })
 
     # Determine YF interval and range based on timeframe
@@ -1780,7 +1735,7 @@ def run_technical_screener_scan_api():
                     return None
 
                 meta = data.get('meta', {})
-                name = POPULAR_INDIAN_STOCKS.get(symbol, meta.get('shortName') or meta.get('longName') or symbol)
+                name = meta.get('shortName') or meta.get('longName') or symbol
 
                 quote = data.get('indicators', {}).get('quote', [{}])[0]
                 raw_closes = quote.get('close', []) or []

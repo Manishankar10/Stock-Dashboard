@@ -27,13 +27,13 @@
             <!-- Scope Segmented Control, Timeframe & Actions -->
             <div class="ts-hero-controls">
                 <div class="ts-scope-segmented-bar" role="group" aria-label="Screener Scope Filter">
-                    <button type="button" class="ts-scope-btn active" id="ts-scope-all" onclick="setTechnicalScreenerScope('all')">
-                        <span>🌐</span><span>All Market</span>
+                    <button type="button" class="ts-scope-btn active" id="ts-scope-all" onclick="setTechnicalScreenerScope('all')" title="All tracked stocks across Portfolio and Watchlists">
+                        <span>🌐</span><span>All Stocks</span>
                     </button>
-                    <button type="button" class="ts-scope-btn" id="ts-scope-portfolio" onclick="setTechnicalScreenerScope('portfolio')">
+                    <button type="button" class="ts-scope-btn" id="ts-scope-portfolio" onclick="setTechnicalScreenerScope('portfolio')" title="Portfolio holdings only">
                         <span>💼</span><span>Portfolio</span>
                     </button>
-                    <button type="button" class="ts-scope-btn" id="ts-scope-watchlist" onclick="setTechnicalScreenerScope('watchlist')">
+                    <button type="button" class="ts-scope-btn" id="ts-scope-watchlist" onclick="setTechnicalScreenerScope('watchlist')" title="Watchlist stocks only">
                         <span>⭐</span><span>Watchlist</span>
                     </button>
                 </div>
@@ -46,17 +46,14 @@
                     </select>
                 </div>
 
-                <!-- Timeframe Segmented Control (Daily, Weekly, Monthly) -->
-                <div class="ts-timeframe-segmented-bar" role="group" aria-label="Screener Timeframe">
-                    <button type="button" class="ts-tf-btn active" id="ts-tf-daily" onclick="setTechnicalScreenerTimeframe('daily')" title="Daily Timeframe (1D)">
-                        <span class="ts-tf-dot"></span><span>1D (Daily)</span>
-                    </button>
-                    <button type="button" class="ts-tf-btn" id="ts-tf-weekly" onclick="setTechnicalScreenerTimeframe('weekly')" title="Weekly Timeframe (1W)">
-                        <span class="ts-tf-dot"></span><span>1W (Weekly)</span>
-                    </button>
-                    <button type="button" class="ts-tf-btn" id="ts-tf-monthly" onclick="setTechnicalScreenerTimeframe('monthly')" title="Monthly Timeframe (1M)">
-                        <span class="ts-tf-dot"></span><span>1M (Monthly)</span>
-                    </button>
+                <!-- Timeframe Dropdown (Daily, Weekly, Monthly) -->
+                <div class="ts-timeframe-dropdown-wrap" title="Screener Timeframe">
+                    <span class="ts-tf-icon">⏱️</span>
+                    <select id="ts-timeframe-select" class="ts-timeframe-select" onchange="setTechnicalScreenerTimeframe(this.value)">
+                        <option value="daily" selected>1D (Daily)</option>
+                        <option value="weekly">1W (Weekly)</option>
+                        <option value="monthly">1M (Monthly)</option>
+                    </select>
                 </div>
 
                 <button type="button" class="ts-action-btn primary" id="ts-btn-refresh-scan" onclick="triggerTechnicalScreenerScan(true)" title="Run real-time scan">
@@ -98,7 +95,7 @@
         <!-- 3. Real-Time Filter & Search Strip -->
         <div class="ts-filter-strip">
             <div class="ts-search-box">
-                <span style="color: var(--text-muted); font-size: 13px;">🔍</span>
+                <span class="ts-search-icon">🔍</span>
                 <input type="text" id="ts-search-input" class="ts-search-input" placeholder="Filter by symbol, name, or metric..." oninput="filterTechnicalScreenerResults()">
             </div>
             <div class="ts-stats-counter" id="ts-stats-counter">
