@@ -7096,4 +7096,342 @@
         window.showCanvasObjectMenu = showCanvasObjectMenu;
         window.hideCanvasObjectMenu = hideCanvasObjectMenu;
 
+        // =========================================================
+        // TRADINGVIEW-STYLE CHART IMAGE GENERATION & EXPORT
+        // =========================================================
+
+        async function generateTradingViewChartSnapshotCanvas() {
+            const chartInstance = window.mainChart || mainChart;
+            if (!chartInstance || typeof chartInstance.takeScreenshot !== 'function') {
+                return null;
+            }
+
+            const mainCanvas = chartInstance.takeScreenshot();
+            if (!mainCanvas) return null;
+
+            const drawingCanvas = document.getElementById('chartDrawingCanvas');
+            const rsiPane = document.getElementById('rsiChartPane');
+            const rsiInstance = window.rsiChart || rsiChart;
+            const isRsiVisible = rsiPane && rsiPane.style.display !== 'none' && rsiInstance && typeof rsiInstance.takeScreenshot === 'function';
+            const rsiCanvas = isRsiVisible ? rsiInstance.takeScreenshot() : null;
+
+            const macdPane = document.getElementById('macdChartPane');
+            const macdInstance = window.macdChart || macdChart;
+            const isMacdVisible = macdPane && macdPane.style.display !== 'none' && macdInstance && typeof macdInstance.takeScreenshot === 'function';
+            const macdCanvas = isMacdVisible ? macdInstance.takeScreenshot() : null;
+
+            const w = mainCanvas.width;
+            const headerH = 64;
+            const footerH = 38;
+            const mainH = mainCanvas.height;
+            const rsiH = rsiCanvas ? rsiCanvas.height : 0;
+            const macdH = macdCanvas ? macdCanvas.height : 0;
+            const totalH = headerH + mainH + rsiH + macdH + footerH;
+
+            // Create composite canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = totalH;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Dark TradingView Background
+            ctx.fillStyle = '#131722';
+            ctx.fillRect(0, 0, w, totalH);
+
+            // 2. Draw Main Chart
+            ctx.drawImage(mainCanvas, 0, headerH);
+
+            // 3. Draw Drawings Overlay
+            if (drawingCanvas) {
+                ctx.drawImage(drawingCanvas, 0, headerH);
+            }
+
+            // 4. Draw RSI Pane if visible
+            let currentPaneY = headerH + mainH;
+            if (rsiCanvas) {
+                ctx.drawImage(rsiCanvas, 0, currentPaneY);
+                ctx.strokeStyle = '#2a2e39';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, currentPaneY);
+                ctx.lineTo(w, currentPaneY);
+                ctx.stroke();
+                currentPaneY += rsiH;
+            }
+
+            // 5. Draw MACD Pane if visible
+            if (macdCanvas) {
+                ctx.drawImage(macdCanvas, 0, currentPaneY);
+                ctx.strokeStyle = '#2a2e39';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, currentPaneY);
+                ctx.lineTo(w, currentPaneY);
+                ctx.stroke();
+                currentPaneY += macdH;
+            }
+
+            // 6. Draw Subtle Watermark in Center
+            const sym = (window.currentChartSymbol || currentChartSymbol || 'STOCK').replace(/\.(NS|BO)$/i, '').toUpperCase();
+            const interval = (window.currentChartInterval || currentChartInterval || savedChartInterval || '1D').toUpperCase();
+            const prices = (typeof stockPricesData !== 'undefined' && stockPricesData) ? stockPricesData : {};
+            const stockInfo = prices[sym] || prices[sym + '.NS'] || prices[sym + '.BO'] || {};
+            const compName = document.getElementById('chartCompanyName')?.innerText?.trim() || stockInfo.name || sym;
+
+            const rightAxisW = 75;
+            const chartCenterX = (w - rightAxisW) / 2;
+            const chartCenterY = headerH + (mainH - 30) / 2;
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 64px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+            ctx.fillText(`${sym}  ${interval}`, chartCenterX, chartCenterY - 14);
+
+            ctx.font = '500 22px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.022)';
+            ctx.fillText(compName, chartCenterX, chartCenterY + 32);
+            ctx.restore();
+
+            // 7. Draw Top Header: Attribution & Live Metrics
+            let username = '';
+            try {
+                username = document.getElementById('header-username')?.innerText?.trim();
+            } catch (e) {}
+            if (!username || username.toLowerCase() === 'user' || username.toLowerCase() === 'admin') {
+                username = 'SampathNallasamy';
+            }
+
+            const now = new Date();
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const m = months[now.getMonth()];
+            const d = now.getDate();
+            const y = now.getFullYear();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const tzOffsetMin = -now.getTimezoneOffset();
+            const tzSign = tzOffsetMin >= 0 ? '+' : '-';
+            const tzH = Math.floor(Math.abs(tzOffsetMin) / 60);
+            const tzM = Math.abs(tzOffsetMin) % 60;
+            const tzStr = `UTC${tzSign}${tzH}${tzM > 0 ? ':' + String(tzM).padStart(2, '0') : ''}`;
+            const timeFormatted = `${m} ${d}, ${y} ${hh}:${mm} ${tzStr}`;
+
+            // Line 1: Attribution
+            ctx.font = '12px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            ctx.fillStyle = '#787b86';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`${username} created with TradingView.com, ${timeFormatted}`, 16, 12);
+
+            // Line 2: Company • Interval • Exch • OHLCV
+            let legOpen = document.getElementById('legOpen')?.innerText?.trim() || '-';
+            let legHigh = document.getElementById('legHigh')?.innerText?.trim() || '-';
+            let legLow = document.getElementById('legLow')?.innerText?.trim() || '-';
+            let legClose = document.getElementById('legClose')?.innerText?.trim() || '-';
+            let legChgPct = document.getElementById('legChgPct')?.innerText?.trim() || '';
+            let legVol = document.getElementById('legVol')?.innerText?.trim() || '-';
+            const exch = (window.currentChartSymbol || currentChartSymbol || '').toUpperCase().endsWith('.BO') ? 'BSE' : 'NSE';
+
+            if ((!legOpen || legOpen === '-') && window.cachedChartData && Array.isArray(window.cachedChartData.candles) && window.cachedChartData.candles.length > 0) {
+                const candles = window.cachedChartData.candles;
+                const last = candles[candles.length - 1];
+                const prev = candles.length > 1 ? candles[candles.length - 2] : last;
+                legOpen = last.open !== undefined ? last.open.toFixed(2) : '-';
+                legHigh = last.high !== undefined ? last.high.toFixed(2) : '-';
+                legLow = last.low !== undefined ? last.low.toFixed(2) : '-';
+                legClose = last.close !== undefined ? last.close.toFixed(2) : '-';
+                const diff = (last.close || 0) - (prev.close || 0);
+                const diffPct = prev.close ? (diff / prev.close) * 100 : 0;
+                const sign = diff >= 0 ? '+' : '';
+                legChgPct = `${sign}${diff.toFixed(2)} (${sign}${diffPct.toFixed(2)}%)`;
+                if (last.volume) {
+                    legVol = last.volume >= 1e7 ? (last.volume / 1e7).toFixed(2) + ' Cr' :
+                             last.volume >= 1e5 ? (last.volume / 1e5).toFixed(2) + ' L' :
+                             last.volume >= 1e3 ? (last.volume / 1e3).toFixed(2) + ' K' : String(last.volume);
+                }
+            }
+
+            let curX = 16;
+            const line2Y = 36;
+            ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            ctx.fillStyle = '#d1d4dc';
+            ctx.fillText(compName, curX, line2Y);
+            curX += ctx.measureText(compName).width;
+
+            ctx.font = '12px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            ctx.fillStyle = '#787b86';
+            const sep = ` • ${interval} • ${exch} `;
+            ctx.fillText(sep, curX, line2Y);
+            curX += ctx.measureText(sep).width;
+
+            const isGreen = !legChgPct.startsWith('-');
+            const chgColor = isGreen ? '#26a69a' : '#ef5350';
+
+            function drawMetric(label, val, valColor) {
+                ctx.fillStyle = '#787b86';
+                ctx.fillText(label, curX, line2Y);
+                curX += ctx.measureText(label).width;
+                ctx.fillStyle = valColor;
+                ctx.fillText(val + ' ', curX, line2Y);
+                curX += ctx.measureText(val + ' ').width;
+            }
+
+            drawMetric('O', legOpen, chgColor);
+            drawMetric('H', legHigh, chgColor);
+            drawMetric('L', legLow, chgColor);
+            drawMetric('C', legClose, chgColor);
+            if (legChgPct) {
+                ctx.fillStyle = chgColor;
+                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+                ctx.fillText(legChgPct + ' ', curX, line2Y);
+                curX += ctx.measureText(legChgPct + ' ').width;
+                ctx.font = '12px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            }
+            if (legVol && legVol !== '-') {
+                drawMetric('Vol', legVol, chgColor);
+            }
+
+            // Top Right: Currency INR badge
+            const badgeW = 42;
+            const badgeH = 20;
+            const badgeX = w - badgeW - 16;
+            const badgeY = 32;
+            ctx.fillStyle = '#1e222d';
+            ctx.strokeStyle = '#2a2e39';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+            } else {
+                ctx.rect(badgeX, badgeY, badgeW, badgeH);
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            ctx.fillStyle = '#d1d4dc';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('INR', badgeX + badgeW / 2, badgeY + badgeH / 2);
+
+            // 8. Draw Footer: TradingView Logo
+            const footerY = totalH - footerH;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+
+            const iconX = 16;
+            const iconY = footerY + (footerH / 2) - 8;
+            ctx.fillStyle = '#d1d4dc';
+
+            // Left vertical bar
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(iconX, iconY, 4.5, 16, 1);
+            } else {
+                ctx.rect(iconX, iconY, 4.5, 16);
+            }
+            ctx.fill();
+
+            // Slanted bar
+            ctx.beginPath();
+            ctx.moveTo(iconX + 7, iconY + 16);
+            ctx.lineTo(iconX + 14, iconY);
+            ctx.lineTo(iconX + 18.5, iconY);
+            ctx.lineTo(iconX + 11.5, iconY + 16);
+            ctx.closePath();
+            ctx.fill();
+
+            // Right dot
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(iconX + 20.5, iconY, 4.5, 4.5, 1);
+            } else {
+                ctx.rect(iconX + 20.5, iconY, 4.5, 4.5);
+            }
+            ctx.fill();
+
+            // Wordmark
+            ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+            ctx.fillStyle = '#d1d4dc';
+            ctx.fillText('TradingView', iconX + 29, footerY + (footerH / 2) + 1);
+
+            return canvas;
+        }
+
+        async function downloadChartImage() {
+            try {
+                const canvas = await generateTradingViewChartSnapshotCanvas();
+                if (!canvas) {
+                    if (typeof showToast === 'function') showToast('Chart is not ready to capture.', 'warning');
+                    return;
+                }
+
+                const sym = (window.currentChartSymbol || currentChartSymbol || 'CHART').replace(/\.(NS|BO)$/i, '').toUpperCase();
+                const interval = (window.currentChartInterval || currentChartInterval || savedChartInterval || '1D').toUpperCase();
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0, 10);
+                const fileName = `${sym}_${interval}_${dateStr}.png`;
+
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                if (typeof showToast === 'function') {
+                    showToast(`Chart image downloaded (${fileName})`, 'success');
+                }
+            } catch (err) {
+                console.error('Failed to download chart image:', err);
+                if (typeof showToast === 'function') showToast('Failed to download chart image.', 'error');
+            }
+        }
+
+        async function copyChartImage() {
+            try {
+                const canvas = await generateTradingViewChartSnapshotCanvas();
+                if (!canvas) {
+                    if (typeof showToast === 'function') showToast('Chart is not ready to capture.', 'warning');
+                    return;
+                }
+
+                if (canvas.toBlob && navigator.clipboard && typeof navigator.clipboard.write === 'function') {
+                    canvas.toBlob(async (blob) => {
+                        if (!blob) {
+                            downloadChartImage();
+                            return;
+                        }
+                        try {
+                            await navigator.clipboard.write([
+                                new ClipboardItem({ 'image/png': blob })
+                            ]);
+                            if (typeof showToast === 'function') {
+                                showToast('Chart image copied to clipboard!', 'success');
+                            }
+                        } catch (clipErr) {
+                            console.warn('Clipboard write error, falling back to download:', clipErr);
+                            downloadChartImage();
+                            if (typeof showToast === 'function') {
+                                showToast('Clipboard access restricted. Downloaded image instead.', 'info');
+                            }
+                        }
+                    }, 'image/png');
+                } else {
+                    downloadChartImage();
+                    if (typeof showToast === 'function') {
+                        showToast('Clipboard not supported. Downloaded image instead.', 'info');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to copy chart image:', err);
+                if (typeof showToast === 'function') showToast('Failed to copy chart image.', 'error');
+            }
+        }
+
+        window.generateTradingViewChartSnapshotCanvas = generateTradingViewChartSnapshotCanvas;
+        window.downloadChartImage = downloadChartImage;
+        window.copyChartImage = copyChartImage;
+
 
