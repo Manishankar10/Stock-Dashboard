@@ -7097,8 +7097,35 @@
         window.hideCanvasObjectMenu = hideCanvasObjectMenu;
 
         // =========================================================
-        // TRADINGVIEW-STYLE CHART IMAGE GENERATION & EXPORT
+        // CAPITAL DESK CHART IMAGE GENERATION & EXPORT
         // =========================================================
+
+        let cdBrandIconCache = null;
+        function getCapitalDeskBrandIcon() {
+            return new Promise((resolve) => {
+                if (cdBrandIconCache && cdBrandIconCache.complete && (cdBrandIconCache.naturalWidth > 0 || cdBrandIconCache.width > 0)) {
+                    return resolve(cdBrandIconCache);
+                }
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    cdBrandIconCache = img;
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    console.warn('Could not load /static/capital_desk_icon.png');
+                    resolve(null);
+                };
+                img.src = '/static/capital_desk_icon.png';
+                if (img.complete && (img.naturalWidth > 0 || img.width > 0)) {
+                    cdBrandIconCache = img;
+                    resolve(img);
+                }
+            });
+        }
+        try {
+            getCapitalDeskBrandIcon();
+        } catch (e) {}
 
         async function generateTradingViewChartSnapshotCanvas() {
             const chartInstance = window.mainChart || mainChart;
@@ -7222,7 +7249,7 @@
             ctx.fillStyle = '#787b86';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            ctx.fillText(`${username} created with TradingView.com, ${timeFormatted}`, 16, 12);
+            ctx.fillText(`${username} created with Capital Desk, ${timeFormatted}`, 16, 12);
 
             // Line 2: Company • Interval • Exch • OHLCV
             let legOpen = document.getElementById('legOpen')?.innerText?.trim() || '-';
@@ -7315,46 +7342,51 @@
             ctx.textBaseline = 'middle';
             ctx.fillText('INR', badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-            // 8. Draw Footer: TradingView Logo
+            // 8. Draw Footer: Capital Desk Brand Logo & Typography
             const footerY = totalH - footerH;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
 
+            const iconSize = 22;
             const iconX = 16;
-            const iconY = footerY + (footerH / 2) - 8;
-            ctx.fillStyle = '#d1d4dc';
+            const iconY = footerY + Math.round((footerH - iconSize) / 2);
 
-            // Left vertical bar
-            ctx.beginPath();
-            if (typeof ctx.roundRect === 'function') {
-                ctx.roundRect(iconX, iconY, 4.5, 16, 1);
-            } else {
-                ctx.rect(iconX, iconY, 4.5, 16);
+            let brandIcon = null;
+            try {
+                brandIcon = await getCapitalDeskBrandIcon();
+            } catch (e) {
+                console.warn('Error loading Capital Desk icon:', e);
             }
-            ctx.fill();
 
-            // Slanted bar
-            ctx.beginPath();
-            ctx.moveTo(iconX + 7, iconY + 16);
-            ctx.lineTo(iconX + 14, iconY);
-            ctx.lineTo(iconX + 18.5, iconY);
-            ctx.lineTo(iconX + 11.5, iconY + 16);
-            ctx.closePath();
-            ctx.fill();
-
-            // Right dot
-            ctx.beginPath();
-            if (typeof ctx.roundRect === 'function') {
-                ctx.roundRect(iconX + 20.5, iconY, 4.5, 4.5, 1);
+            if (brandIcon && brandIcon.complete && (brandIcon.naturalWidth > 0 || brandIcon.width > 0)) {
+                try {
+                    ctx.drawImage(brandIcon, iconX, iconY, iconSize, iconSize);
+                } catch (e) {
+                    console.warn('Could not draw brand icon:', e);
+                }
             } else {
-                ctx.rect(iconX + 20.5, iconY, 4.5, 4.5);
+                // Vector fallback if image asset is unavailable
+                ctx.fillStyle = '#0b9a5e';
+                ctx.beginPath();
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(iconX, iconY, iconSize, iconSize, 4);
+                } else {
+                    ctx.rect(iconX, iconY, iconSize, iconSize);
+                }
+                ctx.fill();
+                ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.fillText('CD', iconX + (iconSize / 2), iconY + (iconSize / 2));
             }
-            ctx.fill();
 
-            // Wordmark
-            ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-            ctx.fillStyle = '#d1d4dc';
-            ctx.fillText('TradingView', iconX + 29, footerY + (footerH / 2) + 1);
+            // Wordmark: Capital Desk
+            const textX = iconX + iconSize + 9;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.font = "bold 15px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('Capital Desk', textX, footerY + (footerH / 2) + 0.5);
 
             return canvas;
         }
@@ -7371,7 +7403,7 @@
                 const interval = (window.currentChartInterval || currentChartInterval || savedChartInterval || '1D').toUpperCase();
                 const now = new Date();
                 const dateStr = now.toISOString().slice(0, 10);
-                const fileName = `${sym}_${interval}_${dateStr}.png`;
+                const fileName = `${sym}_${interval}_CapitalDesk_${dateStr}.png`;
 
                 const link = document.createElement('a');
                 link.download = fileName;
@@ -7431,6 +7463,7 @@
         }
 
         window.generateTradingViewChartSnapshotCanvas = generateTradingViewChartSnapshotCanvas;
+        window.generateCapitalDeskChartSnapshotCanvas = generateTradingViewChartSnapshotCanvas;
         window.downloadChartImage = downloadChartImage;
         window.copyChartImage = copyChartImage;
 
