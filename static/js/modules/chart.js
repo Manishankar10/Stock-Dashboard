@@ -7320,18 +7320,24 @@
             }
 
             const now = new Date();
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const m = months[now.getMonth()];
-            const d = now.getDate();
-            const y = now.getFullYear();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            const tzOffsetMin = -now.getTimezoneOffset();
-            const tzSign = tzOffsetMin >= 0 ? '+' : '-';
-            const tzH = Math.floor(Math.abs(tzOffsetMin) / 60);
-            const tzM = Math.abs(tzOffsetMin) % 60;
-            const tzStr = `UTC${tzSign}${tzH}${tzM > 0 ? ':' + String(tzM).padStart(2, '0') : ''}`;
-            const timeFormatted = `${m} ${d}, ${y} ${hh}:${mm} ${tzStr}`;
+            let timeFormatted = '';
+            try {
+                const parts = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'Asia/Kolkata',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).formatToParts(now);
+                const pMap = {};
+                parts.forEach(p => pMap[p.type] = p.value);
+                timeFormatted = `${pMap.month} ${pMap.day}, ${pMap.year} ${pMap.hour}:${pMap.minute} IST`;
+            } catch (e) {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                timeFormatted = `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} IST`;
+            }
 
             // Line 1: Attribution
             ctx.font = '12px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';

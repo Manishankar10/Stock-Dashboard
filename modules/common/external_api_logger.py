@@ -1,4 +1,5 @@
 import os
+from modules.common.ist_datetime import now_ist, format_ist_display
 import math
 import sys
 import time
@@ -216,10 +217,10 @@ def record_external_call(
 
     try:
         _ensure_dirs()
-        now = datetime.datetime.now()
+        now = now_ist()
         timestamp_iso = now.isoformat()
         datetime_str = now.strftime("%d-%m-%Y %H:%M:%S")
-        datetime_formatted = now.strftime("%d-%m-%Y %I:%M:%S %p")
+        datetime_formatted = format_ist_display(now)
         log_id = f"ext_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
 
         parsed = urllib.parse.urlparse(str(url))

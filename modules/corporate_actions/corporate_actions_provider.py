@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Set
 
 import requests
 from db_store import load_corporate_actions_db, save_corporate_actions_db
+from modules.common.ist_datetime import format_ist_display, now_ist
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class CorporateActionsProvider:
             if db_res and db_res.get("categories"):
                 self._cache_data = db_res["categories"]
                 self._last_updated_iso = db_res.get("last_updated")
-                self._last_updated_display = db_res.get("last_updated_display")
+                self._last_updated_display = format_ist_display(db_res.get("last_updated_display") or db_res.get("last_updated"))
                 return
         except Exception as e:
             logger.warning(f"Error loading corporate actions from db: {e}")
@@ -392,7 +393,7 @@ class CorporateActionsProvider:
                 "today": today_iso,
                 "cached_at": datetime.fromtimestamp(self._last_fetch_time).isoformat() if self._last_fetch_time else today_iso,
                 "last_updated": self._last_updated_iso or today_iso,
-                "last_updated_display": self._last_updated_display or "Recently",
+                "last_updated_display": format_ist_display(self._last_updated_display) if (self._last_updated_display and self._last_updated_display != "Recently") else format_ist_display(),
             },
             "tabs": {},
         }
@@ -507,14 +508,14 @@ class CorporateActionsProvider:
                 self._refresh_progress = "Persisting updated dataset into MongoDB Atlas..."
 
             now_iso = datetime.now(timezone.utc).isoformat()
-            now_display = datetime.now().strftime("%d %b %Y, %I:%M %p")
+            now_display = format_ist_display()
             db_res = save_corporate_actions_db(processed, last_updated_iso=now_iso, last_updated_display=now_display)
 
             with self._lock:
                 self._cache_data = processed
                 self._last_fetch_time = time.time()
                 self._last_updated_iso = db_res.get("last_updated") or now_iso
-                self._last_updated_display = db_res.get("last_updated_display") or now_display
+                self._last_updated_display = format_ist_display(db_res.get("last_updated_display") or db_res.get("last_updated")) or now_display
                 self._save_disk_cache(processed)
 
                 total_count = sum(len(v) for v in processed.values())
@@ -543,7 +544,7 @@ class CorporateActionsProvider:
                 "percent": self._refresh_percent,
                 "error": self._refresh_error,
                 "last_updated": self._last_updated_iso or "Never",
-                "last_updated_display": self._last_updated_display or "Never",
+                "last_updated_display": format_ist_display(self._last_updated_display) if (self._last_updated_display and self._last_updated_display != "Never") else "Never",
                 "total_actions": total_count,
                 "counts": counts,
             }

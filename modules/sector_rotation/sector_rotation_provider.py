@@ -10,6 +10,7 @@ market breadth, valuation statistics, and business cycle regime analysis.
 import json
 import math
 import os
+from modules.common.ist_datetime import format_ist_display
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -652,7 +653,7 @@ class SectorRotationProvider:
             "success": True,
             "benchmark": benchmark_returns,
             "sectors": sectors_processed,
-            "last_updated": datetime.now().strftime("%d %b %Y %H:%M:%S")
+            "last_updated": format_ist_display()
         }
 
         with self._lock:

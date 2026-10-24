@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 import json
 import os
+from modules.common.ist_datetime import format_ist_display
 from pathlib import Path
 import re
 from threading import Lock
@@ -542,7 +543,7 @@ class TransactionsProvider:
                 "latest_date": latest_date,
                 "earliest_date": earliest_date,
             },
-            "last_updated": datetime.fromtimestamp(self._last_fetch_time).strftime("%d %b %Y %H:%M:%S") if self._last_fetch_time else "Just now",
+            "last_updated": format_ist_display(self._last_fetch_time) if self._last_fetch_time else "Just now",
             "last_updated_iso": datetime.fromtimestamp(self._last_fetch_time).isoformat() if self._last_fetch_time else "",
             "official_called": official_called,
             "cooldown_remaining_seconds": cooldown_remaining,

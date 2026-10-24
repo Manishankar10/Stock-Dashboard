@@ -1,4 +1,5 @@
 import db_store
+from modules.common.ist_datetime import format_ist_display, format_ist_standard, now_ist
 import os
 import json
 import time
@@ -256,6 +257,8 @@ class IndustriesOverviewProvider:
                     self._overview_data = {}
                 if 'industry_stocks' not in self._overview_data:
                     self._overview_data['industry_stocks'] = {}
+                if self._overview_data.get('last_updated_display'):
+                    self._overview_data['last_updated_display'] = format_ist_display(self._overview_data['last_updated_display'])
 
                 self._recompute_cache_etags()
             except Exception as e:
@@ -295,7 +298,7 @@ class IndustriesOverviewProvider:
 
     def _save_overview_data(self):
         try:
-            now_str = datetime.now().strftime("%d %b %Y, %I:%M %p")
+            now_str = format_ist_display()
             iso_str = datetime.utcnow().isoformat() + "Z"
             if not self._overview_data.get('last_updated_display'):
                 self._overview_data['last_updated_display'] = now_str
@@ -472,7 +475,7 @@ class IndustriesOverviewProvider:
             'stocks': stocks,
             'count': len(stocks),
             'warning': None if (stocks and is_live_success) else ('Market data feed is temporarily unreachable. Please retry.' if not stocks else None),
-            'fetched_at': self._overview_data.get('last_updated_display') or time.strftime('%Y-%m-%d %H:%M:%S')
+            'fetched_at': self._overview_data.get('last_updated_display') or format_ist_standard()
         }
 
     def _scrape_stocks_for_industry(self, clean_path):
@@ -674,7 +677,7 @@ class IndustriesOverviewProvider:
             final_output = {
                 'count': len(raw_industries),
                 'last_updated': datetime.utcnow().isoformat() + "Z",
-                'last_updated_display': datetime.now().strftime('%d %b %Y, %I:%M %p'),
+                'last_updated_display': format_ist_display(),
                 'last_backup': backup_filename,
                 'industries': raw_industries,
                 'macro_sectors': macro_sectors_list,
@@ -705,7 +708,8 @@ class IndustriesOverviewProvider:
 
     def get_refresh_status(self):
         with self._lock:
-            last_up = self._overview_data.get('last_updated_display') or self._overview_data.get('last_updated') or "Never"
+            raw_up = self._overview_data.get('last_updated_display') or self._overview_data.get('last_updated')
+            last_up = format_ist_display(raw_up) if (raw_up and raw_up != "Never") else "Never"
             backup = self._last_backup_file or self._overview_data.get('last_backup')
             total_inds = len(self._overview_data.get('industries', []))
             total_cached_stocks = len(self._overview_data.get('industry_stocks', {}))
@@ -718,6 +722,7 @@ class IndustriesOverviewProvider:
             "total_industries": total_inds,
             "total_stocks_cached": total_cached_stocks,
             "last_updated": last_up,
+            "last_updated_display": last_up,
             "last_backup": backup,
             "storage": "MongoDB Atlas & SQLite (Synced)"
         }
@@ -790,7 +795,7 @@ class IndustriesOverviewProvider:
         final_output = {
             'count': len(raw_industries),
             'last_updated': time.strftime('%Y-%m-%d %H:%M:%S'),
-            'last_updated_display': datetime.now().strftime('%d %b %Y, %I:%M %p'),
+            'last_updated_display': format_ist_display(),
             'industries': raw_industries,
             'macro_sectors': macro_sectors_list,
             'industry_stocks': {}

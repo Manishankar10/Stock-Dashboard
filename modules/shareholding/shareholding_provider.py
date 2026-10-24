@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import xml.etree.ElementTree as ET
 
 import requests
+from modules.common.ist_datetime import format_ist_display, now_ist
 
 logger = logging.getLogger(__name__)
 
@@ -281,7 +282,7 @@ class ShareholdingProvider:
                 elif isinstance(payload, list):
                     self._cache_records = payload
                     self._last_synced = self.json_file.stat().st_mtime
-                    self._last_synced_display = datetime.fromtimestamp(self._last_synced).strftime("%d %b %Y, %I:%M %p")
+                    self._last_synced_display = format_ist_display(self._last_synced)
 
             # Always sort recent records first
             def get_rec_sort_key(r):
@@ -297,7 +298,7 @@ class ShareholdingProvider:
         """Save current shareholding patterns to DB and app_data/shareholding_patterns.json."""
         try:
             now = time.time()
-            now_display = datetime.fromtimestamp(now).strftime("%d %b %Y, %I:%M %p")
+            now_display = format_ist_display(now)
             self._last_synced = now
             self._last_synced_display = now_display
 
@@ -356,9 +357,12 @@ class ShareholdingProvider:
         count_eq = sum(1 for r in self._cache_records if r.get("board", "").lower() != "sme")
         count_sme = sum(1 for r in self._cache_records if r.get("board", "").lower() == "sme")
 
+        synced_disp = format_ist_display(self._last_synced_display or self._last_synced) if (self._last_synced or self._last_synced_display) else "Not synced yet"
         return {
             "last_synced": self._last_synced,
-            "last_synced_display": self._last_synced_display or "Not synced yet",
+            "last_synced_display": synced_disp,
+            "last_updated": self._last_synced,
+            "last_updated_display": synced_disp,
             "total_records": len(self._cache_records),
             "count_equities": count_eq,
             "count_sme": count_sme,
@@ -581,7 +585,7 @@ class ShareholdingProvider:
                 logger.info("No new shareholding records found. Existing records are completely up-to-date.")
                 with self._lock:
                     self._last_synced = time.time()
-                    self._last_synced_display = datetime.fromtimestamp(self._last_synced).strftime("%d %b %Y, %I:%M %p")
+                    self._last_synced_display = format_ist_display(self._last_synced)
                     self._save_to_disk()
                     self._is_refreshing = False
                 return {
@@ -760,7 +764,7 @@ class ShareholdingProvider:
 
             with self._lock:
                 self._last_synced = time.time()
-                self._last_synced_display = datetime.fromtimestamp(self._last_synced).strftime("%d %b %Y, %I:%M %p")
+                self._last_synced_display = format_ist_display(self._last_synced)
                 new_keys = {(r.get("symbol"), r.get("date")) for r in enriched_records}
                 retained_old = [r for r in self._cache_records if (r.get("symbol"), r.get("date")) not in new_keys]
                 self._cache_records = enriched_records + retained_old

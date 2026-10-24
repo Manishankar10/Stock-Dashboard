@@ -473,17 +473,17 @@
                 const ymdMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
                 if (ymdMatch) {
                     const [, y, m, day] = ymdMatch;
-                    return includeTime ? `${day}-${m}-${y} 00:00` : `${day}-${m}-${y}`;
+                    return includeTime ? `${day}-${m}-${y} 00:00 IST` : `${day}-${m}-${y}`;
                 }
 
-                const dmyMatch = /^(\d{2})-(\d{2})-(\d{4})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?$/.exec(trimmed);
+                const dmyMatch = /^(\d{2})-(\d{2})-(\d{4})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?(?:\s*IST)?$/i.exec(trimmed);
                 if (dmyMatch) {
                     const [, day, m, y, hh, mm] = dmyMatch;
                     if (includeTime && hh && mm) {
-                        return `${day}-${m}-${y} ${hh}:${mm}`;
+                        return `${day}-${m}-${y} ${hh}:${mm} IST`;
                     }
                     if (includeTime) {
-                        return `${day}-${m}-${y} 00:00`;
+                        return `${day}-${m}-${y} 00:00 IST`;
                     }
                     return `${day}-${m}-${y}`;
                 }
@@ -499,16 +499,38 @@
 
             if (!d || isNaN(d.getTime())) return String(value || '-');
 
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            const dateStr = `${day}-${month}-${year}`;
+            try {
+                const parts = new Intl.DateTimeFormat('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).formatToParts(d);
+                const pMap = {};
+                parts.forEach(p => pMap[p.type] = p.value);
+                const day = pMap.day || String(d.getDate()).padStart(2, '0');
+                const month = pMap.month || String(d.getMonth() + 1).padStart(2, '0');
+                const year = pMap.year || d.getFullYear();
+                const dateStr = `${day}-${month}-${year}`;
 
-            if (!includeTime) return dateStr;
+                if (!includeTime) return dateStr;
 
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            return `${dateStr} ${hours}:${minutes}`;
+                const hours = pMap.hour || '00';
+                const minutes = pMap.minute || '00';
+                return `${dateStr} ${hours}:${minutes} IST`;
+            } catch (e) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                const dateStr = `${day}-${month}-${year}`;
+                if (!includeTime) return dateStr;
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                return `${dateStr} ${hours}:${minutes} IST`;
+            }
         }
 
         function formatAppDateTime(value) {

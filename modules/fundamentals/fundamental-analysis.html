@@ -3872,7 +3872,7 @@ function render(d) {
 
   document.getElementById('companyTitle').textContent = c.name || symbol;
   document.getElementById('companySub').textContent = symbol;
-  document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
   document.getElementById('screenerBtn').href = `https://www.screener.in/company/${encodeURIComponent(baseSym)}/`;
   const chartLinkEl = document.getElementById('fundamentalsChartLink');
   if (chartLinkEl) {
@@ -4043,7 +4043,7 @@ function render(d) {
       logo: c.logo || null,
       price: tr['Current Price'] || (d.quote && d.quote.current_price) || '',
       changePercent: (d.quote && d.quote.change_percent != null) ? d.quote.change_percent : null,
-      updatedAt: 'Updated ' + new Date().toLocaleTimeString(),
+      updatedAt: 'Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST',
       screenerUrl: `https://www.screener.in/company/${encodeURIComponent(baseSym)}/`
     }, '*');
   }

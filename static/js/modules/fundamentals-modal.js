@@ -160,7 +160,7 @@
                             subEl.textContent = cleanDispSym;
                         }
                         if (uEl) {
-                            uEl.textContent = updatedAt || ('Updated ' + new Date().toLocaleTimeString());
+                            uEl.textContent = updatedAt || ('Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST');
                         }
                         if (scrEl) {
                             if (screenerUrl) {

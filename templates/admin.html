@@ -2050,7 +2050,7 @@
                 const refreshBtn = document.getElementById('btn-refresh-industries');
                 const badge = document.getElementById('admin-ind-refresh-badge');
 
-                if (lastUpEl) lastUpEl.innerText = s.last_updated || 'Never';
+                if (lastUpEl) lastUpEl.innerText = s.last_updated_display || s.last_updated || 'Never';
                 if (totalIndEl) totalIndEl.innerText = `${s.total_industries || 188} Industries`;
                 if (stocksEl) stocksEl.innerText = `${s.total_stocks_cached || 0} / ${s.total_industries || 188} Industries Cached`;
                 if (backupEl) {

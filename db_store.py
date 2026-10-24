@@ -1,5 +1,6 @@
 import os
 import json
+from modules.common.ist_datetime import format_ist_display, now_ist
 
 try:
     from modules.app_config import load_local_environment
@@ -561,7 +562,7 @@ def save_corporate_actions_db(categories, last_updated_iso=None, last_updated_di
     import datetime
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     last_updated_iso = last_updated_iso or now_utc.isoformat()
-    last_updated_display = last_updated_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    last_updated_display = format_ist_display(last_updated_display)
 
     stats = {cat: len(items) for cat, items in categories.items() if isinstance(items, list)}
     stats["total"] = sum(stats.values())
@@ -659,7 +660,7 @@ def save_quarterly_results_db(records, last_updated_iso=None, last_updated_displ
     import datetime
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     last_updated_iso = last_updated_iso or now_utc.isoformat()
-    last_updated_display = last_updated_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    last_updated_display = format_ist_display(last_updated_display)
     total_records = len(records)
     metadata = metadata or {}
 
@@ -789,7 +790,7 @@ def save_industries_overview_db(overview_data, last_updated_iso=None, last_updat
     import datetime
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     last_updated_iso = last_updated_iso or now_utc.isoformat()
-    last_updated_display = last_updated_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    last_updated_display = format_ist_display(last_updated_display)
     total_industries = len(overview_data.get("industries", [])) if isinstance(overview_data, dict) else 0
     metadata = metadata or {}
 
@@ -905,7 +906,7 @@ def load_shareholding_patterns_db(fallback_filepath=None):
                 records = payload.get("records", []) if isinstance(payload, dict) else (payload if isinstance(payload, list) else [])
                 last_synced = payload.get("last_synced", 0) if isinstance(payload, dict) else os.path.getmtime(fallback_path)
                 import datetime
-                last_synced_display = payload.get("last_synced_display", "") if isinstance(payload, dict) else datetime.datetime.fromtimestamp(last_synced).strftime("%d %b %Y, %I:%M %p")
+                last_synced_display = format_ist_display(payload.get("last_synced_display") if isinstance(payload, dict) else last_synced)
                 count_eq = sum(1 for r in records if r.get("board", "").lower() != "sme")
                 count_sme = sum(1 for r in records if r.get("board", "").lower() == "sme")
 
@@ -951,15 +952,15 @@ def save_shareholding_patterns_db(shp_data, last_synced=None, last_synced_displa
     if isinstance(shp_data, dict):
         records = shp_data.get("records", [])
         last_synced = last_synced or shp_data.get("last_synced", now_ts)
-        last_synced_display = last_synced_display or shp_data.get("last_synced_display") or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+        last_synced_display = format_ist_display(last_synced_display or shp_data.get("last_synced_display") or last_synced)
     elif isinstance(shp_data, list):
         records = shp_data
         last_synced = last_synced or now_ts
-        last_synced_display = last_synced_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+        last_synced_display = format_ist_display(last_synced_display or last_synced)
     else:
         records = []
         last_synced = last_synced or now_ts
-        last_synced_display = last_synced_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+        last_synced_display = format_ist_display(last_synced_display or last_synced)
 
     total_records = len(records)
     count_eq = sum(1 for r in records if r.get("board", "").lower() != "sme")

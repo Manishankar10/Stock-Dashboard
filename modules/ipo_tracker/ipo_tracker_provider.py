@@ -9,6 +9,7 @@ import datetime as dt
 import json
 import logging
 import os
+from modules.common.ist_datetime import format_ist_display, now_ist
 import re
 import threading
 import time
@@ -457,7 +458,7 @@ def _fetch_payload():
         raise IPOFeedError("Could not reach the live IPO data provider. Please retry in a moment.")
 
     now_iso = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-    now_display = dt.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    now_display = format_ist_display()
 
     return {
         "ipos": ipos,
@@ -574,13 +575,21 @@ def get_ipo_refresh_status():
                 counts["mainboard"] += 1
 
         last_updated = payload.get("fetched_at") or payload.get("generated_at") or ""
-        last_updated_display = payload.get("generated_display") or ""
-        if not last_updated_display and last_updated:
+        raw_display = payload.get("generated_display") or ""
+        if raw_display:
+            if " · " in raw_display:
+                pfx, t_str = raw_display.rsplit(" · ", 1)
+                last_updated_display = f"{pfx} · {format_ist_display(t_str)}"
+            else:
+                last_updated_display = format_ist_display(raw_display)
+        elif last_updated:
             try:
                 dt_obj = dt.datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
-                last_updated_display = dt_obj.strftime("%d %b %Y, %I:%M %p")
+                last_updated_display = format_ist_display(dt_obj)
             except Exception:
                 last_updated_display = str(last_updated)
+        else:
+            last_updated_display = "Never" 
 
         return {
             "is_refreshing": _is_refreshing,

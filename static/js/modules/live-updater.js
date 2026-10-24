@@ -330,8 +330,8 @@
             const badge = document.getElementById('last-updated-badge');
             if (badge) {
                 const now = new Date();
-                const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                badge.innerHTML = `✅ Updated: ${timeStr}`;
+                const timeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                badge.innerHTML = `✅ Updated: ${timeStr} IST`;
             }
             } catch (err) {
                 console.warn('Live updater error:', err);

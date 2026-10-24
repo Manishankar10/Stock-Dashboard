@@ -1,4 +1,5 @@
 import os
+from modules.common.ist_datetime import format_ist_standard, today_ist_str
 import re
 import json
 import difflib
@@ -151,7 +152,7 @@ def add_portfolio_stock(name):
     symbol = request.json.get("symbol")
     buy_price = request.json.get("buy_price")
     quantity = request.json.get("quantity")
-    buy_date = request.json.get("buy_date") or datetime.date.today().strftime("%Y-%m-%d")
+    buy_date = request.json.get("buy_date") or today_ist_str()
     buy_reason = request.json.get("buy_reason") or request.json.get("notes") or ""
     mode = request.json.get("mode", "add") # "add", "buy_more", or "edit"
     
@@ -220,7 +221,7 @@ def add_portfolio_stock(name):
             "realized_pnl_pct": 0.0,
             "avg_buy_price": round(buy_price, 2),
             "date": buy_date,
-            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": format_ist_standard(),
             "notes": buy_reason
         }
         txs = load_user_transactions()
@@ -249,7 +250,7 @@ def add_portfolio_stock(name):
             "realized_pnl_pct": 0.0,
             "avg_buy_price": round(buy_price, 2),
             "date": buy_date,
-            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": format_ist_standard(),
             "notes": buy_reason
         }
         txs = load_user_transactions()
@@ -265,7 +266,7 @@ def sell_portfolio_stock(name):
     symbol = request.json.get("symbol")
     sell_price = request.json.get("sell_price")
     quantity = request.json.get("quantity")
-    sell_date = request.json.get("sell_date") or datetime.date.today().strftime("%Y-%m-%d")
+    sell_date = request.json.get("sell_date") or today_ist_str()
     notes = request.json.get("notes") or request.json.get("reason") or ""
 
     if not symbol or sell_price is None or quantity is None:
@@ -326,7 +327,7 @@ def sell_portfolio_stock(name):
         "realized_pnl_pct": round(realized_pnl_pct, 2),
         "avg_buy_price": round(avg_buy_price, 2),
         "date": sell_date,
-        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": format_ist_standard(),
         "notes": notes
     }
     txs = load_user_transactions()
@@ -372,10 +373,10 @@ def export_backup():
         "transactions": load_user_transactions(),
         "alerts": _get_external_helpers()[2](),
         "smallcases": _get_external_helpers()[4](),
-        "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "exported_at": format_ist_standard()
     }
     response = jsonify(backup_data)
-    filename = f"stock_watchlist_backup_{datetime.date.today().strftime('%Y-%m-%d')}.json"
+    filename = f"stock_watchlist_backup_{today_ist_str()}.json"
     response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response
 

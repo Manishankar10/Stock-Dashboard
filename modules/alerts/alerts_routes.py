@@ -1,4 +1,5 @@
 import os
+from modules.common.ist_datetime import format_ist_standard
 import datetime
 import uuid
 from flask import Blueprint, request, jsonify, session
@@ -74,7 +75,7 @@ def create_alert():
         "condition": condition,
         "note": note,
         "status": "active",
-        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "created_at": format_ist_standard()
     }
     data["alerts"].insert(0, new_alert)
     save_user_alerts(data)
@@ -104,7 +105,7 @@ def trigger_notification():
     for alt in data["alerts"]:
         if alt.get("id") == alert_id or (alt.get("symbol") == symbol and alt.get("target_price") == target_price and alt.get("condition") == condition):
             alt["status"] = "triggered"
-            alt["triggered_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            alt["triggered_at"] = format_ist_standard()
 
     notif_id = f"notif_{int(datetime.datetime.now().timestamp() * 1000)}"
     cond_text = "crossed above" if condition == "above" else "crossed below"
@@ -122,7 +123,7 @@ def trigger_notification():
         "current_price": current_price,
         "target_price": target_price,
         "condition": condition,
-        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": format_ist_standard(),
         "read": False
     }
     data["notifications"].insert(0, new_notif)

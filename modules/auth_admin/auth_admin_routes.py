@@ -1,5 +1,6 @@
 from modules.common.system_settings import get_system_settings, update_system_settings
 import os
+from modules.common.ist_datetime import format_ist_standard, today_ist_str, now_ist
 import io
 import zipfile
 import json
@@ -86,7 +87,7 @@ def api_login():
     session["username"] = username
 
     # Update login stats
-    users[username]["last_login"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    users[username]["last_login"] = format_ist_standard()
     users[username]["login_count"] = users[username].get("login_count", 0) + 1
     save_users(users)
 
@@ -122,8 +123,8 @@ def api_register():
         "plain_password": password,
         "role": "admin" if is_admin else "user",
         "is_admin": is_admin,
-        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "last_login": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": format_ist_standard(),
+        "last_login": format_ist_standard(),
         "login_count": 1
     }
     save_users(users)
@@ -440,10 +441,10 @@ def admin_export_system_backup():
         "users": users,
         "user_data": user_data_map,
         "system_settings": get_system_settings(),
-        "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "exported_at": format_ist_standard()
     }
     response = jsonify(backup_data)
-    filename = f"capital_desk_full_system_backup_{datetime.date.today().strftime('%Y-%m-%d')}.json"
+    filename = f"capital_desk_full_system_backup_{today_ist_str()}.json"
     response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response
 
@@ -708,7 +709,7 @@ def _scan_json_files(include_external_logs=False):
                         "category": cat,
                         "size_bytes": sz,
                         "size_formatted": sz_str,
-                        "modified": datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S") if mtime else "-"
+                        "modified": format_ist_standard(mtime) if mtime else "-"
                     })
     cat_order = {'app_data': 1, 'user_data': 2, 'drawings': 3, 'root': 4, 'logs': 5}
     found_files.sort(key=lambda x: (cat_order.get(x['category'], 99), x['name'].lower()))

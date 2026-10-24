@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+from modules.common.ist_datetime import today_ist, to_ist
 import time
 import requests
 import xml.etree.ElementTree as ET
@@ -114,9 +115,8 @@ class FinancialNewsEngine:
             if not clean_sym:
                 url = f"https://finnhub.io/api/v1/news?category=general&token={api_key}"
             else:
-                import datetime
-                today_str = datetime.date.today().strftime("%Y-%m-%d")
-                prev_str = (datetime.date.today() - datetime.timedelta(days=14)).strftime("%Y-%m-%d")
+                today_str = today_ist().strftime("%Y-%m-%d")
+                prev_str = (today_ist() - datetime.timedelta(days=14)).strftime("%Y-%m-%d")
                 url = f"https://finnhub.io/api/v1/company-news?symbol={clean_sym}&from={prev_str}&to={today_str}&token={api_key}"
             
             resp = requests.get(url, headers=headers, timeout=6)
@@ -126,7 +126,7 @@ class FinancialNewsEngine:
                     articles = []
                     for item in feed[:15]:
                         dt_val = item.get("datetime")
-                        pub_str = datetime.datetime.fromtimestamp(dt_val).strftime("%b %d, %Y %H:%M") if dt_val else ""
+                        pub_str = to_ist(dt_val).strftime("%b %d, %Y %H:%M IST") if dt_val else ""
                         articles.append({
                             "title": item.get("headline", ""),
                             "publisher": item.get("source", "Finnhub Financial"),

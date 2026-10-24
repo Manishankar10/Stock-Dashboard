@@ -131,8 +131,10 @@ def get_corporate_actions_data():
             watchlist_symbols=user_symbols["watchlist"],
             force_refresh=force_refresh,
         )
+        meta_disp = (data.get("meta", {}) or {}).get("last_updated_display")
         response = jsonify({
             "success": True,
+            "last_updated_display": meta_disp,
             **data,
             "user_symbols": {
                 "portfolio": sorted(list(user_symbols["portfolio"])),

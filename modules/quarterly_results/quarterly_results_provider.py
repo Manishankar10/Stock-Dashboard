@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
+from modules.common.ist_datetime import format_ist_display, now_ist
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -165,7 +166,7 @@ class QuarterlyResultsProvider:
         if db_payload and isinstance(db_payload.get("data"), list) and len(db_payload["data"]) > 0:
             self._cache_data = db_payload["data"]
             self._last_updated_iso = db_payload.get("last_updated") or datetime.now().isoformat()
-            self._last_updated_display = db_payload.get("last_updated_display") or datetime.now().strftime("%d %b %Y, %I:%M %p")
+            self._last_updated_display = format_ist_display(db_payload.get("last_updated_display"))
             self._last_fetch_time = time.time()
             logger.info(f"QuarterlyResults: Loaded {len(self._cache_data)} existing records from database.")
         else:
@@ -174,7 +175,7 @@ class QuarterlyResultsProvider:
             if cached:
                 self._cache_data = cached
                 self._last_updated_iso = datetime.now().isoformat(timespec="seconds")
-                self._last_updated_display = datetime.now().strftime("%d %b %Y, %I:%M %p")
+                self._last_updated_display = format_ist_display()
                 logger.info(f"QuarterlyResults: Loaded {len(cached)} existing records from disk cache. Persisting to database...")
                 try:
                     from db_store import save_quarterly_results_db
@@ -290,7 +291,7 @@ class QuarterlyResultsProvider:
         q_info = calculate_quarters()
         now = datetime.now()
         last_updated_iso = now.isoformat(timespec="seconds")
-        last_updated_display = now.strftime("%d %b %Y, %I:%M %p")
+        last_updated_display = format_ist_display()
         self._last_updated_iso = last_updated_iso
         self._last_updated_display = last_updated_display
         self._last_new_companies_count = new_companies_count
@@ -597,7 +598,7 @@ class QuarterlyResultsProvider:
                     if not getattr(self, "_last_updated_display", None):
                         now = datetime.now()
                         self._last_updated_iso = now.isoformat(timespec="seconds")
-                        self._last_updated_display = now.strftime("%d %b %Y, %I:%M %p")
+                        self._last_updated_display = format_ist_display()
 
             logger.info(f"Screener update complete. Total records stored: {len(all_records)}.")
             return all_records
@@ -608,13 +609,15 @@ class QuarterlyResultsProvider:
     def get_refresh_status(self) -> Dict[str, Any]:
         """Return live synchronization status for Admin."""
         total_records = len(self._cache_data or [])
+        raw_disp = getattr(self, "_last_updated_display", None) or getattr(self, "_last_updated_iso", None)
+        disp_val = format_ist_display(raw_disp) if (raw_disp and raw_disp != "Never") else "Never"
         return {
             "is_refreshing": getattr(self, "_admin_is_refreshing", False),
             "progress": getattr(self, "_admin_refresh_progress", "Idle"),
             "percent": getattr(self, "_admin_refresh_percent", 0),
             "error": getattr(self, "_admin_refresh_error", None),
             "last_updated": getattr(self, "_last_updated_iso", "Never"),
-            "last_updated_display": getattr(self, "_last_updated_display", "Never"),
+            "last_updated_display": disp_val,
             "total_records": total_records,
             "new_companies_found": getattr(self, "_last_new_companies_count", 0),
             "storage": "MongoDB Atlas & SQLite (Synced)",
@@ -877,7 +880,7 @@ class QuarterlyResultsProvider:
                 "year_ago": q_info["year_ago"],
             },
             "last_updated": self._last_fetch_time,
-            "last_updated_display": getattr(self, "_last_updated_display", None) or (datetime.fromtimestamp(self._last_fetch_time).strftime("%d %b %Y, %I:%M %p") if self._last_fetch_time else "Just now"),
+            "last_updated_display": getattr(self, "_last_updated_display", None) or (format_ist_display(self._last_fetch_time) if self._last_fetch_time else "Just now"),
             "active_filters": {
                 "search": search,
                 "industry": industry,
