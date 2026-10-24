@@ -1758,9 +1758,28 @@
             }
         });
 
+        function setupChartWatermark() {
+            const mainContainer = document.getElementById('mainChartPane');
+            if (!mainContainer) return;
+
+            let watermark = document.getElementById('chartWatermark');
+            if (!watermark) {
+                watermark = document.createElement('div');
+                watermark.id = 'chartWatermark';
+                watermark.className = 'chart-watermark';
+                watermark.innerHTML = `
+                    <img src="/static/capital_desk_icon.png" alt="Capital Desk Logo" class="chart-watermark-icon">
+                    <span class="chart-watermark-text">Capital Desk</span>
+                `;
+                mainContainer.appendChild(watermark);
+            }
+        }
+        window.setupChartWatermark = setupChartWatermark;
+
         function setupCanvasOverlay() {
             const mainContainer = document.getElementById('mainChartPane');
             if (!mainContainer) return;
+            setupChartWatermark();
 
             let canvas = document.getElementById('chartDrawingCanvas');
             if (!canvas) {
@@ -5301,6 +5320,7 @@
             rsiContainer.innerHTML = '';
             macdContainer.innerHTML = '';
             activePriceLines = [];
+            setupChartWatermark();
 
             if (data.candles && data.candles.length > 0) {
                 latestCandlePrice = data.candles[data.candles.length - 1].close;
@@ -6910,6 +6930,7 @@
         function showEmptyChartState(errorMsg = '') {
             const container = document.getElementById('mainChartPane');
             if (!container) return;
+            setupChartWatermark();
 
             let overlay = document.getElementById('chartEmptyStateOverlay');
             if (!overlay) {
@@ -7221,6 +7242,42 @@
             ctx.fillText(compName, chartCenterX, chartCenterY + 32);
             ctx.restore();
 
+            // 6b. Draw Left Bottom Watermark on Main Chart Pane (Same Capital Desk Logo)
+            let brandIcon = null;
+            try {
+                brandIcon = await getCapitalDeskBrandIcon();
+            } catch (e) {
+                console.warn('Error loading Capital Desk icon for watermark:', e);
+            }
+
+            const wmIconSize = 22;
+            const wmX = 16;
+            const wmY = headerH + mainH - 34 - wmIconSize; // Positioned cleanly above bottom time axis
+
+            ctx.save();
+            ctx.globalAlpha = 0.55;
+            if (brandIcon && brandIcon.complete && (brandIcon.naturalWidth > 0 || brandIcon.width > 0)) {
+                try {
+                    ctx.drawImage(brandIcon, wmX, wmY, wmIconSize, wmIconSize);
+                } catch (e) {}
+            } else {
+                ctx.fillStyle = '#0b9a5e';
+                ctx.beginPath();
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(wmX, wmY, wmIconSize, wmIconSize, 4);
+                } else {
+                    ctx.rect(wmX, wmY, wmIconSize, wmIconSize);
+                }
+                ctx.fill();
+            }
+
+            ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Capital Desk', wmX + wmIconSize + 8, wmY + (wmIconSize / 2));
+            ctx.restore();
+
             // 7. Draw Top Header: Attribution & Live Metrics
             let username = '';
             try {
@@ -7351,11 +7408,12 @@
             const iconX = 16;
             const iconY = footerY + Math.round((footerH - iconSize) / 2);
 
-            let brandIcon = null;
-            try {
-                brandIcon = await getCapitalDeskBrandIcon();
-            } catch (e) {
-                console.warn('Error loading Capital Desk icon:', e);
+            if (!brandIcon) {
+                try {
+                    brandIcon = await getCapitalDeskBrandIcon();
+                } catch (e) {
+                    console.warn('Error loading Capital Desk icon:', e);
+                }
             }
 
             if (brandIcon && brandIcon.complete && (brandIcon.naturalWidth > 0 || brandIcon.width > 0)) {

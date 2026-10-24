@@ -613,7 +613,6 @@
 
                         <!-- Quick Action Buttons -->
                         <button class="chart-action-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View"><span class="btn-icon">🔄</span> <span class="btn-text">Center</span></button>
-                        <button class="chart-action-btn" onclick="openStockNewsModal(currentChartSymbol)" title="News"><span class="btn-icon">📰</span> <span class="btn-text">News</span></button>
 
                         <!-- Stock Actions Popover -->
                         <div class="chart-popover-wrapper">
@@ -738,7 +737,12 @@
                     <div class="st-info-note">Only bar CLOSE flips signal</div>
                 </div>
 
-                <div id="mainChartPane" style="flex: 3; width: 100%; position: relative;"></div>
+                <div id="mainChartPane" style="flex: 3; width: 100%; position: relative;">
+                    <div id="chartWatermark" class="chart-watermark">
+                        <img src="/static/capital_desk_icon.png" alt="Capital Desk" class="chart-watermark-icon">
+                        <span class="chart-watermark-text">Capital Desk</span>
+                    </div>
+                </div>
                 <div id="rsiChartPane" style="flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39;"></div>
                 <div id="macdChartPane" style="flex: 1; width: 100%; position: relative; border-top: 1px solid #2a2e39; display: none;"></div>
             </div>
