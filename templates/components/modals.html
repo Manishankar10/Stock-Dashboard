@@ -614,6 +614,34 @@
                         <!-- Quick Action Buttons -->
                         <button class="chart-action-btn" onclick="resetChartView()" title="Reset Zoom and Center Chart View"><span class="btn-icon">🔄</span> <span class="btn-text">Center</span></button>
                         <button class="chart-action-btn" onclick="openStockNewsModal(currentChartSymbol)" title="News"><span class="btn-icon">📰</span> <span class="btn-text">News</span></button>
+
+                        <!-- Stock Actions Popover -->
+                        <div class="chart-popover-wrapper">
+                            <button class="chart-popover-btn" id="chartActionsBtn" onclick="toggleChartActionsPopover(event)" title="Stock Actions">
+                                <span class="btn-icon">⚡</span> <span class="btn-text">Actions</span> <span class="popover-arrow">▾</span>
+                            </button>
+                            <div class="chart-popover-menu" id="popover-chart-actions" style="min-width: 240px; right: 0; left: auto;">
+                                <div class="popover-menu-title">Stock Actions</div>
+                                <button class="popover-menu-item" onclick="openStockActionFundamentals(currentChartSymbol); closeAllChartPopovers();">
+                                    📊 Fundamentals
+                                </button>
+                                <button class="popover-menu-item" onclick="openStockActionAlert(currentChartSymbol); closeAllChartPopovers();">
+                                    🔔 Set Price Alert
+                                </button>
+                                <button class="popover-menu-item" id="chart-action-wl-item" onclick="openStockActionWatchlist(currentChartSymbol); closeAllChartPopovers();">
+                                    ➕ Add to Watchlist
+                                </button>
+                                <button class="popover-menu-item" onclick="openStockNewsModal(currentChartSymbol); closeAllChartPopovers();">
+                                    📰 News
+                                </button>
+                                <button class="popover-menu-item" onclick="openStockActionBrokerResearch(currentChartSymbol); closeAllChartPopovers();">
+                                    🏛️ Institutional &amp; Broker Research
+                                </button>
+                                <button class="popover-menu-item" onclick="openStockActionOfficialFeeds(currentChartSymbol); closeAllChartPopovers();">
+                                    ◉ Official Feeds
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Top Right Close Icon (Desktop) -->
@@ -1070,7 +1098,36 @@
                     </h3>
                     <div id="news-modal-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Fetching real-time updates...</div>
                 </div>
-                <span class="close-btn" onclick="closeStockNewsModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1; padding: 2px 6px; border-radius: 4px;" title="Close">&times;</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <!-- Actions Popover Button inside News Modal -->
+                    <div class="chart-popover-wrapper" id="stockNewsActionsWrapper" style="position: relative; display: none;">
+                        <button class="chart-popover-btn" id="stockNewsActionsBtn" onclick="toggleStockNewsActionsPopover(event)" title="Stock Actions" style="padding: 5px 12px; font-size: 12px; border-radius: 6px;">
+                            <span class="btn-icon">⚡</span> <span class="btn-text">Actions</span> <span class="popover-arrow">▾</span>
+                        </button>
+                        <div class="chart-popover-menu" id="popover-news-actions" style="right: 0; left: auto; min-width: 240px;">
+                            <div class="popover-menu-title">Stock Actions</div>
+                            <button class="popover-menu-item" onclick="openStockActionFundamentals(stockNewsState.symbol); closeAllStockNewsPopovers();">
+                                📊 Fundamentals
+                            </button>
+                            <button class="popover-menu-item" onclick="openStockActionAlert(stockNewsState.symbol); closeAllStockNewsPopovers();">
+                                🔔 Set Price Alert
+                            </button>
+                            <button class="popover-menu-item" id="news-action-wl-item" onclick="openStockActionWatchlist(stockNewsState.symbol); closeAllStockNewsPopovers();">
+                                ➕ Add to Watchlist
+                            </button>
+                            <button class="popover-menu-item" onclick="openStockNewsModal(stockNewsState.symbol); closeAllStockNewsPopovers();">
+                                📰 News
+                            </button>
+                            <button class="popover-menu-item" onclick="openStockActionBrokerResearch(stockNewsState.symbol); closeAllStockNewsPopovers();">
+                                🏛️ Institutional &amp; Broker Research
+                            </button>
+                            <button class="popover-menu-item" onclick="openStockActionOfficialFeeds(stockNewsState.symbol); closeAllStockNewsPopovers();">
+                                ◉ Official Feeds
+                            </button>
+                        </div>
+                    </div>
+                    <span class="close-btn" onclick="closeStockNewsModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1; padding: 2px 6px; border-radius: 4px;" title="Close">&times;</span>
+                </div>
             </div>
 
             <div id="news-articles-container" style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 10px;">
@@ -1078,6 +1135,57 @@
                     <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 10px;">⏳</span><br>
                     Loading latest news coverage...
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         STOCK WATCHLIST ACTION MODAL (ADD / MOVE WATCHLIST)
+    ========================================================= -->
+    <div id="stockWatchlistActionModal" class="small-modal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 100060; background: rgba(15,23,42,0.82); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); align-items: center; justify-content: center;">
+        <div class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 22px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #363a45); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="stockWlActionModalTitle" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary, #ffffff); display: flex; align-items: center; gap: 8px;">
+                    <span id="stockWlActionIcon">➕</span> <span id="stockWlActionHeading">Add to Watchlist</span>
+                </h3>
+                <span class="close-btn" style="font-size: 24px; cursor: pointer; color: var(--text-secondary, #94a3b8); line-height: 1; padding: 2px 6px;" onclick="closeStockWatchlistActionModal()">&times;</span>
+            </div>
+
+            <input type="hidden" id="stockWlActionSymbol">
+            <input type="hidden" id="stockWlActionMode" value="add">
+
+            <!-- Stock Info Banner -->
+            <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-color, #363a45); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary, #94a3b8); letter-spacing: 0.5px; font-weight: 600;">Selected Stock</span>
+                    <div id="stockWlActionSymDisplay" style="font-size: 16px; font-weight: 700; color: var(--text-primary, #ffffff);">STOCK</div>
+                </div>
+                <div id="stockWlActionCurrentBadges" style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end;"></div>
+            </div>
+
+            <!-- Source Watchlist Select (Only visible in Move mode) -->
+            <div class="form-group" id="stockWlSourceGroup" style="margin-bottom: 14px; display: none;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Move From Watchlist</label>
+                <select id="stockWlSourceSelect" class="of-select" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); color: var(--text-primary, #ffffff); font-size: 13px;"></select>
+            </div>
+
+            <!-- Target Watchlist Select -->
+            <div class="form-group" id="stockWlTargetGroup" style="margin-bottom: 18px;">
+                <label id="stockWlTargetLabel" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Target Watchlist</label>
+                <select id="stockWlTargetSelect" class="of-select" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); color: var(--text-primary, #ffffff); font-size: 13px;"></select>
+            </div>
+
+            <!-- Switch Mode Helper Text / Link -->
+            <div id="stockWlModeSwitchContainer" style="margin-bottom: 16px; font-size: 12px; text-align: right;">
+                <a href="javascript:void(0)" id="stockWlModeSwitchLink" style="color: var(--accent, #3b82f6); text-decoration: none; font-weight: 600;"></a>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-color, #363a45); padding-top: 14px;">
+                <button type="button" class="btn-secondary" style="padding: 7px 14px; font-size: 12.5px; border-radius: 6px;" onclick="closeStockWatchlistActionModal()">Cancel</button>
+                <button type="button" class="btn-primary" id="stockWlSubmitBtn" style="padding: 7px 16px; font-size: 12.5px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" onclick="submitStockWatchlistAction()">
+                    <span id="stockWlSubmitBtnIcon">➕</span> <span id="stockWlSubmitBtnText">Add to Watchlist</span>
+                </button>
             </div>
         </div>
     </div>

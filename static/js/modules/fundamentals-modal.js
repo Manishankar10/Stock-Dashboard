@@ -71,6 +71,18 @@
             if (companyDetailsEl) companyDetailsEl.textContent = initialDetails;
 
             frame.src = `/fundamentals?symbol=${encodeURIComponent(safeSymbol)}`;
+            const actionsWrapper = document.getElementById('stockNewsActionsWrapper');
+            if (actionsWrapper) {
+                if (cleanSym) {
+                    actionsWrapper.style.display = 'inline-block';
+                    if (typeof updateStockActionWatchlistLabels === 'function') {
+                        updateStockActionWatchlistLabels(cleanSym);
+                    }
+                } else {
+                    actionsWrapper.style.display = 'none';
+                }
+            }
+
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
 
@@ -427,6 +439,18 @@
                 </div>
             `;
 
+            const actionsWrapper = document.getElementById('stockNewsActionsWrapper');
+            if (actionsWrapper) {
+                if (cleanSym) {
+                    actionsWrapper.style.display = 'inline-block';
+                    if (typeof updateStockActionWatchlistLabels === 'function') {
+                        updateStockActionWatchlistLabels(cleanSym);
+                    }
+                } else {
+                    actionsWrapper.style.display = 'none';
+                }
+            }
+
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
 
@@ -486,6 +510,7 @@
         function closeStockNewsModal() {
             const modal = document.getElementById('stockNewsModal');
             if (modal) modal.style.display = 'none';
+            if (typeof closeAllStockNewsPopovers === 'function') closeAllStockNewsPopovers();
             document.body.style.overflow = '';
         }
 
@@ -507,9 +532,345 @@
             }
         });
 
+        // =========================================================
+        // STOCK ACTIONS CONTROLLER (Chart & News Actions Menu)
+        // =========================================================
+
+        function getStockWatchlistStatus(symbol) {
+            const sym = String(symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '') || '').trim().toUpperCase();
+            if (!sym) return { isAdded: false, watchlists: [] };
+            const cleanSym = sym.replace(/\.(NS|BO)$/i, '');
+
+            const watchlists = (typeof window.watchlistsData === 'object' && window.watchlistsData) ? window.watchlistsData : {};
+            const containing = [];
+
+            Object.entries(watchlists).forEach(([wlName, list]) => {
+                if (!Array.isArray(list)) return;
+                const match = list.some(item => {
+                    const s = (typeof item === 'string' ? item : (item && item.symbol ? item.symbol : '')).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+                    return s === cleanSym;
+                });
+                if (match) containing.push(wlName);
+            });
+
+            return {
+                isAdded: containing.length > 0,
+                watchlists: containing
+            };
+        }
+
+        async function ensureWatchlistsDataLoaded() {
+            if (!window.watchlistsData || Object.keys(window.watchlistsData).length === 0) {
+                try {
+                    const res = await fetch('/api/watchlists');
+                    const data = await res.json();
+                    if (data && typeof data === 'object' && !data.error) {
+                        window.watchlistsData = data;
+                    }
+                } catch (e) {
+                    console.error('Error fetching watchlistsData:', e);
+                }
+            }
+        }
+
+        function updateStockActionWatchlistLabels(symbol) {
+            const sym = symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+            const status = getStockWatchlistStatus(sym);
+            const label = status.isAdded ? '⇄ Move Watchlist' : '➕ Add to Watchlist';
+
+            const chartItem = document.getElementById('chart-action-wl-item');
+            if (chartItem) chartItem.innerHTML = label;
+
+            const newsItem = document.getElementById('news-action-wl-item');
+            if (newsItem) newsItem.innerHTML = label;
+        }
+
+        async function toggleChartActionsPopover(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('popover-chart-actions');
+            if (!menu) return;
+            const isShown = menu.classList.contains('show');
+            if (typeof closeAllChartPopovers === 'function') closeAllChartPopovers();
+            if (!isShown) {
+                await ensureWatchlistsDataLoaded();
+                updateStockActionWatchlistLabels(typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '');
+                menu.classList.add('show');
+            }
+        }
+
+        async function toggleStockNewsActionsPopover(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('popover-news-actions');
+            if (!menu) return;
+            const isShown = menu.classList.contains('show');
+            closeAllStockNewsPopovers();
+            if (!isShown) {
+                await ensureWatchlistsDataLoaded();
+                updateStockActionWatchlistLabels(typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+                menu.classList.add('show');
+            }
+        }
+
+        function closeAllStockNewsPopovers() {
+            const menu = document.getElementById('popover-news-actions');
+            if (menu) menu.classList.remove('show');
+        }
+
+        function openStockActionFundamentals(symbol) {
+            const sym = symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+            if (!sym) return;
+            const clean = String(sym).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+            if (typeof window.openFundamentalsModal === 'function') {
+                window.openFundamentalsModal(clean);
+            }
+        }
+
+        function openStockActionAlert(symbol) {
+            const sym = symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+            if (!sym) return;
+            const clean = String(sym).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+            if (typeof window.openCreateAlertModal === 'function') {
+                window.openCreateAlertModal(clean);
+            }
+        }
+
+        function openStockActionWatchlist(symbol) {
+            const sym = symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+            if (!sym) return;
+            openStockWatchlistActionModal(sym);
+        }
+
+        function openStockActionNews(symbol) {
+            const sym = symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+            if (!sym) return;
+            const clean = String(sym).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+            if (typeof window.openStockNewsModal === 'function') {
+                window.openStockNewsModal(clean);
+            }
+        }
+
+        function openStockActionBrokerResearch(symbol) {
+            const sym = symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+            if (!sym) return;
+            const clean = String(sym).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+            const prices = (typeof stockPricesData !== 'undefined' && stockPricesData) ? stockPricesData : {};
+            const info = prices[clean] || prices[clean + '.NS'] || {};
+            const compName = info.name || clean;
+            if (typeof window.openBrokerResearchModal === 'function') {
+                window.openBrokerResearchModal(clean, compName);
+            }
+        }
+
+        function openStockActionOfficialFeeds(symbol) {
+            const sym = symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '');
+            if (!sym) return;
+            const clean = String(sym).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+            if (typeof window.openOfficialFeedsModal === 'function') {
+                window.openOfficialFeedsModal(clean);
+            } else if (typeof window.openWatchlistOfficialFeeds === 'function') {
+                window.openWatchlistOfficialFeeds('', clean);
+            }
+        }
+
+        async function openStockWatchlistActionModal(symbol, forcedMode = null) {
+            const sym = String(symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '') || '').trim().toUpperCase();
+            if (!sym) return;
+            const cleanSym = sym.replace(/\.(NS|BO)$/i, '');
+
+            await ensureWatchlistsDataLoaded();
+
+            const modal = document.getElementById('stockWatchlistActionModal');
+            if (!modal) return;
+
+            const symHidden = document.getElementById('stockWlActionSymbol');
+            const symDisplay = document.getElementById('stockWlActionSymDisplay');
+            const badgesMount = document.getElementById('stockWlActionCurrentBadges');
+            const heading = document.getElementById('stockWlActionHeading');
+            const icon = document.getElementById('stockWlActionIcon');
+            const modeHidden = document.getElementById('stockWlActionMode');
+            const sourceGroup = document.getElementById('stockWlSourceGroup');
+            const sourceSelect = document.getElementById('stockWlSourceSelect');
+            const targetSelect = document.getElementById('stockWlTargetSelect');
+            const targetLabel = document.getElementById('stockWlTargetLabel');
+            const switchLink = document.getElementById('stockWlModeSwitchLink');
+            const submitBtnIcon = document.getElementById('stockWlSubmitBtnIcon');
+            const submitBtnText = document.getElementById('stockWlSubmitBtnText');
+
+            symHidden.value = cleanSym;
+            symDisplay.textContent = cleanSym;
+
+            const status = getStockWatchlistStatus(cleanSym);
+            const mode = forcedMode || (status.isAdded ? 'move' : 'add');
+            modeHidden.value = mode;
+
+            // Badges
+            if (status.watchlists.length > 0) {
+                badgesMount.innerHTML = status.watchlists.map(w =>
+                    `<span style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px;">✓ ${w}</span>`
+                ).join('');
+            } else {
+                badgesMount.innerHTML = `<span style="background: rgba(148,163,184,0.15); color: #94a3b8; font-size: 11px; padding: 2px 7px; border-radius: 9999px;">Not in any watchlist</span>`;
+            }
+
+            const allWatchlists = Object.keys(window.watchlistsData || {});
+
+            if (mode === 'move') {
+                icon.textContent = '⇄';
+                heading.textContent = 'Move Watchlist';
+                submitBtnIcon.textContent = '⇄';
+                submitBtnText.textContent = 'Move Watchlist';
+                targetLabel.textContent = 'Move To Watchlist';
+
+                sourceGroup.style.display = 'block';
+                sourceSelect.innerHTML = status.watchlists.map(w => `<option value="${w}">${w}</option>`).join('');
+
+                const updateTargets = () => {
+                    const currentSrc = sourceSelect.value || status.watchlists[0] || '';
+                    const availableTargets = allWatchlists.filter(w => w !== currentSrc);
+                    targetSelect.innerHTML = availableTargets.map(w => `<option value="${w}">${w}</option>`).join('');
+                };
+
+                updateTargets();
+                sourceSelect.onchange = updateTargets;
+
+                switchLink.textContent = '+ Add to another watchlist instead';
+                switchLink.onclick = () => openStockWatchlistActionModal(cleanSym, 'add');
+            } else {
+                icon.textContent = '➕';
+                heading.textContent = 'Add to Watchlist';
+                submitBtnIcon.textContent = '➕';
+                submitBtnText.textContent = 'Add to Watchlist';
+                targetLabel.textContent = 'Select Watchlist';
+
+                sourceGroup.style.display = 'none';
+                const availableTargets = allWatchlists.filter(w => !status.watchlists.includes(w));
+                const listToUse = availableTargets.length > 0 ? availableTargets : allWatchlists;
+
+                targetSelect.innerHTML = listToUse.map(w => `<option value="${w}">${w}</option>`).join('');
+
+                if (status.isAdded) {
+                    switchLink.textContent = '⇄ Switch to Move mode';
+                    switchLink.onclick = () => openStockWatchlistActionModal(cleanSym, 'move');
+                } else {
+                    switchLink.textContent = '';
+                }
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeStockWatchlistActionModal() {
+            const modal = document.getElementById('stockWatchlistActionModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitStockWatchlistAction() {
+            const sym = document.getElementById('stockWlActionSymbol').value.trim();
+            const mode = document.getElementById('stockWlActionMode').value;
+            const targetWl = document.getElementById('stockWlTargetSelect').value;
+            const submitBtn = document.getElementById('stockWlSubmitBtn');
+
+            if (!sym || !targetWl) {
+                if (typeof showToast === 'function') showToast('Please select a target watchlist.', 'warning');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.7';
+
+            try {
+                if (mode === 'move') {
+                    const sourceWl = document.getElementById('stockWlSourceSelect').value;
+                    if (!sourceWl || sourceWl === targetWl) {
+                        if (typeof showToast === 'function') showToast('Source and target watchlists cannot be the same.', 'warning');
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                        return;
+                    }
+
+                    const res = await fetch('/api/watchlists/move-stock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            source_watchlist: sourceWl,
+                            target_watchlist: targetWl,
+                            symbol: sym
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (typeof showToast === 'function') showToast(`Moved ${sym} from "${sourceWl}" to "${targetWl}"`, 'success');
+                        window.watchlistsData = data.watchlists;
+                        if (typeof renderWatchlists === 'function') renderWatchlists();
+                        updateStockActionWatchlistLabels(sym);
+                        closeStockWatchlistActionModal();
+                    } else {
+                        if (typeof showToast === 'function') showToast(data.error || 'Failed to move stock', 'error');
+                    }
+                } else {
+                    const res = await fetch(`/api/watchlists/${encodeURIComponent(targetWl)}/stocks`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbol: sym })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (typeof showToast === 'function') showToast(`Added ${sym} to "${targetWl}"`, 'success');
+                        window.watchlistsData = data.watchlists;
+                        if (typeof renderWatchlists === 'function') renderWatchlists();
+                        updateStockActionWatchlistLabels(sym);
+                        closeStockWatchlistActionModal();
+                    } else {
+                        if (typeof showToast === 'function') showToast(data.error || 'Failed to add stock', 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Error submitting watchlist action:', err);
+                if (typeof showToast === 'function') showToast('Failed to update watchlist.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+            }
+        }
+
+        // Event listeners for Stock Actions & Watchlist Modal
+        document.addEventListener('click', function(e) {
+            const newsActionsWrapper = document.getElementById('stockNewsActionsWrapper');
+            if (newsActionsWrapper && !newsActionsWrapper.contains(e.target)) {
+                closeAllStockNewsPopovers();
+            }
+
+            const wlModal = document.getElementById('stockWatchlistActionModal');
+            if (wlModal && e.target === wlModal) {
+                closeStockWatchlistActionModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAllStockNewsPopovers();
+                closeStockWatchlistActionModal();
+            }
+        });
+
         window.openFundamentalsModal = openFundamentalsModal;
         window.closeFundamentalsModal = closeFundamentalsModal;
         window.openStockNewsModal = openStockNewsModal;
         window.closeStockNewsModal = closeStockNewsModal;
         window.loadMoreStockNews = loadMoreStockNews;
+
+        window.getStockWatchlistStatus = getStockWatchlistStatus;
+        window.updateStockActionWatchlistLabels = updateStockActionWatchlistLabels;
+        window.toggleChartActionsPopover = toggleChartActionsPopover;
+        window.toggleStockNewsActionsPopover = toggleStockNewsActionsPopover;
+        window.closeAllStockNewsPopovers = closeAllStockNewsPopovers;
+        window.openStockActionFundamentals = openStockActionFundamentals;
+        window.openStockActionAlert = openStockActionAlert;
+        window.openStockActionWatchlist = openStockActionWatchlist;
+        window.openStockActionNews = openStockActionNews;
+        window.openStockActionBrokerResearch = openStockActionBrokerResearch;
+        window.openStockActionOfficialFeeds = openStockActionOfficialFeeds;
+        window.openStockWatchlistActionModal = openStockWatchlistActionModal;
+        window.closeStockWatchlistActionModal = closeStockWatchlistActionModal;
+        window.submitStockWatchlistAction = submitStockWatchlistAction;
 

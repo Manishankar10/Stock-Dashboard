@@ -2432,28 +2432,34 @@
             background: #f8fafc !important;
             border-color: #e2e8f0 !important;
         }
-        [data-theme="light"] #chartModal .chart-popover-btn {
+        [data-theme="light"] #chartModal .chart-popover-btn,
+        [data-theme="light"] #stockNewsModal .chart-popover-btn {
             background: #ffffff !important;
             color: #334155 !important;
             border: 1px solid #cbd5e1 !important;
         }
-        [data-theme="light"] #chartModal .chart-popover-btn:hover {
+        [data-theme="light"] #chartModal .chart-popover-btn:hover,
+        [data-theme="light"] #stockNewsModal .chart-popover-btn:hover {
             background: #f1f5f9 !important;
             border-color: #94a3b8 !important;
             color: #0f172a !important;
         }
-        [data-theme="light"] #chartModal .chart-popover-menu {
+        [data-theme="light"] #chartModal .chart-popover-menu,
+        [data-theme="light"] #stockNewsModal .chart-popover-menu {
             background: #ffffff !important;
             border: 1px solid #e2e8f0 !important;
             box-shadow: 0 10px 30px rgba(0,0,0,0.12) !important;
         }
-        [data-theme="light"] #chartModal .popover-menu-title {
+        [data-theme="light"] #chartModal .popover-menu-title,
+        [data-theme="light"] #stockNewsModal .popover-menu-title {
             color: #64748b !important;
         }
-        [data-theme="light"] #chartModal .popover-menu-item {
+        [data-theme="light"] #chartModal .popover-menu-item,
+        [data-theme="light"] #stockNewsModal .popover-menu-item {
             color: #334155 !important;
         }
-        [data-theme="light"] #chartModal .popover-menu-item:hover {
+        [data-theme="light"] #chartModal .popover-menu-item:hover,
+        [data-theme="light"] #stockNewsModal .popover-menu-item:hover {
             background: #f1f5f9 !important;
             color: #0f172a !important;
         }

@@ -169,7 +169,7 @@
         return overlay;
     }
 
-    window.openWatchlistOfficialFeeds = function (watchlistName) {
+    window.openWatchlistOfficialFeeds = function (watchlistName, targetSymbol) {
         let initialWl = watchlistName;
         if (!initialWl || initialWl === 'All Watchlists' || initialWl.toLowerCase() === 'all watchlists' || initialWl.toLowerCase() === 'all_watchlists') {
             const activeFromDom = document.querySelector('#watchlist-selector-mount .pf-select-btn.active')?.dataset.watchlistName;
@@ -189,12 +189,30 @@
         hasMore = true;
         const modal = ensureModal();
         populateWatchlistSelect(modal, currentWatchlist);
-        currentSymbol = '';
-        modal.querySelector('#of-stock').value = '';
+        currentSymbol = targetSymbol ? String(targetSymbol).trim().toUpperCase().replace(/\.(NS|BO)$/i, '') : '';
+        const stockSelect = modal.querySelector('#of-stock');
+        if (stockSelect) stockSelect.value = currentSymbol;
         modal.querySelector('#of-subcategory').value = '';
         modal.classList.add('is-open');
         document.body.classList.add('of-modal-open');
         loadPage();
+    };
+
+    window.openOfficialFeedsModal = function (symbol, watchlistName) {
+        let targetWl = watchlistName;
+        const clean = String(symbol || '').trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+        if (!targetWl && window.watchlistsData && clean) {
+            for (const [wl, list] of Object.entries(window.watchlistsData)) {
+                if (Array.isArray(list) && list.some(item => {
+                    const s = (typeof item === 'string' ? item : (item && item.symbol ? item.symbol : '')).replace(/\.(NS|BO)$/i, '').trim().toUpperCase();
+                    return s === clean;
+                })) {
+                    targetWl = wl;
+                    break;
+                }
+            }
+        }
+        window.openWatchlistOfficialFeeds(targetWl || '', clean || '');
     };
 
     window.closeWatchlistOfficialFeeds = function () {
@@ -319,7 +337,11 @@
             populateWatchlistSelect(modal, data.watchlist || currentWatchlist, data.watchlists, data.portfolios);
 
             const stockSelect = modal.querySelector('#of-stock');
-            stockSelect.innerHTML = '<option value="">All stocks</option>' + (data.stocks || []).map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+            const stocksList = (data.stocks || []).slice();
+            if (currentSymbol && !stocksList.includes(currentSymbol)) {
+                stocksList.unshift(currentSymbol);
+            }
+            stockSelect.innerHTML = '<option value="">All stocks</option>' + stocksList.map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
             stockSelect.value = currentSymbol;
             (data.subcategories || []).forEach(value => knownSubcategories.add(value));
             select.innerHTML = '<option value="">All subcategories</option>' + [...knownSubcategories].sort((a, b) => a.localeCompare(b)).map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
