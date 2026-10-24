@@ -6689,6 +6689,8 @@
 
             dropdown.style.display = 'flex';
             if (pillBox) pillBox.classList.add('active');
+            const leadIcon = document.getElementById('chartSymbolSearchLeadIcon');
+            if (leadIcon) leadIcon.classList.add('active');
 
             if (initialChar) {
                 input.value = initialChar;
@@ -6711,6 +6713,8 @@
             const pillBox = document.getElementById('chartSymbolPillBox');
             if (dropdown) dropdown.style.display = 'none';
             if (pillBox) pillBox.classList.remove('active');
+            const leadIcon = document.getElementById('chartSymbolSearchLeadIcon');
+            if (leadIcon) leadIcon.classList.remove('active');
             chartSearchActiveIndex = -1;
         }
 

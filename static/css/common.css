@@ -1587,7 +1587,10 @@
         .modal-content { background-color: #131722; margin: 1.5% auto; width: 96%; height: 93%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #d1d4dc; }
         .chart-topbar { padding: 10px 16px; background: #1e222d; border-bottom: 1px solid #2a2e39; display: flex; justify-content: space-between; align-items: center; gap: 12px; position: relative; z-index: 100; flex-wrap: nowrap; text-align: left; overflow: visible; }
         .chart-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 0; overflow: visible; }
-        .chart-symbol-search-container { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .chart-symbol-search-container { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .chart-symbol-search-icon-lead { display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; cursor: pointer; padding: 4px; border-radius: 6px; transition: color 0.15s ease, background-color 0.15s ease, transform 0.15s ease; flex-shrink: 0; }
+        .chart-symbol-search-icon-lead:hover { color: #38bdf8; background: rgba(255, 255, 255, 0.08); transform: scale(1.08); }
+        .chart-symbol-search-icon-lead.active { color: #3b82f6; background: rgba(59, 130, 246, 0.15); }
         .chart-symbol-pill-box { display: inline-flex; align-items: center; gap: 6px; background: #1e222d; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 6px; padding: 4px 10px; height: 28px; cursor: pointer; user-select: none; transition: all 0.15s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); flex-shrink: 0; }
         .chart-symbol-pill-box:hover { background: #2a2e39; border-color: rgba(255, 255, 255, 0.32); }
         .chart-symbol-pill-box.active { background: #181c27; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
@@ -2434,6 +2437,9 @@
         [data-theme="light"] #chartModal .chart-symbol-text {
             color: #0f172a !important;
         }
+        [data-theme="light"] #chartModal .chart-symbol-search-icon-lead { color: #64748b !important; }
+        [data-theme="light"] #chartModal .chart-symbol-search-icon-lead:hover { color: #0284c7 !important; background: rgba(0, 0, 0, 0.05) !important; }
+        [data-theme="light"] #chartModal .chart-symbol-search-icon-lead.active { color: #2563eb !important; background: rgba(37, 99, 235, 0.1) !important; }
         [data-theme="light"] #chartModal .chart-symbol-pill-box {
             background: #ffffff !important;
             border-color: #cbd5e1 !important;
