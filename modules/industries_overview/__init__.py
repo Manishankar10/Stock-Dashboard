@@ -7,7 +7,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, Optional
 
-from flask import Blueprint, jsonify, render_template, request, send_from_directory
+from flask import Blueprint, jsonify, make_response, render_template, request, send_from_directory
 
 from .industries_overview_provider import IndustriesOverviewProvider
 
@@ -65,9 +65,21 @@ def get_industries_overview_list():
 
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
+    # Fast ETag check for conditional caching
+    etag = _PROVIDER.get_etag()
+    client_etag = request.headers.get("If-None-Match")
+    if not force_refresh and client_etag and client_etag.strip('"') == etag.strip('"'):
+        res = make_response("", 304)
+        res.headers["ETag"] = etag
+        res.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=120"
+        return res
+
     try:
         data = _PROVIDER.get_industries_overview(force_refresh=force_refresh)
-        return jsonify(data)
+        res = make_response(jsonify(data))
+        res.headers["ETag"] = _PROVIDER.get_etag()
+        res.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=120"
+        return res
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -84,9 +96,21 @@ def get_industry_stocks():
 
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
+    # Fast ETag check for industry stocks
+    etag = _PROVIDER.get_stocks_etag(path)
+    client_etag = request.headers.get("If-None-Match")
+    if not force_refresh and client_etag and client_etag.strip('"') == etag.strip('"'):
+        res = make_response("", 304)
+        res.headers["ETag"] = etag
+        res.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=120"
+        return res
+
     try:
         data = _PROVIDER.get_industry_stocks(path, force_refresh=force_refresh)
-        return jsonify(data)
+        res = make_response(jsonify(data))
+        res.headers["ETag"] = _PROVIDER.get_stocks_etag(path)
+        res.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=120"
+        return res
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

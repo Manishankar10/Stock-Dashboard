@@ -199,6 +199,17 @@ def _init_sqlite_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS industries_overview (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    last_updated TEXT,
+                    last_updated_display TEXT,
+                    total_industries INTEGER DEFAULT 0,
+                    metadata TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -675,5 +686,146 @@ def save_quarterly_results_db(records, last_updated_iso=None, last_updated_displ
         "last_updated": last_updated_iso,
         "last_updated_display": last_updated_display,
         "total_records": total_records,
+        "metadata": metadata
+    }
+
+
+# ==============================================================================
+# INDUSTRIES OVERVIEW DATABASE STORAGE (MONGODB ATLAS & SQLITE)
+# ==============================================================================
+
+def load_industries_overview_db(fallback_filepath=None):
+    """
+    Loads latest industries overview dataset from MongoDB Atlas collection 'industries_overview'.
+    Falls back to SQLite local storage if MongoDB is unavailable.
+    If neither DB has data yet, checks disk JSON file, auto-seeds the DB, and returns data.
+    """
+    # 1. Try MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["industries_overview"]
+            doc = col.find_one({"_id": "latest"})
+            if doc and "data" in doc:
+                return {
+                    "data": doc.get("data", {}),
+                    "last_updated": doc.get("last_updated"),
+                    "last_updated_display": doc.get("last_updated_display"),
+                    "total_industries": doc.get("total_industries", 0),
+                    "metadata": doc.get("metadata", {})
+                }
+        except Exception as e:
+            print(f"MongoDB load_industries_overview error: {e}")
+
+    # 2. Try SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data, last_updated, last_updated_display, total_industries, metadata FROM industries_overview WHERE id = 'latest'")
+            row = cursor.fetchone()
+            if row and row[0]:
+                data = json.loads(row[0])
+                meta = json.loads(row[4]) if (len(row) > 4 and row[4]) else {}
+                return {
+                    "data": data,
+                    "last_updated": row[1],
+                    "last_updated_display": row[2],
+                    "total_industries": row[3] or len(data.get("industries", [])),
+                    "metadata": meta
+                }
+    except Exception as e:
+        print(f"SQLite load_industries_overview error: {e}")
+
+    # 3. Seed from local disk JSON if DB is completely empty
+    seed_paths = [
+        fallback_filepath,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "industries_overview.json"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "industries_overview.json"),
+    ]
+    for p in seed_paths:
+        if p and os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    disk_data = json.load(f)
+                if isinstance(disk_data, dict) and "industries" in disk_data:
+                    print(f"Auto-seeding industries overview from {p} into database...")
+                    saved = save_industries_overview_db(
+                        disk_data,
+                        last_updated_iso=disk_data.get("last_updated"),
+                        last_updated_display=disk_data.get("last_updated_display"),
+                        metadata={"seeded_from": p, "auto_seed": True}
+                    )
+                    return {
+                        "data": disk_data,
+                        "last_updated": disk_data.get("last_updated"),
+                        "last_updated_display": disk_data.get("last_updated_display"),
+                        "total_industries": len(disk_data.get("industries", [])),
+                        "metadata": {"seeded_from": p}
+                    }
+            except Exception as e:
+                print(f"Error reading seed file {p}: {e}")
+
+    return None
+
+
+def save_industries_overview_db(overview_data, last_updated_iso=None, last_updated_display=None, metadata=None, backup_filepath=None):
+    """
+    Saves industries overview dataset to MongoDB Atlas collection 'industries_overview'
+    and SQLite local table 'industries_overview'. Also updates local disk backup file.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    last_updated_iso = last_updated_iso or now_utc.isoformat()
+    last_updated_display = last_updated_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    total_industries = len(overview_data.get("industries", [])) if isinstance(overview_data, dict) else 0
+    metadata = metadata or {}
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["industries_overview"]
+            col.update_one(
+                {"_id": "latest"},
+                {"$set": {
+                    "data": overview_data,
+                    "total_industries": total_industries,
+                    "last_updated": last_updated_iso,
+                    "last_updated_display": last_updated_display,
+                    "metadata": metadata,
+                    "updated_at": last_updated_iso
+                }},
+                upsert=True
+            )
+        except Exception as e:
+            print(f"MongoDB save_industries_overview error: {e}")
+
+    # 2. SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO industries_overview (id, data, last_updated, last_updated_display, total_industries, metadata, updated_at) VALUES ('latest', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                (json.dumps(overview_data, ensure_ascii=False), last_updated_iso, last_updated_display, total_industries, json.dumps(metadata, ensure_ascii=False))
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_industries_overview error: {e}")
+
+    # 3. Disk file backup for resilience
+    backup_path = backup_filepath or os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "industries_overview.json")
+    try:
+        os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+        tmp = backup_path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(overview_data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, backup_path)
+    except Exception as e:
+        print(f"Disk backup write error: {e}")
+
+    return {
+        "success": True,
+        "last_updated": last_updated_iso,
+        "last_updated_display": last_updated_display,
+        "total_industries": total_industries,
         "metadata": metadata
     }

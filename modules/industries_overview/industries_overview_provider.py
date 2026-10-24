@@ -1,3 +1,4 @@
+import db_store
 import os
 import json
 import time
@@ -170,7 +171,11 @@ class IndustriesOverviewProvider:
         self._refresh_error = None
         self._last_backup_file = None
 
-        # Load single unified JSON file into memory
+        self._cache_etag = ""
+        self._cache_timestamp = 0
+        self._stocks_etag_map = {}
+
+        # Load from Database (MongoDB Atlas & SQLite) into ultra-fast in-memory cache
         self._load_overview_data()
 
         # Remove deprecated industry_stocks_cache.json if present
@@ -183,27 +188,78 @@ class IndustriesOverviewProvider:
 
     def _load_overview_data(self):
         with self._lock:
-            if os.path.exists(self.overview_file):
-                try:
+            try:
+                # 1. Primary: Load from Database (MongoDB Atlas & SQLite)
+                db_res = db_store.load_industries_overview_db(fallback_filepath=self.overview_file)
+                if db_res and isinstance(db_res.get('data'), dict) and len(db_res['data'].get('industries', [])) > 0:
+                    self._overview_data = db_res['data']
+                    print(f"Loaded industries overview from DB: {len(self._overview_data.get('industries', []))} industries.")
+                elif os.path.exists(self.overview_file):
                     with open(self.overview_file, "r", encoding="utf-8") as f:
                         self._overview_data = json.load(f)
-                    if not isinstance(self._overview_data, dict):
-                        self._overview_data = {}
-                    if 'industry_stocks' not in self._overview_data:
-                        self._overview_data['industry_stocks'] = {}
-                except Exception as e:
-                    print(f"Error loading {self.overview_file}: {e}")
+                else:
                     self._overview_data = {}
+
+                if not isinstance(self._overview_data, dict):
+                    self._overview_data = {}
+                if 'industry_stocks' not in self._overview_data:
+                    self._overview_data['industry_stocks'] = {}
+
+                self._recompute_cache_etags()
+            except Exception as e:
+                print(f"Error loading industries overview: {e}")
+                self._overview_data = {}
+
+    def _recompute_cache_etags(self):
+        import hashlib
+        try:
+            up = str(self._overview_data.get('last_updated') or self._overview_data.get('last_updated_display') or '')
+            cnt = len(self._overview_data.get('industries', []))
+            stocks_cnt = len(self._overview_data.get('industry_stocks', {}))
+            raw = f"ind-v1-{cnt}-{stocks_cnt}-{up}"
+            self._cache_etag = f'W/"{hashlib.sha1(raw.encode()).hexdigest()[:16]}"'
+
+            stocks_map = self._overview_data.get('industry_stocks', {})
+            self._stocks_etag_map = {}
+            for p, stks in stocks_map.items():
+                p_raw = f"stk-{p}-{len(stks)}-{up}"
+                self._stocks_etag_map[p] = f'W/"{hashlib.sha1(p_raw.encode()).hexdigest()[:16]}"'
+            self._cache_timestamp = time.time()
+        except Exception:
+            self._cache_etag = f'W/"ind-{time.time()}"'
+
+    def get_etag(self) -> str:
+        with self._lock:
+            if not self._cache_etag:
+                self._recompute_cache_etags()
+            return self._cache_etag
+
+    def get_stocks_etag(self, path: str) -> str:
+        clean_path = path.strip('/')
+        with self._lock:
+            if clean_path in self._stocks_etag_map:
+                return self._stocks_etag_map[clean_path]
+            return f'W/"stk-{clean_path}-{int(self._cache_timestamp)}"'
 
     def _save_overview_data(self):
         try:
-            os.makedirs(os.path.dirname(self.overview_file), exist_ok=True)
-            tmp_path = self.overview_file + ".tmp"
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(self._overview_data, f, indent=2, ensure_ascii=False)
-            os.replace(tmp_path, self.overview_file)
+            now_str = datetime.now().strftime("%d %b %Y, %I:%M %p")
+            iso_str = datetime.utcnow().isoformat() + "Z"
+            if not self._overview_data.get('last_updated_display'):
+                self._overview_data['last_updated_display'] = now_str
+            if not self._overview_data.get('last_updated'):
+                self._overview_data['last_updated'] = iso_str
+
+            # 1. Save to Database (MongoDB Atlas & SQLite) and disk backup
+            db_store.save_industries_overview_db(
+                self._overview_data,
+                last_updated_iso=self._overview_data.get('last_updated'),
+                last_updated_display=self._overview_data.get('last_updated_display'),
+                backup_filepath=self.overview_file
+            )
+            self._recompute_cache_etags()
         except Exception as e:
-            print("Error saving overview data:", e)
+            print("Error saving overview data to DB:", e)
 
     def _enrich_taxonomy(self, data):
         if not isinstance(data, dict) or 'industries' not in data:
@@ -548,7 +604,7 @@ class IndustriesOverviewProvider:
 
             final_output = {
                 'count': len(raw_industries),
-                'last_updated': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'last_updated': datetime.utcnow().isoformat() + "Z",
                 'last_updated_display': datetime.now().strftime('%d %b %Y, %I:%M %p'),
                 'last_backup': backup_filename,
                 'industries': raw_industries,
@@ -556,13 +612,17 @@ class IndustriesOverviewProvider:
                 'industry_stocks': new_industry_stocks
             }
 
-            tmp_path = self.overview_file + ".tmp"
-            with open(tmp_path, 'w', encoding='utf-8') as fp:
-                json.dump(final_output, fp, indent=2, ensure_ascii=False)
-            os.replace(tmp_path, self.overview_file)
+            # Persist fresh dataset to Database (MongoDB Atlas & SQLite) & backup file
+            db_store.save_industries_overview_db(
+                final_output,
+                last_updated_iso=final_output['last_updated'],
+                last_updated_display=final_output['last_updated_display'],
+                backup_filepath=self.overview_file
+            )
 
             with self._lock:
                 self._overview_data = final_output
+                self._recompute_cache_etags()
 
             self._refresh_progress = "Completed successfully. All industries & stocks updated."
             self._refresh_percent = 100
@@ -589,7 +649,8 @@ class IndustriesOverviewProvider:
             "total_industries": total_inds,
             "total_stocks_cached": total_cached_stocks,
             "last_updated": last_up,
-            "last_backup": backup
+            "last_backup": backup,
+            "storage": "MongoDB Atlas & SQLite (Synced)"
         }
 
     def _scrape_master_directory_initial(self):
