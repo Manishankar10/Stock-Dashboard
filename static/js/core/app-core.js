@@ -8,6 +8,38 @@
         window.nativeAlert = __originalNativeAlert;
         window.nativeConfirm = __originalNativeConfirm;
 
+        // =========================================================
+        // UNIVERSAL DYNAMIC MODAL STACKING MANAGER
+        // Brings whichever modal is clicked or opened (latest) to top
+        // =========================================================
+        window.globalModalZIndexCounter = Math.max(window.globalModalZIndexCounter || 100100, 100100);
+
+        function bringModalToFront(modal) {
+            if (!modal) return null;
+            if (typeof modal === 'string') {
+                modal = document.getElementById(modal);
+            }
+            if (!modal || !(modal instanceof HTMLElement)) return null;
+
+            window.globalModalZIndexCounter += 2;
+            modal.style.setProperty('z-index', String(window.globalModalZIndexCounter), 'important');
+            return window.globalModalZIndexCounter;
+        }
+        window.bringModalToFront = bringModalToFront;
+
+        // Capture-phase pointerdown listener raises any clicked modal instantly
+        document.addEventListener('pointerdown', function (e) {
+            const modal = e.target.closest('.modal, .small-modal, .fundamentals-modal, .mf-modal-backdrop, .br-modal-overlay, .of-modal-overlay');
+            if (!modal || !modal.id) return;
+            if (modal.id === 'customModalOverlay') return;
+
+            const isHidden = modal.style.display === 'none' || modal.hasAttribute('hidden') || (window.getComputedStyle && window.getComputedStyle(modal).display === 'none');
+            if (!isHidden) {
+                bringModalToFront(modal);
+            }
+        }, true);
+
+
         // Core System Modal Function for all Alerts, Confirms, Prompts, Warnings, and Success Popups
         function showSystemModal(options = {}) {
             return new Promise((resolve) => {
@@ -96,6 +128,7 @@
                 }
 
                 overlay.style.setProperty('display', 'flex', 'important');
+                overlay.style.setProperty('z-index', String((window.globalModalZIndexCounter || 100100) + 500), 'important');
                 box.style.transform = 'scale(1)';
 
                 const cleanup = () => {

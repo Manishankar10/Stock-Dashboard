@@ -43,6 +43,9 @@
             document.getElementById('modal-alert-price').value = valToSet;
             document.getElementById('modal-alert-note').value = '';
             document.getElementById('createAlertModal').style.display = 'block';
+            if (typeof window.bringModalToFront === 'function') {
+                window.bringModalToFront('createAlertModal');
+            }
         }
 
         function closeCreateAlertModal() {

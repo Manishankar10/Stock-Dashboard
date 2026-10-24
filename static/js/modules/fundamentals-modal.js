@@ -2,6 +2,7 @@
         // FUNDAMENTALS MODAL
         // =========================================================
         let _fundamentalsMsgListenerAttached = false;
+        let _currentModalSymbol = '';
 
         function openFundamentalsModal(symbol) {
             const modal = document.getElementById('fundamentalsModal');
@@ -18,7 +19,7 @@
             if (!safeSymbol) return;
 
             const cleanSym = safeSymbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
-            let _currentModalSymbol = safeSymbol;
+            _currentModalSymbol = safeSymbol;
 
             // Reset logo & placeholder with clean stock monogram
             if (logoEl) {
@@ -85,11 +86,38 @@
 
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
+            if (typeof window.bringModalToFront === 'function') {
+                window.bringModalToFront(modal);
+            }
+            if (!modal._hasBackdropFrontListener) {
+                modal._hasBackdropFrontListener = true;
+                modal.addEventListener('pointerdown', function (e) {
+                    if (e.target === modal) {
+                        const chartModal = document.getElementById('chartModal');
+                        if (chartModal && chartModal.style.display !== 'none' && !chartModal.hasAttribute('hidden')) {
+                            if (typeof window.bringModalToFront === 'function') {
+                                window.bringModalToFront(chartModal);
+                            }
+                        }
+                    }
+                });
+            }
 
             frame.onload = () => {
                 if (subtitle) {
                     subtitle.textContent = cleanSym;
                 }
+                try {
+                    const frameDoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+                    if (frameDoc && !frameDoc._hasModalFrontListener) {
+                        frameDoc._hasModalFrontListener = true;
+                        frameDoc.addEventListener('pointerdown', function () {
+                            if (typeof window.bringModalToFront === 'function') {
+                                window.bringModalToFront('fundamentalsModal');
+                            }
+                        }, true);
+                    }
+                } catch(e) {}
             };
 
             // Attach one-time postMessage listener to receive full company name and logo from iframe
@@ -99,6 +127,9 @@
                         const targetSym = event.data.symbol || _currentModalSymbol;
                         if (targetSym && typeof window.openInHouseChart === 'function') {
                             window.openInHouseChart(targetSym);
+                            if (typeof window.bringModalToFront === 'function') {
+                                window.bringModalToFront('chartModal');
+                            }
                         }
                     }
                     if (event.data && event.data.type === 'FUNDAMENTALS_INFO') {
@@ -223,8 +254,26 @@
                 placeholderEl.style.display = 'flex';
                 placeholderEl.textContent = '';
             }
-            document.body.style.overflow = '';
+            const hasOtherOpenModal = document.getElementById('chartModal') && document.getElementById('chartModal').style.display !== 'none';
+            if (!hasOtherOpenModal) {
+                document.body.style.overflow = '';
+            }
         }
+
+        function openChartFromFundamentalsModal() {
+            try {
+                const sym = _currentModalSymbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '');
+                if (sym && typeof window.openInHouseChart === 'function') {
+                    window.openInHouseChart(sym);
+                }
+            } catch(e) {
+                console.warn('Error opening chart from fundamentals modal:', e);
+            }
+            if (typeof window.bringModalToFront === 'function') {
+                window.bringModalToFront('chartModal');
+            }
+        }
+        window.openChartFromFundamentalsModal = openChartFromFundamentalsModal;
 
         const stockNewsState = {
             symbol: '',
@@ -459,6 +508,9 @@
 
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
+            if (typeof window.bringModalToFront === 'function') {
+                window.bringModalToFront(modal);
+            }
 
             const escapeHtml = (str) => {
                 if (!str) return '';

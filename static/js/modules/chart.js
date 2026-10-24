@@ -4954,6 +4954,9 @@
             const modal = document.getElementById('chartModal');
             if (modal) {
                 modal.style.display = 'block';
+                if (typeof window.bringModalToFront === 'function') {
+                    window.bringModalToFront(modal);
+                }
             }
 
             const info = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};

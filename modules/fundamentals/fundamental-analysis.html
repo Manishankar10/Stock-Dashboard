@@ -2942,6 +2942,16 @@ function formatChartDate(rawDate) {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+
+// Raise fundamentalsModal on any interaction inside the iframe
+window.addEventListener('pointerdown', function() {
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.bringModalToFront === 'function') {
+      window.parent.bringModalToFront('fundamentalsModal');
+    }
+  } catch(e) {}
+}, true);
+
 function openTechnicalChartFromFundamentals(event) {
   if (event) {
     try {
@@ -2956,6 +2966,9 @@ function openTechnicalChartFromFundamentals(event) {
   try {
     if (window.parent && window.parent !== window && typeof window.parent.openInHouseChart === 'function') {
       window.parent.openInHouseChart(sym);
+      if (typeof window.parent.bringModalToFront === 'function') {
+        window.parent.bringModalToFront('chartModal');
+      }
       return;
     }
   } catch (e) {

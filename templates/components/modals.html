@@ -1064,7 +1064,7 @@
     <!-- =========================================================
          FUNDAMENTAL ANALYSIS POPUP MODAL
     ========================================================= -->
-    <div id="fundamentalsModal" class="small-modal fundamentals-modal" style="display: none; z-index: 10030;">
+    <div id="fundamentalsModal" class="small-modal fundamentals-modal" style="display: none; z-index: 10040;">
         <div class="small-modal-content fundamentals-modal-content" style="width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh; margin: 2.5vh auto; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
             <div class="fundamentals-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border-color); background:var(--bg-card); flex:0 0 auto;">
                 <!-- Desktop Web Title (default visible on web) -->
@@ -1085,6 +1085,7 @@
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                     </button>
+                    <button type="button" id="fundamentals-modal-chart-btn" class="btn secondary" onclick="openChartFromFundamentalsModal()" title="Open / Bring Interactive Chart to Front" style="display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; background:rgba(255,255,255,0.06); border:1px solid var(--border-color); color:var(--text-primary); cursor:pointer; white-space:nowrap; transition:all 0.15s ease;">📈 Chart</button>
                     <a id="fundamentals-modal-screener-btn" class="btn primary" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; background:var(--accent, #10b981); border:1px solid var(--accent, #10b981); color:#fff; text-decoration:none; white-space:nowrap;">Screener.in ↗</a>
                 </div>
 

@@ -1916,7 +1916,7 @@
         border-radius: 0 !important;
         border: none !important;
         box-shadow: none !important;
-        z-index: 10050 !important;
+        z-index: 10050;
     }
     .chart-desktop-close-btn {
         display: none !important;
@@ -2049,7 +2049,7 @@
         padding: 0 !important;
         border: none !important;
         border-radius: 0 !important;
-        z-index: 10030 !important;
+        z-index: 10050;
         overflow: hidden !important;
         align-items: stretch !important;
         justify-content: flex-start !important;
