@@ -23,6 +23,11 @@ def init_quarterly_results(login_required: Callable, load_data_fn: Optional[Call
     _PROVIDER = QuarterlyResultsProvider(data_dir=data_dir)
 
 
+def get_provider() -> Optional[QuarterlyResultsProvider]:
+    global _PROVIDER
+    return _PROVIDER
+
+
 def _guard(view):
     @wraps(view)
     def wrapper(*args, **kwargs):

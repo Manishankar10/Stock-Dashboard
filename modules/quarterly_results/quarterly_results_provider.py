@@ -145,13 +145,44 @@ class QuarterlyResultsProvider:
         self._live_file = os.path.join(data_dir, "app_data", "quarterly_results_live.json")
         self._cache_file = os.path.join(data_dir, "app_data", "quarterly_results_cache.json")
 
-        # Load existing disk cache if available (NO PARSING ON INIT)
-        cached = self._load_disk_cache()
-        if cached:
-            self._cache_data = cached
-            logger.info(f"QuarterlyResults: Loaded {len(cached)} existing records from disk cache.")
+        self._last_updated_iso: Optional[str] = None
+        self._last_updated_display: Optional[str] = None
+        self._last_new_companies_count: int = 0
+        self._admin_refresh_progress: str = "Idle"
+        self._admin_refresh_percent: int = 0
+        self._admin_refresh_error: Optional[str] = None
+        self._admin_is_refreshing: bool = False
+        self._admin_lock = threading.Lock()
+
+        # 1. First attempt to load existing records from Database (MongoDB Atlas / SQLite)
+        db_payload = None
+        try:
+            from db_store import load_quarterly_results_db
+            db_payload = load_quarterly_results_db()
+        except Exception as e:
+            logger.warning(f"QuarterlyResults: Could not load from DB: {e}")
+
+        if db_payload and isinstance(db_payload.get("data"), list) and len(db_payload["data"]) > 0:
+            self._cache_data = db_payload["data"]
+            self._last_updated_iso = db_payload.get("last_updated") or datetime.now().isoformat()
+            self._last_updated_display = db_payload.get("last_updated_display") or datetime.now().strftime("%d %b %Y, %I:%M %p")
+            self._last_fetch_time = time.time()
+            logger.info(f"QuarterlyResults: Loaded {len(self._cache_data)} existing records from database.")
         else:
-            logger.info("QuarterlyResults: Initialized without cache. Parsing will start upon page load.")
+            # 2. Fallback to existing disk cache if available and seed DB
+            cached = self._load_disk_cache()
+            if cached:
+                self._cache_data = cached
+                self._last_updated_iso = datetime.now().isoformat(timespec="seconds")
+                self._last_updated_display = datetime.now().strftime("%d %b %Y, %I:%M %p")
+                logger.info(f"QuarterlyResults: Loaded {len(cached)} existing records from disk cache. Persisting to database...")
+                try:
+                    from db_store import save_quarterly_results_db
+                    save_quarterly_results_db(cached, self._last_updated_iso, self._last_updated_display)
+                except Exception as e:
+                    logger.warning(f"QuarterlyResults: Error syncing disk cache to DB: {e}")
+            else:
+                logger.info("QuarterlyResults: Initialized without cache. Parsing will start upon page load.")
 
     def _login_screener_pure_requests(self) -> requests.Session:
         """Log in to Screener.in using pure HTTP requests (100% production/cloud compatible, no Selenium needed)."""
@@ -254,12 +285,20 @@ class QuarterlyResultsProvider:
 
         return None
 
-    def _save_disk_cache(self, data: List[Dict[str, Any]]):
-        """Atomically persist results to user_data/quarterly_results_live.json with metadata."""
+    def _save_disk_cache(self, data: List[Dict[str, Any]], new_companies_count: int = 0):
+        """Atomically persist results to user_data/quarterly_results_live.json and Database."""
         q_info = calculate_quarters()
+        now = datetime.now()
+        last_updated_iso = now.isoformat(timespec="seconds")
+        last_updated_display = now.strftime("%d %b %Y, %I:%M %p")
+        self._last_updated_iso = last_updated_iso
+        self._last_updated_display = last_updated_display
+        self._last_new_companies_count = new_companies_count
+
         payload = {
             "time": time.time(),
-            "last_updated_iso": datetime.now().isoformat(timespec="seconds"),
+            "last_updated_iso": last_updated_iso,
+            "last_updated_display": last_updated_display,
             "current_quarter": q_info["current_quarter"],
             "quarter_label": q_info["quarter_label"],
             "quarters": {
@@ -267,9 +306,27 @@ class QuarterlyResultsProvider:
                 "prev": q_info["prev"],
                 "year_ago": q_info["year_ago"],
             },
+            "new_companies_found": new_companies_count,
             "total_records": len(data),
             "data": data,
         }
+
+        # 1. Persist to Database (MongoDB Atlas & SQLite)
+        try:
+            from db_store import save_quarterly_results_db
+            save_quarterly_results_db(
+                data,
+                last_updated_iso=last_updated_iso,
+                last_updated_display=last_updated_display,
+                metadata={
+                    "current_quarter": q_info["current_quarter"],
+                    "quarter_label": q_info["quarter_label"],
+                    "new_companies_found": new_companies_count,
+                    "total_records": len(data)
+                }
+            )
+        except Exception as e:
+            logger.warning(f"QuarterlyResults: Error saving to DB: {e}")
         try:
             os.makedirs(os.path.dirname(self._live_file), exist_ok=True)
             tmp_file = self._live_file + ".tmp"
@@ -517,29 +574,104 @@ class QuarterlyResultsProvider:
                 page += 1
                 time.sleep(0.3)
 
-            # Merge new records into existing store
+            # Merge new records into existing store and update database
             if new_records:
-                logger.info(f"Found {len(new_records)} new/updated company records.")
+                logger.info(f"Found {len(new_records)} new/updated company records. Updating database...")
                 # Deduplicate: new records take priority
                 new_key_set = {(clean_symbol(n["symbol"]), str(n["quarters"]["latest"]).strip().lower()) for n in new_records}
                 all_records = new_records + [
                     r for r in existing_records
                     if (clean_symbol(r.get("symbol")), str(r.get("quarters", {}).get("latest") or "").strip().lower()) not in new_key_set
                 ]
+                with self._lock:
+                    self._cache_data = all_records
+                    self._last_fetch_time = time.time()
+                    self._save_disk_cache(all_records, new_companies_count=len(new_records))
             else:
-                logger.info("No new records found. All latest results are up-to-date.")
+                logger.info("No new records found. All latest results are up-to-date in database.")
                 all_records = existing_records
-
-            with self._lock:
-                self._cache_data = all_records
-                self._last_fetch_time = time.time()
-                self._save_disk_cache(all_records)
+                with self._lock:
+                    self._cache_data = all_records
+                    self._last_fetch_time = time.time()
+                    self._last_new_companies_count = 0
+                    if not getattr(self, "_last_updated_display", None):
+                        now = datetime.now()
+                        self._last_updated_iso = now.isoformat(timespec="seconds")
+                        self._last_updated_display = now.strftime("%d %b %Y, %I:%M %p")
 
             logger.info(f"Screener update complete. Total records stored: {len(all_records)}.")
             return all_records
         finally:
             with self._lock:
                 self._is_updating = False
+
+    def get_refresh_status(self) -> Dict[str, Any]:
+        """Return live synchronization status for Admin."""
+        total_records = len(self._cache_data or [])
+        return {
+            "is_refreshing": getattr(self, "_admin_is_refreshing", False),
+            "progress": getattr(self, "_admin_refresh_progress", "Idle"),
+            "percent": getattr(self, "_admin_refresh_percent", 0),
+            "error": getattr(self, "_admin_refresh_error", None),
+            "last_updated": getattr(self, "_last_updated_iso", "Never"),
+            "last_updated_display": getattr(self, "_last_updated_display", "Never"),
+            "total_records": total_records,
+            "new_companies_found": getattr(self, "_last_new_companies_count", 0),
+            "storage": "MongoDB Atlas & SQLite (Synced)",
+        }
+
+    def start_admin_background_refresh(self) -> Dict[str, Any]:
+        """Initiate background refresh of quarterly results by Admin."""
+        with getattr(self, "_admin_lock", threading.Lock()):
+            if getattr(self, "_admin_is_refreshing", False):
+                return {
+                    "success": False,
+                    "status": "in_progress",
+                    "message": "A quarterly results refresh is already in progress.",
+                    **self.get_refresh_status(),
+                }
+            self._admin_is_refreshing = True
+            self._admin_refresh_progress = "Connecting to live Screener.in results portal..."
+            self._admin_refresh_percent = 15
+            self._admin_refresh_error = None
+
+        thread = threading.Thread(target=self._run_admin_refresh_worker, daemon=True)
+        thread.start()
+
+        return {
+            "success": True,
+            "status": "started",
+            "message": "Background refresh started. Live quarterly disclosures are being synchronized to DB.",
+            **self.get_refresh_status(),
+        }
+
+    def _run_admin_refresh_worker(self):
+        """Worker thread to run full refresh from screener with live progress updates."""
+        try:
+            logger.info("Admin initiated quarterly results live refresh...")
+            with self._admin_lock:
+                self._admin_refresh_percent = 30
+                self._admin_refresh_progress = "Authenticating with Screener.in and fetching page 1..."
+
+            # Run refresh
+            all_records = self.refresh_from_screener()
+
+            with self._admin_lock:
+                self._admin_refresh_percent = 100
+                new_found = getattr(self, "_last_new_companies_count", 0)
+                if new_found > 0:
+                    self._admin_refresh_progress = f"Completed successfully! {new_found} new companies found and saved to database. Total {len(all_records)} companies tracked."
+                else:
+                    self._admin_refresh_progress = f"Completed successfully! All {len(all_records)} companies are up-to-date in database."
+                self._admin_refresh_error = None
+        except Exception as exc:
+            logger.error(f"Error during Admin quarterly results refresh: {exc}", exc_info=True)
+            with self._admin_lock:
+                self._admin_refresh_error = str(exc)
+                self._admin_refresh_progress = f"Refresh failed: {str(exc)}"
+        finally:
+            with self._admin_lock:
+                self._admin_is_refreshing = False
 
     def get_quarterly_results(
         self,
@@ -745,6 +877,7 @@ class QuarterlyResultsProvider:
                 "year_ago": q_info["year_ago"],
             },
             "last_updated": self._last_fetch_time,
+            "last_updated_display": getattr(self, "_last_updated_display", None) or (datetime.fromtimestamp(self._last_fetch_time).strftime("%d %b %Y, %I:%M %p") if self._last_fetch_time else "Just now"),
             "active_filters": {
                 "search": search,
                 "industry": industry,

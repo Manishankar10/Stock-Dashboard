@@ -188,6 +188,17 @@ def _init_sqlite_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS quarterly_results (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    last_updated TEXT,
+                    last_updated_display TEXT,
+                    total_records INTEGER DEFAULT 0,
+                    metadata TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -568,3 +579,101 @@ def save_corporate_actions_db(categories, last_updated_iso=None, last_updated_di
     }
 
 
+
+
+# ==============================================================================
+# QUARTERLY RESULTS DATABASE STORAGE (MONGODB ATLAS & SQLITE)
+# ==============================================================================
+
+def load_quarterly_results_db():
+    """
+    Loads latest quarterly results records from MongoDB Atlas collection 'quarterly_results'.
+    Falls back to SQLite local storage if MongoDB is unavailable.
+    """
+    if db is not None:
+        try:
+            col = db["quarterly_results"]
+            doc = col.find_one({"_id": "latest"})
+            if doc and "data" in doc:
+                return {
+                    "data": doc.get("data", []),
+                    "last_updated": doc.get("last_updated"),
+                    "last_updated_display": doc.get("last_updated_display"),
+                    "total_records": doc.get("total_records", len(doc.get("data", []))),
+                    "metadata": doc.get("metadata", {})
+                }
+        except Exception as e:
+            print(f"MongoDB load_quarterly_results error: {e}")
+
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data, last_updated, last_updated_display, total_records, metadata FROM quarterly_results WHERE id = 'latest'")
+            row = cursor.fetchone()
+            if row and row[0]:
+                data = json.loads(row[0])
+                meta = json.loads(row[4]) if (len(row) > 4 and row[4]) else {}
+                return {
+                    "data": data,
+                    "last_updated": row[1],
+                    "last_updated_display": row[2],
+                    "total_records": row[3] or len(data),
+                    "metadata": meta
+                }
+    except Exception as e:
+        print(f"SQLite load_quarterly_results error: {e}")
+
+    return None
+
+
+def save_quarterly_results_db(records, last_updated_iso=None, last_updated_display=None, metadata=None):
+    """
+    Saves quarterly results list and timestamp to MongoDB Atlas collection 'quarterly_results'.
+    Also syncs to SQLite local storage 'quarterly_results' table.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    last_updated_iso = last_updated_iso or now_utc.isoformat()
+    last_updated_display = last_updated_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    total_records = len(records)
+    metadata = metadata or {}
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["quarterly_results"]
+            col.update_one(
+                {"_id": "latest"},
+                {"$set": {
+                    "data": records,
+                    "total_records": total_records,
+                    "last_updated": last_updated_iso,
+                    "last_updated_display": last_updated_display,
+                    "metadata": metadata,
+                    "updated_at": last_updated_iso
+                }},
+                upsert=True
+            )
+        except Exception as e:
+            print(f"MongoDB save_quarterly_results error: {e}")
+
+    # 2. SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO quarterly_results (id, data, last_updated, last_updated_display, total_records, metadata, updated_at) VALUES ('latest', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                (json.dumps(records, ensure_ascii=False), last_updated_iso, last_updated_display, total_records, json.dumps(metadata, ensure_ascii=False))
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_quarterly_results error: {e}")
+
+    return {
+        "success": True,
+        "last_updated": last_updated_iso,
+        "last_updated_display": last_updated_display,
+        "total_records": total_records,
+        "metadata": metadata
+    }
