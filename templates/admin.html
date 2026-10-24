@@ -25,6 +25,19 @@
             background-color: #f8fafc;
             color: #0f172a;
         }
+
+        .admin-datasets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(580px, 1fr));
+            gap: 20px;
+            align-items: stretch;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 960px) {
+            .admin-datasets-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
     </style>
 
     <!-- Favicon & Touch Icons -->
@@ -852,7 +865,7 @@
 
         <!-- TAB 3: System Setting -->
         <div id="tab-settings" class="tab-content">
-            <div class="metric-card" style="margin-bottom: 24px; max-width: 850px;">
+            <div class="metric-card" style="margin-bottom: 24px; max-width: 100%;">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
@@ -919,8 +932,26 @@
                 </form>
             </div>
 
-            <!-- CARD 2: Industries Overview Dataset Management -->
-            <div class="metric-card" style="margin-bottom: 24px; max-width: 850px;">
+
+            <!-- Section Header: Exchange Datasets & Feed Synchronization -->
+            <div class="admin-section-header" style="display: flex; align-items: center; justify-content: space-between; margin: 30px 0 18px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        🌐 Exchange Datasets & Feed Synchronization
+                    </h3>
+                    <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                        Automated background ingestion, database persistence (MongoDB Atlas &amp; SQLite), and zero-interruption live cache synchronization.
+                    </p>
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    Storage Engine: <strong style="color: #10b981;">MongoDB Atlas + SQLite</strong>
+                </div>
+            </div>
+
+            <!-- 2-Column Responsive Grid for Dataset Cards -->
+            <div class="admin-datasets-grid">
+                <!-- CARD 1: Industries Overview Dataset Management -->
+                <div class="metric-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
@@ -988,8 +1019,8 @@
                 </div>
             </div>
 
-            <!-- CARD 3: Corporate Actions Dataset Management -->
-            <div class="metric-card" style="margin-bottom: 24px; max-width: 850px;">
+                <!-- CARD 2: Corporate Actions Dataset Management -->
+                <div class="metric-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
@@ -1053,8 +1084,8 @@
                 </div>
             </div>
 
-            <!-- CARD 4: IPO & GMP Tracker Dataset Management -->
-            <div class="metric-card" style="margin-bottom: 24px; max-width: 850px;">
+                <!-- CARD 3: IPO & GMP Tracker Dataset Management -->
+                <div class="metric-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
@@ -1118,8 +1149,8 @@
                 </div>
             </div>
 
-            <!-- CARD 5: Quarterly Results Dataset Management -->
-            <div class="metric-card" style="margin-bottom: 24px; max-width: 850px;">
+                <!-- CARD 4: Quarterly Results Dataset Management -->
+                <div class="metric-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
@@ -1182,6 +1213,81 @@
                     </div>
                 </div>
             </div>
+
+                <!-- CARD 5: Shareholding Patterns Dataset Management -->
+                <div class="metric-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    📈 Shareholding Patterns Dataset Management
+                                </h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                                    Manage quarterly Promoter, FII, DII, and Public shareholding disclosures from NSE &amp; BSE stored in MongoDB Atlas and SQLite.
+                                </p>
+                            </div>
+                            <span id="admin-shp-refresh-badge" class="badge" style="font-size: 12px; display: none;"></span>
+                        </div>
+
+                        <div class="settings-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Last Synced</span>
+                                <div id="admin-shp-last-updated" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Total Disclosures</span>
+                                <div id="admin-shp-total-filings" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Mainboard Equities</span>
+                                <div id="admin-shp-count-equities" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">SME Filings</span>
+                                <div id="admin-shp-count-sme" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Database Storage</span>
+                                <div style="font-size: 13.5px; font-weight: 600; color: #10b981; margin-top: 4px;">MongoDB Atlas &amp; SQLite</div>
+                            </div>
+                        </div>
+
+                        <!-- Live Progress & Status Bar -->
+                        <div id="admin-shp-progress-container" style="display: none; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span id="admin-shp-progress-text" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary);">Refreshing shareholding filings...</span>
+                                <span id="admin-shp-progress-percent" style="font-size: 12px; font-weight: 700; color: #3b82f6;">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                                <div id="admin-shp-progress-bar" style="width: 0%; height: 100%; background: #3b82f6; transition: width 0.3s ease; border-radius: 4px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Callout Banner -->
+                        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 10px;">
+                            <span style="font-size: 18px; line-height: 1;">⚡</span>
+                            <div style="font-size: 12px; color: var(--text-primary); line-height: 1.5;">
+                                <strong>Zero User Interruption Guarantee:</strong> All shareholding disclosures, QoQ shifts, and XBRL metrics are stored in MongoDB Atlas &amp; SQLite. Served instantly from high-speed memory cache on user visits. Admin refresh fetches live exchange feeds in a background thread and writes atomically.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                        <div id="admin-shp-status-msg" style="font-size: 12px; color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready to synchronize</div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button type="button" class="btn btn-secondary" onclick="loadAdminShareholdingStatus()" style="font-size: 12.5px; padding: 8px 14px;">
+                                🔄 Check Status
+                            </button>
+                            <button type="button" id="btn-refresh-shp" class="btn" onclick="triggerAdminShareholdingRefresh()" style="padding: 8px 18px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                <svg id="admin-shp-refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                                </svg>
+                                <span id="admin-shp-refresh-text">📈 Refresh Shareholding Patterns</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- End of .admin-datasets-grid -->
 
         </div>
 
@@ -1475,7 +1581,7 @@
             if (tabContent) tabContent.classList.add('active');
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
-            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); }
+            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); }
             if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); }
         }
 
@@ -2441,6 +2547,137 @@
             }
         }
 
+                // ==========================================
+        // SHAREHOLDING PATTERNS CONTROLLER
+        // ==========================================
+        let adminShpRefreshPollTimer = null;
+
+        async function loadAdminShareholdingStatus() {
+            try {
+                const res = await fetch('/api/admin/shareholding/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                const lastUpEl = document.getElementById('admin-shp-last-updated');
+                const totalFilingsEl = document.getElementById('admin-shp-total-filings');
+                const equitiesEl = document.getElementById('admin-shp-count-equities');
+                const smeEl = document.getElementById('admin-shp-count-sme');
+                const progContainer = document.getElementById('admin-shp-progress-container');
+                const progText = document.getElementById('admin-shp-progress-text');
+                const progPercent = document.getElementById('admin-shp-progress-percent');
+                const progBar = document.getElementById('admin-shp-progress-bar');
+                const refreshBtn = document.getElementById('btn-refresh-shp');
+                const refreshIcon = document.getElementById('admin-shp-refresh-icon');
+                const refreshText = document.getElementById('admin-shp-refresh-text');
+                const badge = document.getElementById('admin-shp-refresh-badge');
+
+                if (lastUpEl) lastUpEl.innerText = s.last_updated_display || s.last_updated || 'Never';
+                if (totalFilingsEl) totalFilingsEl.innerText = `${s.total_records || 0} Disclosures`;
+                if (equitiesEl) equitiesEl.innerText = `${s.count_equities || 0} Equities`;
+                if (smeEl) smeEl.innerText = `${s.count_sme || 0} SME`;
+
+                if (s.is_refreshing) {
+                    if (badge) {
+                        badge.style.display = 'inline-block';
+                        badge.style.background = 'rgba(2, 132, 199, 0.15)';
+                        badge.style.color = '#0284c7';
+                        badge.innerText = 'Syncing...';
+                    }
+                    if (progContainer) progContainer.style.display = 'block';
+                    if (progText) progText.innerText = s.progress || 'Refreshing shareholding disclosures...';
+                    if (progPercent) progPercent.innerText = `${s.percent || 15}%`;
+                    if (progBar) progBar.style.width = `${s.percent || 15}%`;
+                    if (refreshBtn) {
+                        refreshBtn.disabled = true;
+                        refreshBtn.style.opacity = '0.75';
+                    }
+                    if (refreshIcon) refreshIcon.classList.add('spin-anim');
+                    if (refreshText) refreshText.innerText = 'Updating DB...';
+
+                    if (adminShpRefreshPollTimer) clearTimeout(adminShpRefreshPollTimer);
+                    adminShpRefreshPollTimer = setTimeout(loadAdminShareholdingStatus, 2000);
+                } else {
+                    if (badge) {
+                        badge.style.display = 'inline-block';
+                        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                        badge.style.color = '#10b981';
+                        badge.innerText = 'Up to Date';
+                    }
+                    if (progContainer) {
+                        if (s.percent >= 100) {
+                            if (progText) progText.innerText = s.progress || 'Completed!';
+                            if (progPercent) progPercent.innerText = '100%';
+                            if (progBar) progBar.style.width = '100%';
+                            setTimeout(() => { if (progContainer) progContainer.style.display = 'none'; }, 3500);
+                        } else {
+                            progContainer.style.display = 'none';
+                        }
+                    }
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.style.opacity = '1';
+                    }
+                    if (refreshIcon) refreshIcon.classList.remove('spin-anim');
+                    if (refreshText) refreshText.innerText = 'Refresh Shareholding Dataset';
+                }
+            } catch (e) {
+                console.error('Error fetching admin shareholding status:', e);
+            }
+        }
+
+        async function triggerAdminShareholdingRefresh() {
+            const confirmed = confirm(
+                'Are you sure you want to refresh the Shareholding Patterns dataset?\n\n' +
+                'This will:\n' +
+                '1. Query live exchange feeds (NSE/BSE) for the latest quarterly shareholding filings\n' +
+                '2. Incrementally discover newly submitted company filings\n' +
+                '3. Update MongoDB Atlas & SQLite database with new company disclosures\n' +
+                '4. Update the in-memory fast cache and record the last updated date & time.\n\n' +
+                'Note: Standard user browsing will always read from DB/cache without calling exchange providers.\n\n' +
+                'Proceed?'
+            );
+            if (!confirmed) return;
+
+            const refreshBtn = document.getElementById('btn-refresh-shp');
+            const refreshIcon = document.getElementById('admin-shp-refresh-icon');
+            const refreshText = document.getElementById('admin-shp-refresh-text');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.style.opacity = '0.75';
+            }
+            if (refreshIcon) refreshIcon.classList.add('spin-anim');
+            if (refreshText) refreshText.innerText = 'Starting Refresh...';
+
+            try {
+                const res = await fetch('/api/admin/shareholding/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadAdminShareholdingStatus();
+                } else {
+                    alert('❌ Failed to start refresh: ' + (data.error || data.message || 'Unknown error'));
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.style.opacity = '1';
+                    }
+                    if (refreshIcon) refreshIcon.classList.remove('spin-anim');
+                    if (refreshText) refreshText.innerText = 'Refresh Shareholding Dataset';
+                }
+            } catch (e) {
+                alert('❌ Error requesting refresh: ' + e.message);
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.style.opacity = '1';
+                }
+                if (refreshIcon) refreshIcon.classList.remove('spin-anim');
+                if (refreshText) refreshText.innerText = 'Refresh Shareholding Dataset';
+            }
+        }
+
+
         // EXTERNAL API / URL CALL LOGS CONTROLLERS
         // ==========================================
         let _allExternalApiLogs = [];
@@ -3135,6 +3372,7 @@
             await loadAdminCorporateActionsStatus();
             await loadAdminIpoStatus();
             await loadAdminQuarterlyResultsStatus();
+            await loadAdminShareholdingStatus();
             await loadExternalApiLogsBadge();
             await loadProductionJsonFilesList();
         }

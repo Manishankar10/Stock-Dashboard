@@ -197,3 +197,9 @@ def download_shareholding_json():
         download_name="shareholding_patterns.json",
         mimetype="application/json",
     )
+
+
+def get_provider() -> Optional[ShareholdingProvider]:
+    """Retrieve global initialized ShareholdingProvider instance."""
+    global _PROVIDER
+    return _PROVIDER

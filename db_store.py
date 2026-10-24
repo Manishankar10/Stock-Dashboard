@@ -210,6 +210,19 @@ def _init_sqlite_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS shareholding_patterns (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    last_synced REAL,
+                    last_synced_display TEXT,
+                    total_records INTEGER DEFAULT 0,
+                    count_equities INTEGER DEFAULT 0,
+                    count_sme INTEGER DEFAULT 0,
+                    metadata TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -827,5 +840,192 @@ def save_industries_overview_db(overview_data, last_updated_iso=None, last_updat
         "last_updated": last_updated_iso,
         "last_updated_display": last_updated_display,
         "total_industries": total_industries,
+        "metadata": metadata
+    }
+
+
+def load_shareholding_patterns_db(fallback_filepath=None):
+    """
+    Loads latest shareholding patterns dataset from MongoDB Atlas collection 'shareholding_patterns'.
+    Falls back to SQLite local storage if MongoDB is unavailable.
+    If neither DB has data yet, checks disk JSON file, auto-seeds the DB, and returns data.
+    """
+    # 1. Try MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["shareholding_patterns"]
+            doc = col.find_one({"_id": "latest"})
+            if doc and ("records" in doc or "data" in doc):
+                records = doc.get("records")
+                if records is None and isinstance(doc.get("data"), dict):
+                    records = doc["data"].get("records", [])
+                elif records is None and isinstance(doc.get("data"), list):
+                    records = doc["data"]
+                return {
+                    "records": records or [],
+                    "last_synced": doc.get("last_synced", 0),
+                    "last_synced_display": doc.get("last_synced_display", ""),
+                    "total_records": doc.get("total_records", len(records or [])),
+                    "count_equities": doc.get("count_equities", 0),
+                    "count_sme": doc.get("count_sme", 0),
+                    "metadata": doc.get("metadata", {})
+                }
+        except Exception as e:
+            print(f"MongoDB load_shareholding_patterns error: {e}")
+
+    # 2. Try SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data, last_synced, last_synced_display, total_records, count_equities, count_sme, metadata FROM shareholding_patterns WHERE id = 'latest'")
+            row = cursor.fetchone()
+            if row and row[0]:
+                raw_data = json.loads(row[0])
+                records = raw_data.get("records", []) if isinstance(raw_data, dict) else (raw_data if isinstance(raw_data, list) else [])
+                return {
+                    "records": records,
+                    "last_synced": row[1] or (raw_data.get("last_synced", 0) if isinstance(raw_data, dict) else 0),
+                    "last_synced_display": row[2] or (raw_data.get("last_synced_display", "") if isinstance(raw_data, dict) else ""),
+                    "total_records": row[3] or len(records),
+                    "count_equities": row[4] or 0,
+                    "count_sme": row[5] or 0,
+                    "metadata": json.loads(row[6]) if row[6] else {}
+                }
+    except Exception as e:
+        print(f"SQLite load_shareholding_patterns error: {e}")
+
+    # 3. Seed from local JSON file if neither DB has data yet
+    fallback_path = fallback_filepath or os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "shareholding_patterns.json")
+    if os.path.exists(fallback_path):
+        try:
+            with open(fallback_path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            if payload:
+                records = payload.get("records", []) if isinstance(payload, dict) else (payload if isinstance(payload, list) else [])
+                last_synced = payload.get("last_synced", 0) if isinstance(payload, dict) else os.path.getmtime(fallback_path)
+                import datetime
+                last_synced_display = payload.get("last_synced_display", "") if isinstance(payload, dict) else datetime.datetime.fromtimestamp(last_synced).strftime("%d %b %Y, %I:%M %p")
+                count_eq = sum(1 for r in records if r.get("board", "").lower() != "sme")
+                count_sme = sum(1 for r in records if r.get("board", "").lower() == "sme")
+
+                save_shareholding_patterns_db(
+                    shp_data=payload,
+                    last_synced=last_synced,
+                    last_synced_display=last_synced_display,
+                    backup_filepath=fallback_path
+                )
+                return {
+                    "records": records,
+                    "last_synced": last_synced,
+                    "last_synced_display": last_synced_display,
+                    "total_records": len(records),
+                    "count_equities": count_eq,
+                    "count_sme": count_sme,
+                    "metadata": {"seeded_from": fallback_path}
+                }
+        except Exception as e:
+            print(f"Error seeding shareholding_patterns from {fallback_path}: {e}")
+
+    return {
+        "records": [],
+        "last_synced": 0,
+        "last_synced_display": "Not synced yet",
+        "total_records": 0,
+        "count_equities": 0,
+        "count_sme": 0,
+        "metadata": {}
+    }
+
+
+def save_shareholding_patterns_db(shp_data, last_synced=None, last_synced_display=None, metadata=None, backup_filepath=None):
+    """
+    Saves shareholding patterns dataset to MongoDB Atlas collection 'shareholding_patterns'
+    and SQLite local table 'shareholding_patterns'. Also updates local disk backup file.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_iso = now_utc.isoformat()
+    now_ts = datetime.datetime.now().timestamp()
+
+    if isinstance(shp_data, dict):
+        records = shp_data.get("records", [])
+        last_synced = last_synced or shp_data.get("last_synced", now_ts)
+        last_synced_display = last_synced_display or shp_data.get("last_synced_display") or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    elif isinstance(shp_data, list):
+        records = shp_data
+        last_synced = last_synced or now_ts
+        last_synced_display = last_synced_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+    else:
+        records = []
+        last_synced = last_synced or now_ts
+        last_synced_display = last_synced_display or datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+
+    total_records = len(records)
+    count_eq = sum(1 for r in records if r.get("board", "").lower() != "sme")
+    count_sme = sum(1 for r in records if r.get("board", "").lower() == "sme")
+    metadata = metadata or {}
+
+    payload = {
+        "last_synced": last_synced,
+        "last_synced_display": last_synced_display,
+        "total_records": total_records,
+        "count_equities": count_eq,
+        "count_sme": count_sme,
+        "records": records,
+    }
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["shareholding_patterns"]
+            col.update_one(
+                {"_id": "latest"},
+                {"$set": {
+                    "data": payload,
+                    "records": records,
+                    "total_records": total_records,
+                    "count_equities": count_eq,
+                    "count_sme": count_sme,
+                    "last_synced": last_synced,
+                    "last_synced_display": last_synced_display,
+                    "metadata": metadata,
+                    "updated_at": now_iso
+                }},
+                upsert=True
+            )
+        except Exception as e:
+            print(f"MongoDB save_shareholding_patterns error: {e}")
+
+    # 2. SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO shareholding_patterns (id, data, last_synced, last_synced_display, total_records, count_equities, count_sme, metadata, updated_at) VALUES ('latest', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                (json.dumps(payload, ensure_ascii=False), last_synced, last_synced_display, total_records, count_eq, count_sme, json.dumps(metadata, ensure_ascii=False))
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_shareholding_patterns error: {e}")
+
+    # 3. Disk file backup for resilience
+    backup_path = backup_filepath or os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "shareholding_patterns.json")
+    try:
+        os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+        tmp = backup_path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, backup_path)
+    except Exception as e:
+        print(f"Disk backup write error: {e}")
+
+    return {
+        "success": True,
+        "last_synced": last_synced,
+        "last_synced_display": last_synced_display,
+        "total_records": total_records,
+        "count_equities": count_eq,
+        "count_sme": count_sme,
         "metadata": metadata
     }

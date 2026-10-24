@@ -247,7 +247,28 @@ class ShareholdingProvider:
         self._load_from_disk()
 
     def _load_from_disk(self) -> None:
-        """Load stored shareholding patterns from app_data/shareholding_patterns.json."""
+        """Load stored shareholding patterns from DB (MongoDB/SQLite) or fallback JSON."""
+        # 1. Try DB first (MongoDB Atlas & SQLite via db_store)
+        try:
+            import db_store
+            db_res = db_store.load_shareholding_patterns_db(fallback_filepath=self.json_file)
+            if db_res and db_res.get("records"):
+                self._cache_records = db_res.get("records", [])
+                self._last_synced = float(db_res.get("last_synced", 0))
+                self._last_synced_display = db_res.get("last_synced_display", "")
+
+                def get_rec_sort_key(r):
+                    t = parse_date_to_timestamp(r.get("broadcastDate") or r.get("submissionDate"))
+                    rec_id = int(r.get("recordId") or 0) if str(r.get("recordId") or "").isdigit() else 0
+                    return (t, rec_id)
+
+                self._cache_records.sort(key=get_rec_sort_key, reverse=True)
+                logger.info(f"Loaded {len(self._cache_records)} shareholding records from database")
+                return
+        except Exception as e:
+            logger.warning(f"Error loading shareholding patterns from DB, falling back to disk: {e}")
+
+        # 2. Fallback to local JSON file
         if not self.json_file.exists():
             return
         try:
@@ -273,7 +294,7 @@ class ShareholdingProvider:
             logger.error(f"Error loading {self.json_file}: {e}")
 
     def _save_to_disk(self) -> None:
-        """Save current shareholding patterns to app_data/shareholding_patterns.json."""
+        """Save current shareholding patterns to DB and app_data/shareholding_patterns.json."""
         try:
             now = time.time()
             now_display = datetime.fromtimestamp(now).strftime("%d %b %Y, %I:%M %p")
@@ -299,11 +320,31 @@ class ShareholdingProvider:
                 "count_sme": count_sme,
                 "records": self._cache_records,
             }
+
+            # Save to MongoDB Atlas & SQLite
+            try:
+                import db_store
+                db_store.save_shareholding_patterns_db(
+                    shp_data=payload,
+                    last_synced=self._last_synced,
+                    last_synced_display=self._last_synced_display,
+                    backup_filepath=self.json_file
+                )
+            except Exception as e:
+                logger.error(f"Error saving to db_store: {e}")
+
+            # Also ensure local disk JSON file is updated
             with open(self.json_file, "w", encoding="utf-8") as f:
                 json.dump(payload, f, indent=2)
-            logger.info(f"Saved {len(self._cache_records)} shareholding records to {self.json_file}")
+            logger.info(f"Saved {len(self._cache_records)} shareholding records to DB and {self.json_file}")
         except Exception as e:
             logger.error(f"Error saving to {self.json_file}: {e}")
+
+    def start_admin_background_refresh(self) -> Dict[str, Any]:
+        """Triggered from Admin portal with force=True bypassing rate-limit."""
+        res = self.start_background_refresh(force=True)
+        res["success"] = res.get("status") in ("started", "in_progress")
+        return res
 
     def get_status(self) -> Dict[str, Any]:
         """Return provider status including last synced time and next refresh allowed."""

@@ -23,16 +23,8 @@
                     <div class="updated-card shp-status-card" style="padding: 4px 10px; margin: 0; min-width: auto; border-radius: 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 6px;" aria-live="polite">
                         <span class="live-dot" id="shp-live-dot"></span>
                         <strong id="shp-updated-label" style="font-size: 11px; font-weight: 600;">Loading…</strong>
-                        <span style="opacity: 0.35;">•</span>
-                        <small id="shp-window-label" style="font-size: 10.5px; color: var(--text-secondary);">15m window</small>
                     </div>
                     <div class="shp-action-buttons" style="display: inline-flex; align-items: center; gap: 8px;">
-                        <button type="button" id="shp-refresh-btn" class="btn-primary shp-refresh-btn" style="font-size: 12px; padding: 6px 12px; border-radius: 7px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Refresh shareholding patterns (15m window)">
-                            <svg id="shp-refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                            </svg>
-                            <span id="shp-refresh-text">Refresh</span>
-                        </button>
                         <a href="/api/shareholding/download" id="shp-export-btn" class="btn-secondary shp-icon-btn" style="padding: 6px 9px; border-radius: 7px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;" title="Export JSON" aria-label="Export JSON">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
