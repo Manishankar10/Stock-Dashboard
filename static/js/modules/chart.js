@@ -1768,10 +1768,15 @@
                 watermark.id = 'chartWatermark';
                 watermark.className = 'chart-watermark';
                 watermark.innerHTML = `
-                    <img src="/static/capital_desk_icon.png" alt="Capital Desk Logo" class="chart-watermark-icon">
+                    <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-watermark-icon">
                     <span class="chart-watermark-text">Capital Desk</span>
                 `;
                 mainContainer.appendChild(watermark);
+            } else {
+                const img = watermark.querySelector('.chart-watermark-icon');
+                if (img && !img.src.includes('favicon-192.png')) {
+                    img.src = '/static/favicon-192.png';
+                }
             }
         }
         window.setupChartWatermark = setupChartWatermark;
@@ -7141,10 +7146,23 @@
                     resolve(img);
                 };
                 img.onerror = () => {
-                    console.warn('Could not load /static/capital_desk_icon.png');
-                    resolve(null);
+                    console.warn('Could not load /static/favicon-192.png, trying fallback');
+                    const fb = new Image();
+                    fb.crossOrigin = 'anonymous';
+                    fb.onload = () => {
+                        cdBrandIconCache = fb;
+                        resolve(fb);
+                    };
+                    fb.onerror = () => {
+                        const fb2 = new Image();
+                        fb2.crossOrigin = 'anonymous';
+                        fb2.onload = () => { cdBrandIconCache = fb2; resolve(fb2); };
+                        fb2.onerror = () => resolve(null);
+                        fb2.src = '/static/icon.png';
+                    };
+                    fb.src = '/static/capital_desk_icon.png';
                 };
-                img.src = '/static/capital_desk_icon.png';
+                img.src = '/static/favicon-192.png';
                 if (img.complete && (img.naturalWidth > 0 || img.width > 0)) {
                     cdBrandIconCache = img;
                     resolve(img);
@@ -7265,7 +7283,14 @@
             ctx.globalAlpha = 0.55;
             if (brandIcon && brandIcon.complete && (brandIcon.naturalWidth > 0 || brandIcon.width > 0)) {
                 try {
+                    ctx.save();
+                    if (typeof ctx.roundRect === 'function') {
+                        ctx.beginPath();
+                        ctx.roundRect(wmX, wmY, wmIconSize, wmIconSize, 4);
+                        ctx.clip();
+                    }
                     ctx.drawImage(brandIcon, wmX, wmY, wmIconSize, wmIconSize);
+                    ctx.restore();
                 } catch (e) {}
             } else {
                 ctx.fillStyle = '#0b9a5e';
@@ -7425,7 +7450,14 @@
 
             if (brandIcon && brandIcon.complete && (brandIcon.naturalWidth > 0 || brandIcon.width > 0)) {
                 try {
+                    ctx.save();
+                    if (typeof ctx.roundRect === 'function') {
+                        ctx.beginPath();
+                        ctx.roundRect(iconX, iconY, iconSize, iconSize, 4);
+                        ctx.clip();
+                    }
                     ctx.drawImage(brandIcon, iconX, iconY, iconSize, iconSize);
+                    ctx.restore();
                 } catch (e) {
                     console.warn('Could not draw brand icon:', e);
                 }
