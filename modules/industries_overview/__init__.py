@@ -112,7 +112,12 @@ def get_industry_stocks():
         res.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=120"
         return res
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            "success": False,
+            "error": "The external market data feed is temporarily unreachable. Please retry in a few moments.",
+            "details": str(e),
+            "stocks": []
+        }), 200
 
 
 @industries_overview_bp.post("/api/industries-overview/refresh")

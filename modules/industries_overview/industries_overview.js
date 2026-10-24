@@ -315,7 +315,7 @@
     }
 
     // 5. Open Industry Stocks Drill-Down (Refer Image 1 & 2)
-    async function openIndustryStocks(pathOrCode) {
+    async function openIndustryStocks(pathOrCode, forceRefresh = false) {
         const tableView = document.getElementById('indTableView');
         const stocksView = document.getElementById('indStocksView');
         const ribbon = document.getElementById('indMacroFilterBar');
@@ -332,18 +332,38 @@
                 <tr>
                     <td colspan="12" style="text-align: center; padding: 40px; color: var(--text-secondary);">
                         <div class="ind-spinner"></div>
-                        <div style="margin-top: 10px;">Loading related stocks...</div>
+                        <div style="margin-top: 10px;">${forceRefresh ? 'Syncing live exchange disclosures...' : 'Loading industry stocks...'}</div>
                     </td>
                 </tr>
             `;
         }
 
         try {
-            const res = await fetch(`/api/industries-overview/stocks?path=${encodeURIComponent(pathOrCode)}`);
+            const url = forceRefresh
+                ? `/api/industries-overview/stocks?path=${encodeURIComponent(pathOrCode)}&refresh=1`
+                : `/api/industries-overview/stocks?path=${encodeURIComponent(pathOrCode)}`;
+            const res = await fetch(url);
             const data = await res.json();
 
-            if (data.error) {
-                if (stocksTbody) stocksTbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#ef4444;padding:24px;">Failed: ${escapeHtml(data.error)}</td></tr>`;
+            if (data.error && (!data.stocks || data.stocks.length === 0)) {
+                if (stocksTbody) {
+                    stocksTbody.innerHTML = `
+                        <tr>
+                            <td colspan="12" style="text-align: center; padding: 40px 20px;">
+                                <div style="font-size: 32px; margin-bottom: 12px;">📡</div>
+                                <div style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+                                    Live Exchange Feed Temporarily Unavailable
+                                </div>
+                                <div style="font-size: 13px; color: var(--text-secondary); max-width: 500px; margin: 0 auto 16px auto;">
+                                    ${escapeHtml(data.error)}
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="openIndustryStocks('${escapeHtml(pathOrCode)}', true)" style="padding: 7px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 6px;">
+                                    🔄 Retry Connection
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
                 return;
             }
 
@@ -397,7 +417,24 @@
             renderStocksTable();
         } catch (err) {
             console.error('Industry stocks fetch error:', err);
-            if (stocksTbody) stocksTbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#ef4444;padding:24px;">Error fetching industry stocks.</td></tr>`;
+            if (stocksTbody) {
+                stocksTbody.innerHTML = `
+                    <tr>
+                        <td colspan="12" style="text-align: center; padding: 40px 20px;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+                            <div style="font-size: 15px; font-weight: 600; color: #ef4444; margin-bottom: 6px;">
+                                Market Feed Connection Error
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); max-width: 500px; margin: 0 auto 16px auto;">
+                                Unable to establish a connection to the exchange feed. Please check your network and retry.
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="openIndustryStocks('${escapeHtml(pathOrCode)}', true)" style="padding: 7px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 6px;">
+                                🔄 Retry
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
         }
     }
 
@@ -485,7 +522,18 @@
             tbody.innerHTML = `
                 <tr>
                     <td colspan="12" style="text-align: center; padding: 36px; color: var(--text-secondary);">
-                        No stocks found in this industry.
+                        <div style="font-size: 28px; margin-bottom: 8px;">📊</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+                            ${(currentStocks.length > 0) ? 'No stocks match your search query.' : 'Live Stock Directory Sync'}
+                        </div>
+                        <div style="font-size: 12.5px; color: var(--text-secondary); max-width: 480px; margin: 0 auto 12px auto;">
+                            ${(currentStocks.length > 0) ? 'Try clearing or modifying the search filter above.' : 'Exchange data for this industry is being synchronized. You can force sync with live feed below.'}
+                        </div>
+                        ${(currentStocks.length === 0 && currentIndustryMeta) ? `
+                            <button type="button" class="btn btn-primary" onclick="openIndustryStocks('${escapeHtml(currentIndustryMeta.path || currentIndustryMeta.code)}', true)" style="padding: 6px 16px; font-size: 12.5px; cursor: pointer; border-radius: 6px;">
+                                🔄 Sync Live Feed
+                            </button>
+                        ` : ''}
                     </td>
                 </tr>
             `;

@@ -7,8 +7,21 @@ import shutil
 import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+import socket
 import requests
+import urllib3.util.connection as urllib3_cn
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
+
+def _enforce_ipv4():
+    """Force IPv4 socket resolution globally to eliminate [Errno 101] Network is unreachable."""
+    try:
+        urllib3_cn.allowed_gai_family = lambda: socket.AF_INET
+    except Exception:
+        pass
+
+_enforce_ipv4()
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -162,7 +175,18 @@ def _parse_stocks_table_rows(soup):
 class IndustriesOverviewProvider:
     def __init__(self, data_dir="data"):
         self.data_dir = data_dir
-        self.overview_file = os.path.join(data_dir, "app_data", "industries_overview.json")
+        # Resolve best overview file path
+        candidates = [
+            os.path.join("app_data", "industries_overview.json"),
+            os.path.join(data_dir, "app_data", "industries_overview.json"),
+            os.path.join(data_dir, "industries_overview.json"),
+        ]
+        self.overview_file = candidates[0]
+        for c in candidates:
+            if os.path.exists(c):
+                self.overview_file = c
+                break
+
         self._overview_data = {}
         self._lock = threading.Lock()
         self._is_refreshing = False
@@ -185,6 +209,34 @@ class IndustriesOverviewProvider:
                 os.remove(deprecated_cache)
             except Exception:
                 pass
+
+    def _get_screener_session(self) -> requests.Session:
+        """Create a robust IPv4 session with retry adapters and session cookies."""
+        _enforce_ipv4()
+        s = requests.Session()
+        retries = Retry(
+            total=2,
+            backoff_factor=1.0,
+            status_forcelist=[429, 500, 502, 503, 504],
+            raise_on_status=False
+        )
+        adapter = HTTPAdapter(max_retries=retries, pool_connections=10, pool_maxsize=20)
+        s.mount("https://", adapter)
+        s.mount("http://", adapter)
+        s.headers.update(HEADERS)
+
+        # Attach authenticated session cookies if present
+        for cookie_path in ["app_data/screener_session.json", "user_data/screener_session.json"]:
+            if os.path.exists(cookie_path):
+                try:
+                    with open(cookie_path, "r", encoding="utf-8") as f:
+                        cookies = json.load(f)
+                    for k, v in cookies.items():
+                        s.cookies.set(k, v, domain=".screener.in")
+                    break
+                except Exception:
+                    pass
+        return s
 
     def _load_overview_data(self):
         with self._lock:
@@ -364,11 +416,11 @@ class IndustriesOverviewProvider:
 
         clean_path = target_ind['path'] if target_ind else path_or_code.strip('/')
 
-        # 1. Check if stocks exist in single file
+        # 1. Fast Path: Check if stocks exist in DB / memory cache
         with self._lock:
             cached_stocks = self._overview_data.get('industry_stocks', {}).get(clean_path)
 
-        if cached_stocks is not None and len(cached_stocks) > 0:
+        if cached_stocks is not None and len(cached_stocks) > 0 and not force_refresh:
             breadcrumbs = [{'name': 'Industries', 'path': ''}]
             if target_ind:
                 target_ind['company_count'] = len(cached_stocks)
@@ -386,18 +438,28 @@ class IndustriesOverviewProvider:
                 'fetched_at': self._overview_data.get('last_updated_display') or self._overview_data.get('last_updated')
             }
 
-        # 2. Fallback: if not yet stored in file, scrape once and save to single file
-        stocks = self._scrape_stocks_for_industry(clean_path)
+        # 2. Live Scrape with error resilience and connection safety
+        stocks = []
+        is_live_success = False
+        try:
+            stocks = self._scrape_stocks_for_industry(clean_path)
+            if stocks and len(stocks) > 0:
+                is_live_success = True
+                with self._lock:
+                    if 'industry_stocks' not in self._overview_data:
+                        self._overview_data['industry_stocks'] = {}
+                    self._overview_data['industry_stocks'][clean_path] = stocks
+                    self._save_overview_data()
+        except Exception as e:
+            print(f"Warning: Live stock scrape failed for {clean_path}: {e}")
 
-        with self._lock:
-            if 'industry_stocks' not in self._overview_data:
-                self._overview_data['industry_stocks'] = {}
-            self._overview_data['industry_stocks'][clean_path] = stocks
-            self._save_overview_data()
+        # If live scrape failed or was rate-limited, keep existing cached stocks if available
+        if not stocks and cached_stocks:
+            stocks = cached_stocks
 
         breadcrumbs = [{'name': 'Industries', 'path': ''}]
         if target_ind:
-            target_ind['company_count'] = len(stocks)
+            target_ind['company_count'] = len(stocks) if stocks else (target_ind.get('company_count') or 0)
             breadcrumbs.append({'name': target_ind['macro_name'], 'code': target_ind['macro_code'], 'type': 'macro'})
             breadcrumbs.append({'name': target_ind['sector_name'], 'code': target_ind['sector_code'], 'type': 'sector'})
             breadcrumbs.append({'name': target_ind['industry_group_name'], 'code': target_ind['group_code'], 'type': 'group'})
@@ -409,58 +471,64 @@ class IndustriesOverviewProvider:
             'breadcrumbs': breadcrumbs,
             'stocks': stocks,
             'count': len(stocks),
-            'fetched_at': time.strftime('%Y-%m-%d %H:%M:%S')
+            'warning': None if (stocks and is_live_success) else ('Market data feed is temporarily unreachable. Please retry.' if not stocks else None),
+            'fetched_at': self._overview_data.get('last_updated_display') or time.strftime('%Y-%m-%d %H:%M:%S')
         }
 
     def _scrape_stocks_for_industry(self, clean_path):
         target_url = f"https://www.screener.in/market/{clean_path}/"
-        r = requests.get(target_url, headers=HEADERS, timeout=12)
-        if r.status_code != 200:
-            raise Exception(f"Failed to fetch stocks for {clean_path}: HTTP {r.status_code}")
+        session = self._get_screener_session()
+        try:
+            r = session.get(target_url, timeout=(4, 8))
+            if r.status_code != 200:
+                print(f"Screener HTTP {r.status_code} for {clean_path}")
+                return []
+        except Exception as e:
+            print(f"Connection error scraping {clean_path}: {e}")
+            return []
 
-        soup = BeautifulSoup(r.text, 'html.parser')
-        stocks = _parse_stocks_table_rows(soup)
+        try:
+            soup = BeautifulSoup(r.text, 'html.parser')
+            stocks = _parse_stocks_table_rows(soup)
 
-        total_pages = 1
-        page_info = soup.find('div', attrs={'data-page-info': True})
-        if page_info:
-            m = re.search(r'Showing page \d+ of (\d+)', page_info.get_text())
-            if m:
-                total_pages = int(m.group(1))
-        else:
-            pag = soup.find(class_='pagination')
-            if pag:
-                for a in pag.find_all('a'):
-                    href = a.get('href', '')
-                    if 'limit=' in href:
-                        continue
-                    m = re.search(r'page=(\d+)', href)
-                    if m:
-                        total_pages = max(total_pages, int(m.group(1)))
+            total_pages = 1
+            page_info = soup.find('div', attrs={'data-page-info': True})
+            if page_info:
+                m = re.search(r'Showing page \d+ of (\d+)', page_info.get_text())
+                if m:
+                    total_pages = int(m.group(1))
+            else:
+                pag = soup.find(class_='pagination')
+                if pag:
+                    for a in pag.find_all('a'):
+                        href = a.get('href', '')
+                        if 'limit=' in href:
+                            continue
+                        m = re.search(r'page=(\d+)', href)
+                        if m:
+                            total_pages = max(total_pages, int(m.group(1)))
 
-        if total_pages > 1:
-            def _fetch_page(p):
-                try:
-                    p_url = f"{target_url}?page={p}"
-                    pr = requests.get(p_url, headers=HEADERS, timeout=12)
-                    if pr.status_code == 200:
-                        psoup = BeautifulSoup(pr.text, 'html.parser')
-                        return p, _parse_stocks_table_rows(psoup)
-                except Exception as e:
-                    print(f"Failed to fetch page {p} of {clean_path}: {e}")
-                return p, []
+            if total_pages > 1:
+                # Limit on-demand pagination to 4 pages for responsive client experience
+                max_pages = min(total_pages, 4)
+                for p in range(2, max_pages + 1):
+                    try:
+                        p_url = f"{target_url}?page={p}"
+                        pr = session.get(p_url, timeout=(4, 8))
+                        if pr.status_code == 200:
+                            psoup = BeautifulSoup(pr.text, 'html.parser')
+                            stocks.extend(_parse_stocks_table_rows(psoup))
+                    except Exception as pe:
+                        print(f"Warning: failed page {p} of {clean_path}: {pe}")
+                        break
 
-            workers = min(6, total_pages - 1)
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                page_results = list(executor.map(_fetch_page, range(2, total_pages + 1)))
-                page_results.sort(key=lambda x: x[0])
-                for _, p_stocks in page_results:
-                    stocks.extend(p_stocks)
+            for idx, stk in enumerate(stocks):
+                stk['sno'] = idx + 1
 
-        for idx, stk in enumerate(stocks):
-            stk['sno'] = idx + 1
-
-        return stocks
+            return stocks
+        except Exception as parse_err:
+            print(f"Error parsing stocks table for {clean_path}: {parse_err}")
+            return []
 
     def start_admin_background_refresh(self):
         """Initiate background refresh by Admin. Does not block or disturb browsing users."""
@@ -505,7 +573,8 @@ class IndustriesOverviewProvider:
             self._refresh_progress = "Fetching latest master directory (188 industries)..."
             self._refresh_percent = 5
 
-            r = requests.get('https://www.screener.in/market/', headers=HEADERS, timeout=15)
+            s = self._get_screener_session()
+            r = s.get('https://www.screener.in/market/', timeout=15)
             if r.status_code != 200:
                 raise Exception(f"Failed to fetch screener market page: HTTP {r.status_code}")
 
@@ -654,7 +723,8 @@ class IndustriesOverviewProvider:
         }
 
     def _scrape_master_directory_initial(self):
-        r = requests.get('https://www.screener.in/market/', headers=HEADERS, timeout=15)
+        s = self._get_screener_session()
+        r = s.get('https://www.screener.in/market/', timeout=15)
         if r.status_code != 200:
             raise Exception(f"Failed to fetch screener market page: HTTP {r.status_code}")
 
