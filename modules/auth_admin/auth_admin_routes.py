@@ -574,6 +574,26 @@ def admin_corporate_actions_refresh():
     return jsonify(res)
 
 
+@auth_admin_bp.route("/api/admin/ipos/status", methods=["GET"])
+@admin_required
+def admin_ipos_status():
+    from modules.ipo_tracker.ipo_tracker_provider import get_ipo_refresh_status
+    return jsonify({
+        "success": True,
+        "status": get_ipo_refresh_status()
+    })
+
+
+@auth_admin_bp.route("/api/admin/ipos/refresh", methods=["POST"])
+@admin_required
+def admin_ipos_refresh():
+    from modules.ipo_tracker.ipo_tracker_provider import start_admin_ipo_refresh
+    res = start_admin_ipo_refresh()
+    if not res.get("success"):
+        return jsonify(res), 400
+    return jsonify(res)
+
+
 # ==============================================================================
 # PRODUCTION JSON FILES DOWNLOAD & MANAGEMENT
 # ==============================================================================

@@ -2454,15 +2454,6 @@
         display: block !important;
     }
 
-    #tab-ipos #refresh-button {
-        flex: 0 0 auto !important;
-        white-space: nowrap !important;
-        height: 32px !important;
-        padding: 0 12px !important;
-        font-size: 12px !important;
-        border-radius: 7px !important;
-        margin: 0 !important;
-    }
 
     #tab-ipos .table-toolbar {
         padding: 10px 12px !important;

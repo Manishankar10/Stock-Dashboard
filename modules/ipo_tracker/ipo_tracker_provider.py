@@ -69,6 +69,12 @@ _cache_lock = threading.RLock()
 _cached_payload = None
 _cached_monotonic = 0.0
 
+_refresh_lock = threading.RLock()
+_is_refreshing = False
+_refresh_progress = ''
+_refresh_percent = 0
+_refresh_error = None
+
 
 def _load_fallback_seed():
     try:
@@ -533,3 +539,121 @@ def save_synced_ipo_data(json_data):
         _cached_monotonic = time.monotonic()
         _persist_cache_to_mongo(payload)
     return payload
+
+
+def get_ipo_refresh_status():
+    """Return the current IPO refresh status, counts, and last updated timestamps."""
+    global _cached_payload, _cached_monotonic, _is_refreshing, _refresh_progress, _refresh_percent, _refresh_error
+    with _cache_lock:
+        if _cached_payload is None:
+            _restore_cache_from_mongo()
+        payload = _cached_payload or {}
+        ipos = payload.get("ipos", []) if isinstance(payload, dict) else []
+
+        counts = {
+            "all": len(ipos),
+            "open": 0,
+            "upcoming": 0,
+            "closed": 0,
+            "mainboard": 0,
+            "sme": 0,
+        }
+        for item in ipos:
+            st = str(item.get("status") or "").lower()
+            if "open" in st or "bidding" in st:
+                counts["open"] += 1
+            elif "upcoming" in st or "pre-open" in st:
+                counts["upcoming"] += 1
+            else:
+                counts["closed"] += 1
+
+            seg = str(item.get("segment") or "").lower()
+            if "sme" in seg:
+                counts["sme"] += 1
+            else:
+                counts["mainboard"] += 1
+
+        last_updated = payload.get("fetched_at") or payload.get("generated_at") or ""
+        last_updated_display = payload.get("generated_display") or ""
+        if not last_updated_display and last_updated:
+            try:
+                dt_obj = dt.datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
+                last_updated_display = dt_obj.strftime("%d %b %Y, %I:%M %p")
+            except Exception:
+                last_updated_display = str(last_updated)
+
+        return {
+            "is_refreshing": _is_refreshing,
+            "progress": _refresh_progress or ("Idle" if not _is_refreshing else "In progress"),
+            "percent": _refresh_percent,
+            "error": _refresh_error,
+            "last_updated": last_updated or "Never",
+            "last_updated_display": last_updated_display or "Never",
+            "total_ipos": len(ipos),
+            "counts": counts,
+            "provider": payload.get("provider", "InvestorGain / IPOWatch"),
+            "storage": "MongoDB Atlas (Synced)",
+        }
+
+
+def start_admin_ipo_refresh():
+    """Initiate background refresh of live IPOs and GMP by Admin."""
+    global _is_refreshing, _refresh_progress, _refresh_percent, _refresh_error
+    with _refresh_lock:
+        if _is_refreshing:
+            return {
+                "success": False,
+                "status": "in_progress",
+                "message": "An IPO refresh is already in progress.",
+                **get_ipo_refresh_status(),
+            }
+        _is_refreshing = True
+        _refresh_progress = "Connecting to live IPO & GMP portals..."
+        _refresh_percent = 15
+        _refresh_error = None
+
+    thread = threading.Thread(target=_run_admin_ipo_refresh_worker, daemon=True)
+    thread.start()
+
+    return {
+        "success": True,
+        "status": "started",
+        "message": "Background refresh started. Live IPOs and GMP data are being fetched.",
+        **get_ipo_refresh_status(),
+    }
+
+
+def _run_admin_ipo_refresh_worker():
+    global _cached_payload, _cached_monotonic, _is_refreshing, _refresh_progress, _refresh_percent, _refresh_error
+    try:
+        logger.info("Admin initiated IPO & GMP live refresh...")
+        with _refresh_lock:
+            _refresh_percent = 35
+            _refresh_progress = "Fetching and parsing live issues from InvestorGain & IPOWatch..."
+
+        payload = _fetch_payload()
+
+        with _refresh_lock:
+            _refresh_percent = 80
+            _refresh_progress = f"Parsed {len(payload.get('ipos', []))} issues. Persisting to MongoDB Atlas..."
+
+        with _cache_lock:
+            _cached_payload = payload
+            _cached_monotonic = time.monotonic()
+            _persist_cache_to_mongo(payload)
+
+        total_count = len(payload.get("ipos", []))
+        with _refresh_lock:
+            _refresh_percent = 100
+            _refresh_progress = f"Completed successfully! {total_count} IPOs synchronized and cached in MongoDB Atlas."
+            _refresh_error = None
+        logger.info(f"IPO refresh completed: {total_count} records saved.")
+    except Exception as exc:
+        logger.error(f"Error during IPO background refresh: {exc}", exc_info=True)
+        with _refresh_lock:
+            _refresh_error = str(exc)
+            _refresh_progress = f"Refresh failed: {str(exc)}"
+    finally:
+        with _refresh_lock:
+            _is_refreshing = False
+

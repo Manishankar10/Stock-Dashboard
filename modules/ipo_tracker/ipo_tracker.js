@@ -369,8 +369,10 @@
             render();
             return;
         }
-        refreshButton.disabled = true;
-        refreshButton.textContent = forceRefresh ? 'Refreshing…' : '↻ Refresh';
+        if (refreshButton) {
+            refreshButton.disabled = true;
+            refreshButton.textContent = forceRefresh ? 'Refreshing…' : '↻ Refresh';
+        }
         if (!ipos.length) rowsElement.innerHTML = '<tr><td class="table-message" colspan="8">Loading IPOs and GMP data…</td></tr>';
         noticeElement.hidden = true;
         try {
@@ -397,8 +399,10 @@
                 liveDot.classList.add('stale');
             }
         } finally {
-            refreshButton.disabled = false;
-            refreshButton.textContent = '↻ Refresh';
+            if (refreshButton) {
+                refreshButton.disabled = false;
+                refreshButton.textContent = '↻ Refresh';
+            }
         }
     }
 
