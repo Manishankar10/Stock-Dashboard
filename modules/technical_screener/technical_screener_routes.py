@@ -607,7 +607,7 @@ def _get_target_symbols_for_scope(scope="all", watchlist_id=None, uname="admin")
             symbols = []
 
     if scope == "all":
-        # All tracked stocks across portfolio and all watchlists
+        # All tracked stocks across portfolio and all watchlists, plus popular liquid stocks
         target_set = set()
         try:
             from modules.portfolio.portfolio_routes import load_portfolios
@@ -630,6 +630,15 @@ def _get_target_symbols_for_scope(scope="all", watchlist_id=None, uname="admin")
                                 target_set.add(it)
         except Exception as e:
             print(f"Error loading watchlist symbols for all scope: {e}")
+
+        try:
+            from modules.common.market_fetcher import POPULAR_INDIAN_STOCKS
+            if isinstance(POPULAR_INDIAN_STOCKS, dict):
+                target_set.update(POPULAR_INDIAN_STOCKS.keys())
+            elif isinstance(POPULAR_INDIAN_STOCKS, list):
+                target_set.update(POPULAR_INDIAN_STOCKS)
+        except Exception as e:
+            print(f"Error loading popular stocks for all scope: {e}")
 
         symbols = list(target_set)
     elif not symbols:
@@ -762,7 +771,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Rising Support ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = []
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Breakdown ₹{tl_c:.1f}"}]
                 item["drawings"] = make_sup_drawing("#ef5350", "Broken Rising Support")
                 matched["support_rising_breakdown"] = item
         elif slope < -eps_slope:  # Falling Support
@@ -775,7 +784,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Falling Support ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = []
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Breakdown ₹{tl_c:.1f}"}]
                 item["drawings"] = make_sup_drawing("#ef5350", "Broken Falling Support")
                 matched["support_falling_breakdown"] = item
         else:  # Horizontal Support
@@ -788,7 +797,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
             elif ltp < tl_c * 0.985 and prev_close >= tl_p * 0.98:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakdown Below Horizontal Support ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = []
+                item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Breakdown ₹{tl_c:.1f}"}]
                 item["drawings"] = make_sup_drawing("#ef5350", "Broken Floor")
                 matched["support_trendline_breakdown"] = item
 
@@ -861,7 +870,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakout Above Rising Resistance ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = []
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Breakout ₹{tl_c:.1f}"}]
                 item["drawings"] = make_res_drawing("#10b981", "Rising Resistance Breakout")
                 matched["resistance_rising_breakout"] = item
         elif slope < -eps_slope:  # Falling Resistance
@@ -874,7 +883,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Reversal Breakout Above Descending Resistance ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = []
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Breakout ₹{tl_c:.1f}"}]
                 item["drawings"] = make_res_drawing("#10b981", "Descending Line Breakout")
                 matched["resistance_falling_breakout"] = item
         else:  # Horizontal Resistance
@@ -887,7 +896,7 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
             elif ltp > tl_c * 1.01 and prev_close <= tl_p * 1.01:
                 item = dict(base_scanner_result)
                 item["metric"] = f"Breakout Above Horizontal Ceiling ₹{tl_c:.1f} ({diff:+.1f}%)"
-                item["markers"] = []
+                item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Breakout ₹{tl_c:.1f}"}]
                 item["drawings"] = make_res_drawing("#10b981", "Ceiling Breakout")
                 matched["resistance_trendline_breakout"] = item
 
@@ -895,8 +904,9 @@ def _analyze_trendlines_for_stock(closes, highs, lows, dates, symbol, name, ltp,
 
 def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close):
     """
-    Mathematical Geometric Triangle Detection Engine.
-    Detects Ascending, Descending, and Symmetrical Triangles + Breakouts & Breakdowns.
+    Mathematical Geometric Triangle Detection Engine (Upgraded Institutional Algorithm).
+    Detects Ascending, Descending, and Symmetrical Triangles + Breakouts, Breakdowns & Targets.
+    Generates exact chart diagrams: triangle body, breakdown rays, projected target & stop lines.
     """
     n = len(closes)
     if n < 30:
@@ -909,6 +919,7 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
     sub_dates = dates[-lookback:] if dates else []
     curr_time = sub_dates[-1] if sub_dates else ""
     m_len = len(sub_closes)
+    curr_idx = m_len - 1
 
     w = 3
     p_highs = []
@@ -921,12 +932,11 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
 
     if m_len - w > 0:
         rh_idx = max(range(m_len - w, m_len), key=lambda x: sub_highs[x])
-        p_highs.append((rh_idx, sub_highs[rh_idx]))
+        if not p_highs or rh_idx != p_highs[-1][0]:
+            p_highs.append((rh_idx, sub_highs[rh_idx]))
         rl_idx = min(range(m_len - w, m_len), key=lambda x: sub_lows[x])
-        p_lows.append((rl_idx, sub_lows[rl_idx]))
-
-    curr_idx = m_len - 1
-    eps_slope = 0.08
+        if not p_lows or rl_idx != p_lows[-1][0]:
+            p_lows.append((rl_idx, sub_lows[rl_idx]))
 
     base_scanner_result = {
         "ltp": ltp,
@@ -937,126 +947,379 @@ def _analyze_triangles_for_stock(closes, highs, lows, dates, symbol, name, ltp, 
 
     matched = {}
 
-    best_res = None
+    def make_triangle_drawings(title, status, t_top_start, p_top_start, r_curr,
+                               t_bot_start, p_bot_start, s_curr,
+                               bd_price, bo_price, target_price, stop_price):
+        drawings = []
+        is_bd = status == "breakdown"
+        is_bo = status == "breakout"
+
+        # 1. Main Triangle Polygon Body
+        drawings.append({
+            "type": "triangle",
+            "time1_top": t_top_start,
+            "price1_top": round(p_top_start, 2),
+            "time2_top": curr_time,
+            "price2_top": round(r_curr, 2),
+            "time1_bot": t_bot_start,
+            "price1_bot": round(p_bot_start, 2),
+            "time2_bot": curr_time,
+            "price2_bot": round(s_curr, 2),
+            "topColor": "#10b981" if is_bo else "#ef4444",
+            "botColor": "#ef5350" if is_bd else "#10b981",
+            "fillColor": "rgba(239, 68, 68, 0.12)" if is_bd else ("rgba(16, 185, 129, 0.12)" if is_bo else "rgba(99, 102, 241, 0.12)"),
+            "status": status,
+            "breakdownPrice": round(bd_price, 2) if bd_price else None,
+            "breakoutPrice": round(bo_price, 2) if bo_price else None,
+            "targetPrice": round(target_price, 2) if target_price else None,
+            "stopPrice": round(stop_price, 2) if stop_price else None,
+            "name": title
+        })
+
+        # 2. Projected Target Ray (dashed)
+        if target_price:
+            drawings.append({
+                "type": "trendline",
+                "time1": curr_time,
+                "price1": round(target_price, 2),
+                "time2": curr_time,
+                "futureOffset2": 15,
+                "price2": round(target_price, 2),
+                "color": "#10b981" if is_bo else "#ef4444",
+                "lineWidth": 1.5,
+                "lineStyle": "dashed",
+                "name": f"🎯 Target ₹{target_price:.1f}"
+            })
+
+        # 3. Stop Loss Ray (dashed amber)
+        if stop_price:
+            drawings.append({
+                "type": "trendline",
+                "time1": curr_time,
+                "price1": round(stop_price, 2),
+                "time2": curr_time,
+                "futureOffset2": 12,
+                "price2": round(stop_price, 2),
+                "color": "#f59e0b",
+                "lineWidth": 1.5,
+                "lineStyle": "dashed",
+                "name": f"🛑 Stop ₹{stop_price:.1f}"
+            })
+
+        # 4. Breakdown / Breakout Level Ray
+        if bd_price:
+            drawings.append({
+                "type": "trendline",
+                "time1": curr_time,
+                "price1": round(bd_price, 2),
+                "time2": curr_time,
+                "futureOffset2": 12,
+                "price2": round(bd_price, 2),
+                "color": "#ef4444",
+                "lineWidth": 2,
+                "lineStyle": "solid",
+                "name": f"🔻 Breakdown ₹{bd_price:.1f}"
+            })
+        elif bo_price:
+            drawings.append({
+                "type": "trendline",
+                "time1": curr_time,
+                "price1": round(bo_price, 2),
+                "time2": curr_time,
+                "futureOffset2": 12,
+                "price2": round(bo_price, 2),
+                "color": "#10b981",
+                "lineWidth": 2,
+                "lineStyle": "solid",
+                "name": f"🚀 Breakout ₹{bo_price:.1f}"
+            })
+
+        return drawings
+
+    # =========================================================================
+    # 1. ASCENDING TRIANGLE: Flat Upper Ceiling (Tolerance <= 2.2%) + Rising Lower Support
+    # =========================================================================
+    best_asc = None
     for i in range(len(p_highs)):
         for j in range(i + 1, len(p_highs)):
-            x1, y1 = p_highs[i]
-            x2, y2 = p_highs[j]
-            dx = x2 - x1
-            if dx < 6: continue
-            m = (y2 - y1) / float(dx)
-            c = y1 - m * x1
-            touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_highs[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
-            if touches >= 2 and (best_res is None or touches > best_res['touches']):
-                best_res = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
+            hx1, hy1 = p_highs[i]
+            hx2, hy2 = p_highs[j]
+            h_dx = hx2 - hx1
+            if h_dx < 7: continue
+            h_diff = abs(hy2 - hy1) / float(hy1)
+            if h_diff <= 0.022:  # Flat resistance ceiling
+                ceil_price = max(hy1, hy2)
+                c_lows = [p for p in p_lows if p[0] >= hx1 - 4 and p[0] <= curr_idx]
+                for li in range(len(c_lows)):
+                    for lj in range(li + 1, len(c_lows)):
+                        lx1, ly1 = c_lows[li]
+                        lx2, ly2 = c_lows[lj]
+                        l_dx = lx2 - lx1
+                        if l_dx < 6: continue
+                        if ly2 > ly1 * 1.012:  # Strictly rising support
+                            sm = (ly2 - ly1) / float(l_dx)
+                            sc = ly1 - sm * lx1
+                            s_curr = sm * curr_idx + sc
+                            if ceil_price > s_curr:
+                                base_trough = min(ly1, min(sub_lows[hx1:curr_idx]))
+                                height = ceil_price - base_trough
+                                if height / ceil_price >= 0.035:
+                                    touches = sum(1 for idx in range(hx1, curr_idx) if abs(sub_highs[idx] - ceil_price)/ceil_price <= 0.018) +                                               sum(1 for idx in range(lx1, curr_idx) if abs(sub_lows[idx] - (sm*idx+sc))/(sm*idx+sc) <= 0.018)
+                                    if best_asc is None or touches > best_asc['touches']:
+                                        best_asc = {
+                                            'ceil': ceil_price, 's_curr': s_curr, 'height': height,
+                                            'hx1': hx1, 'hy1': hy1, 'lx1': lx1, 'ly1': ly1,
+                                            'touches': touches
+                                        }
 
-    best_sup = None
-    for i in range(len(p_lows)):
-        for j in range(i + 1, len(p_lows)):
-            x1, y1 = p_lows[i]
-            x2, y2 = p_lows[j]
-            dx = x2 - x1
-            if dx < 6: continue
-            m = (y2 - y1) / float(dx)
-            c = y1 - m * x1
-            touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_lows[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
-            if touches >= 2 and (best_sup is None or touches > best_sup['touches']):
-                best_sup = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
+    if best_asc:
+        ceil = best_asc['ceil']
+        s_curr = best_asc['s_curr']
+        height = best_asc['height']
+        t_top_start = sub_dates[best_asc['hx1']] if best_asc['hx1'] < len(sub_dates) else curr_time
+        t_bot_start = sub_dates[best_asc['lx1']] if best_asc['lx1'] < len(sub_dates) else curr_time
+        p_top_start = best_asc['hy1']
+        p_bot_start = best_asc['ly1']
+        spread_pct = ((ceil - s_curr) / s_curr) * 100.0
 
-    if best_res and best_sup:
-        r_slope = best_res['slope']
-        s_slope = best_sup['slope']
-        r_curr = best_res['tl_curr']
-        s_curr = best_sup['tl_curr']
+        if ltp < s_curr * 0.990:
+            target = max(0, round(s_curr - height, 2))
+            stop = round(s_curr + 0.382 * height, 2)
+            matched["ascending_triangle_breakdown"] = {
+                **base_scanner_result,
+                "metric": f"Ascending Triangle Breakdown: LTP ₹{ltp:.1f} < Support ₹{s_curr:.1f} · Target ₹{target:.1f} (-{height/s_curr*100:.1f}%) · Stop ₹{stop:.1f}",
+                "markers": [
+                    {"time": t_top_start, "position": "aboveBar", "color": "#f87171", "shape": "circle", "text": f"Ceiling ₹{ceil:.1f}"},
+                    {"time": t_bot_start, "position": "belowBar", "color": "#34d399", "shape": "circle", "text": f"HL ₹{p_bot_start:.1f}"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Breakdown ₹{s_curr:.1f}"}
+                ],
+                "drawings": make_triangle_drawings(
+                    f"Ascending Triangle Breakdown · Target ₹{target:.1f}",
+                    "breakdown", t_top_start, p_top_start, ceil,
+                    t_bot_start, p_bot_start, s_curr,
+                    s_curr, None, target, stop
+                )
+            }
+        elif ltp > ceil * 1.008:
+            target = round(ceil + height, 2)
+            stop = round(ceil - 0.382 * height, 2)
+            matched["ascending_triangle_breakout"] = {
+                **base_scanner_result,
+                "metric": f"Ascending Triangle Breakout: LTP ₹{ltp:.1f} > Ceiling ₹{ceil:.1f} (+{((ltp-ceil)/ceil)*100:.1f}%) · Target ₹{target:.1f} · Stop ₹{stop:.1f}",
+                "markers": [
+                    {"time": t_top_start, "position": "aboveBar", "color": "#f87171", "shape": "circle", "text": f"Ceiling ₹{ceil:.1f}"},
+                    {"time": t_bot_start, "position": "belowBar", "color": "#34d399", "shape": "circle", "text": f"HL ₹{p_bot_start:.1f}"},
+                    {"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Breakout ₹{ceil:.1f}"}
+                ],
+                "drawings": make_triangle_drawings(
+                    f"Ascending Triangle Breakout · Target ₹{target:.1f}",
+                    "breakout", t_top_start, p_top_start, ceil,
+                    t_bot_start, p_bot_start, s_curr,
+                    None, ceil, target, stop
+                )
+            }
+        elif s_curr * 0.99 <= ltp <= ceil * 1.01:
+            matched["ascending_triangle"] = {
+                **base_scanner_result,
+                "metric": f"Ascending Triangle Active (Spread {spread_pct:.1f}%, Resistance ₹{ceil:.1f}, Support ₹{s_curr:.1f})",
+                "markers": [
+                    {"time": t_top_start, "position": "aboveBar", "color": "#f87171", "shape": "circle", "text": f"Ceiling ₹{ceil:.1f}"},
+                    {"time": t_bot_start, "position": "belowBar", "color": "#34d399", "shape": "circle", "text": f"HL ₹{p_bot_start:.1f}"},
+                    {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}
+                ],
+                "drawings": make_triangle_drawings(
+                    "Ascending Triangle (Active Coil)",
+                    "active", t_top_start, p_top_start, ceil,
+                    t_bot_start, p_bot_start, s_curr,
+                    None, None, None, None
+                )
+            }
 
-        if r_curr > s_curr:
-            spread_pct = ((r_curr - s_curr) / s_curr) * 100.0
+    # =========================================================================
+    # 2. DESCENDING TRIANGLE: Flat Lower Floor + Falling Upper Resistance
+    # =========================================================================
+    best_desc = None
+    for li in range(len(p_lows)):
+        for lj in range(li + 1, len(p_lows)):
+            lx1, ly1 = p_lows[li]
+            lx2, ly2 = p_lows[lj]
+            l_dx = lx2 - lx1
+            if l_dx < 7: continue
+            l_diff = abs(ly2 - ly1) / float(ly1)
+            if l_diff <= 0.022:  # Flat support floor
+                floor_price = min(ly1, ly2)
+                c_highs = [p for p in p_highs if p[0] >= lx1 - 4 and p[0] <= curr_idx]
+                for hi in range(len(c_highs)):
+                    for hj in range(hi + 1, len(c_highs)):
+                        hx1, hy1 = c_highs[hi]
+                        hx2, hy2 = c_highs[hj]
+                        h_dx = hx2 - hx1
+                        if h_dx < 6: continue
+                        if hy2 < hy1 * 0.988:  # Strictly falling resistance
+                            rm = (hy2 - hy1) / float(h_dx)
+                            rc = hy1 - rm * hx1
+                            r_curr = rm * curr_idx + rc
+                            if r_curr > floor_price:
+                                base_peak = max(hy1, max(sub_highs[lx1:curr_idx]))
+                                height = base_peak - floor_price
+                                if height / floor_price >= 0.035:
+                                    touches = sum(1 for idx in range(lx1, curr_idx) if abs(sub_lows[idx] - floor_price)/floor_price <= 0.018) +                                               sum(1 for idx in range(hx1, curr_idx) if abs(sub_highs[idx] - (rm*idx+rc))/(rm*idx+rc) <= 0.018)
+                                    if best_desc is None or touches > best_desc['touches']:
+                                        best_desc = {
+                                            'floor': floor_price, 'r_curr': r_curr, 'height': height,
+                                            'hx1': hx1, 'hy1': hy1, 'lx1': lx1, 'ly1': ly1,
+                                            'touches': touches
+                                        }
 
-            t_top_start = sub_dates[best_res['x1']] if best_res['x1'] < len(sub_dates) else curr_time
-            p_top_start = round(best_res['y1'], 2)
-            t_bot_start = sub_dates[best_sup['x1']] if best_sup['x1'] < len(sub_dates) else curr_time
-            p_bot_start = round(best_sup['y1'], 2)
+    if best_desc:
+        floor = best_desc['floor']
+        r_curr = best_desc['r_curr']
+        height = best_desc['height']
+        t_top_start = sub_dates[best_desc['hx1']] if best_desc['hx1'] < len(sub_dates) else curr_time
+        t_bot_start = sub_dates[best_desc['lx1']] if best_desc['lx1'] < len(sub_dates) else curr_time
+        p_top_start = best_desc['hy1']
+        p_bot_start = best_desc['ly1']
+        spread_pct = ((r_curr - floor) / floor) * 100.0
 
-            def make_triangle_drawing(title):
-                return [{
-                    "type": "triangle",
-                    "time1_top": t_top_start,
-                    "price1_top": p_top_start,
-                    "time2_top": curr_time,
-                    "price2_top": round(r_curr, 2),
-                    "time1_bot": t_bot_start,
-                    "price1_bot": p_bot_start,
-                    "time2_bot": curr_time,
-                    "price2_bot": round(s_curr, 2),
-                    "topColor": "#ef4444",
-                    "botColor": "#10b981",
-                    "fillColor": "rgba(99, 102, 241, 0.12)",
-                    "name": title
-                }]
+        if ltp < floor * 0.990:
+            target = max(0, round(floor - height, 2))
+            stop = round(floor + 0.382 * height, 2)
+            matched["descending_triangle_breakdown"] = {
+                **base_scanner_result,
+                "metric": f"Descending Triangle Breakdown: LTP ₹{ltp:.1f} < Floor ₹{floor:.1f} · Target ₹{target:.1f} (-{height/floor*100:.1f}%) · Stop ₹{stop:.1f}",
+                "markers": [
+                    {"time": t_bot_start, "position": "belowBar", "color": "#10b981", "shape": "circle", "text": f"Floor ₹{floor:.1f}"},
+                    {"time": t_top_start, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": f"LH ₹{p_top_start:.1f}"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Breakdown ₹{floor:.1f}"}
+                ],
+                "drawings": make_triangle_drawings(
+                    f"Descending Triangle Breakdown · Target ₹{target:.1f}",
+                    "breakdown", t_top_start, p_top_start, r_curr,
+                    t_bot_start, p_bot_start, floor,
+                    floor, None, target, stop
+                )
+            }
+        elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
+            matched["descending_triangle"] = {
+                **base_scanner_result,
+                "metric": f"Descending Triangle Active (Spread {spread_pct:.1f}%, Floor ₹{floor:.1f}, Resistance ₹{r_curr:.1f})",
+                "markers": [
+                    {"time": t_bot_start, "position": "belowBar", "color": "#10b981", "shape": "circle", "text": f"Floor ₹{floor:.1f}"},
+                    {"time": t_top_start, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": f"LH ₹{p_top_start:.1f}"},
+                    {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}
+                ],
+                "drawings": make_triangle_drawings(
+                    "Descending Triangle (Active Coil)",
+                    "active", t_top_start, p_top_start, r_curr,
+                    t_bot_start, p_bot_start, floor,
+                    None, None, None, None
+                )
+            }
 
-            # 1. Ascending Triangle: Flat upper ceiling + rising lower support
-            if abs(r_slope) <= eps_slope and s_slope > 0.05:
-                if ltp > r_curr * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Ascending Triangle Breakout > Ceiling ₹{r_curr:.1f} (+{((ltp - r_curr)/r_curr)*100:.1f}%)"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Ascending Breakout"}]
-                    item["drawings"] = make_triangle_drawing("Ascending Triangle Breakout")
-                    matched["ascending_triangle_breakout"] = item
-                elif ltp < s_curr * 0.985:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Ascending Triangle Breakdown < Support ₹{s_curr:.1f}"
-                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Ascending Breakdown"}]
-                    item["drawings"] = make_triangle_drawing("Ascending Triangle Breakdown")
-                    matched["ascending_triangle_breakdown"] = item
-                elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Ascending Triangle Active (Spread: {spread_pct:.1f}%, Resistance ₹{r_curr:.1f})"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}]
-                    item["drawings"] = make_triangle_drawing("Ascending Triangle")
-                    matched["ascending_triangle"] = item
+    # =========================================================================
+    # 3. SYMMETRICAL TRIANGLE: Converging Upper & Lower Boundaries into Apex
+    # =========================================================================
+    best_sym = None
+    for hi in range(len(p_highs)):
+        for hj in range(hi + 1, len(p_highs)):
+            hx1, hy1 = p_highs[hi]
+            hx2, hy2 = p_highs[hj]
+            h_dx = hx2 - hx1
+            if h_dx < 7 or hy2 >= hy1 * 0.99: continue
+            rm = (hy2 - hy1) / float(h_dx)
+            rc = hy1 - rm * hx1
+            r_curr = rm * curr_idx + rc
 
-            # 2. Descending Triangle: Flat floor + falling upper resistance
-            elif abs(s_slope) <= eps_slope and r_slope < -0.05:
-                if ltp < s_curr * 0.985:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Descending Triangle Breakdown < Floor ₹{s_curr:.1f} ({((ltp - s_curr)/s_curr)*100:.1f}%)"
-                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Descending Breakdown"}]
-                    item["drawings"] = make_triangle_drawing("Descending Triangle Breakdown")
-                    matched["descending_triangle_breakdown"] = item
-                elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Descending Triangle Active (Floor: ₹{s_curr:.1f}, Resistance ₹{r_curr:.1f})"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Triangle"}]
-                    item["drawings"] = make_triangle_drawing("Descending Triangle")
-                    matched["descending_triangle"] = item
+            for li in range(len(p_lows)):
+                for lj in range(li + 1, len(p_lows)):
+                    lx1, ly1 = p_lows[li]
+                    lx2, ly2 = p_lows[lj]
+                    l_dx = lx2 - lx1
+                    if l_dx < 7 or ly2 <= ly1 * 1.01: continue
+                    sm = (ly2 - ly1) / float(l_dx)
+                    sc = ly1 - sm * lx1
+                    s_curr = sm * curr_idx + sc
 
-            # 3. Symmetrical Triangle: Converging lines
-            elif r_slope < -0.04 and s_slope > 0.04:
-                if ltp > r_curr * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Symmetric Triangle Breakout > ₹{r_curr:.1f} (+{((ltp - r_curr)/r_curr)*100:.1f}%)"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Symmetric Breakout"}]
-                    item["drawings"] = make_triangle_drawing("Symmetrical Triangle Breakout")
-                    matched["symmetrical_triangle_breakout"] = item
-                elif ltp < s_curr * 0.985:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Symmetric Triangle Breakdown < ₹{s_curr:.1f} ({((ltp - s_curr)/s_curr)*100:.1f}%)"
-                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Symmetric Breakdown"}]
-                    item["drawings"] = make_triangle_drawing("Symmetrical Triangle Breakdown")
-                    matched["symmetrical_triangle_breakdown"] = item
-                elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Symmetric Triangle Coil (Spread: {spread_pct:.1f}%, Apex Converging)"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Symmetric Coil"}]
-                    item["drawings"] = make_triangle_drawing("Symmetrical Triangle")
-                    matched["symmetrical_triangle"] = item
+                    if r_curr > s_curr:
+                        height = hy1 - ly1
+                        if height / hy1 >= 0.04:
+                            touches = sum(1 for idx in range(hx1, curr_idx) if abs(sub_highs[idx] - (rm*idx+rc))/(rm*idx+rc) <= 0.018) +                                       sum(1 for idx in range(lx1, curr_idx) if abs(sub_lows[idx] - (sm*idx+sc))/(sm*idx+sc) <= 0.018)
+                            if best_sym is None or touches > best_sym['touches']:
+                                best_sym = {
+                                    'r_curr': r_curr, 's_curr': s_curr, 'height': height,
+                                    'hx1': hx1, 'hy1': hy1, 'lx1': lx1, 'ly1': ly1,
+                                    'touches': touches
+                                }
+
+    if best_sym:
+        r_curr = best_sym['r_curr']
+        s_curr = best_sym['s_curr']
+        height = best_sym['height']
+        t_top_start = sub_dates[best_sym['hx1']] if best_sym['hx1'] < len(sub_dates) else curr_time
+        t_bot_start = sub_dates[best_sym['lx1']] if best_sym['lx1'] < len(sub_dates) else curr_time
+        p_top_start = best_sym['hy1']
+        p_bot_start = best_sym['ly1']
+        spread_pct = ((r_curr - s_curr) / s_curr) * 100.0
+
+        if ltp > r_curr * 1.008:
+            target = round(r_curr + height, 2)
+            stop = round(r_curr - 0.382 * height, 2)
+            matched["symmetrical_triangle_breakout"] = {
+                **base_scanner_result,
+                "metric": f"Symmetric Triangle Breakout: LTP ₹{ltp:.1f} > ₹{r_curr:.1f} (+{((ltp-r_curr)/r_curr)*100:.1f}%) · Target ₹{target:.1f} · Stop ₹{stop:.1f}",
+                "markers": [
+                    {"time": t_top_start, "position": "aboveBar", "color": "#f87171", "shape": "circle", "text": "Falling Res"},
+                    {"time": t_bot_start, "position": "belowBar", "color": "#34d399", "shape": "circle", "text": "Rising Sup"},
+                    {"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Breakout ₹{r_curr:.1f}"}
+                ],
+                "drawings": make_triangle_drawings(
+                    f"Symmetric Triangle Breakout · Target ₹{target:.1f}",
+                    "breakout", t_top_start, p_top_start, r_curr,
+                    t_bot_start, p_bot_start, s_curr,
+                    None, r_curr, target, stop
+                )
+            }
+        elif ltp < s_curr * 0.990:
+            target = max(0, round(s_curr - height, 2))
+            stop = round(s_curr + 0.382 * height, 2)
+            matched["symmetrical_triangle_breakdown"] = {
+                **base_scanner_result,
+                "metric": f"Symmetric Triangle Breakdown: LTP ₹{ltp:.1f} < ₹{s_curr:.1f} · Target ₹{target:.1f} (-{height/s_curr*100:.1f}%) · Stop ₹{stop:.1f}",
+                "markers": [
+                    {"time": t_top_start, "position": "aboveBar", "color": "#f87171", "shape": "circle", "text": "Falling Res"},
+                    {"time": t_bot_start, "position": "belowBar", "color": "#34d399", "shape": "circle", "text": "Rising Sup"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Breakdown ₹{s_curr:.1f}"}
+                ],
+                "drawings": make_triangle_drawings(
+                    f"Symmetric Triangle Breakdown · Target ₹{target:.1f}",
+                    "breakdown", t_top_start, p_top_start, r_curr,
+                    t_bot_start, p_bot_start, s_curr,
+                    s_curr, None, target, stop
+                )
+            }
+        elif s_curr * 0.99 <= ltp <= r_curr * 1.01:
+            matched["symmetrical_triangle"] = {
+                **base_scanner_result,
+                "metric": f"Symmetric Triangle Coil (Spread {spread_pct:.1f}%, Apex Converging ₹{s_curr:.1f} - ₹{r_curr:.1f})",
+                "markers": [
+                    {"time": t_top_start, "position": "aboveBar", "color": "#f87171", "shape": "circle", "text": "Falling Res"},
+                    {"time": t_bot_start, "position": "belowBar", "color": "#34d399", "shape": "circle", "text": "Rising Sup"},
+                    {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Symmetric Coil"}
+                ],
+                "drawings": make_triangle_drawings(
+                    "Symmetrical Triangle (Apex Coil)",
+                    "active", t_top_start, p_top_start, r_curr,
+                    t_bot_start, p_bot_start, s_curr,
+                    None, None, None, None
+                )
+            }
 
     return matched
 
 def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, prev_close):
     """
     Parallel Channels & Rectangle Box Trading Engine.
-    Detects Ascending, Descending, and Rectangle Channels + Breakouts/Breakdowns.
+    Detects Ascending, Descending, and Rectangle Channels + Breakouts/Breakdowns + Target lines.
     """
     n = len(closes)
     if n < 30:
@@ -1069,6 +1332,7 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
     sub_dates = dates[-lookback:] if dates else []
     curr_time = sub_dates[-1] if sub_dates else ""
     m_len = len(sub_closes)
+    curr_idx = m_len - 1
 
     w = 3
     p_highs = []
@@ -1081,12 +1345,11 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
 
     if m_len - w > 0:
         rh_idx = max(range(m_len - w, m_len), key=lambda x: sub_highs[x])
-        p_highs.append((rh_idx, sub_highs[rh_idx]))
+        if not p_highs or rh_idx != p_highs[-1][0]:
+            p_highs.append((rh_idx, sub_highs[rh_idx]))
         rl_idx = min(range(m_len - w, m_len), key=lambda x: sub_lows[x])
-        p_lows.append((rl_idx, sub_lows[rl_idx]))
-
-    curr_idx = m_len - 1
-    eps_slope = 0.08
+        if not p_lows or rl_idx != p_lows[-1][0]:
+            p_lows.append((rl_idx, sub_lows[rl_idx]))
 
     base_scanner_result = {
         "ltp": ltp,
@@ -1097,132 +1360,187 @@ def _analyze_channels_for_stock(closes, highs, lows, dates, symbol, name, ltp, p
 
     matched = {}
 
-    best_res = None
-    for i in range(len(p_highs)):
-        for j in range(i + 1, len(p_highs)):
-            x1, y1 = p_highs[i]
-            x2, y2 = p_highs[j]
-            dx = x2 - x1
-            if dx < 6: continue
-            m = (y2 - y1) / float(dx)
-            c = y1 - m * x1
-            touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_highs[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
-            if touches >= 2 and (best_res is None or touches > best_res['touches']):
-                best_res = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
+    def make_channel_drawings(title, c_top_start, c_top_price, r_c,
+                              c_bot_start, c_bot_price, s_c,
+                              top_color, bot_color, fill_color, target_price=None, stop_price=None):
+        drawings = [{
+            "type": "channel",
+            "time1_top": c_top_start,
+            "price1_top": c_top_price,
+            "time2_top": curr_time,
+            "price2_top": round(r_c, 2),
+            "time1_bot": c_bot_start,
+            "price1_bot": c_bot_price,
+            "time2_bot": curr_time,
+            "price2_bot": round(s_c, 2),
+            "topColor": top_color,
+            "botColor": bot_color,
+            "fillColor": fill_color,
+            "name": title
+        }]
+        if target_price:
+            drawings.append({
+                "type": "trendline",
+                "time1": curr_time,
+                "price1": round(target_price, 2),
+                "time2": curr_time,
+                "futureOffset2": 15,
+                "price2": round(target_price, 2),
+                "color": "#10b981" if target_price > ltp else "#ef4444",
+                "lineWidth": 1.5,
+                "lineStyle": "dashed",
+                "name": f"🎯 Target ₹{target_price:.1f}"
+            })
+        if stop_price:
+            drawings.append({
+                "type": "trendline",
+                "time1": curr_time,
+                "price1": round(stop_price, 2),
+                "time2": curr_time,
+                "futureOffset2": 12,
+                "price2": round(stop_price, 2),
+                "color": "#f59e0b",
+                "lineWidth": 1.5,
+                "lineStyle": "dashed",
+                "name": f"🛑 Stop ₹{stop_price:.1f}"
+            })
+        return drawings
 
-    best_sup = None
-    for i in range(len(p_lows)):
-        for j in range(i + 1, len(p_lows)):
-            x1, y1 = p_lows[i]
-            x2, y2 = p_lows[j]
-            dx = x2 - x1
-            if dx < 6: continue
-            m = (y2 - y1) / float(dx)
-            c = y1 - m * x1
-            touches = sum(1 for idx in range(x1, curr_idx) if abs(sub_lows[idx] - (m * idx + c)) / (m * idx + c) <= 0.015)
-            if touches >= 2 and (best_sup is None or touches > best_sup['touches']):
-                best_sup = {'m': m, 'c': c, 'slope': (m / y1) * 100.0, 'touches': touches, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'tl_curr': m * curr_idx + c}
+    # Search for best channel
+    best_channel = None
+    for hi in range(len(p_highs)):
+        for hj in range(hi + 1, len(p_highs)):
+            hx1, hy1 = p_highs[hi]
+            hx2, hy2 = p_highs[hj]
+            h_dx = hx2 - hx1
+            if h_dx < 6: continue
+            rm = (hy2 - hy1) / float(h_dx)
+            rc = hy1 - rm * hx1
+            r_c = rm * curr_idx + rc
+            r_s = (rm / hy1) * 100.0
 
-    if best_res and best_sup:
-        r_s = best_res['slope']
-        s_s = best_sup['slope']
-        r_c = best_res['tl_curr']
-        s_c = best_sup['tl_curr']
+            for li in range(len(p_lows)):
+                for lj in range(li + 1, len(p_lows)):
+                    lx1, ly1 = p_lows[li]
+                    lx2, ly2 = p_lows[lj]
+                    l_dx = lx2 - lx1
+                    if l_dx < 6: continue
+                    sm = (ly2 - ly1) / float(l_dx)
+                    sc = ly1 - sm * lx1
+                    s_c = sm * curr_idx + sc
+                    s_s = (sm / ly1) * 100.0
 
-        if r_c > s_c:
-            channel_width = ((r_c - s_c) / s_c) * 100.0
-            slope_diff = abs(r_s - s_s)
+                    if r_c > s_c:
+                        slope_diff = abs(r_s - s_s)
+                        width_pct = ((r_c - s_c) / s_c) * 100.0
+                        if 2.5 <= width_pct <= 30.0:
+                            touches = sum(1 for idx in range(hx1, curr_idx) if abs(sub_highs[idx] - (rm*idx+rc))/(rm*idx+rc) <= 0.018) +                                       sum(1 for idx in range(lx1, curr_idx) if abs(sub_lows[idx] - (sm*idx+sc))/(sm*idx+sc) <= 0.018)
+                            if best_channel is None or touches > best_channel['touches']:
+                                best_channel = {
+                                    'r_s': r_s, 's_s': s_s, 'r_c': r_c, 's_c': s_c,
+                                    'hx1': hx1, 'hy1': hy1, 'lx1': lx1, 'ly1': ly1,
+                                    'width_pct': width_pct, 'slope_diff': slope_diff,
+                                    'touches': touches
+                                }
 
-            c_top_start = sub_dates[best_res['x1']] if best_res['x1'] < len(sub_dates) else curr_time
-            c_top_price = round(best_res['y1'], 2)
-            c_bot_start = sub_dates[best_sup['x1']] if best_sup['x1'] < len(sub_dates) else curr_time
-            c_bot_price = round(best_sup['y1'], 2)
+    if best_channel:
+        r_s = best_channel['r_s']
+        s_s = best_channel['s_s']
+        r_c = best_channel['r_c']
+        s_c = best_channel['s_c']
+        width_pct = best_channel['width_pct']
+        slope_diff = best_channel['slope_diff']
+        c_w = r_c - s_c
 
-            def make_channel_drawing(title):
-                return [{
-                    "type": "channel",
-                    "time1_top": c_top_start,
-                    "price1_top": c_top_price,
-                    "time2_top": curr_time,
-                    "price2_top": round(r_c, 2),
-                    "time1_bot": c_bot_start,
-                    "price1_bot": c_bot_price,
-                    "time2_bot": curr_time,
-                    "price2_bot": round(s_c, 2),
-                    "topColor": "#38bdf8",
-                    "botColor": "#38bdf8",
-                    "fillColor": "rgba(56, 189, 248, 0.10)",
-                    "name": title
-                }]
+        c_top_start = sub_dates[best_channel['hx1']] if best_channel['hx1'] < len(sub_dates) else curr_time
+        c_top_price = round(best_channel['hy1'], 2)
+        c_bot_start = sub_dates[best_channel['lx1']] if best_channel['lx1'] < len(sub_dates) else curr_time
+        c_bot_price = round(best_channel['ly1'], 2)
 
-            # 1. Ascending Channel
-            if r_s > 0.06 and s_s > 0.06 and slope_diff <= 0.16:
-                if ltp > r_c * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Ascending Channel Expansion Breakout > ₹{r_c:.1f}"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Channel Breakout"}]
-                    item["drawings"] = make_channel_drawing("Ascending Channel Breakout")
-                    matched["ascending_channel_breakout"] = item
-                elif ltp < s_c * 0.985:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Ascending Channel Breakdown < Support ₹{s_c:.1f}"
-                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}]
-                    item["drawings"] = make_channel_drawing("Ascending Channel Breakdown")
-                    matched["ascending_channel_breakdown"] = item
-                elif s_c * 0.985 <= ltp <= r_c * 1.015:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Active Ascending Channel (Slope +{((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Ascending Channel"}]
-                    item["drawings"] = make_channel_drawing("Ascending Channel")
-                    matched["ascending_channel"] = item
+        # 1. Ascending Channel (r_s > 0.05 and s_s > 0.05 and slope_diff <= 0.18)
+        if r_s > 0.05 and s_s > 0.05 and slope_diff <= 0.18:
+            if ltp > r_c * 1.01:
+                tgt = round(r_c + c_w, 2)
+                matched["ascending_channel_breakout"] = {
+                    **base_scanner_result,
+                    "metric": f"Ascending Channel Breakout: LTP ₹{ltp:.1f} > ₹{r_c:.1f} · Target ₹{tgt:.1f}",
+                    "markers": [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Channel Breakout"}],
+                    "drawings": make_channel_drawings("Ascending Channel Breakout", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#10b981", "#10b981", "rgba(16, 185, 129, 0.12)", target_price=tgt)
+                }
+            elif ltp < s_c * 0.985:
+                tgt = max(0, round(s_c - c_w, 2))
+                matched["ascending_channel_breakdown"] = {
+                    **base_scanner_result,
+                    "metric": f"Ascending Channel Breakdown: LTP ₹{ltp:.1f} < ₹{s_c:.1f} · Target ₹{tgt:.1f}",
+                    "markers": [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}],
+                    "drawings": make_channel_drawings("Ascending Channel Breakdown", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#ef5350", "#ef5350", "rgba(239, 68, 68, 0.12)", target_price=tgt)
+                }
+            elif s_c * 0.985 <= ltp <= r_c * 1.015:
+                matched["ascending_channel"] = {
+                    **base_scanner_result,
+                    "metric": f"Active Ascending Channel (Slope +{((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})",
+                    "markers": [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Ascending Channel"}],
+                    "drawings": make_channel_drawings("Ascending Channel", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#38bdf8", "#38bdf8", "rgba(56, 189, 248, 0.10)")
+                }
 
-            # 2. Descending Channel
-            elif r_s < -0.06 and s_s < -0.06 and slope_diff <= 0.16:
-                if ltp > r_c * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Descending Channel Reversal Breakout > ₹{r_c:.1f}"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Reversal Breakout"}]
-                    item["drawings"] = make_channel_drawing("Descending Channel Breakout")
-                    matched["descending_channel_breakout"] = item
-                elif ltp < s_c * 0.985:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Descending Channel Accelerating Breakdown < ₹{s_c:.1f}"
-                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}]
-                    item["drawings"] = make_channel_drawing("Descending Channel Breakdown")
-                    matched["descending_channel_breakdown"] = item
-                elif s_c * 0.985 <= ltp <= r_c * 1.015:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Active Descending Channel (Slope {((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Descending Channel"}]
-                    item["drawings"] = make_channel_drawing("Descending Channel")
-                    matched["descending_channel"] = item
+        # 2. Descending Channel (r_s < -0.05 and s_s < -0.05 and slope_diff <= 0.18)
+        elif r_s < -0.05 and s_s < -0.05 and slope_diff <= 0.18:
+            if ltp > r_c * 1.01:
+                tgt = round(r_c + c_w, 2)
+                matched["descending_channel_breakout"] = {
+                    **base_scanner_result,
+                    "metric": f"Descending Channel Breakout: LTP ₹{ltp:.1f} > ₹{r_c:.1f} · Target ₹{tgt:.1f}",
+                    "markers": [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Reversal Breakout"}],
+                    "drawings": make_channel_drawings("Descending Channel Breakout", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#10b981", "#10b981", "rgba(16, 185, 129, 0.12)", target_price=tgt)
+                }
+            elif ltp < s_c * 0.985:
+                tgt = max(0, round(s_c - c_w, 2))
+                matched["descending_channel_breakdown"] = {
+                    **base_scanner_result,
+                    "metric": f"Descending Channel Breakdown: LTP ₹{ltp:.1f} < ₹{s_c:.1f} · Target ₹{tgt:.1f}",
+                    "markers": [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Channel Breakdown"}],
+                    "drawings": make_channel_drawings("Descending Channel Breakdown", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#ef5350", "#ef5350", "rgba(239, 68, 68, 0.12)", target_price=tgt)
+                }
+            elif s_c * 0.985 <= ltp <= r_c * 1.015:
+                matched["descending_channel"] = {
+                    **base_scanner_result,
+                    "metric": f"Active Descending Channel (Slope {((r_s+s_s)/2):.2f}%, Band ₹{s_c:.1f} - ₹{r_c:.1f})",
+                    "markers": [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Descending Channel"}],
+                    "drawings": make_channel_drawings("Descending Channel", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#f43f5e", "#f43f5e", "rgba(244, 63, 94, 0.10)")
+                }
 
-            # 3. Rectangle Channel
-            elif abs(r_s) <= eps_slope and abs(s_s) <= eps_slope and 2.5 <= channel_width <= 25.0:
-                if ltp > r_c * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Rectangle Range Breakout > Ceiling ₹{r_c:.1f} (+{((ltp - r_c)/r_c)*100:.1f}%)"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Rectangle Breakout"}]
-                    item["drawings"] = make_channel_drawing("Rectangle Channel Breakout")
-                    matched["rectangle_channel_breakout"] = item
-                elif ltp < s_c * 0.985:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Rectangle Range Breakdown < Floor ₹{s_c:.1f} ({((ltp - s_c)/s_c)*100:.1f}%)"
-                    item["markers"] = [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Rectangle Breakdown"}]
-                    item["drawings"] = make_channel_drawing("Rectangle Channel Breakdown")
-                    matched["rectangle_channel_breakdown"] = item
-                elif s_c * 0.99 <= ltp <= r_c * 1.01:
-                    item = dict(base_scanner_result)
-                    item["metric"] = f"Active Rectangle Range (Floor ₹{s_c:.1f} · Ceiling ₹{r_c:.1f}, Width {channel_width:.1f}%)"
-                    item["markers"] = [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Rectangle"}]
-                    item["drawings"] = make_channel_drawing("Rectangle Channel")
-                    matched["rectangle_channel"] = item
-                    if abs(ltp - s_c) / s_c <= 0.02 or abs(ltp - r_c) / r_c <= 0.02:
-                        pot_item = dict(base_scanner_result)
-                        pot_item["metric"] = f"Testing Rectangle Boundary Zone (LTP ₹{ltp:.1f} near Band)"
-                        pot_item["markers"] = [{"time": curr_time, "position": "belowBar" if abs(ltp - s_c) < abs(ltp - r_c) else "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Boundary Test"}]
-                        pot_item["drawings"] = make_channel_drawing("Rectangle Boundary Zone")
-                        matched["rectangle_channel_potential"] = pot_item
+        # 3. Rectangle Channel (Flat slope abs <= 0.08)
+        elif abs(r_s) <= 0.08 and abs(s_s) <= 0.08:
+            if ltp > r_c * 1.01:
+                tgt = round(r_c + c_w, 2)
+                matched["rectangle_channel_breakout"] = {
+                    **base_scanner_result,
+                    "metric": f"Rectangle Range Breakout: LTP ₹{ltp:.1f} > Ceiling ₹{r_c:.1f} · Target ₹{tgt:.1f}",
+                    "markers": [{"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Rectangle Breakout"}],
+                    "drawings": make_channel_drawings("Rectangle Range Breakout", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#10b981", "#10b981", "rgba(16, 185, 129, 0.12)", target_price=tgt)
+                }
+            elif ltp < s_c * 0.985:
+                tgt = max(0, round(s_c - c_w, 2))
+                matched["rectangle_channel_breakdown"] = {
+                    **base_scanner_result,
+                    "metric": f"Rectangle Range Breakdown: LTP ₹{ltp:.1f} < Floor ₹{s_c:.1f} · Target ₹{tgt:.1f}",
+                    "markers": [{"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Rectangle Breakdown"}],
+                    "drawings": make_channel_drawings("Rectangle Range Breakdown", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#ef5350", "#ef5350", "rgba(239, 68, 68, 0.12)", target_price=tgt)
+                }
+            elif s_c * 0.99 <= ltp <= r_c * 1.01:
+                matched["rectangle_channel"] = {
+                    **base_scanner_result,
+                    "metric": f"Active Rectangle Range (Floor ₹{s_c:.1f} · Ceiling ₹{r_c:.1f}, Width {width_pct:.1f}%)",
+                    "markers": [{"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "In Rectangle"}],
+                    "drawings": make_channel_drawings("Rectangle Channel", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#6366f1", "#6366f1", "rgba(99, 102, 241, 0.10)")
+                }
+                if abs(ltp - s_c) / s_c <= 0.02 or abs(ltp - r_c) / r_c <= 0.02:
+                    matched["rectangle_channel_potential"] = {
+                        **base_scanner_result,
+                        "metric": f"Testing Rectangle Boundary Zone (LTP ₹{ltp:.1f} near Band)",
+                        "markers": [{"time": curr_time, "position": "belowBar" if abs(ltp - s_c) < abs(ltp - r_c) else "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Boundary Test"}],
+                        "drawings": make_channel_drawings("Rectangle Boundary Zone", c_top_start, c_top_price, r_c, c_bot_start, c_bot_price, s_c, "#f59e0b", "#f59e0b", "rgba(245, 158, 11, 0.10)")
+                    }
 
     return matched
 
@@ -1308,8 +1626,9 @@ def _analyze_nr_wr_for_stock(closes, highs, lows, opens, dates, symbol, name, lt
 
 def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbol, name, ltp, prev_close):
     """
-    Multi-Leg Classical Chart Pattern Engine.
-    Detects Double/Triple Tops & Bottoms (Init/Potential/Confirmed), H&S, Flags, Cups, V-Patterns.
+    Multi-Leg Classical Chart Pattern Engine (Upgraded Institutional Algorithm).
+    Detects Double/Triple Tops & Bottoms, H&S, Flags, Cups, V-Patterns.
+    Generates complete chart drawings: necklines, base/peak lines, target projections, and stop loss lines.
     """
     n = len(closes)
     if n < 40:
@@ -1334,9 +1653,11 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
 
     if m_len - w > 0:
         rh_idx = max(range(m_len - w, m_len), key=lambda x: sub_highs[x])
-        p_highs.append((rh_idx, sub_highs[rh_idx]))
+        if not p_highs or rh_idx != p_highs[-1][0]:
+            p_highs.append((rh_idx, sub_highs[rh_idx]))
         rl_idx = min(range(m_len - w, m_len), key=lambda x: sub_lows[x])
-        p_lows.append((rl_idx, sub_lows[rl_idx]))
+        if not p_lows or rl_idx != p_lows[-1][0]:
+            p_lows.append((rl_idx, sub_lows[rl_idx]))
 
     base_scanner_result = {
         "ltp": ltp,
@@ -1346,6 +1667,36 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
     }
 
     matched = {}
+
+    def make_target_stop_drawings(start_time, target_p, stop_p, is_bullish):
+        lines = []
+        if target_p:
+            lines.append({
+                "type": "trendline",
+                "time1": start_time,
+                "price1": round(target_p, 2),
+                "time2": curr_time,
+                "futureOffset2": 15,
+                "price2": round(target_p, 2),
+                "color": "#10b981" if is_bullish else "#ef4444",
+                "lineWidth": 1.5,
+                "lineStyle": "dashed",
+                "name": f"🎯 Target ₹{target_p:.1f}"
+            })
+        if stop_p:
+            lines.append({
+                "type": "trendline",
+                "time1": start_time,
+                "price1": round(stop_p, 2),
+                "time2": curr_time,
+                "futureOffset2": 12,
+                "price2": round(stop_p, 2),
+                "color": "#f59e0b",
+                "lineWidth": 1.5,
+                "lineStyle": "dashed",
+                "name": f"🛑 Stop ₹{stop_p:.1f}"
+            })
+        return lines
 
     # 1. Higher Highs & Higher Lows (Dow Theory Uptrend)
     if len(p_highs) >= 3 and len(p_lows) >= 3:
@@ -1359,6 +1710,19 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
                 {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#10b981", "shape": "arrowUp", "text": "HH"},
                 {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "HL"},
                 {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#10b981", "shape": "arrowUp", "text": "HH"}
+            ]
+            m["drawings"] = [
+                {
+                    "type": "trendline",
+                    "time1": sub_dates[p_lows[-3][0]],
+                    "price1": round(l1, 2),
+                    "time2": curr_time,
+                    "futureOffset2": 8,
+                    "price2": round(l3, 2),
+                    "color": "#10b981",
+                    "lineWidth": 2,
+                    "name": "Higher Lows Trendline"
+                }
             ]
             matched["higher_highs_lows"] = m
 
@@ -1375,9 +1739,22 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
                 {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "LH"},
                 {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#ef5350", "shape": "arrowDown", "text": "LL"}
             ]
+            m["drawings"] = [
+                {
+                    "type": "trendline",
+                    "time1": sub_dates[p_highs[-3][0]],
+                    "price1": round(h1, 2),
+                    "time2": curr_time,
+                    "futureOffset2": 8,
+                    "price2": round(h3, 2),
+                    "color": "#ef5350",
+                    "lineWidth": 2,
+                    "name": "Lower Highs Trendline"
+                }
+            ]
             matched["lower_highs_lows"] = m
 
-    # 3. Double Bottom (Init, Potential, Confirmed)
+    # 3. Double Bottom (Init, Potential, Confirmed Breakout)
     if len(p_lows) >= 2:
         idx1, l1 = p_lows[-2]
         idx2, l2 = p_lows[-1]
@@ -1385,27 +1762,62 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         neckline = max(mid_highs) if mid_highs else (max(sub_highs[idx1:idx2]) if idx2 > idx1 else None)
 
         if neckline and abs(l1 - l2) / float(l1) <= 0.025:
+            avg_base = (l1 + l2) / 2.0
+            height = neckline - avg_base
+            target = round(neckline + height, 2)
+            stop = round(neckline - 0.382 * height, 2)
+
+            t1 = sub_dates[idx1] if idx1 < len(sub_dates) else curr_time
+            t2 = sub_dates[idx2] if idx2 < len(sub_dates) else curr_time
+
+            base_drawings = [
+                {
+                    "type": "trendline",
+                    "time1": t1,
+                    "price1": round(neckline, 2),
+                    "time2": curr_time,
+                    "futureOffset2": 15,
+                    "price2": round(neckline, 2),
+                    "color": "#10b981",
+                    "lineWidth": 2,
+                    "name": f"Neckline ₹{neckline:.1f}"
+                },
+                {
+                    "type": "trendline",
+                    "time1": t1,
+                    "price1": round(l1, 2),
+                    "time2": t2,
+                    "price2": round(l2, 2),
+                    "color": "#34d399",
+                    "lineWidth": 1.5,
+                    "name": f"Double Bottom Base ~₹{avg_base:.1f}"
+                }
+            ]
+
             db_markers = [
-                {"time": sub_dates[idx1], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Bottom 1"},
-                {"time": sub_dates[idx2], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Bottom 2"}
+                {"time": t1, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Bottom 1 ₹{l1:.1f}"},
+                {"time": t2, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Bottom 2 ₹{l2:.1f}"}
             ]
             if ltp > neckline * 1.008:
                 m = dict(base_scanner_result)
-                m["metric"] = f"Double Bottom Confirmed: Breakout > Neckline ₹{neckline:.1f} (Troughs ₹{l1:.1f}, ₹{l2:.1f})"
-                m["markers"] = db_markers + [{"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Breakout"}]
+                m["metric"] = f"Double Bottom Confirmed: Breakout > Neckline ₹{neckline:.1f} · Target ₹{target:.1f} (+{((target-ltp)/ltp)*100:.1f}%) · Stop ₹{stop:.1f}"
+                m["markers"] = db_markers + [{"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": f"Breakout ₹{neckline:.1f}"}]
+                m["drawings"] = base_drawings + make_target_stop_drawings(curr_time, target, stop, True)
                 matched["double_bottom"] = m
             elif ltp > l2 and ltp <= neckline:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Bottom Potential: Rebounding from Trough ₹{l2:.1f} toward Neckline ₹{neckline:.1f}"
                 m["markers"] = db_markers
+                m["drawings"] = base_drawings
                 matched["double_bottom_potential"] = m
             elif abs(ltp - l2) / float(l2) <= 0.015:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Bottom Init: Testing Support Base around ₹{l2:.1f}"
                 m["markers"] = db_markers
+                m["drawings"] = base_drawings
                 matched["double_bottom_init"] = m
 
-    # 4. Double Top (Init, Potential, Confirmed)
+    # 4. Double Top (Init, Potential, Confirmed Breakdown)
     if len(p_highs) >= 2:
         idx1, h1 = p_highs[-2]
         idx2, h2 = p_highs[-1]
@@ -1413,24 +1825,59 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         neckline = min(mid_lows) if mid_lows else (min(sub_lows[idx1:idx2]) if idx2 > idx1 else None)
 
         if neckline and abs(h1 - h2) / float(h1) <= 0.025:
+            avg_peak = (h1 + h2) / 2.0
+            height = avg_peak - neckline
+            target = max(0, round(neckline - height, 2))
+            stop = round(neckline + 0.382 * height, 2)
+
+            t1 = sub_dates[idx1] if idx1 < len(sub_dates) else curr_time
+            t2 = sub_dates[idx2] if idx2 < len(sub_dates) else curr_time
+
+            base_drawings = [
+                {
+                    "type": "trendline",
+                    "time1": t1,
+                    "price1": round(neckline, 2),
+                    "time2": curr_time,
+                    "futureOffset2": 15,
+                    "price2": round(neckline, 2),
+                    "color": "#ef4444",
+                    "lineWidth": 2,
+                    "name": f"Neckline ₹{neckline:.1f}"
+                },
+                {
+                    "type": "trendline",
+                    "time1": t1,
+                    "price1": round(h1, 2),
+                    "time2": t2,
+                    "price2": round(h2, 2),
+                    "color": "#f87171",
+                    "lineWidth": 1.5,
+                    "name": f"Double Top Peaks ~₹{avg_peak:.1f}"
+                }
+            ]
+
             dt_markers = [
-                {"time": sub_dates[idx1], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Top 1"},
-                {"time": sub_dates[idx2], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Top 2"}
+                {"time": t1, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Top 1 ₹{h1:.1f}"},
+                {"time": t2, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Top 2 ₹{h2:.1f}"}
             ]
             if ltp < neckline * 0.992:
                 m = dict(base_scanner_result)
-                m["metric"] = f"Double Top Confirmed: Breakdown < Neckline ₹{neckline:.1f} (Peaks ₹{h1:.1f}, ₹{h2:.1f})"
-                m["markers"] = dt_markers + [{"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Breakdown"}]
+                m["metric"] = f"Double Top Confirmed: Breakdown < Neckline ₹{neckline:.1f} · Target ₹{target:.1f} (-{((ltp-target)/ltp)*100:.1f}%) · Stop ₹{stop:.1f}"
+                m["markers"] = dt_markers + [{"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": f"Breakdown ₹{neckline:.1f}"}]
+                m["drawings"] = base_drawings + make_target_stop_drawings(curr_time, target, stop, False)
                 matched["double_top"] = m
             elif ltp < h2 and ltp >= neckline:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Top Potential: Declining from Peak ₹{h2:.1f} toward Neckline ₹{neckline:.1f}"
                 m["markers"] = dt_markers
+                m["drawings"] = base_drawings
                 matched["double_top_potential"] = m
             elif abs(ltp - h2) / float(h2) <= 0.015:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Double Top Init: Testing Resistance Ceiling around ₹{h2:.1f}"
                 m["markers"] = dt_markers
+                m["drawings"] = base_drawings
                 matched["double_top_init"] = m
 
     # 5. Triple Bottom (Potential & Confirmed)
@@ -1439,20 +1886,28 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         spread = (max(l1, l2, l3) - min(l1, l2, l3)) / float(min(l1, l2, l3))
         if spread <= 0.03:
             nl = max(p_highs[-2][1], p_highs[-1][1]) if len(p_highs) >= 2 else max(l1, l2, l3) * 1.05
+            height = nl - min(l1, l2, l3)
+            target = round(nl + height, 2)
+            stop = round(nl - 0.382 * height, 2)
             tb_markers = [
                 {"time": sub_dates[p_lows[-3][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Trough 1"},
                 {"time": sub_dates[p_lows[-2][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Trough 2"},
                 {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Trough 3"}
             ]
+            tb_drawings = [
+                {"type": "trendline", "time1": sub_dates[p_lows[-3][0]], "price1": round(nl, 2), "time2": curr_time, "futureOffset2": 15, "price2": round(nl, 2), "color": "#10b981", "lineWidth": 2, "name": f"Neckline ₹{nl:.1f}"}
+            ]
             if ltp > nl * 1.008:
                 m = dict(base_scanner_result)
-                m["metric"] = f"Triple Bottom Confirmed: Breakout > Neckline ₹{nl:.1f} (3 Lows ~₹{l3:.1f})"
+                m["metric"] = f"Triple Bottom Confirmed: Breakout > Neckline ₹{nl:.1f} · Target ₹{target:.1f} · Stop ₹{stop:.1f}"
                 m["markers"] = tb_markers + [{"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Breakout"}]
+                m["drawings"] = tb_drawings + make_target_stop_drawings(curr_time, target, stop, True)
                 matched["triple_bottom"] = m
             elif ltp > l3 and ltp <= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Triple Bottom Potential: Bouncing off 3rd Low ₹{l3:.1f}"
                 m["markers"] = tb_markers
+                m["drawings"] = tb_drawings
                 matched["triple_bottom_potential"] = m
 
     # 6. Triple Top (Potential & Confirmed)
@@ -1461,20 +1916,28 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         spread = (max(h1, h2, h3) - min(h1, h2, h3)) / float(min(h1, h2, h3))
         if spread <= 0.03:
             nl = min(p_lows[-2][1], p_lows[-1][1]) if len(p_lows) >= 2 else min(h1, h2, h3) * 0.95
+            height = max(h1, h2, h3) - nl
+            target = max(0, round(nl - height, 2))
+            stop = round(nl + 0.382 * height, 2)
             tt_markers = [
                 {"time": sub_dates[p_highs[-3][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Peak 1"},
                 {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Peak 2"},
                 {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Peak 3"}
             ]
+            tt_drawings = [
+                {"type": "trendline", "time1": sub_dates[p_highs[-3][0]], "price1": round(nl, 2), "time2": curr_time, "futureOffset2": 15, "price2": round(nl, 2), "color": "#ef4444", "lineWidth": 2, "name": f"Neckline ₹{nl:.1f}"}
+            ]
             if ltp < nl * 0.992:
                 m = dict(base_scanner_result)
-                m["metric"] = f"Triple Top Confirmed: Breakdown < Neckline ₹{nl:.1f} (3 Peaks ~₹{h3:.1f})"
+                m["metric"] = f"Triple Top Confirmed: Breakdown < Neckline ₹{nl:.1f} · Target ₹{target:.1f} · Stop ₹{stop:.1f}"
                 m["markers"] = tt_markers + [{"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Breakdown"}]
+                m["drawings"] = tt_drawings + make_target_stop_drawings(curr_time, target, stop, False)
                 matched["triple_top"] = m
             elif ltp < h3 and ltp >= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Triple Top Potential: Falling from 3rd Peak ₹{h3:.1f}"
                 m["markers"] = tt_markers
+                m["drawings"] = tt_drawings
                 matched["triple_top_potential"] = m
 
     # 7. Head & Shoulders & Reverse H&S
@@ -1482,40 +1945,56 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         s1, head, s2 = p_highs[-3][1], p_highs[-2][1], p_highs[-1][1]
         if head > s1 and head > s2 and abs(s1 - s2) / float(s1) <= 0.05:
             nl = (p_lows[-2][1] + p_lows[-1][1]) / 2.0
+            height = head - nl
+            target = max(0, round(nl - height, 2))
+            stop = round(s2, 2)
             hs_markers = [
-                {"time": sub_dates[p_highs[-3][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "L-Shoulder"},
-                {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Head"},
-                {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "R-Shoulder"}
+                {"time": sub_dates[p_highs[-3][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"L-Shoulder ₹{s1:.1f}"},
+                {"time": sub_dates[p_highs[-2][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Head ₹{head:.1f}"},
+                {"time": sub_dates[p_highs[-1][0]], "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"R-Shoulder ₹{s2:.1f}"}
+            ]
+            hs_drawings = [
+                {"type": "trendline", "time1": sub_dates[p_lows[-2][0]], "price1": round(p_lows[-2][1], 2), "time2": curr_time, "futureOffset2": 15, "price2": round(p_lows[-1][1], 2), "color": "#ef4444", "lineWidth": 2, "name": f"Neckline ₹{nl:.1f}"}
             ]
             if ltp < nl * 0.992:
                 m = dict(base_scanner_result)
-                m["metric"] = f"Head & Shoulder Breakdown < Neckline ₹{nl:.1f} (Head ₹{head:.1f})"
+                m["metric"] = f"Head & Shoulder Breakdown < Neckline ₹{nl:.1f} · Target ₹{target:.1f} · Stop ₹{stop:.1f}"
                 m["markers"] = hs_markers + [{"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Breakdown"}]
+                m["drawings"] = hs_drawings + make_target_stop_drawings(curr_time, target, stop, False)
                 matched["head_shoulder"] = m
             elif ltp < s2 and ltp >= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Head & Shoulder Potential: Right Shoulder Rejection at ₹{s2:.1f}"
                 m["markers"] = hs_markers
+                m["drawings"] = hs_drawings
                 matched["head_shoulder_potential"] = m
 
     if len(p_lows) >= 3 and len(p_highs) >= 2:
         s1, head, s2 = p_lows[-3][1], p_lows[-2][1], p_lows[-1][1]
         if head < s1 and head < s2 and abs(s1 - s2) / float(s1) <= 0.05:
             nl = (p_highs[-2][1] + p_highs[-1][1]) / 2.0
+            height = nl - head
+            target = round(nl + height, 2)
+            stop = round(s2, 2)
             rhs_markers = [
-                {"time": sub_dates[p_lows[-3][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "L-Shoulder"},
-                {"time": sub_dates[p_lows[-2][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Head"},
-                {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "R-Shoulder"}
+                {"time": sub_dates[p_lows[-3][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"L-Shoulder ₹{s1:.1f}"},
+                {"time": sub_dates[p_lows[-2][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Head ₹{head:.1f}"},
+                {"time": sub_dates[p_lows[-1][0]], "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"R-Shoulder ₹{s2:.1f}"}
+            ]
+            rhs_drawings = [
+                {"type": "trendline", "time1": sub_dates[p_highs[-2][0]], "price1": round(p_highs[-2][1], 2), "time2": curr_time, "futureOffset2": 15, "price2": round(p_highs[-1][1], 2), "color": "#10b981", "lineWidth": 2, "name": f"Neckline ₹{nl:.1f}"}
             ]
             if ltp > nl * 1.008:
                 m = dict(base_scanner_result)
-                m["metric"] = f"Reverse Head & Shoulder Breakout > Neckline ₹{nl:.1f} (Head ₹{head:.1f})"
+                m["metric"] = f"Reverse Head & Shoulder Breakout > Neckline ₹{nl:.1f} · Target ₹{target:.1f} · Stop ₹{stop:.1f}"
                 m["markers"] = rhs_markers + [{"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Breakout"}]
+                m["drawings"] = rhs_drawings + make_target_stop_drawings(curr_time, target, stop, True)
                 matched["reverse_head_shoulder"] = m
             elif ltp > s2 and ltp <= nl:
                 m = dict(base_scanner_result)
                 m["metric"] = f"Reverse H&S Potential: Right Shoulder Bouncing at ₹{s2:.1f}"
                 m["markers"] = rhs_markers
+                m["drawings"] = rhs_drawings
                 matched["reverse_head_shoulder_potential"] = m
 
     # 8. V Pattern & Inverse V Pattern
@@ -1533,6 +2012,10 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
                     {"time": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "V-Bottom"},
                     {"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Recovery"}
                 ]
+                m["drawings"] = [
+                    {"type": "trendline", "time1": sub_dates[-10] if len(sub_dates) >= 10 else curr_time, "price1": round(prior_max, 2), "time2": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "price2": round(min_10, 2), "color": "#ef5350", "lineWidth": 1.5, "name": "V Drop"},
+                    {"type": "trendline", "time1": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "price1": round(min_10, 2), "time2": curr_time, "price2": round(ltp, 2), "color": "#10b981", "lineWidth": 2, "name": "V Rally"}
+                ]
                 matched["v_pattern"] = m
 
         max_10 = max(sub_highs[-10:-4])
@@ -1548,6 +2031,10 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
                     {"time": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "V-Top"},
                     {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Rejection"}
                 ]
+                m["drawings"] = [
+                    {"type": "trendline", "time1": sub_dates[-10] if len(sub_dates) >= 10 else curr_time, "price1": round(prior_min, 2), "time2": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "price2": round(max_10, 2), "color": "#10b981", "lineWidth": 1.5, "name": "Spike"},
+                    {"type": "trendline", "time1": sub_dates[-7] if len(sub_dates) >= 7 else curr_time, "price1": round(max_10, 2), "time2": curr_time, "price2": round(ltp, 2), "color": "#ef5350", "lineWidth": 2, "name": "Rejection"}
+                ]
                 matched["inverse_v_pattern"] = m
 
     # 9. Bullish & Bearish Flags & Pennants
@@ -1558,23 +2045,30 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         if pole_gain >= 0.07:
             recent_high = max(sub_highs[-8:])
             recent_low = min(sub_lows[-8:])
-            if recent_high <= pole_top * 1.01 and recent_low >= pole_top * 0.90:
-                if ltp > recent_high * 0.995:
-                    m = dict(base_scanner_result)
-                    m["metric"] = f"Bullish Flag Breakout: Flagpole +{pole_gain*100:.1f}% with Breakout at ₹{ltp:.1f}"
-                    m["markers"] = [
-                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Flagpole"},
-                        {"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Flag Breakout"}
-                    ]
-                    matched["bullish_flag"] = m
-                else:
-                    m = dict(base_scanner_result)
-                    m["metric"] = f"Bullish Pennant Consolidation (Pole +{pole_gain*100:.1f}%, tight coil ₹{recent_low:.1f} - ₹{recent_high:.1f})"
-                    m["markers"] = [
-                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Pennant Pole"},
-                        {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Pennant Coil"}
-                    ]
-                    matched["bullish_pennant"] = m
+            tgt_flag = round(ltp + (pole_top - pole_base), 2)
+            flag_drawings = [
+                {"type": "trendline", "time1": sub_dates[-20], "price1": round(pole_base, 2), "time2": sub_dates[-12], "price2": round(pole_top, 2), "color": "#3b82f6", "lineWidth": 2.5, "name": f"Flagpole +{pole_gain*100:.1f}%"},
+                {"type": "trendline", "time1": sub_dates[-8], "price1": round(recent_high, 2), "time2": curr_time, "futureOffset2": 6, "price2": round(recent_high, 2), "color": "#6366f1", "lineWidth": 1.5, "name": "Flag Ceiling"},
+                {"type": "trendline", "time1": sub_dates[-8], "price1": round(recent_low, 2), "time2": curr_time, "futureOffset2": 6, "price2": round(recent_low, 2), "color": "#6366f1", "lineWidth": 1.5, "name": "Flag Floor"}
+            ]
+            if ltp > recent_high * 0.995:
+                m = dict(base_scanner_result)
+                m["metric"] = f"Bullish Flag Breakout: Flagpole +{pole_gain*100:.1f}% · Breakout at ₹{ltp:.1f} · Target ₹{tgt_flag:.1f}"
+                m["markers"] = [
+                    {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Flagpole"},
+                    {"time": curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": f"Flag Breakout ₹{ltp:.1f}"}
+                ]
+                m["drawings"] = flag_drawings + make_target_stop_drawings(curr_time, tgt_flag, round(recent_low, 2), True)
+                matched["bullish_flag"] = m
+            else:
+                m = dict(base_scanner_result)
+                m["metric"] = f"Bullish Pennant Consolidation (Pole +{pole_gain*100:.1f}%, tight coil ₹{recent_low:.1f} - ₹{recent_high:.1f})"
+                m["markers"] = [
+                    {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Pennant Pole"},
+                    {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Pennant Coil"}
+                ]
+                m["drawings"] = flag_drawings
+                matched["bullish_pennant"] = m
 
         pole_top_b = sub_highs[-20]
         pole_base_b = min(sub_lows[-18:-8])
@@ -1582,23 +2076,30 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         if pole_drop >= 0.07:
             recent_high_b = max(sub_highs[-8:])
             recent_low_b = min(sub_lows[-8:])
-            if recent_low_b >= pole_base_b * 0.99 and recent_high_b <= pole_base_b * 1.10:
-                if ltp < recent_low_b * 1.005:
-                    m = dict(base_scanner_result)
-                    m["metric"] = f"Bearish Flag Breakdown: Dump -{pole_drop*100:.1f}% with Breakdown at ₹{ltp:.1f}"
-                    m["markers"] = [
-                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Flagpole"},
-                        {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Flag Breakdown"}
-                    ]
-                    matched["bearish_flag"] = m
-                else:
-                    m = dict(base_scanner_result)
-                    m["metric"] = f"Bearish Pennant Consolidation (Dump -{pole_drop*100:.1f}%, coil ₹{recent_low_b:.1f} - ₹{recent_high_b:.1f})"
-                    m["markers"] = [
-                        {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Pennant Pole"},
-                        {"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Pennant Coil"}
-                    ]
-                    matched["bearish_pennant"] = m
+            tgt_flag_b = max(0, round(ltp - (pole_top_b - pole_base_b), 2))
+            flag_drawings_b = [
+                {"type": "trendline", "time1": sub_dates[-20], "price1": round(pole_top_b, 2), "time2": sub_dates[-12], "price2": round(pole_base_b, 2), "color": "#ef5350", "lineWidth": 2.5, "name": f"Flagpole -{pole_drop*100:.1f}%"},
+                {"type": "trendline", "time1": sub_dates[-8], "price1": round(recent_high_b, 2), "time2": curr_time, "futureOffset2": 6, "price2": round(recent_high_b, 2), "color": "#f59e0b", "lineWidth": 1.5, "name": "Flag Ceiling"},
+                {"type": "trendline", "time1": sub_dates[-8], "price1": round(recent_low_b, 2), "time2": curr_time, "futureOffset2": 6, "price2": round(recent_low_b, 2), "color": "#f59e0b", "lineWidth": 1.5, "name": "Flag Floor"}
+            ]
+            if ltp < recent_low_b * 1.005:
+                m = dict(base_scanner_result)
+                m["metric"] = f"Bearish Flag Breakdown: Dump -{pole_drop*100:.1f}% · Breakdown at ₹{ltp:.1f} · Target ₹{tgt_flag_b:.1f}"
+                m["markers"] = [
+                    {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Flagpole"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": f"Flag Breakdown ₹{ltp:.1f}"}
+                ]
+                m["drawings"] = flag_drawings_b + make_target_stop_drawings(curr_time, tgt_flag_b, round(recent_high_b, 2), False)
+                matched["bearish_flag"] = m
+            else:
+                m = dict(base_scanner_result)
+                m["metric"] = f"Bearish Pennant Consolidation (Dump -{pole_drop*100:.1f}%, coil ₹{recent_low_b:.1f} - ₹{recent_high_b:.1f})"
+                m["markers"] = [
+                    {"time": sub_dates[-15] if len(sub_dates) >= 15 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Pennant Pole"},
+                    {"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Pennant Coil"}
+                ]
+                m["drawings"] = flag_drawings_b
+                matched["bearish_pennant"] = m
 
     # 10. Cup and Handle & Rounding Bottom
     if m_len >= 45:
@@ -1608,16 +2109,22 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
         depth = (rim_left - bottom_val) / float(rim_left) if rim_left else 0
         rim_diff = abs(rim_left - rim_right) / float(rim_left) if rim_left else 1
         if 0.06 <= depth <= 0.35 and rim_diff <= 0.045:
+            tgt_cup = round(rim_right + (rim_left - bottom_val), 2)
+            cup_drawings = [
+                {"type": "trendline", "time1": sub_dates[-40], "price1": round(rim_left, 2), "time2": curr_time, "futureOffset2": 15, "price2": round(rim_right, 2), "color": "#10b981", "lineWidth": 2, "name": f"Cup Rim ₹{rim_right:.1f}"},
+                {"type": "trendline", "time1": sub_dates[-30], "price1": round(bottom_val, 2), "time2": sub_dates[-15], "price2": round(bottom_val, 2), "color": "#6366f1", "lineWidth": 1.5, "lineStyle": "dashed", "name": f"Cup Base ₹{bottom_val:.1f}"}
+            ]
             handle_low = min(sub_lows[-4:])
             if handle_low >= bottom_val + (rim_left - bottom_val) * 0.5:
                 if ltp >= rim_right * 0.995:
                     m = dict(base_scanner_result)
-                    m["metric"] = f"Cup and Handle Breakout: Base depth -{depth*100:.1f}%, Breakout > Rim ₹{rim_right:.1f}"
+                    m["metric"] = f"Cup and Handle Breakout: Base depth -{depth*100:.1f}%, Breakout > Rim ₹{rim_right:.1f} · Target ₹{tgt_cup:.1f}"
                     m["markers"] = [
                         {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Cup Base"},
                         {"time": sub_dates[-3] if len(sub_dates) >= 3 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Handle Low"},
                         {"time": curr_time, "position": "belowBar", "color": "#3b82f6", "shape": "circle", "text": "Cup Breakout"}
                     ]
+                    m["drawings"] = cup_drawings + make_target_stop_drawings(curr_time, tgt_cup, round(handle_low, 2), True)
                     matched["cup_and_handle"] = m
                 else:
                     m = dict(base_scanner_result)
@@ -1626,36 +2133,11 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
                         {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "Saucer Base"},
                         {"time": curr_time, "position": "belowBar", "color": "#38bdf8", "shape": "circle", "text": "Accumulation"}
                     ]
+                    m["drawings"] = cup_drawings
                     matched["rounding_bottom"] = m
 
-        inv_rim_left = min(sub_lows[-45:-30])
-        inv_top_val = max(sub_highs[-30:-12])
-        inv_rim_right = min(sub_lows[-12:-4])
-        inv_height = (inv_top_val - inv_rim_left) / float(inv_rim_left) if inv_rim_left else 0
-        inv_rim_diff = abs(inv_rim_left - inv_rim_right) / float(inv_rim_left) if inv_rim_left else 1
-        if 0.06 <= inv_height <= 0.35 and inv_rim_diff <= 0.045:
-            if ltp <= inv_rim_right * 1.005:
-                m = dict(base_scanner_result)
-                m["metric"] = f"Inverse Cup and Handle Breakdown: Inverted Dome Peak ₹{inv_top_val:.1f}"
-                m["markers"] = [
-                    {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Dome Peak"},
-                    {"time": curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "circle", "text": "Breakdown"}
-                ]
-                matched["cup_and_handle_inverse"] = m
-            else:
-                m = dict(base_scanner_result)
-                m["metric"] = f"Rounding Top Distribution (Inverted Saucer, Peak ₹{inv_top_val:.1f})"
-                m["markers"] = [
-                    {"time": sub_dates[-22] if len(sub_dates) >= 22 else curr_time, "position": "aboveBar", "color": "#ef5350", "shape": "arrowDown", "text": "Dome Peak"},
-                    {"time": curr_time, "position": "aboveBar", "color": "#f59e0b", "shape": "circle", "text": "Distribution"}
-                ]
-                matched["rounding_top"] = m
-
     return matched
 
-    return matched
-
-@technical_screener_bp.route("/api/technical-screener/hierarchy", methods=["GET"])
 def get_technical_screener_hierarchy_api():
     """
     Returns the master screener hierarchy and definitions from Collection 1.

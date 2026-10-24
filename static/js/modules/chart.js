@@ -4525,72 +4525,197 @@
             } else if (s.type === 'triangle') {
                 const xTop1 = getShapeX(timeScale, s.time1_top, s.logical1_top, 0);
                 const yTop1 = mainSeries.priceToCoordinate(s.price1_top);
-                const xTop2 = getShapeX(timeScale, s.time2_top, s.logical2_top, 0);
+                const xTop2 = getShapeX(timeScale, s.time2_top, s.logical2_top, s.futureOffset2_top || 0);
                 const yTop2 = mainSeries.priceToCoordinate(s.price2_top);
 
                 const xBot1 = getShapeX(timeScale, s.time1_bot, s.logical1_bot, 0);
                 const yBot1 = mainSeries.priceToCoordinate(s.price1_bot);
-                const xBot2 = getShapeX(timeScale, s.time2_bot, s.logical2_bot, 0);
+                const xBot2 = getShapeX(timeScale, s.time2_bot, s.logical2_bot, s.futureOffset2_bot || 0);
                 const yBot2 = mainSeries.priceToCoordinate(s.price2_bot);
 
                 if (xTop1 !== null && yTop1 !== null && xTop2 !== null && yTop2 !== null &&
                     xBot1 !== null && yBot1 !== null && xBot2 !== null && yBot2 !== null) {
                     ctx.save();
 
-                    // Shaded Triangle Area
+                    const isBreakdown = s.status === 'breakdown' || (s.name && s.name.toLowerCase().includes('breakdown'));
+                    const isBreakout = s.status === 'breakout' || (s.name && s.name.toLowerCase().includes('breakout'));
+
+                    // 1. Shaded Triangle Area
                     ctx.beginPath();
                     ctx.moveTo(xTop1, yTop1);
                     ctx.lineTo(xTop2, yTop2);
                     ctx.lineTo(xBot2, yBot2);
                     ctx.lineTo(xBot1, yBot1);
                     ctx.closePath();
-                    ctx.fillStyle = s.fillColor || 'rgba(99, 102, 241, 0.12)';
+                    ctx.fillStyle = s.fillColor || (isBreakdown ? 'rgba(239, 68, 68, 0.12)' : (isBreakout ? 'rgba(16, 185, 129, 0.12)' : 'rgba(99, 102, 241, 0.12)'));
                     ctx.fill();
 
-                    // Upper Resistance Line
+                    // 2. Upper Resistance Boundary Line
                     ctx.beginPath();
                     ctx.moveTo(xTop1, yTop1);
                     ctx.lineTo(xTop2, yTop2);
-                    ctx.strokeStyle = s.topColor || '#ef4444';
+                    ctx.strokeStyle = s.topColor || (isBreakout ? '#10b981' : '#ef4444');
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // Lower Support Line
+                    // 3. Lower Support Boundary Line
                     ctx.beginPath();
                     ctx.moveTo(xBot1, yBot1);
                     ctx.lineTo(xBot2, yBot2);
-                    ctx.strokeStyle = s.botColor || '#10b981';
+                    ctx.strokeStyle = s.botColor || (isBreakdown ? '#ef5350' : '#10b981');
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // Vertex handle dots
+                    // 4. Vertex Handle Dots
                     ctx.fillStyle = s.topColor || '#ef4444';
                     ctx.beginPath(); ctx.arc(xTop1, yTop1, 3.5, 0, 2 * Math.PI); ctx.fill();
                     ctx.beginPath(); ctx.arc(xTop2, yTop2, 3.5, 0, 2 * Math.PI); ctx.fill();
 
-                    ctx.fillStyle = s.botColor || '#10b981';
+                    ctx.fillStyle = s.botColor || (isBreakdown ? '#ef5350' : '#10b981');
                     ctx.beginPath(); ctx.arc(xBot1, yBot1, 3.5, 0, 2 * Math.PI); ctx.fill();
                     ctx.beginPath(); ctx.arc(xBot2, yBot2, 3.5, 0, 2 * Math.PI); ctx.fill();
 
-                    // Label badge
+                    // 5. Projected Target Line & Badge
+                    if (s.targetPrice !== null && s.targetPrice !== undefined) {
+                        const yTarget = mainSeries.priceToCoordinate(s.targetPrice);
+                        if (yTarget !== null && yTarget !== undefined) {
+                            const startX = Math.min(xTop2, xBot2);
+                            const endX = Math.min(drawingCanvas.width - 15, Math.max(xTop2, xBot2) + 120);
+
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(startX, yTarget);
+                            ctx.lineTo(endX, yTarget);
+                            ctx.strokeStyle = isBreakdown ? '#ef4444' : '#10b981';
+                            ctx.lineWidth = 1.5;
+                            ctx.setLineDash([5, 4]);
+                            ctx.stroke();
+
+                            const tgtLabel = `🎯 Target ₹${Number(s.targetPrice).toFixed(1)}`;
+                            ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                            const tW = ctx.measureText(tgtLabel).width;
+                            const tBadgeW = tW + 12;
+                            const tBadgeH = 18;
+                            const tBadgeX = Math.max(10, Math.min(drawingCanvas.width - tBadgeW - 10, endX - tBadgeW));
+                            const tBadgeY = Math.max(8, yTarget - tBadgeH / 2);
+
+                            ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.94)';
+                            ctx.strokeStyle = isBreakdown ? '#ef4444' : '#10b981';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            if (ctx.roundRect) ctx.roundRect(tBadgeX, tBadgeY, tBadgeW, tBadgeH, 4);
+                            else ctx.rect(tBadgeX, tBadgeY, tBadgeW, tBadgeH);
+                            ctx.fill();
+                            ctx.stroke();
+
+                            ctx.fillStyle = isBreakdown ? '#f87171' : '#34d399';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(tgtLabel, tBadgeX + tBadgeW / 2, tBadgeY + tBadgeH / 2);
+                            ctx.restore();
+                        }
+                    }
+
+                    // 6. Stop Loss / Invalidation Line & Badge
+                    if (s.stopPrice !== null && s.stopPrice !== undefined) {
+                        const yStop = mainSeries.priceToCoordinate(s.stopPrice);
+                        if (yStop !== null && yStop !== undefined) {
+                            const startX = Math.min(xTop2, xBot2);
+                            const endX = Math.min(drawingCanvas.width - 15, Math.max(xTop2, xBot2) + 100);
+
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(startX, yStop);
+                            ctx.lineTo(endX, yStop);
+                            ctx.strokeStyle = '#f59e0b';
+                            ctx.lineWidth = 1.5;
+                            ctx.setLineDash([4, 4]);
+                            ctx.stroke();
+
+                            const stopLabel = `🛑 Stop ₹${Number(s.stopPrice).toFixed(1)}`;
+                            ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                            const sW = ctx.measureText(stopLabel).width;
+                            const sBadgeW = sW + 12;
+                            const sBadgeH = 18;
+                            const sBadgeX = Math.max(10, Math.min(drawingCanvas.width - sBadgeW - 10, endX - sBadgeW));
+                            const sBadgeY = Math.max(8, yStop - sBadgeH / 2);
+
+                            ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.94)';
+                            ctx.strokeStyle = '#f59e0b';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            if (ctx.roundRect) ctx.roundRect(sBadgeX, sBadgeY, sBadgeW, sBadgeH, 4);
+                            else ctx.rect(sBadgeX, sBadgeY, sBadgeW, sBadgeH);
+                            ctx.fill();
+                            ctx.stroke();
+
+                            ctx.fillStyle = '#fbbf24';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(stopLabel, sBadgeX + sBadgeW / 2, sBadgeY + sBadgeH / 2);
+                            ctx.restore();
+                        }
+                    }
+
+                    // 7. Breakdown Reference Ray
+                    if (s.breakdownPrice !== null && s.breakdownPrice !== undefined) {
+                        const yBd = mainSeries.priceToCoordinate(s.breakdownPrice);
+                        if (yBd !== null && yBd !== undefined) {
+                            const bdStartX = xBot2;
+                            const bdEndX = Math.min(drawingCanvas.width - 15, xBot2 + 110);
+
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(bdStartX, yBd);
+                            ctx.lineTo(bdEndX, yBd);
+                            ctx.strokeStyle = '#ef4444';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+
+                            const bdLabel = `🔻 Breakdown ₹${Number(s.breakdownPrice).toFixed(1)}`;
+                            ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                            const bW = ctx.measureText(bdLabel).width;
+                            const bBadgeW = bW + 12;
+                            const bBadgeH = 18;
+                            const bBadgeX = Math.max(10, Math.min(drawingCanvas.width - bBadgeW - 10, bdEndX - bBadgeW));
+                            const bBadgeY = Math.max(8, yBd - bBadgeH / 2);
+
+                            ctx.fillStyle = isDark ? 'rgba(30, 10, 10, 0.94)' : 'rgba(254, 242, 242, 0.94)';
+                            ctx.strokeStyle = '#ef4444';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            if (ctx.roundRect) ctx.roundRect(bBadgeX, bBadgeY, bBadgeW, bBadgeH, 4);
+                            else ctx.rect(bBadgeX, bBadgeY, bBadgeW, bBadgeH);
+                            ctx.fill();
+                            ctx.stroke();
+
+                            ctx.fillStyle = '#ef4444';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(bdLabel, bBadgeX + bBadgeW / 2, bBadgeY + bBadgeH / 2);
+                            ctx.restore();
+                        }
+                    }
+
+                    // 8. Refined Pattern Identification HUD Banner
                     if (s.name) {
                         ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                         const textW = ctx.measureText(s.name).width;
-                        const badgeW = textW + 14;
-                        const badgeH = 18;
-                        const badgeX = Math.max(10, Math.min(drawingCanvas.width - badgeW - 10, (xTop2 + xBot2) / 2 - badgeW / 2));
-                        const badgeY = Math.max(10, (yTop2 + yBot2) / 2 - badgeH / 2);
+                        const badgeW = textW + 16;
+                        const badgeH = 20;
+                        const badgeX = Math.max(10, Math.min(drawingCanvas.width - badgeW - 10, (xTop1 + xTop2) / 2 - badgeW / 2));
+                        const badgeY = Math.max(8, Math.min(yTop1, yTop2) - badgeH - 6);
 
-                        ctx.fillStyle = isDark ? 'rgba(30, 34, 45, 0.92)' : 'rgba(255, 255, 255, 0.92)';
-                        ctx.strokeStyle = '#6366f1';
-                        ctx.lineWidth = 1;
+                        ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.94)';
+                        ctx.strokeStyle = isBreakdown ? '#ef4444' : (isBreakout ? '#10b981' : '#6366f1');
+                        ctx.lineWidth = 1.5;
                         ctx.beginPath();
                         if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
                         else ctx.rect(badgeX, badgeY, badgeW, badgeH);
                         ctx.fill();
                         ctx.stroke();
 
-                        ctx.fillStyle = isDark ? '#e0e7ff' : '#4338ca';
+                        ctx.fillStyle = isBreakdown ? '#ef4444' : (isBreakout ? '#10b981' : (isDark ? '#e0e7ff' : '#4338ca'));
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText(s.name, badgeX + badgeW / 2, badgeY + badgeH / 2);
@@ -4785,6 +4910,54 @@
                     ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
                     ctx.textAlign = 'left';
                     ctx.fillText(text, x + 15, y + 4);
+                    ctx.restore();
+                }
+            } else if (s.type === 'horizontal') {
+                const y = mainSeries.priceToCoordinate(s.price);
+                if (y !== null && y !== undefined) {
+                    ctx.save();
+                    ctx.beginPath();
+                    let startX = 0;
+                    if (s.time1) {
+                        const x1 = getShapeX(timeScale, s.time1, s.logical1, 0);
+                        if (x1 !== null && x1 !== undefined) startX = x1;
+                    }
+                    let endX = drawingCanvas.width;
+                    if (s.time2) {
+                        const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2 || 0);
+                        if (x2 !== null && x2 !== undefined) endX = x2;
+                    }
+                    ctx.moveTo(startX, y);
+                    ctx.lineTo(endX, y);
+                    ctx.strokeStyle = s.color || '#3b82f6';
+                    ctx.lineWidth = s.lineWidth || 1.5;
+                    if (s.lineStyle === 'dashed') ctx.setLineDash([5, 4]);
+                    else if (s.lineStyle === 'dotted') ctx.setLineDash([2, 3]);
+                    else ctx.setLineDash([]);
+                    ctx.stroke();
+
+                    if (s.name) {
+                        ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                        const textW = ctx.measureText(s.name).width;
+                        const badgeW = textW + 12;
+                        const badgeH = 18;
+                        const badgeX = Math.max(10, Math.min(drawingCanvas.width - badgeW - 10, endX - badgeW));
+                        const badgeY = Math.max(8, y - badgeH / 2);
+
+                        ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.94)';
+                        ctx.strokeStyle = s.color || '#3b82f6';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+                        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = s.color || '#3b82f6';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(s.name, badgeX + badgeW / 2, badgeY + badgeH / 2);
+                    }
                     ctx.restore();
                 }
             }
