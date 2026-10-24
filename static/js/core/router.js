@@ -176,6 +176,19 @@ const AppRouter = {
             window.history.pushState({ tab: initialTab, isAppActive: true }, '', initialPath);
         } catch (e) {}
 
+        // Check for ?chart= query parameter on initial load
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const chartSym = urlParams.get('chart');
+            if (chartSym) {
+                setTimeout(() => {
+                    if (typeof window.openInHouseChart === 'function') {
+                        window.openInHouseChart(chartSym);
+                    }
+                }, 400);
+            }
+        } catch (e) {}
+
         // Listen for browser Back / Forward buttons & swipe navigation
         window.addEventListener('popstate', (event) => {
             // Priority 1: If any modal, sheet, drawer, or dropdown is open, dismiss it and maintain current route

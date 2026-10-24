@@ -95,6 +95,12 @@
             // Attach one-time postMessage listener to receive full company name and logo from iframe
             if (!_fundamentalsMsgListenerAttached) {
                 window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'OPEN_CHART') {
+                        const targetSym = event.data.symbol || _currentModalSymbol;
+                        if (targetSym && typeof window.openInHouseChart === 'function') {
+                            window.openInHouseChart(targetSym);
+                        }
+                    }
                     if (event.data && event.data.type === 'FUNDAMENTALS_INFO') {
                         const { name, symbol: retSym, logo, price, changePercent, updatedAt, screenerUrl } = event.data;
                         const nEl = document.getElementById('fundamentals-modal-company-name');

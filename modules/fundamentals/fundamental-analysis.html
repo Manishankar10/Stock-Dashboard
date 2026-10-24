@@ -1567,6 +1567,29 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   background: var(--accent);
   color: #fff;
 }
+.chart-direct-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+.chart-direct-link:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
+}
 .chart-type-tabs {
   display: inline-flex;
   background: var(--bg-card);
@@ -2323,10 +2346,17 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
           <div class="sec-title" id="chartSectionTitle">📈 Price & Moving Averages</div>
           <div class="sec-sub" id="chartSectionSub">Technical Price History, 50 DMA, 200 DMA & Volumes</div>
         </div>
-        <div class="chart-type-tabs" id="chartTypeTabs">
-          <button class="chart-type-btn active" data-type="price" onclick="switchChartType('price')">Price</button>
-          <button class="chart-type-btn" data-type="pe" onclick="switchChartType('pe')">PE Ratio</button>
-          <button class="chart-type-btn" data-type="pb" onclick="switchChartType('pb')">Price to Book</button>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <a href="/?chart={{ symbol|replace('.NS', '')|replace('.BO', '') }}" class="chart-direct-link" id="fundamentalsChartLink" onclick="openTechnicalChartFromFundamentals(event)" title="Open Interactive Technical Chart for this stock">
+            <span style="font-size: 13px;">📈</span>
+            <span>Chart</span>
+            <span style="font-size: 10px; opacity: 0.65; margin-left: 1px;">↗</span>
+          </a>
+          <div class="chart-type-tabs" id="chartTypeTabs">
+            <button class="chart-type-btn active" data-type="price" onclick="switchChartType('price')">Price</button>
+            <button class="chart-type-btn" data-type="pe" onclick="switchChartType('pe')">PE Ratio</button>
+            <button class="chart-type-btn" data-type="pb" onclick="switchChartType('pb')">Price to Book</button>
+          </div>
         </div>
       </div>
       <div class="chart-container-wrap">
@@ -2910,6 +2940,42 @@ function formatChartDate(rawDate) {
   const d = new Date(rawDate);
   if (isNaN(d.getTime())) return String(rawDate);
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function openTechnicalChartFromFundamentals(event) {
+  if (event) {
+    try {
+      event.preventDefault();
+      event.stopPropagation();
+    } catch (_) {}
+  }
+  const sym = window.fundamentalsSymbol || (typeof symbol !== 'undefined' ? symbol : '');
+  if (!sym) return;
+
+  // 1. Direct parent window call if embedded in dashboard iframe
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.openInHouseChart === 'function') {
+      window.parent.openInHouseChart(sym);
+      return;
+    }
+  } catch (e) {
+    console.warn('Direct parent openInHouseChart access blocked:', e);
+  }
+
+  // 2. Cross-frame postMessage fallback
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'OPEN_CHART',
+        symbol: sym
+      }, '*');
+      return;
+    }
+  } catch (e) {}
+
+  // 3. Standalone window fallback
+  const cleanSym = String(sym).replace(/\.(NS|BO)$/i, '').toUpperCase();
+  window.open(`/?chart=${encodeURIComponent(cleanSym)}`, '_blank');
 }
 
 async function switchChartType(type) {
@@ -3795,6 +3861,10 @@ function render(d) {
   document.getElementById('companySub').textContent = symbol;
   document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   document.getElementById('screenerBtn').href = `https://www.screener.in/company/${encodeURIComponent(baseSym)}/`;
+  const chartLinkEl = document.getElementById('fundamentalsChartLink');
+  if (chartLinkEl) {
+    chartLinkEl.href = `/?chart=${encodeURIComponent(baseSym)}`;
+  }
 
   // Top Web Nav Brand Link
   const webNavName = document.getElementById('webNavCompanyName');
