@@ -976,6 +976,8 @@
 
         if (category === 'all') {
             qrState.custom_query = '';
+        } else if (category === 'qoq_momentum') {
+            qrState.custom_query = 'qoq_sales > 10 and qoq_profit > 10';
         } else if (category === 'high_growth') {
             qrState.custom_query = 'yoy_sales > 15 and yoy_profit > 15';
         } else if (category === 'turnaround') {
@@ -1105,6 +1107,158 @@
     /**
      * Bind Custom Query Modal Interactive Events
      */
+    // Suggestion catalog for typeahead autocompletion while typing
+    const QR_SUGGESTIONS = [
+        // QoQ Financial Metrics
+        { token: 'qoq_sales', badge: 'QoQ', type: 'qoq', desc: 'QoQ Sales / Revenue growth %' },
+        { token: 'qoq_profit', badge: 'QoQ', type: 'qoq', desc: 'QoQ Net Profit / PAT growth %' },
+        { token: 'qoq_op', badge: 'QoQ', type: 'qoq', desc: 'QoQ Operating profit growth %' },
+        { token: 'qoq_eps', badge: 'QoQ', type: 'qoq', desc: 'QoQ EPS growth %' },
+        { token: 'qoq_opm', badge: 'QoQ', type: 'qoq', desc: 'QoQ Operating margin change (pts)' },
+
+        // YoY Financial Metrics
+        { token: 'yoy_sales', badge: 'YoY', type: 'yoy', desc: 'YoY Sales / Revenue growth %' },
+        { token: 'yoy_profit', badge: 'YoY', type: 'yoy', desc: 'YoY Net Profit / PAT growth %' },
+        { token: 'yoy_op', badge: 'YoY', type: 'yoy', desc: 'YoY Operating profit growth %' },
+        { token: 'yoy_eps', badge: 'YoY', type: 'yoy', desc: 'YoY EPS growth %' },
+        { token: 'yoy_opm', badge: 'YoY', type: 'yoy', desc: 'YoY Operating margin change (pts)' },
+
+        // Shareholding Shifts / Flows (QoQ)
+        { token: 'fii_chg', badge: 'Flow', type: 'flow', desc: 'FII / Foreign QoQ shift %' },
+        { token: 'dii_chg', badge: 'Flow', type: 'flow', desc: 'DII / Mutual funds QoQ shift %' },
+        { token: 'promoter_chg', badge: 'Flow', type: 'flow', desc: 'Promoter QoQ stake shift %' },
+        { token: 'public_chg', badge: 'Flow', type: 'flow', desc: 'Public / Retail QoQ shift %' },
+        { token: 'inst_chg', badge: 'Flow', type: 'flow', desc: 'Total institutional (FII+DII) shift %' },
+
+        // Shareholding Stake Levels
+        { token: 'promoter', badge: 'Stake', type: 'stake', desc: 'Total Promoter holding %' },
+        { token: 'fii', badge: 'Stake', type: 'stake', desc: 'Total FII holding %' },
+        { token: 'dii', badge: 'Stake', type: 'stake', desc: 'Total DII holding %' },
+        { token: 'public', badge: 'Stake', type: 'stake', desc: 'Total Public holding %' },
+
+        // Absolute Values & Valuation
+        { token: 'sales', badge: 'Values', type: 'val', desc: 'Latest quarter sales (₹ Cr)' },
+        { token: 'net_profit', badge: 'Values', type: 'val', desc: 'Latest quarter net profit (₹ Cr)' },
+        { token: 'opm', badge: 'Values', type: 'val', desc: 'Operating profit margin %' },
+        { token: 'pe', badge: 'Valuation', type: 'val', desc: 'P/E ratio (TTM)' },
+        { token: 'mcap', badge: 'Valuation', type: 'val', desc: 'Market capitalization (₹ Cr)' },
+        { token: 'price', badge: 'Valuation', type: 'val', desc: 'Current stock price (₹)' },
+        { token: 'eps', badge: 'Values', type: 'val', desc: 'Latest quarter EPS (₹)' },
+
+        // Logic Operators
+        { token: 'and', badge: 'Logic', type: 'logic', desc: 'Logical AND condition' },
+        { token: 'or', badge: 'Logic', type: 'logic', desc: 'Logical OR condition' },
+        { token: 'not', badge: 'Logic', type: 'logic', desc: 'Logical NOT operator' },
+    ];
+
+    let currentSuggMatches = [];
+    let activeSuggIdx = 0;
+
+    function escapeRegex(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function updateSuggestions() {
+        const input = document.getElementById('qr-custom-query-input');
+        const dropdown = document.getElementById('qr-query-suggestions');
+        if (!input || !dropdown) return;
+
+        const cursorPos = input.selectionStart || 0;
+        const textBefore = input.value.substring(0, cursorPos);
+        const match = textBefore.match(/([a-zA-Z_0-9]+)$/);
+
+        if (!match) {
+            dropdown.style.display = 'none';
+            currentSuggMatches = [];
+            activeSuggIdx = 0;
+            return;
+        }
+
+        const query = match[1].toLowerCase();
+        currentSuggMatches = QR_SUGGESTIONS.filter(item => item.token.toLowerCase().includes(query));
+
+        if (currentSuggMatches.length === 0) {
+            dropdown.style.display = 'none';
+            activeSuggIdx = 0;
+            return;
+        }
+
+        // Sort matches: startsWith query first, then shortest token length
+        currentSuggMatches.sort((a, b) => {
+            const aStarts = a.token.toLowerCase().startsWith(query);
+            const bStarts = b.token.toLowerCase().startsWith(query);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return a.token.length - b.token.length;
+        });
+
+        activeSuggIdx = 0;
+        renderSuggestionsUI(query);
+    }
+
+    function renderSuggestionsUI(query) {
+        const dropdown = document.getElementById('qr-query-suggestions');
+        if (!dropdown) return;
+
+        dropdown.innerHTML = currentSuggMatches.map((item, idx) => {
+            const isActive = idx === activeSuggIdx ? 'active' : '';
+            const reg = new RegExp(`(${escapeRegex(query)})`, 'gi');
+            const tokenHl = escapeHtml(item.token).replace(reg, '<span class="match-hl">$1</span>');
+            return `
+                <div class="qr-suggestion-item ${isActive}" data-idx="${idx}">
+                    <div class="qr-sugg-left">
+                        <span class="qr-sugg-name">${tokenHl}</span>
+                        <span class="qr-sugg-badge ${item.type}">${escapeHtml(item.badge)}</span>
+                    </div>
+                    <div class="qr-sugg-desc">${escapeHtml(item.desc)}</div>
+                </div>
+            `;
+        }).join('');
+        dropdown.style.display = 'block';
+    }
+
+    function highlightActiveSuggestion() {
+        const dropdown = document.getElementById('qr-query-suggestions');
+        if (!dropdown) return;
+        const items = dropdown.querySelectorAll('.qr-suggestion-item');
+        items.forEach((item, idx) => {
+            if (idx === activeSuggIdx) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    function applySelectedSuggestion(idx) {
+        const input = document.getElementById('qr-custom-query-input');
+        const dropdown = document.getElementById('qr-query-suggestions');
+        if (!input || !currentSuggMatches[idx]) return;
+
+        const item = currentSuggMatches[idx];
+        const cursorPos = input.selectionStart || 0;
+        const textBefore = input.value.substring(0, cursorPos);
+        const textAfter = input.value.substring(cursorPos);
+        const match = textBefore.match(/([a-zA-Z_0-9]+)$/);
+        if (!match) return;
+
+        const matchLen = match[1].length;
+        const beforeWord = textBefore.substring(0, cursorPos - matchLen);
+        const padRight = (textAfter.startsWith(' ') || textAfter.startsWith(')')) ? '' : ' ';
+
+        input.value = beforeWord + item.token + padRight + textAfter;
+        const newPos = beforeWord.length + item.token.length + padRight.length;
+        input.setSelectionRange(newPos, newPos);
+        input.focus();
+
+        if (dropdown) dropdown.style.display = 'none';
+        currentSuggMatches = [];
+        activeSuggIdx = 0;
+
+        validateCustomQueryDebounced();
+    }
+
     function initCustomQueryModalListeners() {
         // Preset cards
         document.querySelectorAll('.qr-preset-card').forEach(card => {
@@ -1127,11 +1281,50 @@
             });
         });
 
-        // Textarea input
+        // Textarea input & autocomplete suggestion handling
         const input = document.getElementById('qr-custom-query-input');
+        const suggDropdown = document.getElementById('qr-query-suggestions');
+
         if (input) {
-            input.addEventListener('input', validateCustomQueryDebounced);
+            input.addEventListener('input', () => {
+                updateSuggestions();
+                validateCustomQueryDebounced();
+            });
+
+            input.addEventListener('click', updateSuggestions);
+
+            input.addEventListener('keyup', (e) => {
+                if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+                    updateSuggestions();
+                }
+            });
+
             input.addEventListener('keydown', (e) => {
+                const isDropdownOpen = suggDropdown && suggDropdown.style.display === 'block' && currentSuggMatches.length > 0;
+
+                if (isDropdownOpen) {
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        activeSuggIdx = (activeSuggIdx + 1) % currentSuggMatches.length;
+                        highlightActiveSuggestion();
+                        return;
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        activeSuggIdx = (activeSuggIdx - 1 + currentSuggMatches.length) % currentSuggMatches.length;
+                        highlightActiveSuggestion();
+                        return;
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
+                        e.preventDefault();
+                        applySelectedSuggestion(activeSuggIdx);
+                        return;
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        suggDropdown.style.display = 'none';
+                        return;
+                    }
+                }
+
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
                     const applyBtn = document.getElementById('qr-custom-apply-btn');
@@ -1139,6 +1332,25 @@
                 }
             });
         }
+
+        // Suggestions mouse click
+        if (suggDropdown) {
+            suggDropdown.addEventListener('mousedown', (e) => {
+                const item = e.target.closest('.qr-suggestion-item');
+                if (item) {
+                    e.preventDefault();
+                    const idx = parseInt(item.getAttribute('data-idx'), 10);
+                    applySelectedSuggestion(idx);
+                }
+            });
+        }
+
+        // Click outside closes suggestions
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.qr-query-input-wrap')) {
+                if (suggDropdown) suggDropdown.style.display = 'none';
+            }
+        });
 
         // Clear input button
         const clearBtn = document.getElementById('qr-custom-clear-input');

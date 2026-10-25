@@ -65,6 +65,7 @@
         <div class="qr-category-chips-row">
             <div class="qr-category-chips-scroll">
                 <button type="button" class="qr-filter-chip active" data-category="all" onclick="window.setQrCategoryChip('all')">All</button>
+                <button type="button" class="qr-filter-chip" data-category="qoq_momentum" title="QoQ Sales > 10% &amp; Profit > 10%" onclick="window.setQrCategoryChip('qoq_momentum')">QoQ Growth ↑</button>
                 <button type="button" class="qr-filter-chip" data-category="high_growth" title="Sales > 15% &amp; PAT > 15% YoY" onclick="window.setQrCategoryChip('high_growth')">High Growth ↑</button>
                 <button type="button" class="qr-filter-chip" data-category="turnaround" title="Turnaround Net Profit growth > 30%" onclick="window.setQrCategoryChip('turnaround')">Turnaround ↑</button>
                 <button type="button" class="qr-filter-chip" data-category="fii_buying" title="Foreign institutions buying stake QoQ" onclick="window.setQrCategoryChip('fii_buying')">FII Buying ↑</button>
@@ -623,6 +624,14 @@
                     <span class="qr-query-hint">Click any strategy to load query</span>
                 </div>
                 <div class="qr-preset-grid">
+                    <button type="button" class="qr-preset-card" data-preset="qoq_profit > 15 and yoy_profit > 20 and fii_chg > 0.5" data-label="Sequential &amp; Annual PAT Surge">
+                        <div class="qr-preset-name">🚀 Sequential &amp; Annual PAT Surge</div>
+                        <div class="qr-preset-desc">Both QoQ (&gt;15%) &amp; YoY (&gt;20%) profit surge with foreign institutions buying</div>
+                    </button>
+                    <button type="button" class="qr-preset-card" data-preset="qoq_sales > 10 and qoq_profit > 10" data-label="Twin QoQ Momentum">
+                        <div class="qr-preset-name">⚡ Twin QoQ Momentum</div>
+                        <div class="qr-preset-desc">Double-digit quarter-on-quarter acceleration in both sales &amp; profit</div>
+                    </button>
                     <button type="button" class="qr-preset-card" data-preset="yoy_profit > 20 and fii_chg > 0.5" data-label="High PAT Growth + FII Buying">
                         <div class="qr-preset-name">🚀 High PAT Growth + FII Buying</div>
                         <div class="qr-preset-desc">Net profit growth &gt;20% YoY with foreign institutions adding stake</div>
@@ -655,6 +664,18 @@
                 <div class="qr-query-section-title">
                     <span>🧩 Query Token Chips</span>
                     <span class="qr-query-hint">Click chips to insert into query at cursor</span>
+                </div>
+
+                <!-- Quarterly Performance QoQ Growth -->
+                <div class="qr-chipset-group">
+                    <span class="qr-chipset-label">QoQ Growth (%):</span>
+                    <div class="qr-chipset-items">
+                        <button type="button" class="qr-token-chip qoq-chip" data-token="qoq_sales" title="Quarter-on-Quarter Sales / Revenue growth %">qoq_sales</button>
+                        <button type="button" class="qr-token-chip qoq-chip" data-token="qoq_profit" title="Quarter-on-Quarter Net Profit / PAT growth %">qoq_profit</button>
+                        <button type="button" class="qr-token-chip qoq-chip" data-token="qoq_op" title="Quarter-on-Quarter Operating profit growth %">qoq_op</button>
+                        <button type="button" class="qr-token-chip qoq-chip" data-token="qoq_eps" title="Quarter-on-Quarter EPS growth %">qoq_eps</button>
+                        <button type="button" class="qr-token-chip qoq-chip" data-token="qoq_opm" title="Quarter-on-Quarter Operating Margin change (pts)">qoq_opm</button>
+                    </div>
                 </div>
 
                 <!-- Quarterly Performance Growth -->
@@ -747,7 +768,12 @@
                     <button type="button" id="qr-custom-clear-input" class="qr-text-btn" title="Clear expression text">Clear ⌫</button>
                 </div>
                 <div class="qr-query-input-wrap">
-                    <textarea id="qr-custom-query-input" rows="3" placeholder="e.g. yoy_profit > 20 and fii_chg > 0.5 and promoter > 50" spellcheck="false" autocomplete="off"></textarea>
+                    <textarea id="qr-custom-query-input" rows="3" placeholder="e.g. qoq_sales > 10 and yoy_profit > 20 and fii_chg > 0.5 and promoter > 50" spellcheck="false" autocomplete="off"></textarea>
+                    <!-- Typeahead Autocomplete Suggestions Dropdown -->
+                    <div id="qr-query-suggestions" class="qr-suggestions-dropdown" style="display: none;"></div>
+                </div>
+                <div class="qr-query-typing-hint">
+                    💡 <strong>Smart Suggestions:</strong> Type any letters (e.g. <code>qo</code>, <code>yo</code>, <code>sa</code>, <code>fii</code>) to see instant suggestions. Use <kbd>↑</kbd> <kbd>↓</kbd> and <kbd>Enter</kbd> or <kbd>Tab</kbd> to select simply.
                 </div>
             </div>
 

@@ -688,6 +688,14 @@ class QuarterlyResultsProvider:
     )
 
     QUERY_FIELD_MAP = {
+        # Quarterly Results QoQ Growth Metrics (%)
+        "qoq_sales", "sales_qoq", "sales_qoq_growth", "qoq_revenue",
+        "qoq_profit", "profit_qoq", "qoq_net_profit", "net_profit_qoq", "qoq_pat", "pat_qoq",
+        "qoq_op", "op_qoq", "qoq_operating_profit", "operating_profit_qoq",
+        "qoq_eps", "eps_qoq",
+        "qoq_opm", "opm_qoq",
+        "qoq_fii", "fii_qoq", "qoq_dii", "dii_qoq", "qoq_promoter", "promoter_qoq", "qoq_public", "public_qoq",
+
         # Quarterly Results Growth Metrics (%)
         "sales_growth", "yoy_sales", "sales_chg",
         "profit_growth", "yoy_profit", "profit_chg", "net_profit_growth", "pat_growth", "turnaround",
@@ -782,6 +790,56 @@ class QuarterlyResultsProvider:
             return None
         fn = field_name.strip().lower()
         shp = record.get("_shp") or {}
+
+        # 0. Helper for QoQ percentage change calculation
+        def _calc_metric_qoq(m_name: str, is_diff: bool = False) -> Optional[float]:
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == m_name.lower():
+                    l = clean_num(m.get("latest"))
+                    p = clean_num(m.get("prev"))
+                    if l is None or p is None:
+                        return None
+                    if is_diff:
+                        return round(l - p, 2)
+                    if p != 0:
+                        return round(((l - p) / abs(p)) * 100.0, 2)
+                    return 100.0 if l > 0 else (0.0 if l == 0 else -100.0)
+            return None
+
+        # QoQ Financial Changes (%)
+        if fn in ("qoq_sales", "sales_qoq", "sales_qoq_growth", "qoq_revenue"):
+            return _calc_metric_qoq("sales")
+
+        if fn in ("qoq_profit", "profit_qoq", "qoq_net_profit", "net_profit_qoq", "qoq_pat", "pat_qoq"):
+            return _calc_metric_qoq("net profit")
+
+        if fn in ("qoq_op", "op_qoq", "qoq_operating_profit", "operating_profit_qoq"):
+            val = _calc_metric_qoq("operating profit")
+            if val is None:
+                val = _calc_metric_qoq("ebidt")
+            return val
+
+        if fn in ("qoq_eps", "eps_qoq"):
+            return _calc_metric_qoq("eps")
+
+        if fn in ("qoq_opm", "opm_qoq"):
+            return _calc_metric_qoq("opm", is_diff=True)
+
+        if fn in ("qoq_fii", "fii_qoq"):
+            val = shp.get("change_fii_pct")
+            return float(val) if val is not None else None
+
+        if fn in ("qoq_dii", "dii_qoq"):
+            val = shp.get("change_dii_pct")
+            return float(val) if val is not None else None
+
+        if fn in ("qoq_promoter", "promoter_qoq"):
+            val = shp.get("change_promoter_pct")
+            return float(val) if val is not None else None
+
+        if fn in ("qoq_public", "public_qoq"):
+            val = shp.get("change_public_pct")
+            return float(val) if val is not None else None
 
         # 1. Quarterly Results Growth (%)
         if fn in ("sales_growth", "yoy_sales", "sales_chg"):
@@ -970,7 +1028,7 @@ class QuarterlyResultsProvider:
                     return (
                         None,
                         f"Unknown field '{node.id}'. Supported fields: yoy_sales, yoy_profit, sales, net_profit, "
-                        "opm, pe, mcap, price, promoter, fii, dii, public, fii_chg, dii_chg, promoter_chg, public_chg",
+                        "qoq_sales, qoq_profit, qoq_op, qoq_eps, qoq_opm, opm, pe, mcap, price, promoter, fii, dii, public, fii_chg, dii_chg, promoter_chg, public_chg",
                     )
         return tree, None
 
