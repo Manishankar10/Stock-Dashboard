@@ -180,19 +180,18 @@
                         <span class="qr-stat-item"><span class="qr-stat-label">PE</span> <span class="qr-stat-val">${pe}</span></span>
                     </div>
                 </div>
-                ${buildShareholdingBadgeHtml(item.shareholding)}
-
                 <div class="qr-table-wrapper">
                     <table class="qr-table">
                         <colgroup>
-                            <col class="qr-col-metric" style="width: 24%;">
-                            <col class="qr-col-yoy" style="width: 16%;">
+                            <col class="qr-col-metric" style="width: 22%;">
+                            <col class="qr-col-yoy" style="width: 18%;">
                             <col class="qr-col-q" style="width: 20%;">
                             <col class="qr-col-q" style="width: 20%;">
                             <col class="qr-col-q" style="width: 20%;">
                         </colgroup>
                         <thead>
-                            <tr>
+                            ${buildShareholdingRowHtml(item.shareholding)}
+                            <tr class="qr-dates-row">
                                 <th class="qr-col-metric"></th>
                                 <th class="qr-col-yoy">YOY</th>
                                 <th class="qr-col-q">${escapeHtml(quarters.latest)}</th>
@@ -880,9 +879,9 @@
 
 
     /**
-     * Helper to build shareholding summary badge on quarterly result card
+     * Helper to build shareholding row covering each column of results in quarterly table
      */
-    function buildShareholdingBadgeHtml(shp) {
+    function buildShareholdingRowHtml(shp) {
         if (!shp) return '';
         if (shp.promoter_pct === null && shp.fii_pct === null && shp.dii_pct === null && shp.public_pct === null) {
             return '';
@@ -914,13 +913,28 @@
         }
 
         return `
-            <div class="qr-shp-badge-row">
-                <span class="qr-shp-pill promoter" title="Promoter Holding">🏛️ Prom: <strong>${promVal}</strong>${promChgHtml}</span>
-                <span class="qr-shp-pill fii" title="FII / Foreign Institutional Holding &amp; Shift">🌐 FII: <strong>${fiiVal}</strong>${fiiChgHtml}</span>
-                <span class="qr-shp-pill dii" title="DII / Mutual Funds &amp; Domestic Institutional Holding &amp; Shift">🏦 DII: <strong>${diiVal}</strong>${diiChgHtml}</span>
-                <span class="qr-shp-pill public" title="Public / Retail Holding">👥 Public: <strong>${pubVal}</strong></span>
-            </div>
+            <tr class="qr-shp-table-row">
+                <th class="qr-col-metric qr-shp-hdr-label" title="Latest Shareholding Disclosures">
+                    <span class="qr-shp-label-text">Shareholding</span>
+                </th>
+                <th class="qr-col-yoy qr-shp-col-cell">
+                    <span class="qr-shp-pill promoter" title="Promoter Holding: ${promVal}">🏛️ Prom: <strong>${promVal}</strong>${promChgHtml}</span>
+                </th>
+                <th class="qr-col-q qr-shp-col-cell">
+                    <span class="qr-shp-pill fii" title="FII / Foreign Institutional Holding: ${fiiVal}">🌐 FII: <strong>${fiiVal}</strong>${fiiChgHtml}</span>
+                </th>
+                <th class="qr-col-q qr-shp-col-cell">
+                    <span class="qr-shp-pill dii" title="DII / Mutual Funds &amp; Domestic Institutional Holding: ${diiVal}">🏦 DII: <strong>${diiVal}</strong>${diiChgHtml}</span>
+                </th>
+                <th class="qr-col-q qr-shp-col-cell">
+                    <span class="qr-shp-pill public" title="Public / Retail Holding: ${pubVal}">👥 Public: <strong>${pubVal}</strong></span>
+                </th>
+            </tr>
         `;
+    }
+
+    function buildShareholdingBadgeHtml(shp) {
+        return buildShareholdingRowHtml(shp);
     }
 
     /**
