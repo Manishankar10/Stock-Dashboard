@@ -121,6 +121,7 @@ def get_quarterly_results_data():
     exchange = str(request.args.get("exchange", "all")).strip()
     watchlist = str(request.args.get("watchlist", "portfolio")).strip()
     date_val = str(request.args.get("date", "")).strip()
+    custom_query = str(request.args.get("custom_query", "")).strip()
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
     min_mcap = None
@@ -148,6 +149,7 @@ def get_quarterly_results_data():
             user_watchlists=user_watchlists,
             portfolio_symbols=portfolio_symbols,
             date_filter=date_val,
+            custom_query=custom_query,
             force_refresh=force_refresh,
         )
         # Add user's watchlist names for the filter UI
@@ -183,3 +185,20 @@ def open_exchange_pdf():
         return redirect(resolved)
     return redirect(target)
 
+
+
+@quarterly_results_bp.route("/api/quarterly-results/validate-query", methods=["GET", "POST"])
+@_guard
+def validate_quarterly_results_query():
+    if _PROVIDER is None:
+        return jsonify({"valid": False, "error": "Quarterly results provider not initialized"}), 500
+
+    query = ""
+    if request.method == "POST":
+        payload = request.get_json(silent=True) or {}
+        query = str(payload.get("query") or "").strip()
+    if not query:
+        query = str(request.args.get("query") or "").strip()
+
+    result = _PROVIDER.validate_custom_query(query)
+    return jsonify(result)

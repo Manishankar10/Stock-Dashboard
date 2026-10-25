@@ -14,6 +14,8 @@
         exchange: 'all',
         watchlist: 'portfolio', // DEFAULT IS IN PORTFOLIO
         date: '',
+        custom_query: '',
+        category: 'all',
         data: null,
         isFetching: false,
         pageSize: 10,
@@ -73,6 +75,7 @@
         if (qrState.exchange && qrState.exchange !== 'all') params.set('exchange', qrState.exchange);
         if (qrState.watchlist) params.set('watchlist', qrState.watchlist);
         if (qrState.date) params.set('date', qrState.date);
+        if (qrState.custom_query) params.set('custom_query', qrState.custom_query);
         if (forceRefresh) params.set('refresh', '1');
 
         try {
@@ -177,6 +180,7 @@
                         <span class="qr-stat-item"><span class="qr-stat-label">PE</span> <span class="qr-stat-val">${pe}</span></span>
                     </div>
                 </div>
+                ${buildShareholdingBadgeHtml(item.shareholding)}
 
                 <div class="qr-table-wrapper">
                     <table class="qr-table">
@@ -242,6 +246,9 @@
 
         // 7. Sync Radio Selections
         syncRadioUI();
+
+        // 8. Sync Custom Query UI & Chips
+        updateCustomQueryUI();
     }
 
     /**
@@ -785,6 +792,8 @@
         qrState.exchange = 'all';
         qrState.watchlist = 'portfolio';
         qrState.date = '';
+        qrState.custom_query = '';
+        qrState.category = 'all';
         qrState.currentPage = 1;
         qrState.pageSize = 10;
 
@@ -869,6 +878,334 @@
         }
     });
 
+
+    /**
+     * Helper to build shareholding summary badge on quarterly result card
+     */
+    function buildShareholdingBadgeHtml(shp) {
+        if (!shp) return '';
+        if (shp.promoter_pct === null && shp.fii_pct === null && shp.dii_pct === null && shp.public_pct === null) {
+            return '';
+        }
+        const promVal = shp.promoter_pct !== null && shp.promoter_pct !== undefined ? `${Number(shp.promoter_pct).toFixed(1)}%` : '—';
+        const fiiVal = shp.fii_pct !== null && shp.fii_pct !== undefined ? `${Number(shp.fii_pct).toFixed(2)}%` : '—';
+        const diiVal = shp.dii_pct !== null && shp.dii_pct !== undefined ? `${Number(shp.dii_pct).toFixed(2)}%` : '—';
+        const pubVal = shp.public_pct !== null && shp.public_pct !== undefined ? `${Number(shp.public_pct).toFixed(1)}%` : '—';
+
+        let fiiChgHtml = '';
+        if (shp.change_fii_pct !== null && shp.change_fii_pct !== undefined) {
+            const c = Number(shp.change_fii_pct);
+            if (c > 0) fiiChgHtml = ` <small class="pos">↑${c.toFixed(2)}%</small>`;
+            else if (c < 0) fiiChgHtml = ` <small class="neg">↓${Math.abs(c).toFixed(2)}%</small>`;
+        }
+
+        let diiChgHtml = '';
+        if (shp.change_dii_pct !== null && shp.change_dii_pct !== undefined) {
+            const c = Number(shp.change_dii_pct);
+            if (c > 0) diiChgHtml = ` <small class="pos">↑${c.toFixed(2)}%</small>`;
+            else if (c < 0) diiChgHtml = ` <small class="neg">↓${Math.abs(c).toFixed(2)}%</small>`;
+        }
+
+        let promChgHtml = '';
+        if (shp.change_promoter_pct !== null && shp.change_promoter_pct !== undefined) {
+            const c = Number(shp.change_promoter_pct);
+            if (c > 0) promChgHtml = ` <small class="pos">↑${c.toFixed(2)}%</small>`;
+            else if (c < 0) promChgHtml = ` <small class="neg">↓${Math.abs(c).toFixed(2)}%</small>`;
+        }
+
+        return `
+            <div class="qr-shp-badge-row">
+                <span class="qr-shp-pill promoter" title="Promoter Holding">🏛️ Prom: <strong>${promVal}</strong>${promChgHtml}</span>
+                <span class="qr-shp-pill fii" title="FII / Foreign Institutional Holding &amp; Shift">🌐 FII: <strong>${fiiVal}</strong>${fiiChgHtml}</span>
+                <span class="qr-shp-pill dii" title="DII / Mutual Funds &amp; Domestic Institutional Holding &amp; Shift">🏦 DII: <strong>${diiVal}</strong>${diiChgHtml}</span>
+                <span class="qr-shp-pill public" title="Public / Retail Holding">👥 Public: <strong>${pubVal}</strong></span>
+            </div>
+        `;
+    }
+
+    /**
+     * Synchronize custom query banners and quick strategy chips
+     */
+    function updateCustomQueryUI() {
+        const queryBar = document.getElementById('qr-active-query-bar');
+        const queryTextEl = document.getElementById('qr-active-query-text');
+        const customChip = document.getElementById('qr-chip-custom');
+        const sidebarCustomStatus = document.getElementById('qr-sidebar-custom-status');
+        const sidebarSnippet = document.getElementById('qr-sidebar-query-snippet');
+
+        // Update chips active state
+        document.querySelectorAll('.qr-category-chips-row .qr-filter-chip').forEach(btn => {
+            const cat = btn.getAttribute('data-category');
+            if (cat === qrState.category) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        if (qrState.custom_query) {
+            if (queryBar) queryBar.style.display = 'flex';
+            if (queryTextEl) queryTextEl.textContent = qrState.custom_query;
+            if (customChip) {
+                customChip.classList.add('active');
+                customChip.title = `Active Custom Query: ${qrState.custom_query}`;
+            }
+            if (sidebarCustomStatus) sidebarCustomStatus.style.display = 'flex';
+            if (sidebarSnippet) sidebarSnippet.textContent = qrState.custom_query;
+        } else {
+            if (queryBar) queryBar.style.display = 'none';
+            if (sidebarCustomStatus) sidebarCustomStatus.style.display = 'none';
+            if (customChip && qrState.category !== 'custom') {
+                customChip.classList.remove('active');
+                customChip.title = 'Build custom query combining quarterly results & shareholding data';
+            }
+        }
+    }
+
+    /**
+     * Select a category quick strategy chip
+     */
+    function setQrCategoryChip(category) {
+        if (category === 'custom') {
+            openQrCustomModal();
+            return;
+        }
+
+        qrState.category = category;
+        qrState.currentPage = 1;
+
+        if (category === 'all') {
+            qrState.custom_query = '';
+        } else if (category === 'high_growth') {
+            qrState.custom_query = 'yoy_sales > 15 and yoy_profit > 15';
+        } else if (category === 'turnaround') {
+            qrState.custom_query = 'yoy_profit > 30';
+        } else if (category === 'fii_buying') {
+            qrState.custom_query = 'fii_chg > 0.2';
+        } else if (category === 'dii_buying') {
+            qrState.custom_query = 'dii_chg > 0.2';
+        } else if (category === 'promoter_gt50') {
+            qrState.custom_query = 'promoter > 50';
+        }
+
+        updateCustomQueryUI();
+        loadQuarterlyResults();
+    }
+
+    /**
+     * Open Custom Query Modal
+     */
+    function openQrCustomModal() {
+        const modal = document.getElementById('qr-custom-modal');
+        if (!modal) return;
+        const input = document.getElementById('qr-custom-query-input');
+        if (input) {
+            input.value = qrState.custom_query || '';
+        }
+        modal.style.display = 'flex';
+        if (qrState.custom_query) {
+            validateCustomQueryDebounced();
+        } else {
+            const feedback = document.getElementById('qr-custom-query-feedback');
+            if (feedback) feedback.style.display = 'none';
+            const badge = document.getElementById('qr-apply-count-badge');
+            if (badge) badge.style.display = 'none';
+        }
+        setTimeout(() => {
+            if (input) input.focus();
+        }, 100);
+    }
+
+    /**
+     * Close Custom Query Modal
+     */
+    function closeQrCustomModal() {
+        const modal = document.getElementById('qr-custom-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    /**
+     * Clear Custom Query
+     */
+    function clearQrCustomQuery() {
+        qrState.custom_query = '';
+        qrState.category = 'all';
+        qrState.currentPage = 1;
+        const input = document.getElementById('qr-custom-query-input');
+        if (input) input.value = '';
+        updateCustomQueryUI();
+        loadQuarterlyResults();
+    }
+
+    /**
+     * Token insertion helper for textarea
+     */
+    function insertTokenAtCursor(token) {
+        const input = document.getElementById('qr-custom-query-input');
+        if (!input) return;
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const text = input.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+
+        const padLeft = (before.length > 0 && !before.endsWith(' ') && !before.endsWith('(')) ? ' ' : '';
+        const padRight = (!after.startsWith(' ') && !after.startsWith(')')) ? ' ' : '';
+
+        input.value = before + padLeft + token + padRight + after;
+        const newPos = start + padLeft.length + token.length + padRight.length;
+        input.setSelectionRange(newPos, newPos);
+        input.focus();
+        validateCustomQueryDebounced();
+    }
+
+    /**
+     * Live query validation via backend AST validator
+     */
+    let customValidateTimer = null;
+    function validateCustomQueryDebounced() {
+        if (customValidateTimer) clearTimeout(customValidateTimer);
+        customValidateTimer = setTimeout(async () => {
+            const input = document.getElementById('qr-custom-query-input');
+            const feedback = document.getElementById('qr-custom-query-feedback');
+            const applyBadge = document.getElementById('qr-apply-count-badge');
+            if (!input || !feedback) return;
+
+            const q = input.value.trim();
+            if (!q) {
+                feedback.style.display = 'none';
+                if (applyBadge) applyBadge.style.display = 'none';
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/quarterly-results/validate-query?query=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                feedback.style.display = 'block';
+
+                if (data.valid) {
+                    feedback.className = 'qr-query-feedback valid';
+                    const sampleTxt = (data.matches && data.matches.length > 0) ? ` (${data.matches.join(', ')})` : '';
+                    feedback.innerHTML = `<strong>✓ Valid Query:</strong> ${data.match_count} companies match${sampleTxt}`;
+                    if (applyBadge) {
+                        applyBadge.style.display = 'inline-block';
+                        applyBadge.textContent = `${data.match_count} stocks`;
+                    }
+                } else {
+                    feedback.className = 'qr-query-feedback error';
+                    feedback.innerHTML = `<strong>✗ Syntax Error:</strong> ${escapeHtml(data.error || 'Invalid query expression')}`;
+                    if (applyBadge) applyBadge.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Validation error:', err);
+            }
+        }, 250);
+    }
+
+    /**
+     * Bind Custom Query Modal Interactive Events
+     */
+    function initCustomQueryModalListeners() {
+        // Preset cards
+        document.querySelectorAll('.qr-preset-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const preset = card.getAttribute('data-preset');
+                const input = document.getElementById('qr-custom-query-input');
+                if (input && preset) {
+                    input.value = preset;
+                    input.focus();
+                    validateCustomQueryDebounced();
+                }
+            });
+        });
+
+        // Token chips
+        document.querySelectorAll('.qr-token-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const token = chip.getAttribute('data-token');
+                if (token) insertTokenAtCursor(token);
+            });
+        });
+
+        // Textarea input
+        const input = document.getElementById('qr-custom-query-input');
+        if (input) {
+            input.addEventListener('input', validateCustomQueryDebounced);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    const applyBtn = document.getElementById('qr-custom-apply-btn');
+                    if (applyBtn) applyBtn.click();
+                }
+            });
+        }
+
+        // Clear input button
+        const clearBtn = document.getElementById('qr-custom-clear-input');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                    validateCustomQueryDebounced();
+                }
+            });
+        }
+
+        // Apply filter button
+        const applyBtn = document.getElementById('qr-custom-apply-btn');
+        if (applyBtn) {
+            applyBtn.addEventListener('click', async () => {
+                const val = input ? input.value.trim() : '';
+                if (!val) {
+                    clearQrCustomQuery();
+                    closeQrCustomModal();
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`/api/quarterly-results/validate-query?query=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    if (!data.valid) {
+                        const feedback = document.getElementById('qr-custom-query-feedback');
+                        if (feedback) {
+                            feedback.style.display = 'block';
+                            feedback.className = 'qr-query-feedback error';
+                            feedback.innerHTML = `<strong>✗ Cannot Apply:</strong> ${escapeHtml(data.error)}`;
+                        }
+                        return;
+                    }
+
+                    qrState.custom_query = val;
+                    qrState.category = 'custom';
+                    qrState.currentPage = 1;
+                    closeQrCustomModal();
+                    updateCustomQueryUI();
+                    loadQuarterlyResults();
+                } catch (err) {
+                    console.error('Error applying query:', err);
+                }
+            });
+        }
+
+        // Reset to all button
+        const resetBtn = document.getElementById('qr-custom-reset-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                clearQrCustomQuery();
+                closeQrCustomModal();
+            });
+        }
+
+        // Modal backdrop click to close
+        const modal = document.getElementById('qr-custom-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeQrCustomModal();
+            });
+        }
+    }
+
     // Expose global methods
     window.loadQuarterlyResults = loadQuarterlyResults;
     window.handleQrSearch = handleQrSearch;
@@ -887,6 +1224,10 @@
     window.closeQrMobileFilter = closeQrMobileFilter;
     window.openStockFundamentals = openStockFundamentals;
     window.openStockChart = openStockChart;
+    window.openQrCustomModal = openQrCustomModal;
+    window.closeQrCustomModal = closeQrCustomModal;
+    window.clearQrCustomQuery = clearQrCustomQuery;
+    window.setQrCategoryChip = setQrCategoryChip;
     window.setQrPage = setQrPage;
     window.setQrPageSize = setQrPageSize;
     window.scrollQrDates = scrollQrDates;
@@ -896,6 +1237,7 @@
 
     // Auto-init on DOMContentLoaded if starting on quarterly-results tab
     document.addEventListener('DOMContentLoaded', () => {
+        initCustomQueryModalListeners();
         if (window.INITIAL_TAB === 'quarterly-results' || window.currentTab === 'quarterly-results') {
             loadQuarterlyResults();
         }

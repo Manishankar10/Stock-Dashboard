@@ -61,6 +61,31 @@
                 </button>
             </div>
         </div>
+        <!-- Quick Strategy / Custom Query Chips Row -->
+        <div class="qr-category-chips-row">
+            <div class="qr-category-chips-scroll">
+                <button type="button" class="qr-filter-chip active" data-category="all" onclick="window.setQrCategoryChip('all')">All</button>
+                <button type="button" class="qr-filter-chip" data-category="high_growth" title="Sales > 15% &amp; PAT > 15% YoY" onclick="window.setQrCategoryChip('high_growth')">High Growth ↑</button>
+                <button type="button" class="qr-filter-chip" data-category="turnaround" title="Turnaround Net Profit growth > 30%" onclick="window.setQrCategoryChip('turnaround')">Turnaround ↑</button>
+                <button type="button" class="qr-filter-chip" data-category="fii_buying" title="Foreign institutions buying stake QoQ" onclick="window.setQrCategoryChip('fii_buying')">FII Buying ↑</button>
+                <button type="button" class="qr-filter-chip" data-category="dii_buying" title="Domestic mutual funds buying stake QoQ" onclick="window.setQrCategoryChip('dii_buying')">DII Buying ↑</button>
+                <button type="button" class="qr-filter-chip" data-category="promoter_gt50" title="Promoter holding above 50%" onclick="window.setQrCategoryChip('promoter_gt50')">Promoter &gt; 50%</button>
+                <button type="button" class="qr-filter-chip qr-custom-chip" id="qr-chip-custom" data-category="custom" title="Build custom query combining quarterly results &amp; shareholding data" onclick="window.openQrCustomModal()">Custom ⚡</button>
+            </div>
+        </div>
+
+        <!-- Active Custom Query Bar (Visible when custom query is active) -->
+        <div id="qr-active-query-bar" class="qr-active-query-bar" style="display: none;">
+            <div class="qr-active-query-badge">
+                <span class="qr-active-query-icon">⚡</span>
+                <span class="qr-active-query-title">Custom Screener:</span>
+                <code class="qr-active-query-code" id="qr-active-query-text"></code>
+            </div>
+            <div class="qr-active-query-actions">
+                <button type="button" class="qr-query-btn qr-query-edit-btn" onclick="window.openQrCustomModal()" title="Edit query">Edit ✎</button>
+                <button type="button" class="qr-query-btn qr-query-clear-btn" onclick="window.clearQrCustomQuery()" title="Clear custom query">Clear ✕</button>
+            </div>
+        </div>
     </div>
 
     <!-- Split Screen Layout: Stream (Left) + Filter Sidebar (Right) -->
@@ -144,6 +169,25 @@
                     <button type="button" class="qr-clear-btn" onclick="window.clearAllQrFilters()">
                         ✖ CLEAR ALL
                     </button>
+                </div>
+
+                
+                <!-- 0. Custom Screener Query Trigger -->
+                <div class="qr-filter-section open qr-sidebar-custom-section">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>Custom Screener ⚡</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <button type="button" class="qr-sidebar-custom-btn" onclick="window.openQrCustomModal()">
+                            <span class="qr-filter-icon">⚡</span>
+                            <span>Build Screener Query</span>
+                        </button>
+                        <div id="qr-sidebar-custom-status" class="qr-sidebar-custom-status" style="display: none;">
+                            <div class="qr-sidebar-query-snippet" id="qr-sidebar-query-snippet"></div>
+                            <button type="button" class="qr-sidebar-clear-btn" onclick="window.clearQrCustomQuery()">Clear ✕</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 1. By watchlist/portfolio -->
@@ -349,7 +393,26 @@
         </div>
 
         <div class="qr-modal-scroll" id="qr-modal-filter-body">
-            <!-- 1. By watchlist/portfolio -->
+            
+                <!-- 0. Custom Screener Query Trigger -->
+                <div class="qr-filter-section open qr-sidebar-custom-section">
+                    <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
+                        <span>Custom Screener ⚡</span>
+                        <span class="qr-accordion-arrow">▾</span>
+                    </div>
+                    <div class="qr-filter-section-content">
+                        <button type="button" class="qr-sidebar-custom-btn" onclick="window.openQrCustomModal()">
+                            <span class="qr-filter-icon">⚡</span>
+                            <span>Build Screener Query</span>
+                        </button>
+                        <div id="qr-sidebar-custom-status" class="qr-sidebar-custom-status" style="display: none;">
+                            <div class="qr-sidebar-query-snippet" id="qr-sidebar-query-snippet"></div>
+                            <button type="button" class="qr-sidebar-clear-btn" onclick="window.clearQrCustomQuery()">Clear ✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. By watchlist/portfolio -->
             <div class="qr-filter-section open">
                 <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
                     <span>By watchlist/portfolio</span>
@@ -530,6 +593,175 @@
         <div class="qr-modal-footer">
             <button type="button" class="qr-apply-btn" onclick="window.closeQrMobileFilter()">
                 Apply Filters
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal for Custom Query Builder (Quarterly Results & Shareholding) -->
+<div id="qr-custom-modal" class="modal-backdrop qr-custom-modal-backdrop" style="display: none;">
+    <div class="modal-content qr-custom-modal-content">
+        <!-- Header -->
+        <div class="qr-custom-modal-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="qr-custom-modal-icon">⚡</span>
+                <div>
+                    <h3 class="qr-custom-modal-title">Custom Results &amp; Shareholding Screener</h3>
+                    <p class="qr-custom-modal-subtitle">Screen quarterly earnings, margins &amp; institutional flow disclosures using boolean logic</p>
+                </div>
+            </div>
+            <button type="button" id="qr-custom-modal-close" class="qr-modal-close-btn" onclick="window.closeQrCustomModal()" aria-label="Close modal">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="qr-custom-modal-body">
+            <!-- 1. Predefined Strategies -->
+            <div class="qr-query-section">
+                <div class="qr-query-section-title">
+                    <span>💡 Predefined Strategies</span>
+                    <span class="qr-query-hint">Click any strategy to load query</span>
+                </div>
+                <div class="qr-preset-grid">
+                    <button type="button" class="qr-preset-card" data-preset="yoy_profit > 20 and fii_chg > 0.5" data-label="High PAT Growth + FII Buying">
+                        <div class="qr-preset-name">🚀 High PAT Growth + FII Buying</div>
+                        <div class="qr-preset-desc">Net profit growth &gt;20% YoY with foreign institutions adding stake</div>
+                    </button>
+                    <button type="button" class="qr-preset-card" data-preset="yoy_sales > 15 and yoy_profit > 15 and promoter > 50" data-label="Consistent Compounders">
+                        <div class="qr-preset-name">💎 Consistent Compounders</div>
+                        <div class="qr-preset-desc">Double-digit sales &amp; profit growth with &gt;50% promoter stake</div>
+                    </button>
+                    <button type="button" class="qr-preset-card" data-preset="fii_chg > 0.5 and dii_chg > 0.5 and yoy_profit > 0" data-label="Institutional Co-Buying">
+                        <div class="qr-preset-name">🌊 Institutional Co-Buying</div>
+                        <div class="qr-preset-desc">Both FIIs and Domestic MFs accumulating profitable companies</div>
+                    </button>
+                    <button type="button" class="qr-preset-card" data-preset="yoy_profit > 50 and promoter > 50" data-label="Turnaround with Promoter Stake">
+                        <div class="qr-preset-name">🏢 Turnaround with Promoter Stake</div>
+                        <div class="qr-preset-desc">Strong earnings recovery (&gt;50% PAT YoY) with &gt;50% promoter backing</div>
+                    </button>
+                    <button type="button" class="qr-preset-card" data-preset="opm > 20 and pe < 30 and (fii > 5 or dii > 5)" data-label="High Margin Institutional Pick">
+                        <div class="qr-preset-name">🎯 High Margin Institutional Pick</div>
+                        <div class="qr-preset-desc">Operating margin &gt;20%, reasonable valuation (PE &lt;30) &amp; institutional backing</div>
+                    </button>
+                    <button type="button" class="qr-preset-card" data-preset="yoy_sales > 20 and public_chg < -0.5" data-label="Float Absorption">
+                        <div class="qr-preset-name">⚡ Accelerating Sales + Float Absorption</div>
+                        <div class="qr-preset-desc">Sales growth &gt;20% with public float reducing into institutional hands</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Interactive Token Chips -->
+            <div class="qr-query-section">
+                <div class="qr-query-section-title">
+                    <span>🧩 Query Token Chips</span>
+                    <span class="qr-query-hint">Click chips to insert into query at cursor</span>
+                </div>
+
+                <!-- Quarterly Performance Growth -->
+                <div class="qr-chipset-group">
+                    <span class="qr-chipset-label">Quarterly Growth (%):</span>
+                    <div class="qr-chipset-items">
+                        <button type="button" class="qr-token-chip field-chip" data-token="yoy_sales" title="YoY Sales / Revenue growth %">yoy_sales</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="yoy_profit" title="YoY Net Profit / PAT growth %">yoy_profit</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="yoy_op" title="YoY Operating profit growth %">yoy_op</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="yoy_eps" title="YoY EPS growth %">yoy_eps</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="yoy_opm" title="YoY Operating Profit Margin change %">yoy_opm</button>
+                    </div>
+                </div>
+
+                <!-- Absolute Values & Valuation -->
+                <div class="qr-chipset-group">
+                    <span class="qr-chipset-label">Results &amp; Valuation:</span>
+                    <div class="qr-chipset-items">
+                        <button type="button" class="qr-token-chip field-chip" data-token="sales" title="Latest quarter Sales (₹ Cr)">sales</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="net_profit" title="Latest quarter Net Profit (₹ Cr)">net_profit</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="opm" title="Latest Operating Profit Margin (%)">opm</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="pe" title="Price to Earnings (PE ratio)">pe</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="mcap" title="Market Capitalization (₹ Cr)">mcap</button>
+                        <button type="button" class="qr-token-chip field-chip" data-token="price" title="Latest Share Price (₹)">price</button>
+                    </div>
+                </div>
+
+                <!-- Shareholding QoQ Shifts -->
+                <div class="qr-chipset-group">
+                    <span class="qr-chipset-label">Shareholding Flows (QoQ %):</span>
+                    <div class="qr-chipset-items">
+                        <button type="button" class="qr-token-chip shp-chip" data-token="fii_chg" title="FII / Foreign QoQ change %">fii_chg</button>
+                        <button type="button" class="qr-token-chip shp-chip" data-token="dii_chg" title="DII / Mutual Funds QoQ change %">dii_chg</button>
+                        <button type="button" class="qr-token-chip shp-chip" data-token="promoter_chg" title="Promoter QoQ change %">promoter_chg</button>
+                        <button type="button" class="qr-token-chip shp-chip" data-token="public_chg" title="Public / Retail QoQ change %">public_chg</button>
+                    </div>
+                </div>
+
+                <!-- Shareholding Total Holding % -->
+                <div class="qr-chipset-group">
+                    <span class="qr-chipset-label">Shareholding Stake Levels (%):</span>
+                    <div class="qr-chipset-items">
+                        <button type="button" class="qr-token-chip shp-chip" data-token="promoter" title="Total Promoter Holding %">promoter</button>
+                        <button type="button" class="qr-token-chip shp-chip" data-token="fii" title="Total FII Holding %">fii</button>
+                        <button type="button" class="qr-token-chip shp-chip" data-token="dii" title="Total DII Holding %">dii</button>
+                        <button type="button" class="qr-token-chip shp-chip" data-token="public" title="Total Public Holding %">public</button>
+                    </div>
+                </div>
+
+                <!-- Operators & Logic -->
+                <div class="qr-chipset-group">
+                    <span class="qr-chipset-label">Operators &amp; Logic:</span>
+                    <div class="qr-chipset-items">
+                        <button type="button" class="qr-token-chip logic-chip" data-token="and">and</button>
+                        <button type="button" class="qr-token-chip logic-chip" data-token="or">or</button>
+                        <button type="button" class="qr-token-chip logic-chip" data-token="not">not</button>
+                        <button type="button" class="qr-token-chip paren-chip" data-token="(">(</button>
+                        <button type="button" class="qr-token-chip paren-chip" data-token=")">)</button>
+                        <button type="button" class="qr-token-chip op-chip" data-token=">">&gt;</button>
+                        <button type="button" class="qr-token-chip op-chip" data-token="<">&lt;</button>
+                        <button type="button" class="qr-token-chip op-chip" data-token=">=">&gt;=</button>
+                        <button type="button" class="qr-token-chip op-chip" data-token="<=">&lt;=</button>
+                        <button type="button" class="qr-token-chip op-chip" data-token="=">=</button>
+                        <button type="button" class="qr-token-chip op-chip" data-token="!=">!=</button>
+                    </div>
+                </div>
+
+                <!-- Quick Numbers -->
+                <div class="qr-chipset-group">
+                    <span class="qr-chipset-label">Quick Values:</span>
+                    <div class="qr-chipset-items">
+                        <button type="button" class="qr-token-chip num-chip" data-token="0">0</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="0.5">0.5</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="1.0">1.0</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="10">10</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="15">15</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="20">20</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="25">25</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="30">30</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="50">50</button>
+                        <button type="button" class="qr-token-chip num-chip" data-token="-0.5">-0.5</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Query Textarea -->
+            <div class="qr-query-section">
+                <div class="qr-query-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>✍️ Query Expression</span>
+                    <button type="button" id="qr-custom-clear-input" class="qr-text-btn" title="Clear expression text">Clear ⌫</button>
+                </div>
+                <div class="qr-query-input-wrap">
+                    <textarea id="qr-custom-query-input" rows="3" placeholder="e.g. yoy_profit > 20 and fii_chg > 0.5 and promoter > 50" spellcheck="false" autocomplete="off"></textarea>
+                </div>
+            </div>
+
+            <!-- 4. Real-time Syntax Feedback & Match Preview -->
+            <div id="qr-custom-query-feedback" class="qr-query-feedback" style="display: none;"></div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="qr-custom-modal-footer">
+            <button type="button" id="qr-custom-reset-btn" class="btn-secondary" style="margin-right: auto;">Reset to All</button>
+            <button type="button" id="qr-custom-cancel-btn" class="btn-secondary" onclick="window.closeQrCustomModal()">Cancel</button>
+            <button type="button" id="qr-custom-apply-btn" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+                <span>Apply Filter</span>
+                <span class="qr-apply-badge" id="qr-apply-count-badge"></span>
             </button>
         </div>
     </div>

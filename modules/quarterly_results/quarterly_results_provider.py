@@ -7,6 +7,8 @@ Does not parse during server initialization.
 
 from __future__ import annotations
 
+import ast
+
 import json
 import logging
 import os
@@ -676,6 +678,439 @@ class QuarterlyResultsProvider:
             with self._admin_lock:
                 self._admin_is_refreshing = False
 
+    ALLOWED_AST_NODES = (
+        ast.Expression, ast.BoolOp, ast.BinOp, ast.UnaryOp,
+        ast.Compare, ast.Name, ast.Constant,
+        ast.And, ast.Or, ast.Not,
+        ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE,
+        ast.Add, ast.Sub, ast.Mult, ast.Div,
+        ast.USub, ast.UAdd, ast.Load,
+    )
+
+    QUERY_FIELD_MAP = {
+        # Quarterly Results Growth Metrics (%)
+        "sales_growth", "yoy_sales", "sales_chg",
+        "profit_growth", "yoy_profit", "profit_chg", "net_profit_growth", "pat_growth", "turnaround",
+        "op_growth", "yoy_op", "op_chg",
+        "eps_growth", "yoy_eps",
+        "yoy_opm", "opm_growth", "opm_chg",
+
+        # Absolute Values (Latest Quarter in Cr / %)
+        "sales", "revenue",
+        "net_profit", "profit", "pat",
+        "opm", "opm_pct", "margin",
+        "op", "operating_profit",
+        "eps", "other_income", "interest", "depreciation", "depr",
+        "pbt", "profit_before_tax", "tax", "tax_pct",
+
+        # Valuation & Fundamentals
+        "pe", "ttm_pe", "qtr_pe",
+        "mcap", "mcap_cr", "market_cap",
+        "price", "ltp",
+
+        # Shareholding - QoQ Flows (%)
+        "fii_chg", "change_fii", "change_fii_pct", "fii_change",
+        "dii_chg", "change_dii", "change_dii_pct", "dii_change",
+        "promoter_chg", "change_promoter", "change_promoter_pct", "promoter_change",
+        "public_chg", "change_public", "change_public_pct", "public_change",
+        "inst_chg", "change_inst",
+
+        # Shareholding - Holding Levels (%)
+        "promoter", "promoter_holding", "promoter_pct",
+        "fii", "fii_holding", "fii_pct",
+        "dii", "dii_holding", "dii_pct",
+        "public", "public_holding", "public_pct",
+        "inst", "inst_holding", "institutional",
+    }
+
+    def _get_shareholding_map(self) -> Dict[str, Dict[str, Any]]:
+        """Return cached map of clean_symbol -> shareholding record."""
+        now = time.time()
+        if getattr(self, "_shp_map_cache", None) and (now - getattr(self, "_shp_map_time", 0)) < 300:
+            return self._shp_map_cache
+
+        shp_map: Dict[str, Dict[str, Any]] = {}
+        # 1. Try shareholding provider
+        try:
+            from modules.shareholding import get_provider as get_shp_provider
+            shp_prov = get_shp_provider()
+            if shp_prov and hasattr(shp_prov, "_cache_records") and shp_prov._cache_records:
+                for r in shp_prov._cache_records:
+                    sym = clean_symbol(r.get("symbol"))
+                    if sym:
+                        shp_map[sym] = r
+        except Exception:
+            pass
+
+        # 2. Try DB store
+        if not shp_map:
+            try:
+                from db_store import load_shareholding_patterns_db
+                db_data = load_shareholding_patterns_db()
+                if db_data and isinstance(db_data.get("records"), list):
+                    for r in db_data["records"]:
+                        sym = clean_symbol(r.get("symbol"))
+                        if sym:
+                            shp_map[sym] = r
+            except Exception:
+                pass
+
+        # 3. Fallback to json files
+        if not shp_map:
+            for p in ["app_data/shareholding_patterns.json", "user_data/shareholding_patterns.json"]:
+                if Path(p).exists():
+                    try:
+                        import json
+                        with open(p, "r", encoding="utf-8") as f:
+                            d = json.load(f)
+                            for r in d.get("records", []):
+                                sym = clean_symbol(r.get("symbol"))
+                                if sym:
+                                    shp_map[sym] = r
+                        if shp_map:
+                            break
+                    except Exception:
+                        pass
+
+        self._shp_map_cache = shp_map
+        self._shp_map_time = now
+        return shp_map
+
+    def _extract_field_value(self, record: Dict[str, Any], field_name: str) -> Optional[float]:
+        """Extract numeric metric value from quarterly results record or linked shareholding data."""
+        if not record or not field_name:
+            return None
+        fn = field_name.strip().lower()
+        shp = record.get("_shp") or {}
+
+        # 1. Quarterly Results Growth (%)
+        if fn in ("sales_growth", "yoy_sales", "sales_chg"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "sales":
+                    try:
+                        return float(m.get("yoy_pct", 0.0))
+                    except Exception:
+                        return 0.0
+            return None
+
+        if fn in ("profit_growth", "yoy_profit", "profit_chg", "net_profit_growth", "pat_growth", "turnaround"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "net profit":
+                    try:
+                        return float(m.get("yoy_pct", 0.0))
+                    except Exception:
+                        return 0.0
+            return None
+
+        if fn in ("op_growth", "yoy_op", "op_chg"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() in ("operating profit", "operating_profit"):
+                    try:
+                        return float(m.get("yoy_pct", 0.0))
+                    except Exception:
+                        return 0.0
+            return None
+
+        if fn in ("eps_growth", "yoy_eps"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "eps":
+                    try:
+                        return float(m.get("yoy_pct", 0.0))
+                    except Exception:
+                        return 0.0
+            return None
+
+        if fn in ("yoy_opm", "opm_growth", "opm_chg"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "opm":
+                    try:
+                        return float(m.get("yoy_pct", 0.0))
+                    except Exception:
+                        return 0.0
+            return None
+
+        # 2. Latest Values
+        if fn in ("sales", "revenue"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "sales":
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("net_profit", "profit", "pat"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "net profit":
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("opm", "opm_pct", "margin"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "opm":
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("op", "operating_profit"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() in ("operating profit", "operating_profit"):
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("eps",):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "eps":
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("other_income",):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "other income":
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("interest",):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "interest":
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("depreciation", "depr"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "depreciation":
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("pbt", "profit_before_tax"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() in ("profit before tax", "pbt"):
+                    return clean_num(m.get("latest"))
+            return None
+
+        if fn in ("tax", "tax_pct"):
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == "tax":
+                    return clean_num(m.get("latest"))
+            return None
+
+        # 3. Direct fundamentals
+        if fn in ("pe", "ttm_pe", "qtr_pe"):
+            return clean_num(record.get("pe"))
+        if fn in ("mcap", "mcap_cr", "market_cap"):
+            return clean_num(record.get("mcap_cr"))
+        if fn in ("price", "ltp"):
+            return clean_num(record.get("price"))
+
+        # 4. Shareholding Flows QoQ (%)
+        if fn in ("fii_chg", "change_fii", "change_fii_pct", "fii_change"):
+            val = shp.get("change_fii_pct")
+            return float(val) if val is not None else None
+        if fn in ("dii_chg", "change_dii", "change_dii_pct", "dii_change"):
+            val = shp.get("change_dii_pct")
+            return float(val) if val is not None else None
+        if fn in ("promoter_chg", "change_promoter", "change_promoter_pct", "promoter_change"):
+            val = shp.get("change_promoter_pct")
+            return float(val) if val is not None else None
+        if fn in ("public_chg", "change_public", "change_public_pct", "public_change"):
+            val = shp.get("change_public_pct")
+            return float(val) if val is not None else None
+        if fn in ("inst_chg", "change_inst"):
+            f_chg = shp.get("change_fii_pct")
+            d_chg = shp.get("change_dii_pct")
+            if f_chg is None and d_chg is None:
+                return None
+            return float(f_chg or 0.0) + float(d_chg or 0.0)
+
+        # 5. Shareholding Level Holdings (%)
+        if fn in ("promoter", "promoter_holding", "promoter_pct"):
+            val = shp.get("promoter_pct")
+            return float(val) if val is not None else None
+        if fn in ("fii", "fii_holding", "fii_pct"):
+            val = shp.get("fii_pct")
+            return float(val) if val is not None else None
+        if fn in ("dii", "dii_holding", "dii_pct"):
+            val = shp.get("dii_pct")
+            return float(val) if val is not None else None
+        if fn in ("public", "public_holding", "public_pct"):
+            val = shp.get("public_pct")
+            return float(val) if val is not None else None
+        if fn in ("inst", "inst_holding", "institutional"):
+            f_pct = shp.get("fii_pct")
+            d_pct = shp.get("dii_pct")
+            if f_pct is None and d_pct is None:
+                return None
+            return float(f_pct or 0.0) + float(d_pct or 0.0)
+
+        return None
+
+    def sanitize_custom_query(self, query_str: str) -> str:
+        """Sanitize query string to normalize operators and keywords for Python AST."""
+        if not query_str:
+            return ""
+        s = query_str.strip()
+        s = re.sub(r"\band\b", "and", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bor\b", "or", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bnot\b", "not", s, flags=re.IGNORECASE)
+        s = re.sub(r"(?<![<>=!])=(?!=)", "==", s)
+        return s
+
+    def compile_custom_query(self, query_str: str) -> Tuple[Optional[ast.AST], Optional[str]]:
+        """Compile and securely validate user-specified boolean quarterly results & shareholding query."""
+        if not query_str or not query_str.strip():
+            return None, "Query string is empty."
+        sanitized = self.sanitize_custom_query(query_str)
+        try:
+            tree = ast.parse(sanitized, mode="eval")
+        except Exception as e:
+            return None, f"Query syntax error: {e}"
+
+        for node in ast.walk(tree):
+            if not isinstance(node, self.ALLOWED_AST_NODES):
+                return None, f"Unsupported expression element: {type(node).__name__}"
+            if isinstance(node, ast.Name):
+                name_lower = node.id.lower()
+                if name_lower not in self.QUERY_FIELD_MAP and name_lower not in ("true", "false"):
+                    return (
+                        None,
+                        f"Unknown field '{node.id}'. Supported fields: yoy_sales, yoy_profit, sales, net_profit, "
+                        "opm, pe, mcap, price, promoter, fii, dii, public, fii_chg, dii_chg, promoter_chg, public_chg",
+                    )
+        return tree, None
+
+    def eval_custom_node(self, node: Any, record: Dict[str, Any]) -> Any:
+        """Evaluate validated AST expression against a quarterly results record (with attached shareholding data)."""
+        if node is None:
+            return None
+        if isinstance(node, ast.Expression):
+            return self.eval_custom_node(node.body, record)
+        elif isinstance(node, ast.Constant):
+            return node.value
+        elif isinstance(node, ast.Name):
+            nid = node.id.lower()
+            if nid == "true":
+                return True
+            if nid == "false":
+                return False
+            return self._extract_field_value(record, nid)
+        elif isinstance(node, ast.UnaryOp):
+            operand = self.eval_custom_node(node.operand, record)
+            if operand is None:
+                return None
+            if isinstance(node.op, ast.Not):
+                return not bool(operand)
+            elif isinstance(node.op, ast.USub):
+                return -operand
+            elif isinstance(node.op, ast.UAdd):
+                return +operand
+            return None
+        elif isinstance(node, ast.BinOp):
+            left = self.eval_custom_node(node.left, record)
+            right = self.eval_custom_node(node.right, record)
+            if left is None or right is None:
+                return None
+            if isinstance(node.op, ast.Add):
+                return left + right
+            elif isinstance(node.op, ast.Sub):
+                return left - right
+            elif isinstance(node.op, ast.Mult):
+                return left * right
+            elif isinstance(node.op, ast.Div):
+                return left / right if right != 0 else None
+            return None
+        elif isinstance(node, ast.BoolOp):
+            if isinstance(node.op, ast.And):
+                for v in node.values:
+                    res = self.eval_custom_node(v, record)
+                    if not res:
+                        return False
+                return True
+            elif isinstance(node.op, ast.Or):
+                for v in node.values:
+                    res = self.eval_custom_node(v, record)
+                    if res:
+                        return True
+                return False
+        elif isinstance(node, ast.Compare):
+            left = self.eval_custom_node(node.left, record)
+            # Smart fallback for bare shareholding fields with non-positive comparison (e.g. public < 0 or promoter == 0)
+            if isinstance(node.left, ast.Name) and node.left.id.lower() in ("public", "promoter", "fii", "dii"):
+                for op, comp in zip(node.ops, node.comparators):
+                    if isinstance(comp, (ast.Constant, ast.UnaryOp)):
+                        try:
+                            c_val = self.eval_custom_node(comp, record)
+                            if c_val is not None and c_val <= 0:
+                                shp = record.get("_shp") or {}
+                                chg_key = f"change_{node.left.id.lower()}_pct"
+                                if shp.get(chg_key) is not None:
+                                    left = float(shp[chg_key])
+                                break
+                        except Exception:
+                            pass
+
+            if left is None:
+                return False
+
+            for op, comparator in zip(node.ops, node.comparators):
+                right = self.eval_custom_node(comparator, record)
+                if right is None:
+                    return False
+                matched = False
+                if isinstance(op, ast.Eq):
+                    matched = abs(left - right) < 0.001
+                elif isinstance(op, ast.NotEq):
+                    matched = abs(left - right) >= 0.001
+                elif isinstance(op, ast.Lt):
+                    matched = left < right
+                elif isinstance(op, ast.LtE):
+                    matched = left <= right
+                elif isinstance(op, ast.Gt):
+                    matched = left > right
+                elif isinstance(op, ast.GtE):
+                    matched = left >= right
+                if not matched:
+                    return False
+                left = right
+            return True
+        return False
+
+    def validate_custom_query(self, query_str: str) -> Dict[str, Any]:
+        """Validate query and return live match count and preview."""
+        if not query_str or not query_str.strip():
+            return {
+                "valid": False,
+                "error": "Query cannot be empty.",
+                "match_count": 0,
+                "matches": [],
+            }
+        tree, err = self.compile_custom_query(query_str)
+        if err or not tree:
+            return {
+                "valid": False,
+                "error": err or "Invalid query expression.",
+                "match_count": 0,
+                "matches": [],
+            }
+
+        with self._lock:
+            recs = list(self._cache_data or [])
+
+        shp_map = self._get_shareholding_map()
+        matched = []
+        for r in recs:
+            sym = clean_symbol(r.get("symbol"))
+            r_copy = dict(r)
+            r_copy["_shp"] = shp_map.get(sym) or {}
+            try:
+                res = self.eval_custom_node(tree, r_copy)
+                if res:
+                    matched.append(r.get("symbol") or r.get("company"))
+            except Exception:
+                continue
+
+        return {
+            "valid": True,
+            "error": None,
+            "match_count": len(matched),
+            "matches": matched[:6],
+        }
+
     def get_quarterly_results(
         self,
         search: str = "",
@@ -689,6 +1124,7 @@ class QuarterlyResultsProvider:
         user_watchlists: Optional[Dict[str, Set[str]]] = None,
         portfolio_symbols: Optional[Set[str]] = None,
         date_filter: str = "",
+        custom_query: str = "",
         force_refresh: bool = False,
     ) -> Dict[str, Any]:
         """Serve quarterly results.
@@ -703,8 +1139,6 @@ class QuarterlyResultsProvider:
         if force_refresh:
             needs_parse = True
         elif not self._cache_data or len(self._cache_data) == 0:
-            needs_parse = True
-        elif (now - self._last_fetch_time) >= CACHE_TTL_SECONDS:
             needs_parse = True
 
         if needs_parse:
@@ -741,6 +1175,15 @@ class QuarterlyResultsProvider:
             {"date": d, "label": _fmt_date_label(d)}
             for d in sorted(list(dates_set), reverse=True)
         ]
+
+        # Compile custom query if provided
+        custom_tree = None
+        custom_query_err = None
+        clean_cq = (custom_query or "").strip()
+        if clean_cq:
+            custom_tree, custom_query_err = self.compile_custom_query(clean_cq)
+
+        shp_map = self._get_shareholding_map()
 
         # 2. Filter items
         filtered = []
@@ -839,9 +1282,31 @@ class QuarterlyResultsProvider:
                     if not target_wl_syms or sym not in target_wl_syms:
                         continue
 
+            shp_rec = shp_map.get(sym) or {}
             item_copy = dict(item)
             item_copy["in_portfolio"] = in_pf
             item_copy["in_watchlist"] = in_wl
+            item_copy["_shp"] = shp_rec
+            item_copy["shareholding"] = {
+                "promoter_pct": shp_rec.get("promoter_pct"),
+                "fii_pct": shp_rec.get("fii_pct"),
+                "dii_pct": shp_rec.get("dii_pct"),
+                "public_pct": shp_rec.get("public_pct"),
+                "change_promoter_pct": shp_rec.get("change_promoter_pct"),
+                "change_fii_pct": shp_rec.get("change_fii_pct"),
+                "change_dii_pct": shp_rec.get("change_dii_pct"),
+                "change_public_pct": shp_rec.get("change_public_pct"),
+            }
+
+            # Custom query filter
+            if custom_tree:
+                try:
+                    match_custom = bool(self.eval_custom_node(custom_tree, item_copy))
+                    if not match_custom:
+                        continue
+                except Exception:
+                    continue
+
             filtered.append(item_copy)
 
         # 3. Sorting
@@ -889,5 +1354,6 @@ class QuarterlyResultsProvider:
                 "exchange": exchange,
                 "watchlist_scope": watchlist_scope,
                 "date_filter": date_filter,
+                "custom_query": custom_query,
             },
         }
