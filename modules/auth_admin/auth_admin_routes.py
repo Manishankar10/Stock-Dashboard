@@ -168,12 +168,15 @@ def admin_stats():
         p_data = _get_user_dependencies()["load_portfolios"](uname)
         total_watchlists += len(w_data)
         total_portfolios += len(p_data)
-        for holdings in p_data.values():
-            total_holdings_count += len(holdings)
-            for item in holdings:
-                qty = item.get("quantity", 0)
-                price = item.get("buy_price", 0)
-                total_capital_deployed += (qty * price)
+        p_list = p_data.values() if isinstance(p_data, dict) else (p_data if isinstance(p_data, list) else [])
+        for holdings in p_list:
+            if isinstance(holdings, list):
+                total_holdings_count += len(holdings)
+                for item in holdings:
+                    if isinstance(item, dict):
+                        qty = item.get("quantity", 0)
+                        price = item.get("buy_price", 0)
+                        total_capital_deployed += (qty * price)
 
     logs = []
     if os.path.exists(LOGS_FILE):
@@ -203,10 +206,13 @@ def admin_get_users():
         p_data = _get_user_dependencies()["load_portfolios"](uname)
         capital = 0.0
         h_count = 0
-        for holdings in p_data.values():
-            h_count += len(holdings)
-            for item in holdings:
-                capital += (item.get("quantity", 0) * item.get("buy_price", 0))
+        p_list = p_data.values() if isinstance(p_data, dict) else (p_data if isinstance(p_data, list) else [])
+        for holdings in p_list:
+            if isinstance(holdings, list):
+                h_count += len(holdings)
+                for item in holdings:
+                    if isinstance(item, dict):
+                        capital += (item.get("quantity", 0) * item.get("buy_price", 0))
 
         user_list.append({
             "username": record.get("username", uname),

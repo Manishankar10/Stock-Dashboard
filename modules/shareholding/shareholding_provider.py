@@ -10,6 +10,7 @@ Cuts and stops parser immediately when existing records are reached.
 from __future__ import annotations
 
 import ast
+import hashlib
 import collections
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -235,16 +236,29 @@ class ShareholdingProvider:
         self.app_data_dir.mkdir(parents=True, exist_ok=True)
         self.json_file = self.app_data_dir / "shareholding_patterns.json"
 
+        # Dedicated temporary & staging folder for resilient batch downloads
+        self.temp_dir = self.app_data_dir / "temp_shareholding"
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        self.xbrl_cache_dir = self.temp_dir / "xbrl_cache"
+        self.xbrl_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.batches_dir = self.temp_dir / "batches"
+        self.batches_dir.mkdir(parents=True, exist_ok=True)
+
         self._lock = threading.Lock()
         self._cache_records: List[Dict[str, Any]] = []
         self._last_synced: float = 0
         self._last_synced_display: str = ""
         self._is_refreshing: bool = False
         self._refresh_progress: str = ""
+        self._refresh_percent: int = 0
+        self._processed_count: int = 0
+        self._total_to_process: int = 0
+        self._current_batch: int = 0
+        self._total_batches: int = 0
         self._refresh_error: Optional[str] = None
         self._last_refresh_result: Optional[Dict[str, Any]] = None
 
-        # Load initial records from disk if present
+        # Load initial records from DB or disk if present
         self._load_from_disk()
 
     def _load_from_disk(self) -> None:
@@ -284,7 +298,6 @@ class ShareholdingProvider:
                     self._last_synced = self.json_file.stat().st_mtime
                     self._last_synced_display = format_ist_display(self._last_synced)
 
-            # Always sort recent records first
             def get_rec_sort_key(r):
                 t = parse_date_to_timestamp(r.get("broadcastDate") or r.get("submissionDate"))
                 rec_id = int(r.get("recordId") or 0) if str(r.get("recordId") or "").isdigit() else 0
@@ -302,7 +315,6 @@ class ShareholdingProvider:
             self._last_synced = now
             self._last_synced_display = now_display
 
-            # Ensure sorted recent first by broadcastDate / submissionDate descending
             def get_rec_sort_key(r):
                 t = parse_date_to_timestamp(r.get("broadcastDate") or r.get("submissionDate"))
                 rec_id = int(r.get("recordId") or 0) if str(r.get("recordId") or "").isdigit() else 0
@@ -329,17 +341,95 @@ class ShareholdingProvider:
                     shp_data=payload,
                     last_synced=self._last_synced,
                     last_synced_display=self._last_synced_display,
-                    backup_filepath=self.json_file
+                    backup_filepath=str(self.json_file)
                 )
             except Exception as e:
-                logger.error(f"Error saving to db_store: {e}")
+                logger.error(f"Error saving shareholding patterns to db_store: {e}")
 
-            # Also ensure local disk JSON file is updated
-            with open(self.json_file, "w", encoding="utf-8") as f:
+            # Also ensure local disk JSON file backup is updated atomically
+            tmp_file = self.json_file.with_suffix(".json.tmp")
+            with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump(payload, f, indent=2)
+            os.replace(tmp_file, self.json_file)
             logger.info(f"Saved {len(self._cache_records)} shareholding records to DB and {self.json_file}")
         except Exception as e:
-            logger.error(f"Error saving to {self.json_file}: {e}")
+            logger.error(f"Error saving shareholding patterns to disk: {e}")
+
+    def _get_xbrl_cache_path(self, url: str) -> Path:
+        """Compute disk cache path for an XBRL URL in the temp staging folder."""
+        h = hashlib.md5(url.strip().encode("utf-8")).hexdigest()
+        base = os.path.basename(url.split("?")[0])
+        safe_base = re.sub(r"[^a-zA-Z0-9_\-]", "_", base)[:30]
+        return self.xbrl_cache_dir / f"{safe_base}_{h}.json"
+
+    def _load_cached_xbrl(self, url: str) -> Optional[Dict[str, float]]:
+        """Load parsed XBRL result from disk cache if present."""
+        if not url:
+            return None
+        cache_path = self._get_xbrl_cache_path(url)
+        if cache_path.exists():
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return data
+            except Exception:
+                pass
+        return None
+
+    def _save_cached_xbrl(self, url: str, data: Dict[str, float]) -> None:
+        """Persist parsed XBRL result to disk cache in the temp folder."""
+        if not url:
+            return
+        try:
+            cache_path = self._get_xbrl_cache_path(url)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(data if isinstance(data, dict) else {}, f)
+        except Exception:
+            pass
+
+    def _save_sync_state(self, state_dict: Dict[str, Any]) -> None:
+        """Record live sync progress and batch status in temp staging folder."""
+        try:
+            state_file = self.temp_dir / "sync_state.json"
+            with open(state_file, "w", encoding="utf-8") as f:
+                json.dump(state_dict, f, indent=2)
+        except Exception:
+            pass
+
+    def _fetch_master_feed(self, session: requests.Session, url: str, temp_filename: str) -> List[Dict[str, Any]]:
+        """Fetch master feed with retries and cache raw payload in temp folder."""
+        temp_file = self.temp_dir / temp_filename
+        for attempt in range(3):
+            try:
+                res = session.get(url, timeout=15)
+                data = _parse_nse_json_safely(res)
+                if data:
+                    try:
+                        with open(temp_file, "w", encoding="utf-8") as tf:
+                            json.dump(data, tf)
+                    except Exception:
+                        pass
+                    return data
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1} to fetch {url} failed: {e}")
+                time.sleep(1.5)
+                try:
+                    session.get(NSE_HOME, timeout=6)
+                except Exception:
+                    pass
+
+        # If network fails after retries, try loading from previous temp file
+        if temp_file.exists():
+            try:
+                with open(temp_file, "r", encoding="utf-8") as tf:
+                    data = json.load(tf)
+                    if isinstance(data, list):
+                        logger.info(f"Loaded {len(data)} records from temp cache {temp_filename}")
+                        return data
+            except Exception:
+                pass
+        return []
 
     def start_admin_background_refresh(self) -> Dict[str, Any]:
         """Triggered from Admin portal with force=True bypassing rate-limit."""
@@ -348,7 +438,7 @@ class ShareholdingProvider:
         return res
 
     def get_status(self) -> Dict[str, Any]:
-        """Return provider status including last synced time and next refresh allowed."""
+        """Return provider status including last synced time, batch progress, and count of records done."""
         now = time.time()
         elapsed = now - self._last_synced if self._last_synced > 0 else 999999
         remaining = max(0, int(CACHE_TTL_SECONDS - elapsed))
@@ -358,6 +448,11 @@ class ShareholdingProvider:
         count_sme = sum(1 for r in self._cache_records if r.get("board", "").lower() == "sme")
 
         synced_disp = format_ist_display(self._last_synced_display or self._last_synced) if (self._last_synced or self._last_synced_display) else "Not synced yet"
+        
+        is_ref = self._is_refreshing
+        percent = getattr(self, "_refresh_percent", 0) if is_ref else 100
+        prog = self._refresh_progress or ("Idle" if not is_ref else "Refreshing shareholding filings...")
+        
         return {
             "last_synced": self._last_synced,
             "last_synced_display": synced_disp,
@@ -369,8 +464,13 @@ class ShareholdingProvider:
             "can_refresh": can_refresh,
             "remaining_seconds": remaining,
             "rate_limit_minutes": 15,
-            "is_refreshing": self._is_refreshing,
-            "progress": self._refresh_progress or ("Idle" if not self._is_refreshing else "Refreshing..."),
+            "is_refreshing": is_ref,
+            "progress": prog,
+            "percent": percent,
+            "processed_count": getattr(self, "_processed_count", len(self._cache_records)),
+            "total_to_process": getattr(self, "_total_to_process", len(self._cache_records)),
+            "current_batch": getattr(self, "_current_batch", 0),
+            "total_batches": getattr(self, "_total_batches", 0),
             "last_error": self._refresh_error,
             "last_result": self._last_refresh_result,
         }
@@ -399,7 +499,8 @@ class ShareholdingProvider:
 
             self._is_refreshing = True
             self._refresh_error = None
-            self._refresh_progress = "Connecting to NSE corporate feeds..."
+            self._refresh_percent = 2
+            self._refresh_progress = "Connecting to NSE corporate shareholding master feeds..."
 
         thread = threading.Thread(target=self._run_background_refresh, daemon=True)
         thread.start()
@@ -430,9 +531,9 @@ class ShareholdingProvider:
                 self._refresh_progress = ""
 
     def fetch_live_records(self, force: bool = False, is_worker: bool = False) -> Dict[str, Any]:
-        """Fetch latest records from NSE, enrich with FII/DII and QoQ comparison.
-        Enforces 15-minute rate limit window.
-        Cuts immediately when existing records are reached.
+        """Fetch latest records from NSE, split total records into batches,
+        download XBRL files into temp folder, and incrementally update the DB after each batch.
+        Tracks every count of records done with real-time progress.
         """
         now = time.time()
         with self._lock:
@@ -456,37 +557,28 @@ class ShareholdingProvider:
                     }
 
                 self._is_refreshing = True
-            self._refresh_progress = "Fetching master Equities and SME corporate feeds from NSE..."
+            self._refresh_progress = "Connecting to NSE corporate feeds..."
+            self._refresh_percent = 3
             self._refresh_error = None
 
         try:
-            logger.info("Starting manual refresh of Shareholding Patterns from NSE...")
+            logger.info("Starting batch refresh of Shareholding Patterns from NSE...")
             session = requests.Session()
             session.headers.update(HEADERS)
 
             # Handshake
-            session.get(NSE_HOME, timeout=8)
-
-            # 1. Fetch Current Quarter Equities & SME
-            eq_res = None
-            sme_res = None
             try:
-                eq_res = session.get(NSE_MASTER_EQ, timeout=15)
-            except Exception as e:
-                logger.warning(f"Failed to connect to NSE equities master: {e}")
+                session.get(NSE_HOME, timeout=8)
+            except Exception:
+                pass
 
-            try:
-                sme_res = session.get(NSE_MASTER_SME, timeout=15)
-            except Exception as e:
-                logger.warning(f"Failed to connect to NSE SME master: {e}")
-
-            raw_eq = _parse_nse_json_safely(eq_res)
-            raw_sme = _parse_nse_json_safely(sme_res)
+            # 1. Fetch Current Quarter Equities & SME Master Feeds
+            self._refresh_progress = "Fetching master Equities and SME corporate feeds from NSE..."
+            raw_eq = self._fetch_master_feed(session, NSE_MASTER_EQ, "master_equities.json")
+            raw_sme = self._fetch_master_feed(session, NSE_MASTER_SME, "master_sme.json")
 
             if not raw_eq and not raw_sme:
-                eq_code = getattr(eq_res, 'status_code', 'error')
-                sme_code = getattr(sme_res, 'status_code', 'error')
-                raise Exception(f"NSE corporate shareholdings endpoint returned HTTP {eq_code}/{sme_code}. Feed temporarily unavailable or restricted.")
+                raise Exception("NSE corporate shareholdings endpoint returned empty feed. Feed temporarily unavailable or restricted.")
 
             # Tag boards
             tagged_raw: List[Dict[str, Any]] = []
@@ -497,103 +589,13 @@ class ShareholdingProvider:
                 r["board"] = "SME"
                 tagged_raw.append(r)
 
-            # Sort new incoming by broadcastDate / recordId descending
+            # Sort new incoming by broadcastDate / submissionDate / recordId descending
             def get_rec_sort_key(r):
                 t = parse_date_to_timestamp(r.get("broadcastDate") or r.get("submissionDate"))
                 rec_id = int(r.get("recordId") or 0) if str(r.get("recordId") or "").isdigit() else 0
                 return (t, rec_id)
 
             tagged_raw.sort(key=get_rec_sort_key, reverse=True)
-
-            with self._lock:
-                existing_record_ids = {
-                    str(r.get("recordId"))
-                    for r in self._cache_records
-                    if r.get("recordId") is not None
-                }
-
-                # Collect new filings from official exchange feed
-                new_raw_items: List[Dict[str, Any]] = []
-                consecutive_existing = 0
-                for item in tagged_raw:
-                    rec_id = str(item.get("recordId") or "")
-
-                    if rec_id and rec_id in existing_record_ids:
-                        consecutive_existing += 1
-                        # If we have reached 60 consecutive existing records, cut stream
-                        if consecutive_existing >= 60:
-                            logger.info(f"Stream cut reached after {consecutive_existing} consecutive existing records.")
-                            break
-                        continue
-
-                    consecutive_existing = 0
-                    new_raw_items.append(item)
-
-            def fetch_single_xbrl(u: str) -> Tuple[str, Dict[str, float]]:
-                try:
-                    r = session.get(u, timeout=7)
-                    if r.status_code == 200:
-                        return u, parse_xbrl_content(r.content)
-                except Exception:
-                    pass
-                return u, {}
-
-            xbrl_cache: Dict[str, Dict[str, float]] = {}
-
-            # Self-healing: also identify existing cached records with missing/pending XBRL data
-            pending_cached = [
-                r for r in self._cache_records
-                if r.get("xbrl") and (r.get("fii_pct") is None or r.get("xbrl_status") == "pending" or (r.get("fii_pct") == 0.0 and r.get("dii_pct") == 0.0 and (r.get("change_fii_pct") or 0) < -2.0))
-            ]
-
-            if not new_raw_items:
-                # If no new records, check if any pending cached records can be healed
-                if pending_cached:
-                    logger.info(f"Checking {len(pending_cached)} pending XBRL records for newly replicated disclosures...")
-                    heal_urls = {r.get("xbrl") for r in pending_cached[:30]}
-                    with ThreadPoolExecutor(max_workers=8) as ex:
-                        for u, parsed_dict in ex.map(fetch_single_xbrl, heal_urls):
-                            xbrl_cache[u] = parsed_dict
-                    healed_any = False
-                    for r in pending_cached:
-                        x_url = r.get("xbrl")
-                        if x_url and x_url in xbrl_cache and xbrl_cache[x_url]:
-                            p = xbrl_cache[x_url]
-                            if "fii" in p or "dii" in p:
-                                fii = p.get("fii", 0.0)
-                                dii = p.get("dii", 0.0)
-                                prom = p.get("promoter", r.get("promoter_pct", 0.0))
-                                pub = p.get("public", round(max(0.0, 100.0 - prom - dii - fii), 2))
-                                r["promoter_pct"] = prom
-                                r["fii_pct"] = fii
-                                r["dii_pct"] = dii
-                                r["public_pct"] = pub
-                                r["xbrl_status"] = "ok"
-                                if r.get("prev_fii_pct") is not None:
-                                    r["change_fii_pct"] = round(fii - r["prev_fii_pct"], 2)
-                                if r.get("prev_dii_pct") is not None:
-                                    r["change_dii_pct"] = round(dii - r["prev_dii_pct"], 2)
-                                if r.get("prev_promoter_pct") is not None:
-                                    r["change_promoter_pct"] = round(prom - r["prev_promoter_pct"], 2)
-                                if r.get("prev_public_pct") is not None:
-                                    r["change_public_pct"] = round(pub - r["prev_public_pct"], 2)
-                                healed_any = True
-                    if healed_any:
-                        with self._lock:
-                            self._save_to_disk()
-
-                logger.info("No new shareholding records found. Existing records are completely up-to-date.")
-                with self._lock:
-                    self._last_synced = time.time()
-                    self._last_synced_display = format_ist_display(self._last_synced)
-                    self._save_to_disk()
-                    self._is_refreshing = False
-                return {
-                    "status": "success",
-                    "message": "All latest shareholding patterns are already up-to-date.",
-                    "added_count": 0,
-                    **self.get_status(),
-                }
 
             # Analyze incoming filings to dynamically detect current reporting quarter
             incoming_dates = [r.get("date") for r in tagged_raw if r.get("date")]
@@ -611,22 +613,10 @@ class ShareholdingProvider:
             prev_sme_url = q_windows["sme_prev_url"]
 
             # 2. Fetch Previous Quarter Filings Map dynamically
-            logger.info(f"Dynamically fetching previous quarter ({prev_quarter_date}) filings from {prev_eq_url}...")
-            self._refresh_progress = f"Fetching previous quarter ({prev_quarter_date}) filings..."
-            prev_eq_res = None
-            prev_sme_res = None
-            try:
-                prev_eq_res = session.get(prev_eq_url, timeout=15)
-            except Exception as e:
-                logger.warning(f"Failed to connect to prev quarter equities: {e}")
-
-            try:
-                prev_sme_res = session.get(prev_sme_url, timeout=15)
-            except Exception as e:
-                logger.warning(f"Failed to connect to prev quarter SME: {e}")
-
-            raw_prev_eq = _parse_nse_json_safely(prev_eq_res)
-            raw_prev_sme = _parse_nse_json_safely(prev_sme_res)
+            self._refresh_progress = f"Fetching previous quarter ({prev_quarter_date}) filings map..."
+            self._refresh_percent = 6
+            raw_prev_eq = self._fetch_master_feed(session, prev_eq_url, "master_prev_eq.json")
+            raw_prev_sme = self._fetch_master_feed(session, prev_sme_url, "master_prev_sme.json")
 
             q1_map: Dict[str, Dict[str, Any]] = {}
             for r in (raw_prev_eq + raw_prev_sme):
@@ -642,145 +632,248 @@ class ShareholdingProvider:
                         if s_key and s_key not in q1_map:
                             q1_map[s_key] = r
 
-            # 3. Collect XBRL URLs to parse
-            urls_to_fetch: Set[str] = set()
-            for item in new_raw_items:
-                if item.get("xbrl"):
-                    urls_to_fetch.add(item.get("xbrl"))
-                sym = clean_symbol(item.get("symbol"))
-                if sym in q1_map and q1_map[sym].get("xbrl"):
-                    urls_to_fetch.add(q1_map[sym].get("xbrl"))
-
-            # Also queue any pending cached items for re-fetch
-            for r in pending_cached[:30]:
-                urls_to_fetch.add(r.get("xbrl"))
-
-            logger.info(f"Parsing {len(urls_to_fetch)} XBRL documents for FII, DII, Promoter, and Public...")
-            self._refresh_progress = f"Parsing {len(urls_to_fetch)} XBRL documents for FII/DII holdings..." 
-
-            with ThreadPoolExecutor(max_workers=8) as ex:
-                for u, parsed_dict in ex.map(fetch_single_xbrl, urls_to_fetch):
-                    xbrl_cache[u] = parsed_dict
-
-            # Heal pending cached records
-            for r in pending_cached:
-                x_url = r.get("xbrl")
-                if x_url and x_url in xbrl_cache and xbrl_cache[x_url]:
-                    p = xbrl_cache[x_url]
-                    if "fii" in p or "dii" in p:
-                        fii = p.get("fii", 0.0)
-                        dii = p.get("dii", 0.0)
-                        prom = p.get("promoter", r.get("promoter_pct", 0.0))
-                        pub = p.get("public", round(max(0.0, 100.0 - prom - dii - fii), 2))
-                        r["promoter_pct"] = prom
-                        r["fii_pct"] = fii
-                        r["dii_pct"] = dii
-                        r["public_pct"] = pub
-                        r["xbrl_status"] = "ok"
-                        if r.get("prev_fii_pct") is not None:
-                            r["change_fii_pct"] = round(fii - r["prev_fii_pct"], 2)
-                        if r.get("prev_dii_pct") is not None:
-                            r["change_dii_pct"] = round(dii - r["prev_dii_pct"], 2)
-                        if r.get("prev_promoter_pct") is not None:
-                            r["change_promoter_pct"] = round(prom - r["prev_promoter_pct"], 2)
-                        if r.get("prev_public_pct") is not None:
-                            r["change_public_pct"] = round(pub - r["prev_public_pct"], 2)
-
-            # 4. Enrich new records with FII, DII, and QoQ change metrics
-            enriched_records: List[Dict[str, Any]] = []
-            for item in new_raw_items:
-                sym = clean_symbol(item.get("symbol"))
-                q2_xbrl_url = item.get("xbrl")
-                q2_xbrl_data = xbrl_cache.get(q2_xbrl_url, {}) if q2_xbrl_url else {}
-
-                q1_item = q1_map.get(sym, {})
-                q1_xbrl_url = q1_item.get("xbrl")
-                q1_xbrl_data = xbrl_cache.get(q1_xbrl_url, {}) if q1_xbrl_url else {}
-
-                # Current quarter values
-                promoter = q2_xbrl_data.get("promoter", float(item.get("pr_and_prgrp") or 0))
-
-                has_q2_inst = bool(q2_xbrl_data and ("fii" in q2_xbrl_data or "dii" in q2_xbrl_data))
-                if has_q2_inst:
-                    dii = q2_xbrl_data.get("dii", 0.0)
-                    fii = q2_xbrl_data.get("fii", 0.0)
-                    pub = q2_xbrl_data.get("public", round(max(0.0, 100.0 - promoter - dii - fii), 2))
-                    xbrl_status = "ok"
-                else:
-                    # XBRL document not yet replicated onto public archive
-                    dii = None
-                    fii = None
-                    pub = float(item.get("public_val") or 0) if item.get("public_val") is not None else None
-                    xbrl_status = "pending" if q2_xbrl_url else "none"
-
-                # Prev quarter values
-                has_prev = bool(q1_item or q1_xbrl_data)
-                prev_promoter = q1_xbrl_data.get("promoter", float(q1_item.get("pr_and_prgrp") or 0)) if has_prev else None
-
-                has_q1_inst = bool(q1_xbrl_data and ("fii" in q1_xbrl_data or "dii" in q1_xbrl_data))
-                if has_q1_inst:
-                    prev_dii = q1_xbrl_data.get("dii", 0.0)
-                    prev_fii = q1_xbrl_data.get("fii", 0.0)
-                    prev_pub = q1_xbrl_data.get("public", round(max(0.0, 100.0 - (prev_promoter or 0) - prev_dii - prev_fii), 2))
-                else:
-                    prev_dii = None
-                    prev_fii = None
-                    prev_pub = float(q1_item.get("public_val") or 0) if (has_prev and q1_item.get("public_val") is not None) else None
-
-                # Calculate QoQ changes only when both current and prev values are present
-                chg_promoter = round(promoter - prev_promoter, 2) if (prev_promoter is not None and promoter is not None) else None
-                chg_fii = round(fii - prev_fii, 2) if (fii is not None and prev_fii is not None) else None
-                chg_dii = round(dii - prev_dii, 2) if (dii is not None and prev_dii is not None) else None
-                chg_pub = round(pub - prev_pub, 2) if (pub is not None and prev_pub is not None) else None
-
-                rec = {
-                    "recordId": str(item.get("recordId") or ""),
-                    "symbol": sym,
-                    "name": item.get("name") or sym,
-                    "isin": item.get("isin") or "",
-                    "board": item.get("board", "Mainboard"),
-                    "date": item.get("date") or current_quarter_date,
-                    "prev_date": q1_item.get("date") or prev_quarter_date,
-                    "submissionDate": item.get("submissionDate") or "",
-                    "broadcastDate": item.get("broadcastDate") or item.get("submissionDate") or "",
-                    "promoter_pct": promoter,
-                    "fii_pct": fii,
-                    "dii_pct": dii,
-                    "public_pct": pub,
-                    "prev_promoter_pct": prev_promoter,
-                    "prev_fii_pct": prev_fii,
-                    "prev_dii_pct": prev_dii,
-                    "prev_public_pct": prev_pub,
-                    "change_promoter_pct": chg_promoter,
-                    "change_fii_pct": chg_fii,
-                    "change_dii_pct": chg_dii,
-                    "change_public_pct": chg_pub,
-                    "xbrl_status": xbrl_status,
-                    "remarksWeb": item.get("remarksWeb") or "N",
-                    "xbrl": item.get("xbrl") or "",
-                    "xbrlFileSize": item.get("xbrlFileSize") or "",
-                }
-                enriched_records.append(rec)
+            # 3. Setup Batch Splitting & Accounting
+            total_records_count = len(tagged_raw)
+            BATCH_SIZE = 40  # Split into batches of 40 records
+            batches = [tagged_raw[i:i + BATCH_SIZE] for i in range(0, total_records_count, BATCH_SIZE)]
+            total_batches = len(batches)
 
             with self._lock:
+                self._total_to_process = total_records_count
+                self._processed_count = 0
+                self._total_batches = total_batches
+                self._current_batch = 0
+
+            logger.info(f"Splitting {total_records_count} total records into {total_batches} batches of {BATCH_SIZE}...")
+
+            # Save initial sync state to temp folder
+            self._save_sync_state({
+                "status": "running",
+                "total_records": total_records_count,
+                "completed_records": 0,
+                "current_batch": 0,
+                "total_batches": total_batches,
+                "batch_size": BATCH_SIZE,
+                "started_at": format_ist_display(time.time()),
+            })
+
+            # Map existing records so we can preserve already enriched records without re-downloading XBRL
+            with self._lock:
+                existing_records_map = {
+                    (clean_symbol(r.get("symbol")), r.get("date")): r
+                    for r in self._cache_records
+                }
+
+            def fetch_single_xbrl_url(u: str) -> Tuple[str, Dict[str, float]]:
+                if not u:
+                    return u, {}
+                cached = self._load_cached_xbrl(u)
+                if cached is not None:
+                    return u, cached
+                try:
+                    r = session.get(u, timeout=3.5)
+                    if r.status_code == 200:
+                        parsed = parse_xbrl_content(r.content)
+                        self._save_cached_xbrl(u, parsed or {})
+                        return u, parsed or {}
+                    else:
+                        self._save_cached_xbrl(u, {})
+                except Exception:
+                    self._save_cached_xbrl(u, {})
+                return u, {}
+
+            # 4. Process Every Batch: Download into temp folder & Update DB progressively
+            for batch_idx, batch_items in enumerate(batches, start=1):
+                with self._lock:
+                    self._current_batch = batch_idx
+                    pct = max(8, int((self._processed_count / total_records_count) * 100))
+                    self._refresh_percent = pct
+                    self._refresh_progress = (
+                        f"Downloading & saving Batch {batch_idx}/{total_batches} "
+                        f"({self._processed_count}/{total_records_count} records done · {pct}%)..."
+                    )
+
+                # Collect XBRL URLs needed for this batch that aren't cached yet
+                urls_to_download: Set[str] = set()
+                for item in batch_items:
+                    sym = clean_symbol(item.get("symbol"))
+                    date_val = item.get("date") or current_quarter_date
+                    existing_entry = existing_records_map.get((sym, date_val))
+
+                    # If already enriched with valid FII/DII data, no need to re-download
+                    if existing_entry and existing_entry.get("xbrl_status") == "ok" and (existing_entry.get("fii_pct") is not None or existing_entry.get("dii_pct") is not None):
+                        continue
+
+                    q2_xbrl = item.get("xbrl")
+                    if q2_xbrl and self._load_cached_xbrl(q2_xbrl) is None:
+                        urls_to_download.add(q2_xbrl)
+
+                    q1_item = q1_map.get(sym, {})
+                    q1_xbrl = q1_item.get("xbrl")
+                    if q1_xbrl and self._load_cached_xbrl(q1_xbrl) is None:
+                        urls_to_download.add(q1_xbrl)
+
+                # Download missing XBRL URLs for this batch concurrently
+                if urls_to_download:
+                    with ThreadPoolExecutor(max_workers=8) as ex:
+                        for u, _ in ex.map(fetch_single_xbrl_url, urls_to_download):
+                            pass
+
+                # Enrich every item in this batch
+                batch_enriched: List[Dict[str, Any]] = []
+                for item in batch_items:
+                    sym = clean_symbol(item.get("symbol"))
+                    date_val = item.get("date") or current_quarter_date
+                    existing_entry = existing_records_map.get((sym, date_val))
+
+                    # Reuse existing enriched record if already complete
+                    if existing_entry and existing_entry.get("xbrl_status") == "ok" and (existing_entry.get("fii_pct") is not None or existing_entry.get("dii_pct") is not None):
+                        batch_enriched.append(existing_entry)
+                        continue
+
+                    q2_xbrl_url = item.get("xbrl")
+                    q2_xbrl_data = self._load_cached_xbrl(q2_xbrl_url) if q2_xbrl_url else {}
+                    q2_xbrl_data = q2_xbrl_data or {}
+
+                    q1_item = q1_map.get(sym, {})
+                    q1_xbrl_url = q1_item.get("xbrl")
+                    q1_xbrl_data = self._load_cached_xbrl(q1_xbrl_url) if q1_xbrl_url else {}
+                    q1_xbrl_data = q1_xbrl_data or {}
+
+                    # Current quarter values (fallback to official master percentages)
+                    promoter = q2_xbrl_data.get("promoter", float(item.get("pr_and_prgrp") or 0))
+
+                    has_q2_inst = bool(q2_xbrl_data and ("fii" in q2_xbrl_data or "dii" in q2_xbrl_data))
+                    if has_q2_inst:
+                        dii = q2_xbrl_data.get("dii", 0.0)
+                        fii = q2_xbrl_data.get("fii", 0.0)
+                        pub = q2_xbrl_data.get("public", round(max(0.0, 100.0 - promoter - dii - fii), 2))
+                        xbrl_status = "ok"
+                    else:
+                        dii = None
+                        fii = None
+                        pub = float(item.get("public_val") or 0) if item.get("public_val") is not None else None
+                        xbrl_status = "pending" if q2_xbrl_url else "none"
+
+                    # Prev quarter values
+                    has_prev = bool(q1_item or q1_xbrl_data)
+                    prev_promoter = q1_xbrl_data.get("promoter", float(q1_item.get("pr_and_prgrp") or 0)) if has_prev else None
+
+                    has_q1_inst = bool(q1_xbrl_data and ("fii" in q1_xbrl_data or "dii" in q1_xbrl_data))
+                    if has_q1_inst:
+                        prev_dii = q1_xbrl_data.get("dii", 0.0)
+                        prev_fii = q1_xbrl_data.get("fii", 0.0)
+                        prev_pub = q1_xbrl_data.get("public", round(max(0.0, 100.0 - (prev_promoter or 0) - prev_dii - prev_fii), 2))
+                    else:
+                        prev_dii = None
+                        prev_fii = None
+                        prev_pub = float(q1_item.get("public_val") or 0) if (has_prev and q1_item.get("public_val") is not None) else None
+
+                    chg_promoter = round(promoter - prev_promoter, 2) if (prev_promoter is not None and promoter is not None) else None
+                    chg_fii = round(fii - prev_fii, 2) if (fii is not None and prev_fii is not None) else None
+                    chg_dii = round(dii - prev_dii, 2) if (dii is not None and prev_dii is not None) else None
+                    chg_pub = round(pub - prev_pub, 2) if (pub is not None and prev_pub is not None) else None
+
+                    rec = {
+                        "recordId": str(item.get("recordId") or ""),
+                        "symbol": sym,
+                        "name": item.get("name") or sym,
+                        "isin": item.get("isin") or "",
+                        "board": item.get("board", "Mainboard"),
+                        "date": date_val,
+                        "prev_date": q1_item.get("date") or prev_quarter_date,
+                        "submissionDate": item.get("submissionDate") or "",
+                        "broadcastDate": item.get("broadcastDate") or item.get("submissionDate") or "",
+                        "promoter_pct": promoter,
+                        "fii_pct": fii,
+                        "dii_pct": dii,
+                        "public_pct": pub,
+                        "prev_promoter_pct": prev_promoter,
+                        "prev_fii_pct": prev_fii,
+                        "prev_dii_pct": prev_dii,
+                        "prev_public_pct": prev_pub,
+                        "change_promoter_pct": chg_promoter,
+                        "change_fii_pct": chg_fii,
+                        "change_dii_pct": chg_dii,
+                        "change_public_pct": chg_pub,
+                        "xbrl_status": xbrl_status,
+                        "remarksWeb": item.get("remarksWeb") or "N",
+                        "xbrl": item.get("xbrl") or "",
+                        "xbrlFileSize": item.get("xbrlFileSize") or "",
+                    }
+                    batch_enriched.append(rec)
+
+                # Save batch file in temp folder
+                try:
+                    batch_file = self.batches_dir / f"batch_{batch_idx:03d}.json"
+                    with open(batch_file, "w", encoding="utf-8") as bf:
+                        json.dump(batch_enriched, bf)
+                except Exception:
+                    pass
+
+                # Incrementally commit batch to in-memory cache and DB!
+                with self._lock:
+                    new_keys = {(r.get("symbol"), r.get("date")) for r in batch_enriched}
+                    retained = [r for r in self._cache_records if (r.get("symbol"), r.get("date")) not in new_keys]
+                    self._cache_records = batch_enriched + retained
+                    self._processed_count += len(batch_items)
+                    pct = min(99, int((self._processed_count / total_records_count) * 100))
+                    self._refresh_percent = pct
+                    self._refresh_progress = (
+                        f"Saved {self._processed_count} of {total_records_count} records to DB "
+                        f"(Batch {batch_idx}/{total_batches} · {pct}%)"
+                    )
+                    # Persist immediately to MongoDB Atlas, SQLite, and disk backup
+                    self._save_to_disk()
+
+                # Update sync state in temp folder
+                self._save_sync_state({
+                    "status": "running",
+                    "total_records": total_records_count,
+                    "completed_records": self._processed_count,
+                    "current_batch": batch_idx,
+                    "total_batches": total_batches,
+                    "percent": pct,
+                    "updated_at": format_ist_display(time.time()),
+                })
+
+                # Polite pause to ensure smooth background execution
+                time.sleep(0.04)
+
+            # 5. Finalize Completion and Ensure Exact Record Accounting
+            with self._lock:
+                self._refresh_percent = 100
+                total_final = len(self._cache_records)
+                count_eq = sum(1 for r in self._cache_records if r.get("board", "").lower() != "sme")
+                count_sme = sum(1 for r in self._cache_records if r.get("board", "").lower() == "sme")
+                self._refresh_progress = f"Complete: All {total_final} records synchronized to DB ({count_eq} Equities, {count_sme} SME)"
                 self._last_synced = time.time()
                 self._last_synced_display = format_ist_display(self._last_synced)
-                new_keys = {(r.get("symbol"), r.get("date")) for r in enriched_records}
-                retained_old = [r for r in self._cache_records if (r.get("symbol"), r.get("date")) not in new_keys]
-                self._cache_records = enriched_records + retained_old
                 self._save_to_disk()
                 self._is_refreshing = False
 
+            self._save_sync_state({
+                "status": "completed",
+                "total_records": total_final,
+                "completed_records": total_final,
+                "current_batch": total_batches,
+                "total_batches": total_batches,
+                "percent": 100,
+                "completed_at": self._last_synced_display,
+            })
+
             return {
                 "status": "success",
-                "message": f"Successfully updated shareholding records. Found {len(enriched_records)} new filing(s).",
-                "added_count": len(enriched_records),
+                "message": f"Successfully updated all {total_final} shareholding records in {total_batches} batches.",
+                "added_count": total_final,
                 **self.get_status(),
             }
         except Exception as e:
-            logger.error(f"Error during shareholding refresh: {e}")
+            logger.error(f"Error during shareholding refresh: {e}", exc_info=True)
             with self._lock:
                 self._is_refreshing = False
+                self._refresh_error = str(e)
+                self._refresh_progress = f"Refresh failed: {str(e)}"
             return {
                 "status": "error",
                 "message": f"Refresh failed: {str(e)}",

@@ -826,7 +826,7 @@ def save_industries_overview_db(overview_data, last_updated_iso=None, last_updat
         print(f"SQLite save_industries_overview error: {e}")
 
     # 3. Disk file backup for resilience
-    backup_path = backup_filepath or os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "industries_overview.json")
+    backup_path = str(backup_filepath) if backup_filepath else os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "industries_overview.json")
     try:
         os.makedirs(os.path.dirname(backup_path), exist_ok=True)
         tmp = backup_path + ".tmp"
@@ -1011,7 +1011,7 @@ def save_shareholding_patterns_db(shp_data, last_synced=None, last_synced_displa
         print(f"SQLite save_shareholding_patterns error: {e}")
 
     # 3. Disk file backup for resilience
-    backup_path = backup_filepath or os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "shareholding_patterns.json")
+    backup_path = str(backup_filepath) if backup_filepath else os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data", "shareholding_patterns.json")
     try:
         os.makedirs(os.path.dirname(backup_path), exist_ok=True)
         tmp = backup_path + ".tmp"
