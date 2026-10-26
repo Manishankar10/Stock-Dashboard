@@ -118,24 +118,8 @@
             </div>
         </div>
 
-        <!-- 2. Direction & Date Controls Row with Filter & Reset (Second Row) -->
-        <div class="tx-toolbar-row tx-controls-row">
-            <!-- Direction Filter Block with mf-secondary Custom Filter Button -->
-            <div class="tx-filter-block tx-direction-block">
-                <span class="tx-filter-label">DIRECTION</span>
-                <div class="tx-pill-group" role="group" aria-label="Deal Direction">
-                    <button type="button" class="tx-pill-btn active" data-action="all" onclick="setTxAction('all')">All</button>
-                    <button type="button" class="tx-pill-btn tx-pill-buy" data-action="buy" onclick="setTxAction('buy')">🟢 Buy</button>
-                    <button type="button" class="tx-pill-btn tx-pill-sell" data-action="sell" onclick="setTxAction('sell')">🔴 Sell</button>
-                </div>
-
-                <!-- Custom Screener Button with mf-secondary default styling -->
-                <button type="button" class="tx-btn-custom-bw tx-btn-custom-screener" id="tx-btn-custom-screener" onclick="openTxCustomModal()" title="Build custom transactions screener query">
-                    <span>Custom ⚡</span>
-                </button>
-            </div>
-
-            <!-- Date Picker Filter Block -->
+        <!-- 2. Date Range Row (Swapped above Direction) -->
+        <div class="tx-toolbar-row tx-date-row">
             <div class="tx-filter-block tx-date-filter-block">
                 <span class="tx-filter-label">DATE RANGE</span>
                 <div class="tx-pill-group tx-date-preset-pills">
@@ -158,8 +142,26 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Filter and Reset Action Buttons to call filter API -->
+        <!-- 3. Direction Row with Custom Filter, and Filter & Reset Buttons (3rd Row) -->
+        <div class="tx-toolbar-row tx-direction-row">
+            <!-- Direction Filter Block with mf-secondary Custom Filter Button -->
+            <div class="tx-filter-block tx-direction-block">
+                <span class="tx-filter-label">DIRECTION</span>
+                <div class="tx-pill-group" role="group" aria-label="Deal Direction">
+                    <button type="button" class="tx-pill-btn active" data-action="all" onclick="setTxAction('all')">All</button>
+                    <button type="button" class="tx-pill-btn tx-pill-buy" data-action="buy" onclick="setTxAction('buy')">🟢 Buy</button>
+                    <button type="button" class="tx-pill-btn tx-pill-sell" data-action="sell" onclick="setTxAction('sell')">🔴 Sell</button>
+                </div>
+
+                <!-- Custom Screener Button with mf-secondary default styling -->
+                <button type="button" class="tx-btn-custom-bw tx-btn-custom-screener" id="tx-btn-custom-screener" onclick="openTxCustomModal()" title="Build custom transactions screener query">
+                    <span>Custom ⚡</span>
+                </button>
+            </div>
+
+            <!-- Filter and Reset Action Buttons in same 3rd row -->
             <div class="tx-filter-block tx-filter-actions-block">
                 <button type="button" class="tx-btn-filter-apply" id="tx-btn-filter-apply" onclick="applyTxFilters()" title="Apply filters and fetch transactions">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
