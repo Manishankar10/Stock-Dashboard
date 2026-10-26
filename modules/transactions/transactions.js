@@ -627,6 +627,21 @@
         setTxDatePreset('all');
     };
 
+    window.applyTxFilters = function () {
+        const fromInput = document.getElementById('tx-date-from');
+        const toInput = document.getElementById('tx-date-to');
+        if (fromInput) state.fromDate = fromInput.value;
+        if (toInput) state.toDate = toInput.value;
+        const searchInput = document.getElementById('tx-search-input');
+        if (searchInput) state.searchQuery = searchInput.value;
+        state.page = 1;
+        fetchTransactions(false);
+    };
+
+    window.resetTxFilters = function () {
+        window.resetAllTxFilters();
+    };
+
     window.handleTxDateInputChange = function () {
         const fromInput = document.getElementById('tx-date-from');
         const toInput = document.getElementById('tx-date-to');
