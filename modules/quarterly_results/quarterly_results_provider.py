@@ -1345,15 +1345,45 @@ class QuarterlyResultsProvider:
             item_copy["in_portfolio"] = in_pf
             item_copy["in_watchlist"] = in_wl
             item_copy["_shp"] = shp_rec
+
+            # Extract or calculate QoQ stake changes for all categories if available
+            chg_prom = shp_rec.get("change_promoter_pct")
+            if chg_prom is None and shp_rec.get("promoter_pct") is not None and shp_rec.get("prev_promoter_pct") is not None:
+                try:
+                    chg_prom = round(float(shp_rec["promoter_pct"]) - float(shp_rec["prev_promoter_pct"]), 2)
+                except Exception:
+                    pass
+
+            chg_fii = shp_rec.get("change_fii_pct")
+            if chg_fii is None and shp_rec.get("fii_pct") is not None and shp_rec.get("prev_fii_pct") is not None:
+                try:
+                    chg_fii = round(float(shp_rec["fii_pct"]) - float(shp_rec["prev_fii_pct"]), 2)
+                except Exception:
+                    pass
+
+            chg_dii = shp_rec.get("change_dii_pct")
+            if chg_dii is None and shp_rec.get("dii_pct") is not None and shp_rec.get("prev_dii_pct") is not None:
+                try:
+                    chg_dii = round(float(shp_rec["dii_pct"]) - float(shp_rec["prev_dii_pct"]), 2)
+                except Exception:
+                    pass
+
+            chg_pub = shp_rec.get("change_public_pct")
+            if chg_pub is None and shp_rec.get("public_pct") is not None and shp_rec.get("prev_public_pct") is not None:
+                try:
+                    chg_pub = round(float(shp_rec["public_pct"]) - float(shp_rec["prev_public_pct"]), 2)
+                except Exception:
+                    pass
+
             item_copy["shareholding"] = {
                 "promoter_pct": shp_rec.get("promoter_pct"),
                 "fii_pct": shp_rec.get("fii_pct"),
                 "dii_pct": shp_rec.get("dii_pct"),
                 "public_pct": shp_rec.get("public_pct"),
-                "change_promoter_pct": shp_rec.get("change_promoter_pct"),
-                "change_fii_pct": shp_rec.get("change_fii_pct"),
-                "change_dii_pct": shp_rec.get("change_dii_pct"),
-                "change_public_pct": shp_rec.get("change_public_pct"),
+                "change_promoter_pct": chg_prom,
+                "change_fii_pct": chg_fii,
+                "change_dii_pct": chg_dii,
+                "change_public_pct": chg_pub,
             }
 
             # Custom query filter

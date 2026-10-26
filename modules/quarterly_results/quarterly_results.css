@@ -2604,6 +2604,13 @@
     padding: 0;
 }
 
+.qr-name-full {
+    display: inline;
+}
+.qr-name-short {
+    display: none;
+}
+
 .qr-shp-pill {
     display: flex;
     align-items: center;
@@ -2701,6 +2708,12 @@
 
 /* Mobile & Small Device Optimization for Maximum Space Utilization */
 @media (max-width: 768px) {
+    .qr-name-full {
+        display: none !important;
+    }
+    .qr-name-short {
+        display: inline !important;
+    }
     .qr-shp-bar {
         gap: 4px !important;
         margin: 6px 0 5px 0 !important;

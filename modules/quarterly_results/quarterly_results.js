@@ -882,6 +882,7 @@
     /**
      * Helper to build 4-column shareholding bar covering full card width
      * Removes redundant 'Shareholding' label to maximize space on mobile & desktop
+     * Shows promoter, FII, DII, and public changes if available
      */
     function buildShareholdingBarHtml(shp) {
         if (!shp) return '';
@@ -892,6 +893,13 @@
         const fiiVal = shp.fii_pct !== null && shp.fii_pct !== undefined ? `${Number(shp.fii_pct).toFixed(2)}%` : '—';
         const diiVal = shp.dii_pct !== null && shp.dii_pct !== undefined ? `${Number(shp.dii_pct).toFixed(2)}%` : '—';
         const pubVal = shp.public_pct !== null && shp.public_pct !== undefined ? `${Number(shp.public_pct).toFixed(1)}%` : '—';
+
+        let promChgHtml = '';
+        if (shp.change_promoter_pct !== null && shp.change_promoter_pct !== undefined) {
+            const c = Number(shp.change_promoter_pct);
+            if (c > 0) promChgHtml = ` <small class="pos">↑${c.toFixed(2)}%</small>`;
+            else if (c < 0) promChgHtml = ` <small class="neg">↓${Math.abs(c).toFixed(2)}%</small>`;
+        }
 
         let fiiChgHtml = '';
         if (shp.change_fii_pct !== null && shp.change_fii_pct !== undefined) {
@@ -907,26 +915,31 @@
             else if (c < 0) diiChgHtml = ` <small class="neg">↓${Math.abs(c).toFixed(2)}%</small>`;
         }
 
-        let promChgHtml = '';
-        if (shp.change_promoter_pct !== null && shp.change_promoter_pct !== undefined) {
-            const c = Number(shp.change_promoter_pct);
-            if (c > 0) promChgHtml = ` <small class="pos">↑${c.toFixed(2)}%</small>`;
-            else if (c < 0) promChgHtml = ` <small class="neg">↓${Math.abs(c).toFixed(2)}%</small>`;
+        let pubChgHtml = '';
+        if (shp.change_public_pct !== null && shp.change_public_pct !== undefined) {
+            const c = Number(shp.change_public_pct);
+            if (c > 0) pubChgHtml = ` <small class="pos">↑${c.toFixed(2)}%</small>`;
+            else if (c < 0) pubChgHtml = ` <small class="neg">↓${Math.abs(c).toFixed(2)}%</small>`;
         }
+
+        const promTip = `Promoter Holding: ${promVal}${shp.change_promoter_pct != null ? ` (QoQ: ${shp.change_promoter_pct > 0 ? '+' : ''}${Number(shp.change_promoter_pct).toFixed(2)}%)` : ''}`;
+        const fiiTip = `FII / Foreign Institutional Holding: ${fiiVal}${shp.change_fii_pct != null ? ` (QoQ: ${shp.change_fii_pct > 0 ? '+' : ''}${Number(shp.change_fii_pct).toFixed(2)}%)` : ''}`;
+        const diiTip = `DII / Mutual Funds & Domestic Institutional Holding: ${diiVal}${shp.change_dii_pct != null ? ` (QoQ: ${shp.change_dii_pct > 0 ? '+' : ''}${Number(shp.change_dii_pct).toFixed(2)}%)` : ''}`;
+        const pubTip = `Public / Retail Holding: ${pubVal}${shp.change_public_pct != null ? ` (QoQ: ${shp.change_public_pct > 0 ? '+' : ''}${Number(shp.change_public_pct).toFixed(2)}%)` : ''}`;
 
         return `
             <div class="qr-shp-bar">
-                <div class="qr-shp-pill promoter" title="Promoter Holding: ${promVal}">
+                <div class="qr-shp-pill promoter" title="${escapeHtml(promTip)}">
                     <span class="qr-shp-icon">🏛️</span><span class="qr-shp-name">Prom:</span> <strong>${promVal}</strong>${promChgHtml}
                 </div>
-                <div class="qr-shp-pill fii" title="FII / Foreign Institutional Holding: ${fiiVal}">
+                <div class="qr-shp-pill fii" title="${escapeHtml(fiiTip)}">
                     <span class="qr-shp-icon">🌐</span><span class="qr-shp-name">FII:</span> <strong>${fiiVal}</strong>${fiiChgHtml}
                 </div>
-                <div class="qr-shp-pill dii" title="DII / Mutual Funds &amp; Domestic Institutional Holding: ${diiVal}">
+                <div class="qr-shp-pill dii" title="${escapeHtml(diiTip)}">
                     <span class="qr-shp-icon">🏦</span><span class="qr-shp-name">DII:</span> <strong>${diiVal}</strong>${diiChgHtml}
                 </div>
-                <div class="qr-shp-pill public" title="Public / Retail Holding: ${pubVal}">
-                    <span class="qr-shp-icon">👥</span><span class="qr-shp-name">Public:</span> <strong>${pubVal}</strong>
+                <div class="qr-shp-pill public" title="${escapeHtml(pubTip)}">
+                    <span class="qr-shp-icon">👥</span><span class="qr-shp-name"><span class="qr-name-full">Public:</span><span class="qr-name-short">Pub:</span></span> <strong>${pubVal}</strong>${pubChgHtml}
                 </div>
             </div>
         `;
