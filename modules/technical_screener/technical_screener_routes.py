@@ -2138,6 +2138,7 @@ def _analyze_chart_patterns_for_stock(closes, highs, lows, volumes, dates, symbo
 
     return matched
 
+@technical_screener_bp.route("/api/technical-screener/hierarchy", methods=["GET"])
 def get_technical_screener_hierarchy_api():
     """
     Returns the master screener hierarchy and definitions from Collection 1.

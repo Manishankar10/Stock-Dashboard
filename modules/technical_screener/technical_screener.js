@@ -35,6 +35,10 @@
         if (!hierarchyData) {
             await fetchHierarchy();
         }
+        if (!hierarchyData) {
+            renderError('Unable to load technical screener hierarchy. Please check your network and retry.');
+            return;
+        }
         await triggerTechnicalScreenerScan(false);
     }
 
@@ -278,6 +282,10 @@
         if (!container) return;
 
         const catMeta = hierarchyData?.categories?.find(c => c.id === currentCategory);
+        if (!catMeta) {
+            renderError('Unable to load configuration for this category. Please click Retry.');
+            return;
+        }
 
         // Check if user has no stocks tracked in selected scope
         if (data.no_stocks) {
@@ -634,8 +642,12 @@
 
     // Auto-run if initial tab is technical-screener
     document.addEventListener('DOMContentLoaded', () => {
-        if (window.INITIAL_TAB === 'technical-screener') {
-            loadTechnicalScreenerModule();
+        if (window.INITIAL_TAB === 'technical-screener' || window.currentTab === 'technical-screener' || window.location.pathname === '/technical-screener') {
+            if (typeof window.switchTab === 'function') {
+                window.switchTab('technical-screener', false);
+            } else {
+                loadTechnicalScreenerModule();
+            }
         }
     });
 
