@@ -638,8 +638,8 @@
             let html = '';
 
             lines.forEach(l => {
-                const labelName = l.label || 'Support';
-                const itemColor = l.color || '#10b981';
+                const labelName = l.label || (l.type === 'target' ? 'Target' : l.type === 'stoploss' ? 'Stop Loss' : l.type === 'resistance' ? 'Resistance' : 'Support');
+                const itemColor = l.color || (l.type === 'resistance' || l.type === 'stoploss' ? '#ef5350' : '#10b981');
                 const isHidden = !!l.hidden;
                 const isLocked = !!l.locked;
                 html += `
@@ -740,7 +740,7 @@
                     showToast('Drawing line not found', 'warning');
                     return;
                 }
-                const labelText = line.label || (line.type === 'target' ? 'Target' : line.type === 'stoploss' ? 'Stop Loss' : 'Support');
+                const labelText = line.label || (line.type === 'target' ? 'Target' : line.type === 'stoploss' ? 'Stop Loss' : line.type === 'resistance' ? 'Resistance' : 'Support');
                 if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit ${escapeHtml(labelText)} Line</span>`;
 
                 if (labelGroup) labelGroup.style.display = 'block';
@@ -753,7 +753,7 @@
 
                 if (price2Group) price2Group.style.display = 'none';
 
-                currentColor = line.color || '#10b981';
+                currentColor = line.color || (line.type === 'resistance' || line.type === 'stoploss' ? '#ef5350' : '#10b981');
                 const currentWidth = line.lineWidth ? parseInt(line.lineWidth) : 2;
                 const currentStyle = line.lineStyle || 'dashed';
                 setEditDrawingLineWidth(currentWidth);
@@ -1064,6 +1064,10 @@
                 defaultPrice = parseFloat((latestCandlePrice * 0.95).toFixed(2));
                 label = 'Stop Loss';
                 color = activeToolColor || '#ef5350';
+            } else if (type === 'resistance') {
+                defaultPrice = parseFloat((latestCandlePrice * 1.03).toFixed(2));
+                label = 'Resistance';
+                color = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
             }
 
             const inputVal = await showCustomPrompt({ title: `Add ${label} Line`, message: `Enter custom price for ${label}:`, defaultValue: defaultPrice, placeholder: 'e.g. 2450.00' });
@@ -1080,7 +1084,7 @@
 
         function addHorizontalLineAtPrice(type, price, color, customLabel = null) {
             if (!mainSeries) return;
-            const label = customLabel || (type === 'target' ? 'Target' : type === 'stoploss' ? 'Stop Loss' : 'Support');
+            const label = customLabel || (type === 'target' ? 'Target' : type === 'stoploss' ? 'Stop Loss' : type === 'resistance' ? 'Resistance' : 'Support');
             const lineId = 'pl_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
             const lw = activeToolLineWidth ? parseInt(activeToolLineWidth) : 2;
             let ls = LightweightCharts.LineStyle.Dashed;
@@ -1088,11 +1092,14 @@
             else if (activeToolLineStyle === 'dotted') ls = LightweightCharts.LineStyle.Dotted;
             else if (activeToolLineStyle === 'dashed') ls = LightweightCharts.LineStyle.Dashed;
 
+            const defaultColor = (type === 'resistance' || type === 'stoploss') ? '#ef5350' : '#10b981';
+            const lineColor = color || ((activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : defaultColor);
+
             const lineData = {
                 id: lineId,
                 type: type,
                 price: price,
-                color: color || activeToolColor,
+                color: lineColor,
                 label: label,
                 lineWidth: lw,
                 lineStyle: activeToolLineStyle || 'dashed'
@@ -1100,7 +1107,7 @@
 
             const priceLine = mainSeries.createPriceLine({
                 price: price,
-                color: color || activeToolColor,
+                color: lineColor,
                 lineWidth: lw,
                 lineStyle: ls,
                 axisLabelVisible: true,
@@ -1174,11 +1181,23 @@
                 title: 'Support Line (Click)',
                 action: () => activateDrawingTool('support_click')
             },
+            'resistance_click': {
+                id: 'resistance_click',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#ef5350" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="#ef5350"/></svg>',
+                title: 'Resistance Line (Click)',
+                action: () => activateDrawingTool('resistance_click')
+            },
             'support': {
                 id: 'support',
                 icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="currentColor"/></svg>',
                 title: 'Support Line (Price)',
                 action: () => addHorizontalLinePrompt('support')
+            },
+            'resistance': {
+                id: 'resistance',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#ef5350" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="#ef5350"/></svg>',
+                title: 'Resistance Line (Price)',
+                action: () => addHorizontalLinePrompt('resistance')
             },
             'target': {
                 id: 'target',
@@ -1496,7 +1515,7 @@
         // =========================================================
         // ADVANCED CHART DRAWING TOOLS (Trendline, Rectangle, Time Line, Note, Support Click)
         // =========================================================
-        let currentDrawingTool = null; // 'support_click' | 'trendline' | 'rectangle' | 'vertical' | 'note' | 'parallelchannel' | 'measure' | 'fib' | 'fibext'
+        let currentDrawingTool = null; // 'support_click' | 'resistance_click' | 'trendline' | 'rectangle' | 'vertical' | 'note' | 'parallelchannel' | 'measure' | 'fib' | 'fibext'
         let drawingPoints = [];
         let tempMousePos = null;
         let drawingCanvas = null;
@@ -1586,13 +1605,13 @@
         }
 
         function updateDrawingToolButtonsUI() {
-            const tools = ['support_click', 'support', 'target', 'stoploss', 'trendline', 'rectangle', 'pricerange', 'parallelchannel', 'measure', 'fib', 'fibext', 'vertical', 'note'];
+            const tools = ['support_click', 'resistance_click', 'support', 'resistance', 'target', 'stoploss', 'trendline', 'rectangle', 'pricerange', 'parallelchannel', 'measure', 'fib', 'fibext', 'vertical', 'note'];
             tools.forEach(t => {
                 const btn = document.getElementById(`tool-btn-${t}`);
                 if (btn) {
                     if (t === currentDrawingTool) {
                         btn.classList.add('active');
-                        btn.style.background = '#10b981';
+                        btn.style.background = (t === 'resistance_click' || t === 'stoploss') ? '#ef5350' : '#10b981';
                         btn.style.color = '#ffffff';
                     } else {
                         btn.classList.remove('active');
@@ -1615,6 +1634,9 @@
             if (toolType === 'support_click') {
                 msg = '🟢 Support Line: Click chart or Y-Axis to place';
                 mobileMsg = '🟢 Tap to place line';
+            } else if (toolType === 'resistance_click') {
+                msg = '🔴 Resistance Line: Click chart or Y-Axis to place';
+                mobileMsg = '🔴 Tap to place line';
             } else if (toolType === 'pricerange') {
                 msg = '📏 Price Range: Click 1st, then 2nd point';
                 mobileMsg = '📏 Drag or tap to draw range';
@@ -2699,9 +2721,16 @@
                 return true;
             }
 
-            // 1-Point Tools (Support Click, Vertical, Note)
+            // 1-Point Tools (Support Click, Resistance Click, Vertical, Note)
             if (activeTool === 'support_click') {
                 addHorizontalLineAtPrice('support', parseFloat(endPt.price.toFixed(2)), activeToolColor || '#10b981', 'Support');
+                showSupportAddedToast(parseFloat(endPt.price.toFixed(2)), '🟢 Support Line');
+                cancelDrawingTool();
+                return true;
+            } else if (activeTool === 'resistance_click') {
+                const resColor = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
+                addHorizontalLineAtPrice('resistance', parseFloat(endPt.price.toFixed(2)), resColor, 'Resistance');
+                showSupportAddedToast(parseFloat(endPt.price.toFixed(2)), '🔴 Resistance Line');
                 cancelDrawingTool();
                 return true;
             } else if (activeTool === 'vertical') {
@@ -2952,6 +2981,13 @@
 
                 if (currentDrawingTool === 'support_click') {
                     addHorizontalLineAtPrice('support', parseFloat(pt.price.toFixed(2)), activeToolColor || '#10b981', 'Support');
+                    showSupportAddedToast(parseFloat(pt.price.toFixed(2)), '🟢 Support Line');
+                    cancelDrawingTool();
+                    return;
+                } else if (currentDrawingTool === 'resistance_click') {
+                    const resColor = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
+                    addHorizontalLineAtPrice('resistance', parseFloat(pt.price.toFixed(2)), resColor, 'Resistance');
+                    showSupportAddedToast(parseFloat(pt.price.toFixed(2)), '🔴 Resistance Line');
                     cancelDrawingTool();
                     return;
                 } else if (currentDrawingTool === 'vertical') {
@@ -6239,6 +6275,9 @@
                     <button type="button" id="btnPlusActionSupport" onclick="executePlusAction('support')" style="background: transparent; border: none; color: #10b981; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
                         🟢 Draw Support Line (₹<span id="plusActionSupportPrice">-</span>)
                     </button>
+                    <button type="button" id="btnPlusActionResistance" onclick="executePlusAction('resistance')" style="background: transparent; border: none; color: #ef5350; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                        🔴 Draw Resistance Line (₹<span id="plusActionResistancePrice">-</span>)
+                    </button>
                 `;
                 mainContainer.appendChild(menu);
 
@@ -6252,6 +6291,8 @@
                 if (btnAlt) btnAlt.onclick = () => executePlusAction('alert');
                 const btnSup = menu.querySelector('#btnPlusActionSupport');
                 if (btnSup) btnSup.onclick = () => executePlusAction('support');
+                const btnRes = menu.querySelector('#btnPlusActionResistance');
+                if (btnRes) btnRes.onclick = () => executePlusAction('resistance');
 
                 menu.onmouseleave = () => {
                     setTimeout(() => {
@@ -6273,6 +6314,8 @@
             if (alertEl) alertEl.innerText = currentPlusActionPrice.toFixed(2);
             const supEl = document.getElementById('plusActionSupportPrice');
             if (supEl) supEl.innerText = currentPlusActionPrice.toFixed(2);
+            const resEl = document.getElementById('plusActionResistancePrice');
+            if (resEl) resEl.innerText = currentPlusActionPrice.toFixed(2);
 
             const topPos = badge ? badge.offsetTop : 50;
             menu.style.top = Math.max(10, Math.min(topPos - 10, mainContainer.clientHeight - 130)) + 'px';
@@ -6303,6 +6346,10 @@
             } else if (actionType === 'support') {
                 addHorizontalLineAtPrice('support', price, activeToolColor || '#10b981', 'Support');
                 showSupportAddedToast(price, '🟢 Support Line');
+            } else if (actionType === 'resistance') {
+                const resColor = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
+                addHorizontalLineAtPrice('resistance', price, resColor, 'Resistance');
+                showSupportAddedToast(price, '🔴 Resistance Line');
             } else if (actionType === 'alert') {
                 openCreateAlertModal(currentChartSymbol, price);
             }
@@ -6337,6 +6384,8 @@
                 mainContainer.appendChild(toast);
             }
             if (toast) {
+                const isRed = labelStr.includes('Resistance') || labelStr.includes('Stop Loss') || labelStr.includes('🛑') || labelStr.includes('🔴');
+                toast.style.background = isRed ? '#ef5350' : '#10b981';
                 toast.innerText = `${labelStr} added at ₹${price}`;
                 toast.style.opacity = '1';
                 toast.style.display = 'block';

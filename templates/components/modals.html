@@ -495,9 +495,17 @@
                                     <span class="tool-item-info"><span>📍</span> <span>Support Line (Click Chart)</span></span>
                                     <span class="tool-fav-star" onclick="toggleFavoriteTool('support_click', event)" title="Toggle Favorite">☆</span>
                                 </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-resistance-click" onclick="activateDrawingTool('resistance_click'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>📍</span> <span>Resistance Line (Click Chart)</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('resistance_click', event)" title="Toggle Favorite">☆</span>
+                                </button>
                                 <button class="popover-menu-item popover-tool-item" id="tool-btn-support" onclick="addHorizontalLinePrompt('support'); closeAllChartPopovers();">
                                     <span class="tool-item-info"><span>🟢</span> <span>Support Line (Enter Price)</span></span>
                                     <span class="tool-fav-star" onclick="toggleFavoriteTool('support', event)" title="Toggle Favorite">☆</span>
+                                </button>
+                                <button class="popover-menu-item popover-tool-item" id="tool-btn-resistance" onclick="addHorizontalLinePrompt('resistance'); closeAllChartPopovers();">
+                                    <span class="tool-item-info"><span>🔴</span> <span>Resistance Line (Enter Price)</span></span>
+                                    <span class="tool-fav-star" onclick="toggleFavoriteTool('resistance', event)" title="Toggle Favorite">☆</span>
                                 </button>
                                 <button class="popover-menu-item popover-tool-item" id="tool-btn-target" onclick="addHorizontalLinePrompt('target'); closeAllChartPopovers();">
                                     <span class="tool-item-info"><span>🎯</span> <span>Target Price Line</span></span>
