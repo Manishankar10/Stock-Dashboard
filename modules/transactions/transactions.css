@@ -579,8 +579,8 @@ body.dark-mode .tx-btn-custom-screener.active {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 14px;
-    max-width: 800px;
-    width: 100%;
+    max-width: 980px;
+    width: 95%;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -2076,18 +2076,70 @@ body.dark-mode .tx-btn-custom-screener.active {
 .tx-deal-fields-popover {
     position: fixed;
     z-index: 1000000;
-    width: 380px;
+    width: 620px;
     max-width: calc(100vw - 32px);
     background: var(--bg-card, #1e293b);
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
     border-radius: 12px;
-    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.45), 0 6px 16px -2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 18px 40px -4px rgba(0, 0, 0, 0.5), 0 8px 20px -2px rgba(0, 0, 0, 0.35);
     padding: 14px 16px;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     animation: txPopoverScale 0.16s cubic-bezier(0.16, 1, 0.3, 1);
     box-sizing: border-box;
     font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+.tx-popover-pills-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.tx-popover-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-primary);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    white-space: nowrap;
+    line-height: 1.3;
+}
+
+.tx-popover-pill-code {
+    font-family: monospace;
+    font-size: 10.5px;
+    background: rgba(16, 185, 129, 0.08);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.tx-popover-pill-code:hover {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
+}
+
+.tx-popover-badge-buy {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #10b981;
+}
+
+.tx-popover-badge-sell {
+    background: rgba(239, 68, 68, 0.14);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #ef4444;
 }
 
 @keyframes txPopoverScale {
@@ -2158,7 +2210,7 @@ body.dark-mode .tx-btn-custom-screener.active {
 }
 
 .tx-popover-table-wrapper {
-    max-height: 220px;
+    max-height: 310px;
     overflow-y: auto;
     margin-bottom: 10px;
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.15));

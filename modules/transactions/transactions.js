@@ -1028,68 +1028,200 @@
         };
     }
 
+    let lastMouseCoords = { x: 0, y: 0 };
+
+    window.handleDealFieldsMouseMove = function (e) {
+        if (e && typeof e.clientX === 'number') {
+            lastMouseCoords.x = e.clientX;
+            lastMouseCoords.y = e.clientY;
+        }
+    };
+
     function renderDealFieldsPopover() {
-        const deal = getRepresentativeDeal();
-        const badgeEl = document.getElementById('tx-popover-badge');
-        const symEl = document.getElementById('tx-popover-stock-symbol');
-        const compEl = document.getElementById('tx-popover-stock-name');
-        const dateEl = document.getElementById('tx-popover-date');
         const tbody = document.getElementById('tx-popover-tbody');
         const queryCode = document.getElementById('tx-popover-query-code');
+        if (!tbody) return;
 
-        if (badgeEl) badgeEl.innerText = deal.deal_type_label || (deal.deal_type === 'block' ? 'Block Deal' : deal.deal_type === 'bulk' ? 'Bulk Deal' : 'Insider Deal');
-        if (symEl) symEl.innerText = deal.symbol || 'HATSUN';
-        if (compEl) compEl.innerText = deal.company || deal.symbol || '';
-        if (dateEl) dateEl.innerText = deal.date_display || deal.date || 'Latest';
-
-        // Calculate value in Crores
-        const rawVal = Number(deal.value) || 0;
-        const valCr = rawVal >= 100000 ? (rawVal / 10000000).toFixed(2) : rawVal.toFixed(2);
-        const qtyFormatted = deal.quantity ? Number(deal.quantity).toLocaleString() : '825,000';
-        const priceFormatted = deal.price ? `₹${Number(deal.price).toFixed(2)}` : '₹1,192.00';
-        const actionStr = (deal.action || 'BUY').toUpperCase();
-        const typeStr = (deal.deal_type || 'block').toLowerCase();
-        const clientStr = deal.client_name || 'Undisclosed Client';
-        const categoryStr = deal.person_category || 'Institutional';
-
-        const fields = [
-            { field: 'value', label: `${deal.value_formatted || ('₹' + valCr + ' Cr')} (${valCr})`, syntax: `value >= ${Math.max(1, Math.floor(Number(valCr) * 0.5))}` },
-            { field: 'qty', label: `${qtyFormatted} shares`, syntax: `qty >= ${Math.max(1000, Math.floor(Number(deal.quantity || 825000) * 0.5))}` },
-            { field: 'price', label: priceFormatted, syntax: `price >= ${Math.max(1, Math.floor(Number(deal.price || 1192) * 0.8))}` },
-            { field: 'action', label: `'${actionStr}'`, syntax: `action == '${actionStr}'` },
-            { field: 'type', label: `'${typeStr}'`, syntax: `type == '${typeStr}'` },
-            { field: 'symbol', label: `'${deal.symbol}'`, syntax: `symbol == '${deal.symbol}'` },
-            { field: 'client', label: `'${clientStr}'`, syntax: `client contains '${clientStr.split(' ')[0]}'` },
-            { field: 'category', label: `'${categoryStr}'`, syntax: `category contains '${categoryStr.split(' ')[0]}'` }
+        // Comprehensive real examples per field covering all actions, types, and categories
+        const fieldsData = [
+            {
+                field: 'action',
+                examples: [
+                    { label: '🟢 BUY', class: 'tx-popover-badge-buy', desc: 'Buy transaction (2,157 in DB)' },
+                    { label: '🔴 SELL', class: 'tx-popover-badge-sell', desc: 'Sell transaction (1,864 in DB)' }
+                ],
+                syntaxes: [
+                    "action == 'BUY'",
+                    "action == 'SELL'"
+                ]
+            },
+            {
+                field: 'type',
+                examples: [
+                    { label: '🏢 Block', desc: 'Block Deals (300 in DB)' },
+                    { label: '📦 Bulk', desc: 'Bulk Deals (663 in DB)' },
+                    { label: '🕵️ Insider', desc: 'Insider Deals (3,058 in DB)' }
+                ],
+                syntaxes: [
+                    "type == 'block'",
+                    "type == 'bulk'",
+                    "type == 'insider'"
+                ]
+            },
+            {
+                field: 'category',
+                examples: [
+                    { label: '👑 Promoters' },
+                    { label: '👥 Promoter Group' },
+                    { label: '🏦 Institutional / HNI' },
+                    { label: '👔 Director' },
+                    { label: '🗝️ Key Managerial' },
+                    { label: '💼 Employees' },
+                    { label: '👪 Relative' }
+                ],
+                syntaxes: [
+                    "category contains 'Promoter'",
+                    "category contains 'Institutional'",
+                    "category contains 'Director'",
+                    "category contains 'Key Managerial'"
+                ]
+            },
+            {
+                field: 'value',
+                examples: [
+                    { label: '₹660.80 Cr' },
+                    { label: '₹149.84 Cr' },
+                    { label: '₹98.34 Cr' },
+                    { label: '₹50.23 Cr' }
+                ],
+                syntaxes: [
+                    "value >= 10",
+                    "value >= 25",
+                    "value >= 50",
+                    "value >= 100"
+                ]
+            },
+            {
+                field: 'qty',
+                examples: [
+                    { label: '4,953,560 shs' },
+                    { label: '2,651,975 shs' },
+                    { label: '825,000 shs' }
+                ],
+                syntaxes: [
+                    "qty >= 100000",
+                    "qty >= 500000",
+                    "qty >= 1000000"
+                ]
+            },
+            {
+                field: 'price',
+                examples: [
+                    { label: '₹1,334.00' },
+                    { label: '₹1,192.00' },
+                    { label: '₹565.00' },
+                    { label: '₹75.59' }
+                ],
+                syntaxes: [
+                    "price >= 500",
+                    "price >= 1000",
+                    "price < 200"
+                ]
+            },
+            {
+                field: 'symbol',
+                examples: [
+                    { label: 'GALLANTT' },
+                    { label: 'HATSUN' },
+                    { label: 'ADANIENSOL' },
+                    { label: 'TCS' }
+                ],
+                syntaxes: [
+                    "symbol == 'GALLANTT'",
+                    "symbol in ('TCS', 'INFY')"
+                ]
+            },
+            {
+                field: 'client',
+                examples: [
+                    { label: 'LARSEN & TOUBRO' },
+                    { label: 'BOFA SECURITIES' },
+                    { label: 'PI OPPORTUNITIES' },
+                    { label: 'MUTUAL FUND' }
+                ],
+                syntaxes: [
+                    "client contains 'MUTUAL'",
+                    "client contains 'SECURITIES'",
+                    "client contains 'LARSEN'"
+                ]
+            },
+            {
+                field: 'mode',
+                examples: [
+                    { label: 'Market Purchase' },
+                    { label: 'Off Market' },
+                    { label: 'Market Sale' }
+                ],
+                syntaxes: [
+                    "mode contains 'Market'",
+                    "mode contains 'Off Market'"
+                ]
+            }
         ];
 
-        if (tbody) {
-            tbody.innerHTML = fields.map(f => `
-                <tr>
-                    <td class="field-name">${f.field}</td>
-                    <td class="field-val" title="${escapeHtml(f.label)}">${escapeHtml(f.label)}</td>
-                    <td><code class="field-syntax">${escapeHtml(f.syntax)}</code></td>
-                </tr>
-            `).join('');
-        }
+        tbody.innerHTML = fieldsData.map(f => `
+            <tr>
+                <td class="field-name"><strong>${escapeHtml(f.field)}</strong></td>
+                <td class="field-val">
+                    <div class="tx-popover-pills-list">
+                        ${f.examples.map(ex => `
+                            <span class="tx-popover-pill ${ex.class || ''}" title="${escapeHtml(ex.desc || ex.label)}">
+                                ${escapeHtml(ex.label)}
+                            </span>
+                        `).join('')}
+                    </div>
+                </td>
+                <td>
+                    <div class="tx-popover-pills-list">
+                        ${f.syntaxes.map(syn => `
+                            <button type="button" class="tx-popover-pill tx-popover-pill-code" 
+                                    data-syntax="${escapeHtml(syn)}"
+                                    onclick="window.insertPopoverSyntax && window.insertPopoverSyntax(this)"
+                                    title="Click to insert into query">
+                                <code>${escapeHtml(syn)}</code>
+                            </button>
+                        `).join('')}
+                    </div>
+                </td>
+            </tr>
+        `).join('');
 
-        const sampleQuery = `value >= ${Math.max(1, Math.floor(Number(valCr) * 0.5))} and action == '${actionStr}' and type == '${typeStr}'`;
-        if (queryCode) queryCode.innerText = sampleQuery;
+        if (queryCode) {
+            queryCode.innerText = "value >= 25 and action == 'BUY' and type == 'block'";
+        }
     }
+
+    window.insertPopoverSyntax = function (btn) {
+        if (!btn) return;
+        const syn = btn.getAttribute('data-syntax') || (btn.innerText || '').trim();
+        if (syn && window.insertTxTokenAtCursor) {
+            window.insertTxTokenAtCursor(syn);
+        }
+    };
 
     window.insertPopoverQuery = function () {
         const queryCode = document.getElementById('tx-popover-query-code');
         const input = document.getElementById('tx-custom-query-input');
         if (queryCode && input) {
             input.value = queryCode.innerText;
-            if (typeof validateLiveQueryDebounced === 'function') {
-                validateLiveQueryDebounced();
+            if (typeof validateTxQueryDebounced === 'function') {
+                validateTxQueryDebounced();
             }
         }
         hideDealFieldsPopover();
     };
 
-    window.showDealFieldsPopover = function () {
+    window.showDealFieldsPopover = function (e) {
         if (popoverHideTimer) clearTimeout(popoverHideTimer);
         const trigger = document.getElementById('tx-deal-fields-label');
         const popover = document.getElementById('tx-deal-fields-popover');
@@ -1097,23 +1229,40 @@
 
         renderDealFieldsPopover();
 
-        const rect = trigger.getBoundingClientRect();
-        const vh = window.innerHeight || document.documentElement.clientHeight;
-        const vw = window.innerWidth || document.documentElement.clientWidth;
+        // Extract mouse coordinates (where the mouse is)
+        let mouseX = (e && typeof e.clientX === 'number' && e.clientX > 0) ? e.clientX : lastMouseCoords.x;
+        let mouseY = (e && typeof e.clientY === 'number' && e.clientY > 0) ? e.clientY : lastMouseCoords.y;
+
+        const triggerRect = trigger.getBoundingClientRect();
+        if (!mouseX || !mouseY) {
+            mouseX = triggerRect.left + (triggerRect.width / 2);
+            mouseY = triggerRect.bottom;
+        }
 
         popover.style.display = 'block';
-        const popWidth = popover.offsetWidth || 380;
-        const popHeight = popover.offsetHeight || 340;
+        const popWidth = popover.offsetWidth || 620;
+        const popHeight = popover.offsetHeight || 420;
+        const vw = window.innerWidth || document.documentElement.clientWidth;
+        const vh = window.innerHeight || document.documentElement.clientHeight;
 
-        let left = rect.left;
-        if (left + popWidth > vw - 12) {
-            left = vw - popWidth - 12;
+        // Position horizontally where mouse is
+        let left = mouseX + 14;
+        if (left + popWidth > vw - 16) {
+            // Flip to left of cursor if overflowing viewport
+            left = mouseX - popWidth - 14;
         }
-        if (left < 12) left = 12;
+        if (left < 16) {
+            left = Math.max(12, Math.min(vw - popWidth - 12, (vw - popWidth) / 2));
+        }
 
-        let top = rect.bottom + 6;
-        if (top + popHeight > vh - 12) {
-            top = Math.max(10, rect.top - popHeight - 6);
+        // Position vertically where mouse is
+        let top = mouseY + 14;
+        if (top + popHeight > vh - 16) {
+            // Flip above cursor if overflowing bottom
+            top = mouseY - popHeight - 14;
+        }
+        if (top < 16) {
+            top = Math.max(12, Math.min(vh - popHeight - 12, 16));
         }
 
         popover.style.left = `${Math.round(left)}px`;
@@ -1129,7 +1278,7 @@
         popoverHideTimer = setTimeout(() => {
             const popover = document.getElementById('tx-deal-fields-popover');
             if (popover) popover.style.display = 'none';
-        }, 250);
+        }, 280);
     };
 
     window.toggleDealFieldsPopover = function (e) {
@@ -1138,7 +1287,7 @@
         if (popover && popover.style.display === 'block') {
             window.hideDealFieldsPopover();
         } else {
-            window.showDealFieldsPopover();
+            window.showDealFieldsPopover(e);
         }
     };
 
@@ -1147,19 +1296,18 @@
         const popover = document.getElementById('tx-deal-fields-popover');
         if (trigger && !trigger.dataset.listenersAttached) {
             trigger.dataset.listenersAttached = 'true';
-            trigger.addEventListener('mouseenter', showDealFieldsPopover);
+            trigger.addEventListener('mouseenter', (e) => showDealFieldsPopover(e));
+            trigger.addEventListener('mousemove', (e) => handleDealFieldsMouseMove(e));
             trigger.addEventListener('mouseleave', hideDealFieldsPopover);
             trigger.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (popover && popover.style.display === 'block') hideDealFieldsPopover();
-                else showDealFieldsPopover();
+                else showDealFieldsPopover(e);
             });
         }
         if (popover && !popover.dataset.listenersAttached) {
             popover.dataset.listenersAttached = 'true';
-            popover.addEventListener('mouseenter', () => {
-                if (popoverHideTimer) clearTimeout(popoverHideTimer);
-            });
+            popover.addEventListener('mouseenter', cancelHideDealFieldsPopover);
             popover.addEventListener('mouseleave', hideDealFieldsPopover);
         }
     };
