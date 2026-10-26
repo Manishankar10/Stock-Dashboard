@@ -309,6 +309,7 @@ class QuarterlyResultsProvider:
                 "prev": q_info["prev"],
                 "year_ago": q_info["year_ago"],
             },
+            "shareholding_period": self._get_shareholding_period(shp_map),
             "new_companies_found": new_companies_count,
             "total_records": len(data),
             "data": data,
@@ -783,6 +784,77 @@ class QuarterlyResultsProvider:
         self._shp_map_cache = shp_map
         self._shp_map_time = now
         return shp_map
+
+    @staticmethod
+    def _format_shp_quarter_date(d_str: Any) -> str:
+        """Format raw SHP date string (e.g. 30-SEP-2026, 30-JUN-2026) to standard quarter label like 'June 26', 'Sep 26'."""
+        if not d_str:
+            return ""
+        d_clean = str(d_str).strip()
+        m = re.search(r'([A-Za-z]{3,9})[- /]+(\d{2,4})', d_clean)
+        if m:
+            mon = m.group(1).title()
+            yr = m.group(2)
+            if len(yr) == 4:
+                yr = yr[2:]
+            mon_map = {
+                'Jan': 'Jan', 'Feb': 'Feb', 'Mar': 'Mar', 'Apr': 'Apr',
+                'May': 'May', 'Jun': 'June', 'Jul': 'July', 'Aug': 'Aug',
+                'Sep': 'Sep', 'Oct': 'Oct', 'Nov': 'Nov', 'Dec': 'Dec'
+            }
+            short_m = mon[:3].title()
+            return f"{mon_map.get(short_m, short_m)} {yr}"
+
+        m2 = re.match(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', d_clean)
+        if m2:
+            yr = m2.group(1)[2:]
+            mo_num = int(m2.group(2))
+            months = ["", "Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            if 1 <= mo_num <= 12:
+                return f"{months[mo_num]} {yr}"
+
+        return d_clean
+
+    def _get_shareholding_period(self, shp_map: Optional[Dict[str, Dict[str, Any]]] = None) -> Dict[str, str]:
+        """Compute dynamic shareholding comparison period (e.g. 'June 26 vs Sep 26') from shareholding data."""
+        now = time.time()
+        if getattr(self, "_shp_period_cache", None) and (now - getattr(self, "_shp_period_time", 0)) < 300:
+            return self._shp_period_cache
+
+        if shp_map is None:
+            shp_map = self._get_shareholding_map()
+
+        shp_prev_str = ""
+        shp_curr_str = ""
+        shp_label = ""
+
+        if shp_map:
+            from collections import Counter
+            pairs = Counter()
+            for sym, r in shp_map.items():
+                pd = r.get("prev_date")
+                cd = r.get("date")
+                if pd and cd:
+                    p_lbl = self._format_shp_quarter_date(pd)
+                    c_lbl = self._format_shp_quarter_date(cd)
+                    if p_lbl and c_lbl:
+                        pairs[(p_lbl, c_lbl)] += 1
+
+            if pairs:
+                top_pair = pairs.most_common(1)[0][0]
+                shp_prev_str = top_pair[0]
+                shp_curr_str = top_pair[1]
+                shp_label = f"{shp_prev_str} vs {shp_curr_str}"
+
+        res = {
+            "label": shp_label,
+            "prev_quarter": shp_prev_str,
+            "curr_quarter": shp_curr_str,
+            "display": f"Shareholding: {shp_label}" if shp_label else ""
+        }
+        self._shp_period_cache = res
+        self._shp_period_time = now
+        return res
 
     def _extract_field_value(self, record: Dict[str, Any], field_name: str) -> Optional[float]:
         """Extract numeric metric value from quarterly results record or linked shareholding data."""
@@ -1432,6 +1504,7 @@ class QuarterlyResultsProvider:
                 "prev": q_info["prev"],
                 "year_ago": q_info["year_ago"],
             },
+            "shareholding_period": self._get_shareholding_period(shp_map),
             "last_updated": self._last_fetch_time,
             "last_updated_display": getattr(self, "_last_updated_display", None) or (format_ist_display(self._last_fetch_time) if self._last_fetch_time else "Just now"),
             "active_filters": {

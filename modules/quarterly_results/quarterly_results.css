@@ -107,6 +107,73 @@
     color: #059669;
 }
 
+/* Dynamic Shareholding Comparison Period Pill */
+.qr-shp-period-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6.5px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 3.5px 10px;
+    border-radius: 20px;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    color: #a5b4fc;
+    letter-spacing: 0.01em;
+    vertical-align: middle;
+    white-space: nowrap;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    margin-left: 8px;
+    transition: all 0.2s ease;
+}
+
+:root:not([data-theme="dark"]) .qr-shp-period-pill {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.22);
+    color: #4f46e5;
+    box-shadow: 0 1px 3px rgba(99, 102, 241, 0.08);
+}
+
+.qr-shp-period-dot {
+    width: 6.5px;
+    height: 6.5px;
+    border-radius: 50%;
+    background: #6366f1;
+    display: inline-block;
+    box-shadow: 0 0 6px rgba(99, 102, 241, 0.6);
+    flex-shrink: 0;
+}
+
+:root:not([data-theme="dark"]) .qr-shp-period-dot {
+    background: #4f46e5;
+    box-shadow: 0 0 6px rgba(79, 70, 229, 0.4);
+}
+
+.qr-shp-period-label {
+    opacity: 0.85;
+    font-weight: 500;
+    font-size: 11.5px;
+}
+
+.qr-shp-label-full {
+    display: inline;
+}
+
+.qr-shp-label-short {
+    display: none;
+}
+
+.qr-shp-period-val {
+    font-weight: 700;
+    color: #e0e7ff;
+    letter-spacing: -0.01em;
+}
+
+:root:not([data-theme="dark"]) .qr-shp-period-val {
+    color: #1e1b4b;
+}
+
 /* Mobile Filter Trigger Button */
 .qr-mobile-filter-trigger {
     display: none; /* Shown on screens <= 992px */
@@ -1558,6 +1625,24 @@
         font-size: 16px !important;
     }
 
+    .qr-page-title {
+        gap: 6px !important;
+    }
+    .qr-shp-period-pill {
+        font-size: 11px !important;
+        padding: 2.5px 7px !important;
+        gap: 4.5px !important;
+        border-radius: 12px !important;
+        margin-left: 4px !important;
+    }
+    .qr-shp-period-dot {
+        width: 5px !important;
+        height: 5px !important;
+    }
+    .qr-shp-period-label {
+        font-size: 10.5px !important;
+    }
+
     .qr-download-btn span {
         display: none;
     }
@@ -1985,6 +2070,16 @@
 }
 
 @media (max-width: 480px) {
+    .qr-shp-label-full {
+        display: none !important;
+    }
+    .qr-shp-label-short {
+        display: inline !important;
+    }
+    .qr-shp-period-pill {
+        font-size: 10px !important;
+        padding: 2px 5.5px !important;
+    }
     .qr-bottom-info {
         font-size: 11.5px;
     }

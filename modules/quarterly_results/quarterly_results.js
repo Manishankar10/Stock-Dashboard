@@ -216,11 +216,26 @@
     function renderQuarterlyResultsUI(data) {
         if (!data) return;
 
-        // 0. Sync Quarter Title Tag
+        // 0. Sync Quarter Title Tag & Dynamic Shareholding Comparison Period
         const qLabel = data.quarter_label || data.current_quarter || '';
         const titleQuarterEl = document.getElementById('qr-title-quarter');
         if (titleQuarterEl) {
             titleQuarterEl.textContent = qLabel ? `(${qLabel})` : '';
+        }
+
+        const shpPillEl = document.getElementById('qr-shp-period-pill');
+        const shpValEl = document.getElementById('qr-shp-period-val');
+        const shpPeriod = data.shareholding_period;
+        const shpLabelText = (shpPeriod && (shpPeriod.label || shpPeriod.display)) ? (shpPeriod.label || shpPeriod.display) : '';
+
+        if (shpPillEl && shpValEl) {
+            if (shpLabelText) {
+                shpValEl.textContent = shpLabelText;
+                shpPillEl.style.display = 'inline-flex';
+                shpPillEl.title = `Shareholding Pattern Comparison: ${shpLabelText}`;
+            } else {
+                shpPillEl.style.display = 'none';
+            }
         }
 
         // 1. Counters
