@@ -82,7 +82,49 @@
 
     <!-- Filter & Controls Toolbar -->
     <div class="tx-toolbar">
-        <!-- 1. Scope Row: Scope Filter + Search Box (Moved together along with Scope row) -->
+        <!-- 1. Direction & Date Controls Row (Swapped to Top Row) -->
+        <div class="tx-toolbar-row tx-controls-row">
+            <!-- Direction Filter Block with B&W Custom Filter Button -->
+            <div class="tx-filter-block tx-direction-block">
+                <span class="tx-filter-label">DIRECTION</span>
+                <div class="tx-pill-group" role="group" aria-label="Deal Direction">
+                    <button type="button" class="tx-pill-btn active" data-action="all" onclick="setTxAction('all')">All</button>
+                    <button type="button" class="tx-pill-btn tx-pill-buy" data-action="buy" onclick="setTxAction('buy')">🟢 Buy</button>
+                    <button type="button" class="tx-pill-btn tx-pill-sell" data-action="sell" onclick="setTxAction('sell')">🔴 Sell</button>
+                </div>
+
+                <!-- Custom Screener Button with B&W Button Design -->
+                <button type="button" class="tx-btn-custom-bw" id="tx-btn-custom-screener" onclick="openTxCustomModal()" title="Build custom transactions screener query">
+                    <span>Custom ⚡</span>
+                </button>
+            </div>
+
+            <!-- Date Picker Filter (Apply and Reset removed; auto-applies on date selection) -->
+            <div class="tx-filter-block tx-date-filter-block">
+                <span class="tx-filter-label">DATE RANGE</span>
+                <div class="tx-pill-group tx-date-preset-pills">
+                    <button type="button" class="tx-pill-btn active" data-preset="all" onclick="setTxDatePreset('all')">All Dates</button>
+                    <button type="button" class="tx-pill-btn" data-preset="today" onclick="setTxDatePreset('today')">Today</button>
+                    <button type="button" class="tx-pill-btn" data-preset="7d" onclick="setTxDatePreset('7d')">7 Days</button>
+                    <button type="button" class="tx-pill-btn" data-preset="30d" onclick="setTxDatePreset('30d')">30 Days</button>
+                    <button type="button" class="tx-pill-btn" data-preset="custom" onclick="setTxDatePreset('custom')">Custom</button>
+                </div>
+                
+                <!-- Date Picker Inputs -->
+                <div class="tx-date-inputs-container" id="tx-date-inputs-container">
+                    <div class="tx-date-input-group">
+                        <label for="tx-date-from">From</label>
+                        <input type="date" id="tx-date-from" class="tx-date-picker" onchange="handleTxDateInputChange()">
+                    </div>
+                    <div class="tx-date-input-group">
+                        <label for="tx-date-to">To</label>
+                        <input type="date" id="tx-date-to" class="tx-date-picker" onchange="handleTxDateInputChange()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Scope & Search Row (Swapped to Second Row) -->
         <div class="tx-toolbar-row tx-scope-search-row">
             <div class="tx-filter-block tx-scope-block">
                 <span class="tx-filter-label">SCOPE</span>
@@ -115,60 +157,6 @@
                 </span>
                 <input type="text" id="tx-search-input" class="tx-search-input" placeholder="Search by stock, company, or client..." oninput="handleTxSearch(this.value)" autocomplete="off" spellcheck="false" aria-label="Search transactions">
                 <button type="button" id="tx-search-clear" class="tx-search-clear" onclick="clearTxSearch()" style="display: none;" title="Clear search">✕</button>
-            </div>
-        </div>
-
-        <!-- 2. Direction & Controls Row: Direction Filter + Custom ⚡ + Apply + Reset, along with Date Range -->
-        <div class="tx-toolbar-row tx-controls-row">
-            <!-- Direction Filter Block (with Custom ⚡, Apply, Reset buttons) -->
-            <div class="tx-filter-block tx-direction-block">
-                <span class="tx-filter-label">DIRECTION</span>
-                <div class="tx-pill-group" role="group" aria-label="Deal Direction">
-                    <button type="button" class="tx-pill-btn active" data-action="all" onclick="setTxAction('all')">All</button>
-                    <button type="button" class="tx-pill-btn tx-pill-buy" data-action="buy" onclick="setTxAction('buy')">🟢 Buy</button>
-                    <button type="button" class="tx-pill-btn tx-pill-sell" data-action="sell" onclick="setTxAction('sell')">🔴 Sell</button>
-                </div>
-
-                <!-- Custom ⚡ Screener Button, Apply, and Reset Buttons along with DIRECTION row -->
-                <div class="tx-direction-actions">
-                    <button type="button" class="tx-pill-btn tx-btn-custom-screener" id="tx-btn-custom-screener" onclick="openTxCustomModal()" title="Build custom transactions screener query">
-                        <span>Custom ⚡</span>
-                    </button>
-                    <button type="button" class="tx-btn-apply-screener" id="tx-btn-apply" onclick="applyTxFiltersAndScreener()" title="Apply current filters and custom query">
-                        Apply
-                    </button>
-                    <button type="button" class="tx-btn-reset-screener" id="tx-btn-reset" onclick="resetAllTxFilters()" title="Reset all filters and query to default">
-                        Reset
-                    </button>
-                </div>
-            </div>
-
-            <!-- Date Picker Filter -->
-            <div class="tx-filter-block tx-date-filter-block">
-                <span class="tx-filter-label">DATE RANGE</span>
-                <div class="tx-pill-group tx-date-preset-pills">
-                    <button type="button" class="tx-pill-btn active" data-preset="all" onclick="setTxDatePreset('all')">All Dates</button>
-                    <button type="button" class="tx-pill-btn" data-preset="today" onclick="setTxDatePreset('today')">Today</button>
-                    <button type="button" class="tx-pill-btn" data-preset="7d" onclick="setTxDatePreset('7d')">7 Days</button>
-                    <button type="button" class="tx-pill-btn" data-preset="30d" onclick="setTxDatePreset('30d')">30 Days</button>
-                    <button type="button" class="tx-pill-btn" data-preset="custom" onclick="setTxDatePreset('custom')">Custom</button>
-                </div>
-                
-                <!-- Date Picker Inputs -->
-                <div class="tx-date-inputs-container" id="tx-date-inputs-container">
-                    <div class="tx-date-input-group">
-                        <label for="tx-date-from">From</label>
-                        <input type="date" id="tx-date-from" class="tx-date-picker" onchange="handleTxDateInputChange()">
-                    </div>
-                    <div class="tx-date-input-group">
-                        <label for="tx-date-to">To</label>
-                        <input type="date" id="tx-date-to" class="tx-date-picker" onchange="handleTxDateInputChange()">
-                    </div>
-                    <div class="tx-date-actions">
-                        <button type="button" class="tx-btn-apply-date" onclick="applyTxDateFilter()" title="Apply date filter">Apply</button>
-                        <button type="button" class="tx-btn-clear-date" onclick="clearTxDateFilter()" title="Reset date filter">Reset</button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

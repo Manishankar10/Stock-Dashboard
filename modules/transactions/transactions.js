@@ -628,9 +628,18 @@
     };
 
     window.handleTxDateInputChange = function () {
+        const fromInput = document.getElementById('tx-date-from');
+        const toInput = document.getElementById('tx-date-to');
+        state.fromDate = fromInput ? fromInput.value : '';
+        state.toDate = toInput ? toInput.value : '';
+        state.datePreset = 'custom';
+
         document.querySelectorAll('.tx-date-preset-pills [data-preset]').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-preset') === 'custom');
         });
+
+        state.page = 1;
+        fetchTransactions(false);
     };
 
     window.setTxAction = function (action) {
