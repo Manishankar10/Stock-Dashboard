@@ -710,7 +710,56 @@
             return '#' + match.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
         }
 
-        function openEditDrawingModal(kind, id) {
+        function switchEditDrawingTab(tabName) {
+            const tabs = ['style', 'text', 'coordinates'];
+            tabs.forEach(t => {
+                const pane = document.getElementById('editDrawingTab' + t.charAt(0).toUpperCase() + t.slice(1));
+                const btn = document.getElementById('editDrawingTabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (pane) {
+                    pane.style.display = (t === tabName) ? 'block' : 'none';
+                }
+                if (btn) {
+                    if (t === tabName) {
+                        btn.style.background = '#3b82f6';
+                        btn.style.color = '#ffffff';
+                        btn.classList.add('active');
+                    } else {
+                        btn.style.background = 'transparent';
+                        btn.style.color = 'var(--text-secondary, #94a3b8)';
+                        btn.classList.remove('active');
+                    }
+                }
+            });
+        }
+        window.switchEditDrawingTab = switchEditDrawingTab;
+
+        function setEditDrawingTextPos(pos) {
+            const input = document.getElementById('editDrawingTextPos');
+            if (input) input.value = pos;
+            document.querySelectorAll('#editDrawingTextPosGroup .edit-text-pos-btn').forEach(btn => {
+                const active = btn.dataset.pos === pos;
+                btn.style.borderColor = active ? '#3b82f6' : 'var(--border-color, #363a45)';
+                btn.style.background = active ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-input, #131722)';
+                btn.style.color = active ? '#3b82f6' : 'var(--text-primary, #ffffff)';
+                btn.classList.toggle('active', active);
+            });
+        }
+        window.setEditDrawingTextPos = setEditDrawingTextPos;
+
+        function setEditDrawingTextValign(valign) {
+            const input = document.getElementById('editDrawingTextValign');
+            if (input) input.value = valign;
+            document.querySelectorAll('#editDrawingTextValignGroup .edit-text-valign-btn').forEach(btn => {
+                const active = btn.dataset.valign === valign;
+                btn.style.borderColor = active ? '#3b82f6' : 'var(--border-color, #363a45)';
+                btn.style.background = active ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-input, #131722)';
+                btn.style.color = active ? '#3b82f6' : 'var(--text-primary, #ffffff)';
+                btn.classList.toggle('active', active);
+            });
+        }
+        window.setEditDrawingTextValign = setEditDrawingTextValign;
+
+        function openEditDrawingModal(kind, id, initialTab = 'style') {
             const modal = document.getElementById('editDrawingModal');
             if (!modal) return;
 
@@ -721,9 +770,10 @@
             if (idInput) idInput.value = id;
 
             const titleEl = document.getElementById('editDrawingTitle');
-            const labelGroup = document.getElementById('editDrawingLabelGroup');
-            const labelTitle = document.getElementById('editDrawingLabelTitle');
-            const labelInput = document.getElementById('editDrawingLabel');
+            const textInput = document.getElementById('editDrawingTextInput');
+            const textColorInput = document.getElementById('editDrawingTextColor');
+            const textColorLabel = document.getElementById('editDrawingTextColorLabel');
+            const fontSizeSelect = document.getElementById('editDrawingFontSize');
             const price1Group = document.getElementById('editDrawingPrice1Group');
             const price1Title = document.getElementById('editDrawingPrice1Title');
             const price1Input = document.getElementById('editDrawingPrice1');
@@ -732,6 +782,11 @@
             const price2Input = document.getElementById('editDrawingPrice2');
 
             let currentColor = '#10b981';
+            let currentText = '';
+            let currentTextColor = '#ffffff';
+            let currentFontSize = 12;
+            let currentTextPos = 'center';
+            let currentTextValign = 'top';
 
             if (kind === 'line') {
                 const lines = getSavedPriceLines(currentChartSymbol);
@@ -743,10 +798,6 @@
                 const labelText = line.label || (line.type === 'target' ? 'Target' : line.type === 'stoploss' ? 'Stop Loss' : line.type === 'resistance' ? 'Resistance' : 'Support');
                 if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit ${escapeHtml(labelText)} Line</span>`;
 
-                if (labelGroup) labelGroup.style.display = 'block';
-                if (labelTitle) labelTitle.innerText = 'Line Label / Name';
-                if (labelInput) labelInput.value = line.label || '';
-
                 if (price1Group) price1Group.style.display = 'block';
                 if (price1Title) price1Title.innerText = 'Price Level (₹)';
                 if (price1Input) price1Input.value = line.price !== undefined ? line.price : '';
@@ -754,6 +805,12 @@
                 if (price2Group) price2Group.style.display = 'none';
 
                 currentColor = line.color || (line.type === 'resistance' || line.type === 'stoploss' ? '#ef5350' : '#10b981');
+                currentText = line.text || '';
+                currentTextColor = line.textColor || currentColor;
+                currentFontSize = line.fontSize || 12;
+                currentTextPos = line.textPos || 'center';
+                currentTextValign = line.textValign || 'top';
+
                 const currentWidth = line.lineWidth ? parseInt(line.lineWidth) : 2;
                 const currentStyle = line.lineStyle || 'dashed';
                 setEditDrawingLineWidth(currentWidth);
@@ -774,6 +831,11 @@
                 const typeInput = document.getElementById('editDrawingType');
                 if (typeInput) typeInput.value = shape.type;
                 currentColor = shape.color || '#3b82f6';
+                currentText = shape.text || '';
+                currentTextColor = shape.textColor || currentColor;
+                currentFontSize = shape.fontSize || 12;
+                currentTextPos = shape.textPos || 'center';
+                currentTextValign = shape.textValign || 'top';
 
                 const propsGroup = document.getElementById('editDrawingLinePropsGroup');
                 if (shape.type === 'note') {
@@ -792,93 +854,86 @@
 
                 if (shape.type === 'note') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Note Callout</span>`;
-                    if (labelGroup) labelGroup.style.display = 'block';
-                    if (labelTitle) labelTitle.innerText = 'Note Text / Message';
-                    if (labelInput) labelInput.value = shape.text || '';
-
                     if (price1Group) price1Group.style.display = 'block';
                     if (price1Title) price1Title.innerText = 'Price Level (₹)';
                     if (price1Input) price1Input.value = shape.price !== undefined ? shape.price : '';
-
                     if (price2Group) price2Group.style.display = 'none';
                 } else if (shape.type === 'trendline') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Trendline</span>`;
-                    if (labelGroup) labelGroup.style.display = 'none';
-
                     if (price1Group) price1Group.style.display = 'block';
                     if (price1Title) price1Title.innerText = 'Start Price (₹)';
                     if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
-
                     if (price2Group) price2Group.style.display = 'block';
                     if (price2Title) price2Title.innerText = 'End Price (₹)';
                     if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
                 } else if (shape.type === 'rectangle') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Rectangle Zone</span>`;
-                    if (labelGroup) labelGroup.style.display = 'none';
-
                     if (price1Group) price1Group.style.display = 'block';
                     if (price1Title) price1Title.innerText = 'Top / Start Price (₹)';
                     if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
-
                     if (price2Group) price2Group.style.display = 'block';
                     if (price2Title) price2Title.innerText = 'Bottom / End Price (₹)';
                     if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
                 } else if (shape.type === 'pricerange') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Price Range Calculator</span>`;
-                    if (labelGroup) labelGroup.style.display = 'none';
-
                     if (price1Group) price1Group.style.display = 'block';
                     if (price1Title) price1Title.innerText = 'Base Price (₹)';
                     if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
-
                     if (price2Group) price2Group.style.display = 'block';
                     if (price2Title) price2Title.innerText = 'Target Price (₹)';
                     if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
                 } else if (shape.type === 'parallelchannel') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Parallel Channel</span>`;
-                    if (labelGroup) labelGroup.style.display = 'none';
-
                     if (price1Group) price1Group.style.display = 'block';
                     if (price1Title) price1Title.innerText = 'Baseline Start Price (₹)';
                     if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
-
                     if (price2Group) price2Group.style.display = 'block';
                     if (price2Title) price2Title.innerText = 'Baseline End Price (₹)';
                     if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
                 } else if (shape.type === 'fib') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Fib Retracement</span>`;
-                    if (labelGroup) labelGroup.style.display = 'none';
-
                     if (price1Group) price1Group.style.display = 'block';
                     if (price1Title) price1Title.innerText = 'Swing Start Price (₹)';
                     if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
-
                     if (price2Group) price2Group.style.display = 'block';
                     if (price2Title) price2Title.innerText = 'Swing End Price (₹)';
                     if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
                 } else if (shape.type === 'fibext') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Trend-Based Fib Extension</span>`;
-                    if (labelGroup) labelGroup.style.display = 'none';
-
                     if (price1Group) price1Group.style.display = 'block';
                     if (price1Title) price1Title.innerText = 'Wave 1 Start Price (₹)';
                     if (price1Input) price1Input.value = shape.price1 !== undefined ? shape.price1 : '';
-
                     if (price2Group) price2Group.style.display = 'block';
                     if (price2Title) price2Title.innerText = 'Wave 1 End Price (₹)';
                     if (price2Input) price2Input.value = shape.price2 !== undefined ? shape.price2 : '';
                 } else if (shape.type === 'vertical') {
                     if (titleEl) titleEl.innerHTML = `<span>✏️</span> <span>Edit Time Line Marker</span>`;
-                    if (labelGroup) labelGroup.style.display = 'none';
                     if (price1Group) price1Group.style.display = 'none';
                     if (price2Group) price2Group.style.display = 'none';
                 }
             }
 
+            // Populate Text tab values
+            if (textInput) textInput.value = currentText;
+            if (textColorInput) textColorInput.value = currentTextColor;
+            if (textColorLabel) textColorLabel.innerText = currentTextColor;
+            if (fontSizeSelect) fontSizeSelect.value = String(currentFontSize);
+            setEditDrawingTextPos(currentTextPos);
+            setEditDrawingTextValign(currentTextValign);
+
             setEditDrawingColor(currentColor);
+            switchEditDrawingTab(initialTab || 'style');
+
             modal.style.display = 'flex';
             if (typeof window.bringModalToFront === 'function') {
                 window.bringModalToFront(modal);
+            }
+
+            if (initialTab === 'text') {
+                setTimeout(() => {
+                    const ti = document.getElementById('editDrawingTextInput');
+                    if (ti) ti.focus();
+                }, 80);
             }
         }
 
@@ -938,10 +993,20 @@
             const chosenStyle = styleInput ? (styleInput.value || 'solid') : 'solid';
             const chosenLocked = lockInput ? !!lockInput.checked : false;
 
+            const textInput = document.getElementById('editDrawingTextInput');
+            const textColorInput = document.getElementById('editDrawingTextColor');
+            const fontSizeSelect = document.getElementById('editDrawingFontSize');
+            const textPosInput = document.getElementById('editDrawingTextPos');
+            const textValignInput = document.getElementById('editDrawingTextValign');
+
+            const chosenText = textInput ? textInput.value.trim() : '';
+            const chosenTextColor = textColorInput ? textColorInput.value : chosenColor;
+            const chosenFontSize = fontSizeSelect ? (parseInt(fontSizeSelect.value) || 12) : 12;
+            const chosenTextPos = textPosInput ? (textPosInput.value || 'center') : 'center';
+            const chosenTextValign = textValignInput ? (textValignInput.value || 'top') : 'top';
+
             if (kind === 'line') {
-                const labelInput = document.getElementById('editDrawingLabel');
                 const priceInput = document.getElementById('editDrawingPrice1');
-                const newLabel = labelInput ? labelInput.value.trim() : '';
                 const newPrice = priceInput ? parseFloat(priceInput.value) : NaN;
 
                 if (isNaN(newPrice)) {
@@ -952,12 +1017,16 @@
                 const lines = getSavedPriceLines(currentChartSymbol);
                 const line = lines.find(l => l.id === id);
                 if (line) {
-                    line.label = newLabel || line.label || 'Line';
                     line.price = newPrice;
                     line.color = chosenColor;
                     line.lineWidth = chosenWidth;
                     line.lineStyle = chosenStyle;
                     line.locked = chosenLocked;
+                    line.text = chosenText;
+                    line.textColor = chosenTextColor;
+                    line.fontSize = chosenFontSize;
+                    line.textPos = chosenTextPos;
+                    line.textValign = chosenTextValign;
                     persistLinesForSymbol(currentChartSymbol, lines);
                     restoreSavedPriceLines(currentChartSymbol);
                     redrawCanvasOverlay();
@@ -974,10 +1043,13 @@
                 if (shape) {
                     shape.color = chosenColor;
                     shape.locked = chosenLocked;
+                    shape.text = chosenText;
+                    shape.textColor = chosenTextColor;
+                    shape.fontSize = chosenFontSize;
+                    shape.textPos = chosenTextPos;
+                    shape.textValign = chosenTextValign;
                     if (shape.type === 'note') {
-                        const textInput = document.getElementById('editDrawingLabel');
                         const priceInput = document.getElementById('editDrawingPrice1');
-                        if (textInput) shape.text = textInput.value.trim() || 'Note';
                         if (priceInput && !isNaN(parseFloat(priceInput.value))) {
                             shape.price = parseFloat(priceInput.value);
                         }
@@ -1042,6 +1114,10 @@
         window.openEditDrawingModal = openEditDrawingModal;
         window.closeEditDrawingModal = closeEditDrawingModal;
         window.setEditDrawingColor = setEditDrawingColor;
+        window.setEditDrawingLineWidth = setEditDrawingLineWidth;
+        window.switchEditDrawingTab = switchEditDrawingTab;
+        window.setEditDrawingTextPos = setEditDrawingTextPos;
+        window.setEditDrawingTextValign = setEditDrawingTextValign;
         window.submitSaveEditDrawing = submitSaveEditDrawing;
         window.deleteCurrentEditDrawing = deleteCurrentEditDrawing;
 
@@ -1883,7 +1959,7 @@
                 if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn'))) return;
 
                 const pt = getChartPointFromEvent(e);
-                if (pt && findShapeOrLineAtPoint(pt.x, pt.y)) {
+                if (pt && (activeAddTextButtonBox || findShapeOrLineAtPoint(pt.x, pt.y))) {
                     // Handled by handleChartPaneMouseDown for drawing drag & click
                     return;
                 }
@@ -2299,6 +2375,17 @@
 
             if (activeDrawingDrag) return;
 
+            if (activeAddTextButtonBox) {
+                const b = activeAddTextButtonBox;
+                if (pt.x >= b.x && pt.x <= b.x + b.width && pt.y >= b.y && pt.y <= b.y + b.height) {
+                    if (drawingCanvas) {
+                        drawingCanvas.style.pointerEvents = 'auto';
+                        drawingCanvas.style.cursor = 'pointer';
+                    }
+                    return;
+                }
+            }
+
             const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
             if (drawingCanvas) {
                 if (clickedObj) {
@@ -2319,6 +2406,18 @@
             if (currentDrawingTool) return;
             const pt = getChartPointFromEvent(e);
             if (!pt) return;
+
+            // Direct click on "+ Add text" pill
+            if (activeAddTextButtonBox) {
+                const b = activeAddTextButtonBox;
+                if (pt.x >= b.x && pt.x <= b.x + b.width && pt.y >= b.y && pt.y <= b.y + b.height) {
+                    if (e.cancelable) e.preventDefault();
+                    e.stopPropagation();
+                    hideCanvasObjectMenu();
+                    openEditDrawingModal(b.kind, b.id, 'text');
+                    return;
+                }
+            }
 
             const clickedObj = findShapeOrLineAtPoint(pt.x, pt.y);
             if (!clickedObj) {
@@ -3706,6 +3805,12 @@
                             </button>
                         </div>
                     </div>
+                    <button type="button" class="canvas-obj-btn canvas-obj-text-btn" title="Add / Edit Text" aria-label="Add / Edit Text" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}', 'text'); hideCanvasObjectMenu();">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="4 7 4 4 20 4 20 7"/>
+                            <line x1="12" y1="4" x2="12" y2="20"/>
+                        </svg>
+                    </button>
                     `}
 
                     <button type="button" class="canvas-obj-btn canvas-obj-lock-btn ${isLocked ? 'canvas-obj-locked active' : ''}" onclick="${toggleLockFn}" title="${lockTitle}" aria-label="${lockTitle}">
@@ -3737,8 +3842,12 @@
                     </button>
                     <div id="canvasObjMoreMenu" class="canvas-obj-more-menu" style="display: none;">
                         <div class="canvas-obj-more-header" title="${escapeHtml(obj.name)}">${escapeHtml(obj.name)}</div>
-                        <button type="button" class="canvas-obj-more-item" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}'); hideCanvasObjectMenu();">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <button type="button" class="canvas-obj-more-item" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}', 'text'); hideCanvasObjectMenu();">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                            <span>Add / Edit Text...</span>
+                        </button>
+                        <button type="button" class="canvas-obj-more-item" onclick="openEditDrawingModal('${obj.kind}', '${obj.id}', 'style'); hideCanvasObjectMenu();">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                             <span>Settings...</span>
                         </button>
                         <button type="button" class="canvas-obj-more-item canvas-obj-more-item-lock" onclick="${toggleLockFn}">
@@ -3858,12 +3967,62 @@
         }
         window.updateCanvasObjectPopupLockState = updateCanvasObjectPopupLockState;
 
+        
+        let activeAddTextButtonBox = null;
+
+        function renderAddTextBadge(ctx, x, y, kind, id, isDark) {
+            ctx.save();
+            const text = '+ Add text';
+            ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            const tm = ctx.measureText(text);
+            const w = tm.width + 14;
+            const h = 20;
+            const rx = Math.round(x - w / 2);
+            const ry = Math.round(y - h);
+
+            activeAddTextButtonBox = {
+                kind: kind,
+                id: id,
+                x: rx - 4,
+                y: ry - 4,
+                width: w + 8,
+                height: h + 8
+            };
+
+            ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.95)';
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(rx, ry, w, h, 4);
+            } else {
+                ctx.rect(rx, ry, w, h);
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#3b82f6';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, rx + w / 2, ry + h / 2);
+            ctx.restore();
+        }
+
         function redrawCanvasOverlay() {
             if (!drawingCanvas) return;
             const ctx = drawingCanvas.getContext('2d');
             ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
 
             if (!mainChart || !mainSeries || !currentChartSymbol) return;
+
+            let activePopupObjId = '';
+            let activePopupObjKind = '';
+            const popup = document.getElementById('canvasObjectPopup');
+            if (popup && popup.style.display !== 'none') {
+                activePopupObjId = popup.dataset.activeObjId || '';
+                activePopupObjKind = popup.dataset.activeObjKind || '';
+            }
+            activeAddTextButtonBox = null;
 
             const shapes = getSavedChartShapes(currentChartSymbol);
 
@@ -3930,6 +4089,72 @@
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(textStr, badgeX + badgeW / 2, y);
+
+                    // ============================================
+                    // CUSTOM TEXT RENDERING FOR PRICE LINE
+                    // ============================================
+                    const isSelected = (activePopupObjKind === 'line' && activePopupObjId === String(lineData.id));
+
+                    // If selected, draw TradingView endpoint handles
+                    if (isSelected) {
+                        const hY = y;
+                        const h1X = Math.min(100, Math.max(50, drawingCanvas.width * 0.12));
+                        const h2X = Math.max(drawingCanvas.width - 100, drawingCanvas.width * 0.88);
+
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = '#3b82f6';
+                        ctx.lineWidth = 2.5;
+
+                        ctx.beginPath(); ctx.arc(h1X, hY, 4.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(h2X, hY, 4.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+                    }
+
+                    if (lineData.text && lineData.text.trim()) {
+                        const customText = lineData.text.trim();
+                        const fontSize = lineData.fontSize || 12;
+                        const fontColor = lineData.textColor || lineColor;
+                        const pos = lineData.textPos || 'center';
+                        const valign = lineData.textValign || 'top';
+
+                        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                        const m = ctx.measureText(customText);
+
+                        let tx = drawingCanvas.width / 2;
+                        let textAlign = 'center';
+                        if (pos === 'left') {
+                            tx = badgeX + badgeW + 14;
+                            textAlign = 'left';
+                        } else if (pos === 'right') {
+                            tx = drawingCanvas.width - 24;
+                            textAlign = 'right';
+                        }
+
+                        let ty = y - 6;
+                        let textBase = 'bottom';
+                        if (valign === 'middle') {
+                            ty = y;
+                            textBase = 'middle';
+                            const isDark = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
+                            ctx.fillStyle = isDark ? 'rgba(19, 23, 34, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+                            const bgLeft = (textAlign === 'center') ? (tx - m.width / 2 - 4) : (textAlign === 'left' ? tx - 4 : tx - m.width - 4);
+                            ctx.fillRect(bgLeft, ty - fontSize / 2 - 2, m.width + 8, fontSize + 4);
+                        } else if (valign === 'bottom') {
+                            ty = y + 6;
+                            textBase = 'top';
+                        }
+
+                        ctx.fillStyle = fontColor;
+                        ctx.textAlign = textAlign;
+                        ctx.textBaseline = textBase;
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+                        ctx.shadowBlur = 3;
+                        ctx.fillText(customText, tx, ty);
+                    } else if (isSelected) {
+                        // Drawing selected with NO text yet -> render "+ Add text" pill
+                        const isDark = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
+                        renderAddTextBadge(ctx, drawingCanvas.width / 2, y - 6, 'line', lineData.id, isDark);
+                    }
 
                     ctx.restore();
                 });
@@ -4351,6 +4576,48 @@
                     const midY = (y1 + y2) / 2 + dy;
                     ctx.beginPath(); ctx.arc(midX, midY, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
 
+                    // Custom text or "+ Add text" for parallel channel
+                    const popupEl = document.getElementById('canvasObjectPopup');
+                    const isSelected = (popupEl && popupEl.style.display !== 'none' && popupEl.dataset.activeObjKind === 'shape' && popupEl.dataset.activeObjId === String(s.id));
+                    const mx = (x1 + x2) / 2;
+                    const my = (y1 + y2) / 2 + dy / 2;
+
+                    if (s.text && s.text.trim()) {
+                        const customText = s.text.trim();
+                        const fontSize = s.fontSize || 12;
+                        const fontColor = s.textColor || color || '#ffffff';
+                        const pos = s.textPos || 'center';
+                        const valign = s.textValign || 'top';
+
+                        const t = (pos === 'left') ? 0.2 : (pos === 'right') ? 0.8 : 0.5;
+                        const tx = x1 + (x2 - x1) * t;
+                        let ty = (y1 + (y2 - y1) * t) + dy / 2;
+
+                        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                        const m = ctx.measureText(customText);
+
+                        let textBase = 'middle';
+                        if (valign === 'top') {
+                            ty -= 10;
+                            textBase = 'bottom';
+                        } else if (valign === 'bottom') {
+                            ty += 12;
+                            textBase = 'top';
+                        } else {
+                            ctx.fillStyle = isDark ? 'rgba(19, 23, 34, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+                            ctx.fillRect(tx - m.width / 2 - 4, ty - fontSize / 2 - 2, m.width + 8, fontSize + 4);
+                        }
+
+                        ctx.fillStyle = fontColor;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = textBase;
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+                        ctx.shadowBlur = 3;
+                        ctx.fillText(customText, tx, ty);
+                    } else if (isSelected && !s.isPreview) {
+                        renderAddTextBadge(ctx, mx, my - 10, 'shape', s.id, isDark);
+                    }
+
                     ctx.restore();
                 }
             } else if (s.type === 'fib') {
@@ -4585,6 +4852,48 @@
                     const handleR = Math.max(3.5, lw + 1.5);
                     ctx.beginPath(); ctx.arc(x1, y1, handleR, 0, 2 * Math.PI); ctx.fill();
                     ctx.beginPath(); ctx.arc(x2, y2, handleR, 0, 2 * Math.PI); ctx.fill();
+
+                    // Custom text or "+ Add text" for trendline
+                    const popupEl = document.getElementById('canvasObjectPopup');
+                    const isSelected = (popupEl && popupEl.style.display !== 'none' && popupEl.dataset.activeObjKind === 'shape' && popupEl.dataset.activeObjId === String(s.id));
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+
+                    if (s.text && s.text.trim()) {
+                        const customText = s.text.trim();
+                        const fontSize = s.fontSize || 12;
+                        const fontColor = s.textColor || s.color || '#ffffff';
+                        const pos = s.textPos || 'center';
+                        const valign = s.textValign || 'top';
+
+                        const t = (pos === 'left') ? 0.2 : (pos === 'right') ? 0.8 : 0.5;
+                        const tx = x1 + (x2 - x1) * t;
+                        let ty = y1 + (y2 - y1) * t;
+
+                        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                        const m = ctx.measureText(customText);
+
+                        let textBase = 'middle';
+                        if (valign === 'top') {
+                            ty -= 10;
+                            textBase = 'bottom';
+                        } else if (valign === 'bottom') {
+                            ty += 12;
+                            textBase = 'top';
+                        } else {
+                            ctx.fillStyle = isDark ? 'rgba(19, 23, 34, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+                            ctx.fillRect(tx - m.width / 2 - 4, ty - fontSize / 2 - 2, m.width + 8, fontSize + 4);
+                        }
+
+                        ctx.fillStyle = fontColor;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = textBase;
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+                        ctx.shadowBlur = 3;
+                        ctx.fillText(customText, tx, ty);
+                    } else if (isSelected && !s.isPreview) {
+                        renderAddTextBadge(ctx, midX, midY - 10, 'shape', s.id, isDark);
+                    }
 
                     // Pattern Name Pill
                     if (s.name) {
@@ -4943,6 +5252,46 @@
                         ctx.beginPath(); ctx.arc(rectX, midY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
                         ctx.beginPath(); ctx.arc(rectX + w, midY, 3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
                     }
+
+                    // Custom text or "+ Add text" for rectangle
+                    const popupEl = document.getElementById('canvasObjectPopup');
+                    const isSelected = (popupEl && popupEl.style.display !== 'none' && popupEl.dataset.activeObjKind === 'shape' && popupEl.dataset.activeObjId === String(s.id));
+                    if (s.text && s.text.trim()) {
+                        const customText = s.text.trim();
+                        const fontSize = s.fontSize || 12;
+                        const fontColor = s.textColor || s.color || '#ffffff';
+                        const pos = s.textPos || 'center';
+                        const valign = s.textValign || 'top';
+
+                        let tx = rectX + w / 2;
+                        let textAlign = 'center';
+                        if (pos === 'left') {
+                            tx = rectX + 12;
+                            textAlign = 'left';
+                        } else if (pos === 'right') {
+                            tx = rectX + w - 12;
+                            textAlign = 'right';
+                        }
+
+                        let ty = rectY + 14;
+                        let textBase = 'middle';
+                        if (valign === 'middle') {
+                            ty = rectY + h / 2;
+                        } else if (valign === 'bottom') {
+                            ty = rectY + h - 14;
+                        }
+
+                        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                        ctx.fillStyle = fontColor;
+                        ctx.textAlign = textAlign;
+                        ctx.textBaseline = textBase;
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+                        ctx.shadowBlur = 3;
+                        ctx.fillText(customText, tx, ty);
+                    } else if (isSelected && !s.isPreview) {
+                        renderAddTextBadge(ctx, rectX + w / 2, rectY + 16, 'shape', s.id, isDark);
+                    }
+
                     ctx.restore();
                 }
             } else if (s.type === 'vertical') {

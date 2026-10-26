@@ -1306,8 +1306,8 @@
          EDIT DRAWING MODAL (Web & Mobile)
     ========================================================= -->
     <div id="editDrawingModal" class="small-modal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 100100; background: rgba(15,23,42,0.82); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); align-items: center; justify-content: center;">
-        <div class="small-modal-content" style="width: 420px; max-width: 92vw; padding: 22px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #363a45); padding-bottom: 12px; margin-bottom: 16px;">
+        <div class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 22px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #363a45); padding-bottom: 12px; margin-bottom: 14px;">
                 <h3 id="editDrawingTitle" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary, #ffffff); display: flex; align-items: center; gap: 8px;">
                     <span>✏️</span> <span>Edit Drawing</span>
                 </h3>
@@ -1318,71 +1318,132 @@
             <input type="hidden" id="editDrawingId">
             <input type="hidden" id="editDrawingType">
 
-            <!-- Label / Text Group -->
-            <div class="form-group" id="editDrawingLabelGroup" style="margin-bottom: 14px;">
-                <label id="editDrawingLabelTitle" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Label / Description</label>
-                <input type="text" id="editDrawingLabel" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
+            <!-- 3 Tabs Header: Style, Text, Coordinates -->
+            <div class="edit-drawing-tabs" style="display: flex; gap: 6px; background: rgba(255,255,255,0.04); padding: 4px; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border-color, #363a45);">
+                <button type="button" id="editDrawingTabBtnStyle" class="edit-drawing-tab-btn active" data-tab="style" onclick="switchEditDrawingTab('style')" style="flex: 1; padding: 7px 10px; border: none; background: #3b82f6; color: #ffffff; border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">Style</button>
+                <button type="button" id="editDrawingTabBtnText" class="edit-drawing-tab-btn" data-tab="text" onclick="switchEditDrawingTab('text')" style="flex: 1; padding: 7px 10px; border: none; background: transparent; color: var(--text-secondary, #94a3b8); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">Text</button>
+                <button type="button" id="editDrawingTabBtnCoordinates" class="edit-drawing-tab-btn" data-tab="coordinates" onclick="switchEditDrawingTab('coordinates')" style="flex: 1; padding: 7px 10px; border: none; background: transparent; color: var(--text-secondary, #94a3b8); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">Coordinates</button>
             </div>
 
-            <!-- Price 1 Group -->
-            <div class="form-group" id="editDrawingPrice1Group" style="margin-bottom: 14px;">
-                <label id="editDrawingPrice1Title" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Price Level (₹)</label>
-                <input type="number" step="0.05" id="editDrawingPrice1" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
-            </div>
-
-            <!-- Price 2 Group -->
-            <div class="form-group" id="editDrawingPrice2Group" style="margin-bottom: 14px; display: none;">
-                <label id="editDrawingPrice2Title" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">End Price Level (₹)</label>
-                <input type="number" step="0.05" id="editDrawingPrice2" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
-            </div>
-
-            <!-- Color Group -->
-            <div class="form-group" id="editDrawingColorGroup" style="margin-bottom: 18px;">
-                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Drawing Color</label>
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #10b981; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#10b981')" title="Emerald"></div>
-                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #ef5350; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#ef5350')" title="Red"></div>
-                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #3b82f6; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#3b82f6')" title="Blue"></div>
-                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #f59e0b; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#f59e0b')" title="Yellow"></div>
-                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #a855f7; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#a855f7')" title="Purple"></div>
-                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #f97316; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#f97316')" title="Orange"></div>
-                    <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #ffffff; cursor: pointer; border: 1px solid #787b86;" onclick="setEditDrawingColor('#ffffff')" title="White"></div>
-                    <input type="color" id="editDrawingColorPicker" style="width: 28px; height: 28px; padding: 0; border: none; background: transparent; cursor: pointer;" title="Custom Color" onchange="setEditDrawingColor(this.value)">
+            <!-- ================= TAB 1: STYLE ================= -->
+            <div id="editDrawingTabStyle" class="edit-drawing-tab-pane">
+                <!-- Color Group -->
+                <div class="form-group" id="editDrawingColorGroup" style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Drawing Color</label>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #10b981; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#10b981')" title="Emerald"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #ef5350; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#ef5350')" title="Red"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #3b82f6; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#3b82f6')" title="Blue"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #f59e0b; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#f59e0b')" title="Yellow"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #a855f7; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#a855f7')" title="Purple"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #f97316; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#f97316')" title="Orange"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #ffffff; cursor: pointer; border: 1px solid #787b86;" onclick="setEditDrawingColor('#ffffff')" title="White"></div>
+                        <input type="color" id="editDrawingColorPicker" style="width: 28px; height: 28px; padding: 0; border: none; background: transparent; cursor: pointer;" title="Custom Color" onchange="setEditDrawingColor(this.value)">
+                    </div>
                 </div>
-            </div>
 
-            <!-- Line Width & Style Group -->
-            <div class="form-group" id="editDrawingLinePropsGroup" style="margin-bottom: 18px;">
-                <div style="display: flex; gap: 14px; align-items: center;">
-                    <div style="flex: 1;">
-                        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Line Width</label>
-                        <div id="editDrawingWidthOptions" style="display: flex; gap: 6px;">
-                            <button type="button" class="edit-width-btn" data-width="1" onclick="setEditDrawingLineWidth(1)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">1px</button>
-                            <button type="button" class="edit-width-btn" data-width="2" onclick="setEditDrawingLineWidth(2)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">2px</button>
-                            <button type="button" class="edit-width-btn" data-width="3" onclick="setEditDrawingLineWidth(3)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">3px</button>
-                            <button type="button" class="edit-width-btn" data-width="4" onclick="setEditDrawingLineWidth(4)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">4px</button>
+                <!-- Line Width & Style Group -->
+                <div class="form-group" id="editDrawingLinePropsGroup" style="margin-bottom: 16px;">
+                    <div style="display: flex; gap: 14px; align-items: center;">
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Line Width</label>
+                            <div id="editDrawingWidthOptions" style="display: flex; gap: 6px;">
+                                <button type="button" class="edit-width-btn" data-width="1" onclick="setEditDrawingLineWidth(1)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">1px</button>
+                                <button type="button" class="edit-width-btn" data-width="2" onclick="setEditDrawingLineWidth(2)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">2px</button>
+                                <button type="button" class="edit-width-btn" data-width="3" onclick="setEditDrawingLineWidth(3)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">3px</button>
+                                <button type="button" class="edit-width-btn" data-width="4" onclick="setEditDrawingLineWidth(4)" style="flex: 1; padding: 6px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">4px</button>
+                            </div>
+                            <input type="hidden" id="editDrawingLineWidth" value="2">
                         </div>
-                        <input type="hidden" id="editDrawingLineWidth" value="2">
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Line Style</label>
+                            <select id="editDrawingLineStyle" style="width: 100%; padding: 7px 10px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 6px; color: var(--text-primary, #ffffff); font-size: 12px;">
+                                <option value="solid">Line (Solid)</option>
+                                <option value="dashed">Dashed line</option>
+                                <option value="dotted">Dotted line</option>
+                            </select>
+                        </div>
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Line Style</label>
-                        <select id="editDrawingLineStyle" style="width: 100%; padding: 7px 10px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 6px; color: var(--text-primary, #ffffff); font-size: 12px;">
-                            <option value="solid">Line (Solid)</option>
-                            <option value="dashed">Dashed line</option>
-                            <option value="dotted">Dotted line</option>
-                        </select>
-                    </div>
+                </div>
+
+                <!-- Lock Drawing Option -->
+                <div class="form-group" id="editDrawingLockGroup" style="margin-bottom: 14px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color, #363a45); border-radius: 8px;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; margin: 0;">
+                        <span style="font-size: 12.5px; font-weight: 600; color: var(--text-primary, #ffffff); display: flex; align-items: center; gap: 8px;">
+                            <span>🔒</span> Lock Drawing (prevent dragging / moving)
+                        </span>
+                        <input type="checkbox" id="editDrawingLocked" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;">
+                    </label>
                 </div>
             </div>
 
-            <!-- Lock Drawing Option -->
-            <div class="form-group" id="editDrawingLockGroup" style="margin-bottom: 18px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color, #363a45); border-radius: 8px;">
-                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; margin: 0;">
-                    <span style="font-size: 12.5px; font-weight: 600; color: var(--text-primary, #ffffff); display: flex; align-items: center; gap: 8px;">
-                        <span>🔒</span> Lock Drawing (prevent dragging / moving)
-                    </span>
-                    <input type="checkbox" id="editDrawingLocked" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;">
-                </label>
+            <!-- ================= TAB 2: TEXT ================= -->
+            <div id="editDrawingTabText" class="edit-drawing-tab-pane" style="display: none;">
+                <!-- Text / Description input -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Text</label>
+                    <textarea id="editDrawingTextInput" rows="2" placeholder="Add text to drawing..." style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box; resize: vertical; font-family: inherit;"></textarea>
+                </div>
+
+                <!-- Text Color & Font Size -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <div style="display: flex; gap: 14px; align-items: center;">
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Text Color</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="color" id="editDrawingTextColor" value="#ffffff" style="width: 32px; height: 32px; padding: 0; border: 1px solid var(--border-color, #363a45); border-radius: 6px; background: transparent; cursor: pointer;" onchange="const l=document.getElementById('editDrawingTextColorLabel'); if(l) l.innerText=this.value;">
+                                <span id="editDrawingTextColorLabel" style="font-size: 12px; color: var(--text-secondary, #94a3b8); font-family: monospace;">#ffffff</span>
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Font Size</label>
+                            <select id="editDrawingFontSize" style="width: 100%; padding: 7px 10px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 6px; color: var(--text-primary, #ffffff); font-size: 12px;">
+                                <option value="10">10px</option>
+                                <option value="12" selected>12px</option>
+                                <option value="14">14px</option>
+                                <option value="16">16px</option>
+                                <option value="20">20px</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Horizontal Position (Left, Center, Right) -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Text Position</label>
+                    <div id="editDrawingTextPosGroup" style="display: flex; gap: 6px;">
+                        <button type="button" class="edit-text-pos-btn" data-pos="left" onclick="setEditDrawingTextPos('left')" style="flex: 1; padding: 7px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Left</button>
+                        <button type="button" class="edit-text-pos-btn active" data-pos="center" onclick="setEditDrawingTextPos('center')" style="flex: 1; padding: 7px 0; border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Center</button>
+                        <button type="button" class="edit-text-pos-btn" data-pos="right" onclick="setEditDrawingTextPos('right')" style="flex: 1; padding: 7px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Right</button>
+                    </div>
+                    <input type="hidden" id="editDrawingTextPos" value="center">
+                </div>
+
+                <!-- Vertical Alignment (Top, Middle, Bottom) -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Text Alignment</label>
+                    <div id="editDrawingTextValignGroup" style="display: flex; gap: 6px;">
+                        <button type="button" class="edit-text-valign-btn active" data-valign="top" onclick="setEditDrawingTextValign('top')" style="flex: 1; padding: 7px 0; border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Top</button>
+                        <button type="button" class="edit-text-valign-btn" data-valign="middle" onclick="setEditDrawingTextValign('middle')" style="flex: 1; padding: 7px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Middle</button>
+                        <button type="button" class="edit-text-valign-btn" data-valign="bottom" onclick="setEditDrawingTextValign('bottom')" style="flex: 1; padding: 7px 0; border: 1px solid var(--border-color, #363a45); background: var(--bg-input, #131722); color: var(--text-primary, #ffffff); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Bottom</button>
+                    </div>
+                    <input type="hidden" id="editDrawingTextValign" value="top">
+                </div>
+            </div>
+
+            <!-- ================= TAB 3: COORDINATES ================= -->
+            <div id="editDrawingTabCoordinates" class="edit-drawing-tab-pane" style="display: none;">
+                <!-- Price 1 Group -->
+                <div class="form-group" id="editDrawingPrice1Group" style="margin-bottom: 14px;">
+                    <label id="editDrawingPrice1Title" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Price Level (₹)</label>
+                    <input type="number" step="0.05" id="editDrawingPrice1" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
+                </div>
+
+                <!-- Price 2 Group -->
+                <div class="form-group" id="editDrawingPrice2Group" style="margin-bottom: 14px; display: none;">
+                    <label id="editDrawingPrice2Title" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">End Price Level (₹)</label>
+                    <input type="number" step="0.05" id="editDrawingPrice2" style="width: 100%; padding: 10px 12px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13px; box-sizing: border-box;">
+                </div>
             </div>
 
             <!-- Footer Actions -->
@@ -1396,7 +1457,7 @@
         </div>
     </div>
 
-    <!-- System Modal Dialog / Prompt Overlay -->
+<!-- System Modal Dialog / Prompt Overlay -->
     <div id="customModalOverlay" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; inset: 0; z-index: 100050; background: rgba(15,23,42,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">
         <div id="customModalBox" class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); transform: scale(0.95); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); margin: auto;">
             <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px;">
