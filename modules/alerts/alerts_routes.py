@@ -1,12 +1,12 @@
 import os
-from modules.common.ist_datetime import format_ist_standard
 import datetime
 import uuid
 from flask import Blueprint, request, jsonify, session
 from modules.common.auth_utils import login_required
+from modules.common.ist_datetime import format_ist_standard
 from modules.common.data_paths import BASE_DATA_DIR, USER_DATA_DIR
 from modules.common.market_fetcher import fetcher
-from db_store import load_user_doc_db, save_user_doc_db
+from db_store import load_user_alerts_db, save_user_alerts_db
 
 alerts_bp = Blueprint("alerts_api", __name__)
 
@@ -19,26 +19,14 @@ def load_user_alerts(username=None):
         username = session.get("username")
     if not username:
         return {"alerts": [], "notifications": []}
-    filepath = get_user_alerts_file(username)
-    def default_alt():
-        d = {"alerts": [], "notifications": []}
-        save_user_alerts(d, username)
-        return d
-    data = load_user_doc_db("alerts", username, filepath, default_factory=default_alt)
-    if not isinstance(data, dict):
-        data = {"alerts": [], "notifications": []}
-    if "alerts" not in data or not isinstance(data["alerts"], list):
-        data["alerts"] = []
-    if "notifications" not in data or not isinstance(data["notifications"], list):
-        data["notifications"] = []
-    return data
+    return load_user_alerts_db(username=username)
 
 def save_user_alerts(data, username=None):
     if not username:
         username = session.get("username")
     if not username:
-        return
-    filepath = get_user_alerts_file(username)
+        return False
+    return save_user_alerts_db(data=data, username=username)
 
 
 @alerts_bp.route("/api/alerts", methods=["GET"])
@@ -49,68 +37,89 @@ def get_alerts():
 @alerts_bp.route("/api/alerts", methods=["POST"])
 @login_required
 def create_alert():
-    symbol = request.json.get("symbol")
-    target_price = request.json.get("target_price")
-    condition = request.json.get("condition", "above")
-    note = request.json.get("note", "").strip()
+    req_data = request.get_json(silent=True) or {}
+    symbol = req_data.get("symbol")
+    target_price = req_data.get("target_price")
+    condition = req_data.get("condition", "above")
+    note = str(req_data.get("note", "")).strip()
 
     if not symbol or target_price is None:
         return jsonify({"error": "Stock symbol and target price are required"}), 400
 
     try:
         target_price = float(target_price)
-    except ValueError:
+        if target_price <= 0:
+            return jsonify({"error": "Target price must be greater than zero"}), 400
+    except (ValueError, TypeError):
         return jsonify({"error": "Target price must be a valid number"}), 400
 
-    symbol = symbol.upper()
+    symbol = str(symbol).strip().upper()
     if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
         symbol += ".NS"
 
     data = load_user_alerts()
-    alert_id = f"alt_{int(datetime.datetime.now().timestamp() * 1000)}"
+    alert_id = f"alt_{int(datetime.datetime.now().timestamp() * 1000)}_{uuid.uuid4().hex[:6]}"
     new_alert = {
         "id": alert_id,
         "symbol": symbol,
         "target_price": target_price,
-        "condition": condition,
+        "condition": "below" if condition == "below" else "above",
         "note": note,
         "status": "active",
         "created_at": format_ist_standard()
     }
     data["alerts"].insert(0, new_alert)
     save_user_alerts(data)
-    return jsonify({"success": True, "alerts_data": data})
+    return jsonify({"success": True, "alert": new_alert, "alerts_data": data})
 
 @alerts_bp.route("/api/alerts/<alert_id>", methods=["DELETE"])
 @login_required
 def delete_alert(alert_id):
     data = load_user_alerts()
+    before_len = len(data["alerts"])
     data["alerts"] = [a for a in data["alerts"] if a.get("id") != alert_id]
     save_user_alerts(data)
-    return jsonify({"success": True, "alerts_data": data})
+    deleted = len(data["alerts"]) < before_len
+    return jsonify({"success": True, "deleted": deleted, "alerts_data": data})
 
 @alerts_bp.route("/api/notifications/trigger", methods=["POST"])
 @login_required
 def trigger_notification():
-    alert_id = request.json.get("alert_id")
-    symbol = request.json.get("symbol")
-    current_price = request.json.get("current_price")
-    target_price = request.json.get("target_price")
-    condition = request.json.get("condition")
-    note = request.json.get("note", "")
+    req_data = request.get_json(silent=True) or {}
+    alert_id = req_data.get("alert_id")
+    symbol = str(req_data.get("symbol") or "").strip().upper()
+    current_price = req_data.get("current_price")
+    target_price = req_data.get("target_price")
+    condition = req_data.get("condition", "above")
+    note = str(req_data.get("note", "")).strip()
 
     data = load_user_alerts()
     
     # Mark alert as triggered
+    matched = False
     for alt in data["alerts"]:
-        if alt.get("id") == alert_id or (alt.get("symbol") == symbol and alt.get("target_price") == target_price and alt.get("condition") == condition):
+        if alt.get("id") == alert_id or (
+            alt.get("symbol") == symbol and 
+            float(alt.get("target_price", 0)) == float(target_price or 0) and 
+            alt.get("condition") == condition
+        ):
             alt["status"] = "triggered"
             alt["triggered_at"] = format_ist_standard()
+            matched = True
 
-    notif_id = f"notif_{int(datetime.datetime.now().timestamp() * 1000)}"
+    notif_id = f"notif_{int(datetime.datetime.now().timestamp() * 1000)}_{uuid.uuid4().hex[:6]}"
     cond_text = "crossed above" if condition == "above" else "crossed below"
     title = f"🔔 Alert Triggered: {symbol}"
-    msg = f"{symbol} {cond_text} target price ₹{float(target_price):,.2f}! Current LTP: ₹{float(current_price):,.2f}."
+    try:
+        fmt_target = f"₹{float(target_price):,.2f}"
+    except (ValueError, TypeError):
+        fmt_target = str(target_price)
+    try:
+        fmt_current = f"₹{float(current_price):,.2f}"
+    except (ValueError, TypeError):
+        fmt_current = str(current_price)
+
+    msg = f"{symbol} {cond_text} target price {fmt_target}! Current LTP: {fmt_current}."
     if note:
         msg += f" (Note: {note})"
 
@@ -128,7 +137,7 @@ def trigger_notification():
     }
     data["notifications"].insert(0, new_notif)
     save_user_alerts(data)
-    return jsonify({"success": True, "alerts_data": data})
+    return jsonify({"success": True, "notification": new_notif, "alerts_data": data})
 
 @alerts_bp.route("/api/notifications/<notif_id>", methods=["DELETE"])
 @login_required
@@ -154,4 +163,3 @@ def mark_notifications_read():
         n["read"] = True
     save_user_alerts(data)
     return jsonify({"success": True, "alerts_data": data})
-

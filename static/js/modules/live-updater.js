@@ -298,6 +298,7 @@
                             if (alt.condition === 'below' && curPrice <= targetPrice) triggered = true;
 
                             if (triggered) {
+                                alt.status = 'triggering';
                                 fetch('/api/notifications/trigger', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -313,7 +314,16 @@
                                     if (data.success) {
                                         userAlertsData = data.alerts_data;
                                         updateNotificationBadge();
+                                        if (typeof showToast === 'function') {
+                                            showToast(`🔔 Alert Triggered: ${alt.symbol} reached ₹${targetPrice}!`, 'warning', 5000);
+                                        }
+                                        const notifModal = document.getElementById('notificationsModal');
+                                        if (notifModal && notifModal.style.display === 'block') {
+                                            renderNotificationsModalContent();
+                                        }
                                     }
+                                }).catch(err => {
+                                    console.error('Trigger alert error:', err);
                                 });
                             }
                         }

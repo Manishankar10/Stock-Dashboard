@@ -224,6 +224,13 @@ def _init_sqlite_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_alerts (
+                    username TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -1030,3 +1037,149 @@ def save_shareholding_patterns_db(shp_data, last_synced=None, last_synced_displa
         "count_sme": count_sme,
         "metadata": metadata
     }
+
+
+# ==============================================================================
+# USER ALERTS & NOTIFICATIONS (DATABASE PERSISTENCE)
+# Primary: MongoDB (if available) | Local: SQLite capital_desk.db (user_alerts)
+# ==============================================================================
+
+def load_user_alerts_db(username="admin", default_factory=dict):
+    """
+    Load user alerts and notifications strictly from the database:
+    1. Primary: MongoDB Atlas (if connected)
+    2. Local: SQLite database 'user_data/capital_desk.db' table 'user_alerts'
+    3. Auto-migration fallback: existing user_data/<user>_alerts.json file
+    """
+    if isinstance(username, dict) or callable(username):
+        default_factory = username
+        username = "admin"
+
+    username = str(username or "admin").strip()
+    safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower() or "admin"
+
+    def _normalize(val):
+        if not isinstance(val, dict):
+            val = {"alerts": [], "notifications": []}
+        if "alerts" not in val or not isinstance(val["alerts"], list):
+            val["alerts"] = []
+        if "notifications" not in val or not isinstance(val["notifications"], list):
+            val["notifications"] = []
+        return val
+
+    # 1. MongoDB
+    if db is not None:
+        try:
+            col = db["user_alerts"]
+            doc = col.find_one({"_id": safe_user})
+            if doc is not None and "data" in doc:
+                return _normalize(doc["data"])
+        except Exception as e:
+            print(f"MongoDB load_user_alerts error for {username}: {e}")
+
+    # 2. SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data FROM user_alerts WHERE username = ?", (safe_user,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                return _normalize(json.loads(row[0]))
+    except Exception as e:
+        print(f"SQLite load_user_alerts error for {username}: {e}")
+
+    # 3. Fallback & Auto-migration from legacy JSON
+    json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data", f"{safe_user}_alerts.json")
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                if isinstance(loaded, list):
+                    loaded = {"alerts": loaded, "notifications": []}
+                normalized = _normalize(loaded)
+                save_user_alerts_db(normalized, username=safe_user)
+                return normalized
+        except Exception as e:
+            print(f"JSON migration error for {json_path}: {e}")
+
+    init_val = _normalize(default_factory() if callable(default_factory) else default_factory)
+    save_user_alerts_db(init_val, username=safe_user)
+    return init_val
+
+def save_user_alerts_db(arg1=None, arg2=None, username=None, data=None):
+    """
+    Save user alerts and notifications strictly into the database:
+    Supports:
+      - save_user_alerts_db(data, username="admin")
+      - save_user_alerts_db(username, data)
+      - save_user_alerts_db(data, "admin")
+      - save_user_alerts_db(data=data, username=username)
+    1. Primary: MongoDB Atlas (if connected)
+    2. Local: SQLite database 'user_data/capital_desk.db' table 'user_alerts'
+    3. Secondary sync: updates user_data/<user>_alerts.json for backward compatibility
+    """
+    if username is not None and data is not None:
+        target_user = username
+        target_data = data
+    elif username is not None and arg1 is not None:
+        target_user = username
+        target_data = arg1
+    elif data is not None and arg1 is not None:
+        target_data = data
+        target_user = arg1
+    elif isinstance(arg1, str) and (isinstance(arg2, dict) or arg2 is None):
+        target_user = arg1
+        target_data = arg2 or {"alerts": [], "notifications": []}
+    elif isinstance(arg1, dict) and (isinstance(arg2, str) or arg2 is None):
+        target_data = arg1
+        target_user = arg2 or "admin"
+    else:
+        target_data = arg1 if isinstance(arg1, dict) else (data if isinstance(data, dict) else {"alerts": [], "notifications": []})
+        target_user = str(arg2) if arg2 else (username or "admin")
+
+    username = str(target_user or "admin").strip()
+    safe_user = "".join(c for c in username if c.isalnum() or c in ('_', '-')).lower() or "admin"
+    data = target_data
+
+    if not isinstance(data, dict):
+        data = {"alerts": [], "notifications": []}
+    if "alerts" not in data or not isinstance(data["alerts"], list):
+        data["alerts"] = []
+    if "notifications" not in data or not isinstance(data["notifications"], list):
+        data["notifications"] = []
+
+    # 1. MongoDB
+    if db is not None:
+        try:
+            col = db["user_alerts"]
+            doc = {"_id": safe_user, "username": safe_user, "data": data}
+            col.replace_one({"_id": safe_user}, doc, upsert=True)
+        except Exception as e:
+            print(f"MongoDB save_user_alerts error for {username}: {e}")
+
+    # 2. SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO user_alerts (username, data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+                (safe_user, json.dumps(data, ensure_ascii=False))
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_user_alerts error for {username}: {e}")
+        return False
+
+    # 3. Keep local JSON file updated for backup
+    try:
+        json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data", f"{safe_user}_alerts.json")
+        os.makedirs(os.path.dirname(json_path), exist_ok=True)
+        tmp = json_path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        os.replace(tmp, json_path)
+    except Exception:
+        pass
+
+    return True

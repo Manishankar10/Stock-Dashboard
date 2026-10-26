@@ -1,5 +1,5 @@
         // =========================================================
-        // PRICE ALERTS & NOTIFICATIONS LOGIC
+        // PRICE ALERTS & NOTIFICATIONS LOGIC (DB PERSISTED)
         // =========================================================
         let userAlertsData = { alerts: [], notifications: [] };
         let activeNotifTab = 'notifs';
@@ -23,61 +23,105 @@
         function updateNotificationBadge() {
             const notifs = userAlertsData.notifications || [];
             const unreadCount = notifs.filter(n => !n.read).length;
-            const badge = document.getElementById('notif-badge');
-            if (badge) {
-                if (unreadCount > 0) {
-                    badge.innerText = unreadCount > 99 ? '99+' : unreadCount;
-                    badge.style.display = 'inline-block';
+            const badgeText = unreadCount > 99 ? '99+' : String(unreadCount);
+            ['sidebar-notif-badge', 'mobile-notif-badge', 'notif-badge'].forEach(id => {
+                const badge = document.getElementById(id);
+                if (badge) {
+                    if (unreadCount > 0) {
+                        badge.innerText = badgeText;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function openCreateAlertModal(symbol = '', customPrice = null) {
+            let sym = symbol || (typeof currentDetailHolding !== 'undefined' && currentDetailHolding ? currentDetailHolding.symbol : '') || (typeof currentChartSymbol !== 'undefined' && currentChartSymbol ? currentChartSymbol : '');
+            sym = (sym || '').trim().toUpperCase();
+            
+            const symInput = document.getElementById('modal-alert-symbol');
+            if (symInput) {
+                symInput.value = sym;
+                if (sym) {
+                    symInput.readOnly = true;
+                    symInput.style.background = 'var(--bg-subtle, #1e222d)';
                 } else {
-                    badge.style.display = 'none';
+                    symInput.readOnly = false;
+                    symInput.style.background = 'var(--input-bg, #1a1e29)';
+                    setTimeout(() => symInput.focus(), 80);
+                }
+            }
+
+            const stockInfo = (typeof stockPricesData !== 'undefined' && sym && stockPricesData[sym]) ? stockPricesData[sym] : {};
+            const valToSet = (customPrice !== null && customPrice !== undefined && customPrice !== '') ? customPrice : (stockInfo.price || '');
+            const priceInput = document.getElementById('modal-alert-price');
+            if (priceInput) priceInput.value = valToSet;
+
+            const noteInput = document.getElementById('modal-alert-note');
+            if (noteInput) noteInput.value = '';
+
+            const modal = document.getElementById('createAlertModal');
+            if (modal) {
+                modal.style.display = 'block';
+                if (typeof window.bringModalToFront === 'function') {
+                    window.bringModalToFront('createAlertModal');
                 }
             }
         }
 
-        function openCreateAlertModal(symbol, customPrice = null) {
-            const sym = symbol || (currentDetailHolding ? currentDetailHolding.symbol : '');
-            if (!sym) return;
-            document.getElementById('modal-alert-symbol').value = sym;
-            const stockInfo = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
-            const valToSet = (customPrice !== null && customPrice !== undefined) ? customPrice : (stockInfo.price || '');
-            document.getElementById('modal-alert-price').value = valToSet;
-            document.getElementById('modal-alert-note').value = '';
-            document.getElementById('createAlertModal').style.display = 'block';
-            if (typeof window.bringModalToFront === 'function') {
-                window.bringModalToFront('createAlertModal');
-            }
+        function closeCreateAlertModal() {
+            const modal = document.getElementById('createAlertModal');
+            if (modal) modal.style.display = 'none';
         }
 
-        function closeCreateAlertModal() {
-            document.getElementById('createAlertModal').style.display = 'none';
-        }
         window.openCreateAlertModal = openCreateAlertModal;
         window.closeCreateAlertModal = closeCreateAlertModal;
 
         async function submitCreateAlert() {
-            const symbol = document.getElementById('modal-alert-symbol').value;
+            const symInput = document.getElementById('modal-alert-symbol');
+            let symbol = (symInput ? symInput.value : '').trim().toUpperCase();
             const condition = document.getElementById('modal-alert-condition').value;
             const target_price = parseFloat(document.getElementById('modal-alert-price').value);
             const note = document.getElementById('modal-alert-note').value.trim();
 
-            if (isNaN(target_price) || target_price <= 0) {
-                alert('Please enter a valid target price!');
+            if (!symbol) {
+                alert('Please enter a stock symbol (e.g. TCS, RELIANCE)');
+                if (symInput) symInput.focus();
                 return;
             }
 
-            const res = await fetch('/api/alerts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, condition, target_price, note })
-            });
-            const data = await res.json();
-            if (data.success) {
-                userAlertsData = data.alerts_data;
-                closeCreateAlertModal();
-                updateNotificationBadge();
-                alert(`🎯 Price alert set for ${symbol} at ₹${target_price}!`);
-            } else {
-                alert(data.error || 'Failed to create alert');
+            if (isNaN(target_price) || target_price <= 0) {
+                alert('Please enter a valid target price greater than 0!');
+                const pInput = document.getElementById('modal-alert-price');
+                if (pInput) pInput.focus();
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/alerts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, condition, target_price, note })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    userAlertsData = data.alerts_data;
+                    closeCreateAlertModal();
+                    updateNotificationBadge();
+                    renderNotificationsModalContent();
+                    if (typeof showToast === 'function') {
+                        showToast(`🎯 Price alert set for ${symbol} at ₹${target_price}`, 'success');
+                    } else {
+                        alert(`🎯 Price alert set for ${symbol} at ₹${target_price}!`);
+                    }
+                } else {
+                    alert(data.error || 'Failed to create alert');
+                }
+            } catch (err) {
+                console.error('Error creating alert:', err);
+                alert('Failed to set price alert. Please check your connection.');
             }
         }
 
@@ -85,7 +129,12 @@
             let confirmed = false;
             try {
                 if (typeof showCustomConfirm === 'function') {
-                    confirmed = await showCustomConfirm({ title: 'Delete Price Alert', message: 'Are you sure you want to delete this price alert?', isDanger: true });
+                    confirmed = await showCustomConfirm({ 
+                        title: 'Delete Price Alert', 
+                        message: 'Are you sure you want to delete this price alert?', 
+                        isDanger: true,
+                        confirmText: 'Delete Alert'
+                    });
                 } else {
                     const confirmFn = window.nativeConfirm || window.confirm;
                     confirmed = confirmFn('Are you sure you want to delete this price alert?');
@@ -115,14 +164,19 @@
         async function openNotificationsModal() {
             await fetchAlerts();
             const notifModal = document.getElementById('notificationsModal');
-            if (notifModal) notifModal.style.display = 'block';
+            if (notifModal) {
+                notifModal.style.display = 'block';
+                if (typeof window.bringModalToFront === 'function') {
+                    window.bringModalToFront('notificationsModal');
+                }
+            }
             switchNotifTab(activeNotifTab);
             fetch('/api/notifications/mark_read', { method: 'POST' }).then(r => r.json()).then(data => {
                 if (data.success) {
                     userAlertsData = data.alerts_data;
                     updateNotificationBadge();
                 }
-            });
+            }).catch(e => {});
         }
 
         function closeNotificationsModal() {
@@ -155,7 +209,7 @@
                 if (btnNotifs) btnNotifs.classList.remove('active');
                 if (contentAlerts) {
                     contentAlerts.classList.remove('hidden');
-                    contentAlerts.style.setProperty('display', 'flex', 'important');
+                    contentAlerts.style.setProperty('display', 'block', 'important');
                 }
                 if (contentNotifs) {
                     contentNotifs.classList.add('hidden');
@@ -178,12 +232,18 @@
             const notifMount = document.getElementById('notifications-list-mount');
             if (notifMount) {
                 if (notifs.length === 0) {
-                    notifMount.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-secondary);">No triggered notifications yet.</div>';
+                    notifMount.innerHTML = `
+                        <div style="text-align:center; padding:40px 20px; color:var(--text-secondary);">
+                            <div style="font-size:32px; margin-bottom:10px;">🔔</div>
+                            <div style="font-weight:600; font-size:14px; color:var(--text-primary); margin-bottom:4px;">No Triggered Notifications</div>
+                            <div style="font-size:12px; color:var(--text-muted);">You will see notifications here when stocks cross your target price thresholds.</div>
+                        </div>
+                    `;
                 } else {
                     let html = '';
                     notifs.forEach(n => {
                         html += `
-                            <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                            <div style="background:var(--bg-subtle, #1e222d); border:1px solid var(--border-color, #334155); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
                                 <div>
                                     <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); margin-bottom:4px;">${escapeHtml(n.title)}</div>
                                     <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">${escapeHtml(n.message)}</div>
@@ -201,7 +261,14 @@
             const alertsMount = document.getElementById('alerts-list-mount');
             if (alertsMount) {
                 if (alerts.length === 0) {
-                    alertsMount.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-secondary);">No price alerts set. Add price alerts from Watchlist or Portfolio details!</div>';
+                    alertsMount.innerHTML = `
+                        <div style="text-align:center; padding:35px 20px; color:var(--text-secondary);">
+                            <div style="font-size:32px; margin-bottom:10px;">🎯</div>
+                            <div style="font-weight:600; font-size:14px; color:var(--text-primary); margin-bottom:6px;">No Price Alerts Active</div>
+                            <div style="font-size:12.5px; margin-bottom:16px;">Set target price alerts to receive instant notifications when stocks cross key technical levels.</div>
+                            <button class="btn-primary" style="padding:6px 16px; font-size:12px;" onclick="openCreateAlertModal()">+ Create Your First Alert</button>
+                        </div>
+                    `;
                 } else {
                     let html = '';
                     alerts.forEach(a => {
@@ -210,7 +277,7 @@
                             ? '<span class="badge" style="background:#fef3c7; color:#d97706; border:1px solid #fde68a;">Triggered</span>' 
                             : '<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0;">Active</span>';
                         html += `
-                            <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                            <div style="background:var(--bg-subtle, #1e222d); border:1px solid var(--border-color, #334155); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
                                 <div>
                                     <div style="font-weight:700; font-size:14px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
                                         ${escapeHtml(a.symbol)} ${statusBadge}
@@ -250,7 +317,12 @@
             let confirmed = false;
             try {
                 if (typeof showCustomConfirm === 'function') {
-                    confirmed = await showCustomConfirm({ title: 'Clear Notifications', message: 'Are you sure you want to clear all notification history?', isDanger: true });
+                    confirmed = await showCustomConfirm({ 
+                        title: 'Clear Notifications', 
+                        message: 'Are you sure you want to clear all notification history?', 
+                        isDanger: true,
+                        confirmText: 'Clear All'
+                    });
                 } else {
                     const confirmFn = window.nativeConfirm || window.confirm;
                     confirmed = confirmFn('Are you sure you want to clear all notification history?');
@@ -319,7 +391,8 @@
             if (plusMenu && plusMenu.style.display === 'block' && !event.target.closest('#plusActionMenu') && !event.target.closest('#axisPlusBtn')) {
                 hidePlusActionMenu();
             }
-        }
+        };
+
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 hidePlusActionMenu();
@@ -336,3 +409,9 @@
             }
         });
 
+        // Auto-fetch alerts on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fetchAlerts);
+        } else {
+            fetchAlerts();
+        }
