@@ -98,19 +98,51 @@
 .shp-search-scope-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     flex: 1;
-    min-width: 280px;
-    max-width: 620px;
+    min-width: 320px;
+    max-width: 760px;
 }
 
 .shp-search-box {
+    display: flex;
+    align-items: center;
+    gap: 9px;
     flex: 1;
+    min-width: 240px;
+    height: 38px;
+    min-height: 38px;
+    flex-shrink: 0;
+    padding: 0 14px;
+    border: 1px solid var(--border-input, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    background: var(--bg-input, rgba(255, 255, 255, 0.04));
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
     margin: 0;
-    min-width: 140px;
+}
+
+.shp-search-box:focus-within {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
+}
+
+:root:not([data-theme="dark"]) .shp-search-box {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.shp-search-box span {
+    font-size: 15px !important;
+    opacity: 0.65;
+    flex-shrink: 0;
 }
 
 .shp-search-box input {
+    flex: 1;
+    width: 100% !important;
+    height: 100% !important;
+    font-size: 13.5px !important;
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
@@ -118,6 +150,12 @@
     padding: 0 !important;
     margin: 0 !important;
     border-radius: 0 !important;
+    color: var(--text-primary) !important;
+}
+
+.shp-search-box input::placeholder {
+    color: var(--text-secondary);
+    font-size: 13px;
 }
 
 .shp-search-box input:focus {
@@ -834,6 +872,8 @@
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        height: auto !important;
+        flex: none !important;
     }
 
     .shp-scope-pill-group {
@@ -845,6 +885,7 @@
         background: transparent !important;
         border: none !important;
         padding: 0 !important;
+        flex: none !important;
     }
 
     .shp-scope-pill {
@@ -859,13 +900,23 @@
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        flex: none !important;
+        flex-shrink: 0 !important;
+        padding: 0 14px !important;
         margin: 0 !important;
         box-sizing: border-box !important;
     }
 
     .shp-search-box input {
         width: 100% !important;
-        font-size: 12px !important;
+        height: 100% !important;
+        font-size: 14px !important;
+    }
+
+    .shp-search-box span {
+        font-size: 16px !important;
     }
 
     /* Category Chips: Native horizontal touch-scroll strip */
