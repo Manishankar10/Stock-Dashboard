@@ -43,6 +43,7 @@
      * Load quarterly results data from API
      */
     async function loadQuarterlyResults(forceRefresh = false) {
+        initQrMobileScroll();
         if (qrState.isFetching) return;
         qrState.isFetching = true;
 
@@ -542,6 +543,72 @@
 
         window.addEventListener('resize', function() {
             updateQrDateNavButtons();
+        }, { passive: true });
+    }
+
+    /**
+     * Mobile smart scroll controller:
+     * - Shows up to search box when scrolled slightly (collapses dates & chips)
+     * - Hides on scroll down to maximize viewport for result cards
+     * - Reveals on scroll up for quick search access
+     * - Restores full view at the top of the page
+     */
+    let _qrMobileScrollBound = false;
+    let _qrLastScrollY = 0;
+    let _qrScrollTicking = false;
+
+    function initQrMobileScroll() {
+        if (_qrMobileScrollBound) return;
+        _qrMobileScrollBound = true;
+
+        function handleScroll() {
+            if (window.innerWidth > 768) return;
+            const tab = document.getElementById('tab-quarterly-results');
+            if (!tab || tab.style.display === 'none') return;
+
+            const headerGroup = document.getElementById('qr-mobile-header-group');
+            if (!headerGroup) return;
+
+            const searchInput = document.getElementById('qr-search-input');
+            if (searchInput && document.activeElement === searchInput) {
+                // Keep visible while user is actively typing in search
+                headerGroup.classList.remove('qr-mobile-hidden');
+                return;
+            }
+
+            const currentScrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+            const deltaY = currentScrollY - _qrLastScrollY;
+
+            // 1. Initial scroll past 30px: collapse date selector and strategy chips -> shows up to search box
+            if (currentScrollY > 30) {
+                headerGroup.classList.add('qr-mobile-scrolled');
+            } else {
+                headerGroup.classList.remove('qr-mobile-scrolled');
+            }
+
+            // 2. Hide when scrolling down, reveal when scrolling up
+            if (currentScrollY > 90) {
+                if (deltaY > 6) {
+                    // Scrolling down: hide header to dedicate full screen to cards
+                    headerGroup.classList.add('qr-mobile-hidden');
+                } else if (deltaY < -5) {
+                    // Scrolling up: reveal up to search box
+                    headerGroup.classList.remove('qr-mobile-hidden');
+                }
+            } else {
+                // Near top: always reveal
+                headerGroup.classList.remove('qr-mobile-hidden');
+            }
+
+            _qrLastScrollY = currentScrollY;
+            _qrScrollTicking = false;
+        }
+
+        window.addEventListener('scroll', function() {
+            if (!_qrScrollTicking) {
+                window.requestAnimationFrame(handleScroll);
+                _qrScrollTicking = true;
+            }
         }, { passive: true });
     }
 
@@ -1475,11 +1542,13 @@
     window.scrollQrDates = scrollQrDates;
     window.updateQrDateNavButtons = updateQrDateNavButtons;
     window.initQrDatesScroll = initQrDatesScroll;
+    window.initQrMobileScroll = initQrMobileScroll;
     window.qrState = qrState;
 
     // Auto-init on DOMContentLoaded if starting on quarterly-results tab
     document.addEventListener('DOMContentLoaded', () => {
         initCustomQueryModalListeners();
+        initQrMobileScroll();
         if (window.INITIAL_TAB === 'quarterly-results' || window.currentTab === 'quarterly-results') {
             loadQuarterlyResults();
         }

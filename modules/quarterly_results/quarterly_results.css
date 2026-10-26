@@ -4,6 +4,11 @@
 /* ======================================================== */
 /* Top Header & Breadcrumb Bar */
 /* ======================================================== */
+/* Container for Mobile Smart Header (Top Bar + Controls) */
+.qr-mobile-header-group {
+    display: block;
+}
+
 .qr-top-bar {
     display: flex;
     align-items: center;
@@ -1498,6 +1503,61 @@
 }
 
 @media (max-width: 768px) {
+    /* ======================================================== */
+    /* Mobile Smart Sticky & Scroll Collapse Header (<= 768px) */
+    /* ======================================================== */
+    .qr-mobile-header-group {
+        position: sticky;
+        top: 48px;
+        z-index: 920;
+        background: rgba(15, 23, 42, 0.96);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 6px 10px 4px 10px;
+        margin: 0 -10px 8px -10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+        transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+        transform: translateY(0);
+        opacity: 1;
+        will-change: transform, opacity;
+    }
+
+    :root:not([data-theme="dark"]) .qr-mobile-header-group {
+        background: rgba(248, 250, 252, 0.96);
+        border-bottom-color: rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .qr-mobile-header-group.qr-mobile-hidden {
+        transform: translateY(-115%);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* When scrolled: collapse date selector, strategy chips & query bar to show up to search box */
+    .qr-mobile-header-group.qr-mobile-scrolled .qr-dates-wrapper,
+    .qr-mobile-header-group.qr-mobile-scrolled .qr-category-chips-row,
+    .qr-mobile-header-group.qr-mobile-scrolled .qr-active-query-bar {
+        display: none !important;
+    }
+
+    .qr-mobile-header-group.qr-mobile-scrolled .qr-controls-card {
+        margin-bottom: 0 !important;
+        padding: 2px 0 2px 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .qr-mobile-header-group.qr-mobile-scrolled .qr-top-bar {
+        margin-bottom: 4px !important;
+    }
+
+    .qr-mobile-header-group.qr-mobile-scrolled .qr-page-title {
+        font-size: 16px !important;
+    }
+
     .qr-download-btn span {
         display: none;
     }
