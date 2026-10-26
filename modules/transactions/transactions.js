@@ -1229,7 +1229,16 @@
 
         renderDealFieldsPopover();
 
-        // Extract mouse coordinates (where the mouse is)
+        // 1. Make visible first so dimensions can be measured accurately
+        popover.style.display = 'flex';
+        popover.style.flexDirection = 'column';
+
+        const popWidth = popover.offsetWidth || 620;
+        const popHeight = popover.offsetHeight || 360;
+        const vw = window.innerWidth || document.documentElement.clientWidth;
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+
+        // 2. Extract mouse coordinates
         let mouseX = (e && typeof e.clientX === 'number' && e.clientX > 0) ? e.clientX : lastMouseCoords.x;
         let mouseY = (e && typeof e.clientY === 'number' && e.clientY > 0) ? e.clientY : lastMouseCoords.y;
 
@@ -1239,30 +1248,32 @@
             mouseY = triggerRect.bottom;
         }
 
-        popover.style.display = 'block';
-        const popWidth = popover.offsetWidth || 620;
-        const popHeight = popover.offsetHeight || 420;
-        const vw = window.innerWidth || document.documentElement.clientWidth;
-        const vh = window.innerHeight || document.documentElement.clientHeight;
-
-        // Position horizontally where mouse is
-        let left = mouseX + 14;
+        // 3. Horizontal positioning (near mouse)
+        let left = mouseX + 16;
         if (left + popWidth > vw - 16) {
-            // Flip to left of cursor if overflowing viewport
-            left = mouseX - popWidth - 14;
+            left = mouseX - popWidth - 16;
         }
-        if (left < 16) {
-            left = Math.max(12, Math.min(vw - popWidth - 12, (vw - popWidth) / 2));
+        // Strict horizontal bounds: MUST fit within viewport
+        if (left + popWidth > vw - 12) {
+            left = vw - popWidth - 12;
+        }
+        if (left < 12) {
+            left = 12;
         }
 
-        // Position vertically where mouse is
-        let top = mouseY + 14;
-        if (top + popHeight > vh - 16) {
-            // Flip above cursor if overflowing bottom
-            top = mouseY - popHeight - 14;
+        // 4. Vertical positioning:
+        // Try placing adjacent to mouse below cursor
+        let top = mouseY + 10;
+        if (top + popHeight > vh - 12) {
+            // Not enough space below, try above cursor
+            top = mouseY - popHeight - 10;
         }
-        if (top < 16) {
-            top = Math.max(12, Math.min(vh - popHeight - 12, 16));
+        // Strict vertical clamping: NEVER go off top (min 12px) and NEVER exceed viewport bottom
+        if (top + popHeight > vh - 12) {
+            top = vh - popHeight - 12;
+        }
+        if (top < 12) {
+            top = 12;
         }
 
         popover.style.left = `${Math.round(left)}px`;

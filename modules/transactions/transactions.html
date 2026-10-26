@@ -258,47 +258,6 @@
     <!-- Custom Transactions Screener Modal -->
     <div id="tx-custom-modal" class="modal-backdrop tx-custom-modal-backdrop" style="display: none;">
         <div class="modal-content tx-custom-modal-content">
-            <!-- Real Deal Data Example Popover (Triggered on hover of 'Deal Fields:') -->
-            <div id="tx-deal-fields-popover" class="tx-deal-fields-popover" style="display: none;" role="tooltip"
-                 onmouseenter="window.cancelHideDealFieldsPopover && window.cancelHideDealFieldsPopover()"
-                 onmouseleave="window.hideDealFieldsPopover && window.hideDealFieldsPopover()">
-                <div class="tx-popover-header">
-                    <div class="tx-popover-title">
-                        <span class="tx-popover-icon">📊</span>
-                        <span>Deal Fields &amp; Real Examples</span>
-                    </div>
-                    <span class="tx-popover-badge" id="tx-popover-badge">4,021 Database Deals</span>
-                </div>
-                <div class="tx-popover-meta">
-                    <div class="tx-popover-stock">
-                        <strong id="tx-popover-stock-symbol">All Actions, Types &amp; Categories</strong>
-                        <span id="tx-popover-stock-name">Real values from NSE/BSE institutional disclosures</span>
-                    </div>
-                    <div class="tx-popover-date" id="tx-popover-date">💡 Click green syntax to insert</div>
-                </div>
-                <div class="tx-popover-table-wrapper">
-                    <table class="tx-popover-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 78px;">Field</th>
-                                <th style="width: 240px;">Real DB Examples</th>
-                                <th>Query Syntax (Click to Insert)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tx-popover-tbody">
-                            <!-- Populated dynamically with all categories, types, actions and real records -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="tx-popover-sample-query">
-                    <div class="tx-popover-query-header">
-                        <span style="font-weight: 700; color: var(--text-primary);">💡 Working Query Example:</span>
-                        <button type="button" class="tx-btn-popover-use" onclick="insertPopoverQuery()" title="Insert into query box">Use Query ↵</button>
-                    </div>
-                    <code id="tx-popover-query-code">value >= 25 and action == 'BUY' and type == 'block'</code>
-                </div>
-            </div>
-
             <!-- Header -->
             <div class="tx-custom-modal-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -439,3 +398,46 @@
         </div>
     </div>
 </div>
+    <!-- Deal Fields Real Examples Floating Popover (Root Level - Not Clipped by Modal) -->
+    <!-- Real Deal Data Example Popover (Triggered on hover of 'Deal Fields:') -->
+            <div id="tx-deal-fields-popover" class="tx-deal-fields-popover" style="display: none;" role="tooltip"
+                 onmouseenter="window.cancelHideDealFieldsPopover && window.cancelHideDealFieldsPopover()"
+                 onmouseleave="window.hideDealFieldsPopover && window.hideDealFieldsPopover()">
+                <div class="tx-popover-header">
+                    <div class="tx-popover-title">
+                        <span class="tx-popover-icon">📊</span>
+                        <span>Deal Fields &amp; Real Examples</span>
+                    </div>
+                    <span class="tx-popover-badge" id="tx-popover-badge">4,021 Deals</span>
+                    <button type="button" class="tx-popover-close-btn" onclick="hideDealFieldsPopover()" title="Close helper">&times;</button>
+                </div>
+                <div class="tx-popover-meta">
+                    <div class="tx-popover-stock">
+                        <strong id="tx-popover-stock-symbol">All Actions, Types &amp; Categories</strong>
+                        <span id="tx-popover-stock-name">Real values from NSE/BSE institutional disclosures</span>
+                    </div>
+                    <div class="tx-popover-date" id="tx-popover-date">💡 Click green syntax to insert</div>
+                </div>
+                <div class="tx-popover-table-wrapper">
+                    <table class="tx-popover-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 78px;">Field</th>
+                                <th style="width: 240px;">Real DB Examples</th>
+                                <th>Query Syntax (Click to Insert)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tx-popover-tbody">
+                            <!-- Populated dynamically with all categories, types, actions and real records -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tx-popover-sample-query">
+                    <div class="tx-popover-query-header">
+                        <span style="font-weight: 700; color: var(--text-primary);">💡 Working Query Example:</span>
+                        <button type="button" class="tx-btn-popover-use" onclick="insertPopoverQuery()" title="Insert into query box">Use Query ↵</button>
+                    </div>
+                    <code id="tx-popover-query-code">value >= 25 and action == 'BUY' and type == 'block'</code>
+                </div>
+            </div>
+
