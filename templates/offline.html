@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <title>Offline • Capital Desk</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
+    <link rel="apple-touch-icon" href="/static/favicon-192.png">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --green: #10b981;
+        }
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-color: #f8fafc;
+                --card-bg: #ffffff;
+                --border-color: #e2e8f0;
+                --text-primary: #0f172a;
+                --text-secondary: #64748b;
+                --accent: #2563eb;
+                --accent-hover: #1d4ed8;
+            }
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+        .offline-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px 28px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+        }
+        .logo-wrap {
+            margin-bottom: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+        .logo-img {
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.3px;
+        }
+        p {
+            color: var(--text-secondary);
+            font-size: 14.5px;
+            line-height: 1.55;
+            margin-bottom: 28px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            font-size: 12.5px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ef4444;
+            animation: pulse 1.8s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+        .btn-retry {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px 20px;
+            border-radius: 10px;
+            background-color: var(--accent);
+            color: #ffffff;
+            font-size: 14.5px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-retry:hover {
+            background-color: var(--accent-hover);
+        }
+        .btn-retry:active {
+            transform: scale(0.98);
+        }
+        .cached-links {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+        .cached-link {
+            color: var(--text-secondary);
+            font-size: 13px;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .cached-link:hover {
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-card">
+        <div class="logo-wrap">
+            <img src="/static/favicon-192.png" alt="Capital Desk" class="logo-img">
+        </div>
+        <div>
+            <span class="status-badge">
+                <span class="status-dot"></span> No Internet Connection
+            </span>
+        </div>
+        <h1>You're Currently Offline</h1>
+        <p>Capital Desk requires an active network connection to stream live tick data, order books, and real-time filings. We will automatically reconnect when your signal returns.</p>
+        <button class="btn-retry" onclick="handleRetry(this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            <span>Retry Connection</span>
+        </button>
+        <div class="cached-links">
+            <a href="/watchlists" class="cached-link">Watchlists</a>
+            <a href="/portfolios" class="cached-link">Portfolios</a>
+            <a href="/transactions" class="cached-link">Transactions</a>
+        </div>
+    </div>
+
+    <script>
+        function handleRetry(btn) {
+            btn.innerHTML = 'Connecting...';
+            btn.style.opacity = '0.7';
+            setTimeout(() => {
+                window.location.reload();
+            }, 400);
+        }
+
+        window.addEventListener('online', () => {
+            const badge = document.querySelector('.status-badge');
+            if (badge) {
+                badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                badge.style.color = '#10b981';
+                badge.innerHTML = '<span class="status-dot" style="background:#10b981"></span> Connection Restored';
+            }
+            setTimeout(() => {
+                window.location.reload();
+            }, 600);
+        });
+    </script>
+</body>
+</html>

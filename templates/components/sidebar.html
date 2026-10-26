@@ -135,6 +135,12 @@
             <span id="sidebar-last-updated-text">🕒 Updated just now</span>
         </div>
 
+        <!-- PWA Install Button (shown when installable on mobile/desktop) -->
+        <button type="button" class="pwa-install-btn sidebar-pwa-btn" id="btn-pwa-install" onclick="installPwa()" style="display: none;" title="Install Capital Desk Native App">
+            <span class="pwa-btn-icon">📲</span>
+            <span class="pwa-btn-text">Install App</span>
+        </button>
+
         <!-- User Profile Dropdown Card -->
         <div class="sidebar-user-wrapper">
             <div class="sidebar-user-card" onclick="toggleSettingsMenu(event)">
@@ -148,6 +154,10 @@
 
             <!-- Options Menu Dropdown Content Popup -->
             <div id="settings-menu-dropdown" class="menu-dropdown-content sidebar-user-dropdown">
+                <div class="menu-item pwa-install-btn" id="sidebar-pwa-install" onclick="installPwa(); closeSettingsMenu();" style="display: none; color: #38bdf8;">
+                    📲 Install Capital Desk App
+                </div>
+                <div class="menu-divider pwa-install-btn" id="sidebar-pwa-divider" style="display: none;"></div>
                 <div class="menu-item" onclick="toggleTheme(); closeSettingsMenu();">
                     <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
                 </div>
@@ -185,6 +195,31 @@
      SIDEBAR COMPONENT STYLES
      ========================================================= -->
 <style>
+.sidebar-pwa-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin: 8px 0;
+    padding: 9px 12px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(16, 185, 129, 0.18));
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 9px;
+    color: #38bdf8;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+.sidebar-pwa-btn:hover {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.38), rgba(16, 185, 129, 0.3));
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
 /* Backdrop Overlay */
 .sidebar-backdrop {
     display: none;

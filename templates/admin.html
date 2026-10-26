@@ -41,9 +41,20 @@
     </style>
 
     <!-- Favicon & Touch Icons -->
+    <!-- Progressive Web App (PWA) Manifest & Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Capital Desk">
+    <meta name="application-name" content="Capital Desk">
+
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512.png">
+    <link rel="apple-touch-icon" href="/static/favicon-192.png">
     <link rel="apple-touch-icon" href="/static/icon.png">
     <!-- Institutional Financial Typography (Inter & Plus Jakarta Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3610,5 +3621,6 @@
 
         initAdmin();
     </script>
+    <script src="/static/js/core/pwa.js?v=1.0"></script>
 </body>
 </html>

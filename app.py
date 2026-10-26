@@ -163,6 +163,29 @@ def serve_module_asset(filename):
     mimetype = "application/javascript" if ext == ".js" else ("text/css" if ext == ".css" else None)
     return send_from_directory(os.path.join(app.root_path, "modules"), filename, mimetype=mimetype)
 
+# =========================================================
+# PWA (PROGRESSIVE WEB APP) ROUTES
+# Web App Manifest, Service Worker, and Offline Fallback
+# =========================================================
+@app.route("/manifest.json")
+@app.route("/manifest.webmanifest")
+def serve_manifest():
+    response = send_from_directory(os.path.join(app.root_path, "static"), "manifest.json", mimetype="application/manifest+json")
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    return response
+
+@app.route("/sw.js")
+@app.route("/service-worker.js")
+def serve_service_worker():
+    response = send_from_directory(os.path.join(app.root_path, "static"), "sw.js", mimetype="application/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+@app.route("/offline")
+def offline_page():
+    return render_template("offline.html")
+
 # App Shell SPA Entrypoints
 @app.route("/", endpoint="index")
 @app.route("/watchlists")

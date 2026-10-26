@@ -1,0 +1,107 @@
+{
+  "id": "capital-desk-pwa",
+  "name": "Capital Desk - Institutional Market & Portfolio Intelligence",
+  "short_name": "Capital Desk",
+  "description": "Institutional-grade market analysis, stock screening, portfolio intelligence, live candlestick charts and trading workspace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": [
+    "finance",
+    "productivity",
+    "business",
+    "utilities"
+  ],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/static/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/favicon.ico",
+      "sizes": "48x48 32x32 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Watchlists",
+      "short_name": "Watchlists",
+      "description": "View real-time stock watchlists & metrics",
+      "url": "/watchlists",
+      "icons": [
+        {
+          "src": "/static/favicon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Portfolios",
+      "short_name": "Portfolios",
+      "description": "Track investment holdings & performance",
+      "url": "/portfolios",
+      "icons": [
+        {
+          "src": "/static/favicon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "short_name": "Transactions",
+      "description": "Institutional block deals & insider trading disclosures",
+      "url": "/transactions",
+      "icons": [
+        {
+          "src": "/static/favicon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Quarterly Results",
+      "short_name": "Results",
+      "description": "Earnings announcements & financial results",
+      "url": "/quarterly-results",
+      "icons": [
+        {
+          "src": "/static/favicon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
