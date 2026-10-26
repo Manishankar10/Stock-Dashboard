@@ -131,9 +131,6 @@
             </button>
         </div>
 
-        <div class="sidebar-update-tag">
-            <span id="sidebar-last-updated-text">🕒 Updated just now</span>
-        </div>
 
         <!-- PWA Install Button (shown when installable on mobile/desktop) -->
         <button type="button" class="pwa-install-btn sidebar-pwa-btn" id="btn-pwa-install" onclick="installPwa()" style="display: none;" title="Install Capital Desk Native App">
@@ -661,15 +658,6 @@
     border-color: var(--border-input);
 }
 
-.sidebar-update-tag {
-    font-size: 10.5px;
-    color: var(--text-secondary);
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 2px 0;
-}
 
 /* User Card Component */
 .sidebar-user-wrapper {
@@ -799,14 +787,12 @@
 .app-sidebar.collapsed .sidebar-section-label,
 .app-sidebar.collapsed .sidebar-nav-text,
 .app-sidebar.collapsed .sidebar-nav-arrow,
-.app-sidebar.collapsed .sidebar-update-tag,
 .app-sidebar.collapsed .sidebar-user-info,
 .app-sidebar.collapsed .sidebar-user-arrow,
 body.sidebar-collapsed .sidebar-brand-text,
 body.sidebar-collapsed .sidebar-section-label,
 body.sidebar-collapsed .sidebar-nav-text,
 body.sidebar-collapsed .sidebar-nav-arrow,
-body.sidebar-collapsed .sidebar-update-tag,
 body.sidebar-collapsed .sidebar-user-info,
 body.sidebar-collapsed .sidebar-user-arrow {
     display: none !important;
