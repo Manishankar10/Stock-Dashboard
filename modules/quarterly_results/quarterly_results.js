@@ -1045,8 +1045,6 @@
         const queryBar = document.getElementById('qr-active-query-bar');
         const queryTextEl = document.getElementById('qr-active-query-text');
         const customChip = document.getElementById('qr-chip-custom');
-        const sidebarCustomStatus = document.getElementById('qr-sidebar-custom-status');
-        const sidebarSnippet = document.getElementById('qr-sidebar-query-snippet');
 
         // Update chips active state
         document.querySelectorAll('.qr-category-chips-row .qr-filter-chip').forEach(btn => {
@@ -1056,14 +1054,6 @@
             } else {
                 btn.classList.remove('active');
             }
-        });
-
-        // Update custom query status banners across desktop sidebar and mobile filter bottom-sheet
-        document.querySelectorAll('.qr-sidebar-custom-status').forEach(el => {
-            el.style.display = qrState.custom_query ? 'flex' : 'none';
-        });
-        document.querySelectorAll('.qr-sidebar-query-snippet').forEach(el => {
-            el.textContent = qrState.custom_query || '';
         });
 
         if (qrState.custom_query) {
