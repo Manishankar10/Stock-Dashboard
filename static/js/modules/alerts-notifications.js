@@ -37,19 +37,60 @@
             });
         }
 
+        function openStockChartSafely(symbol) {
+            if (!symbol) return;
+            const cleanSym = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+            if (typeof window.openInHouseChart === 'function') {
+                window.openInHouseChart(cleanSym);
+            } else if (typeof window.openChart === 'function') {
+                window.openChart(cleanSym);
+            } else if (typeof openInHouseChart === 'function') {
+                openInHouseChart(cleanSym);
+            } else if (typeof openChart === 'function') {
+                openChart(cleanSym);
+            }
+            const chartM = document.getElementById('chartModal') || document.getElementById('chart-modal');
+            if (chartM && typeof window.bringModalToFront === 'function') {
+                window.bringModalToFront(chartM);
+            }
+        }
+        window.openStockChartSafely = openStockChartSafely;
+
+        function updateCreateAlertChartLinkVisibility() {
+            const symInput = document.getElementById('modal-alert-symbol');
+            const linkWrap = document.getElementById('createAlertChartLinkWrap');
+            if (symInput && linkWrap) {
+                const val = symInput.value.trim();
+                linkWrap.style.display = val ? 'inline' : 'none';
+            }
+        }
+        window.updateCreateAlertChartLinkVisibility = updateCreateAlertChartLinkVisibility;
+
+        function openChartFromCreateAlertModal() {
+            const symInput = document.getElementById('modal-alert-symbol');
+            const sym = (symInput ? symInput.value : '').trim().toUpperCase();
+            if (sym) {
+                openStockChartSafely(sym);
+            }
+        }
+        window.openChartFromCreateAlertModal = openChartFromCreateAlertModal;
+
         function openCreateAlertModal(symbol = '', customPrice = null) {
             let sym = symbol || (typeof currentDetailHolding !== 'undefined' && currentDetailHolding ? currentDetailHolding.symbol : '') || (typeof currentChartSymbol !== 'undefined' && currentChartSymbol ? currentChartSymbol : '');
             sym = (sym || '').trim().toUpperCase();
             
             const symInput = document.getElementById('modal-alert-symbol');
+            const chartLinkWrap = document.getElementById('createAlertChartLinkWrap');
             if (symInput) {
                 symInput.value = sym;
                 if (sym) {
                     symInput.readOnly = true;
                     symInput.style.background = 'var(--bg-subtle, #1e222d)';
+                    if (chartLinkWrap) chartLinkWrap.style.display = 'inline';
                 } else {
                     symInput.readOnly = false;
                     symInput.style.background = 'var(--input-bg, #1a1e29)';
+                    if (chartLinkWrap) chartLinkWrap.style.display = 'none';
                     setTimeout(() => symInput.focus(), 80);
                 }
             }
@@ -242,14 +283,34 @@
                 } else {
                     let html = '';
                     notifs.forEach(n => {
+                        let sym = (n.symbol || '').trim().toUpperCase();
+                        if (!sym && n.title) {
+                            const m = n.title.match(/[:\s]([A-Za-z0-9_\-]+)$/);
+                            if (m) sym = m[1].toUpperCase();
+                        }
+                        const chartBtnHtml = sym ? `
+                            <button type="button" class="btn-secondary" style="padding:5px 9px; font-size:11.5px; display:inline-flex; align-items:center; gap:4px; cursor:pointer; border-radius:6px; font-weight:600;" onclick="openStockChartSafely('${escapeHtml(sym)}')" title="Open Interactive Chart for ${escapeHtml(sym)}">
+                                <span>📊</span> <span>Chart</span>
+                            </button>
+                        ` : '';
+                        const symLinkTitle = sym ? `
+                            <a href="javascript:void(0)" onclick="openStockChartSafely('${escapeHtml(sym)}')" class="alert-stock-link" style="color:var(--accent, #10b981); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer;" title="Click to open chart for ${escapeHtml(sym)}">
+                                <span>${escapeHtml(n.title)}</span>
+                                <span style="font-size:12px; opacity:0.85;">📈</span>
+                            </a>
+                        ` : escapeHtml(n.title);
+
                         html += `
-                            <div style="background:var(--bg-subtle, #1e222d); border:1px solid var(--border-color, #334155); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-                                <div>
-                                    <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); margin-bottom:4px;">${escapeHtml(n.title)}</div>
+                            <div class="notif-item-card" style="background:var(--bg-subtle, #1e222d); border:1px solid var(--border-color, #334155); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:200px;">
+                                    <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); margin-bottom:4px;">${symLinkTitle}</div>
                                     <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">${escapeHtml(n.message)}</div>
                                     <div style="font-size:10.5px; color:var(--text-muted);">${window.formatAppDateTime ? window.formatAppDateTime(n.created_at) : n.created_at}</div>
                                 </div>
-                                <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteNotification('${n.id}')" title="Delete Notification">🗑️</button>
+                                <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                                    ${chartBtnHtml}
+                                    <button type="button" class="btn-danger" style="padding:5px 9px; font-size:12px; border-radius:6px; cursor:pointer;" onclick="deleteNotification('${n.id}')" title="Delete Notification">🗑️</button>
+                                </div>
                             </div>
                         `;
                     });
@@ -272,15 +333,20 @@
                 } else {
                     let html = '';
                     alerts.forEach(a => {
+                        const sym = (a.symbol || '').trim().toUpperCase();
                         const condText = a.condition === 'above' ? '≥ (Crosses Above)' : '≤ (Crosses Below)';
                         const statusBadge = a.status === 'triggered' 
                             ? '<span class="badge" style="background:#fef3c7; color:#d97706; border:1px solid #fde68a;">Triggered</span>' 
                             : '<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0;">Active</span>';
                         html += `
-                            <div style="background:var(--bg-subtle, #1e222d); border:1px solid var(--border-color, #334155); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                            <div class="alert-item-card" style="background:var(--bg-subtle, #1e222d); border:1px solid var(--border-color, #334155); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
                                 <div>
                                     <div style="font-weight:700; font-size:14px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-                                        ${escapeHtml(a.symbol)} ${statusBadge}
+                                        <a href="javascript:void(0)" onclick="openStockChartSafely('${escapeHtml(sym)}')" class="alert-stock-link" style="color:var(--accent, #10b981); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer;" title="Click to open interactive chart for ${escapeHtml(sym)}">
+                                            <span>${escapeHtml(sym)}</span>
+                                            <span style="font-size:12px; opacity:0.85;">📈</span>
+                                        </a>
+                                        ${statusBadge}
                                     </div>
                                     <div style="font-size:12.5px; color:var(--text-secondary); margin-top:3px;">
                                         Target: <strong>₹${parseFloat(a.target_price).toLocaleString('en-IN', {minimumFractionDigits:2})}</strong> (${condText})
@@ -288,7 +354,14 @@
                                     ${a.note ? `<div style="font-size:11.5px; color:var(--text-muted); margin-top:2px; font-style:italic;">Note: ${escapeHtml(a.note)}</div>` : ''}
                                     <div style="font-size:10.5px; color:var(--text-muted); margin-top:4px;">Created: ${window.formatAppDateTime ? window.formatAppDateTime(a.created_at) : a.created_at}</div>
                                 </div>
-                                <button class="btn-danger" style="padding:6px 10px; font-size:13px;" onclick="deleteAlert('${a.id}')" title="Delete Alert">🗑️ Delete</button>
+                                <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                                    <button type="button" class="btn-secondary" style="padding:6px 11px; font-size:12px; display:inline-flex; align-items:center; gap:5px; font-weight:600; cursor:pointer; border-radius:6px;" onclick="openStockChartSafely('${escapeHtml(sym)}')" title="Open Interactive Chart for ${escapeHtml(sym)}">
+                                        <span>📊</span> <span>Chart</span>
+                                    </button>
+                                    <button type="button" class="btn-danger" style="padding:6px 11px; font-size:12px; display:inline-flex; align-items:center; gap:4px; cursor:pointer; border-radius:6px;" onclick="deleteAlert('${a.id}')" title="Delete Alert">
+                                        <span>🗑️</span> <span>Delete</span>
+                                    </button>
+                                </div>
                             </div>
                         `;
                     });

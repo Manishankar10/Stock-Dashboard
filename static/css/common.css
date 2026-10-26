@@ -1664,8 +1664,62 @@
         .active-drawing-delete-btn:hover { background: rgba(239, 83, 80, 0.2); }
         .chart-action-btn { background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; flex-shrink: 0; }
         .chart-action-btn:hover { background: #2a2e39; color: #ffffff; }
-        .chart-close-btn { background: rgba(239, 83, 80, 0.15); border: 1px solid rgba(239, 83, 80, 0.4); color: #ef5350; font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1; padding: 5px 12px; border-radius: 6px; transition: all 0.15s ease; margin-left: 8px; flex-shrink: 0; z-index: 200; display: inline-flex; align-items: center; justify-content: center; }
-        .chart-close-btn:hover { color: #ffffff; background: #ef5350; border-color: #ef5350; transform: scale(1.05); }
+        /* Uniform Close Icon for Modals & Alert Popups (Desktop & Mobile) */
+        .chart-close-btn,
+        .modal-close-btn,
+        #notificationsModal .close-btn,
+        #createAlertModal .close-btn {
+            background: rgba(239, 83, 80, 0.15) !important;
+            border: 1px solid rgba(239, 83, 80, 0.4) !important;
+            color: #ef5350 !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            line-height: 1 !important;
+            width: 32px !important;
+            height: 32px !important;
+            min-width: 32px !important;
+            max-width: 32px !important;
+            padding: 0 !important;
+            border-radius: 6px !important;
+            transition: all 0.15s ease !important;
+            margin: 0 !important;
+            flex-shrink: 0 !important;
+            z-index: 200 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            outline: none !important;
+        }
+        .chart-close-btn:hover,
+        .modal-close-btn:hover,
+        #notificationsModal .close-btn:hover,
+        #createAlertModal .close-btn:hover {
+            color: #ffffff !important;
+            background: #ef5350 !important;
+            border-color: #ef5350 !important;
+            transform: scale(1.05) !important;
+        }
+        .chart-close-btn:active,
+        .modal-close-btn:active,
+        #notificationsModal .close-btn:active,
+        #createAlertModal .close-btn:active {
+            color: #ffffff !important;
+            background: #ef5350 !important;
+            border-color: #ef5350 !important;
+            transform: scale(0.96) !important;
+        }
+
+        .alert-stock-link {
+            color: var(--accent, #10b981) !important;
+            text-decoration: none !important;
+            transition: all 0.15s ease !important;
+        }
+        .alert-stock-link:hover {
+            color: #34d399 !important;
+            text-decoration: underline !important;
+        }
         .tf-btn, .int-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
         .tf-btn:hover, .int-btn:hover { color: #d1d4dc; background: #2a2e39; }
         .tf-btn.active, .int-btn.active { background: #10b981; color: #ffffff; }

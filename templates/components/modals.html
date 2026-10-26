@@ -1216,11 +1216,16 @@
         <div class="small-modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0; font-size: 18px; color: var(--text-primary);">🎯 Set Price Alert</h2>
-                <span class="close-btn" onclick="closeCreateAlertModal()">&times;</span>
+                <button type="button" class="close-btn modal-close-btn" onclick="closeCreateAlertModal()" title="Close">&times;</button>
             </div>
             <div class="form-group">
-                <label>Stock Symbol</label>
-                <input type="text" id="modal-alert-symbol" placeholder="e.g. TCS, RELIANCE, INFY" style="font-weight:700; text-transform: uppercase;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <label style="margin: 0;">Stock Symbol</label>
+                    <span id="createAlertChartLinkWrap" style="display: none;">
+                        <a href="javascript:void(0)" id="createAlertChartLink" onclick="openChartFromCreateAlertModal()" style="font-size: 11.5px; color: var(--accent, #10b981); text-decoration: none; font-weight: 600;" title="Open chart for this symbol">📊 View Chart ↗</a>
+                    </span>
+                </div>
+                <input type="text" id="modal-alert-symbol" placeholder="e.g. TCS, RELIANCE, INFY" style="font-weight:700; text-transform: uppercase;" oninput="updateCreateAlertChartLinkVisibility()">
             </div>
             <div class="form-group">
                 <label>Alert Condition</label>
@@ -1253,7 +1258,7 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <h2 style="margin: 0; font-size: 18px; color: var(--text-primary);">🔔 Alerts & Notifications</h2>
                 </div>
-                <span class="close-btn" onclick="closeNotificationsModal()">&times;</span>
+                <button type="button" class="close-btn modal-close-btn" onclick="closeNotificationsModal()" title="Close">&times;</button>
             </div>
 
             <!-- Modal Sub-Tabs -->
