@@ -116,6 +116,7 @@ def get_transactions_data():
     to_date = str(request.args.get("to_date", "")).strip() or None
     action = str(request.args.get("action", "all")).strip().lower()
     search = str(request.args.get("search", "")).strip()
+    custom_query = str(request.args.get("custom_query", "")).strip() or None
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
     user_watchlists, portfolio_symbols = _extract_user_symbols()
@@ -130,7 +131,8 @@ def get_transactions_data():
             to_date=to_date,
             action=action,
             search=search,
-            force_refresh=force_refresh
+            force_refresh=force_refresh,
+            custom_query=custom_query
         )
         data["user_watchlists"] = list(user_watchlists.keys())
         return jsonify(data)
@@ -144,23 +146,30 @@ def refresh_transactions_data():
     if _PROVIDER is None:
         return jsonify({"error": "Transactions Provider not initialized"}), 500
     try:
-        now = time.time()
-        time_since_last = now - _PROVIDER._last_fetch_time if _PROVIDER._last_fetch_time > 0 else float("inf")
-        if _PROVIDER._cache_deals and time_since_last < 900:
-            remaining = int(900 - time_since_last)
-            rem_min = (remaining + 59) // 60
-            return jsonify({
-                "success": True,
-                "official_called": False,
-                "message": f"Transactions are up to date. Official exchange data can be called every 15 minutes ({rem_min}m remaining).",
-                "cooldown_remaining_seconds": remaining
-            })
-        _PROVIDER.fetch_live_deals()
+        # User constraint: "dont load data from provider when refresh in transactions page. just load data from our database."
+        _PROVIDER._load_stored_deals()
         return jsonify({
             "success": True,
-            "official_called": True,
-            "message": "Official transactions data refreshed from NSE India.",
-            "cooldown_remaining_seconds": 900
+            "official_called": False,
+            "message": "Transactions data reloaded from database.",
+            "total_records": len(_PROVIDER._cache_deals),
+            "deals_count": len(_PROVIDER._cache_deals)
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@transactions_bp.route("/api/market-transactions/validate-query", methods=["GET", "POST"])
+@_guard
+def validate_transactions_query():
+    """Validate a custom transaction screener query string and return syntax status, match count, and sample deals."""
+    if _PROVIDER is None:
+        return jsonify({"error": "Transactions Provider not initialized"}), 500
+
+    if request.method == "POST" and request.is_json:
+        query_str = request.json.get("query", "")
+    else:
+        query_str = request.args.get("query", "")
+
+    result = _PROVIDER.validate_custom_query(query_str)
+    return jsonify(result)

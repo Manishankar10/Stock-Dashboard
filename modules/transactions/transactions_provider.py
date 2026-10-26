@@ -3,6 +3,7 @@ Fetches, normalizes, and filters official Block Deals, Bulk Deals, and Insider D
 directly from National Stock Exchange of India (NSE India).
 """
 
+import ast
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 import json
@@ -107,7 +108,19 @@ class TransactionsProvider:
         self._load_stored_deals()
 
     def _load_stored_deals(self):
-        """Load persisted deals from JSON storage in app_data."""
+        """Load persisted deals from Database (MongoDB Atlas & SQLite) with JSON storage fallback."""
+        try:
+            from db_store import load_transactions_deals_db
+            res = load_transactions_deals_db(fallback_filepath=self.storage_file)
+            deals = res.get("deals", [])
+            if isinstance(deals, list) and deals:
+                self._cache_deals = deals
+                if self._last_fetch_time == 0:
+                    self._last_fetch_time = time.time()
+                return
+        except Exception as e:
+            print(f"[TransactionsProvider] Warning loading from DB: {e}")
+
         if self.storage_file.exists():
             try:
                 with open(self.storage_file, "r", encoding="utf-8") as f:
@@ -123,13 +136,18 @@ class TransactionsProvider:
                 print(f"[TransactionsProvider] Warning loading storage file {self.storage_file}: {e}")
 
     def _persist_deals(self):
-        """Save accumulated deals strictly to app_data storage file."""
+        """Save accumulated deals strictly to Database (MongoDB Atlas & SQLite) and backup storage file."""
         try:
-            self.storage_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_file, "w", encoding="utf-8") as f:
-                json.dump(self._cache_deals, f, indent=2)
+            from db_store import save_transactions_deals_db
+            save_transactions_deals_db(self._cache_deals, backup_filepath=self.storage_file)
         except Exception as e:
-            print(f"[TransactionsProvider] Warning persisting deals to {self.storage_file}: {e}")
+            print(f"[TransactionsProvider] Warning persisting deals to DB: {e}")
+            try:
+                self.storage_file.parent.mkdir(parents=True, exist_ok=True)
+                with open(self.storage_file, "w", encoding="utf-8") as f:
+                    json.dump(self._cache_deals, f, indent=2)
+            except Exception as ex:
+                print(f"[TransactionsProvider] Warning persisting deals to {self.storage_file}: {ex}")
 
     def _create_nse_session(self) -> requests.Session:
         """Create a session with cookies initialized at NSE home."""
@@ -391,6 +409,259 @@ class TransactionsProvider:
             "filing_url": filing_url
         }
 
+
+    ALLOWED_AST_NODES = (
+        ast.Expression,
+        ast.BoolOp,
+        ast.UnaryOp,
+        ast.Compare,
+        ast.Name,
+        ast.Constant,
+        ast.And,
+        ast.Or,
+        ast.Not,
+        ast.Eq,
+        ast.NotEq,
+        ast.Lt,
+        ast.LtE,
+        ast.Gt,
+        ast.GtE,
+        ast.In,
+        ast.NotIn,
+        ast.USub,
+        ast.UAdd,
+        ast.Load,
+        ast.Call,
+        ast.Attribute,
+    )
+
+    QUERY_FIELD_MAP = {
+        "value": "val_cr",
+        "val": "val_cr",
+        "deal_value": "val_cr",
+        "value_inr": "value",
+        "qty": "quantity",
+        "quantity": "quantity",
+        "shares": "quantity",
+        "price": "price",
+        "avg_price": "price",
+        "action": "action_lower",
+        "direction": "action_lower",
+        "type": "deal_type_lower",
+        "deal_type": "deal_type_lower",
+        "client": "client_lower",
+        "client_name": "client_lower",
+        "party": "client_lower",
+        "category": "category_lower",
+        "person_category": "category_lower",
+        "mode": "mode_lower",
+        "symbol": "symbol_lower",
+    }
+
+    def sanitize_custom_query(self, query_str: str) -> str:
+        """Sanitize boolean query expression for transactions screener."""
+        s = query_str.strip()
+        s = re.sub(r'\bAND\b', ' and ', s)
+        s = re.sub(r'\bOR\b', ' or ', s)
+        s = re.sub(r'\bNOT\b', ' not ', s)
+        s = re.sub(r'\&\&', ' and ', s)
+        s = re.sub(r'\|\|', ' or ', s)
+
+        # Convert "A contains B" into "B.lower() in A"
+        s = re.sub(
+            r'(\b[a-zA-Z_][a-zA-Z0-9_]*\b)\s+contains\s+([\'\"][^\'\"]+[\'\"])',
+            r'(\2.lower() in \1)',
+            s,
+            flags=re.IGNORECASE
+        )
+        s = re.sub(
+            r'(\b[a-zA-Z_][a-zA-Z0-9_]*\b)\s+contains\s+([a-zA-Z0-9_]+)',
+            r'("\2".lower() in \1)',
+            s,
+            flags=re.IGNORECASE
+        )
+
+        # Replace single '=' with '==' where not preceded by '<', '>', '!', '='
+        s = re.sub(r'(?<![<>!=])=(?!=)', '==', s)
+        return s
+
+    def compile_custom_query(self, query_str: str) -> Tuple[Optional[ast.AST], Optional[str]]:
+        """Compile and securely validate user-specified boolean transaction screener query."""
+        if not query_str or not query_str.strip():
+            return None, "Query string is empty."
+        sanitized = self.sanitize_custom_query(query_str)
+        try:
+            tree = ast.parse(sanitized, mode="eval")
+        except Exception as e:
+            return None, f"Query syntax error: {e}"
+
+        for node in ast.walk(tree):
+            if not isinstance(node, self.ALLOWED_AST_NODES):
+                return None, f"Unsupported expression element: {type(node).__name__}"
+            if isinstance(node, ast.Name):
+                nid = node.id.lower()
+                if nid not in self.QUERY_FIELD_MAP and nid not in ("true", "false", "buy", "sell", "block", "bulk", "insider"):
+                    return None, f"Unknown field '{node.id}'. Supported fields: value, qty, price, action, type, client, category, mode, symbol"
+        return tree, None
+
+    def eval_custom_node(self, node: Any, deal: Dict[str, Any]) -> Any:
+        """Evaluate AST expression node against a single deal dictionary."""
+        if node is None:
+            return None
+        if isinstance(node, ast.Expression):
+            return self.eval_custom_node(node.body, deal)
+        elif isinstance(node, ast.Constant):
+            if isinstance(node.value, str):
+                return node.value.lower()
+            return node.value
+        elif isinstance(node, ast.Name):
+            nid = node.id.lower()
+            if nid == "true":
+                return True
+            if nid == "false":
+                return False
+            if nid in ("buy", "sell", "block", "bulk", "insider"):
+                return nid
+            field = self.QUERY_FIELD_MAP.get(nid)
+            if field == "val_cr":
+                return float(deal.get("value") or 0) / 10000000.0
+            elif field == "action_lower":
+                return str(deal.get("action") or "").lower()
+            elif field == "deal_type_lower":
+                return str(deal.get("deal_type") or "").lower()
+            elif field == "client_lower":
+                return str(deal.get("client_name") or "").lower()
+            elif field == "category_lower":
+                return str(deal.get("person_category") or "").lower()
+            elif field == "mode_lower":
+                return str(deal.get("mode") or "").lower()
+            elif field == "symbol_lower":
+                return str(deal.get("symbol") or "").lower()
+            elif field:
+                val = deal.get(field)
+                return float(val) if isinstance(val, (int, float)) else str(val or "").lower()
+            return None
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "lower":
+                base_val = self.eval_custom_node(node.func.value, deal)
+                return str(base_val or "").lower()
+            return None
+        elif isinstance(node, ast.Attribute):
+            return None
+        elif isinstance(node, ast.UnaryOp):
+            operand = self.eval_custom_node(node.operand, deal)
+            if operand is None:
+                return None
+            if isinstance(node.op, ast.Not):
+                return not bool(operand)
+            elif isinstance(node.op, ast.USub):
+                return -operand
+            elif isinstance(node.op, ast.UAdd):
+                return +operand
+            return None
+        elif isinstance(node, ast.BoolOp):
+            if isinstance(node.op, ast.And):
+                for v in node.values:
+                    if not self.eval_custom_node(v, deal):
+                        return False
+                return True
+            elif isinstance(node.op, ast.Or):
+                for v in node.values:
+                    if self.eval_custom_node(v, deal):
+                        return True
+                return False
+        elif isinstance(node, ast.Compare):
+            left = self.eval_custom_node(node.left, deal)
+            for op, comp in zip(node.ops, node.comparators):
+                right = self.eval_custom_node(comp, deal)
+                if left is None or right is None:
+                    return False
+                if isinstance(op, ast.Eq):
+                    if str(left).lower() != str(right).lower():
+                        return False
+                elif isinstance(op, ast.NotEq):
+                    if str(left).lower() == str(right).lower():
+                        return False
+                elif isinstance(op, ast.Lt):
+                    try:
+                        if not (float(left) < float(right)):
+                            return False
+                    except Exception:
+                        return False
+                elif isinstance(op, ast.LtE):
+                    try:
+                        if not (float(left) <= float(right)):
+                            return False
+                    except Exception:
+                        return False
+                elif isinstance(op, ast.Gt):
+                    try:
+                        if not (float(left) > float(right)):
+                            return False
+                    except Exception:
+                        return False
+                elif isinstance(op, ast.GtE):
+                    try:
+                        if not (float(left) >= float(right)):
+                            return False
+                    except Exception:
+                        return False
+                elif isinstance(op, ast.In):
+                    if str(left).lower() not in str(right).lower():
+                        return False
+                elif isinstance(op, ast.NotIn):
+                    if str(left).lower() in str(right).lower():
+                        return False
+                left = right
+            return True
+        return None
+
+    def validate_custom_query(self, query_str: str) -> Dict[str, Any]:
+        """Validate screener query and return live match count and sample deals."""
+        if not query_str or not query_str.strip():
+            return {
+                "valid": False,
+                "error": "Query cannot be empty.",
+                "match_count": 0,
+                "matches": []
+            }
+        tree, err = self.compile_custom_query(query_str)
+        if err or not tree:
+            return {
+                "valid": False,
+                "error": err or "Invalid query expression.",
+                "match_count": 0,
+                "matches": []
+            }
+
+        with self._lock:
+            all_deals = list(self._cache_deals)
+
+        matched_deals = []
+        for d in all_deals:
+            try:
+                if self.eval_custom_node(tree, d):
+                    matched_deals.append({
+                        "id": d.get("id"),
+                        "symbol": d.get("symbol"),
+                        "company": d.get("company"),
+                        "client_name": d.get("client_name"),
+                        "deal_type": d.get("deal_type"),
+                        "action": d.get("action"),
+                        "value": d.get("value"),
+                        "value_formatted": d.get("value_formatted"),
+                        "date": d.get("date")
+                    })
+            except Exception:
+                pass
+
+        return {
+            "valid": True,
+            "error": None,
+            "match_count": len(matched_deals),
+            "matches": matched_deals[:6]
+        }
+
     def get_transactions(
         self,
         deal_type: str = "all",  # "all", "block", "bulk", "insider"
@@ -401,22 +672,15 @@ class TransactionsProvider:
         to_date: Optional[str] = None,
         action: str = "all",  # "all", "buy", "sell"
         search: str = "",
-        force_refresh: bool = False
+        force_refresh: bool = False,
+        custom_query: Optional[str] = None
     ) -> Dict[str, Any]:
         """Query, filter, and compute KPIs for deals matching criteria."""
-        now = time.time()
-        with self._lock:
-            time_since_last = now - self._last_fetch_time if self._last_fetch_time > 0 else float("inf")
-            # Strict 15-minute rate limit window before calling official exchange websites
-            can_call_official = (not self._cache_deals) or (time_since_last >= CACHE_TTL)
+        # User constraint: "dont load data from provider when refresh in transactions page. just load data from our database."
+        if force_refresh or not self._cache_deals:
+            self._load_stored_deals()
 
         official_called = False
-        if can_call_official and (force_refresh or not self._cache_deals or time_since_last >= CACHE_TTL):
-            try:
-                self.fetch_live_deals()
-                official_called = True
-            except Exception as e:
-                print(f"[TransactionsProvider] Error fetching live deals: {e}")
 
         now = time.time()
         time_since_last = now - self._last_fetch_time if self._last_fetch_time > 0 else 0
@@ -477,6 +741,12 @@ class TransactionsProvider:
                 or q in d.get("client_name", "").lower()
                 or q in d.get("person_category", "").lower()
             ]
+
+        # 6. Custom Screener Query Filter (Boolean Query Engine)
+        if custom_query and str(custom_query).strip():
+            tree, err = self.compile_custom_query(str(custom_query).strip())
+            if tree and not err:
+                deals = [d for d in deals if self.eval_custom_node(tree, d)]
 
         # Calculate KPI summary statistics
         total_deals = len(deals)

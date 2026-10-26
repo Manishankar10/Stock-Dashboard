@@ -15,6 +15,7 @@
         toDate: '',
         action: 'all',           // 'all' | 'buy' | 'sell'
         searchQuery: '',
+        customQuery: '',         // Custom screener boolean query
         sortField: 'date',
         sortDir: 'desc',
         page: 1,
@@ -53,6 +54,10 @@
                 refresh: forceRefresh ? '1' : '0'
             });
 
+            if (state.customQuery) {
+                params.append('custom_query', state.customQuery);
+            }
+
             if (state.fromDate) params.append('from_date', state.fromDate);
             if (state.toDate) params.append('to_date', state.toDate);
 
@@ -80,14 +85,9 @@
                 updateWatchlistDropdown();
                 renderView();
 
-                // If user triggered manual refresh, notify on exchange status / 15m window
+                // If user triggered manual refresh, notify on database reload
                 if (forceRefresh && typeof window.showToast === 'function') {
-                    if (data.official_called) {
-                        window.showToast('Official exchange transactions refreshed from NSE India.', 'success', 3000);
-                    } else if (state.cooldownRemainingSeconds > 0) {
-                        const remMin = Math.max(1, Math.ceil(state.cooldownRemainingSeconds / 60));
-                        window.showToast(`Official exchanges maintain a 15m window (${remMin}m remaining). Data is current.`, 'info', 3200);
-                    }
+                    window.showToast('Transactions data reloaded from database.', 'success', 2500);
                 }
             } else {
                 console.error('[Transactions] Failed to load:', data.error);
@@ -115,7 +115,23 @@
 
         const updatedTag = document.getElementById('tx-last-updated-tag');
         if (updatedTag) {
-            updatedTag.innerHTML = `🕒 Updated: <strong>${escapeHtml(state.lastUpdatedText)}</strong> <span class="tx-cadence-badge" style="opacity: 0.75; font-size: 11px; margin-left: 6px; font-weight: normal;">(15m exchange window)</span>`;
+            updatedTag.innerHTML = `🕒 Synced: <strong>${escapeHtml(state.lastUpdatedText)}</strong> <span class="tx-cadence-badge" style="opacity: 0.75; font-size: 11px; margin-left: 6px; font-weight: normal;">(Database)</span>`;
+        }
+
+        // Update Active Custom Screener Query Banner
+        const queryBar = document.getElementById('tx-active-query-bar');
+        const queryText = document.getElementById('tx-active-query-text');
+        const queryCount = document.getElementById('tx-active-query-count');
+        const customBtn = document.getElementById('tx-btn-custom-screener');
+
+        if (state.customQuery) {
+            if (queryBar) queryBar.style.display = 'flex';
+            if (queryText) queryText.textContent = state.customQuery;
+            if (queryCount) queryCount.textContent = `(${state.filteredDeals.length || state.deals.length} deals match)`;
+            if (customBtn) customBtn.classList.add('active');
+        } else {
+            if (queryBar) queryBar.style.display = 'none';
+            if (customBtn) customBtn.classList.remove('active');
         }
     }
 
@@ -677,7 +693,15 @@
         state.toDate = '';
         state.action = 'all';
         state.searchQuery = '';
+        state.customQuery = '';
         state.page = 1;
+
+        const customModalInput = document.getElementById('tx-custom-query-input');
+        if (customModalInput) customModalInput.value = '';
+        const queryBar = document.getElementById('tx-active-query-bar');
+        if (queryBar) queryBar.style.display = 'none';
+        const customBtn = document.getElementById('tx-btn-custom-screener');
+        if (customBtn) customBtn.classList.remove('active');
 
         const searchInput = document.getElementById('tx-search-input');
         if (searchInput) searchInput.value = '';
@@ -725,6 +749,211 @@
             console.log('Open fundamentals for symbol:', clean);
         }
     };
+
+
+    // =========================================================
+    // CUSTOM TRANSACTIONS SCREENER MODAL CONTROLLER
+    // =========================================================
+    let txQueryValidationTimer = null;
+
+    window.openTxCustomModal = function () {
+        const modal = document.getElementById('tx-custom-modal');
+        if (!modal) return;
+        const input = document.getElementById('tx-custom-query-input');
+        if (input) {
+            input.value = state.customQuery || '';
+        }
+        modal.style.display = 'flex';
+        if (typeof window.bringModalToFront === 'function') {
+            window.bringModalToFront(modal);
+        }
+        if (state.customQuery) {
+            validateTxQueryDebounced();
+        } else {
+            const feedback = document.getElementById('tx-custom-query-feedback');
+            if (feedback) feedback.style.display = 'none';
+            const badge = document.getElementById('tx-apply-count-badge');
+            if (badge) badge.style.display = 'none';
+        }
+        setTimeout(() => {
+            if (input) input.focus();
+        }, 80);
+    };
+
+    window.closeTxCustomModal = function () {
+        const modal = document.getElementById('tx-custom-modal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.insertTxTokenAtCursor = function (token) {
+        const input = document.getElementById('tx-custom-query-input');
+        if (!input) return;
+        input.focus();
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const text = input.value;
+
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+
+        let prefix = '';
+        let suffix = '';
+
+        if (before.length > 0 && !/[\s(]/.test(before.slice(-1))) {
+            prefix = ' ';
+        }
+
+        if (token === '(') {
+            suffix = '';
+        } else if (token === ')') {
+            suffix = ' ';
+        } else {
+            suffix = ' ';
+        }
+
+        const insert = prefix + token + suffix;
+        input.value = before + insert + after;
+        const newPos = start + insert.length;
+        input.setSelectionRange(newPos, newPos);
+        validateTxQueryDebounced();
+    };
+
+    window.validateTxQueryDebounced = function () {
+        clearTimeout(txQueryValidationTimer);
+        const feedback = document.getElementById('tx-custom-query-feedback');
+        const badge = document.getElementById('tx-apply-count-badge');
+        const input = document.getElementById('tx-custom-query-input');
+        const query = input ? input.value.trim() : '';
+
+        if (!query) {
+            if (feedback) feedback.style.display = 'none';
+            if (badge) badge.style.display = 'none';
+            return;
+        }
+
+        txQueryValidationTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/market-transactions/validate-query?query=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                if (data.valid) {
+                    if (feedback) {
+                        feedback.style.display = 'block';
+                        feedback.className = 'tx-query-feedback valid';
+                        feedback.innerHTML = `✓ <strong>Syntax Valid:</strong> ${data.match_count.toLocaleString()} deals match this criteria.`;
+                    }
+                    if (badge) {
+                        badge.style.display = 'inline-block';
+                        badge.textContent = `${data.match_count} deals`;
+                    }
+                } else {
+                    if (feedback) {
+                        feedback.style.display = 'block';
+                        feedback.className = 'tx-query-feedback error';
+                        feedback.innerHTML = `✕ <strong>Syntax Error:</strong> ${escapeHtml(data.error || 'Invalid query expression')}`;
+                    }
+                    if (badge) badge.style.display = 'none';
+                }
+            } catch (err) {
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.className = 'tx-query-feedback error';
+                    feedback.textContent = `Validation error: ${err.message}`;
+                }
+            }
+        }, 180);
+    };
+
+    window.applyTxCustomModalQuery = function () {
+        const input = document.getElementById('tx-custom-query-input');
+        const query = input ? input.value.trim() : '';
+        state.customQuery = query;
+        state.page = 1;
+        closeTxCustomModal();
+        fetchTransactions(false);
+    };
+
+    window.applyTxFiltersAndScreener = function () {
+        state.page = 1;
+        fetchTransactions(false);
+    };
+
+    window.clearTxCustomQuery = function () {
+        state.customQuery = '';
+        state.page = 1;
+        const input = document.getElementById('tx-custom-query-input');
+        if (input) input.value = '';
+        fetchTransactions(false);
+    };
+
+    window.resetTxModalQuery = function () {
+        const input = document.getElementById('tx-custom-query-input');
+        if (input) input.value = '';
+        const feedback = document.getElementById('tx-custom-query-feedback');
+        if (feedback) feedback.style.display = 'none';
+        const badge = document.getElementById('tx-apply-count-badge');
+        if (badge) badge.style.display = 'none';
+    };
+
+    // Global event listeners for modal interactions
+    document.addEventListener('click', (e) => {
+        // Preset cards click
+        const presetCard = e.target.closest('.tx-preset-card');
+        if (presetCard) {
+            const query = presetCard.getAttribute('data-preset');
+            const input = document.getElementById('tx-custom-query-input');
+            if (input && query) {
+                input.value = query;
+                input.focus();
+                validateTxQueryDebounced();
+            }
+            return;
+        }
+
+        // Token chips click
+        const tokenChip = e.target.closest('.tx-token-chip');
+        if (tokenChip) {
+            const token = tokenChip.getAttribute('data-token');
+            if (token) {
+                insertTxTokenAtCursor(token);
+            }
+            return;
+        }
+
+        // Clear query input button in modal
+        if (e.target.closest('#tx-custom-clear-input')) {
+            const input = document.getElementById('tx-custom-query-input');
+            if (input) {
+                input.value = '';
+                input.focus();
+                validateTxQueryDebounced();
+            }
+            return;
+        }
+
+        // Close on modal backdrop click
+        if (e.target && e.target.classList && e.target.classList.contains('tx-custom-modal-backdrop')) {
+            closeTxCustomModal();
+        }
+    });
+
+    // Support Ctrl+Enter in modal query textarea
+    document.addEventListener('keydown', (e) => {
+        if (e.target && e.target.id === 'tx-custom-query-input') {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                applyTxCustomModalQuery();
+            } else if (e.key === 'Escape') {
+                closeTxCustomModal();
+            }
+        }
+    });
+
+    // Realtime input listener for textarea
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'tx-custom-query-input') {
+            validateTxQueryDebounced();
+        }
+    });
 
     function escapeHtml(str) {
         return String(str || '')

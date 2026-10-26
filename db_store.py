@@ -231,6 +231,17 @@ def _init_sqlite_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS transactions_deals (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    last_updated TEXT,
+                    last_updated_display TEXT,
+                    total_records INTEGER DEFAULT 0,
+                    metadata TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -1181,5 +1192,140 @@ def save_user_alerts_db(arg1=None, arg2=None, username=None, data=None):
         os.replace(tmp, json_path)
     except Exception:
         pass
+
+    return True
+
+
+def load_transactions_deals_db(fallback_filepath=None):
+    """
+    Loads latest market transactions dataset from MongoDB Atlas collection 'transactions_deals'.
+    Falls back to SQLite local storage if MongoDB is unavailable.
+    If neither DB has data yet, checks disk JSON file, auto-seeds the DB, and returns data.
+    """
+    import datetime
+    # 1. Try MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["transactions_deals"]
+            doc = col.find_one({"_id": "latest"})
+            if doc and ("deals" in doc or "data" in doc):
+                deals = doc.get("deals")
+                if deals is None and isinstance(doc.get("data"), list):
+                    deals = doc["data"]
+                return {
+                    "deals": deals or [],
+                    "last_updated": doc.get("last_updated"),
+                    "last_updated_display": doc.get("last_updated_display", ""),
+                    "total_records": doc.get("total_records", len(deals or [])),
+                    "metadata": doc.get("metadata", {})
+                }
+        except Exception as e:
+            print(f"MongoDB load_transactions_deals error: {e}")
+
+    # 2. Try SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data, last_updated, last_updated_display, total_records, metadata FROM transactions_deals WHERE id = 'latest'")
+            row = cursor.fetchone()
+            if row and row[0]:
+                deals = json.loads(row[0])
+                meta = json.loads(row[4]) if (len(row) > 4 and row[4]) else {}
+                return {
+                    "deals": deals or [],
+                    "last_updated": row[1],
+                    "last_updated_display": row[2] or "",
+                    "total_records": row[3] or len(deals or []),
+                    "metadata": meta
+                }
+    except Exception as e:
+        print(f"SQLite load_transactions_deals error: {e}")
+
+    # 3. Fallback to disk JSON file & auto-seed DB
+    if fallback_filepath and os.path.exists(fallback_filepath):
+        try:
+            with open(fallback_filepath, "r", encoding="utf-8") as f:
+                disk_deals = json.load(f)
+            if isinstance(disk_deals, list):
+                print(f"[DB Store] Auto-seeding transactions_deals DB with {len(disk_deals)} deals from {fallback_filepath}...")
+                now_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                save_transactions_deals_db(disk_deals, last_updated_iso=now_utc, last_updated_display="Auto-seeded from disk", backup_filepath=fallback_filepath)
+                return {
+                    "deals": disk_deals,
+                    "last_updated": now_utc,
+                    "last_updated_display": "Auto-seeded from disk",
+                    "total_records": len(disk_deals),
+                    "metadata": {}
+                }
+        except Exception as e:
+            print(f"[DB Store] Error loading fallback transactions file {fallback_filepath}: {e}")
+
+    return {
+        "deals": [],
+        "last_updated": None,
+        "last_updated_display": "",
+        "total_records": 0,
+        "metadata": {}
+    }
+
+
+def save_transactions_deals_db(deals, last_updated_iso=None, last_updated_display=None, metadata=None, backup_filepath=None):
+    """
+    Saves market transactions list and timestamp to MongoDB Atlas collection 'transactions_deals'.
+    Also syncs to SQLite local storage 'transactions_deals' table and backup disk JSON.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    last_updated_iso = last_updated_iso or now_utc.isoformat()
+    last_updated_display = format_ist_display(last_updated_display)
+    total_records = len(deals)
+    metadata = metadata or {}
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["transactions_deals"]
+            col.update_one(
+                {"_id": "latest"},
+                {"$set": {
+                    "deals": deals,
+                    "total_records": total_records,
+                    "last_updated": last_updated_iso,
+                    "last_updated_display": last_updated_display,
+                    "metadata": metadata,
+                    "updated_at": last_updated_iso
+                }},
+                upsert=True
+            )
+        except Exception as e:
+            print(f"MongoDB save_transactions_deals error: {e}")
+
+    # 2. SQLite
+    try:
+        _init_sqlite_db()
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO transactions_deals 
+                (id, data, last_updated, last_updated_display, total_records, metadata, updated_at) 
+                VALUES ('latest', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                (json.dumps(deals, ensure_ascii=False), last_updated_iso, last_updated_display, total_records, json.dumps(metadata))
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_transactions_deals error: {e}")
+
+    # 3. Disk JSON backup
+    if backup_filepath:
+        try:
+            os.makedirs(os.path.dirname(backup_filepath), exist_ok=True)
+            tmp = str(backup_filepath) + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(deals, f, indent=2, ensure_ascii=False)
+            os.replace(tmp, backup_filepath)
+        except Exception as e:
+            print(f"[DB Store] Warning saving transactions backup JSON {backup_filepath}: {e}")
 
     return True

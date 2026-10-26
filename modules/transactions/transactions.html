@@ -9,7 +9,7 @@
         </div>
         <div class="tx-header-actions">
             <span class="tx-updated-tag" id="tx-last-updated-tag">🕒 Updated just now</span>
-            <button type="button" class="tx-refresh-btn" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Refresh transactions (15 mins exchange rate-limit window)" aria-label="Refresh Transactions (15m window)">
+            <button type="button" class="tx-refresh-btn" id="tx-btn-refresh" onclick="refreshTransactionsData(true)" title="Refresh transactions from database" aria-label="Refresh Transactions from database">
                 <svg class="tx-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
@@ -82,76 +82,107 @@
 
     <!-- Filter & Controls Toolbar -->
     <div class="tx-toolbar">
-        <!-- 1. Scope Filter (All / Portfolio / Watchlist) -->
-        <div class="tx-filter-block">
-            <span class="tx-filter-label">SCOPE</span>
-            <div class="tx-pill-group" role="group" aria-label="Stock Scope">
-                <button type="button" class="tx-pill-btn active" data-scope="all" onclick="setTxScope('all')">
-                    All Stocks
-                </button>
-                <button type="button" class="tx-pill-btn" data-scope="portfolio" onclick="setTxScope('portfolio')">
-                    Portfolio
-                </button>
-                <button type="button" class="tx-pill-btn" data-scope="watchlist" onclick="setTxScope('watchlist')">
-                    Watchlist
-                </button>
+        <!-- 1. Scope Row: Scope Filter + Search Box (Moved together along with Scope row) -->
+        <div class="tx-toolbar-row tx-scope-search-row">
+            <div class="tx-filter-block tx-scope-block">
+                <span class="tx-filter-label">SCOPE</span>
+                <div class="tx-pill-group" role="group" aria-label="Stock Scope">
+                    <button type="button" class="tx-pill-btn active" data-scope="all" onclick="setTxScope('all')">
+                        All Stocks
+                    </button>
+                    <button type="button" class="tx-pill-btn" data-scope="portfolio" onclick="setTxScope('portfolio')">
+                        Portfolio
+                    </button>
+                    <button type="button" class="tx-pill-btn" data-scope="watchlist" onclick="setTxScope('watchlist')">
+                        Watchlist
+                    </button>
+                </div>
+                <!-- Specific Watchlist Dropdown (shown when Watchlist is selected) -->
+                <div class="tx-watchlist-dropdown-wrapper" id="tx-watchlist-dropdown-wrapper" style="display: none;">
+                    <select id="tx-watchlist-select" class="tx-select" onchange="handleTxWatchlistChange(this.value)" aria-label="Select Specific Watchlist">
+                        <option value="watchlist">All Watchlists</option>
+                    </select>
+                </div>
             </div>
-            <!-- Specific Watchlist Dropdown (shown when Watchlist is selected) -->
-            <div class="tx-watchlist-dropdown-wrapper" id="tx-watchlist-dropdown-wrapper" style="display: none;">
-                <select id="tx-watchlist-select" class="tx-select" onchange="handleTxWatchlistChange(this.value)" aria-label="Select Specific Watchlist">
-                    <option value="watchlist">All Watchlists</option>
-                </select>
+
+            <!-- Search Filter Input (along with scope row) -->
+            <div class="tx-search-block">
+                <span class="tx-search-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </span>
+                <input type="text" id="tx-search-input" class="tx-search-input" placeholder="Search by stock, company, or client..." oninput="handleTxSearch(this.value)" autocomplete="off" spellcheck="false" aria-label="Search transactions">
+                <button type="button" id="tx-search-clear" class="tx-search-clear" onclick="clearTxSearch()" style="display: none;" title="Clear search">✕</button>
             </div>
         </div>
 
-        <!-- 2. Date Picker Filter -->
-        <div class="tx-filter-block tx-date-filter-block">
-            <span class="tx-filter-label">DATE RANGE</span>
-            <div class="tx-pill-group tx-date-preset-pills">
-                <button type="button" class="tx-pill-btn active" data-preset="all" onclick="setTxDatePreset('all')">All Dates</button>
-                <button type="button" class="tx-pill-btn" data-preset="today" onclick="setTxDatePreset('today')">Today</button>
-                <button type="button" class="tx-pill-btn" data-preset="7d" onclick="setTxDatePreset('7d')">7 Days</button>
-                <button type="button" class="tx-pill-btn" data-preset="30d" onclick="setTxDatePreset('30d')">30 Days</button>
-                <button type="button" class="tx-pill-btn" data-preset="custom" onclick="setTxDatePreset('custom')">Custom</button>
+        <!-- 2. Direction & Controls Row: Direction Filter + Custom ⚡ + Apply + Reset, along with Date Range -->
+        <div class="tx-toolbar-row tx-controls-row">
+            <!-- Direction Filter Block (with Custom ⚡, Apply, Reset buttons) -->
+            <div class="tx-filter-block tx-direction-block">
+                <span class="tx-filter-label">DIRECTION</span>
+                <div class="tx-pill-group" role="group" aria-label="Deal Direction">
+                    <button type="button" class="tx-pill-btn active" data-action="all" onclick="setTxAction('all')">All</button>
+                    <button type="button" class="tx-pill-btn tx-pill-buy" data-action="buy" onclick="setTxAction('buy')">🟢 Buy</button>
+                    <button type="button" class="tx-pill-btn tx-pill-sell" data-action="sell" onclick="setTxAction('sell')">🔴 Sell</button>
+                </div>
+
+                <!-- Custom ⚡ Screener Button, Apply, and Reset Buttons along with DIRECTION row -->
+                <div class="tx-direction-actions">
+                    <button type="button" class="tx-pill-btn tx-btn-custom-screener" id="tx-btn-custom-screener" onclick="openTxCustomModal()" title="Build custom transactions screener query">
+                        <span>Custom ⚡</span>
+                    </button>
+                    <button type="button" class="tx-btn-apply-screener" id="tx-btn-apply" onclick="applyTxFiltersAndScreener()" title="Apply current filters and custom query">
+                        Apply
+                    </button>
+                    <button type="button" class="tx-btn-reset-screener" id="tx-btn-reset" onclick="resetAllTxFilters()" title="Reset all filters and query to default">
+                        Reset
+                    </button>
+                </div>
             </div>
-            
-            <!-- Date Picker Inputs -->
-            <div class="tx-date-inputs-container" id="tx-date-inputs-container">
-                <div class="tx-date-input-group">
-                    <label for="tx-date-from">From</label>
-                    <input type="date" id="tx-date-from" class="tx-date-picker" onchange="handleTxDateInputChange()">
+
+            <!-- Date Picker Filter -->
+            <div class="tx-filter-block tx-date-filter-block">
+                <span class="tx-filter-label">DATE RANGE</span>
+                <div class="tx-pill-group tx-date-preset-pills">
+                    <button type="button" class="tx-pill-btn active" data-preset="all" onclick="setTxDatePreset('all')">All Dates</button>
+                    <button type="button" class="tx-pill-btn" data-preset="today" onclick="setTxDatePreset('today')">Today</button>
+                    <button type="button" class="tx-pill-btn" data-preset="7d" onclick="setTxDatePreset('7d')">7 Days</button>
+                    <button type="button" class="tx-pill-btn" data-preset="30d" onclick="setTxDatePreset('30d')">30 Days</button>
+                    <button type="button" class="tx-pill-btn" data-preset="custom" onclick="setTxDatePreset('custom')">Custom</button>
                 </div>
-                <div class="tx-date-input-group">
-                    <label for="tx-date-to">To</label>
-                    <input type="date" id="tx-date-to" class="tx-date-picker" onchange="handleTxDateInputChange()">
-                </div>
-                <div class="tx-date-actions">
-                    <button type="button" class="tx-btn-apply-date" onclick="applyTxDateFilter()" title="Apply date filter">Apply</button>
-                    <button type="button" class="tx-btn-clear-date" onclick="clearTxDateFilter()" title="Reset date filter">Reset</button>
+                
+                <!-- Date Picker Inputs -->
+                <div class="tx-date-inputs-container" id="tx-date-inputs-container">
+                    <div class="tx-date-input-group">
+                        <label for="tx-date-from">From</label>
+                        <input type="date" id="tx-date-from" class="tx-date-picker" onchange="handleTxDateInputChange()">
+                    </div>
+                    <div class="tx-date-input-group">
+                        <label for="tx-date-to">To</label>
+                        <input type="date" id="tx-date-to" class="tx-date-picker" onchange="handleTxDateInputChange()">
+                    </div>
+                    <div class="tx-date-actions">
+                        <button type="button" class="tx-btn-apply-date" onclick="applyTxDateFilter()" title="Apply date filter">Apply</button>
+                        <button type="button" class="tx-btn-clear-date" onclick="clearTxDateFilter()" title="Reset date filter">Reset</button>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- 3. Direction Filter (Buy / Sell) -->
-        <div class="tx-filter-block">
-            <span class="tx-filter-label">DIRECTION</span>
-            <div class="tx-pill-group" role="group" aria-label="Deal Direction">
-                <button type="button" class="tx-pill-btn active" data-action="all" onclick="setTxAction('all')">All</button>
-                <button type="button" class="tx-pill-btn tx-pill-buy" data-action="buy" onclick="setTxAction('buy')">🟢 Buy</button>
-                <button type="button" class="tx-pill-btn tx-pill-sell" data-action="sell" onclick="setTxAction('sell')">🔴 Sell</button>
-            </div>
+    <!-- Active Screener Query Banner (shown when a custom query is active) -->
+    <div class="tx-active-query-bar" id="tx-active-query-bar" style="display: none;">
+        <div class="tx-active-query-info">
+            <span class="tx-active-query-badge">⚡ Custom Screener:</span>
+            <code class="tx-active-query-text" id="tx-active-query-text"></code>
+            <span class="tx-active-query-count" id="tx-active-query-count"></span>
         </div>
-
-        <!-- 4. Search Filter Input -->
-        <div class="tx-search-block">
-            <span class="tx-search-icon" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-            </span>
-            <input type="text" id="tx-search-input" class="tx-search-input" placeholder="Search by stock, company, or client..." oninput="handleTxSearch(this.value)" autocomplete="off" spellcheck="false" aria-label="Search transactions">
-            <button type="button" id="tx-search-clear" class="tx-search-clear" onclick="clearTxSearch()" style="display: none;" title="Clear search">✕</button>
+        <div class="tx-active-query-actions">
+            <button type="button" class="tx-btn-query-edit" onclick="openTxCustomModal()" title="Edit custom query">Edit ✎</button>
+            <button type="button" class="tx-btn-query-clear" onclick="clearTxCustomQuery()" title="Clear query">Clear ✕</button>
         </div>
     </div>
 
@@ -212,6 +243,143 @@
                 <div class="tx-page-buttons" id="tx-page-buttons">
                     <!-- Generated dynamically -->
                 </div>
+            </div>
+        </div>
+    </div>
+<
+    <!-- Custom Transactions Screener Modal -->
+    <div id="tx-custom-modal" class="modal-backdrop tx-custom-modal-backdrop" style="display: none;">
+        <div class="modal-content tx-custom-modal-content">
+            <!-- Header -->
+            <div class="tx-custom-modal-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="tx-custom-modal-icon">⚡</span>
+                    <div>
+                        <h3 class="tx-custom-modal-title">Custom Transactions Screener</h3>
+                        <p class="tx-custom-modal-subtitle">Screen institutional block deals, bulk trades &amp; insider disclosures using custom query logic</p>
+                    </div>
+                </div>
+                <button type="button" id="tx-custom-modal-close" class="tx-modal-close-btn" onclick="closeTxCustomModal()" aria-label="Close modal">&times;</button>
+            </div>
+
+            <!-- Body -->
+            <div class="tx-custom-modal-body">
+                <!-- 1. Predefined Institutional Strategies -->
+                <div class="tx-query-section">
+                    <div class="tx-query-section-title">
+                        <span>💡 Predefined Transaction Strategies</span>
+                        <span class="tx-query-hint">Click any strategy to load query</span>
+                    </div>
+                    <div class="tx-preset-grid">
+                        <button type="button" class="tx-preset-card" data-preset="type = 'block' and action = 'BUY' and value >= 25" data-label="Mega Block Buys (> 25 Cr)">
+                            <div class="tx-preset-name">🏢 Mega Block Buys (&gt; ₹25 Cr)</div>
+                            <div class="tx-preset-desc">Block window institutional buying with high conviction</div>
+                        </button>
+                        <button type="button" class="tx-preset-card" data-preset="type = 'bulk' and action = 'BUY' and value >= 10" data-label="Bulk Deals Accumulation (> 10 Cr)">
+                            <div class="tx-preset-name">📦 Bulk Deals Accumulation (&gt; ₹10 Cr)</div>
+                            <div class="tx-preset-desc">Regular market institutional absorption &gt; ₹10 Crore</div>
+                        </button>
+                        <button type="button" class="tx-preset-card" data-preset="(type = 'insider' or category contains 'promoter') and action = 'BUY' and value >= 0.5" data-label="Promoter Open-Market Buying">
+                            <div class="tx-preset-name">👑 Promoter Open-Market Buying</div>
+                            <div class="tx-preset-desc">Promoter group adding equity stake (&gt; ₹50 Lakh)</div>
+                        </button>
+                        <button type="button" class="tx-preset-card" data-preset="action = 'BUY' and (client contains 'fund' or client contains 'mutual' or client contains 'nippon' or client contains 'hdfc' or client contains 'icici' or client contains 'sbi' or client contains 'kotak') and value >= 5" data-label="Mutual Fund Buying">
+                            <div class="tx-preset-name">🏦 DII / Mutual Fund Buying</div>
+                            <div class="tx-preset-desc">Domestic institutions &amp; mutual funds buying (&gt; ₹5 Cr)</div>
+                        </button>
+                        <button type="button" class="tx-preset-card" data-preset="value >= 50" data-label="Colossal Trades (> 50 Cr)">
+                            <div class="tx-preset-name">🔥 Colossal Trades (&gt; ₹50 Cr)</div>
+                            <div class="tx-preset-desc">Mega institutional market movements &gt; ₹50 Crore</div>
+                        </button>
+                        <button type="button" class="tx-preset-card" data-preset="quantity >= 500000 and action = 'BUY'" data-label="High Share Volume Accumulation">
+                            <div class="tx-preset-name">🌊 Heavy Volume Absorption</div>
+                            <div class="tx-preset-desc">Transactions absorbing &gt; 5,00,000 shares in a single trade</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Interactive Clickable Token Chips -->
+                <div class="tx-query-section">
+                    <div class="tx-query-section-title">
+                        <span>🧩 Query Token Chips</span>
+                        <span class="tx-query-hint">Click chips to insert into query at cursor</span>
+                    </div>
+
+                    <!-- Transaction Fields -->
+                    <div class="tx-chipset-group">
+                        <span class="tx-chipset-label">Deal Fields:</span>
+                        <div class="tx-chipset-items">
+                            <button type="button" class="tx-token-chip field-chip" data-token="value" title="Deal Value in ₹ Crores (e.g. value >= 25)">value</button>
+                            <button type="button" class="tx-token-chip field-chip" data-token="qty" title="Quantity / Shares transacted (e.g. qty >= 100000)">qty</button>
+                            <button type="button" class="tx-token-chip field-chip" data-token="price" title="Execution Price in ₹ (e.g. price >= 500)">price</button>
+                            <button type="button" class="tx-token-chip field-chip" data-token="action" title="Direction: 'BUY' or 'SELL'">action</button>
+                            <button type="button" class="tx-token-chip field-chip" data-token="type" title="Deal format: 'block', 'bulk', 'insider'">type</button>
+                            <button type="button" class="tx-token-chip field-chip" data-token="client" title="Party / Fund Name (e.g. client contains 'fund')">client</button>
+                            <button type="button" class="tx-token-chip field-chip" data-token="category" title="Person Category (e.g. category contains 'promoter')">category</button>
+                            <button type="button" class="tx-token-chip field-chip" data-token="symbol" title="Stock ticker (e.g. symbol = 'RELIANCE')">symbol</button>
+                        </div>
+                    </div>
+
+                    <!-- Operators & Logic -->
+                    <div class="tx-chipset-group">
+                        <span class="tx-chipset-label">Operators &amp; Logic:</span>
+                        <div class="tx-chipset-items">
+                            <button type="button" class="tx-token-chip logic-chip" data-token="and">and</button>
+                            <button type="button" class="tx-token-chip logic-chip" data-token="or">or</button>
+                            <button type="button" class="tx-token-chip logic-chip" data-token="not">not</button>
+                            <button type="button" class="tx-token-chip logic-chip" data-token="contains">contains</button>
+                            <button type="button" class="tx-token-chip paren-chip" data-token="(">(</button>
+                            <button type="button" class="tx-token-chip paren-chip" data-token=")">)</button>
+                            <button type="button" class="tx-token-chip op-chip" data-token=">">&gt;</button>
+                            <button type="button" class="tx-token-chip op-chip" data-token="<">&lt;</button>
+                            <button type="button" class="tx-token-chip op-chip" data-token=">=">&gt;=</button>
+                            <button type="button" class="tx-token-chip op-chip" data-token="<=">&lt;=</button>
+                            <button type="button" class="tx-token-chip op-chip" data-token="=">=</button>
+                            <button type="button" class="tx-token-chip op-chip" data-token="!=">!=</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Values -->
+                    <div class="tx-chipset-group">
+                        <span class="tx-chipset-label">Quick Values:</span>
+                        <div class="tx-chipset-items">
+                            <button type="button" class="tx-token-chip num-chip" data-token="'BUY'">'BUY'</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="'SELL'">'SELL'</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="'block'">'block'</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="'bulk'">'bulk'</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="'insider'">'insider'</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="5">5</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="10">10</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="25">25</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="50">50</button>
+                            <button type="button" class="tx-token-chip num-chip" data-token="100000">100000</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Query Textarea -->
+                <div class="tx-query-section">
+                    <div class="tx-query-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>✍️ Query Expression</span>
+                        <button type="button" id="tx-custom-clear-input" class="tx-text-btn" title="Clear expression text">Clear ⌫</button>
+                    </div>
+                    <div class="tx-query-input-wrap">
+                        <textarea id="tx-custom-query-input" rows="3" placeholder="e.g. type = 'block' and action = 'BUY' and value >= 25" spellcheck="false" autocomplete="off"></textarea>
+                    </div>
+                </div>
+
+                <!-- 4. Real-time Syntax Feedback & Match Preview -->
+                <div id="tx-custom-query-feedback" class="tx-query-feedback" style="display: none;"></div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="tx-custom-modal-footer">
+                <button type="button" id="tx-custom-reset-btn" class="btn-secondary" style="margin-right: auto;" onclick="resetTxModalQuery()">Reset to All</button>
+                <button type="button" id="tx-custom-cancel-btn" class="btn-secondary" onclick="closeTxCustomModal()">Cancel</button>
+                <button type="button" id="tx-custom-apply-btn" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;" onclick="applyTxCustomModalQuery()">
+                    <span>Apply Filter</span>
+                    <span class="tx-apply-badge" id="tx-apply-count-badge" style="display: none;"></span>
+                </button>
             </div>
         </div>
     </div>
