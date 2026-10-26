@@ -169,7 +169,8 @@ def refresh_shareholding_data():
 
     try:
         force = request.args.get("force", "true").lower() in ("true", "1", "yes")
-        result = _PROVIDER.start_background_refresh(force=force)
+        force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
+        result = _PROVIDER.start_background_refresh(force=force, force_full=force_full)
         return jsonify(result)
     except Exception as e:
         return jsonify({"status": "error", "error": f"Refresh failed: {str(e)}"}), 500

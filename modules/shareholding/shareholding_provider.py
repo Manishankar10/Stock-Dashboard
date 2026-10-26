@@ -431,9 +431,9 @@ class ShareholdingProvider:
                 pass
         return []
 
-    def start_admin_background_refresh(self) -> Dict[str, Any]:
+    def start_admin_background_refresh(self, force_full: bool = False) -> Dict[str, Any]:
         """Triggered from Admin portal with force=True bypassing rate-limit."""
-        res = self.start_background_refresh(force=True)
+        res = self.start_background_refresh(force=True, force_full=force_full)
         res["success"] = res.get("status") in ("started", "in_progress")
         return res
 
@@ -475,14 +475,14 @@ class ShareholdingProvider:
             "last_result": self._last_refresh_result,
         }
 
-    def start_background_refresh(self, force: bool = False) -> Dict[str, Any]:
-        """Start refresh in an isolated background thread so HTTP client never times out (504/502)."""
+    def start_background_refresh(self, force: bool = False, force_full: bool = False) -> Dict[str, Any]:
+        """Start sync in an isolated background thread so HTTP client never times out (504/502)."""
         now = time.time()
         with self._lock:
             if self._is_refreshing:
                 return {
                     "status": "in_progress",
-                    "message": "Refresh is already in progress in the background.",
+                    "message": "Sync is already in progress in the background.",
                     "added_count": 0,
                     **self.get_status(),
                 }
@@ -492,7 +492,7 @@ class ShareholdingProvider:
                 remaining_min = int((CACHE_TTL_SECONDS - elapsed) // 60) + 1
                 return {
                     "status": "throttled",
-                    "message": f"Data was refreshed recently ({self._last_synced_display}). Next refresh allowed in ~{remaining_min} mins.",
+                    "message": f"Data was synced recently ({self._last_synced_display}). Next sync allowed in ~{remaining_min} mins.",
                     "added_count": 0,
                     **self.get_status(),
                 }
@@ -502,19 +502,19 @@ class ShareholdingProvider:
             self._refresh_percent = 2
             self._refresh_progress = "Connecting to NSE corporate shareholding master feeds..."
 
-        thread = threading.Thread(target=self._run_background_refresh, daemon=True)
+        thread = threading.Thread(target=self._run_background_refresh, args=(force_full,), daemon=True)
         thread.start()
 
         return {
             "status": "started",
-            "message": "Shareholding refresh started in the background. Polling for updates...",
+            "message": "Shareholding sync started in the background. Polling for updates...",
             "added_count": 0,
             **self.get_status(),
         }
 
-    def _run_background_refresh(self) -> None:
+    def _run_background_refresh(self, force_full: bool = False) -> None:
         try:
-            res = self.fetch_live_records(force=True, is_worker=True)
+            res = self.fetch_live_records(force=True, is_worker=True, force_full=force_full)
             with self._lock:
                 self._last_refresh_result = res
                 if res.get("status") == "error":
@@ -524,13 +524,13 @@ class ShareholdingProvider:
         except Exception as e:
             with self._lock:
                 self._refresh_error = str(e)
-            logger.error(f"Error in background shareholding refresh: {e}")
+            logger.error(f"Error in background shareholding sync: {e}")
         finally:
             with self._lock:
                 self._is_refreshing = False
                 self._refresh_progress = ""
 
-    def fetch_live_records(self, force: bool = False, is_worker: bool = False) -> Dict[str, Any]:
+    def fetch_live_records(self, force: bool = False, is_worker: bool = False, force_full: bool = False) -> Dict[str, Any]:
         """Fetch latest records from NSE, split total records into batches,
         download XBRL files into temp folder, and incrementally update the DB after each batch.
         Tracks every count of records done with real-time progress.
@@ -597,6 +597,18 @@ class ShareholdingProvider:
 
             tagged_raw.sort(key=get_rec_sort_key, reverse=True)
 
+            # Deduplicate incoming raw records by (symbol, date), keeping the highest recordId / newest filing
+            deduped_raw: List[Dict[str, Any]] = []
+            seen_incoming_keys: Set[Tuple[str, str]] = set()
+            for r in tagged_raw:
+                s_key = clean_symbol(r.get("symbol"))
+                d_key = r.get("date") or ""
+                k = (s_key, d_key)
+                if k not in seen_incoming_keys:
+                    seen_incoming_keys.add(k)
+                    deduped_raw.append(r)
+            tagged_raw = deduped_raw
+
             # Analyze incoming filings to dynamically detect current reporting quarter
             incoming_dates = [r.get("date") for r in tagged_raw if r.get("date")]
             detected_quarter = (
@@ -632,10 +644,106 @@ class ShareholdingProvider:
                         if s_key and s_key not in q1_map:
                             q1_map[s_key] = r
 
-            # 3. Setup Batch Splitting & Accounting
-            total_records_count = len(tagged_raw)
-            BATCH_SIZE = 40  # Split into batches of 40 records
-            batches = [tagged_raw[i:i + BATCH_SIZE] for i in range(0, total_records_count, BATCH_SIZE)]
+            # 3. Build lookup map of existing records in DB to filter for NEW data only
+            with self._lock:
+                existing_records_map = {
+                    (clean_symbol(r.get("symbol")), r.get("date")): r
+                    for r in self._cache_records
+                    if clean_symbol(r.get("symbol"))
+                }
+
+            def is_new_or_updated_filing(item: Dict[str, Any], existing: Optional[Dict[str, Any]]) -> bool:
+                if not existing:
+                    return True  # 1. New company/filing not in DB yet
+
+                inc_rec_id = int(item.get("recordId") or 0) if str(item.get("recordId") or "").isdigit() else 0
+                ex_rec_id = int(existing.get("recordId") or 0) if str(existing.get("recordId") or "").isdigit() else 0
+                inc_ts = parse_date_to_timestamp(item.get("broadcastDate") or item.get("submissionDate"))
+                ex_ts = parse_date_to_timestamp(existing.get("broadcastDate") or existing.get("submissionDate"))
+
+                # Obsolete older filings from exchange feed must not overwrite newer data in DB
+                if inc_ts > 0 and ex_ts > 0 and inc_ts < ex_ts:
+                    return False
+                if inc_rec_id > 0 and ex_rec_id > 0 and inc_rec_id < ex_rec_id:
+                    return False
+
+                # 2. Higher recordId indicates a newer/revised filing on NSE
+                if inc_rec_id > 0 and ex_rec_id > 0 and inc_rec_id > ex_rec_id:
+                    return True
+
+                # 3. Newer broadcastDate or submissionDate
+                if inc_ts > 0 and ex_ts > 0 and inc_ts > ex_ts:
+                    return True
+
+                # 4. New or updated XBRL URL from the exchange
+                ex_xbrl = (existing.get("xbrl") or "").strip()
+                inc_xbrl = (item.get("xbrl") or "").strip()
+                if inc_xbrl and (not ex_xbrl or inc_xbrl != ex_xbrl):
+                    return True
+
+                # 5. Core promoter or public percentage modified in revision
+                try:
+                    inc_promoter = float(item.get("pr_and_prgrp") or 0) if item.get("pr_and_prgrp") is not None else None
+                    ex_promoter = existing.get("promoter_pct")
+                    if inc_promoter is not None and ex_promoter is not None and abs(inc_promoter - float(ex_promoter)) > 0.01:
+                        return True
+                except Exception:
+                    pass
+
+                return False
+
+            # Filter for new or updated records unless force_full=True
+            if force_full:
+                records_to_process = tagged_raw
+                logger.info(f"Force full sync requested: Processing all {len(tagged_raw)} records...")
+            else:
+                records_to_process = [
+                    item for item in tagged_raw
+                    if is_new_or_updated_filing(
+                        item,
+                        existing_records_map.get((clean_symbol(item.get("symbol")), item.get("date") or current_quarter_date))
+                    )
+                ]
+                logger.info(f"Delta sync: Identified {len(records_to_process)} new/updated records to sync with DB out of {len(tagged_raw)} checked.")
+
+            # If no new records found, DB is already up to date!
+            if not records_to_process:
+                with self._lock:
+                    self._refresh_percent = 100
+                    total_count = len(self._cache_records)
+                    count_eq = sum(1 for r in self._cache_records if r.get("board", "").lower() != "sme")
+                    count_sme = sum(1 for r in self._cache_records if r.get("board", "").lower() == "sme")
+                    self._last_synced = time.time()
+                    self._last_synced_display = format_ist_display(self._last_synced)
+                    msg = f"Complete: DB is up to date (0 new filings found among {len(tagged_raw)} checked · All {total_count} records current)"
+                    self._refresh_progress = msg
+                    self._is_refreshing = False
+                    self._save_to_disk()
+
+                self._save_sync_state({
+                    "status": "completed",
+                    "total_records": total_count,
+                    "completed_records": total_count,
+                    "new_synced_records": 0,
+                    "current_batch": 0,
+                    "total_batches": 0,
+                    "percent": 100,
+                    "completed_at": self._last_synced_display,
+                    "message": msg
+                })
+
+                return {
+                    "status": "success",
+                    "message": msg,
+                    "added_count": 0,
+                    "total_records": total_count,
+                    **self.get_status(),
+                }
+
+            # 4. Setup Batch Splitting for NEW records only
+            total_records_count = len(records_to_process)
+            BATCH_SIZE = 40  # Split new items into batches of 40 records
+            batches = [records_to_process[i:i + BATCH_SIZE] for i in range(0, total_records_count, BATCH_SIZE)]
             total_batches = len(batches)
 
             with self._lock:
@@ -644,7 +752,7 @@ class ShareholdingProvider:
                 self._total_batches = total_batches
                 self._current_batch = 0
 
-            logger.info(f"Splitting {total_records_count} total records into {total_batches} batches of {BATCH_SIZE}...")
+            logger.info(f"Splitting {total_records_count} new records into {total_batches} batches of {BATCH_SIZE}...")
 
             # Save initial sync state to temp folder
             self._save_sync_state({
@@ -656,13 +764,6 @@ class ShareholdingProvider:
                 "batch_size": BATCH_SIZE,
                 "started_at": format_ist_display(time.time()),
             })
-
-            # Map existing records so we can preserve already enriched records without re-downloading XBRL
-            with self._lock:
-                existing_records_map = {
-                    (clean_symbol(r.get("symbol")), r.get("date")): r
-                    for r in self._cache_records
-                }
 
             def fetch_single_xbrl_url(u: str) -> Tuple[str, Dict[str, float]]:
                 if not u:
@@ -682,7 +783,7 @@ class ShareholdingProvider:
                     self._save_cached_xbrl(u, {})
                 return u, {}
 
-            # 4. Process Every Batch: Download into temp folder & Update DB progressively
+            # 5. Process Every Batch of NEW records: Download into temp folder & Update DB progressively
             for batch_idx, batch_items in enumerate(batches, start=1):
                 with self._lock:
                     self._current_batch = batch_idx
@@ -690,7 +791,7 @@ class ShareholdingProvider:
                     self._refresh_percent = pct
                     self._refresh_progress = (
                         f"Downloading & saving Batch {batch_idx}/{total_batches} "
-                        f"({self._processed_count}/{total_records_count} records done · {pct}%)..."
+                        f"({self._processed_count}/{total_records_count} new records synced to DB · {pct}%)..."
                     )
 
                 # Collect XBRL URLs needed for this batch that aren't cached yet
@@ -699,10 +800,6 @@ class ShareholdingProvider:
                     sym = clean_symbol(item.get("symbol"))
                     date_val = item.get("date") or current_quarter_date
                     existing_entry = existing_records_map.get((sym, date_val))
-
-                    # If already enriched with valid FII/DII data, no need to re-download
-                    if existing_entry and existing_entry.get("xbrl_status") == "ok" and (existing_entry.get("fii_pct") is not None or existing_entry.get("dii_pct") is not None):
-                        continue
 
                     q2_xbrl = item.get("xbrl")
                     if q2_xbrl and self._load_cached_xbrl(q2_xbrl) is None:
@@ -726,11 +823,6 @@ class ShareholdingProvider:
                     date_val = item.get("date") or current_quarter_date
                     existing_entry = existing_records_map.get((sym, date_val))
 
-                    # Reuse existing enriched record if already complete
-                    if existing_entry and existing_entry.get("xbrl_status") == "ok" and (existing_entry.get("fii_pct") is not None or existing_entry.get("dii_pct") is not None):
-                        batch_enriched.append(existing_entry)
-                        continue
-
                     q2_xbrl_url = item.get("xbrl")
                     q2_xbrl_data = self._load_cached_xbrl(q2_xbrl_url) if q2_xbrl_url else {}
                     q2_xbrl_data = q2_xbrl_data or {}
@@ -743,8 +835,8 @@ class ShareholdingProvider:
                     # Current quarter values (fallback to official master percentages)
                     promoter = q2_xbrl_data.get("promoter", float(item.get("pr_and_prgrp") or 0))
 
-                    has_q2_inst = bool(q2_xbrl_data and ("fii" in q2_xbrl_data or "dii" in q2_xbrl_data))
-                    if has_q2_inst:
+                    has_q2_data = bool(q2_xbrl_data and ("promoter" in q2_xbrl_data or "public" in q2_xbrl_data or "fii" in q2_xbrl_data or "dii" in q2_xbrl_data))
+                    if has_q2_data:
                         dii = q2_xbrl_data.get("dii", 0.0)
                         fii = q2_xbrl_data.get("fii", 0.0)
                         pub = q2_xbrl_data.get("public", round(max(0.0, 100.0 - promoter - dii - fii), 2))
@@ -759,8 +851,8 @@ class ShareholdingProvider:
                     has_prev = bool(q1_item or q1_xbrl_data)
                     prev_promoter = q1_xbrl_data.get("promoter", float(q1_item.get("pr_and_prgrp") or 0)) if has_prev else None
 
-                    has_q1_inst = bool(q1_xbrl_data and ("fii" in q1_xbrl_data or "dii" in q1_xbrl_data))
-                    if has_q1_inst:
+                    has_q1_data = bool(q1_xbrl_data and ("promoter" in q1_xbrl_data or "public" in q1_xbrl_data or "fii" in q1_xbrl_data or "dii" in q1_xbrl_data))
+                    if has_q1_data:
                         prev_dii = q1_xbrl_data.get("dii", 0.0)
                         prev_fii = q1_xbrl_data.get("fii", 0.0)
                         prev_pub = q1_xbrl_data.get("public", round(max(0.0, 100.0 - (prev_promoter or 0) - prev_dii - prev_fii), 2))
@@ -811,16 +903,16 @@ class ShareholdingProvider:
                 except Exception:
                     pass
 
-                # Incrementally commit batch to in-memory cache and DB!
+                # Incrementally commit new batch to in-memory cache and DB!
                 with self._lock:
-                    new_keys = {(r.get("symbol"), r.get("date")) for r in batch_enriched}
-                    retained = [r for r in self._cache_records if (r.get("symbol"), r.get("date")) not in new_keys]
+                    new_keys = {(clean_symbol(r.get("symbol")), r.get("date")) for r in batch_enriched}
+                    retained = [r for r in self._cache_records if (clean_symbol(r.get("symbol")), r.get("date")) not in new_keys]
                     self._cache_records = batch_enriched + retained
                     self._processed_count += len(batch_items)
                     pct = min(99, int((self._processed_count / total_records_count) * 100))
                     self._refresh_percent = pct
                     self._refresh_progress = (
-                        f"Saved {self._processed_count} of {total_records_count} records to DB "
+                        f"Saved {self._processed_count} of {total_records_count} new records to DB "
                         f"(Batch {batch_idx}/{total_batches} · {pct}%)"
                     )
                     # Persist immediately to MongoDB Atlas, SQLite, and disk backup
@@ -840,13 +932,14 @@ class ShareholdingProvider:
                 # Polite pause to ensure smooth background execution
                 time.sleep(0.04)
 
-            # 5. Finalize Completion and Ensure Exact Record Accounting
+            # 6. Finalize Completion and Ensure Exact Record Accounting
             with self._lock:
                 self._refresh_percent = 100
                 total_final = len(self._cache_records)
                 count_eq = sum(1 for r in self._cache_records if r.get("board", "").lower() != "sme")
                 count_sme = sum(1 for r in self._cache_records if r.get("board", "").lower() == "sme")
-                self._refresh_progress = f"Complete: All {total_final} records synchronized to DB ({count_eq} Equities, {count_sme} SME)"
+                msg = f"Complete: Successfully synced {total_records_count} new filings to DB (Total {total_final} records in database · {count_eq} Equities, {count_sme} SME)"
+                self._refresh_progress = msg
                 self._last_synced = time.time()
                 self._last_synced_display = format_ist_display(self._last_synced)
                 self._save_to_disk()
@@ -856,16 +949,19 @@ class ShareholdingProvider:
                 "status": "completed",
                 "total_records": total_final,
                 "completed_records": total_final,
+                "new_synced_records": total_records_count,
                 "current_batch": total_batches,
                 "total_batches": total_batches,
                 "percent": 100,
                 "completed_at": self._last_synced_display,
+                "message": msg
             })
 
             return {
                 "status": "success",
-                "message": f"Successfully updated all {total_final} shareholding records in {total_batches} batches.",
-                "added_count": total_final,
+                "message": msg,
+                "added_count": total_records_count,
+                "total_records": total_final,
                 **self.get_status(),
             }
         except Exception as e:

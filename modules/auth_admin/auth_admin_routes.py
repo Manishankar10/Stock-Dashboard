@@ -549,7 +549,10 @@ def admin_industries_overview_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Industries Overview provider not initialized."}), 500
-    res = provider.start_admin_background_refresh()
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
+    if request.is_json and request.json:
+        force_full = force_full or bool(request.json.get("full"))
+    res = provider.start_admin_background_refresh(force_full=force_full)
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
@@ -574,7 +577,10 @@ def admin_shareholding_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Shareholding provider not initialized."}), 500
-    res = provider.start_admin_background_refresh()
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
+    if request.is_json and request.json:
+        force_full = force_full or bool(request.json.get("full"))
+    res = provider.start_admin_background_refresh(force_full=force_full)
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
@@ -601,7 +607,10 @@ def admin_corporate_actions_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Corporate Actions provider not initialized."}), 500
-    res = provider.start_admin_background_refresh()
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
+    if request.is_json and request.json:
+        force_full = force_full or bool(request.json.get("full"))
+    res = provider.start_admin_background_refresh(force_full=force_full)
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
@@ -647,7 +656,10 @@ def admin_quarterly_results_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Quarterly Results provider not initialized."}), 500
-    res = provider.start_admin_background_refresh()
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
+    if request.is_json and request.json:
+        force_full = force_full or bool(request.json.get("full"))
+    res = provider.start_admin_background_refresh(force_full=force_full)
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)

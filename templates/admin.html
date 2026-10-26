@@ -1293,7 +1293,7 @@
                                 <svg id="admin-shp-refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                                 </svg>
-                                <span id="admin-shp-refresh-text">📈 Refresh Shareholding Patterns</span>
+                                <span id="admin-shp-refresh-text">📈 Sync Shareholding Patterns</span>
                             </button>
                         </div>
                     </div>
@@ -2706,7 +2706,7 @@
                         refreshBtn.style.opacity = '1';
                     }
                     if (refreshIcon) refreshIcon.classList.remove('spin-anim');
-                    if (refreshText) refreshText.innerText = 'Refresh Shareholding Dataset';
+                    if (refreshText) refreshText.innerText = 'Sync Shareholding Dataset';
                 }
             } catch (e) {
                 console.error('Error fetching admin shareholding status:', e);
@@ -2715,11 +2715,11 @@
 
         async function triggerAdminShareholdingRefresh() {
             const confirmed = confirm(
-                'Are you sure you want to refresh the Shareholding Patterns dataset?\n\n' +
+                'Are you sure you want to synchronize the Shareholding Patterns dataset?\n\n' +
                 'This will:\n' +
                 '1. Query live exchange feeds (NSE/BSE) for the latest quarterly shareholding filings\n' +
                 '2. Incrementally discover newly submitted company filings\n' +
-                '3. Update MongoDB Atlas & SQLite database with new company disclosures\n' +
+                '3. Sync ONLY new or updated filings into MongoDB Atlas & SQLite database\n' +
                 '4. Update the in-memory fast cache and record the last updated date & time.\n\n' +
                 'Note: Standard user browsing will always read from DB/cache without calling exchange providers.\n\n' +
                 'Proceed?'
@@ -2751,7 +2751,7 @@
                         refreshBtn.style.opacity = '1';
                     }
                     if (refreshIcon) refreshIcon.classList.remove('spin-anim');
-                    if (refreshText) refreshText.innerText = 'Refresh Shareholding Dataset';
+                    if (refreshText) refreshText.innerText = 'Sync Shareholding Dataset';
                 }
             } catch (e) {
                 alert('❌ Error requesting refresh: ' + e.message);
