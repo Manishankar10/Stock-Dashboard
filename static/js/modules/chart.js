@@ -542,7 +542,7 @@
                             lineWidth: lw,
                             lineStyle: ls,
                             axisLabelVisible: true,
-                            title: `${lockPrefix}${item.label || 'Line'}: ₹${item.price}`
+                            title: '' // Label badge rendered on left side of drawing via canvas overlay
                         });
                         activePriceLines.push({ id: item.id, lineObj: priceLine, data: item });
                     } catch(e){}
@@ -1111,7 +1111,7 @@
                 lineWidth: lw,
                 lineStyle: ls,
                 axisLabelVisible: true,
-                title: `${label}: ₹${price}`
+                title: '' // Label badge rendered on left side of drawing via canvas overlay
             });
 
             activePriceLines.push({ id: lineId, lineObj: priceLine, data: lineData });
@@ -2386,9 +2386,10 @@
                             const newPrice = parseFloat(curPt.price.toFixed(2));
                             const pl = activePriceLines.find(p => p.id === activeDrawingDrag.target.id);
                             if (pl && pl.lineObj) {
+                                pl.data.price = newPrice;
                                 pl.lineObj.applyOptions({
                                     price: newPrice,
-                                    title: `${pl.data.label || 'Line'}: ₹${newPrice}`
+                                    title: ''
                                 });
                             }
                             redrawCanvasOverlay();
@@ -2579,7 +2580,7 @@
                                 if (pl.lineObj) {
                                     pl.lineObj.applyOptions({
                                         price: newPrice,
-                                        title: `${pl.data.label || 'Line'}: ₹${newPrice}`
+                                        title: ''
                                     });
                                 }
                             }
@@ -3158,7 +3159,7 @@
             for (let l of lines) {
                 if (l.hidden) continue;
                 const lineY = mainSeries.priceToCoordinate(l.price);
-                if (lineY !== null && Math.abs(y - lineY) < 10) {
+                if (lineY !== null && (Math.abs(y - lineY) < 10 || (x >= 6 && x <= 160 && Math.abs(y - lineY) <= 12))) {
                     const isLocked = !!l.locked;
                     return { kind: 'line', id: l.id, name: `${l.label || 'Line'}: ₹${l.price}`, color: l.color, hidden: !!l.hidden, locked: isLocked, price: l.price, subPart: 'body', cursor: isLocked ? 'pointer' : 'ns-resize' };
                 }
@@ -3601,7 +3602,7 @@
 
             if (popup && mainContainer) {
                 const isMobile = window.innerWidth <= 768;
-                const estimatedWidth = isMobile ? 265 : 315;
+                const estimatedWidth = isMobile ? 225 : 275;
                 popup.style.left = Math.max(10, Math.min(x - 20, mainContainer.clientWidth - estimatedWidth - 10)) + 'px';
                 popup.style.top = Math.max(10, (y > 55 ? (y - 46) : (y + 16))) + 'px';
                 popup.dataset.activeObjId = String(obj.id);
@@ -3706,17 +3707,7 @@
                         </div>
                     </div>
                     `}
-                    <button type="button" class="canvas-obj-btn canvas-obj-vis-btn ${obj.hidden ? 'canvas-obj-hidden' : ''}" onclick="${toggleVisFn}" title="${visLabel} Drawing" aria-label="${visLabel}">
-                        ${obj.hidden ? `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                            <line x1="1" y1="1" x2="23" y2="23"/>
-                        </svg>` : `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>`}
-                    </button>
+
                     <button type="button" class="canvas-obj-btn canvas-obj-lock-btn ${isLocked ? 'canvas-obj-locked active' : ''}" onclick="${toggleLockFn}" title="${lockTitle}" aria-label="${lockTitle}">
                         ${isLocked ? `
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3882,6 +3873,65 @@
                     if (!s.hidden) {
                         drawSingleShape(ctx, s);
                     }
+                });
+            }
+
+            // Draw price line labels on left side of drawings if not globally hidden
+            if (!isAllDrawingsHidden && activePriceLines && activePriceLines.length > 0) {
+                activePriceLines.forEach(item => {
+                    const lineData = item.data;
+                    if (!lineData || lineData.hidden) return;
+                    if (lineData.price === null || lineData.price === undefined || isNaN(lineData.price)) return;
+                    const y = mainSeries.priceToCoordinate(lineData.price);
+                    if (y === null || y === undefined || isNaN(y) || y < 0 || y > drawingCanvas.height) return;
+
+                    const labelName = lineData.label || (lineData.type === 'target' ? 'Target' : lineData.type === 'stoploss' ? 'Stop Loss' : lineData.type === 'resistance' ? 'Resistance' : 'Support');
+                    const lockPrefix = lineData.locked ? '🔒 ' : '';
+                    const textStr = `${lockPrefix}${labelName}: ₹${lineData.price}`;
+                    const lineColor = lineData.color || (lineData.type === 'resistance' || lineData.type === 'stoploss' ? '#ef5350' : '#10b981');
+
+                    ctx.save();
+                    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+                    const textMetrics = ctx.measureText(textStr);
+                    const badgeW = Math.round(textMetrics.width + 14);
+                    const badgeH = 18;
+                    const badgeX = 8;
+                    const badgeY = Math.round(y - badgeH / 2);
+                    const radius = 3;
+
+                    ctx.beginPath();
+                    if (typeof ctx.roundRect === 'function') {
+                        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, radius);
+                    } else {
+                        ctx.moveTo(badgeX + radius, badgeY);
+                        ctx.lineTo(badgeX + badgeW - radius, badgeY);
+                        ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + radius);
+                        ctx.lineTo(badgeX + badgeW, badgeY + badgeH - radius);
+                        ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - radius, badgeY + badgeH);
+                        ctx.lineTo(badgeX + radius, badgeY + badgeH);
+                        ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - radius);
+                        ctx.lineTo(badgeX, badgeY + radius);
+                        ctx.quadraticCurveTo(badgeX, badgeY, badgeX + radius, badgeY);
+                        ctx.closePath();
+                    }
+
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+                    ctx.shadowBlur = 4;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 1;
+                    ctx.fillStyle = lineColor;
+                    ctx.fill();
+
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(textStr, badgeX + badgeW / 2, y);
+
+                    ctx.restore();
                 });
             }
 
