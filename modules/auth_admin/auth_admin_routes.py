@@ -653,6 +653,38 @@ def admin_quarterly_results_refresh():
     return jsonify(res)
 
 
+@auth_admin_bp.route("/api/admin/transactions/status", methods=["GET"])
+@admin_required
+def admin_transactions_status():
+    from modules.transactions import get_provider
+    provider = get_provider()
+    if not provider:
+        return jsonify({"error": "Transactions provider not initialized."}), 500
+    return jsonify({
+        "success": True,
+        "status": provider.get_sync_status()
+    })
+
+
+@auth_admin_bp.route("/api/admin/transactions/sync", methods=["POST"])
+@admin_required
+def admin_transactions_sync():
+    from modules.transactions import get_provider
+    provider = get_provider()
+    if not provider:
+        return jsonify({"error": "Transactions provider not initialized."}), 500
+    force_full = False
+    if request.is_json and request.json:
+        force_full = bool(request.json.get("force_full", False))
+    elif request.args.get("force_full"):
+        force_full = request.args.get("force_full", "").lower() in ("1", "true", "yes")
+
+    res = provider.start_admin_background_sync(force_full=force_full)
+    if not res.get("success"):
+        return jsonify(res), 400
+    return jsonify(res)
+
+
 # ==============================================================================
 # PRODUCTION JSON FILES DOWNLOAD & MANAGEMENT
 # ==============================================================================

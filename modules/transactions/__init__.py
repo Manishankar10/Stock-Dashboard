@@ -24,6 +24,14 @@ def init_transactions(login_required: Callable, load_data_fn: Optional[Callable]
     _PROVIDER = TransactionsProvider(data_dir=data_dir)
 
 
+def get_provider() -> Optional[TransactionsProvider]:
+    """Retrieve the singleton TransactionsProvider instance."""
+    global _PROVIDER
+    if _PROVIDER is None:
+        _PROVIDER = TransactionsProvider(data_dir=".")
+    return _PROVIDER
+
+
 def _guard(view):
     @wraps(view)
     def wrapper(*args, **kwargs):

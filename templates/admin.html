@@ -1287,6 +1287,82 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- CARD 6: Market Transactions Dataset Management -->
+                <div class="metric-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    ⚡ Market Transactions Dataset Management
+                                </h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                                    Manage and synchronize Block Deals, Bulk Deals, and Insider Trading disclosures from June 2026 into MongoDB Atlas &amp; SQLite.
+                                </p>
+                            </div>
+                            <span id="admin-tx-sync-badge" class="badge" style="font-size: 12px; display: none;"></span>
+                        </div>
+
+                        <div class="settings-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Last Synced</span>
+                                <div id="admin-tx-last-synced" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Total Transactions</span>
+                                <div id="admin-tx-total-count" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Deal Breakdown</span>
+                                <div id="admin-tx-breakdown" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Date Coverage</span>
+                                <div id="admin-tx-date-coverage" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Database Storage</span>
+                                <div style="font-size: 13.5px; font-weight: 600; color: #10b981; margin-top: 4px;">MongoDB Atlas &amp; SQLite</div>
+                            </div>
+                        </div>
+
+                        <!-- Live Progress & Status Bar -->
+                        <div id="admin-tx-progress-container" style="display: none; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span id="admin-tx-progress-text" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary);">Processing monthly transaction chunks...</span>
+                                <span id="admin-tx-progress-percent" style="font-size: 12px; font-weight: 700; color: #ea580c;">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; margin-bottom: 6px;">
+                                <div id="admin-tx-progress-bar" style="width: 0%; height: 100%; background: #ea580c; transition: width 0.3s ease; border-radius: 4px;"></div>
+                            </div>
+                            <div id="admin-tx-chunk-status" style="font-size: 11.5px; color: var(--text-secondary); font-style: italic;">Chunk status</div>
+                        </div>
+
+                        <!-- Callout Banner -->
+                        <div style="background: rgba(234, 88, 12, 0.08); border: 1px solid rgba(234, 88, 12, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 10px;">
+                            <span style="font-size: 18px; line-height: 1;">⚡</span>
+                            <div style="font-size: 12px; color: var(--text-primary); line-height: 1.5;">
+                                <strong>Chunked Monthly Synchronization &amp; Incremental Discovery:</strong> All transactions (Block Deals, Bulk Deals, and Insider Trading disclosures) are saved directly in MongoDB Atlas &amp; SQLite. Initial sync partitions disclosures from June 2026 into monthly chunks. Subsequent syncs automatically detect the latest recorded transaction in the database and incrementally ingest only new filings with zero disruption to end users.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                        <div id="admin-tx-status-msg" style="font-size: 12px; color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready to synchronize</div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary" onclick="loadAdminTransactionsStatus()" style="font-size: 12.5px; padding: 8px 14px;">
+                                🔄 Check Status
+                            </button>
+                            <button type="button" id="btn-sync-tx-new" class="btn" onclick="triggerAdminTransactionsSync(false)" style="padding: 8px 18px; font-size: 12.5px; font-weight: 600; background: #0284c7; border-color: #0284c7; color: #fff; display: inline-flex; align-items: center; gap: 6px;">
+                                <span>⚡ Sync New Records</span>
+                            </button>
+                            <button type="button" id="btn-sync-tx-full" class="btn" onclick="triggerAdminTransactionsSync(true)" style="padding: 8px 18px; font-size: 12.5px; font-weight: 600; background: #ea580c; border-color: #ea580c; color: #fff; display: inline-flex; align-items: center; gap: 6px;">
+                                <span>🚀 Full Resync from June 2026</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div> <!-- End of .admin-datasets-grid -->
 
         </div>
@@ -1581,7 +1657,7 @@
             if (tabContent) tabContent.classList.add('active');
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
-            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); }
+            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); loadAdminTransactionsStatus(); }
             if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); }
         }
 
@@ -2677,6 +2753,160 @@
             }
         }
 
+        // ==========================================
+        // MARKET TRANSACTIONS ADMIN DATASET CONTROLLERS
+        // ==========================================
+        let adminTxSyncPollTimer = null;
+
+        async function loadAdminTransactionsStatus() {
+            try {
+                const res = await fetch('/api/admin/transactions/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                const lastUpEl = document.getElementById('admin-tx-last-synced');
+                const totalCountEl = document.getElementById('admin-tx-total-count');
+                const breakdownEl = document.getElementById('admin-tx-breakdown');
+                const dateCovEl = document.getElementById('admin-tx-date-coverage');
+                const progContainer = document.getElementById('admin-tx-progress-container');
+                const progText = document.getElementById('admin-tx-progress-text');
+                const progPercent = document.getElementById('admin-tx-progress-percent');
+                const progBar = document.getElementById('admin-tx-progress-bar');
+                const chunkStatusEl = document.getElementById('admin-tx-chunk-status');
+                const badge = document.getElementById('admin-tx-sync-badge');
+                const syncNewBtn = document.getElementById('btn-sync-tx-new');
+                const fullSyncBtn = document.getElementById('btn-sync-tx-full');
+                const statusMsg = document.getElementById('admin-tx-status-msg');
+
+                if (lastUpEl) lastUpEl.innerText = s.last_synced_display || 'Not synced yet';
+                if (totalCountEl) totalCountEl.innerText = `${(s.total_records || 0).toLocaleString()} Deals`;
+                if (breakdownEl) {
+                    breakdownEl.innerText = `${s.count_block || 0} Block • ${s.count_bulk || 0} Bulk • ${s.count_insider || 0} Insider`;
+                }
+                if (dateCovEl) {
+                    if (s.earliest_date && s.latest_date && s.earliest_date !== 'None') {
+                        dateCovEl.innerText = `${s.earliest_date} to ${s.latest_date}`;
+                    } else {
+                        dateCovEl.innerText = 'No records in DB';
+                    }
+                }
+
+                if (s.is_syncing) {
+                    if (badge) {
+                        badge.style.display = 'inline-block';
+                        badge.style.background = 'rgba(234, 88, 12, 0.15)';
+                        badge.style.color = '#ea580c';
+                        badge.innerText = 'Syncing...';
+                    }
+                    if (progContainer) progContainer.style.display = 'block';
+                    if (progText) progText.innerText = s.progress || 'Syncing transactions in monthly chunks...';
+                    if (progPercent) progPercent.innerText = `${s.percent || 10}%`;
+                    if (progBar) progBar.style.width = `${s.percent || 10}%`;
+                    if (chunkStatusEl) {
+                        if (s.current_chunk) {
+                            chunkStatusEl.innerText = s.current_chunk;
+                            chunkStatusEl.style.display = 'block';
+                        }
+                    }
+                    if (statusMsg) {
+                        statusMsg.innerText = s.current_chunk ? `Processing: ${s.current_chunk}` : 'Syncing in progress...';
+                    }
+                    if (syncNewBtn) {
+                        syncNewBtn.disabled = true;
+                        syncNewBtn.style.opacity = '0.7';
+                    }
+                    if (fullSyncBtn) {
+                        fullSyncBtn.disabled = true;
+                        fullSyncBtn.style.opacity = '0.7';
+                    }
+
+                    if (adminTxSyncPollTimer) clearTimeout(adminTxSyncPollTimer);
+                    adminTxSyncPollTimer = setTimeout(loadAdminTransactionsStatus, 1500);
+                } else {
+                    if (badge) {
+                        badge.style.display = 'inline-block';
+                        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                        badge.style.color = '#10b981';
+                        badge.innerText = 'Up to Date';
+                    }
+                    if (progContainer) {
+                        if (s.percent >= 100) {
+                            if (progText) progText.innerText = s.progress || 'Sync Completed!';
+                            if (progPercent) progPercent.innerText = '100%';
+                            if (progBar) progBar.style.width = '100%';
+                            if (chunkStatusEl) chunkStatusEl.innerText = `All ${s.total_chunks || 0} chunks synced. Added +${s.new_deals_count || 0} new records.`;
+                            setTimeout(() => { if (progContainer) progContainer.style.display = 'none'; }, 4000);
+                        } else {
+                            progContainer.style.display = 'none';
+                        }
+                    }
+                    if (statusMsg) {
+                        statusMsg.innerText = s.new_deals_count > 0 
+                            ? `+${s.new_deals_count} new deals synced into database.` 
+                            : 'Database up-to-date. Ready for next sync.';
+                    }
+                    if (syncNewBtn) {
+                        syncNewBtn.disabled = false;
+                        syncNewBtn.style.opacity = '1';
+                    }
+                    if (fullSyncBtn) {
+                        fullSyncBtn.disabled = false;
+                        fullSyncBtn.style.opacity = '1';
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching admin transactions sync status:', e);
+            }
+        }
+
+        async function triggerAdminTransactionsSync(forceFull = false) {
+            const promptTitle = forceFull 
+                ? 'Full Transactions Resync from June 2026' 
+                : 'Incremental Sync of New Transactions';
+            const promptDesc = forceFull
+                ? 'This will:\n1. Synchronize all Block Deals, Bulk Deals, and Insider Trading disclosures starting from June 2026.\n2. Partition the process into monthly chunks (June, July, August, September, October 2026).\n3. Save all normalized records atomically into MongoDB Atlas & SQLite.\n\nProceed with full sync?'
+                : 'This will:\n1. Detect the latest transaction date currently stored in the database.\n2. Fetch only new records since that date (with a 5-day safety buffer for late filings).\n3. Store new records into MongoDB Atlas & SQLite database.\n\nProceed with incremental sync?';
+
+            if (!confirm(`Are you sure you want to run ${promptTitle}?\n\n${promptDesc}`)) {
+                return;
+            }
+
+            const syncNewBtn = document.getElementById('btn-sync-tx-new');
+            const fullSyncBtn = document.getElementById('btn-sync-tx-full');
+            if (syncNewBtn) {
+                syncNewBtn.disabled = true;
+                syncNewBtn.style.opacity = '0.7';
+            }
+            if (fullSyncBtn) {
+                fullSyncBtn.disabled = true;
+                fullSyncBtn.style.opacity = '0.7';
+            }
+
+            const statusMsg = document.getElementById('admin-tx-status-msg');
+            if (statusMsg) statusMsg.innerText = 'Triggering transactions background sync...';
+
+            try {
+                const res = await fetch('/api/admin/transactions/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force_full: forceFull })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadAdminTransactionsStatus();
+                } else {
+                    alert('❌ Failed to start sync: ' + (data.error || data.message || 'Unknown error'));
+                    if (syncNewBtn) { syncNewBtn.disabled = false; syncNewBtn.style.opacity = '1'; }
+                    if (fullSyncBtn) { fullSyncBtn.disabled = false; fullSyncBtn.style.opacity = '1'; }
+                }
+            } catch (e) {
+                alert('❌ Error requesting transactions sync: ' + e.message);
+                if (syncNewBtn) { syncNewBtn.disabled = false; syncNewBtn.style.opacity = '1'; }
+                if (fullSyncBtn) { fullSyncBtn.disabled = false; fullSyncBtn.style.opacity = '1'; }
+            }
+        }
+
 
         // EXTERNAL API / URL CALL LOGS CONTROLLERS
         // ==========================================
@@ -3373,6 +3603,7 @@
             await loadAdminIpoStatus();
             await loadAdminQuarterlyResultsStatus();
             await loadAdminShareholdingStatus();
+            await loadAdminTransactionsStatus();
             await loadExternalApiLogsBadge();
             await loadProductionJsonFilesList();
         }

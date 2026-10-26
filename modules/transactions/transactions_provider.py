@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 import json
 import os
-from modules.common.ist_datetime import format_ist_display
+from modules.common.ist_datetime import format_ist_display, now_ist
 from pathlib import Path
 import re
 from threading import Lock
@@ -105,6 +105,17 @@ class TransactionsProvider:
         self._lock = Lock()
         self._cache_deals: List[Dict[str, Any]] = []
         self._last_fetch_time: float = 0
+        # Admin Sync Tracking
+        self._admin_sync_lock = Lock()
+        self._admin_is_syncing: bool = False
+        self._admin_sync_progress: str = "Idle"
+        self._admin_sync_percent: int = 0
+        self._admin_sync_error: Optional[str] = None
+        self._admin_new_deals_count: int = 0
+        self._admin_current_chunk: str = ""
+        self._admin_chunk_index: int = 0
+        self._admin_total_chunks: int = 0
+        self._last_synced_display: Optional[str] = None
         self._load_stored_deals()
 
     def _load_stored_deals(self):
@@ -819,3 +830,280 @@ class TransactionsProvider:
             "cooldown_remaining_seconds": cooldown_remaining,
             "rate_limit_window_seconds": CACHE_TTL
         }
+
+
+    # =========================================================================
+    # ADMIN CHUNKED DATASET SYNCHRONIZATION
+    # =========================================================================
+    @staticmethod
+    def _generate_date_chunks(start_date: date, end_date: date) -> List[Tuple[date, date, str]]:
+        """Split a date range into monthly chunks (e.g., June 2026, July 2026, etc.)."""
+        import calendar
+        chunks = []
+        curr = start_date
+        while curr <= end_date:
+            _, last_day = calendar.monthrange(curr.year, curr.month)
+            month_end = date(curr.year, curr.month, last_day)
+            chunk_end = min(end_date, month_end)
+            month_name = curr.strftime("%B %Y")
+            chunks.append((curr, chunk_end, month_name))
+            curr = chunk_end + timedelta(days=1)
+        return chunks
+
+    def get_sync_status(self) -> Dict[str, Any]:
+        """Return live synchronization status, chunk progress, and deal metrics for Admin."""
+        with self._admin_sync_lock:
+            is_syncing = self._admin_is_syncing
+            prog = self._admin_sync_progress
+            percent = self._admin_sync_percent
+            err = self._admin_sync_error
+            new_added = self._admin_new_deals_count
+            chunk_info = self._admin_current_chunk
+            chunk_idx = self._admin_chunk_index
+            total_chunks = self._admin_total_chunks
+
+        with self._lock:
+            deals = self._cache_deals or []
+            total_records = len(deals)
+            count_block = sum(1 for d in deals if d.get("deal_type") == "block")
+            count_bulk = sum(1 for d in deals if d.get("deal_type") == "bulk")
+            count_insider = sum(1 for d in deals if d.get("deal_type") == "insider")
+
+            valid_dates = [
+                d.get("date") for d in deals 
+                if d.get("date") and re.match(r"^\d{4}-\d{2}-\d{2}$", str(d.get("date")))
+            ]
+            earliest_date = min(valid_dates) if valid_dates else "None"
+            latest_date = max(valid_dates) if valid_dates else "None"
+
+        raw_disp = getattr(self, "_last_synced_display", None) or getattr(self, "_last_fetch_time", None)
+        disp_val = format_ist_display(raw_disp) if (raw_disp and raw_disp != "Never" and raw_disp != 0) else "Not synced yet"
+
+        return {
+            "is_syncing": is_syncing,
+            "is_refreshing": is_syncing,  # alias for UI consistency
+            "progress": prog,
+            "percent": percent,
+            "error": err,
+            "current_chunk": chunk_info,
+            "chunk_index": chunk_idx,
+            "total_chunks": total_chunks,
+            "new_deals_count": new_added,
+            "total_records": total_records,
+            "count_block": count_block,
+            "count_bulk": count_bulk,
+            "count_insider": count_insider,
+            "earliest_date": earliest_date,
+            "latest_date": latest_date,
+            "date_coverage": f"{earliest_date} to {latest_date}" if valid_dates else "No records",
+            "last_synced_display": disp_val,
+            "storage": "MongoDB Atlas & SQLite (Synced)"
+        }
+
+    def start_admin_background_sync(self, force_full: bool = False) -> Dict[str, Any]:
+        """Initiate background chunked sync of market transactions from June 2026 or incrementally."""
+        with self._admin_sync_lock:
+            if self._admin_is_syncing:
+                return {
+                    "success": False,
+                    "status": "in_progress",
+                    "message": "A transactions sync is already in progress.",
+                    **self.get_sync_status()
+                }
+            self._admin_is_syncing = True
+            self._admin_sync_progress = "Initializing transaction chunked sync engine..."
+            self._admin_sync_percent = 5
+            self._admin_sync_error = None
+            self._admin_new_deals_count = 0
+            self._admin_chunk_index = 0
+            self._admin_total_chunks = 0
+            self._admin_current_chunk = "Determining date ranges..."
+
+        import threading
+        thread = threading.Thread(target=self._run_admin_sync_worker, args=(force_full,), daemon=True)
+        thread.start()
+
+        return {
+            "success": True,
+            "status": "started",
+            "message": "Transactions sync started successfully in background.",
+            **self.get_sync_status()
+        }
+
+    def _run_admin_sync_worker(self, force_full: bool = False) -> None:
+        """Worker thread executing chunked sync from June 2026 or incremental delta sync."""
+        try:
+            today = date.today()
+            base_june_2026 = date(2026, 6, 1)
+
+            # Determine start date: June 2026 for full sync, or latest DB date minus 5-day buffer for delta
+            if force_full:
+                start_date = base_june_2026
+            else:
+                with self._lock:
+                    valid_dates = [
+                        d.get("date") for d in self._cache_deals 
+                        if d.get("date") and re.match(r"^\d{4}-\d{2}-\d{2}$", str(d.get("date")))
+                    ]
+                if valid_dates:
+                    try:
+                        latest_iso = max(valid_dates)
+                        latest_dt = datetime.strptime(latest_iso, "%Y-%m-%d").date()
+                        # Overlap 5 days to capture delayed filings/corrections
+                        start_date = max(base_june_2026, latest_dt - timedelta(days=5))
+                    except Exception:
+                        start_date = base_june_2026
+                else:
+                    start_date = base_june_2026
+
+            end_date = today
+            if start_date > end_date:
+                start_date = end_date
+
+            chunks = self._generate_date_chunks(start_date, end_date)
+            if not chunks:
+                chunks = [(start_date, end_date, start_date.strftime("%B %Y"))]
+
+            total_chunks = len(chunks)
+            with self._admin_sync_lock:
+                self._admin_total_chunks = total_chunks
+                self._admin_sync_progress = f"Found {total_chunks} date chunks from {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}."
+                self._admin_sync_percent = 8
+
+            session = self._create_nse_session()
+
+            for idx, (chunk_start, chunk_end, chunk_name) in enumerate(chunks):
+                from_str = chunk_start.strftime("%d-%m-%Y")
+                to_str = chunk_end.strftime("%d-%m-%Y")
+                chunk_label = f"Chunk {idx + 1}/{total_chunks}: {chunk_name} ({from_str} to {to_str})"
+
+                with self._admin_sync_lock:
+                    self._admin_chunk_index = idx + 1
+                    self._admin_current_chunk = chunk_label
+                    pct = int(10 + (idx / total_chunks) * 85)
+                    self._admin_sync_percent = min(pct, 95)
+                    self._admin_sync_progress = f"Fetching {chunk_label} from official NSE portals..."
+
+                chunk_deals: List[Dict[str, Any]] = []
+
+                # 1. Fetch Block Deals for this chunk
+                try:
+                    url_block = f"{NSE_HISTORICAL_DEALS_API}?optionType=block_deals&from={from_str}&to={to_str}"
+                    res_b = session.get(url_block, headers=HEADERS, timeout=12)
+                    if res_b.status_code == 200:
+                        b_items = res_b.json().get("data", [])
+                        for item in b_items:
+                            deal = self._normalize_largedeal(item, "block")
+                            if deal:
+                                chunk_deals.append(deal)
+                except Exception as ex:
+                    print(f"[TransactionsProvider] Chunk {idx+1} block deals error: {ex}")
+
+                # 2. Fetch Bulk Deals for this chunk
+                try:
+                    url_bulk = f"{NSE_HISTORICAL_DEALS_API}?optionType=bulk_deals&from={from_str}&to={to_str}"
+                    res_bk = session.get(url_bulk, headers=HEADERS, timeout=12)
+                    if res_bk.status_code == 200:
+                        bk_items = res_bk.json().get("data", [])
+                        for item in bk_items:
+                            deal = self._normalize_largedeal(item, "bulk")
+                            if deal:
+                                chunk_deals.append(deal)
+                except Exception as ex:
+                    print(f"[TransactionsProvider] Chunk {idx+1} bulk deals error: {ex}")
+
+                # 3. Fetch Insider Deals (PIT) for this chunk
+                try:
+                    url_pit = f"{NSE_INSIDER_API}?from_date={from_str}&to_date={to_str}"
+                    res_pit = session.get(url_pit, headers=HEADERS, timeout=12)
+                    pit_items = []
+                    if res_pit.status_code == 200:
+                        pit_items = res_pit.json().get("data", [])
+
+                    # Fallback year query if zero items returned for an older chunk
+                    if not pit_items and chunk_end < today:
+                        for fb_year in [today.year - 1, 2025, 2024]:
+                            try:
+                                f_fb = chunk_start.replace(year=fb_year).strftime("%d-%m-%Y")
+                                t_fb = chunk_end.replace(year=fb_year).strftime("%d-%m-%Y")
+                                r_fb = session.get(f"{NSE_INSIDER_API}?from_date={f_fb}&to_date={t_fb}", headers=HEADERS, timeout=10)
+                                if r_fb.status_code == 200:
+                                    fb_data = r_fb.json().get("data", [])
+                                    if fb_data:
+                                        pit_items = fb_data
+                                        break
+                            except Exception:
+                                continue
+
+                    for item in pit_items:
+                        deal = self._normalize_insider_deal(item)
+                        if deal:
+                            chunk_deals.append(deal)
+                except Exception as ex:
+                    print(f"[TransactionsProvider] Chunk {idx+1} insider deals error: {ex}")
+
+                # 4. If current chunk contains today, also include live largedeal snapshot
+                if chunk_end >= today:
+                    try:
+                        r_live = session.get(NSE_LARGEDEAL_API, headers=HEADERS, timeout=10)
+                        if r_live.status_code == 200:
+                            live_p = r_live.json()
+                            for item in live_p.get("BLOCK_DEALS_DATA", []):
+                                deal = self._normalize_largedeal(item, "block")
+                                if deal:
+                                    chunk_deals.append(deal)
+                            for item in live_p.get("BULK_DEALS_DATA", []):
+                                deal = self._normalize_largedeal(item, "bulk")
+                                if deal:
+                                    chunk_deals.append(deal)
+                    except Exception as ex:
+                        print(f"[TransactionsProvider] Chunk {idx+1} live snapshot error: {ex}")
+
+                # Deduplicate and persist incrementally after every chunk
+                new_in_chunk = 0
+                with self._lock:
+                    existing_map = {d.get("id"): d for d in self._cache_deals if d.get("id")}
+                    for deal in chunk_deals:
+                        did = deal.get("id")
+                        if did and did not in existing_map:
+                            existing_map[did] = deal
+                            new_in_chunk += 1
+                        elif did:
+                            existing_map[did] = deal  # update existing
+
+                    self._cache_deals = sorted(
+                        existing_map.values(),
+                        key=lambda x: (x.get("date", ""), x.get("value", 0)),
+                        reverse=True
+                    )
+                    self._persist_deals()
+
+                with self._admin_sync_lock:
+                    self._admin_new_deals_count += new_in_chunk
+
+                # Polite throttle between chunk calls
+                time.sleep(0.6)
+
+            # Completion
+            with self._lock:
+                total_synced = len(self._cache_deals)
+            with self._admin_sync_lock:
+                self._admin_sync_percent = 100
+                self._admin_sync_progress = (
+                    f"Completed successfully! Processed {total_chunks} chunks. "
+                    f"Synced {self._admin_new_deals_count} new records. "
+                    f"Total {total_synced} transactions now saved in database."
+                )
+                self._admin_sync_error = None
+                self._last_synced_display = format_ist_display(now_ist())
+                self._last_fetch_time = time.time()
+                self._admin_is_syncing = False
+
+        except Exception as exc:
+            print(f"[TransactionsProvider] Fatal sync worker error: {exc}")
+            with self._admin_sync_lock:
+                self._admin_sync_error = str(exc)
+                self._admin_sync_progress = f"Sync encountered error: {exc}"
+        finally:
+            with self._admin_sync_lock:
+                self._admin_is_syncing = False
