@@ -934,6 +934,60 @@
    ========================================================= */
 
 /* Custom Chip in Toolbar */
+/* Header Quarter Comparison Badge */
+.shp-quarter-badge {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    padding: 2px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.01em;
+}
+
+:root:not([data-theme="dark"]) .shp-quarter-badge {
+    color: #4f46e5;
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.22);
+}
+
+/* Only Changes Filter Chip Highlight */
+#shp-chip-only-changes {
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.3);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+#shp-chip-only-changes:hover {
+    background: rgba(56, 189, 248, 0.16);
+    border-color: rgba(56, 189, 248, 0.5);
+}
+
+#shp-chip-only-changes.active {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+:root:not([data-theme="dark"]) #shp-chip-only-changes {
+    color: #0284c7;
+    border-color: rgba(2, 132, 199, 0.25);
+    background: rgba(2, 132, 199, 0.06);
+}
+
+:root:not([data-theme="dark"]) #shp-chip-only-changes:hover {
+    background: rgba(2, 132, 199, 0.12);
+}
+
+:root:not([data-theme="dark"]) #shp-chip-only-changes.active {
+    background: #0284c7;
+    border-color: #0369a1;
+    color: #ffffff;
+}
+
 .shp-custom-chip {
     border-color: rgba(99, 102, 241, 0.4) !important;
 }

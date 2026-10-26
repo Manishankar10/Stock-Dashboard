@@ -365,11 +365,12 @@
                     countSmeEl.textContent = (counts.sme !== undefined ? counts.sme : st.count_sme).toLocaleString();
                 }
 
-                // Dynamically update two-quarters chip label (e.g. Sep 26 vs Jun 26)
+                // Dynamically update header quarter badge (e.g. Sep 26 vs Jun 26)
                 if (data.two_quarters_label) {
-                    const chip2Q = document.getElementById('shp-chip-two-qtrs');
-                    if (chip2Q) {
-                        chip2Q.textContent = data.two_quarters_label;
+                    const qBadge = document.getElementById('shp-quarter-badge');
+                    if (qBadge) {
+                        qBadge.textContent = data.two_quarters_label;
+                        qBadge.style.display = 'inline-block';
                     }
                 }
 

@@ -884,6 +884,35 @@ class ShareholdingProvider:
             with self._lock:
                 self._is_refreshing = False
 
+    @staticmethod
+    def _has_pattern_change(r: Dict[str, Any]) -> bool:
+        """Check if record has any QoQ change in Promoter, FII, DII, or Public holding."""
+        for field in ("change_promoter_pct", "change_fii_pct", "change_dii_pct", "change_public_pct"):
+            val = r.get(field)
+            if val is not None:
+                try:
+                    if abs(float(val)) > 0.0001:
+                        return True
+                except (ValueError, TypeError):
+                    pass
+
+        # Fallback to level percentage diffs if change fields are missing or None
+        for cur_k, prev_k in (
+            ("promoter_pct", "prev_promoter_pct"),
+            ("fii_pct", "prev_fii_pct"),
+            ("dii_pct", "prev_dii_pct"),
+            ("public_pct", "prev_public_pct"),
+        ):
+            cur_v = r.get(cur_k)
+            prev_v = r.get(prev_k)
+            if cur_v is not None and prev_v is not None:
+                try:
+                    if abs(float(cur_v) - float(prev_v)) > 0.0001:
+                        return True
+                except (ValueError, TypeError):
+                    pass
+        return False
+
     def get_two_quarters_info(self) -> Tuple[str, Tuple[str, str]]:
         """Determine the top two comparative quarters across cached records dynamically."""
         import collections
@@ -1001,6 +1030,8 @@ class ShareholdingProvider:
                 return True
             if nid == "false":
                 return False
+            if nid in ("has_change", "has_changes", "only_changes", "changed"):
+                return 1 if self._has_pattern_change(record) else 0
             field_attr = self.QUERY_FIELD_MAP.get(nid)
             val = record.get(field_attr)
             return float(val) if val is not None else None
@@ -1154,12 +1185,9 @@ class ShareholdingProvider:
                 else:
                     custom_query_error = err
                     records = []
-        elif cat_clean == "two_qtrs":
-            # Filter strictly by comparative two quarters
-            records = [
-                r for r in records
-                if r.get("date") == top_pair[0] and (r.get("prev_date") == top_pair[1] or r.get("change_promoter_pct") is not None)
-            ]
+        elif cat_clean in ("only_changes", "changes_only", "two_qtrs", "changed"):
+            # Filter out stocks with no change in shareholding pattern (only keep QoQ shifts)
+            records = [r for r in records if self._has_pattern_change(r)]
         elif cat_clean == "fii_inc":
             # FII Increased QoQ
             records = [r for r in records if (r.get("change_fii_pct") or 0.0) > 0]

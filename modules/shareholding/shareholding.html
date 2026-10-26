@@ -10,7 +10,10 @@
         <div class="card-container shp-header-card">
             <div class="shp-header-row">
                 <div class="shp-title-group">
-                    <h2 class="shp-title" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; white-space: nowrap;">Shareholding Patterns</h2>
+                    <h2 class="shp-title" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px;">
+                        Shareholding Patterns
+                        <span class="shp-quarter-badge" id="shp-quarter-badge" style="display: none;" title="Latest Comparative Quarters"></span>
+                    </h2>
                     <!-- Board Selector Chips -->
                     <div class="portfolio-selector-bar shp-board-chips" style="margin-bottom: 0;">
                         <button type="button" class="pf-select-btn active" data-board-filter="all">All (<span id="shp-count-all">—</span>)</button>
@@ -61,7 +64,7 @@
                     <!-- Right: Category Quick Filters (with dynamic two qtrs chip between All & FII Buying) -->
                     <div class="shp-category-chips">
                         <button type="button" class="shp-filter-chip active" data-category="all">All</button>
-                        <button type="button" class="shp-filter-chip" id="shp-chip-two-qtrs" data-category="two_qtrs" title="Compare latest two quarters">Sep 26 vs Jun 26</button>
+                        <button type="button" class="shp-filter-chip" id="shp-chip-only-changes" data-category="only_changes" title="Filter out stocks with no change in shareholding pattern (shows only QoQ changes)">Only Changes ⇄</button>
                         <button type="button" class="shp-filter-chip" data-category="fii_inc" title="FII / Foreign institutional stake increased QoQ">FII Buying ↑</button>
                         <button type="button" class="shp-filter-chip" data-category="dii_inc" title="DII / Mutual funds & domestic institutional stake increased QoQ">DII Buying ↑</button>
                         <button type="button" class="shp-filter-chip" data-category="promoter_inc" title="Promoter stake increased QoQ">Promoter Buying ↑</button>
