@@ -48,93 +48,256 @@ const AppRouter = {
     },
 
     closeAnyOpenModalOrDrawer() {
-        let dismissed = false;
-
-        // 1. System modal dialog
-        const customModalOverlay = document.getElementById('customModalOverlay');
-        if (customModalOverlay && (customModalOverlay.style.display === 'flex' || window.getComputedStyle(customModalOverlay).display === 'flex')) {
-            customModalOverlay.style.setProperty('display', 'none', 'important');
-            dismissed = true;
-        }
-
-        // 2. Analyser detail modal / sheet
-        const analyserModal = document.getElementById('analyserDetailModal');
-        if (analyserModal && analyserModal.classList.contains('show')) {
-            if (typeof window.closeAnalyserModal === 'function') {
-                window.closeAnalyserModal();
-            } else {
-                analyserModal.classList.remove('show');
+        // Helper to check computed visibility
+        const isElVisible = (el) => {
+            if (!el || !(el instanceof HTMLElement)) return false;
+            if (el.hasAttribute('hidden') || el.closest('[hidden]')) return false;
+            if (el.style.display === 'none' || el.classList.contains('hidden')) return false;
+            try {
+                const style = window.getComputedStyle(el);
+                if (style.display === 'none' || style.visibility === 'hidden') return false;
+            } catch (e) {
+                return false;
             }
-            dismissed = true;
-        }
-
-        // 3. Stock Detail Chart Modal
-        const chartModal = document.getElementById('chart-modal') || document.getElementById('chartModal');
-        if (chartModal && (chartModal.classList.contains('show') || chartModal.style.display === 'block')) {
-            if (typeof window.closeChartModal === 'function') {
-                window.closeChartModal();
-            } else {
-                chartModal.classList.remove('show');
-                chartModal.style.display = 'none';
+            if (el.offsetWidth === 0 && el.offsetHeight === 0 && el.getClientRects().length === 0) {
+                return false;
             }
-            dismissed = true;
-        }
+            return true;
+        };
 
-        // 4. Fundamentals Modal
-        const fundModal = document.getElementById('fundamentals-modal');
-        if (fundModal && (fundModal.classList.contains('show') || fundModal.style.display === 'block')) {
-            if (typeof window.closeFundamentalsModal === 'function') {
-                window.closeFundamentalsModal();
-            } else {
-                fundModal.classList.remove('show');
-                fundModal.style.display = 'none';
+        // 1. Popover menus, dropdowns, and floating tooltips (highest layer)
+        const popover = document.getElementById('tx-deal-fields-popover');
+        if (isElVisible(popover)) {
+            if (typeof window.hideDealFieldsPopover === 'function') {
+                window.hideDealFieldsPopover();
             }
-            dismissed = true;
+            popover.style.display = 'none';
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(popover);
+            return true;
         }
 
-        // 5. Holding Details Modal
-        const holdingModal = document.getElementById('holdingDetailModal') || document.getElementById('holding-details-modal');
-        if (holdingModal && (holdingModal.classList.contains('show') || holdingModal.style.display === 'block')) {
-            if (typeof window.closeHoldingDetailsModal === 'function') {
-                window.closeHoldingDetailsModal();
-            } else {
-                holdingModal.classList.remove('show');
-                holdingModal.style.display = 'none';
-            }
-            dismissed = true;
+        const activePopover = document.querySelector('.chart-popover-menu.show, .popover.show');
+        if (activePopover && isElVisible(activePopover)) {
+            activePopover.classList.remove('show');
+            activePopover.style.display = 'none';
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(activePopover);
+            return true;
         }
 
-        // 6. Generic Smallcase / MF / Bootstrap Modals
-        document.querySelectorAll('.small-modal.show, .mf-modal.show, .modal.show').forEach(m => {
-            m.classList.remove('show');
-            m.style.display = 'none';
-            dismissed = true;
-        });
-
-        // 7. Mobile Sidebar Drawer
-        const mobileSidebar = document.getElementById('mobile-sidebar');
-        const sidebar = document.querySelector('.sidebar');
-        if (document.body.classList.contains('mobile-menu-open') || (mobileSidebar && mobileSidebar.classList.contains('open')) || (sidebar && sidebar.classList.contains('mobile-open'))) {
-            if (typeof window.closeMobileSidebarOnSelect === 'function') {
-                window.closeMobileSidebarOnSelect();
-            }
-            document.body.classList.remove('mobile-menu-open');
-            if (mobileSidebar) mobileSidebar.classList.remove('open');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            dismissed = true;
-        }
-
-        // 8. Open Dropdown menus (actions, upcoming, etc.)
         const openDropdowns = document.querySelectorAll('.upcoming-dropdown-menu.show, .action-dropdown-menu.show, .menu-dropdown-wrapper.active');
         if (openDropdowns.length > 0) {
             openDropdowns.forEach(d => {
                 d.classList.remove('show');
                 d.classList.remove('active');
             });
-            dismissed = true;
+            return true;
         }
 
-        return dismissed;
+        // 2. System modal dialog / confirmation prompt
+        const customModalOverlay = document.getElementById('customModalOverlay');
+        if (isElVisible(customModalOverlay)) {
+            if (typeof window.__systemModalCancel === 'function') {
+                window.__systemModalCancel();
+            } else {
+                const cancelBtn = document.getElementById('customModalCancelBtn');
+                if (cancelBtn && cancelBtn.style.display !== 'none') {
+                    cancelBtn.click();
+                } else {
+                    customModalOverlay.style.setProperty('display', 'none', 'important');
+                }
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(customModalOverlay);
+            return true;
+        }
+
+        // 3. Transactions Custom Screener Modal
+        const txModal = document.getElementById('tx-custom-modal');
+        if (isElVisible(txModal)) {
+            if (typeof window.closeTxCustomModal === 'function') {
+                window.closeTxCustomModal();
+            } else {
+                txModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(txModal);
+            return true;
+        }
+
+        // 4. Quarterly Results Screener & Mobile Filter Modals
+        const qrMobileModal = document.getElementById('qrMobileFilterModal');
+        if (isElVisible(qrMobileModal)) {
+            if (typeof window.closeQrMobileFilter === 'function') {
+                window.closeQrMobileFilter();
+            } else {
+                qrMobileModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(qrMobileModal);
+            return true;
+        }
+
+        const qrModal = document.getElementById('qr-custom-modal');
+        if (isElVisible(qrModal)) {
+            if (typeof window.closeQrCustomModal === 'function') {
+                window.closeQrCustomModal();
+            } else {
+                qrModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(qrModal);
+            return true;
+        }
+
+        // 5. Shareholding Screener Modal
+        const shpModal = document.getElementById('shp-custom-modal');
+        if (isElVisible(shpModal)) {
+            if (typeof window.closeShpCustomModal === 'function') {
+                window.closeShpCustomModal();
+            } else {
+                const closeBtn = document.getElementById('shp-custom-modal-close');
+                if (closeBtn) closeBtn.click();
+                else shpModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(shpModal);
+            return true;
+        }
+
+        // 6. Portfolio Analytics Details Modal / Mobile Sheet
+        const paModal = document.getElementById('pa-details-modal');
+        if (isElVisible(paModal)) {
+            if (typeof window.closePaModal === 'function') {
+                window.closePaModal();
+            } else {
+                paModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(paModal);
+            return true;
+        }
+
+        // 7. Analyser detail modal / sheet
+        const analyserModal = document.getElementById('analyserDetailModal');
+        if (analyserModal && (analyserModal.classList.contains('show') || isElVisible(analyserModal))) {
+            if (typeof window.closeAnalyserModal === 'function') {
+                window.closeAnalyserModal();
+            } else {
+                analyserModal.classList.remove('show');
+                analyserModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(analyserModal);
+            return true;
+        }
+
+        // 8. Stock Detail Chart Modal
+        const chartModal = document.getElementById('chart-modal') || document.getElementById('chartModal');
+        if (chartModal && (chartModal.classList.contains('show') || isElVisible(chartModal))) {
+            if (typeof window.closeChartModal === 'function') {
+                window.closeChartModal();
+            } else {
+                chartModal.classList.remove('show');
+                chartModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(chartModal);
+            return true;
+        }
+
+        // 9. Fundamentals Modal
+        const fundModal = document.getElementById('fundamentals-modal');
+        if (fundModal && (fundModal.classList.contains('show') || isElVisible(fundModal))) {
+            if (typeof window.closeFundamentalsModal === 'function') {
+                window.closeFundamentalsModal();
+            } else {
+                fundModal.classList.remove('show');
+                fundModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(fundModal);
+            return true;
+        }
+
+        // 10. Holding Details Modal
+        const holdingModal = document.getElementById('holdingDetailModal') || document.getElementById('holding-details-modal');
+        if (holdingModal && (holdingModal.classList.contains('show') || isElVisible(holdingModal))) {
+            if (typeof window.closeHoldingDetailsModal === 'function') {
+                window.closeHoldingDetailsModal();
+            } else {
+                holdingModal.classList.remove('show');
+                holdingModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(holdingModal);
+            return true;
+        }
+
+        // 11. Notifications Modal
+        const notifModal = document.getElementById('notificationsModal');
+        if (notifModal && (notifModal.classList.contains('show') || isElVisible(notifModal))) {
+            if (typeof window.closeNotificationsModal === 'function') {
+                window.closeNotificationsModal();
+            } else {
+                notifModal.classList.remove('show');
+                notifModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(notifModal);
+            return true;
+        }
+
+        // 12. Edit Drawing Modal
+        const editDrawingModal = document.getElementById('editDrawingModal');
+        if (isElVisible(editDrawingModal)) {
+            if (typeof window.closeEditDrawingModal === 'function') {
+                window.closeEditDrawingModal();
+            } else {
+                editDrawingModal.style.display = 'none';
+            }
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(editDrawingModal);
+            return true;
+        }
+
+        // 13. Universal Topmost Modal Scanner (catches any visible modal by z-index)
+        const allVisibleModals = Array.from(document.querySelectorAll(
+            '.modal, .small-modal, .fundamentals-modal, .mf-modal-backdrop, .br-modal-overlay, .of-modal-overlay, .qr-glass-modal, .qr-custom-modal-backdrop, .shp-custom-modal-backdrop, .tx-custom-modal-backdrop, .modal-backdrop, .modal-overlay, .pa-modal-overlay, [role="dialog"], [id$="Modal"], [id$="-modal"], [id$="_modal"]'
+        )).filter(m => {
+            if (!m || m.id === 'customModalOverlay') return false;
+            return isElVisible(m);
+        });
+
+        if (allVisibleModals.length > 0) {
+            allVisibleModals.sort((a, b) => {
+                const zA = parseInt(window.getComputedStyle(a).zIndex, 10) || 0;
+                const zB = parseInt(window.getComputedStyle(b).zIndex, 10) || 0;
+                return zB - zA;
+            });
+            const topM = allVisibleModals[0];
+            const closeBtn = topM.querySelector('.close-btn, .modal-close-btn, .pa-modal-close-btn, .br-close-btn, [data-dismiss="modal"], .btn-close, .close, [aria-label="Close"], .modal-close');
+            if (closeBtn) {
+                closeBtn.click();
+            }
+            topM.classList.remove('show');
+            topM.classList.remove('open');
+            topM.classList.remove('active');
+            topM.style.setProperty('display', 'none', 'important');
+            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(topM);
+            return true;
+        }
+
+        // 14. Mobile Sidebar Drawer (closes when no modal/popover is above it)
+        const appSidebar = document.getElementById('app-sidebar') || document.getElementById('mobile-sidebar') || document.querySelector('.sidebar');
+        const sidebarBackdrop = document.getElementById('sidebar-backdrop') || document.querySelector('.mobile-sidebar-backdrop');
+        if (document.body.classList.contains('mobile-menu-open') || 
+            (appSidebar && (appSidebar.classList.contains('mobile-open') || appSidebar.classList.contains('open'))) ||
+            (sidebarBackdrop && sidebarBackdrop.classList.contains('mobile-open'))) {
+            if (typeof window.toggleMobileSidebar === 'function') {
+                window.toggleMobileSidebar(false);
+            }
+            if (typeof window.closeMobileSidebarOnSelect === 'function') {
+                window.closeMobileSidebarOnSelect();
+            }
+            document.body.classList.remove('mobile-menu-open');
+            document.body.style.overflow = '';
+            if (appSidebar) {
+                appSidebar.classList.remove('mobile-open');
+                appSidebar.classList.remove('open');
+            }
+            if (sidebarBackdrop) sidebarBackdrop.classList.remove('mobile-open');
+            return true;
+        }
+
+        return false;
     },
 
     init() {
@@ -191,9 +354,32 @@ const AppRouter = {
 
         // Listen for browser Back / Forward buttons & swipe navigation
         window.addEventListener('popstate', (event) => {
+            // 0. Suppress programmatic pop from UI close (e.g. tap '✕', 'Cancel', or backdrop)
+            if (window.ModalHistoryManager && window.ModalHistoryManager._suppressPopstate) {
+                window.ModalHistoryManager._suppressPopstate = false;
+                return;
+            }
+
             // Priority 1: If any modal, sheet, drawer, or dropdown is open, dismiss it and maintain current route
-            if (this.closeAnyOpenModalOrDrawer()) {
-                window.history.pushState({ tab: currentTab, isAppActive: true }, '', window.location.pathname);
+            if (window.ModalHistoryManager) {
+                window.ModalHistoryManager._isHandlingPopstate = true;
+            }
+            let modalDismissed = false;
+            try {
+                modalDismissed = this.closeAnyOpenModalOrDrawer();
+            } finally {
+                if (window.ModalHistoryManager) {
+                    window.ModalHistoryManager._isHandlingPopstate = false;
+                }
+            }
+
+            if (modalDismissed) {
+                // If popping the modal caused state to revert to another tab or barrier, restore current route state
+                if (!event.state || event.state.tab !== currentTab) {
+                    const routeMap = (typeof AppRouter !== 'undefined' && AppRouter.routeMap) ? AppRouter.routeMap : (this.routeMap || {});
+                    const currentPath = routeMap[currentTab] || window.location.pathname;
+                    window.history.pushState({ tab: currentTab, isAppActive: true }, '', currentPath);
+                }
                 return;
             }
 

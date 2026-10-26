@@ -923,10 +923,16 @@ body.sidebar-collapsed .sidebar-nav-icon {
             sidebar.classList.add('mobile-open');
             if (backdrop) backdrop.classList.add('mobile-open');
             document.body.style.overflow = 'hidden';
+            if (window.ModalHistoryManager) {
+                window.ModalHistoryManager.push(sidebar);
+            }
         } else {
             sidebar.classList.remove('mobile-open');
             if (backdrop) backdrop.classList.remove('mobile-open');
             document.body.style.overflow = '';
+            if (window.ModalHistoryManager) {
+                window.ModalHistoryManager.onModalClosed(sidebar);
+            }
         }
     }
 

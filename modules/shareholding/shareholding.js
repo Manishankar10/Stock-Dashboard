@@ -559,6 +559,7 @@
     function closeCustomModal() {
         if (customModal) customModal.style.display = 'none';
     }
+    window.closeShpCustomModal = closeCustomModal;
 
     function insertTokenAtCursor(token) {
         if (!customQueryInput) return;

@@ -14,20 +14,29 @@
         // =========================================================
         window.globalModalZIndexCounter = Math.max(window.globalModalZIndexCounter || 100100, 100100);
 
-        const GLOBAL_MODAL_SELECTOR = '.modal, .small-modal, .fundamentals-modal, .mf-modal-backdrop, .br-modal-overlay, .of-modal-overlay, .qr-glass-modal, .qr-custom-modal-backdrop, .shp-custom-modal-backdrop, .modal-backdrop, .modal-overlay, [id$="Modal"], [id$="-modal"], [id$="_modal"]';
+        const GLOBAL_MODAL_SELECTOR = '.modal, .small-modal, .fundamentals-modal, .mf-modal-backdrop, .br-modal-overlay, .of-modal-overlay, .qr-glass-modal, .qr-custom-modal-backdrop, .shp-custom-modal-backdrop, .tx-custom-modal-backdrop, .modal-backdrop, .modal-overlay, .pa-modal-overlay, #tx-deal-fields-popover, .tx-deal-fields-popover, .popover, [role="dialog"], [role="tooltip"], [id$="Modal"], [id$="-modal"], [id$="_modal"]';
 
         function getTopModalContainer(target) {
             if (!target || !(target instanceof HTMLElement)) return null;
             if (target.id === 'customModalOverlay' || target.id === 'customModalBox') return null;
 
+            // Treat floating popovers or tooltips as self-contained containers
+            if (target.matches && target.matches('#tx-deal-fields-popover, .tx-deal-fields-popover, .popover, [role="tooltip"], .chart-popover-menu')) {
+                return target;
+            }
+
             const modal = target.closest(GLOBAL_MODAL_SELECTOR);
             if (!modal) return null;
             if (modal.id === 'customModalOverlay') return null;
 
+            if (modal.matches && modal.matches('#tx-deal-fields-popover, .tx-deal-fields-popover, .popover, [role="tooltip"], .chart-popover-menu')) {
+                return modal;
+            }
+
             let curr = modal;
             while (curr.parentElement) {
                 const outer = curr.parentElement.closest(GLOBAL_MODAL_SELECTOR);
-                if (outer && outer.id !== 'customModalOverlay') {
+                if (outer && outer.id !== 'customModalOverlay' && !outer.matches('#tx-deal-fields-popover, .tx-deal-fields-popover, .popover, [role="tooltip"], .chart-popover-menu')) {
                     curr = outer;
                 } else {
                     break;
@@ -38,15 +47,114 @@
 
         function isModalElementVisible(modal) {
             if (!modal || !(modal instanceof HTMLElement)) return false;
-            if (modal.hasAttribute('hidden')) return false;
-            if (modal.style.display === 'none') return false;
-            if (modal.classList.contains('hidden')) return false;
+            if (modal.id === 'mobile-sidebar') {
+                return modal.classList.contains('open') || document.body.classList.contains('mobile-menu-open');
+            }
+            if (modal.hasAttribute('hidden') || modal.closest('[hidden]')) return false;
+            if (modal.style.display === 'none' || modal.classList.contains('hidden')) return false;
             try {
                 const style = window.getComputedStyle(modal);
                 if (style.display === 'none' || style.visibility === 'hidden') return false;
             } catch (e) {}
+            if (modal.offsetWidth === 0 && modal.offsetHeight === 0 && modal.getClientRects().length === 0) {
+                return false;
+            }
             return true;
         }
+
+        // =========================================================
+        // MODAL HISTORY MANAGER (Mobile Back Button Interceptor)
+        // Tracks opened modals and popups, handles pushState/popstate
+        // so pressing Back dismisses the popup only, not the page/app
+        // =========================================================
+        let _pendingBackCount = 0;
+        let _pendingBackTimer = null;
+
+        function scheduleHistoryBack() {
+            _pendingBackCount++;
+            if (_pendingBackTimer) clearTimeout(_pendingBackTimer);
+            _pendingBackTimer = setTimeout(() => {
+                const count = _pendingBackCount;
+                _pendingBackCount = 0;
+                if (count > 0 && window.history.state && window.history.state.cdModal) {
+                    window.ModalHistoryManager._suppressPopstate = true;
+                    try {
+                        window.history.go(-count);
+                    } catch (e) {
+                        window.ModalHistoryManager._suppressPopstate = false;
+                    }
+                    setTimeout(() => {
+                        window.ModalHistoryManager._suppressPopstate = false;
+                    }, 350);
+                }
+            }, 25);
+        }
+
+        window.ModalHistoryManager = {
+            stack: [],
+            _suppressPopstate: false,
+            _isHandlingPopstate: false,
+            _closedByBackSet: new WeakSet(),
+
+            push(modal) {
+                if (!modal || !(modal instanceof HTMLElement)) return;
+                // If modal is already top of stack, don't push another history state
+                if (this.stack.length > 0 && this.stack[this.stack.length - 1] === modal) {
+                    return;
+                }
+                const lastIdx = this.stack.indexOf(modal);
+                if (lastIdx !== -1) {
+                    this.stack.splice(lastIdx, 1);
+                }
+                this.stack.push(modal);
+
+                try {
+                    const modalId = modal.id || (modal.className ? String(modal.className).split(' ')[0] : 'cd-modal');
+                    window.history.pushState(
+                        { cdModal: true, modalId: modalId, depth: this.stack.length },
+                        '',
+                        window.location.href
+                    );
+                } catch (e) {
+                    console.warn('[ModalHistoryManager] pushState failed:', e);
+                }
+            },
+
+            remove(modal) {
+                if (!modal) return;
+                this._closedByBackSet.add(modal);
+                const idx = this.stack.indexOf(modal);
+                if (idx !== -1) {
+                    this.stack.splice(idx, 1);
+                }
+            },
+
+            onModalClosed(modal) {
+                if (!modal) return;
+                const idx = this.stack.indexOf(modal);
+                if (idx !== -1) {
+                    this.stack.splice(idx, 1);
+                }
+                // If close was triggered by user pressing Back button,
+                // history entry was already popped by browser, so DO NOT call history.back()
+                if (this._isHandlingPopstate || this._closedByBackSet.has(modal)) {
+                    this._closedByBackSet.delete(modal);
+                    return;
+                }
+                // If closed via UI (e.g. tap '✕', 'Cancel', or backdrop), pop the pushed history state cleanly
+                scheduleHistoryBack();
+            },
+
+            getTopModal() {
+                for (let i = this.stack.length - 1; i >= 0; i--) {
+                    const m = this.stack[i];
+                    if (m && document.body.contains(m) && isModalElementVisible(m)) {
+                        return m;
+                    }
+                }
+                return null;
+            }
+        };
 
         const modalVisibilityTracker = new WeakMap();
         let _isInternalElevating = false;
@@ -66,6 +174,9 @@
             try {
                 container.style.setProperty('z-index', String(window.globalModalZIndexCounter), 'important');
                 modalVisibilityTracker.set(container, true);
+                if (window.ModalHistoryManager) {
+                    window.ModalHistoryManager.push(container);
+                }
             } finally {
                 _isInternalElevating = false;
             }
@@ -95,9 +206,17 @@
                 modalVisibilityTracker.set(modal, true);
                 if (!wasVisible) {
                     bringModalToFront(modal);
+                    if (window.ModalHistoryManager) {
+                        window.ModalHistoryManager.push(modal);
+                    }
                 }
             } else {
                 modalVisibilityTracker.set(modal, false);
+                if (wasVisible) {
+                    if (window.ModalHistoryManager) {
+                        window.ModalHistoryManager.onModalClosed(modal);
+                    }
+                }
             }
         }
 
@@ -230,6 +349,10 @@
                 overlay.style.setProperty('z-index', String((window.globalModalZIndexCounter || 100100) + 500), 'important');
                 box.style.transform = 'scale(1)';
 
+                if (window.ModalHistoryManager) {
+                    window.ModalHistoryManager.push(overlay);
+                }
+
                 const cleanup = () => {
                     overlay.style.display = 'none';
                     overlay.onclick = null;
@@ -237,6 +360,15 @@
                     cancelBtn.onclick = null;
                     inputEl.onkeydown = null;
                     document.removeEventListener('keydown', handleKey);
+                    window.__systemModalCancel = null;
+                    if (window.ModalHistoryManager) {
+                        window.ModalHistoryManager.onModalClosed(overlay);
+                    }
+                };
+
+                window.__systemModalCancel = () => {
+                    cleanup();
+                    resolve(false);
                 };
 
                 overlay.onclick = (e) => {
