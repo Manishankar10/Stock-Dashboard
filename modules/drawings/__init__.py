@@ -37,7 +37,7 @@ def _get_active_username():
     if user:
         return str(user)
     # Check query param if session is not set (e.g. headless or auth header)
-    req_user = request.args.get("username") or (request.json.get("username") if request.is_json and request.json else None)
+    req_user = request.args.get("username") or ((request.get_json(silent=True) or {}).get("username") if request.is_json else None)
     if req_user:
         return str(req_user)
     return "admin"
@@ -350,7 +350,7 @@ def delete_drawings():
     Delete drawings for a symbol from MongoDB.
     """
     username = _get_active_username()
-    symbol = request.args.get("symbol") or (request.json.get("symbol") if request.is_json and request.json else None)
+    symbol = request.args.get("symbol") or ((request.get_json(silent=True) or {}).get("symbol") if request.is_json else None)
     if not symbol:
         return jsonify({"success": False, "error": "symbol parameter is required"}), 400
 

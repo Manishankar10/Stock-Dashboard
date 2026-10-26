@@ -449,7 +449,7 @@ class CorporateActionsProvider:
 
         return result
 
-    def start_admin_background_refresh(self) -> Dict[str, Any]:
+    def start_admin_background_refresh(self, force_full: bool = False, *args, **kwargs) -> Dict[str, Any]:
         """Initiate background refresh from official NSE & BSE by Admin."""
         with self._lock:
             if self._is_refreshing:

@@ -549,10 +549,12 @@ def admin_industries_overview_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Industries Overview provider not initialized."}), 500
-    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
-    if request.is_json and request.json:
-        force_full = force_full or bool(request.json.get("full"))
-    res = provider.start_admin_background_refresh(force_full=force_full)
+    payload = request.get_json(silent=True) or {}
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes") or bool(payload.get("full"))
+    try:
+        res = provider.start_admin_background_refresh(force_full=force_full)
+    except TypeError:
+        res = provider.start_admin_background_refresh()
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
@@ -577,10 +579,12 @@ def admin_shareholding_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Shareholding provider not initialized."}), 500
-    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
-    if request.is_json and request.json:
-        force_full = force_full or bool(request.json.get("full"))
-    res = provider.start_admin_background_refresh(force_full=force_full)
+    payload = request.get_json(silent=True) or {}
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes") or bool(payload.get("full"))
+    try:
+        res = provider.start_admin_background_refresh(force_full=force_full)
+    except TypeError:
+        res = provider.start_admin_background_refresh()
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
@@ -607,10 +611,12 @@ def admin_corporate_actions_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Corporate Actions provider not initialized."}), 500
-    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
-    if request.is_json and request.json:
-        force_full = force_full or bool(request.json.get("full"))
-    res = provider.start_admin_background_refresh(force_full=force_full)
+    payload = request.get_json(silent=True) or {}
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes") or bool(payload.get("full"))
+    try:
+        res = provider.start_admin_background_refresh(force_full=force_full)
+    except TypeError:
+        res = provider.start_admin_background_refresh()
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
@@ -656,10 +662,12 @@ def admin_quarterly_results_refresh():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Quarterly Results provider not initialized."}), 500
-    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes")
-    if request.is_json and request.json:
-        force_full = force_full or bool(request.json.get("full"))
-    res = provider.start_admin_background_refresh(force_full=force_full)
+    payload = request.get_json(silent=True) or {}
+    force_full = request.args.get("full", "false").lower() in ("true", "1", "yes") or bool(payload.get("full"))
+    try:
+        res = provider.start_admin_background_refresh(force_full=force_full)
+    except TypeError:
+        res = provider.start_admin_background_refresh()
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
@@ -685,10 +693,9 @@ def admin_transactions_sync():
     provider = get_provider()
     if not provider:
         return jsonify({"error": "Transactions provider not initialized."}), 500
-    force_full = False
-    if request.is_json and request.json:
-        force_full = bool(request.json.get("force_full", False))
-    elif request.args.get("force_full"):
+    payload = request.get_json(silent=True) or {}
+    force_full = bool(payload.get("force_full", False))
+    if not force_full and request.args.get("force_full"):
         force_full = request.args.get("force_full", "").lower() in ("1", "true", "yes")
 
     res = provider.start_admin_background_sync(force_full=force_full)

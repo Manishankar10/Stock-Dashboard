@@ -2218,9 +2218,17 @@
             try {
                 const res = await fetch('/api/admin/industries_overview/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 });
-                const data = await res.json();
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                let data;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(`Server returned HTTP ${res.status} (${text.slice(0, 80).replace(/<[^>]+>/g, '').trim() || 'Non-JSON response'})`);
+                }
                 if (data.success) {
                     loadAdminIndustriesStatus();
                 } else {
@@ -2347,9 +2355,17 @@
             try {
                 const res = await fetch('/api/admin/corporate_actions/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 });
-                const data = await res.json();
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                let data;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(`Server returned HTTP ${res.status} (${text.slice(0, 80).replace(/<[^>]+>/g, '').trim() || 'Non-JSON response'})`);
+                }
                 if (data.success) {
                     loadAdminCorporateActionsStatus();
                 } else {
@@ -2476,9 +2492,17 @@
             try {
                 const res = await fetch('/api/admin/ipos/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 });
-                const data = await res.json();
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                let data;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(`Server returned HTTP ${res.status} (${text.slice(0, 80).replace(/<[^>]+>/g, '').trim() || 'Non-JSON response'})`);
+                }
                 if (data.success) {
                     loadAdminIpoStatus();
                 } else {
@@ -2609,9 +2633,17 @@
             try {
                 const res = await fetch('/api/admin/quarterly_results/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 });
-                const data = await res.json();
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                let data;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(`Server returned HTTP ${res.status} (${text.slice(0, 80).replace(/<[^>]+>/g, '').trim() || 'Non-JSON response'})`);
+                }
                 if (data.success) {
                     loadAdminQuarterlyResultsStatus();
                 } else {
@@ -2739,9 +2771,17 @@
             try {
                 const res = await fetch('/api/admin/shareholding/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 });
-                const data = await res.json();
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                let data;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(`Server returned HTTP ${res.status} (${text.slice(0, 80).replace(/<[^>]+>/g, '').trim() || 'Non-JSON response'})`);
+                }
                 if (data.success) {
                     loadAdminShareholdingStatus();
                 } else {

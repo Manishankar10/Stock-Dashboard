@@ -533,7 +533,7 @@ class IndustriesOverviewProvider:
             print(f"Error parsing stocks table for {clean_path}: {parse_err}")
             return []
 
-    def start_admin_background_refresh(self):
+    def start_admin_background_refresh(self, force_full: bool = False, *args, **kwargs):
         """Initiate background refresh by Admin. Does not block or disturb browsing users."""
         with self._lock:
             if self._is_refreshing:

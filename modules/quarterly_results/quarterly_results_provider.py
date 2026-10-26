@@ -626,7 +626,7 @@ class QuarterlyResultsProvider:
             "storage": "MongoDB Atlas & SQLite (Synced)",
         }
 
-    def start_admin_background_refresh(self) -> Dict[str, Any]:
+    def start_admin_background_refresh(self, force_full: bool = False, *args, **kwargs) -> Dict[str, Any]:
         """Initiate background refresh of quarterly results by Admin."""
         with getattr(self, "_admin_lock", threading.Lock()):
             if getattr(self, "_admin_is_refreshing", False):
