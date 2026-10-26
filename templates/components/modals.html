@@ -1319,10 +1319,10 @@
             <input type="hidden" id="editDrawingType">
 
             <!-- 3 Tabs Header: Style, Text, Coordinates -->
-            <div class="edit-drawing-tabs" style="display: flex; gap: 6px; background: rgba(255,255,255,0.04); padding: 4px; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border-color, #363a45);">
-                <button type="button" id="editDrawingTabBtnStyle" class="edit-drawing-tab-btn active" data-tab="style" onclick="switchEditDrawingTab('style')" style="flex: 1; padding: 7px 10px; border: none; background: #3b82f6; color: #ffffff; border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">Style</button>
-                <button type="button" id="editDrawingTabBtnText" class="edit-drawing-tab-btn" data-tab="text" onclick="switchEditDrawingTab('text')" style="flex: 1; padding: 7px 10px; border: none; background: transparent; color: var(--text-secondary, #94a3b8); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">Text</button>
-                <button type="button" id="editDrawingTabBtnCoordinates" class="edit-drawing-tab-btn" data-tab="coordinates" onclick="switchEditDrawingTab('coordinates')" style="flex: 1; padding: 7px 10px; border: none; background: transparent; color: var(--text-secondary, #94a3b8); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">Coordinates</button>
+            <div class="edit-drawing-tabs" style="display: flex; gap: 6px; background: rgba(255,255,255,0.04); padding: 4px; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border-color, #363a45); position: relative; z-index: 10; pointer-events: auto !important;" onmousedown="event.stopPropagation();" onpointerdown="event.stopPropagation();">
+                <button type="button" id="editDrawingTabBtnStyle" class="edit-drawing-tab-btn active" data-tab="style" onclick="switchEditDrawingTab('style', event)" onpointerdown="switchEditDrawingTab('style', event)" style="flex: 1; padding: 7px 10px; border: none; background: #3b82f6; color: #ffffff; border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; pointer-events: auto !important; user-select: none; transition: all 0.15s ease;">Style</button>
+                <button type="button" id="editDrawingTabBtnText" class="edit-drawing-tab-btn" data-tab="text" onclick="switchEditDrawingTab('text', event)" onpointerdown="switchEditDrawingTab('text', event)" style="flex: 1; padding: 7px 10px; border: none; background: transparent; color: var(--text-secondary, #94a3b8); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; pointer-events: auto !important; user-select: none; transition: all 0.15s ease;">Text</button>
+                <button type="button" id="editDrawingTabBtnCoordinates" class="edit-drawing-tab-btn" data-tab="coordinates" onclick="switchEditDrawingTab('coordinates', event)" onpointerdown="switchEditDrawingTab('coordinates', event)" style="flex: 1; padding: 7px 10px; border: none; background: transparent; color: var(--text-secondary, #94a3b8); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; pointer-events: auto !important; user-select: none; transition: all 0.15s ease;">Coordinates</button>
             </div>
 
             <!-- ================= TAB 1: STYLE ================= -->
@@ -1456,6 +1456,71 @@
             </div>
         </div>
     </div>
+
+    <!-- Self-contained drawing modal controller for instant web & mobile responsiveness -->
+    <script>
+        (function() {
+            function switchEditDrawingTab(tabName, event) {
+                if (event) {
+                    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                }
+                const tabs = ['style', 'text', 'coordinates'];
+                tabs.forEach(function(t) {
+                    const pane = document.getElementById('editDrawingTab' + t.charAt(0).toUpperCase() + t.slice(1));
+                    const btn = document.getElementById('editDrawingTabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+                    if (pane) {
+                        pane.style.display = (t === tabName) ? 'block' : 'none';
+                    }
+                    if (btn) {
+                        if (t === tabName) {
+                            btn.style.background = '#3b82f6';
+                            btn.style.color = '#ffffff';
+                            btn.classList.add('active');
+                        } else {
+                            btn.style.background = 'transparent';
+                            btn.style.color = 'var(--text-secondary, #94a3b8)';
+                            btn.classList.remove('active');
+                        }
+                    }
+                });
+                if (tabName === 'text') {
+                    setTimeout(function() {
+                        const ti = document.getElementById('editDrawingTextInput');
+                        if (ti) ti.focus();
+                    }, 50);
+                }
+            }
+            window.switchEditDrawingTab = switchEditDrawingTab;
+
+            function setEditDrawingTextPos(pos, event) {
+                if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+                const input = document.getElementById('editDrawingTextPos');
+                if (input) input.value = pos;
+                document.querySelectorAll('#editDrawingTextPosGroup .edit-text-pos-btn').forEach(function(btn) {
+                    const active = btn.dataset.pos === pos;
+                    btn.style.borderColor = active ? '#3b82f6' : 'var(--border-color, #363a45)';
+                    btn.style.background = active ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-input, #131722)';
+                    btn.style.color = active ? '#3b82f6' : 'var(--text-primary, #ffffff)';
+                    btn.classList.toggle('active', active);
+                });
+            }
+            window.setEditDrawingTextPos = setEditDrawingTextPos;
+
+            function setEditDrawingTextValign(valign, event) {
+                if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+                const input = document.getElementById('editDrawingTextValign');
+                if (input) input.value = valign;
+                document.querySelectorAll('#editDrawingTextValignGroup .edit-text-valign-btn').forEach(function(btn) {
+                    const active = btn.dataset.valign === valign;
+                    btn.style.borderColor = active ? '#3b82f6' : 'var(--border-color, #363a45)';
+                    btn.style.background = active ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-input, #131722)';
+                    btn.style.color = active ? '#3b82f6' : 'var(--text-primary, #ffffff)';
+                    btn.classList.toggle('active', active);
+                });
+            }
+            window.setEditDrawingTextValign = setEditDrawingTextValign;
+        })();
+    </script>
 
 <!-- System Modal Dialog / Prompt Overlay -->
     <div id="customModalOverlay" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; inset: 0; z-index: 100050; background: rgba(15,23,42,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">

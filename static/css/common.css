@@ -2622,6 +2622,24 @@
             border-top: 1px solid #e2e8f0 !important;
         }
 
+        /* Drawing Edit Modal Tabs (Desktop & Mobile) */
+        .edit-drawing-tabs {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            pointer-events: auto !important;
+        }
+        .edit-drawing-tab-btn {
+            cursor: pointer !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            pointer-events: auto !important;
+            outline: none !important;
+        }
+        .edit-drawing-tab-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: var(--text-primary, #ffffff) !important;
+        }
+
         /* Small Modals (Edit Holding & Details Popup) */
         .small-modal { 
             display: none; 

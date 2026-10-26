@@ -168,6 +168,14 @@
 
             const container = getTopModalContainer(modal) || modal;
             const currentZ = parseInt(window.getComputedStyle(container).zIndex, 10) || 0;
+
+            // If already at the top of stack and current z-index matches or exceeds top counter, avoid DOM churn
+            if (window.globalModalZIndexCounter && currentZ >= window.globalModalZIndexCounter &&
+                window.ModalHistoryManager && window.ModalHistoryManager.stack.length > 0 &&
+                window.ModalHistoryManager.stack[window.ModalHistoryManager.stack.length - 1] === container) {
+                return currentZ;
+            }
+
             window.globalModalZIndexCounter = Math.max(window.globalModalZIndexCounter || 100100, currentZ, 100100) + 2;
 
             _isInternalElevating = true;

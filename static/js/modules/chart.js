@@ -710,7 +710,10 @@
             return '#' + match.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
         }
 
-        function switchEditDrawingTab(tabName) {
+        function switchEditDrawingTab(tabName, event) {
+            if (event && typeof event.stopPropagation === 'function') {
+                event.stopPropagation();
+            }
             const tabs = ['style', 'text', 'coordinates'];
             tabs.forEach(t => {
                 const pane = document.getElementById('editDrawingTab' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -730,10 +733,17 @@
                     }
                 }
             });
+            if (tabName === 'text') {
+                setTimeout(() => {
+                    const ti = document.getElementById('editDrawingTextInput');
+                    if (ti) ti.focus();
+                }, 50);
+            }
         }
         window.switchEditDrawingTab = switchEditDrawingTab;
 
-        function setEditDrawingTextPos(pos) {
+        function setEditDrawingTextPos(pos, event) {
+            if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
             const input = document.getElementById('editDrawingTextPos');
             if (input) input.value = pos;
             document.querySelectorAll('#editDrawingTextPosGroup .edit-text-pos-btn').forEach(btn => {
@@ -746,7 +756,8 @@
         }
         window.setEditDrawingTextPos = setEditDrawingTextPos;
 
-        function setEditDrawingTextValign(valign) {
+        function setEditDrawingTextValign(valign, event) {
+            if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
             const input = document.getElementById('editDrawingTextValign');
             if (input) input.value = valign;
             document.querySelectorAll('#editDrawingTextValignGroup .edit-text-valign-btn').forEach(btn => {
@@ -924,6 +935,20 @@
             setEditDrawingColor(currentColor);
             switchEditDrawingTab(initialTab || 'style');
 
+            // Programmatically bind tab switching listeners for bulletproof responsiveness
+            ['style', 'text', 'coordinates'].forEach(t => {
+                const btn = document.getElementById('editDrawingTabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (btn && !btn._hasEditTabBound) {
+                    btn._hasEditTabBound = true;
+                    const activate = (evt) => {
+                        if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+                        switchEditDrawingTab(t, evt);
+                    };
+                    btn.addEventListener('pointerdown', activate);
+                    btn.addEventListener('click', activate);
+                }
+            });
+
             modal.style.display = 'flex';
             if (typeof window.bringModalToFront === 'function') {
                 window.bringModalToFront(modal);
@@ -939,7 +964,12 @@
 
         function closeEditDrawingModal() {
             const modal = document.getElementById('editDrawingModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+                modal.style.display = 'none';
+                if (window.ModalHistoryManager) {
+                    window.ModalHistoryManager.onModalClosed(modal);
+                }
+            }
             currentEditDrawingTarget = null;
         }
 
