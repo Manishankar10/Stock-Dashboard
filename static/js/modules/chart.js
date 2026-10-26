@@ -877,6 +877,9 @@
 
             setEditDrawingColor(currentColor);
             modal.style.display = 'flex';
+            if (typeof window.bringModalToFront === 'function') {
+                window.bringModalToFront(modal);
+            }
         }
 
         function closeEditDrawingModal() {

@@ -922,6 +922,9 @@
         if (!modal) return;
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        if (typeof window.bringModalToFront === 'function') {
+            window.bringModalToFront(modal);
+        }
     }
 
     function closeQrMobileFilter() {
@@ -1055,6 +1058,14 @@
             }
         });
 
+        // Update custom query status banners across desktop sidebar and mobile filter bottom-sheet
+        document.querySelectorAll('.qr-sidebar-custom-status').forEach(el => {
+            el.style.display = qrState.custom_query ? 'flex' : 'none';
+        });
+        document.querySelectorAll('.qr-sidebar-query-snippet').forEach(el => {
+            el.textContent = qrState.custom_query || '';
+        });
+
         if (qrState.custom_query) {
             if (queryBar) queryBar.style.display = 'flex';
             if (queryTextEl) queryTextEl.textContent = qrState.custom_query;
@@ -1062,11 +1073,8 @@
                 customChip.classList.add('active');
                 customChip.title = `Active Custom Query: ${qrState.custom_query}`;
             }
-            if (sidebarCustomStatus) sidebarCustomStatus.style.display = 'flex';
-            if (sidebarSnippet) sidebarSnippet.textContent = qrState.custom_query;
         } else {
             if (queryBar) queryBar.style.display = 'none';
-            if (sidebarCustomStatus) sidebarCustomStatus.style.display = 'none';
             if (customChip && qrState.category !== 'custom') {
                 customChip.classList.remove('active');
                 customChip.title = 'Build custom query combining quarterly results & shareholding data';
@@ -1117,6 +1125,9 @@
             input.value = qrState.custom_query || '';
         }
         modal.style.display = 'flex';
+        if (typeof window.bringModalToFront === 'function') {
+            window.bringModalToFront(modal);
+        }
         if (qrState.custom_query) {
             validateCustomQueryDebounced();
         } else {

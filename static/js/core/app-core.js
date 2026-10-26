@@ -10,9 +10,46 @@
 
         // =========================================================
         // UNIVERSAL DYNAMIC MODAL STACKING MANAGER
-        // Brings whichever modal is clicked or opened (latest) to top
+        // Brings whichever modal is opened or clicked (latest) to top
         // =========================================================
         window.globalModalZIndexCounter = Math.max(window.globalModalZIndexCounter || 100100, 100100);
+
+        const GLOBAL_MODAL_SELECTOR = '.modal, .small-modal, .fundamentals-modal, .mf-modal-backdrop, .br-modal-overlay, .of-modal-overlay, .qr-glass-modal, .qr-custom-modal-backdrop, .shp-custom-modal-backdrop, .modal-backdrop, .modal-overlay, [id$="Modal"], [id$="-modal"], [id$="_modal"]';
+
+        function getTopModalContainer(target) {
+            if (!target || !(target instanceof HTMLElement)) return null;
+            if (target.id === 'customModalOverlay' || target.id === 'customModalBox') return null;
+
+            const modal = target.closest(GLOBAL_MODAL_SELECTOR);
+            if (!modal) return null;
+            if (modal.id === 'customModalOverlay') return null;
+
+            let curr = modal;
+            while (curr.parentElement) {
+                const outer = curr.parentElement.closest(GLOBAL_MODAL_SELECTOR);
+                if (outer && outer.id !== 'customModalOverlay') {
+                    curr = outer;
+                } else {
+                    break;
+                }
+            }
+            return curr;
+        }
+
+        function isModalElementVisible(modal) {
+            if (!modal || !(modal instanceof HTMLElement)) return false;
+            if (modal.hasAttribute('hidden')) return false;
+            if (modal.style.display === 'none') return false;
+            if (modal.classList.contains('hidden')) return false;
+            try {
+                const style = window.getComputedStyle(modal);
+                if (style.display === 'none' || style.visibility === 'hidden') return false;
+            } catch (e) {}
+            return true;
+        }
+
+        const modalVisibilityTracker = new WeakMap();
+        let _isInternalElevating = false;
 
         function bringModalToFront(modal) {
             if (!modal) return null;
@@ -21,23 +58,85 @@
             }
             if (!modal || !(modal instanceof HTMLElement)) return null;
 
-            window.globalModalZIndexCounter += 2;
-            modal.style.setProperty('z-index', String(window.globalModalZIndexCounter), 'important');
+            const container = getTopModalContainer(modal) || modal;
+            const currentZ = parseInt(window.getComputedStyle(container).zIndex, 10) || 0;
+            window.globalModalZIndexCounter = Math.max(window.globalModalZIndexCounter || 100100, currentZ, 100100) + 2;
+
+            _isInternalElevating = true;
+            try {
+                container.style.setProperty('z-index', String(window.globalModalZIndexCounter), 'important');
+                modalVisibilityTracker.set(container, true);
+            } finally {
+                _isInternalElevating = false;
+            }
             return window.globalModalZIndexCounter;
         }
         window.bringModalToFront = bringModalToFront;
 
         // Capture-phase pointerdown listener raises any clicked modal instantly
         document.addEventListener('pointerdown', function (e) {
-            const modal = e.target.closest('.modal, .small-modal, .fundamentals-modal, .mf-modal-backdrop, .br-modal-overlay, .of-modal-overlay');
-            if (!modal || !modal.id) return;
-            if (modal.id === 'customModalOverlay') return;
-
-            const isHidden = modal.style.display === 'none' || modal.hasAttribute('hidden') || (window.getComputedStyle && window.getComputedStyle(modal).display === 'none');
-            if (!isHidden) {
+            const modal = getTopModalContainer(e.target);
+            if (!modal) return;
+            if (isModalElementVisible(modal)) {
                 bringModalToFront(modal);
             }
         }, true);
+
+        // Universal MutationObserver: Automatically elevates any popup when it opens
+        function checkAndElevateModal(target) {
+            if (_isInternalElevating) return;
+            const modal = getTopModalContainer(target);
+            if (!modal) return;
+
+            const visible = isModalElementVisible(modal);
+            const wasVisible = modalVisibilityTracker.get(modal) || false;
+
+            if (visible) {
+                modalVisibilityTracker.set(modal, true);
+                if (!wasVisible) {
+                    bringModalToFront(modal);
+                }
+            } else {
+                modalVisibilityTracker.set(modal, false);
+            }
+        }
+
+        function initGlobalModalObserver() {
+            if (!window.MutationObserver) return;
+
+            const observer = new MutationObserver((mutations) => {
+                if (_isInternalElevating) return;
+                for (let i = 0; i < mutations.length; i++) {
+                    const m = mutations[i];
+                    if (m.type === 'attributes') {
+                        checkAndElevateModal(m.target);
+                    } else if (m.type === 'childList') {
+                        for (let j = 0; j < m.addedNodes.length; j++) {
+                            const node = m.addedNodes[j];
+                            if (node.nodeType === 1) {
+                                checkAndElevateModal(node);
+                            }
+                        }
+                    }
+                }
+            });
+
+            const root = document.body || document.documentElement;
+            if (root) {
+                observer.observe(root, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class', 'hidden'],
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGlobalModalObserver);
+        } else {
+            initGlobalModalObserver();
+        }
 
 
         // Core System Modal Function for all Alerts, Confirms, Prompts, Warnings, and Success Popups

@@ -542,6 +542,9 @@
             customQueryInput.value = currentCustomQuery || '';
         }
         customModal.style.display = 'flex';
+        if (typeof window.bringModalToFront === 'function') {
+            window.bringModalToFront(customModal);
+        }
         if (currentCustomQuery) {
             validateQueryDebounced();
         } else if (customQueryFeedback) {
