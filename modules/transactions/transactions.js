@@ -265,7 +265,7 @@
         if (!wrapper || !select) return;
 
         if (state.scope === 'watchlist') {
-            wrapper.style.display = 'inline-block';
+            wrapper.style.display = 'inline-flex';
             let html = '<option value="watchlist">All Watchlists</option>';
             state.userWatchlists.forEach(w => {
                 const selected = state.selectedWatchlist === w ? 'selected' : '';

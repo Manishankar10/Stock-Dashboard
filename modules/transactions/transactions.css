@@ -925,9 +925,47 @@ body.dark-mode .tx-btn-custom-screener.active {
     color: #ef4444;
 }
 
-/* Specific Watchlist Selector */
+/* Specific Watchlist Selector (Placed before Search Box) */
 .tx-watchlist-dropdown-wrapper {
-    display: inline-block;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-body);
+    border: 1px solid var(--border-color);
+    padding: 4px 10px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    transition: all 0.18s ease;
+}
+
+.tx-watchlist-dropdown-wrapper:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.tx-wl-icon {
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.85;
+}
+
+.tx-watchlist-select,
+.tx-select.tx-watchlist-select {
+    padding: 3px 6px 3px 2px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    cursor: pointer !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-family: inherit !important;
+}
+
+.tx-watchlist-select option {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
 }
 
 .tx-select {
@@ -1731,6 +1769,16 @@ body.dark-mode .tx-btn-custom-screener.active {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 8px !important;
+    }
+
+    .tx-watchlist-dropdown-wrapper {
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+
+    .tx-watchlist-select {
+        flex: 1 !important;
+        width: 100% !important;
     }
 
     .tx-date-row {

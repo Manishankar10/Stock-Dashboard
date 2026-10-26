@@ -94,15 +94,17 @@
                         Portfolio
                     </button>
                     <button type="button" class="tx-pill-btn" data-scope="watchlist" onclick="setTxScope('watchlist')">
-                        Watchlist
+                        All Watchlists
                     </button>
                 </div>
-                <!-- Specific Watchlist Dropdown (shown when Watchlist is selected) -->
-                <div class="tx-watchlist-dropdown-wrapper" id="tx-watchlist-dropdown-wrapper" style="display: none;">
-                    <select id="tx-watchlist-select" class="tx-select" onchange="handleTxWatchlistChange(this.value)" aria-label="Select Specific Watchlist">
-                        <option value="watchlist">All Watchlists</option>
-                    </select>
-                </div>
+            </div>
+
+            <!-- Specific Watchlist Dropdown (shown when All Watchlists selected, placed before search box) -->
+            <div class="tx-watchlist-dropdown-wrapper" id="tx-watchlist-dropdown-wrapper" style="display: none;" title="Choose Watchlist">
+                <span class="tx-wl-icon" aria-hidden="true">📂</span>
+                <select id="tx-watchlist-select" class="tx-select tx-watchlist-select" onchange="handleTxWatchlistChange(this.value)" aria-label="Select Specific Watchlist">
+                    <option value="watchlist">All Watchlists</option>
+                </select>
             </div>
 
             <!-- Search Filter Input (along with scope row) -->
