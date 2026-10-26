@@ -807,6 +807,8 @@
     window.closeTxCustomModal = function () {
         const modal = document.getElementById('tx-custom-modal');
         if (modal) modal.style.display = 'none';
+        const popover = document.getElementById('tx-deal-fields-popover');
+        if (popover) popover.style.display = 'none';
     };
 
     window.insertTxTokenAtCursor = function (token) {
@@ -996,4 +998,170 @@
             loadTransactionsModule();
         }
     });
+
+    // ==========================================
+    // DEAL FIELDS REAL DATA POPOVER CONTROLLER
+    // ==========================================
+    let popoverHideTimer = null;
+
+    function getRepresentativeDeal() {
+        if (state.deals && state.deals.length > 0) {
+            // Find a deal with non-zero values and valid client
+            const candidate = state.deals.find(d => Number(d.value) > 0 && Number(d.price) > 0 && d.client_name && d.client_name.length > 2);
+            if (candidate) return candidate;
+            return state.deals[0];
+        }
+        return {
+            symbol: "HATSUN",
+            company: "Hatsun Agro Product Ltd.",
+            deal_type: "block",
+            deal_type_label: "Block Deal",
+            action: "BUY",
+            value: 983400000,
+            value_formatted: "₹98.34 Cr",
+            price: 1192.00,
+            quantity: 825000,
+            client_name: "CHANDRAMOGAN R G",
+            person_category: "Institutional / HNI",
+            date: "2026-09-01",
+            date_display: "01 Sep 2026"
+        };
+    }
+
+    function renderDealFieldsPopover() {
+        const deal = getRepresentativeDeal();
+        const badgeEl = document.getElementById('tx-popover-badge');
+        const symEl = document.getElementById('tx-popover-stock-symbol');
+        const compEl = document.getElementById('tx-popover-stock-name');
+        const dateEl = document.getElementById('tx-popover-date');
+        const tbody = document.getElementById('tx-popover-tbody');
+        const queryCode = document.getElementById('tx-popover-query-code');
+
+        if (badgeEl) badgeEl.innerText = deal.deal_type_label || (deal.deal_type === 'block' ? 'Block Deal' : deal.deal_type === 'bulk' ? 'Bulk Deal' : 'Insider Deal');
+        if (symEl) symEl.innerText = deal.symbol || 'HATSUN';
+        if (compEl) compEl.innerText = deal.company || deal.symbol || '';
+        if (dateEl) dateEl.innerText = deal.date_display || deal.date || 'Latest';
+
+        // Calculate value in Crores
+        const rawVal = Number(deal.value) || 0;
+        const valCr = rawVal >= 100000 ? (rawVal / 10000000).toFixed(2) : rawVal.toFixed(2);
+        const qtyFormatted = deal.quantity ? Number(deal.quantity).toLocaleString() : '825,000';
+        const priceFormatted = deal.price ? `₹${Number(deal.price).toFixed(2)}` : '₹1,192.00';
+        const actionStr = (deal.action || 'BUY').toUpperCase();
+        const typeStr = (deal.deal_type || 'block').toLowerCase();
+        const clientStr = deal.client_name || 'Undisclosed Client';
+        const categoryStr = deal.person_category || 'Institutional';
+
+        const fields = [
+            { field: 'value', label: `${deal.value_formatted || ('₹' + valCr + ' Cr')} (${valCr})`, syntax: `value >= ${Math.max(1, Math.floor(Number(valCr) * 0.5))}` },
+            { field: 'qty', label: `${qtyFormatted} shares`, syntax: `qty >= ${Math.max(1000, Math.floor(Number(deal.quantity || 825000) * 0.5))}` },
+            { field: 'price', label: priceFormatted, syntax: `price >= ${Math.max(1, Math.floor(Number(deal.price || 1192) * 0.8))}` },
+            { field: 'action', label: `'${actionStr}'`, syntax: `action == '${actionStr}'` },
+            { field: 'type', label: `'${typeStr}'`, syntax: `type == '${typeStr}'` },
+            { field: 'symbol', label: `'${deal.symbol}'`, syntax: `symbol == '${deal.symbol}'` },
+            { field: 'client', label: `'${clientStr}'`, syntax: `client contains '${clientStr.split(' ')[0]}'` },
+            { field: 'category', label: `'${categoryStr}'`, syntax: `category contains '${categoryStr.split(' ')[0]}'` }
+        ];
+
+        if (tbody) {
+            tbody.innerHTML = fields.map(f => `
+                <tr>
+                    <td class="field-name">${f.field}</td>
+                    <td class="field-val" title="${escapeHtml(f.label)}">${escapeHtml(f.label)}</td>
+                    <td><code class="field-syntax">${escapeHtml(f.syntax)}</code></td>
+                </tr>
+            `).join('');
+        }
+
+        const sampleQuery = `value >= ${Math.max(1, Math.floor(Number(valCr) * 0.5))} and action == '${actionStr}' and type == '${typeStr}'`;
+        if (queryCode) queryCode.innerText = sampleQuery;
+    }
+
+    window.insertPopoverQuery = function () {
+        const queryCode = document.getElementById('tx-popover-query-code');
+        const input = document.getElementById('tx-custom-query-input');
+        if (queryCode && input) {
+            input.value = queryCode.innerText;
+            if (typeof validateLiveQueryDebounced === 'function') {
+                validateLiveQueryDebounced();
+            }
+        }
+        hideDealFieldsPopover();
+    };
+
+    window.showDealFieldsPopover = function () {
+        if (popoverHideTimer) clearTimeout(popoverHideTimer);
+        const trigger = document.getElementById('tx-deal-fields-label');
+        const popover = document.getElementById('tx-deal-fields-popover');
+        if (!trigger || !popover) return;
+
+        renderDealFieldsPopover();
+
+        const rect = trigger.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        const vw = window.innerWidth || document.documentElement.clientWidth;
+
+        popover.style.display = 'block';
+        const popWidth = popover.offsetWidth || 380;
+        const popHeight = popover.offsetHeight || 340;
+
+        let left = rect.left;
+        if (left + popWidth > vw - 12) {
+            left = vw - popWidth - 12;
+        }
+        if (left < 12) left = 12;
+
+        let top = rect.bottom + 6;
+        if (top + popHeight > vh - 12) {
+            top = Math.max(10, rect.top - popHeight - 6);
+        }
+
+        popover.style.left = `${Math.round(left)}px`;
+        popover.style.top = `${Math.round(top)}px`;
+    };
+
+    window.cancelHideDealFieldsPopover = function () {
+        if (popoverHideTimer) clearTimeout(popoverHideTimer);
+    };
+
+    window.hideDealFieldsPopover = function () {
+        if (popoverHideTimer) clearTimeout(popoverHideTimer);
+        popoverHideTimer = setTimeout(() => {
+            const popover = document.getElementById('tx-deal-fields-popover');
+            if (popover) popover.style.display = 'none';
+        }, 250);
+    };
+
+    window.toggleDealFieldsPopover = function (e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        const popover = document.getElementById('tx-deal-fields-popover');
+        if (popover && popover.style.display === 'block') {
+            window.hideDealFieldsPopover();
+        } else {
+            window.showDealFieldsPopover();
+        }
+    };
+
+    window.initDealFieldsPopoverListeners = function () {
+        const trigger = document.getElementById('tx-deal-fields-label');
+        const popover = document.getElementById('tx-deal-fields-popover');
+        if (trigger && !trigger.dataset.listenersAttached) {
+            trigger.dataset.listenersAttached = 'true';
+            trigger.addEventListener('mouseenter', showDealFieldsPopover);
+            trigger.addEventListener('mouseleave', hideDealFieldsPopover);
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (popover && popover.style.display === 'block') hideDealFieldsPopover();
+                else showDealFieldsPopover();
+            });
+        }
+        if (popover && !popover.dataset.listenersAttached) {
+            popover.dataset.listenersAttached = 'true';
+            popover.addEventListener('mouseenter', () => {
+                if (popoverHideTimer) clearTimeout(popoverHideTimer);
+            });
+            popover.addEventListener('mouseleave', hideDealFieldsPopover);
+        }
+    };
+
 })();

@@ -255,6 +255,47 @@
     <!-- Custom Transactions Screener Modal -->
     <div id="tx-custom-modal" class="modal-backdrop tx-custom-modal-backdrop" style="display: none;">
         <div class="modal-content tx-custom-modal-content">
+            <!-- Real Deal Data Example Popover (Triggered on hover of 'Deal Fields:') -->
+            <div id="tx-deal-fields-popover" class="tx-deal-fields-popover" style="display: none;" role="tooltip"
+                 onmouseenter="window.cancelHideDealFieldsPopover && window.cancelHideDealFieldsPopover()"
+                 onmouseleave="window.hideDealFieldsPopover && window.hideDealFieldsPopover()">
+                <div class="tx-popover-header">
+                    <div class="tx-popover-title">
+                        <span class="tx-popover-icon">📊</span>
+                        <span>Real Deal Data Example</span>
+                    </div>
+                    <span class="tx-popover-badge" id="tx-popover-badge">Block Deal</span>
+                </div>
+                <div class="tx-popover-meta">
+                    <div class="tx-popover-stock">
+                        <strong id="tx-popover-stock-symbol">HATSUN</strong>
+                        <span id="tx-popover-stock-name">Hatsun Agro Product Ltd.</span>
+                    </div>
+                    <div class="tx-popover-date" id="tx-popover-date">01 Sep 2026</div>
+                </div>
+                <div class="tx-popover-table-wrapper">
+                    <table class="tx-popover-table">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Real Example</th>
+                                <th>Syntax</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tx-popover-tbody">
+                            <!-- Populated dynamically with real deal data -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tx-popover-sample-query">
+                    <div class="tx-popover-query-header">
+                        <span style="font-weight: 700; color: var(--text-primary);">💡 Working Query Example:</span>
+                        <button type="button" class="tx-btn-popover-use" onclick="insertPopoverQuery()" title="Insert into query box">Use Query ↵</button>
+                    </div>
+                    <code id="tx-popover-query-code">value >= 25 and action == 'BUY' and type == 'block'</code>
+                </div>
+            </div>
+
             <!-- Header -->
             <div class="tx-custom-modal-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -311,8 +352,14 @@
                     </div>
 
                     <!-- Transaction Fields -->
-                    <div class="tx-chipset-group">
-                        <span class="tx-chipset-label">Deal Fields:</span>
+                    <div class="tx-chipset-group tx-deal-fields-group">
+                        <span class="tx-chipset-label tx-deal-fields-label" id="tx-deal-fields-label" 
+                              onmouseenter="window.showDealFieldsPopover && window.showDealFieldsPopover()" 
+                              onmouseleave="window.hideDealFieldsPopover && window.hideDealFieldsPopover()"
+                              onclick="window.toggleDealFieldsPopover && window.toggleDealFieldsPopover(event)"
+                              title="Hover to view real deal data examples from database">
+                            Deal Fields: <span class="tx-info-icon" aria-hidden="true">ⓘ</span>
+                        </span>
                         <div class="tx-chipset-items">
                             <button type="button" class="tx-token-chip field-chip" data-token="value" title="Deal Value in ₹ Crores (e.g. value >= 25)">value</button>
                             <button type="button" class="tx-token-chip field-chip" data-token="qty" title="Quantity / Shares transacted (e.g. qty >= 100000)">qty</button>
