@@ -358,7 +358,7 @@ class QuarterlyResultsProvider:
                 "prev": q_info["prev"],
                 "year_ago": q_info["year_ago"],
             },
-            "shareholding_period": self._get_shareholding_period(shp_map),
+            "shareholding_period": self._get_shareholding_period(),
             "new_companies_found": new_companies_count,
             "total_records": len(data),
             "data": data,
@@ -426,7 +426,7 @@ class QuarterlyResultsProvider:
             return self._pdf_cache[screener_url]
 
         try:
-            s = self._screener_session or requests.Session()
+            s = getattr(self, "_screener_session", None) or requests.Session()
             s.headers.update(HTTP_HEADERS)
             r = s.get(screener_url, allow_redirects=False, timeout=3)
             loc = r.headers.get("Location")
@@ -530,9 +530,11 @@ class QuarterlyResultsProvider:
             "source": "Screener.in",
         }
 
-    def refresh_from_screener(self) -> List[Dict[str, Any]]:
+    def refresh_from_screener(self, force_full: bool = False) -> List[Dict[str, Any]]:
         """Fetch records page by page from Screener.in.
-        Update those if not exists. If any record exists, STOP parser immediately.
+        When force_full=True (Admin refresh), crawls all available pagination pages.
+        When force_full=False (routine 15m background refresh), fetches pages until
+        two consecutive pages yield 0 new records.
         """
         with self._lock:
             if self._is_updating:
@@ -540,8 +542,9 @@ class QuarterlyResultsProvider:
             self._is_updating = True
 
         try:
-            logger.info("Starting page-by-page parse from https://www.screener.in/results/latest/...")
+            logger.info(f"Starting page-by-page parse from https://www.screener.in/results/latest/ (force_full={force_full})...")
             session = self._get_screener_session()
+            self._screener_session = session
 
             # Existing records & keys
             existing_records = list(self._cache_data or self._load_disk_cache() or [])
@@ -554,19 +557,36 @@ class QuarterlyResultsProvider:
 
             new_records: List[Dict[str, Any]] = []
             page = 1
-            hit_existing = False
+            consecutive_empty_pages = 0
 
             while True:
                 url = f"{SCREENER_LATEST_URL}?p={page}"
                 logger.info(f"Screener parser: fetching page {page} ({url})...")
-                try:
-                    resp = session.get(url, timeout=12)
-                except Exception as e:
-                    logger.warning(f"Error requesting {url}: {e}")
-                    break
 
-                if resp.status_code != 200:
-                    logger.warning(f"Failed to fetch {url}: HTTP {resp.status_code}")
+                if getattr(self, "_admin_is_refreshing", False):
+                    with self._admin_lock:
+                        self._admin_refresh_percent = min(96, 15 + int(page * 3))
+                        self._admin_refresh_progress = f"Scanning page {page} of disclosures... ({len(new_records)} new companies found)"
+
+                resp = None
+                for attempt in range(4):
+                    try:
+                        resp = session.get(url, timeout=14)
+                        if resp.status_code == 429:
+                            backoff = 4 + (attempt * 2)
+                            logger.warning(f"HTTP 429 rate limit on {url}. Backing off for {backoff}s (attempt {attempt+1}/4)...")
+                            if getattr(self, "_admin_is_refreshing", False):
+                                with self._admin_lock:
+                                    self._admin_refresh_progress = f"Rate limit encountered on page {page}. Retrying in {backoff}s..."
+                            time.sleep(backoff)
+                            continue
+                        break
+                    except Exception as e:
+                        logger.warning(f"Error requesting {url} (attempt {attempt+1}/4): {e}")
+                        time.sleep(2)
+
+                if not resp or resp.status_code != 200:
+                    logger.warning(f"Failed to fetch {url}: HTTP {resp.status_code if resp else 'None'}")
                     break
 
                 soup = BeautifulSoup(resp.text, "html.parser")
@@ -590,19 +610,20 @@ class QuarterlyResultsProvider:
                     latest_q = str(card["quarters"]["latest"]).strip().lower()
                     key = (sym, latest_q)
 
-                    # Stopping condition: if record already exists in JSON store, STOP PARSER!
-                    if key in existing_keys:
-                        logger.info(f"Record {sym} ({card['quarters']['latest']}) already exists. STOPPING PARSER.")
-                        hit_existing = True
-                        break
-                    else:
+                    if key not in existing_keys:
                         new_records.append(card)
                         existing_keys.add(key)
                         page_new_count += 1
 
-                if hit_existing:
-                    logger.info(f"Existing record detected on page {page}. Halting further page requests.")
-                    break
+                # Incremental stopping logic: only if not force_full and multiple pages yield 0 new records
+                if not force_full:
+                    if page_new_count == 0:
+                        consecutive_empty_pages += 1
+                        if consecutive_empty_pages >= 2:
+                            logger.info(f"Two consecutive pages had 0 new records. Stopping incremental sync at page {page}.")
+                            break
+                    else:
+                        consecutive_empty_pages = 0
 
                 # Check if next page exists
                 paginator = soup.find("p", class_="paginator")
@@ -613,37 +634,41 @@ class QuarterlyResultsProvider:
                             has_next = True
                             break
 
-                if not has_next or page >= 25:
-                    logger.info(f"No more pages found after page {page}.")
+                if not has_next:
+                    logger.info(f"No more pages found after page {page}. Total pages scanned: {page}.")
                     break
 
                 page += 1
-                time.sleep(0.3)
+                time.sleep(0.75)
 
             # Merge new records into existing store and update database
+            all_records_map = {}
+            for r in existing_records:
+                sym_k = clean_symbol(r.get("symbol"))
+                q_k = str(r.get("quarters", {}).get("latest") or r.get("latest_quarter") or "").strip().lower()
+                if sym_k:
+                    all_records_map[(sym_k, q_k)] = r
+            for n in new_records:
+                sym_k = clean_symbol(n.get("symbol"))
+                q_k = str(n.get("quarters", {}).get("latest") or "").strip().lower()
+                if sym_k:
+                    all_records_map[(sym_k, q_k)] = n
+
+            all_records = list(all_records_map.values())
+
+            with self._lock:
+                self._cache_data = all_records
+                self._last_fetch_time = time.time()
+                self._last_new_companies_count = len(new_records)
+                now = datetime.now()
+                self._last_updated_iso = now.isoformat(timespec="seconds")
+                self._last_updated_display = format_ist_display()
+                self._save_disk_cache(all_records, new_companies_count=len(new_records))
+
             if new_records:
-                logger.info(f"Found {len(new_records)} new/updated company records. Updating database...")
-                # Deduplicate: new records take priority
-                new_key_set = {(clean_symbol(n["symbol"]), str(n["quarters"]["latest"]).strip().lower()) for n in new_records}
-                all_records = new_records + [
-                    r for r in existing_records
-                    if (clean_symbol(r.get("symbol")), str(r.get("quarters", {}).get("latest") or "").strip().lower()) not in new_key_set
-                ]
-                with self._lock:
-                    self._cache_data = all_records
-                    self._last_fetch_time = time.time()
-                    self._save_disk_cache(all_records, new_companies_count=len(new_records))
+                logger.info(f"Found {len(new_records)} new company disclosures. Total database records: {len(all_records)}.")
             else:
-                logger.info("No new records found. All latest results are up-to-date in database.")
-                all_records = existing_records
-                with self._lock:
-                    self._cache_data = all_records
-                    self._last_fetch_time = time.time()
-                    self._last_new_companies_count = 0
-                    if not getattr(self, "_last_updated_display", None):
-                        now = datetime.now()
-                        self._last_updated_iso = now.isoformat(timespec="seconds")
-                        self._last_updated_display = format_ist_display()
+                logger.info(f"All {len(all_records)} quarterly results are up-to-date in database.")
 
             logger.info(f"Screener update complete. Total records stored: {len(all_records)}.")
             return all_records
@@ -668,7 +693,7 @@ class QuarterlyResultsProvider:
             "storage": "MongoDB Atlas & SQLite (Synced)",
         }
 
-    def start_admin_background_refresh(self, force_full: bool = False, *args, **kwargs) -> Dict[str, Any]:
+    def start_admin_background_refresh(self, force_full: bool = True, *args, **kwargs) -> Dict[str, Any]:
         """Initiate background refresh of quarterly results by Admin."""
         with getattr(self, "_admin_lock", threading.Lock()):
             if getattr(self, "_admin_is_refreshing", False):
@@ -683,7 +708,7 @@ class QuarterlyResultsProvider:
             self._admin_refresh_percent = 15
             self._admin_refresh_error = None
 
-        thread = threading.Thread(target=self._run_admin_refresh_worker, daemon=True)
+        thread = threading.Thread(target=self._run_admin_refresh_worker, args=(force_full,), daemon=True)
         thread.start()
 
         return {
@@ -693,16 +718,16 @@ class QuarterlyResultsProvider:
             **self.get_refresh_status(),
         }
 
-    def _run_admin_refresh_worker(self):
+    def _run_admin_refresh_worker(self, force_full: bool = True):
         """Worker thread to run full refresh from screener with live progress updates."""
         try:
-            logger.info("Admin initiated quarterly results live refresh...")
+            logger.info(f"Admin initiated quarterly results live refresh (force_full={force_full})...")
             with self._admin_lock:
-                self._admin_refresh_percent = 30
-                self._admin_refresh_progress = "Authenticating with Screener.in and fetching page 1..."
+                self._admin_refresh_percent = 20
+                self._admin_refresh_progress = "Authenticating with Screener.in and scanning pages..."
 
-            # Run refresh
-            all_records = self.refresh_from_screener()
+            # Run full refresh
+            all_records = self.refresh_from_screener(force_full=force_full)
 
             with self._admin_lock:
                 self._admin_refresh_percent = 100
@@ -1310,7 +1335,7 @@ class QuarterlyResultsProvider:
             needs_parse = True
 
         if needs_parse:
-            all_items = self.refresh_from_screener()
+            all_items = self.refresh_from_screener(force_full=force_refresh)
         else:
             all_items = list(self._cache_data or [])
 
