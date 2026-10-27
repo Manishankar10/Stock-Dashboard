@@ -91,6 +91,55 @@ def infer_industry(symbol: str, company_name: str) -> str:
     return "Other"
 
 
+def calculate_yoy_growth(latest: Any, year_ago: Any, fallback_str: str = "") -> Tuple[Optional[float], str]:
+    """
+    Calculates YoY percentage growth accurately:
+    Formula: (latest - year_ago) / |year_ago| * 100
+    - If year_ago is negative, preserves sign of (latest - year_ago):
+        Loss narrowed (-10 to -3) => +70%
+        Loss deepened (-10 to -15) => -50%
+        Turnaround to profit (-10 to +5) => +150%
+        Swung to loss (+10 to -5) => -150%
+    - If year_ago is 0:
+        latest > 0  => +100.0% (positive turnaround from zero)
+        latest < 0  => -100.0% (negative dip into loss from zero)
+        latest == 0 => 0.0%
+    - Returns (yoy_pct, yoy_display) e.g. (-58.0, "⇣ 58%")
+    """
+    l = clean_num(latest)
+    y = clean_num(year_ago)
+
+    if l is not None and y is not None:
+        if y != 0:
+            pct = round(((l - y) / abs(y)) * 100.0, 2)
+        else:
+            if l > 0:
+                pct = 100.0
+            elif l < 0:
+                pct = -100.0
+            else:
+                pct = 0.0
+        
+        if pct > 0:
+            disp = f"⇡ {abs(round(pct))}%"
+        elif pct < 0:
+            disp = f"⇣ {abs(round(pct))}%"
+        else:
+            disp = "0%"
+        return pct, disp
+
+    # Fallback to parsed string if numbers missing
+    if fallback_str:
+        is_down = ("⇣" in fallback_str or "⇩" in fallback_str or "▼" in fallback_str or "-" in fallback_str)
+        raw = clean_num(fallback_str)
+        if isinstance(raw, (int, float)):
+            pct = -abs(raw) if is_down else abs(raw)
+            disp = f"⇣ {abs(round(pct))}%" if pct < 0 else f"⇡ {abs(round(pct))}%"
+            return float(pct), disp
+
+    return None, "—"
+
+
 def calculate_quarters(ref_date: Optional[date] = None) -> Dict[str, str]:
     """Calculate reporting quarter labels."""
     d = ref_date or date.today()
@@ -447,21 +496,14 @@ class QuarterlyResultsProvider:
             prev_val = clean_num(cells[3]) if len(cells) > 3 else None
             year_ago_val = clean_num(cells[4]) if len(cells) > 4 else None
 
-            is_down = "⇩" in yoy_str or "-" in yoy_str
-            yoy_num = clean_num(yoy_str)
-            if isinstance(yoy_num, (int, float)):
-                if is_down and yoy_num > 0:
-                    yoy_num = -yoy_num
-            elif yoy_num is None:
-                yoy_num = 0.0
-
+            yoy_calc, yoy_disp = calculate_yoy_growth(latest_val, year_ago_val, yoy_str)
             metrics.append({
                 "name": row_label,
                 "latest": f"{latest_val:,.2f}".rstrip("0").rstrip(".") if isinstance(latest_val, float) else (str(latest_val) if latest_val is not None else "—"),
                 "prev": f"{prev_val:,.2f}".rstrip("0").rstrip(".") if isinstance(prev_val, float) else (str(prev_val) if prev_val is not None else "—"),
                 "year_ago": f"{year_ago_val:,.2f}".rstrip("0").rstrip(".") if isinstance(year_ago_val, float) else (str(year_ago_val) if year_ago_val is not None else "—"),
-                "yoy_pct": float(yoy_num) if isinstance(yoy_num, (int, float)) else 0.0,
-                "yoy_display": yoy_str,
+                "yoy_pct": yoy_calc if yoy_calc is not None else 0.0,
+                "yoy_display": yoy_disp if yoy_disp != "—" else yoy_str,
             })
 
         industry = infer_industry(symbol, company_name)
@@ -913,46 +955,42 @@ class QuarterlyResultsProvider:
             val = shp.get("change_public_pct")
             return float(val) if val is not None else None
 
+        # 1. Helper for YoY percentage change calculation
+        def _calc_metric_yoy(m_name: str) -> Optional[float]:
+            for m in record.get("metrics") or []:
+                if m.get("name", "").strip().lower() == m_name.lower():
+                    pct, _ = calculate_yoy_growth(m.get("latest"), m.get("year_ago"), str(m.get("yoy_display") or ""))
+                    if pct is not None:
+                        return pct
+                    try:
+                        return float(m.get("yoy_pct", 0.0))
+                    except Exception:
+                        return 0.0
+            return None
+
         # 1. Quarterly Results Growth (%)
         if fn in ("sales_growth", "yoy_sales", "sales_chg"):
-            for m in record.get("metrics") or []:
-                if m.get("name", "").strip().lower() == "sales":
-                    try:
-                        return float(m.get("yoy_pct", 0.0))
-                    except Exception:
-                        return 0.0
-            return None
+            return _calc_metric_yoy("sales")
 
         if fn in ("profit_growth", "yoy_profit", "profit_chg", "net_profit_growth", "pat_growth", "turnaround"):
-            for m in record.get("metrics") or []:
-                if m.get("name", "").strip().lower() == "net profit":
-                    try:
-                        return float(m.get("yoy_pct", 0.0))
-                    except Exception:
-                        return 0.0
-            return None
+            return _calc_metric_yoy("net profit")
 
         if fn in ("op_growth", "yoy_op", "op_chg"):
-            for m in record.get("metrics") or []:
-                if m.get("name", "").strip().lower() in ("operating profit", "operating_profit"):
-                    try:
-                        return float(m.get("yoy_pct", 0.0))
-                    except Exception:
-                        return 0.0
-            return None
+            val = _calc_metric_yoy("operating profit")
+            if val is None:
+                val = _calc_metric_yoy("ebidt")
+            return val
 
         if fn in ("eps_growth", "yoy_eps"):
-            for m in record.get("metrics") or []:
-                if m.get("name", "").strip().lower() == "eps":
-                    try:
-                        return float(m.get("yoy_pct", 0.0))
-                    except Exception:
-                        return 0.0
-            return None
+            return _calc_metric_yoy("eps")
 
         if fn in ("yoy_opm", "opm_growth", "opm_chg"):
             for m in record.get("metrics") or []:
                 if m.get("name", "").strip().lower() == "opm":
+                    l = clean_num(m.get("latest"))
+                    y = clean_num(m.get("year_ago"))
+                    if l is not None and y is not None:
+                        return round(l - y, 2)
                     try:
                         return float(m.get("yoy_pct", 0.0))
                     except Exception:
@@ -1458,6 +1496,13 @@ class QuarterlyResultsProvider:
                 "change_public_pct": chg_pub,
             }
 
+            # Recalculate and guarantee accurate YoY growth % and display on every metric
+            for m in item_copy.get("metrics") or []:
+                yoy_calc, yoy_disp = calculate_yoy_growth(m.get("latest"), m.get("year_ago"), str(m.get("yoy_display") or ""))
+                if yoy_calc is not None:
+                    m["yoy_pct"] = yoy_calc
+                    m["yoy_display"] = yoy_disp
+
             # Custom query filter
             if custom_tree:
                 try:
@@ -1473,6 +1518,9 @@ class QuarterlyResultsProvider:
         def _get_metric_yoy(item: Dict[str, Any], metric_name: str) -> float:
             for m in item.get("metrics") or []:
                 if m.get("name", "").lower() == metric_name.lower():
+                    pct, _ = calculate_yoy_growth(m.get("latest"), m.get("year_ago"), str(m.get("yoy_display") or ""))
+                    if pct is not None:
+                        return pct
                     try:
                         return float(m.get("yoy_pct", 0))
                     except Exception:

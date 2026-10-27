@@ -3,7 +3,7 @@
 // Institutional Offline Resilience & App Shell Caching
 // =========================================================
 
-const CACHE_VERSION = 'v1.0.2';
+const CACHE_VERSION = 'v1.0.3';
 const STATIC_CACHE = `capital-desk-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capital-desk-runtime-${CACHE_VERSION}`;
 

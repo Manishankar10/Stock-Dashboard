@@ -107,6 +107,79 @@
     /**
      * Build HTML markup for a single company result card
      */
+    function parseQrMetricNumber(val) {
+        if (val === null || val === undefined) return null;
+        if (typeof val === 'number') return isNaN(val) ? null : val;
+        const s = String(val).replace(/,/g, '').replace(/%/g, '').replace(/₹/g, '').trim();
+        if (!s || s === '—' || s === '-' || s === 'N/A' || s === 'NA') return null;
+        const n = parseFloat(s);
+        return isNaN(n) ? null : n;
+    }
+
+    function calcYoYGrowth(latestRaw, yearAgoRaw, fallbackPct, fallbackDisplay) {
+        const L = parseQrMetricNumber(latestRaw);
+        const Y = parseQrMetricNumber(yearAgoRaw);
+
+        let pct = null;
+
+        if (L !== null && Y !== null) {
+            if (Y !== 0) {
+                // Formula: (latest - year_ago) / |year_ago| * 100
+                // When year_ago is negative, preserves the sign of (latest - year_ago)
+                pct = ((L - Y) / Math.abs(Y)) * 100;
+            } else {
+                // If previous year number is 0:
+                if (L > 0) {
+                    pct = 100.0; // Positive turnaround/addition from zero
+                } else if (L < 0) {
+                    pct = -100.0; // Negative dip into loss from zero
+                } else {
+                    pct = 0.0;
+                }
+            }
+        } else if (fallbackPct !== undefined && fallbackPct !== null && !isNaN(Number(fallbackPct))) {
+            pct = Number(fallbackPct);
+            if (fallbackDisplay && typeof fallbackDisplay === 'string') {
+                const isDown = fallbackDisplay.includes('⇣') || fallbackDisplay.includes('⇩') || fallbackDisplay.includes('-');
+                if (isDown && pct > 0) pct = -pct;
+            }
+        } else if (fallbackDisplay && typeof fallbackDisplay === 'string') {
+            const isDown = fallbackDisplay.includes('⇣') || fallbackDisplay.includes('⇩') || fallbackDisplay.includes('-');
+            const cleaned = fallbackDisplay.replace(/[^\d.-]/g, '');
+            const parsed = parseFloat(cleaned);
+            if (!isNaN(parsed)) {
+                pct = isDown ? -Math.abs(parsed) : Math.abs(parsed);
+            }
+        }
+
+        if (pct === null || isNaN(pct)) {
+            return { pct: null, className: 'neutral', text: '—' };
+        }
+
+        // Return accurate badge and coloring (Negative = Red 'neg', Positive = Green 'pos')
+        if (pct > 0) {
+            const valStr = Math.abs(pct) >= 1 ? Math.round(pct).toLocaleString('en-IN') : pct.toFixed(1);
+            return {
+                pct: pct,
+                className: 'pos',
+                text: `↑ ${valStr}%`
+            };
+        } else if (pct < 0) {
+            const valStr = Math.abs(pct) >= 1 ? Math.round(Math.abs(pct)).toLocaleString('en-IN') : Math.abs(pct).toFixed(1);
+            return {
+                pct: pct,
+                className: 'neg',
+                text: `↓ ${valStr}%`
+            };
+        } else {
+            return {
+                pct: 0,
+                className: 'neutral',
+                text: '0%'
+            };
+        }
+    }
+
     function buildResultCardHtml(item) {
         const sym = escapeHtml(item.symbol || '');
         const comp = escapeHtml(item.company || item.symbol || 'Company');
@@ -130,18 +203,9 @@
 
         const rowsHtml = (item.metrics || []).map(m => {
             const name = escapeHtml(m.name || '');
-            const yoyPct = Number(m.yoy_pct || 0);
-            let yoyClass = 'neutral';
-            let yoyText = '—';
-            if (yoyPct > 0) {
-                yoyClass = 'pos';
-                yoyText = `↑ ${yoyPct.toFixed(0)}%`;
-            } else if (yoyPct < 0) {
-                yoyClass = 'neg';
-                yoyText = `↓ ${Math.abs(yoyPct).toFixed(0)}%`;
-            } else if (m.yoy_pct === 0) {
-                yoyText = '0%';
-            }
+            const yoyInfo = calcYoYGrowth(m.latest, m.year_ago, m.yoy_pct, m.yoy_display);
+            const yoyClass = yoyInfo.className;
+            const yoyText = yoyInfo.text;
 
             const latestVal = escapeHtml(m.latest || '—');
             const prevVal = escapeHtml(m.prev || '—');

@@ -900,11 +900,27 @@
 }
 
 .qr-metric-yoy.pos {
-    color: #10b981;
+    color: #10b981 !important;
 }
 
 .qr-metric-yoy.neg {
-    color: #ef4444;
+    color: #ef4444 !important;
+}
+
+.qr-metric-yoy.neutral {
+    color: var(--text-secondary, #94a3b8) !important;
+}
+
+:root:not([data-theme="dark"]) .qr-metric-yoy.pos {
+    color: #059669 !important;
+}
+
+:root:not([data-theme="dark"]) .qr-metric-yoy.neg {
+    color: #dc2626 !important;
+}
+
+:root:not([data-theme="dark"]) .qr-metric-yoy.neutral {
+    color: #64748b !important;
 }
 
 .qr-metric-val {
