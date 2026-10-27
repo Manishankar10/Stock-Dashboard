@@ -1,3 +1,4 @@
+from modules.common.ai_prompt_manager import format_prompt, GEMINI_MODELS
 """Quarter-wise concall documents sourced from official NSE/BSE filings."""
 
 from datetime import date, datetime
@@ -288,19 +289,27 @@ _DETAILED_SUMMARY_CACHE = {}
 _DETAILED_SUMMARY_LOCK = Lock()
 
 
-def generate_senior_concall_analysis(url, company="Company", quarter="Quarter", symbol="", industry=""):
+def generate_document_analysis(url, company="Company", quarter="Quarter", year="", symbol="", industry="", doc_type="concall"):
     url = str(url or "").strip()
     if not url.startswith("http"):
-        raise RuntimeError("A valid transcript URL is required.")
+        raise RuntimeError("A valid document URL is required.")
 
-    cache_key = sha256(f"{url}|{company}|{quarter}".encode("utf-8")).hexdigest()
+    clean_type = str(doc_type or "concall").lower()
+    if clean_type in ("ppt", "presentation", "deck", "investor presentation"):
+        prompt_type = "ppt"
+    elif clean_type in ("annual_report", "annual_reports", "ar", "brsr", "integrated_report"):
+        prompt_type = "annual_reports"
+    else:
+        prompt_type = "concalls"
+
+    cache_key = sha256(f"{prompt_type}|{url}|{company}|{quarter}|{year}".encode("utf-8")).hexdigest()
     now = time.time()
     with _DETAILED_SUMMARY_LOCK:
         cached = _DETAILED_SUMMARY_CACHE.get(cache_key)
         if cached and now - cached[0] < 86400:
             return cached[1]
 
-    # Download transcript PDF
+    # Download document PDF
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "application/pdf,application/octet-stream,*/*",
@@ -310,18 +319,22 @@ def generate_senior_concall_analysis(url, company="Company", quarter="Quarter", 
         r.raise_for_status()
         pdf_bytes = r.content
     except Exception as exc:
-        raise RuntimeError(f"Could not download the official transcript PDF: {exc}")
+        raise RuntimeError(f"Could not download the official document: {exc}")
 
     if not pdf_bytes:
-        raise RuntimeError("The transcript document is empty.")
+        raise RuntimeError("The document is empty.")
 
     b64_pdf = base64.b64encode(pdf_bytes).decode("ascii")
 
-    prompt = SENIOR_EQUITY_RESEARCH_PROMPT_TEMPLATE.format(
-        company=company or symbol or "the Company",
-        quarter=quarter or "Latest Quarter",
-        industry=industry or "Indian Equities",
-    )
+    # Format the prompt using our dynamic ai_prompt_manager
+    prompt = format_prompt(prompt_type, {
+        "company": company or symbol or "the Company",
+        "symbol": symbol,
+        "quarter": quarter or "Latest Quarter",
+        "year": year or quarter or "Fiscal Year",
+        "industry": industry or "Indian Equities",
+        "source_url": url,
+    })
 
     api_key = get_app_setting("GEMINI_API_KEY", "").strip()
     if not api_key:
@@ -340,10 +353,8 @@ def generate_senior_concall_analysis(url, company="Company", quarter="Quarter", 
         }
     }
 
-    # Model fallback list optimized for high-speed PDF document reasoning
-    models = ["gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash"]
     last_err = None
-    for model_name in models:
+    for model_name in GEMINI_MODELS:
         api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         try:
             resp = requests.post(api_url, headers={"Content-Type": "application/json"}, json=payload, timeout=180)
@@ -362,35 +373,48 @@ def generate_senior_concall_analysis(url, company="Company", quarter="Quarter", 
         except Exception as e:
             last_err = str(e)
 
-    raise RuntimeError(last_err or "Failed to generate concall analysis with Gemini.")
+    raise RuntimeError(last_err or "Failed to generate document analysis with Gemini.")
+
+
+def generate_senior_concall_analysis(url, company="Company", quarter="Quarter", symbol="", industry=""):
+    return generate_document_analysis(url=url, company=company, quarter=quarter, symbol=symbol, industry=industry, doc_type="concall")
 
 
 @fundamentals_concalls_bp.post("/summarize")
+@fundamentals_concalls_bp.post("/documents/summarize")
+@fundamentals_concalls_bp.post("/annual-reports/summarize")
+@fundamentals_concalls_bp.post("/presentations/summarize")
 def summarize_concall_transcript():
     data = request.get_json(silent=True) or {}
-    url = data.get("url") or data.get("transcript") or ""
+    url = data.get("url") or data.get("transcript") or data.get("presentation") or ""
     if not url:
-        return jsonify({"error": "A transcript URL is required for AI summary."}), 400
+        return jsonify({"error": "A document URL is required for AI summary."}), 400
 
     company = data.get("company") or data.get("companyName") or ""
     quarter = data.get("quarter") or ""
+    year = data.get("year") or ""
     symbol = data.get("symbol") or ""
     industry = data.get("industry") or ""
+    doc_type = data.get("doc_type") or data.get("type") or ("ppt" if "/presentations" in request.path else ("annual_reports" if "/annual-reports" in request.path else "concall"))
 
     try:
-        report = generate_senior_concall_analysis(
+        report = generate_document_analysis(
             url=url,
             company=company,
             quarter=quarter,
+            year=year,
             symbol=symbol,
             industry=industry,
+            doc_type=doc_type,
         )
         return jsonify({
             "success": True,
             "analysis": report,
             "company": company,
             "quarter": quarter,
+            "year": year,
             "symbol": symbol,
+            "doc_type": doc_type,
             "url": url,
         })
     except Exception as exc:

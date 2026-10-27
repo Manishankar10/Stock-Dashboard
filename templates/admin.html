@@ -945,6 +945,268 @@
             </div>
 
 
+            <!-- CARD: Gemini AI Summarization Prompts & Quality Control -->
+            <div class="metric-card" style="margin-bottom: 24px; max-width: 100%;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            <span>🤖</span> Gemini AI Summarization Prompts &amp; Quality Control
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                            Configure separate custom prompt templates for <strong>Short summary (feeds)</strong> and <strong>Brief summaries (concalls, annual reports, investor PPT)</strong>. Verify and resolve prompt issues in real time with Gemini AI.
+                        </p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span id="ai-prompts-global-badge" class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.28); font-size: 11.5px; padding: 5px 12px; border-radius: 6px; font-weight: 600;">
+                            ✨ Gemini Active · 4 Prompts Configured
+                        </span>
+                        <span id="ai-prompts-status-badge" class="badge badge-success" style="font-size: 12px; display: none;">Saved successfully</span>
+                    </div>
+                </div>
+
+                <!-- Category Sub-Tabs Navigation -->
+                <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 22px; overflow-x: auto; flex-wrap: wrap;">
+                    <button type="button" class="tab-btn active" id="ai-prompt-tab-btn-feeds" onclick="switchAiPromptCategory('feeds')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        📰 Feeds (Short Summary)
+                    </button>
+                    <button type="button" class="tab-btn" id="ai-prompt-tab-btn-concalls" onclick="switchAiPromptCategory('concalls')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        🎙️ Concalls (Brief Summary)
+                    </button>
+                    <button type="button" class="tab-btn" id="ai-prompt-tab-btn-annual_reports" onclick="switchAiPromptCategory('annual_reports')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        📚 Annual Reports (Brief Summary)
+                    </button>
+                    <button type="button" class="tab-btn" id="ai-prompt-tab-btn-ppt" onclick="switchAiPromptCategory('ppt')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        📊 Investor Presentations / PPT (Brief Summary)
+                    </button>
+                </div>
+
+                <!-- PANELS CONTAINER -->
+                <div id="ai-prompts-panels-container">
+                    
+                    <!-- PANEL 1: FEEDS (SHORT SUMMARY) -->
+                    <div id="ai-prompt-panel-feeds" class="ai-prompt-panel" style="display: block;">
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    <span>📰</span> Official Exchange Filings &amp; Corporate Announcements
+                                </div>
+                                <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                                    Target: Short Summary · Max 45 Words
+                                </span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.45;">
+                                Used on-demand when users click <em>✨ AI Summary</em> on any official feed filing or corporate announcement. Produces a concise, factual 1-2 sentence description.
+                            </p>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
+                                Supported dynamic variables (click to insert into prompt):
+                            </div>
+                            <div class="ai-variables-bar" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('feeds', '{company}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{company}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('feeds', '{symbol}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{symbol}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('feeds', '{subject}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{subject}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('feeds', '{details}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{details}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('feeds', '{source_url}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{source_url}</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <textarea id="ai-prompt-feeds" rows="9" 
+                                style="width: 100%; box-sizing: border-box; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input); border-radius: 8px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12.5px; line-height: 1.55; padding: 12px 14px; min-height: 200px; resize: vertical;"
+                                placeholder="Enter prompt instructions for feeds short summary..."></textarea>
+                        </div>
+
+                        <!-- Actions Bar -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button type="button" id="btn-verify-feeds" class="btn btn-primary" onclick="verifyAiPrompt('feeds')" style="font-size: 12.5px; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <span>✨</span> Verify with Gemini AI
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetAiPromptToDefault('feeds')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 6px;">
+                                    🔄 Reset to Default
+                                </button>
+                            </div>
+                            <button type="button" class="btn" onclick="saveSingleAiPrompt('feeds')" style="font-size: 12.5px; padding: 8px 18px; border-radius: 6px;">
+                                💾 Save Feeds Prompt
+                            </button>
+                        </div>
+
+                        <!-- Verification Feedback Container -->
+                        <div id="ai-verify-box-feeds" style="display: none; margin-top: 12px;"></div>
+                    </div>
+
+                    <!-- PANEL 2: CONCALLS (BRIEF / DETAILED SUMMARY) -->
+                    <div id="ai-prompt-panel-concalls" class="ai-prompt-panel" style="display: none;">
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    <span>🎙️</span> Earnings Conference Call Transcripts
+                                </div>
+                                <span class="badge" style="background: rgba(139, 92, 246, 0.12); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                                    Target: Brief / Detailed Topic-Wise Summary
+                                </span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.45;">
+                                Used when analyzing official quarterly earnings call transcripts. Enforces institutional topic-wise structuring, guidance tracking tables, and analyst Q&amp;A summaries.
+                            </p>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
+                                Supported dynamic variables (click to insert into prompt):
+                            </div>
+                            <div class="ai-variables-bar" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('concalls', '{company}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{company}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('concalls', '{symbol}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{symbol}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('concalls', '{quarter}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{quarter}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('concalls', '{industry}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{industry}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('concalls', '{source_url}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{source_url}</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <textarea id="ai-prompt-concalls" rows="12" 
+                                style="width: 100%; box-sizing: border-box; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input); border-radius: 8px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12.5px; line-height: 1.55; padding: 12px 14px; min-height: 240px; resize: vertical;"
+                                placeholder="Enter prompt instructions for concall brief summary..."></textarea>
+                        </div>
+
+                        <!-- Actions Bar -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button type="button" id="btn-verify-concalls" class="btn btn-primary" onclick="verifyAiPrompt('concalls')" style="font-size: 12.5px; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <span>✨</span> Verify with Gemini AI
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetAiPromptToDefault('concalls')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 6px;">
+                                    🔄 Reset to Default
+                                </button>
+                            </div>
+                            <button type="button" class="btn" onclick="saveSingleAiPrompt('concalls')" style="font-size: 12.5px; padding: 8px 18px; border-radius: 6px;">
+                                💾 Save Concalls Prompt
+                            </button>
+                        </div>
+
+                        <!-- Verification Feedback Container -->
+                        <div id="ai-verify-box-concalls" style="display: none; margin-top: 12px;"></div>
+                    </div>
+
+                    <!-- PANEL 3: ANNUAL REPORTS (BRIEF / DETAILED SUMMARY) -->
+                    <div id="ai-prompt-panel-annual_reports" class="ai-prompt-panel" style="display: none;">
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    <span>📚</span> Annual Reports, Integrated Reports &amp; BRSR
+                                </div>
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                                    Target: Brief / Detailed Annual Report Briefing
+                                </span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.45;">
+                                Used when analyzing official Annual Reports &amp; Integrated Reports. Extracts competitive moats, segment metrics, capex, auditor remarks, and MD&amp;A strategy.
+                            </p>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
+                                Supported dynamic variables (click to insert into prompt):
+                            </div>
+                            <div class="ai-variables-bar" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('annual_reports', '{company}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{company}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('annual_reports', '{symbol}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{symbol}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('annual_reports', '{year}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{year}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('annual_reports', '{industry}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{industry}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('annual_reports', '{source_url}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{source_url}</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <textarea id="ai-prompt-annual_reports" rows="12" 
+                                style="width: 100%; box-sizing: border-box; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input); border-radius: 8px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12.5px; line-height: 1.55; padding: 12px 14px; min-height: 240px; resize: vertical;"
+                                placeholder="Enter prompt instructions for annual report brief summary..."></textarea>
+                        </div>
+
+                        <!-- Actions Bar -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button type="button" id="btn-verify-annual_reports" class="btn btn-primary" onclick="verifyAiPrompt('annual_reports')" style="font-size: 12.5px; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <span>✨</span> Verify with Gemini AI
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetAiPromptToDefault('annual_reports')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 6px;">
+                                    🔄 Reset to Default
+                                </button>
+                            </div>
+                            <button type="button" class="btn" onclick="saveSingleAiPrompt('annual_reports')" style="font-size: 12.5px; padding: 8px 18px; border-radius: 6px;">
+                                💾 Save Annual Reports Prompt
+                            </button>
+                        </div>
+
+                        <!-- Verification Feedback Container -->
+                        <div id="ai-verify-box-annual_reports" style="display: none; margin-top: 12px;"></div>
+                    </div>
+
+                    <!-- PANEL 4: PPT / INVESTOR PRESENTATIONS (BRIEF / DETAILED SUMMARY) -->
+                    <div id="ai-prompt-panel-ppt" class="ai-prompt-panel" style="display: none;">
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    <span>📊</span> Investor Presentations, Decks &amp; Slide Packs
+                                </div>
+                                <span class="badge" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                                    Target: Brief / Detailed Slide Deck Synthesis
+                                </span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.45;">
+                                Used when analyzing investor presentations and quarterly slide decks. Synthesizes volume trajectories, visual slide KPIs, new products, and medium-term targets into clean markdown tables.
+                            </p>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
+                                Supported dynamic variables (click to insert into prompt):
+                            </div>
+                            <div class="ai-variables-bar" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('ppt', '{company}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{company}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('ppt', '{symbol}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{symbol}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('ppt', '{quarter}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{quarter}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('ppt', '{industry}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{industry}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('ppt', '{source_url}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{source_url}</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <textarea id="ai-prompt-ppt" rows="12" 
+                                style="width: 100%; box-sizing: border-box; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input); border-radius: 8px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12.5px; line-height: 1.55; padding: 12px 14px; min-height: 240px; resize: vertical;"
+                                placeholder="Enter prompt instructions for PPT presentation brief summary..."></textarea>
+                        </div>
+
+                        <!-- Actions Bar -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button type="button" id="btn-verify-ppt" class="btn btn-primary" onclick="verifyAiPrompt('ppt')" style="font-size: 12.5px; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <span>✨</span> Verify with Gemini AI
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetAiPromptToDefault('ppt')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 6px;">
+                                    🔄 Reset to Default
+                                </button>
+                            </div>
+                            <button type="button" class="btn" onclick="saveSingleAiPrompt('ppt')" style="font-size: 12.5px; padding: 8px 18px; border-radius: 6px;">
+                                💾 Save PPT Prompt
+                            </button>
+                        </div>
+
+                        <!-- Verification Feedback Container -->
+                        <div id="ai-verify-box-ppt" style="display: none; margin-top: 12px;"></div>
+                    </div>
+
+                </div>
+
+                <!-- Master Global Actions Bar -->
+                <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div style="font-size: 12px; color: var(--text-secondary);">
+                        💡 Prompts are persisted to MongoDB Atlas &amp; SQLite database. Backed up automatically with system exports.
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button type="button" class="btn btn-secondary" onclick="resetAllAiPrompts()" style="font-size: 12.5px; padding: 8px 14px; border-radius: 6px;">
+                            🔄 Reset All 4 Prompts
+                        </button>
+                        <button type="button" id="btn-save-all-ai-prompts" class="btn" onclick="saveAllAiPrompts()" style="font-size: 13px; padding: 10px 22px; border-radius: 6px; font-weight: 700;">
+                            💾 Save All AI Prompts
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+
             <!-- Section Header: Exchange Datasets & Feed Synchronization -->
             <div class="admin-section-header" style="display: flex; align-items: center; justify-content: space-between; margin: 30px 0 18px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
                 <div>
@@ -1669,7 +1931,7 @@
             if (tabContent) tabContent.classList.add('active');
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
-            if (tabName === 'settings') { loadSystemSettings(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); loadAdminTransactionsStatus(); }
+            if (tabName === 'settings') { loadSystemSettings(); loadAdminAiPrompts(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); loadAdminTransactionsStatus(); }
             if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); }
         }
 
@@ -2041,6 +2303,346 @@
         function toggleTheme() {
             const current = document.documentElement.getAttribute('data-theme') || 'light';
             setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+
+        // =========================================================
+        // GEMINI AI PROMPT CONTROLLER & REAL-TIME QUALITY VERIFIER
+        // =========================================================
+        let _aiPromptsData = {};
+        let _aiDefaultsData = {};
+        let _aiMetadata = {};
+        let _lastGeminiSuggestion = {};
+
+        async function loadAdminAiPrompts() {
+            try {
+                const res = await fetch('/api/admin/ai_prompts');
+                const data = await res.json();
+                if (data.success) {
+                    _aiPromptsData = data.prompts || {};
+                    _aiDefaultsData = data.defaults || {};
+                    _aiMetadata = data.metadata || {};
+
+                    ['feeds', 'concalls', 'annual_reports', 'ppt'].forEach(cat => {
+                        const el = document.getElementById(`ai-prompt-${cat}`);
+                        if (el && _aiPromptsData[cat]) {
+                            el.value = _aiPromptsData[cat];
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading AI prompts:', err);
+            }
+        }
+
+        function switchAiPromptCategory(category) {
+            ['feeds', 'concalls', 'annual_reports', 'ppt'].forEach(cat => {
+                const btn = document.getElementById(`ai-prompt-tab-btn-${cat}`);
+                const panel = document.getElementById(`ai-prompt-panel-${cat}`);
+                if (btn) btn.classList.toggle('active', cat === category);
+                if (panel) panel.style.display = (cat === category) ? 'block' : 'none';
+            });
+        }
+
+        function insertAiPlaceholder(category, placeholderTag) {
+            const textarea = document.getElementById(`ai-prompt-${category}`);
+            if (!textarea) return;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + placeholderTag + text.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + placeholderTag.length;
+        }
+
+        async function verifyAiPrompt(category) {
+            const textarea = document.getElementById(`ai-prompt-${category}`);
+            const verifyBox = document.getElementById(`ai-verify-box-${category}`);
+            const verifyBtn = document.getElementById(`btn-verify-${category}`);
+            if (!textarea || !verifyBox) return;
+
+            const promptText = textarea.value.trim();
+            if (!promptText) {
+                alert('❌ Please enter prompt text before verifying.');
+                return;
+            }
+
+            const originalBtnHtml = verifyBtn ? verifyBtn.innerHTML : '✨ Verify with Gemini AI';
+            if (verifyBtn) {
+                verifyBtn.disabled = true;
+                verifyBtn.innerHTML = `
+                    <svg class="spinner-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;">
+                        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                    </svg>
+                    <span>Auditing with Gemini...</span>
+                `;
+            }
+
+            verifyBox.style.display = 'block';
+            verifyBox.innerHTML = `
+                <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+                    <svg class="spinner-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" style="animation: spin 1s linear infinite;">
+                        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                    </svg>
+                    <span style="font-size: 12.5px; color: var(--text-primary);">
+                        Connecting to Google Gemini to review prompt clarity, dynamic placeholders, and factual guardrails...
+                    </span>
+                </div>
+            `;
+
+            try {
+                const res = await fetch('/api/admin/ai_prompts/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt_type: category,
+                        prompt_text: promptText
+                    })
+                });
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || data.summary || 'Failed to verify prompt with Gemini.');
+                }
+
+                _lastGeminiSuggestion[category] = data.suggested_prompt || '';
+
+                renderAiVerificationResult(category, data);
+
+            } catch (err) {
+                verifyBox.innerHTML = `
+                    <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 14px 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #ef4444; font-size: 13px; margin-bottom: 4px;">
+                            <span>⚠️</span> Verification Error
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.45;">
+                            ${escapeHtml(err.message || 'An error occurred while communicating with Gemini.')}
+                        </div>
+                    </div>
+                `;
+            } finally {
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.innerHTML = originalBtnHtml;
+                }
+            }
+        }
+
+        function renderAiVerificationResult(category, data) {
+            const verifyBox = document.getElementById(`ai-verify-box-${category}`);
+            if (!verifyBox) return;
+
+            const score = (data.score || '').toLowerCase();
+            let scoreColor = '#10b981';
+            let scoreBg = 'rgba(16, 185, 129, 0.12)';
+            let scoreBorder = 'rgba(16, 185, 129, 0.3)';
+
+            if (score.includes('poor') || score.includes('invalid') || !data.valid) {
+                scoreColor = '#ef4444';
+                scoreBg = 'rgba(239, 68, 68, 0.12)';
+                scoreBorder = 'rgba(239, 68, 68, 0.3)';
+            } else if (score.includes('needs improvement') || score.includes('attention')) {
+                scoreColor = '#f59e0b';
+                scoreBg = 'rgba(245, 158, 11, 0.12)';
+                scoreBorder = 'rgba(245, 158, 11, 0.3)';
+            } else if (score.includes('good')) {
+                scoreColor = '#3b82f6';
+                scoreBg = 'rgba(59, 130, 246, 0.12)';
+                scoreBorder = 'rgba(59, 130, 246, 0.3)';
+            }
+
+            const issuesHtml = (data.issues && data.issues.length) ? `
+                <div style="margin-top: 10px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #ef4444; margin-bottom: 4px;">
+                        ⚠️ Issues Identified (${data.issues.length}):
+                    </div>
+                    <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                        ${data.issues.map(iss => `<li>${escapeHtml(iss)}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : '';
+
+            const suggestionsHtml = (data.suggestions && data.suggestions.length) ? `
+                <div style="margin-top: 10px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #3b82f6; margin-bottom: 4px;">
+                        💡 Optimization Recommendations:
+                    </div>
+                    <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                        ${data.suggestions.map(sug => `<li>${escapeHtml(sug)}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : '';
+
+            const hasDiff = data.suggested_prompt && data.suggested_prompt.trim() !== document.getElementById(`ai-prompt-${category}`).value.trim();
+
+            const suggestedPromptBlock = data.suggested_prompt ? `
+                <div style="margin-top: 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                        <div style="font-size: 12px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>✨</span> Gemini Suggested Resolution
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="applyGeminiSuggestion('${category}')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 5px; font-weight: 700;">
+                            ✅ Apply Gemini Suggestion
+                        </button>
+                    </div>
+                    <pre style="margin: 0; font-family: 'Consolas', monospace; font-size: 11.5px; white-space: pre-wrap; word-break: break-word; color: var(--text-secondary); max-height: 180px; overflow-y: auto; background: var(--bg-subtle); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--border-color);">${escapeHtml(data.suggested_prompt)}</pre>
+                </div>
+            ` : '';
+
+            verifyBox.innerHTML = `
+                <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="badge" style="background: ${scoreBg}; color: ${scoreColor}; border: 1px solid ${scoreBorder}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 6px;">
+                                Quality Score: ${escapeHtml(data.score || 'Evaluated')}
+                            </span>
+                            <span style="font-size: 12px; color: var(--text-secondary);">
+                                ${data.valid ? '✅ Ready for Production' : '⚠️ Refinement Recommended'}
+                            </span>
+                        </div>
+                        <span style="font-size: 11px; color: var(--text-secondary);">
+                            Engine: ${escapeHtml(data.model_used || 'Gemini 3 Flash')}
+                        </span>
+                    </div>
+
+                    <div style="font-size: 12.5px; color: var(--text-primary); font-weight: 600; line-height: 1.45; margin-bottom: 4px;">
+                        ${escapeHtml(data.summary || 'Audit completed.')}
+                    </div>
+
+                    ${issuesHtml}
+                    ${suggestionsHtml}
+                    ${suggestedPromptBlock}
+                </div>
+            `;
+        }
+
+        function applyGeminiSuggestion(category) {
+            const suggestion = _lastGeminiSuggestion[category];
+            const textarea = document.getElementById(`ai-prompt-${category}`);
+            if (!suggestion || !textarea) return;
+
+            textarea.value = suggestion;
+            textarea.style.transition = 'background-color 0.4s ease';
+            const origBg = textarea.style.backgroundColor;
+            textarea.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+            setTimeout(() => { textarea.style.backgroundColor = origBg; }, 600);
+
+            const verifyBox = document.getElementById(`ai-verify-box-${category}`);
+            if (verifyBox) {
+                verifyBox.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                        <span>✅</span> Gemini suggestion applied to prompt box! Click "Save Prompt" to persist changes.
+                    </div>
+                `;
+            }
+        }
+
+        function resetAiPromptToDefault(category) {
+            const def = _aiDefaultsData[category];
+            const textarea = document.getElementById(`ai-prompt-${category}`);
+            if (!def || !textarea) return;
+            if (confirm(`Reset the ${category.toUpperCase()} prompt back to recommended factory default?`)) {
+                textarea.value = def;
+                const verifyBox = document.getElementById(`ai-verify-box-${category}`);
+                if (verifyBox) verifyBox.style.display = 'none';
+            }
+        }
+
+        async function saveSingleAiPrompt(category) {
+            const textarea = document.getElementById(`ai-prompt-${category}`);
+            if (!textarea) return;
+            const promptVal = textarea.value.trim();
+            if (!promptVal) {
+                alert('❌ Prompt text cannot be empty.');
+                return;
+            }
+
+            const prompts = {};
+            prompts[category] = promptVal;
+
+            try {
+                const res = await fetch('/api/admin/ai_prompts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompts: prompts })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    _aiPromptsData[category] = promptVal;
+                    showAiPromptSavedBadge(`${category.toUpperCase()} prompt saved successfully!`);
+                } else {
+                    alert('❌ Failed to save prompt: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('❌ Error saving prompt: ' + err.message);
+            }
+        }
+
+        async function saveAllAiPrompts() {
+            const saveBtn = document.getElementById('btn-save-all-ai-prompts');
+            const originalText = saveBtn ? saveBtn.innerHTML : '💾 Save All AI Prompts';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerText = 'Saving All Prompts...';
+            }
+
+            const prompts = {};
+            ['feeds', 'concalls', 'annual_reports', 'ppt'].forEach(cat => {
+                const el = document.getElementById(`ai-prompt-${cat}`);
+                if (el) prompts[cat] = el.value.trim();
+            });
+
+            try {
+                const res = await fetch('/api/admin/ai_prompts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompts: prompts })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    _aiPromptsData = prompts;
+                    showAiPromptSavedBadge('All 4 AI prompts saved successfully!');
+                } else {
+                    alert('❌ Failed to save AI prompts: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('❌ Error saving AI prompts: ' + err.message);
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalText;
+                }
+            }
+        }
+
+        async function resetAllAiPrompts() {
+            if (!confirm('Are you sure you want to reset ALL 4 prompts back to recommended factory defaults?')) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/admin/ai_prompts/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt_type: 'all' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    await loadAdminAiPrompts();
+                    showAiPromptSavedBadge('All 4 prompts reset to recommended defaults!');
+                }
+            } catch (err) {
+                alert('❌ Error resetting prompts: ' + err.message);
+            }
+        }
+
+        function showAiPromptSavedBadge(message) {
+            const badge = document.getElementById('ai-prompts-status-badge');
+            if (badge) {
+                badge.style.display = 'inline-block';
+                badge.innerText = message || 'Saved successfully!';
+                setTimeout(() => { badge.style.display = 'none'; }, 3500);
+            }
         }
 
         async function loadSystemSettings() {
@@ -3650,6 +4252,7 @@
             await loadAdminStats();
             await loadAdminUsers();
             await loadSystemSettings();
+            await loadAdminAiPrompts();
             await loadAdminIndustriesStatus();
             await loadAdminCorporateActionsStatus();
             await loadAdminIpoStatus();

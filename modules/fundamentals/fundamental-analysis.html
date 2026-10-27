@@ -4101,8 +4101,9 @@ window.renderConcallsList = function(concalls, showAll) {
         <span>${esc(formatConcallQuarter(c.quarter))}</span>
       </div>
       <div class="concall-actions">
-        ${c.transcript ? `<button type="button" class="concall-chip concall-ai" onclick="openConcallAiByIndex(${idx})">✨ AI Summary</button>` : ''}
+        ${c.transcript ? `<button type="button" class="concall-chip concall-ai" onclick="openConcallAiByIndex(${idx})">✨ Concall AI</button>` : ''}
         ${c.transcript ? `<a class="concall-chip concall-transcript" href="${esc(c.transcript)}" target="_blank" rel="noopener noreferrer">📄 Concall</a>` : ''}
+        ${c.presentation ? `<button type="button" class="concall-chip concall-ai" style="background: rgba(99, 102, 241, 0.12); color: #818cf8; border-color: rgba(99, 102, 241, 0.3);" onclick="openPresentationAiByIndex(${idx})">✨ PPT AI</button>` : ''}
         ${c.presentation ? `<a class="concall-chip concall-ppt" href="${esc(c.presentation)}" target="_blank" rel="noopener noreferrer">📊 Presentation</a>` : ''}
       </div>
     </div>
@@ -4125,17 +4126,25 @@ window.renderConcallsList = function(concalls, showAll) {
 // =========================================================
 let _currentAiQuarter = null;
 let _currentAiTranscript = null;
+let _currentAiDocType = 'concall';
 let _currentAiMarkdown = '';
 
 function openConcallAiByIndex(idx) {
   const item = window._visibleConcalls?.[idx];
   if (!item || !item.transcript) return;
-  openConcallAiSummary(formatConcallQuarter(item.quarter), item.transcript);
+  openConcallAiSummary(formatConcallQuarter(item.quarter), item.transcript, 'concall');
 }
 
-async function openConcallAiSummary(quarter, transcriptUrl) {
+function openPresentationAiByIndex(idx) {
+  const item = window._visibleConcalls?.[idx];
+  if (!item || !item.presentation) return;
+  openConcallAiSummary(formatConcallQuarter(item.quarter), item.presentation, 'ppt');
+}
+
+async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall') {
   _currentAiQuarter = quarter;
   _currentAiTranscript = transcriptUrl;
+  _currentAiDocType = docType;
   _currentAiMarkdown = '';
 
   const modal = document.getElementById('aiSummaryModal');
@@ -4152,7 +4161,11 @@ async function openConcallAiSummary(quarter, transcriptUrl) {
 
   const companyName = (window._lastFundamentalsData?.company?.name) || symbol;
   if (titleEl) titleEl.textContent = `${companyName} — ${quarter}`;
-  if (subEl) subEl.textContent = `Earnings Concall Research Report · ${symbol}`;
+  if (subEl) {
+    subEl.textContent = (docType === 'ppt') 
+      ? `Investor Presentation (PPT) Research Report · ${symbol}` 
+      : (docType === 'annual_reports' ? `Annual Report Research Report · ${symbol}` : `Earnings Concall Research Report · ${symbol}`);
+  }
 
   if (pdfBtn) {
     if (transcriptUrl) {
@@ -4187,6 +4200,7 @@ async function openConcallAiSummary(quarter, transcriptUrl) {
         company: companyName,
         quarter: quarter,
         symbol: symbol,
+        doc_type: docType,
         industry: ''
       })
     });
@@ -4212,7 +4226,7 @@ async function openConcallAiSummary(quarter, transcriptUrl) {
 
 function retryAiSummary() {
   if (_currentAiQuarter && _currentAiTranscript) {
-    openConcallAiSummary(_currentAiQuarter, _currentAiTranscript);
+    openConcallAiSummary(_currentAiQuarter, _currentAiTranscript, _currentAiDocType || 'concall');
   }
 }
 

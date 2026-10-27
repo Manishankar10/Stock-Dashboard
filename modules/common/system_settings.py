@@ -5,7 +5,8 @@ from db_store import load_system_settings_db, save_system_settings_db
 
 DEFAULT_SYSTEM_SETTINGS = {
     "max_watchlists_per_user": 10,
-    "max_stocks_per_watchlist": 50
+    "max_stocks_per_watchlist": 50,
+    "ai_prompts": {}
 }
 
 _SYSTEM_SETTINGS_CACHE = None
@@ -40,6 +41,13 @@ def update_system_settings(new_settings):
             current["max_stocks_per_watchlist"] = val
         except (ValueError, TypeError) as e:
             raise ValueError("Total number of stocks per watchlist must be a positive integer (minimum 1).") from e
+
+    if "ai_prompts" in new_settings and isinstance(new_settings["ai_prompts"], dict):
+        if "ai_prompts" not in current or not isinstance(current["ai_prompts"], dict):
+            current["ai_prompts"] = {}
+        for k, v in new_settings["ai_prompts"].items():
+            if isinstance(v, str):
+                current["ai_prompts"][k] = v.strip()
 
     save_system_settings_db(current, SYSTEM_SETTINGS_FILE)
     _SYSTEM_SETTINGS_CACHE = current

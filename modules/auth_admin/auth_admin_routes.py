@@ -1,3 +1,11 @@
+from modules.common.ai_prompt_manager import (
+    get_ai_prompts,
+    save_ai_prompts,
+    get_default_ai_prompt,
+    verify_prompt_with_gemini,
+    PROMPT_METADATA,
+    DEFAULT_AI_PROMPTS
+)
 from modules.common.system_settings import get_system_settings, update_system_settings
 import os
 from modules.common.ist_datetime import format_ist_standard, today_ist_str, now_ist
@@ -420,6 +428,68 @@ def admin_save_system_settings():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": f"Failed to save system settings: {str(e)}"}), 500
+
+@auth_admin_bp.route("/api/admin/ai_prompts", methods=["GET"])
+@admin_required
+def admin_get_ai_prompts():
+    """Retrieve all current AI prompts and metadata."""
+    return jsonify({
+        "success": True,
+        "prompts": get_ai_prompts(),
+        "defaults": DEFAULT_AI_PROMPTS,
+        "metadata": PROMPT_METADATA
+    })
+
+@auth_admin_bp.route("/api/admin/ai_prompts", methods=["POST"])
+@admin_required
+def admin_save_ai_prompts():
+    """Save updated AI prompts to system settings."""
+    data = request.get_json(silent=True) or {}
+    prompts = data.get("prompts") or {}
+    try:
+        updated = save_ai_prompts(prompts)
+        return jsonify({
+            "success": True,
+            "message": "AI prompts saved successfully.",
+            "prompts": updated
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to save AI prompts: {str(e)}"}), 500
+
+@auth_admin_bp.route("/api/admin/ai_prompts/verify", methods=["POST"])
+@admin_required
+def admin_verify_ai_prompt():
+    """Verify an AI prompt with Gemini and suggest resolutions for any issues."""
+    data = request.get_json(silent=True) or {}
+    prompt_type = str(data.get("prompt_type") or "feeds").strip()
+    prompt_text = str(data.get("prompt_text") or "").strip()
+
+    if not prompt_text:
+        return jsonify({
+            "success": False,
+            "error": "Prompt text cannot be empty."
+        }), 400
+
+    result = verify_prompt_with_gemini(prompt_type, prompt_text)
+    return jsonify(result)
+
+@auth_admin_bp.route("/api/admin/ai_prompts/reset", methods=["POST"])
+@admin_required
+def admin_reset_ai_prompt():
+    """Reset a prompt (or all prompts) to recommended default."""
+    data = request.get_json(silent=True) or {}
+    prompt_type = data.get("prompt_type")
+    current = get_ai_prompts()
+    if prompt_type and prompt_type in DEFAULT_AI_PROMPTS:
+        current[prompt_type] = DEFAULT_AI_PROMPTS[prompt_type]
+    elif prompt_type == "all":
+        current = dict(DEFAULT_AI_PROMPTS)
+    save_ai_prompts(current)
+    return jsonify({
+        "success": True,
+        "message": "Prompt(s) reset to recommended default.",
+        "prompts": current
+    })
 
 @auth_admin_bp.route("/api/system_settings", methods=["GET"])
 @login_required
