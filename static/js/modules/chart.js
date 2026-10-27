@@ -2085,10 +2085,102 @@
             }
         }
 
-        function normalizeTime(t) {
-            if (!t) return null;
-            if (typeof t === 'string') return t;
+        function timeToEpochSeconds(t) {
+            if (t === null || t === undefined) return null;
             if (typeof t === 'number') {
+                return (t > 1e11) ? Math.floor(t / 1000) : Math.floor(t);
+            }
+            if (typeof t === 'string') {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+                    const parts = t.split('-').map(Number);
+                    return Math.floor(Date.UTC(parts[0], parts[1] - 1, parts[2]) / 1000);
+                }
+                const ms = Date.parse(t);
+                if (!isNaN(ms)) return Math.floor(ms / 1000);
+            }
+            if (typeof t === 'object' && t.year && t.month && t.day) {
+                return Math.floor(Date.UTC(t.year, t.month - 1, t.day) / 1000);
+            }
+            return null;
+        }
+
+        function formatEpochToDateStr(epochSec) {
+            if (!epochSec) return '';
+            const d = new Date(epochSec * 1000);
+            const yyyy = d.getUTCFullYear();
+            const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const dd = String(d.getUTCDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function calculateFutureEpoch(baseTime, futureBars, interval) {
+            if (!baseTime || !futureBars || futureBars <= 0) return timeToEpochSeconds(baseTime);
+            const baseSec = timeToEpochSeconds(baseTime);
+            if (!baseSec) return null;
+            const intv = (interval || currentChartInterval || '1d').toLowerCase();
+
+            if (['5m', '15m', '30m', '60m', '1h'].includes(intv)) {
+                const mins = intv === '5m' ? 5 : intv === '15m' ? 15 : intv === '30m' ? 30 : 60;
+                return baseSec + (futureBars * mins * 60);
+            }
+            if (intv === '1w') {
+                return baseSec + (futureBars * 7 * 86400);
+            }
+            if (intv === '1mo') {
+                return baseSec + (futureBars * 30 * 86400);
+            }
+            // Daily (1d): each bar is 1 trading day (skipping Sat & Sun)
+            const d = new Date(baseSec * 1000);
+            let added = 0;
+            while (added < futureBars) {
+                d.setUTCDate(d.getUTCDate() + 1);
+                const day = d.getUTCDay();
+                if (day !== 0 && day !== 6) {
+                    added++;
+                }
+            }
+            return Math.floor(d.getTime() / 1000);
+        }
+
+        function calculateBarsFromFutureEpoch(lastCandleTime, futureEpoch, interval) {
+            if (!lastCandleTime || !futureEpoch) return 0;
+            const baseSec = timeToEpochSeconds(lastCandleTime);
+            if (!baseSec || futureEpoch <= baseSec) return 0;
+            const intv = (interval || currentChartInterval || '1d').toLowerCase();
+            const diffSec = futureEpoch - baseSec;
+
+            if (['5m', '15m', '30m', '60m', '1h'].includes(intv)) {
+                const mins = intv === '5m' ? 5 : intv === '15m' ? 15 : intv === '30m' ? 30 : 60;
+                return Math.max(1, Math.round(diffSec / (mins * 60)));
+            }
+            if (intv === '1w') {
+                return Math.max(1, Math.round(diffSec / (7 * 86400)));
+            }
+            if (intv === '1mo') {
+                return Math.max(1, Math.round(diffSec / (30 * 86400)));
+            }
+            // Daily: count business days between baseSec and futureEpoch
+            const cur = new Date(baseSec * 1000);
+            const target = new Date(futureEpoch * 1000);
+            let count = 0;
+            while (cur < target) {
+                cur.setUTCDate(cur.getUTCDate() + 1);
+                const day = cur.getUTCDay();
+                if (day !== 0 && day !== 6) {
+                    count++;
+                }
+            }
+            return Math.max(1, count);
+        }
+
+        function normalizeTime(t) {
+            if (t === null || t === undefined) return null;
+            if (typeof t === 'string') return t;
+            const isIntraday = ['5m', '15m', '30m', '60m', '1h'].includes((currentChartInterval || '').toLowerCase());
+            if (typeof t === 'number') {
+                if (isIntraday) {
+                    return (t > 1e11) ? Math.floor(t / 1000) : Math.floor(t);
+                }
                 const d = new Date(t * 1000);
                 const yyyy = d.getUTCFullYear();
                 const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
@@ -2096,6 +2188,9 @@
                 return `${yyyy}-${mm}-${dd}`;
             }
             if (typeof t === 'object' && t.year && t.month && t.day) {
+                if (isIntraday) {
+                    return Math.floor(Date.UTC(t.year, t.month - 1, t.day) / 1000);
+                }
                 const yyyy = t.year;
                 const mm = String(t.month).padStart(2, '0');
                 const dd = String(t.day).padStart(2, '0');
@@ -2106,37 +2201,36 @@
 
         function findClosestCandleByTime(candles, targetTime) {
             if (!candles || candles.length === 0) return null;
-            const normTarget = normalizeTime(targetTime);
-            if (!normTarget) return candles[0];
+            const targetEpoch = timeToEpochSeconds(targetTime);
+            if (!targetEpoch || isNaN(targetEpoch)) return candles[0];
 
-            const directMatch = candles.find(c => normalizeTime(c.time) === normTarget);
-            if (directMatch) return directMatch;
+            let low = 0;
+            let high = candles.length - 1;
 
-            let targetTs = 0;
-            if (typeof normTarget === 'string') {
-                targetTs = new Date(normTarget).getTime() / 1000;
-            } else if (typeof normTarget === 'number') {
-                targetTs = normTarget;
-            }
-            if (isNaN(targetTs) || targetTs === 0) return candles[0];
+            const firstEpoch = timeToEpochSeconds(candles[0].time);
+            if (firstEpoch !== null && targetEpoch <= firstEpoch) return candles[0];
+            const lastEpoch = timeToEpochSeconds(candles[high].time);
+            if (lastEpoch !== null && targetEpoch >= lastEpoch) return candles[high];
 
-            let closest = candles[0];
-            let minDiff = Infinity;
-
-            for (let i = 0; i < candles.length; i++) {
-                const c = candles[i];
-                let cTs = 0;
-                const normC = normalizeTime(c.time);
-                if (typeof normC === 'string') cTs = new Date(normC).getTime() / 1000;
-                else if (typeof normC === 'number') cTs = normC;
-
-                const diff = Math.abs(cTs - targetTs);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closest = c;
+            while (low <= high) {
+                const mid = Math.floor((low + high) / 2);
+                const midEpoch = timeToEpochSeconds(candles[mid].time);
+                if (midEpoch === targetEpoch) {
+                    return candles[mid];
+                } else if (midEpoch < targetEpoch) {
+                    low = mid + 1;
+                } else {
+                    high = mid - 1;
                 }
             }
-            return closest;
+
+            const candleHigh = candles[Math.max(0, high)] || candles[0];
+            const candleLow = candles[Math.min(candles.length - 1, low)] || candles[candles.length - 1];
+            const epHigh = timeToEpochSeconds(candleHigh.time);
+            const epLow = timeToEpochSeconds(candleLow.time);
+            const diffHigh = epHigh !== null ? Math.abs(epHigh - targetEpoch) : Infinity;
+            const diffLow = epLow !== null ? Math.abs(epLow - targetEpoch) : Infinity;
+            return diffHigh <= diffLow ? candleHigh : candleLow;
         }
 
         function getChartPointFromEvent(e) {
@@ -2154,6 +2248,7 @@
 
             let time = normalizeTime(rawTime);
             let futureOffset = 0;
+            let futureTime = null;
 
             const candleCount = (cachedChartData && cachedChartData.candles) ? cachedChartData.candles.length : 0;
             const lastCandleIndex = candleCount > 0 ? candleCount - 1 : 0;
@@ -2163,26 +2258,43 @@
                     futureOffset = Math.round(logical - lastCandleIndex);
                     const lastCandleTime = cachedChartData.candles[lastCandleIndex].time;
                     time = normalizeTime(lastCandleTime);
+                    futureTime = calculateFutureEpoch(lastCandleTime, futureOffset, currentChartInterval);
+                } else if (!time && logical >= 0 && logical <= lastCandleIndex) {
+                    const cIdx = Math.max(0, Math.min(lastCandleIndex, Math.round(logical)));
+                    const candle = cachedChartData.candles[cIdx];
+                    if (candle) time = normalizeTime(candle.time);
                 } else if (!time && logical < 0) {
                     futureOffset = Math.round(logical);
                     time = normalizeTime(cachedChartData.candles[0].time);
                 }
             }
 
-            return { x, y, price, time, logical, futureOffset };
+            return { x, y, price, time, logical, futureOffset, futureTime };
         }
 
-        function getShapeX(timeScale, time, logical, futureOffset = 0) {
+        function getShapeX(timeScale, time, logical, futureOffset = 0, futureTime = null, shapeTimeframe = null) {
             if (!timeScale) return null;
 
             const candleCount = (cachedChartData && cachedChartData.candles) ? cachedChartData.candles.length : 0;
             const lastCandleIndex = candleCount > 0 ? candleCount - 1 : 0;
+            const lastCandle = candleCount > 0 ? cachedChartData.candles[lastCandleIndex] : null;
 
             // 1. If point extends into future right offset beyond the last candle
-            if (futureOffset && futureOffset > 0 && candleCount > 0) {
-                const targetLogical = lastCandleIndex + futureOffset;
-                const x = timeScale.logicalToCoordinate(targetLogical);
-                if (x !== null && x !== undefined) return x;
+            if ((futureTime || (futureOffset && futureOffset > 0)) && lastCandle) {
+                let targetFutureEpoch = futureTime ? timeToEpochSeconds(futureTime) : null;
+                if (!targetFutureEpoch && futureOffset > 0) {
+                    targetFutureEpoch = calculateFutureEpoch(lastCandle.time, futureOffset, shapeTimeframe || currentChartInterval);
+                }
+                if (targetFutureEpoch) {
+                    const barsAhead = calculateBarsFromFutureEpoch(lastCandle.time, targetFutureEpoch, currentChartInterval);
+                    const targetLogical = lastCandleIndex + barsAhead;
+                    const x = timeScale.logicalToCoordinate(targetLogical);
+                    if (x !== null && x !== undefined) return x;
+                } else if (futureOffset > 0) {
+                    const targetLogical = lastCandleIndex + futureOffset;
+                    const x = timeScale.logicalToCoordinate(targetLogical);
+                    if (x !== null && x !== undefined) return x;
+                }
             }
 
             // 2. Normal date matching for points within chart history
@@ -2191,22 +2303,59 @@
                 let x = timeScale.timeToCoordinate(normTime);
                 if (x !== null && x !== undefined) return x;
 
-                if (cachedChartData && cachedChartData.candles && cachedChartData.candles.length > 0) {
-                    const closest = findClosestCandleByTime(cachedChartData.candles, normTime);
-                    if (closest && closest.time) {
-                        const normClosest = normalizeTime(closest.time);
-                        x = timeScale.timeToCoordinate(normClosest);
-                        if (x !== null && x !== undefined) return x;
+                if (candleCount > 0) {
+                    const targetEpoch = timeToEpochSeconds(normTime);
+                    if (targetEpoch) {
+                        const closest = findClosestCandleByTime(cachedChartData.candles, targetEpoch);
+                        if (closest && closest.time !== undefined && closest.time !== null) {
+                            x = timeScale.timeToCoordinate(closest.time);
+                            if (x !== null && x !== undefined) return x;
+                        }
                     }
                 }
             }
 
-            // 3. Fallback to logical coordinate if available
+            // 3. Fallback to logical coordinate ONLY if on the exact same timeframe as drawn
             if (logical !== null && logical !== undefined) {
-                const x = timeScale.logicalToCoordinate(logical);
-                if (x !== null && x !== undefined) return x;
+                if (!shapeTimeframe || shapeTimeframe === currentChartInterval) {
+                    const x = timeScale.logicalToCoordinate(logical);
+                    if (x !== null && x !== undefined) return x;
+                }
             }
             return null;
+        }
+
+        function updateShapePointFromLogical(s, pointNum, newLogical) {
+            if (pointNum === 1) s.logical1 = newLogical;
+            else if (pointNum === 2) s.logical2 = newLogical;
+            else if (pointNum === 3) s.logical3 = newLogical;
+            else s.logical = newLogical;
+
+            if (!cachedChartData || !cachedChartData.candles || cachedChartData.candles.length === 0) return;
+            const candleCount = cachedChartData.candles.length;
+            const lastIdx = candleCount - 1;
+            const lastCandle = cachedChartData.candles[lastIdx];
+            const idx = Math.round(newLogical);
+
+            let time = null, futureOffset = 0, futureTime = null;
+            if (idx > lastIdx) {
+                futureOffset = idx - lastIdx;
+                time = normalizeTime(lastCandle.time);
+                futureTime = calculateFutureEpoch(lastCandle.time, futureOffset, currentChartInterval);
+            } else if (idx >= 0 && idx <= lastIdx) {
+                time = normalizeTime(cachedChartData.candles[idx].time);
+                futureOffset = 0;
+                futureTime = null;
+            } else {
+                futureOffset = idx;
+                time = normalizeTime(cachedChartData.candles[0].time);
+                futureTime = null;
+            }
+
+            if (pointNum === 1) { s.time1 = time; s.futureOffset1 = futureOffset; s.futureTime1 = futureTime; }
+            else if (pointNum === 2) { s.time2 = time; s.futureOffset2 = futureOffset; s.futureTime2 = futureTime; }
+            else if (pointNum === 3) { s.time3 = time; s.futureOffset3 = futureOffset; s.futureTime3 = futureTime; }
+            else { s.time = time; s.futureOffset = futureOffset; s.futureTime = futureTime; }
         }
 
         let activeDrawingDrag = null;
@@ -2217,37 +2366,21 @@
         function formatCrosshairPointTime(pt) {
             if (!pt) return '';
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            if (pt.futureOffset && pt.futureOffset > 0 && cachedChartData && cachedChartData.candles && cachedChartData.candles.length > 0) {
+            if ((pt.futureTime || (pt.futureOffset && pt.futureOffset > 0)) && cachedChartData && cachedChartData.candles && cachedChartData.candles.length > 0) {
                 const lastCandle = cachedChartData.candles[cachedChartData.candles.length - 1];
-                const lastTime = lastCandle.time;
-                const intv = (currentChartInterval || '1d').toLowerCase();
-                let baseDate = new Date();
-                if (typeof lastTime === 'string') {
-                    baseDate = new Date(lastTime);
-                } else if (typeof lastTime === 'number') {
-                    baseDate = new Date(lastTime * 1000);
-                } else if (typeof lastTime === 'object' && lastTime.year) {
-                    baseDate = new Date(Date.UTC(lastTime.year, lastTime.month - 1, lastTime.day));
+                let futureEpoch = pt.futureTime ? timeToEpochSeconds(pt.futureTime) : null;
+                if (!futureEpoch && pt.futureOffset) {
+                    futureEpoch = calculateFutureEpoch(lastCandle.time, pt.futureOffset, currentChartInterval);
                 }
-
-                if (['5m', '15m', '30m', '60m', '1h'].includes(intv)) {
-                    const minutes = intv === '5m' ? 5 : intv === '15m' ? 15 : intv === '30m' ? 30 : 60;
-                    const targetMs = baseDate.getTime() + (pt.futureOffset * minutes * 60 * 1000);
-                    const d = new Date(targetMs);
-                    const hh = String(d.getHours()).padStart(2, '0');
-                    const mm = String(d.getMinutes()).padStart(2, '0');
-                    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${hh}:${mm}`;
-                } else {
-                    let addedBars = 0;
-                    let cur = new Date(baseDate.getTime());
-                    while (addedBars < pt.futureOffset) {
-                        cur.setDate(cur.getDate() + 1);
-                        const dayOfWeek = cur.getDay();
-                        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                            addedBars++;
-                        }
+                if (futureEpoch) {
+                    const d = new Date(futureEpoch * 1000);
+                    const intv = (currentChartInterval || '1d').toLowerCase();
+                    if (['5m', '15m', '30m', '60m', '1h'].includes(intv)) {
+                        const hh = String(d.getUTCHours()).padStart(2, '0');
+                        const mm = String(d.getUTCMinutes()).padStart(2, '0');
+                        return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()} ${hh}:${mm}`;
                     }
-                    return `${cur.getDate()} ${months[cur.getMonth()]} ${cur.getFullYear()}`;
+                    return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
                 }
             }
 
@@ -2535,31 +2668,28 @@
                                 s.logical = curPt.logical;
                                 s.time = curPt.time;
                                 s.futureOffset = curPt.futureOffset || 0;
+                                s.futureTime = curPt.futureTime || null;
                             } else if (s.type === 'note') {
                                 s.price = parseFloat((initS.price + dPrice).toFixed(2));
-                                s.logical = initS.logical + dLogical;
-                                s.time = curPt.time || s.time;
-                                s.futureOffset = curPt.futureOffset || 0;
+                                updateShapePointFromLogical(s, 0, initS.logical + dLogical);
                             } else if (s.type === 'trendline' || s.type === 'fib') {
                                 if (activeDrawingDrag.dragPart === 'p1') {
                                     s.price1 = parseFloat(curPt.price.toFixed(2));
                                     s.logical1 = curPt.logical;
                                     s.time1 = curPt.time || s.time1;
                                     s.futureOffset1 = curPt.futureOffset || 0;
+                                    s.futureTime1 = curPt.futureTime || null;
                                 } else if (activeDrawingDrag.dragPart === 'p2') {
                                     s.price2 = parseFloat(curPt.price.toFixed(2));
                                     s.logical2 = curPt.logical;
                                     s.time2 = curPt.time || s.time2;
                                     s.futureOffset2 = curPt.futureOffset || 0;
+                                    s.futureTime2 = curPt.futureTime || null;
                                 } else {
                                     s.price1 = parseFloat((initS.price1 + dPrice).toFixed(2));
                                     s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
-                                    s.logical1 = initS.logical1 + dLogical;
-                                    s.logical2 = initS.logical2 + dLogical;
-                                    if (cachedChartData && cachedChartData.candles) {
-                                        if (cachedChartData.candles[s.logical1]) s.time1 = cachedChartData.candles[s.logical1].time;
-                                        if (cachedChartData.candles[s.logical2]) s.time2 = cachedChartData.candles[s.logical2].time;
-                                    }
+                                    updateShapePointFromLogical(s, 1, initS.logical1 + dLogical);
+                                    updateShapePointFromLogical(s, 2, initS.logical2 + dLogical);
                                 }
                             } else if (s.type === 'rectangle' || s.type === 'pricerange') {
                                 const isP1Top = initS.price1 >= initS.price2;
@@ -2573,68 +2703,66 @@
                                     else s.price1 = parseFloat(curPt.price.toFixed(2));
                                 } else if (activeDrawingDrag.dragPart === 'border-left') {
                                     if (isP1Left) {
-                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0; s.futureTime1 = curPt.futureTime || null;
                                     } else {
-                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0; s.futureTime2 = curPt.futureTime || null;
                                     }
                                 } else if (activeDrawingDrag.dragPart === 'border-right') {
                                     if (isP1Left) {
-                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0; s.futureTime2 = curPt.futureTime || null;
                                     } else {
-                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0; s.futureTime1 = curPt.futureTime || null;
                                     }
                                 } else if (activeDrawingDrag.dragPart === 'corner-top-left') {
                                     if (isP1Top) s.price1 = parseFloat(curPt.price.toFixed(2));
                                     else s.price2 = parseFloat(curPt.price.toFixed(2));
                                     if (isP1Left) {
-                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0; s.futureTime1 = curPt.futureTime || null;
                                     } else {
-                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0; s.futureTime2 = curPt.futureTime || null;
                                     }
                                 } else if (activeDrawingDrag.dragPart === 'corner-top-right') {
                                     if (isP1Top) s.price1 = parseFloat(curPt.price.toFixed(2));
                                     else s.price2 = parseFloat(curPt.price.toFixed(2));
                                     if (isP1Left) {
-                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0; s.futureTime2 = curPt.futureTime || null;
                                     } else {
-                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0; s.futureTime1 = curPt.futureTime || null;
                                     }
                                 } else if (activeDrawingDrag.dragPart === 'corner-bottom-left') {
                                     if (isP1Top) s.price2 = parseFloat(curPt.price.toFixed(2));
                                     else s.price1 = parseFloat(curPt.price.toFixed(2));
                                     if (isP1Left) {
-                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0; s.futureTime1 = curPt.futureTime || null;
                                     } else {
-                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0; s.futureTime2 = curPt.futureTime || null;
                                     }
                                 } else if (activeDrawingDrag.dragPart === 'corner-bottom-right') {
                                     if (isP1Top) s.price2 = parseFloat(curPt.price.toFixed(2));
                                     else s.price1 = parseFloat(curPt.price.toFixed(2));
                                     if (isP1Left) {
-                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0;
+                                        s.logical2 = curPt.logical; s.time2 = curPt.time || s.time2; s.futureOffset2 = curPt.futureOffset || 0; s.futureTime2 = curPt.futureTime || null;
                                     } else {
-                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0;
+                                        s.logical1 = curPt.logical; s.time1 = curPt.time || s.time1; s.futureOffset1 = curPt.futureOffset || 0; s.futureTime1 = curPt.futureTime || null;
                                     }
                                 } else if (activeDrawingDrag.dragPart === 'p1') {
                                     s.price1 = parseFloat(curPt.price.toFixed(2));
                                     s.logical1 = curPt.logical;
                                     s.time1 = curPt.time || s.time1;
                                     s.futureOffset1 = curPt.futureOffset || 0;
+                                    s.futureTime1 = curPt.futureTime || null;
                                 } else if (activeDrawingDrag.dragPart === 'p2') {
                                     s.price2 = parseFloat(curPt.price.toFixed(2));
                                     s.logical2 = curPt.logical;
                                     s.time2 = curPt.time || s.time2;
                                     s.futureOffset2 = curPt.futureOffset || 0;
+                                    s.futureTime2 = curPt.futureTime || null;
                                 } else {
                                     // ONLY if clicked body -> move the entire shape!
                                     s.price1 = parseFloat((initS.price1 + dPrice).toFixed(2));
                                     s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
-                                    s.logical1 = initS.logical1 + dLogical;
-                                    s.logical2 = (initS.logical2 !== undefined ? initS.logical2 : initS.logical1) + dLogical;
-                                    if (cachedChartData && cachedChartData.candles) {
-                                        if (cachedChartData.candles[s.logical1]) s.time1 = cachedChartData.candles[s.logical1].time;
-                                        if (cachedChartData.candles[s.logical2]) s.time2 = cachedChartData.candles[s.logical2].time;
-                                    }
+                                    updateShapePointFromLogical(s, 1, initS.logical1 + dLogical);
+                                    updateShapePointFromLogical(s, 2, (initS.logical2 !== undefined ? initS.logical2 : initS.logical1) + dLogical);
                                 }
                             } else if (s.type === 'parallelchannel' || s.type === 'fibext') {
                                 if (activeDrawingDrag.dragPart === 'parallel' || activeDrawingDrag.dragPart === 'p3') {
@@ -2642,29 +2770,27 @@
                                     s.logical3 = curPt.logical;
                                     s.time3 = curPt.time || s.time3;
                                     s.futureOffset3 = curPt.futureOffset || 0;
+                                    s.futureTime3 = curPt.futureTime || null;
                                 } else if (activeDrawingDrag.dragPart === 'p1') {
                                     s.price1 = parseFloat(curPt.price.toFixed(2));
                                     s.logical1 = curPt.logical;
                                     s.time1 = curPt.time || s.time1;
                                     s.futureOffset1 = curPt.futureOffset || 0;
+                                    s.futureTime1 = curPt.futureTime || null;
                                 } else if (activeDrawingDrag.dragPart === 'p2') {
                                     s.price2 = parseFloat(curPt.price.toFixed(2));
                                     s.logical2 = curPt.logical;
                                     s.time2 = curPt.time || s.time2;
                                     s.futureOffset2 = curPt.futureOffset || 0;
+                                    s.futureTime2 = curPt.futureTime || null;
                                 } else {
                                     // ONLY if clicked body -> move the entire channel/ext!
                                     s.price1 = parseFloat((initS.price1 + dPrice).toFixed(2));
                                     s.price2 = parseFloat((initS.price2 + dPrice).toFixed(2));
                                     if (initS.price3 !== undefined) s.price3 = parseFloat((initS.price3 + dPrice).toFixed(2));
-                                    s.logical1 = initS.logical1 + dLogical;
-                                    s.logical2 = initS.logical2 + dLogical;
-                                    if (initS.logical3 !== undefined) s.logical3 = initS.logical3 + dLogical;
-                                    if (cachedChartData && cachedChartData.candles) {
-                                        if (cachedChartData.candles[s.logical1]) s.time1 = cachedChartData.candles[s.logical1].time;
-                                        if (cachedChartData.candles[s.logical2]) s.time2 = cachedChartData.candles[s.logical2].time;
-                                        if (s.logical3 !== undefined && cachedChartData.candles[s.logical3]) s.time3 = cachedChartData.candles[s.logical3].time;
-                                    }
+                                    updateShapePointFromLogical(s, 1, initS.logical1 + dLogical);
+                                    updateShapePointFromLogical(s, 2, initS.logical2 + dLogical);
+                                    if (initS.logical3 !== undefined) updateShapePointFromLogical(s, 3, initS.logical3 + dLogical);
                                 }
                             }
                             persistShapesForSymbol(currentChartSymbol, shapes);
@@ -2931,13 +3057,16 @@
                     const shape = {
                         id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                         type: activeTool,
+                        timeframe: currentChartInterval,
                         time1: pt1.time,
                         logical1: pt1.logical,
                         futureOffset1: pt1.futureOffset || 0,
+                        futureTime1: pt1.futureTime || null,
                         price1: pt1.price,
                         time2: pt2.time,
                         logical2: pt2.logical,
                         futureOffset2: pt2.futureOffset || 0,
+                        futureTime2: pt2.futureTime || null,
                         price2: pt2.price,
                         color: activeToolColor || (activeTool === 'trendline' ? '#3b82f6' : activeTool === 'rectangle' ? '#a855f7' : activeTool === 'fib' ? '#6366f1' : '#10b981'),
                         fillColor: activeTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null,
@@ -3193,13 +3322,16 @@
                         const shape = {
                             id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                             type: currentDrawingTool,
+                            timeframe: currentChartInterval,
                             time1: pt1.time,
                             logical1: pt1.logical,
                             futureOffset1: pt1.futureOffset || 0,
+                            futureTime1: pt1.futureTime || null,
                             price1: pt1.price,
                             time2: pt2.time,
                             logical2: pt2.logical,
                             futureOffset2: pt2.futureOffset || 0,
+                            futureTime2: pt2.futureTime || null,
                             price2: pt2.price,
                             color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : currentDrawingTool === 'rectangle' ? '#a855f7' : currentDrawingTool === 'fib' ? '#6366f1' : '#10b981'),
                             fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null,
@@ -3243,17 +3375,21 @@
                         const shape = {
                             id: 'sh_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                             type: currentDrawingTool,
+                            timeframe: currentChartInterval,
                             time1: pt1.time,
                             logical1: pt1.logical,
                             futureOffset1: pt1.futureOffset || 0,
+                            futureTime1: pt1.futureTime || null,
                             price1: pt1.price,
                             time2: pt2.time,
                             logical2: pt2.logical,
                             futureOffset2: pt2.futureOffset || 0,
+                            futureTime2: pt2.futureTime || null,
                             price2: pt2.price,
                             time3: pt3.time,
                             logical3: pt3.logical,
                             futureOffset3: pt3.futureOffset || 0,
+                            futureTime3: pt3.futureTime || null,
                             price3: pt3.price,
                             color: activeToolColor || (currentDrawingTool === 'parallelchannel' ? '#3b82f6' : '#a855f7'),
                             fillColor: (currentDrawingTool === 'parallelchannel') ? hexToRgba(activeToolColor || '#3b82f6', 0.12) : null,
@@ -3300,20 +3436,20 @@
                 if (s.hidden) continue;
                 const isLocked = !!s.locked;
                 if (s.type === 'vertical') {
-                    const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
+                    const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset, s.futureTime, s.timeframe);
                     if (shapeX !== null && Math.abs(x - shapeX) < 10) {
                         return { kind: 'shape', id: s.id, name: 'Time Line', color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'ew-resize' };
                     }
                 } else if (s.type === 'note') {
-                    const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
+                    const shapeX = getShapeX(timeScale, s.time, s.logical, s.futureOffset, s.futureTime, s.timeframe);
                     const shapeY = mainSeries.priceToCoordinate(s.price);
                     if (shapeX !== null && shapeY !== null && Math.abs(x - shapeX) < 35 && Math.abs(y - shapeY) < 22) {
                         return { kind: 'shape', id: s.id, name: `Note: ${s.text}`, color: s.color, hidden: !!s.hidden, locked: isLocked, type: s.type, subPart: 'body', cursor: isLocked ? 'pointer' : 'grab' };
                     }
                 } else if (s.type === 'trendline') {
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2);
+                    const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2, s.futureTime2, s.timeframe);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         const d1 = Math.hypot(x - x1, y - y1);
@@ -3330,9 +3466,9 @@
                         }
                     }
                 } else if (s.type === 'rectangle' || s.type === 'pricerange') {
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && y2 !== null) {
                         let startX = x1, endX = (x2 !== null) ? x2 : x1;
@@ -3389,9 +3525,9 @@
                         }
                     }
                 } else if (s.type === 'fib') {
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         const d1 = Math.hypot(x - x1, y - y1);
@@ -3410,11 +3546,11 @@
                         }
                     }
                 } else if (s.type === 'parallelchannel') {
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
-                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0, s.futureTime3, s.timeframe) : null;
                     const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         let dy = 0;
@@ -3454,11 +3590,11 @@
                         }
                     }
                 } else if (s.type === 'fibext') {
-                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                    const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                     const y1 = mainSeries.priceToCoordinate(s.price1);
-                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                    const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                     const y2 = mainSeries.priceToCoordinate(s.price2);
-                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0, s.futureTime3, s.timeframe) : null;
                     const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
                     if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                         if (Math.hypot(x - x1, y - y1) <= 12) {
@@ -4306,9 +4442,9 @@
             const isDark = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
 
             if (s.type === 'pricerange') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && y2 !== null) {
@@ -4394,9 +4530,9 @@
                     ctx.restore();
                 }
             } else if (s.type === 'measure') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -4532,15 +4668,15 @@
                     ctx.restore();
                 }
             } else if (s.type === 'parallelchannel') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
                     ctx.save();
                     const color = s.color || '#3b82f6';
-                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                    const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0, s.futureTime3, s.timeframe) : null;
                     const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
 
                     let dy = 0;
@@ -4651,9 +4787,9 @@
                     ctx.restore();
                 }
             } else if (s.type === 'fib') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -4741,11 +4877,11 @@
                     ctx.restore();
                 }
             } else if (s.type === 'fibext') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0);
+                const x2 = getShapeX(timeScale, s.time2 || s.time1, s.logical2 !== undefined ? s.logical2 : s.logical1, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
-                const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0) : null;
+                const x3 = (s.time3 !== undefined || s.logical3 !== undefined) ? getShapeX(timeScale, s.time3 || s.time2, s.logical3 !== undefined ? s.logical3 : s.logical2, s.futureOffset3 || 0, s.futureTime3, s.timeframe) : null;
                 const y3 = (s.price3 !== undefined) ? mainSeries.priceToCoordinate(s.price3) : null;
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -4853,9 +4989,9 @@
                     ctx.restore();
                 }
             } else if (s.type === 'trendline') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2);
+                const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2, s.futureTime2, s.timeframe);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -5234,9 +5370,9 @@
                     ctx.restore();
                 }
             } else if (s.type === 'rectangle') {
-                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1);
+                const x1 = getShapeX(timeScale, s.time1, s.logical1, s.futureOffset1, s.futureTime1, s.timeframe);
                 const y1 = mainSeries.priceToCoordinate(s.price1);
-                const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2);
+                const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2, s.futureTime2, s.timeframe);
                 const y2 = mainSeries.priceToCoordinate(s.price2);
 
                 if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
@@ -5325,7 +5461,7 @@
                     ctx.restore();
                 }
             } else if (s.type === 'vertical') {
-                const x = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
+                const x = getShapeX(timeScale, s.time, s.logical, s.futureOffset, s.futureTime, s.timeframe);
                 if (x !== null) {
                     ctx.save();
                     ctx.beginPath();
@@ -5353,7 +5489,7 @@
                     ctx.restore();
                 }
             } else if (s.type === 'note') {
-                const x = getShapeX(timeScale, s.time, s.logical, s.futureOffset);
+                const x = getShapeX(timeScale, s.time, s.logical, s.futureOffset, s.futureTime, s.timeframe);
                 const y = mainSeries.priceToCoordinate(s.price);
 
                 if (x !== null && y !== null) {
@@ -5387,12 +5523,12 @@
                     ctx.beginPath();
                     let startX = 0;
                     if (s.time1) {
-                        const x1 = getShapeX(timeScale, s.time1, s.logical1, 0);
+                        const x1 = getShapeX(timeScale, s.time1, s.logical1, 0, s.futureTime1, s.timeframe);
                         if (x1 !== null && x1 !== undefined) startX = x1;
                     }
                     let endX = drawingCanvas.width;
                     if (s.time2) {
-                        const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2 || 0);
+                        const x2 = getShapeX(timeScale, s.time2, s.logical2, s.futureOffset2 || 0, s.futureTime2, s.timeframe);
                         if (x2 !== null && x2 !== undefined) endX = x2;
                     }
                     ctx.moveTo(startX, y);
@@ -5654,7 +5790,22 @@
             loadChartData();
         }
 
+        let pendingTimeframeSwitchRange = null;
+
         function changeInterval(intervalStr) {
+            if (mainChart) {
+                try {
+                    const timeScale = mainChart.timeScale();
+                    const visRange = timeScale.getVisibleRange();
+                    if (visRange && visRange.from && visRange.to) {
+                        pendingTimeframeSwitchRange = {
+                            fromEpoch: timeToEpochSeconds(visRange.from),
+                            toEpoch: timeToEpochSeconds(visRange.to)
+                        };
+                    }
+                } catch(e) {}
+            }
+
             currentChartInterval = intervalStr;
             try {
                 localStorage.setItem('capital_desk_chart_interval', intervalStr);
@@ -6379,6 +6530,40 @@
 
             toggleIndicators();
             resizeChartPanes();
+
+            // Restore visible logical range if switching intervals
+            if (pendingTimeframeSwitchRange && data.candles && data.candles.length > 0) {
+                const { fromEpoch, toEpoch } = pendingTimeframeSwitchRange;
+                pendingTimeframeSwitchRange = null;
+
+                let fromIdx = -1;
+                let toIdx = -1;
+                for (let i = 0; i < data.candles.length; i++) {
+                    const cEpoch = timeToEpochSeconds(data.candles[i].time);
+                    if (fromIdx === -1 && cEpoch >= fromEpoch) {
+                        fromIdx = i;
+                    }
+                    if (cEpoch <= toEpoch) {
+                        toIdx = i;
+                    }
+                }
+                if (fromIdx !== -1 && toIdx !== -1 && toIdx >= fromIdx) {
+                    const paddedFrom = Math.max(-5, fromIdx - 2);
+                    const paddedTo = toIdx + 8;
+                    requestAnimationFrame(() => {
+                        try {
+                            if (mainChart) {
+                                mainChart.timeScale().setVisibleLogicalRange({
+                                    from: paddedFrom,
+                                    to: paddedTo
+                                });
+                                redrawCanvasOverlay();
+                            }
+                        } catch(e) {}
+                    });
+                }
+            }
+
             redrawCanvasOverlay();
             startCandleCountdownTimer();
         }
