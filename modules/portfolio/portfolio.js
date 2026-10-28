@@ -1543,10 +1543,10 @@
                         <th class="pf-col-qty" style="text-align:right;">Qty</th>
                         <th class="pf-col-buy" style="text-align:right;">Avg Buy Price</th>
                         <th class="pf-col-ltp" style="text-align:right;">LTP (₹)</th>
-                        <th class="pf-col-inv" style="text-align:right;">Invested (₹)</th>
-                        <th class="pf-col-val" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('val_desc')" title="Sort by Current Value">Current Val (₹) ${getPfHeaderSortIcon('val_desc')}</th>
                         <th class="pf-col-daypnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('day_pnl_desc', 'day_pnl_asc')" title="Sort by Day P&L">Day P&L ${getPfHeaderSortIcon('day_pnl_desc', 'day_pnl_asc')}</th>
                         <th class="pf-col-pnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('pnl_desc', 'pnl_asc')" title="Sort by Overall P&L">Overall P&L ${getPfHeaderSortIcon('pnl_desc', 'pnl_asc')}</th>
+                        <th class="pf-col-inv" style="text-align:right;">Invested (₹)</th>
+                        <th class="pf-col-val" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('val_desc')" title="Sort by Current Value">Current Val (₹) ${getPfHeaderSortIcon('val_desc')}</th>
                         <th class="pf-col-details" style="text-align:center;">Details</th>
                     </tr>
                 `;
@@ -1664,10 +1664,10 @@
                         tr.appendChild(tdQty);
                         tr.appendChild(tdBuy);
                         tr.appendChild(tdLtp);
-                        tr.appendChild(tdInv);
-                        tr.appendChild(tdVal);
                         tr.appendChild(tdDayPnl);
                         tr.appendChild(tdPnl);
+                        tr.appendChild(tdInv);
+                        tr.appendChild(tdVal);
                         tr.appendChild(tdDetails);
 
                         tbody.appendChild(tr);
@@ -1678,10 +1678,10 @@
                 tfoot.innerHTML = `
                     <tr>
                         <td colspan="4" class="pf-col-total" style="text-align:left;">PORTFOLIO TOTAL:</td>
-                        <td id="pf-foot-inv" class="pf-col-inv" style="text-align:right;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
-                        <td id="pf-foot-val" class="pf-col-val" style="text-align:right;">${initialTotInvested > 0 ? initValStr : '₹0.00'}</td>
                         <td id="pf-foot-daypnl" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'} pf-col-daypnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
                         <td id="pf-foot-pnl" class="${initialTotPnL >= 0 ? 'pos' : 'neg'} pf-col-pnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
+                        <td id="pf-foot-inv" class="pf-col-inv" style="text-align:right;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
+                        <td id="pf-foot-val" class="pf-col-val" style="text-align:right;">${initialTotInvested > 0 ? initValStr : '₹0.00'}</td>
                         <td class="pf-col-details" style="text-align:center;"></td>
                     </tr>
                 `;
