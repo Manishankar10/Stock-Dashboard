@@ -1,0 +1,352 @@
+/* =========================================================
+   CAPITAL DESK - PEOPLES (SUPERSTAR INVESTORS) STYLESHEET
+   Location: modules/peoples/peoples.css
+   Modern, responsive, dark/light theme compatible
+   ========================================================= */
+
+.peoples-shell {
+    width: 100%;
+}
+
+.peoples-header-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+.peoples-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.peoples-sub-badge {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 6px;
+    letter-spacing: 0;
+}
+
+.peoples-category-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Category Tab Buttons */
+.peoples-category-bar .pf-select-btn {
+    padding: 7px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.peoples-category-bar .pf-select-btn:hover {
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.peoples-category-bar .pf-select-btn.active {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Investors Grid */
+.peoples-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+/* Single Investor Card */
+.peoples-investor-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    position: relative;
+    cursor: pointer;
+}
+
+.peoples-investor-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+.peoples-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.peoples-card-avatar {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+    background: linear-gradient(135deg, #10b981, #0d9488);
+}
+
+.peoples-card-name-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.peoples-card-name {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 3px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.01em;
+}
+
+.peoples-card-cat-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1.5px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.badge-ace {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-fii {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-dii {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Card Stats Row */
+.peoples-card-stats {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.peoples-card-stat-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.peoples-stat-label {
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.peoples-stat-val {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 2px;
+    font-feature-settings: "tnum";
+}
+
+.peoples-card-top-holdings {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 14px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 32px;
+}
+
+.peoples-card-btn {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.peoples-investor-card:hover .peoples-card-btn {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+
+/* =========================================================
+   SHAREHOLDING MATRIX TABLE (Matches User Screenshot)
+   ========================================================= */
+
+.peoples-matrix-wrapper {
+    position: relative;
+    max-height: 650px;
+    overflow-y: auto;
+}
+
+.peoples-matrix-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12.5px;
+}
+
+.peoples-matrix-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 11.5px;
+    padding: 10px 12px;
+    text-align: right;
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+    z-index: 2;
+}
+
+/* First Column Sticky (Stock Name) */
+.peoples-matrix-table thead th:first-child,
+.peoples-matrix-table tbody td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--bg-card);
+    text-align: left;
+    z-index: 3;
+    min-width: 180px;
+    max-width: 240px;
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.04);
+}
+
+.peoples-matrix-table thead th:first-child {
+    z-index: 5;
+}
+
+.peoples-matrix-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.peoples-matrix-table tbody tr:hover td {
+    background: var(--bg-subtle) !important;
+}
+
+.peoples-matrix-table tbody td {
+    padding: 9px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.peoples-stock-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.peoples-stock-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.peoples-stock-name:hover {
+    color: #10b981;
+    text-decoration: underline;
+}
+
+.peoples-stock-sub {
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+/* Percentage Cell Styling Matching Screenshot */
+.peoples-pct-cell {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.peoples-pct-up {
+    color: #10b981;
+    font-weight: 700;
+}
+
+.peoples-pct-down {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+.peoples-pct-empty {
+    color: var(--text-secondary);
+    opacity: 0.35;
+    font-weight: 400;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .peoples-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .peoples-matrix-table thead th:first-child,
+    .peoples-matrix-table tbody td:first-child {
+        min-width: 140px;
+    }
+}

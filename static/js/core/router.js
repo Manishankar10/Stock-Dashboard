@@ -24,6 +24,7 @@ const AppRouter = {
         'sector-rotation': '/sector-rotation',
         'industries-overview': '/industries-overview',
         'shareholding': '/shareholding',
+        'peoples': '/peoples',
         'technical-screener': '/technical-screener'
     },
 
@@ -44,6 +45,7 @@ const AppRouter = {
         '/sector-rotation': 'sector-rotation',
         '/industries-overview': 'industries-overview',
         '/shareholding': 'shareholding',
+        '/peoples': 'peoples',
         '/technical-screener': 'technical-screener'
     },
 
@@ -444,7 +446,7 @@ function switchTab(tabName, pushState = true) {
     if (sidebarNavEl) sidebarNavEl.classList.add('active');
 
     // Highlight parent Market Pulse or Tools button if a sub-tab is active
-    const isMarketPulse = ['ipos', 'corporate-actions', 'quarterly-results', 'transactions', 'sector-rotation', 'industries-overview', 'shareholding'].includes(tabName);
+    const isMarketPulse = ['ipos', 'corporate-actions', 'quarterly-results', 'transactions', 'sector-rotation', 'industries-overview', 'shareholding', 'peoples'].includes(tabName);
     const marketPulseTrigger = document.getElementById('sidebar-nav-market-pulse');
     if (marketPulseTrigger) {
         marketPulseTrigger.classList.toggle('active', isMarketPulse);
@@ -564,6 +566,8 @@ function switchTab(tabName, pushState = true) {
         if (typeof window.loadSectorRotationModule === 'function') window.loadSectorRotationModule();
     } else if (tabName === 'shareholding') {
         if (typeof window.loadShareholding === 'function') window.loadShareholding();
+    } else if (tabName === 'peoples') {
+        if (typeof window.loadPeoplesModule === 'function') window.loadPeoplesModule();
     } else if (tabName === 'industries-overview') {
         if (typeof window.loadIndustriesOverviewModule === 'function') window.loadIndustriesOverviewModule();
     } else if (tabName === 'technical-screener') {

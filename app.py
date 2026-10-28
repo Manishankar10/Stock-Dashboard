@@ -66,6 +66,7 @@ from modules.sector_rotation import sector_rotation_bp, init_sector_rotation
 from modules.broker_research import broker_research_bp, init_broker_research
 from modules.industries_overview import industries_overview_bp, init_industries_overview
 from modules.shareholding import shareholding_bp, init_shareholding
+from modules.peoples import peoples_bp, init_peoples
 from modules.drawings import drawings_bp
 from modules.technical_screener import technical_screener_bp
 
@@ -126,6 +127,7 @@ init_sector_rotation(login_required, load_data, BASE_DATA_DIR)
 init_broker_research(login_required, load_data)
 init_industries_overview(login_required, load_data, BASE_DATA_DIR)
 init_shareholding(login_required, load_data, BASE_DATA_DIR)
+init_peoples(login_required)
 
 # Register Feature Blueprints
 app.register_blueprint(auth_admin_bp)
@@ -151,6 +153,7 @@ app.register_blueprint(sector_rotation_bp)
 app.register_blueprint(broker_research_bp)
 app.register_blueprint(industries_overview_bp)
 app.register_blueprint(shareholding_bp)
+app.register_blueprint(peoples_bp)
 app.register_blueprint(drawings_bp)
 app.register_blueprint(technical_screener_bp)
 

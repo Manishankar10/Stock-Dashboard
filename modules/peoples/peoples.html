@@ -1,0 +1,183 @@
+<!-- =========================================================
+     CAPITAL DESK - PEOPLES (ACE INVESTORS, FII & DII) MODULE VIEW
+     Location: modules/peoples/peoples.html
+     Integrated into App Shell SPA
+     ========================================================= -->
+
+<div id="tab-peoples" class="tab-content" style="display: none;">
+    <main class="page-shell peoples-shell" style="width: 100%; margin: 0; padding: 0;">
+        
+        <!-- =====================================================
+             VIEW 1: INVESTORS DIRECTORY VIEW
+             ===================================================== -->
+        <div id="peoples-directory-view">
+            <!-- 1. Top Header Card -->
+            <div class="card-container peoples-header-card">
+                <div class="peoples-header-row">
+                    <div class="peoples-title-group">
+                        <h2 class="peoples-title" style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; display: inline-flex; align-items: center; gap: 8px;">
+                            👥 Peoples
+                            <span class="peoples-sub-badge">Market Pulse</span>
+                        </h2>
+                        <span class="peoples-subtitle" style="font-size: 12.5px; color: var(--text-secondary); margin-top: 2px;">
+                            Track public shareholdings (≥ 1%) of Super Investors, Foreign Institutions, and Mutual Funds
+                        </span>
+                    </div>
+
+                    <div class="peoples-header-actions">
+                        <div class="updated-card peoples-status-card" style="padding: 5px 12px; margin: 0; min-width: auto; border-radius: 8px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px;" aria-live="polite">
+                            <span class="live-dot" id="peoples-live-dot"></span>
+                            <strong id="peoples-updated-label" style="font-size: 11.5px; font-weight: 600;">Live Exchange Filings</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Segmented Control (Ace Investors, FII, DII) -->
+                <div class="portfolio-selector-bar peoples-category-bar" style="margin-top: 14px; margin-bottom: 0;">
+                    <button type="button" class="pf-select-btn active" id="peoples-tab-btn-ace" onclick="switchPeoplesCategory('ace')">
+                        👑 Ace Investors (<span id="peoples-count-ace">—</span>)
+                    </button>
+                    <button type="button" class="pf-select-btn" id="peoples-tab-btn-fii" onclick="switchPeoplesCategory('fii')">
+                        🌐 FII (<span id="peoples-count-fii">—</span>)
+                    </button>
+                    <button type="button" class="pf-select-btn" id="peoples-tab-btn-dii" onclick="switchPeoplesCategory('dii')">
+                        🏛️ DII (<span id="peoples-count-dii">—</span>)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Toolbar: Search & Sort Bar -->
+            <div class="card-container peoples-toolbar-card" style="margin-top: 12px; padding: 10px 16px;">
+                <div class="peoples-toolbar-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <!-- Search Input -->
+                    <div class="peoples-search-wrap" style="flex: 1; min-width: 240px; max-width: 480px;">
+                        <label class="search-box" style="margin: 0; width: 100%;">
+                            <span aria-hidden="true" style="font-size: 13px; opacity: 0.6;">⌕</span>
+                            <input id="peoples-search-input" type="search" placeholder="Search investor name or top stock..." autocomplete="off" oninput="filterPeoplesList()">
+                        </label>
+                    </div>
+
+                    <!-- Sort Controls -->
+                    <div class="peoples-sort-wrap" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">Sort By:</span>
+                        <select id="peoples-sort-select" onchange="sortPeoplesList()" style="padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); cursor: pointer;">
+                            <option value="val-desc">Portfolio Value (High to Low)</option>
+                            <option value="val-asc">Portfolio Value (Low to High)</option>
+                            <option value="stocks-desc">Most Stocks</option>
+                            <option value="name-asc">Alphabetical (A - Z)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Investors Cards Grid -->
+            <div id="peoples-grid" class="peoples-cards-grid" style="margin-top: 14px;">
+                <!-- Dynamically rendered via peoples.js -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="peoples-empty-state" class="peoples-empty-card" style="display: none; text-align: center; padding: 48px 20px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); margin-top: 14px;">
+                <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+                <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px 0;">No investors found</h3>
+                <p style="font-size: 12.5px; color: var(--text-secondary); margin: 0;">Try adjusting your search keywords or switch category tabs.</p>
+            </div>
+        </div>
+
+        <!-- =====================================================
+             VIEW 2: INVESTOR STOCK LIST DETAIL VIEW (From 2022 to Latest Qtr)
+             ===================================================== -->
+        <div id="peoples-detail-view" style="display: none;">
+            <!-- Breadcrumb & Back Navigation -->
+            <div class="card-container peoples-detail-header-card">
+                <div class="peoples-nav-breadcrumb" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                    <button type="button" class="peoples-back-btn" onclick="closeInvestorDetail()" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); cursor: pointer; transition: all 0.2s ease;">
+                        <span>← Back to Peoples</span>
+                    </button>
+                    <div class="peoples-breadcrumb-trail" style="font-size: 12px; color: var(--text-secondary);">
+                        <span>Market Pulse</span> <span style="opacity: 0.5;">/</span> 
+                        <span>Peoples</span> <span style="opacity: 0.5;">/</span> 
+                        <span id="peoples-detail-crumb" style="font-weight: 600; color: var(--text-primary);">Investor</span>
+                    </div>
+                </div>
+
+                <!-- Investor Banner Profile -->
+                <div class="peoples-profile-banner" style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                    <div class="peoples-profile-info" style="display: flex; align-items: center; gap: 14px;">
+                        <div class="peoples-profile-avatar" id="peoples-detail-avatar" style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);">
+                            RD
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <h2 id="peoples-detail-name" style="margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
+                                    Investor Name
+                                </h2>
+                                <span class="badge" id="peoples-detail-category-badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 10.5px; padding: 2px 7px; border-radius: 6px; font-weight: 600;">
+                                    Ace Investor
+                                </span>
+                            </div>
+                            <div class="peoples-detail-meta" style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span>Portfolio Value: <strong id="peoples-detail-val" style="color: var(--text-primary); font-weight: 700;">—</strong></span>
+                                <span>•</span>
+                                <span>Tracked Stocks: <strong id="peoples-detail-stocks-count" style="color: var(--text-primary); font-weight: 700;">—</strong></span>
+                                <span>•</span>
+                                <span>Historical Range: <strong style="color: var(--text-primary); font-weight: 600;">2022 to Latest Quarter</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Tools -->
+                    <div class="peoples-profile-actions" style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="exportPeoplesTableCSV()" title="Export holding history to CSV" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">
+                            📥 Export CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card with Shareholding Matrix -->
+            <section class="table-card peoples-table-card" style="margin-top: 14px;">
+                <!-- Inner Toolbar -->
+                <div class="table-toolbar" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary);">
+                            Shareholding (≥ 1%)
+                        </h3>
+                        <span style="font-size: 11px; color: var(--text-secondary);">Showing stake percentage quarter-over-quarter as filed under SEBI Regulation 31</span>
+                    </div>
+
+                    <!-- Filter Stocks in this table -->
+                    <label class="search-box" style="margin: 0; max-width: 280px; width: 100%;">
+                        <span aria-hidden="true" style="font-size: 12px; opacity: 0.6;">⌕</span>
+                        <input id="peoples-stock-filter-input" type="search" placeholder="Filter company in portfolio..." autocomplete="off" oninput="filterInvestorStocks()">
+                    </label>
+                </div>
+
+                <!-- Matrix Table Container (Sticky Header & Sticky First Column) -->
+                <div class="peoples-matrix-wrapper" style="overflow-x: auto; width: 100%; position: relative;">
+                    <table class="peoples-matrix-table" id="peoples-matrix-table">
+                        <thead id="peoples-matrix-thead">
+                            <!-- Populated dynamically: Stock, Value, Qty, [Quarters from 2022] -->
+                        </thead>
+                        <tbody id="peoples-matrix-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Table Loading Shimmer State -->
+                <div id="peoples-matrix-loading" style="display: none; padding: 36px 20px; text-align: center;">
+                    <div class="spinner-border text-primary" style="width: 2rem; height: 2rem; border-width: 0.2em; display: inline-block;" role="status">
+                        <span class="sr-only">Loading holding history...</span>
+                    </div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 10px;">
+                        Fetching on-time quarterly disclosures from 2022 to latest quarter...
+                    </div>
+                    <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
+                        Querying official exchange records without local database dependencies
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+</div>
