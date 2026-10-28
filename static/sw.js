@@ -3,7 +3,7 @@
 // Institutional Offline Resilience & App Shell Caching
 // =========================================================
 
-const CACHE_VERSION = 'v1.0.3';
+const CACHE_VERSION = 'v1.0.4';
 const STATIC_CACHE = `capital-desk-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capital-desk-runtime-${CACHE_VERSION}`;
 
@@ -12,11 +12,18 @@ const PRECACHE_ASSETS = [
     '/offline',
     '/static/manifest.json',
     '/static/favicon.ico',
+    '/static/favicon-16.png',
+    '/static/favicon-32.png',
+    '/static/favicon-48.png',
     '/static/favicon-192.png',
     '/static/favicon-512.png',
     '/static/apple-touch-icon.png',
     '/static/icon-maskable-192.png',
     '/static/icon-maskable-512.png',
+    '/static/screenshots/desktop-dashboard.png',
+    '/static/screenshots/desktop-portfolio.png',
+    '/static/screenshots/mobile-dashboard.png',
+    '/static/screenshots/mobile-portfolio.png',
     '/static/css/common.css',
     '/static/css/responsive.css',
     '/static/js/core/app-core.js',

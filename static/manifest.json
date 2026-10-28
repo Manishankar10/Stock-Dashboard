@@ -49,11 +49,6 @@
       "purpose": "maskable"
     },
     {
-      "src": "/static/favicon.ico",
-      "sizes": "48x48 32x32 16x16",
-      "type": "image/x-icon"
-    },
-    {
       "src": "/static/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png",
@@ -108,6 +103,36 @@
           "sizes": "192x192"
         }
       ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/desktop-dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Capital Desk - Institutional Market Workspace & Live Charts"
+    },
+    {
+      "src": "/static/screenshots/desktop-portfolio.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Capital Desk - Portfolio Intelligence & Risk Tracking"
+    },
+    {
+      "src": "/static/screenshots/mobile-dashboard.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Capital Desk Mobile - Watchlists & Real-time Feeds"
+    },
+    {
+      "src": "/static/screenshots/mobile-portfolio.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Capital Desk Mobile - Investment Portfolio & Analytics"
     }
   ]
 }
