@@ -1543,8 +1543,8 @@
                         <th class="pf-col-qty" style="text-align:right;">Qty</th>
                         <th class="pf-col-buy" style="text-align:right;">Avg Buy Price</th>
                         <th class="pf-col-ltp" style="text-align:right;">LTP (₹)</th>
-                        <th class="pf-col-daypnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('day_pnl_desc', 'day_pnl_asc')" title="Sort by Day P&L">Day P&L ${getPfHeaderSortIcon('day_pnl_desc', 'day_pnl_asc')}</th>
                         <th class="pf-col-pnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('pnl_desc', 'pnl_asc')" title="Sort by Overall P&L">Overall P&L ${getPfHeaderSortIcon('pnl_desc', 'pnl_asc')}</th>
+                        <th class="pf-col-daypnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('day_pnl_desc', 'day_pnl_asc')" title="Sort by Day P&L">Day P&L ${getPfHeaderSortIcon('day_pnl_desc', 'day_pnl_asc')}</th>
                         <th class="pf-col-inv" style="text-align:right;">Invested (₹)</th>
                         <th class="pf-col-val" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('val_desc')" title="Sort by Current Value">Current Val (₹) ${getPfHeaderSortIcon('val_desc')}</th>
                         <th class="pf-col-details" style="text-align:center;">Details</th>
@@ -1664,8 +1664,8 @@
                         tr.appendChild(tdQty);
                         tr.appendChild(tdBuy);
                         tr.appendChild(tdLtp);
-                        tr.appendChild(tdDayPnl);
                         tr.appendChild(tdPnl);
+                        tr.appendChild(tdDayPnl);
                         tr.appendChild(tdInv);
                         tr.appendChild(tdVal);
                         tr.appendChild(tdDetails);
