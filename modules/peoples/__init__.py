@@ -1,7 +1,8 @@
 """Capital Desk - Peoples (Ace Investors, FII & DII Portfolios) Module.
 
 Provides routes and on-time data feeds for tracking ace investor,
-FII, and DII public shareholdings from 2022 to the latest quarter.
+FII, and DII public shareholdings from 2022 to the latest quarter,
+backed by SQLite database persistence for the investor directory.
 """
 
 from functools import wraps
@@ -10,7 +11,12 @@ from typing import Any, Callable, Dict, Optional
 
 from flask import Blueprint, jsonify, render_template, request, send_from_directory
 
-from .peoples_provider import fetch_investor_portfolio, fetch_investors_by_category, get_all_investors
+from .peoples_provider import (
+    fetch_investor_portfolio,
+    get_all_investors_from_db,
+    init_peoples_db,
+    sync_and_save_investors_to_db,
+)
 
 peoples_bp = Blueprint("peoples", __name__, template_folder=".")
 _MODULE_DIR = Path(__file__).resolve().parent
@@ -19,9 +25,13 @@ _LOGIN_REQUIRED: Optional[Callable] = None
 
 
 def init_peoples(login_required: Callable):
-    """Initialize the Peoples module with the app login decorator."""
+    """Initialize the Peoples module with the app login decorator and SQLite DB."""
     global _LOGIN_REQUIRED
     _LOGIN_REQUIRED = login_required
+    try:
+        init_peoples_db()
+    except Exception as e:
+        print("Peoples DB init warning:", e)
 
 
 def _guard(view):
@@ -56,14 +66,17 @@ def peoples_javascript():
 @peoples_bp.get("/api/peoples/investors")
 @_guard
 def api_get_all_investors():
-    """Retrieve directory list of all investors segregated by Ace, FII, and DII tabs."""
-    category = request.args.get("category", "all").lower()
-    if category in ("ace", "fii", "dii"):
-        data = fetch_investors_by_category(category)
-        return jsonify({"category": category, "investors": data, "count": len(data)})
+    """Retrieve directory list of all investors segregated by Ace, FII, and DII from SQLite DB."""
+    data = get_all_investors_from_db()
+    return jsonify(data)
 
-    all_data = get_all_investors()
-    return jsonify(all_data)
+
+@peoples_bp.post("/api/peoples/sync-db")
+@_guard
+def api_sync_investors_db():
+    """Re-sync the investors master list from official feeds into SQLite DB."""
+    data = sync_and_save_investors_to_db()
+    return jsonify({"success": True, "counts": data.get("counts")})
 
 
 @peoples_bp.get("/api/peoples/portfolio/<investor_id>/<slug>")

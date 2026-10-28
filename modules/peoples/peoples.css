@@ -1,13 +1,16 @@
 /* =========================================================
-   CAPITAL DESK - PEOPLES (SUPERSTAR INVESTORS) STYLESHEET
+   CAPITAL DESK - PEOPLES (SUPERSTAR INVESTORS, FII & DII) STYLESHEET
    Location: modules/peoples/peoples.css
    Modern, responsive, dark/light theme compatible
    ========================================================= */
 
 .peoples-shell {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
+/* 1. Header Card */
 .peoples-header-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -23,6 +26,29 @@
     gap: 12px;
 }
 
+.peoples-title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.peoples-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.peoples-subtitle {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-top: 3px;
+    line-height: 1.4;
+}
+
 .peoples-sub-badge {
     background: rgba(16, 185, 129, 0.12);
     color: #10b981;
@@ -34,13 +60,26 @@
     letter-spacing: 0;
 }
 
+.peoples-status-card {
+    padding: 5px 12px;
+    margin: 0;
+    min-width: auto;
+    border-radius: 8px;
+    font-size: 11.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Category Segmented Control */
 .peoples-category-bar {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    margin-top: 14px;
+    margin-bottom: 0;
 }
 
-/* Category Tab Buttons */
 .peoples-category-bar .pf-select-btn {
     padding: 7px 14px;
     font-size: 12.5px;
@@ -69,11 +108,127 @@
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
-/* Investors Grid */
+/* 2. Toolbar & Standard Search Box (Matching other pages) */
+.peoples-toolbar-card {
+    margin-top: 12px;
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+.peoples-toolbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.peoples-search-wrap {
+    flex: 1;
+    min-width: 240px;
+    max-width: 480px;
+}
+
+/* Reusable Standard Search Box across Peoples */
+.peoples-search-box {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex: 1;
+    min-width: 200px;
+    height: 38px;
+    min-height: 38px;
+    flex-shrink: 0;
+    padding: 0 14px;
+    border: 1px solid var(--border-input, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    background: var(--bg-input, rgba(255, 255, 255, 0.04));
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.peoples-search-box:focus-within {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
+}
+
+:root:not([data-theme="dark"]) .peoples-search-box {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.peoples-search-box span {
+    font-size: 15px !important;
+    opacity: 0.65;
+    flex-shrink: 0;
+}
+
+.peoples-search-box input {
+    flex: 1;
+    width: 100% !important;
+    height: 100% !important;
+    font-size: 13.5px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    color: var(--text-primary) !important;
+}
+
+.peoples-search-box input::placeholder {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.peoples-search-box input:focus {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Sort Controls */
+.peoples-sort-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.peoples-sort-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.peoples-sort-dropdown {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.peoples-sort-dropdown:focus {
+    border-color: #10b981;
+}
+
+/* 3. Investors Cards Grid */
 .peoples-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 16px;
+    margin-top: 14px;
 }
 
 /* Single Investor Card */
@@ -88,6 +243,7 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     position: relative;
     cursor: pointer;
+    box-sizing: border-box;
 }
 
 .peoples-investor-card:hover {
@@ -140,6 +296,7 @@
     border-radius: 4px;
     text-transform: uppercase;
     letter-spacing: 0.03em;
+    display: inline-block;
 }
 
 .badge-ace {
@@ -219,6 +376,7 @@
     justify-content: center;
     gap: 6px;
     transition: all 0.2s ease;
+    cursor: pointer;
 }
 
 .peoples-investor-card:hover .peoples-card-btn {
@@ -227,14 +385,281 @@
     border-color: #10b981;
 }
 
+/* Empty State */
+.peoples-empty-card {
+    text-align: center;
+    padding: 48px 20px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-top: 14px;
+}
+
+.peoples-empty-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.peoples-empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.peoples-empty-subtitle {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
 /* =========================================================
-   SHAREHOLDING MATRIX TABLE (Matches User Screenshot)
+   VIEW 2: INVESTOR STOCK LIST DETAIL VIEW
    ========================================================= */
 
+.peoples-detail-header-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+.peoples-profile-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.peoples-profile-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 260px;
+}
+
+.peoples-profile-avatar {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    font-weight: 700;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.peoples-profile-text-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.peoples-profile-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#peoples-detail-name {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.peoples-detail-meta {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.peoples-meta-dot {
+    opacity: 0.5;
+}
+
+.peoples-range-highlight {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Back to Peoples on the right side of the same row */
+.peoples-profile-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.peoples-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.peoples-back-btn:hover {
+    background: var(--bg-subtle);
+    border-color: #10b981;
+    color: #10b981;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+/* =========================================================
+   SHAREHOLDING MATRIX TABLE & TOOLBAR
+   ========================================================= */
+
+.peoples-table-card {
+    margin-top: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.peoples-table-toolbar {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.peoples-toolbar-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.peoples-table-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.peoples-table-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* Highlight Option Buttons Group */
+.peoples-highlight-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.peoples-highlight-label {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.peoples-highlight-chips {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-input);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.peoples-chip-btn {
+    border: none;
+    background: transparent;
+    padding: 5px 11px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.peoples-chip-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.peoples-chip-btn.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.peoples-chip-btn.chip-inc.active {
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.peoples-chip-btn.chip-dec.active {
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.peoples-chip-btn.chip-both.active {
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-inc {
+    background: #10b981;
+}
+
+.dot-dec {
+    background: #ef4444;
+}
+
+.peoples-stock-filter-wrap {
+    min-width: 220px;
+    max-width: 300px;
+    flex: 1;
+}
+
+/* Matrix Table Wrapper */
 .peoples-matrix-wrapper {
     position: relative;
     max-height: 650px;
+    overflow-x: auto;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .peoples-matrix-table {
@@ -266,9 +691,9 @@
     background: var(--bg-card);
     text-align: left;
     z-index: 3;
-    min-width: 180px;
+    min-width: 190px;
     max-width: 240px;
-    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.04);
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
 }
 
 .peoples-matrix-table thead th:first-child {
@@ -291,6 +716,8 @@
     font-feature-settings: "tnum";
     font-variant-numeric: tabular-nums;
     color: var(--text-primary);
+    box-sizing: border-box;
+    transition: outline 0.15s ease, background 0.15s ease;
 }
 
 .peoples-stock-cell {
@@ -316,7 +743,7 @@
     margin-top: 1px;
 }
 
-/* Percentage Cell Styling Matching Screenshot */
+/* Percentage Cell Styling */
 .peoples-pct-cell {
     font-size: 12.5px;
     font-weight: 500;
@@ -339,14 +766,173 @@
     font-weight: 400;
 }
 
-/* Responsive adjustments */
+/* =========================================================
+   STAKE INCREASE / DECREASE HIGHLIGHT WITH DOTTED BORDER
+   ========================================================= */
+
+/* Dotted Green Border for Stake Increase */
+.peoples-border-up {
+    outline: 2px dotted #10b981 !important;
+    outline-offset: -3px !important;
+    background: rgba(16, 185, 129, 0.14) !important;
+    color: #10b981 !important;
+    font-weight: 700 !important;
+    border-radius: 4px;
+}
+
+/* Dotted Red Border for Stake Decrease */
+.peoples-border-down {
+    outline: 2px dotted #ef4444 !important;
+    outline-offset: -3px !important;
+    background: rgba(239, 68, 68, 0.14) !important;
+    color: #ef4444 !important;
+    font-weight: 700 !important;
+    border-radius: 4px;
+}
+
+/* Light Theme Overrides for high-contrast readability */
+[data-theme="light"] .peoples-border-up {
+    outline-color: #059669 !important;
+    background: rgba(16, 185, 129, 0.18) !important;
+    color: #047857 !important;
+}
+
+[data-theme="light"] .peoples-border-down {
+    outline-color: #dc2626 !important;
+    background: rgba(239, 68, 68, 0.18) !important;
+    color: #b91c1c !important;
+}
+
+/* =========================================================
+   RESPONSIVE DESIGN ADAPTATIONS
+   ========================================================= */
+
+@media (max-width: 900px) {
+    .peoples-table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .peoples-toolbar-left {
+        width: 100%;
+    }
+
+    .peoples-highlight-group {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .peoples-highlight-chips {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+    }
+
+    .peoples-stock-filter-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
+    .peoples-header-card,
+    .peoples-detail-header-card,
+    .peoples-toolbar-card {
+        padding: 12px 14px;
+        border-radius: 10px;
+    }
+
+    .peoples-title {
+        font-size: 15.5px;
+    }
+
+    .peoples-subtitle {
+        font-size: 11.5px;
+    }
+
+    .peoples-toolbar-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .peoples-search-wrap {
+        max-width: 100%;
+        min-width: 100%;
+        width: 100%;
+    }
+
+    .peoples-sort-wrap {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .peoples-sort-dropdown {
+        flex: 1;
+    }
+
     .peoples-cards-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .peoples-profile-banner {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .peoples-profile-info {
+        min-width: 0;
+    }
+
+    #peoples-detail-name {
+        font-size: 16px;
+    }
+
+    .peoples-detail-meta {
+        font-size: 11.5px;
+        gap: 6px;
+    }
+
+    .peoples-back-btn {
+        padding: 6px 10px;
+        font-size: 11.5px;
     }
 
     .peoples-matrix-table thead th:first-child,
     .peoples-matrix-table tbody td:first-child {
-        min-width: 140px;
+        min-width: 130px;
+        max-width: 160px;
+        font-size: 11.5px;
+    }
+
+    .peoples-matrix-table thead th {
+        font-size: 11px;
+        padding: 8px 10px;
+    }
+
+    .peoples-matrix-table tbody td {
+        font-size: 11.5px;
+        padding: 7px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .peoples-category-bar {
+        gap: 6px;
+    }
+
+    .peoples-category-bar .pf-select-btn {
+        padding: 6px 10px;
+        font-size: 11.5px;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .peoples-highlight-chips .peoples-chip-btn {
+        padding: 4px 8px;
+        font-size: 10.5px;
     }
 }

@@ -2,7 +2,7 @@
  * Capital Desk - Peoples (Superstar Investors, FII & DII) Client Module
  * Location: modules/peoples/peoples.js
  * Handles live directory viewing, tab segregation, search/filtering,
- * and renders on-time quarterly holding matrices from 2022 to the latest quarter.
+ * stake change highlight options, and renders on-demand quarterly holding matrices.
  */
 
 (function () {
@@ -11,6 +11,7 @@
     let _activePortfolioData = null;
     let _isLoadingDirectory = false;
     let _isLoadedOnce = false;
+    let _highlightOption = 'all'; // 'all', 'inc', 'dec', 'both'
 
     // Helper: Escape HTML
     function escapeHtml(str) {
@@ -186,7 +187,7 @@
         }).join('');
     }
 
-    // Filter cards as user types
+    // Filter cards as user types in directory
     window.filterPeoplesList = function () {
         renderInvestorsGrid();
     };
@@ -196,6 +197,40 @@
         renderInvestorsGrid();
     };
 
+    // Highlight Option Handler: 'all', 'inc', 'dec', 'both'
+    window.setPeoplesHighlight = function (mode) {
+        _highlightOption = mode;
+
+        // Toggle active button style
+        document.querySelectorAll('.peoples-chip-btn').forEach(btn => {
+            if (btn.getAttribute('data-highlight') === mode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        applyHighlightOption();
+    };
+
+    // Fast DOM class toggle for dotted border highlight
+    function applyHighlightOption() {
+        const cells = document.querySelectorAll('#peoples-matrix-tbody td[data-change]');
+        cells.forEach(td => {
+            const change = td.getAttribute('data-change');
+            td.classList.remove('peoples-border-up', 'peoples-border-down');
+
+            if (_highlightOption === 'inc' && change === 'up') {
+                td.classList.add('peoples-border-up');
+            } else if (_highlightOption === 'dec' && change === 'down') {
+                td.classList.add('peoples-border-down');
+            } else if (_highlightOption === 'both') {
+                if (change === 'up') td.classList.add('peoples-border-up');
+                if (change === 'down') td.classList.add('peoples-border-down');
+            }
+        });
+    }
+
     // Open Investor Stock List Detail View (2022 to Latest Quarter Matrix)
     window.openInvestorDetail = async function (id, slug, name, category, val, stocksCount) {
         const dirView = document.getElementById('peoples-directory-view');
@@ -203,19 +238,27 @@
         if (dirView) dirView.style.display = 'none';
         if (detailView) detailView.style.display = 'block';
 
-        // Scroll to top
+        // Scroll page to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        // Update header banner
+        // Reset stock filter input
+        const stockFilterInput = document.getElementById('peoples-stock-filter-input');
+        if (stockFilterInput) stockFilterInput.value = '';
+
+        // Reset highlight option to 'all'
+        _highlightOption = 'all';
+        document.querySelectorAll('.peoples-chip-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-highlight') === 'all');
+        });
+
+        // Update banner profile
         const nameEl = document.getElementById('peoples-detail-name');
-        const crumbEl = document.getElementById('peoples-detail-crumb');
         const valEl = document.getElementById('peoples-detail-val');
         const stocksEl = document.getElementById('peoples-detail-stocks-count');
         const avatarEl = document.getElementById('peoples-detail-avatar');
         const badgeEl = document.getElementById('peoples-detail-category-badge');
 
         if (nameEl) nameEl.innerText = name;
-        if (crumbEl) crumbEl.innerText = name;
         if (valEl) valEl.innerText = val ? `₹${val}` : '—';
         if (stocksEl) stocksEl.innerText = stocksCount ? `${stocksCount} Companies` : '—';
         if (avatarEl) avatarEl.innerText = getInitials(name);
@@ -227,11 +270,11 @@
             badgeEl.innerText = catLabel;
         }
 
-        // Show loading shimmer
-        const matrixTable = document.getElementById('peoples-matrix-table');
+        // Show Brand Chart Loader
+        const matrixWrapper = document.getElementById('peoples-matrix-wrapper');
         const loadingEl = document.getElementById('peoples-matrix-loading');
-        if (matrixTable) matrixTable.style.display = 'none';
-        if (loadingEl) loadingEl.style.display = 'block';
+        if (matrixWrapper) matrixWrapper.style.display = 'none';
+        if (loadingEl) loadingEl.style.display = 'flex';
 
         try {
             const res = await fetch(`/api/peoples/portfolio/${id}/${slug}`);
@@ -243,7 +286,7 @@
             console.error('Error fetching investor portfolio:', e);
             if (loadingEl) {
                 loadingEl.innerHTML = `
-                    <div style="color: #ef4444; font-weight: 600; padding: 24px;">
+                    <div style="color: #ef4444; font-weight: 600; padding: 24px; text-align: center;">
                         Failed to fetch holding history from official exchanges. Please try again.
                     </div>
                 `;
@@ -259,14 +302,14 @@
         if (dirView) dirView.style.display = 'block';
     };
 
-    // Render Matrix Table matching user's uploaded screenshot
+    // Render Matrix Table matching user's requested layout
     function renderMatrixTable(data) {
-        const matrixTable = document.getElementById('peoples-matrix-table');
+        const matrixWrapper = document.getElementById('peoples-matrix-wrapper');
         const loadingEl = document.getElementById('peoples-matrix-loading');
         const thead = document.getElementById('peoples-matrix-thead');
         const tbody = document.getElementById('peoples-matrix-tbody');
 
-        if (!matrixTable || !thead || !tbody) return;
+        if (!matrixWrapper || !thead || !tbody) return;
 
         const quarters = data.quarters || [];
         let stocks = data.stocks || [];
@@ -312,22 +355,50 @@
                 const qCells = quarters.map((qName, qIdx) => {
                     const rawVal = item.quarters ? item.quarters[qName] : '';
                     if (!rawVal) {
-                        return `<td class="peoples-pct-empty">—</td>`;
+                        return `<td class="peoples-pct-empty" data-change="none">—</td>`;
                     }
 
-                    // Compare with previous quarter to color code increase/decrease
+                    // Compare with previous recorded quarter to determine change
                     let colorClass = 'peoples-pct-cell';
+                    let changeType = 'none';
+
                     if (qIdx > 0) {
-                        const prevQ = quarters[qIdx - 1];
-                        const prevVal = item.quarters[prevQ];
+                        let prevVal = null;
+                        for (let p = qIdx - 1; p >= 0; p--) {
+                            const pQ = quarters[p];
+                            const val = item.quarters ? item.quarters[pQ] : '';
+                            if (val && val !== '—' && val !== '-') {
+                                prevVal = val;
+                                break;
+                            }
+                        }
+
                         if (prevVal) {
                             try {
-                                const currNum = float(rawVal);
-                                const prevNum = float(prevVal);
-                                if (currNum > prevNum) colorClass += ' peoples-pct-up';
-                                else if (currNum < prevNum) colorClass += ' peoples-pct-down';
+                                const currNum = parseFloat(rawVal);
+                                const prevNum = parseFloat(prevVal);
+                                if (!isNaN(currNum) && !isNaN(prevNum)) {
+                                    if (currNum > prevNum + 0.0001) {
+                                        colorClass += ' peoples-pct-up';
+                                        changeType = 'up';
+                                    } else if (currNum < prevNum - 0.0001) {
+                                        colorClass += ' peoples-pct-down';
+                                        changeType = 'down';
+                                    }
+                                }
                             } catch (_) {}
                         }
+                    }
+
+                    // Determine dotted border highlight based on active option
+                    let borderClass = '';
+                    if (_highlightOption === 'inc' && changeType === 'up') {
+                        borderClass = ' peoples-border-up';
+                    } else if (_highlightOption === 'dec' && changeType === 'down') {
+                        borderClass = ' peoples-border-down';
+                    } else if (_highlightOption === 'both') {
+                        if (changeType === 'up') borderClass = ' peoples-border-up';
+                        if (changeType === 'down') borderClass = ' peoples-border-down';
                     }
 
                     // Format as float with 2 decimals if possible, e.g. 1.08, 2.58
@@ -339,7 +410,7 @@
                         }
                     } catch (_) {}
 
-                    return `<td class="${colorClass}">${formattedVal}</td>`;
+                    return `<td class="${colorClass}${borderClass}" data-change="${changeType}">${formattedVal}</td>`;
                 }).join('');
 
                 return `
@@ -361,10 +432,17 @@
         }
 
         if (loadingEl) loadingEl.style.display = 'none';
-        if (matrixTable) matrixTable.style.display = 'table';
+        if (matrixWrapper) {
+            matrixWrapper.style.display = 'block';
+            // Auto-scroll horizontally to the latest quarter (right edge)
+            // Cursor points to the latest quarter; user scrolls left to see older holdings
+            setTimeout(() => {
+                matrixWrapper.scrollLeft = matrixWrapper.scrollWidth;
+            }, 60);
+        }
     }
 
-    // Filter stocks inside table
+    // Filter stocks inside table as user types
     window.filterInvestorStocks = function () {
         if (_activePortfolioData) {
             renderMatrixTable(_activePortfolioData);
@@ -374,48 +452,12 @@
     // Clicking a stock name opens chart / overview
     window.handleStockClick = function (symbol) {
         if (!symbol) return;
-        // Clean symbol for Indian exchange format
         const cleanSym = symbol.endsWith('.NS') || symbol.endsWith('.BO') ? symbol : `${symbol}.NS`;
         if (typeof openFundamentalsModal === 'function') {
             openFundamentalsModal(cleanSym);
         } else if (typeof showStockChart === 'function') {
             showStockChart(cleanSym);
         }
-    };
-
-    // Export current investor's holding matrix as CSV
-    window.exportPeoplesTableCSV = function () {
-        if (!_activePortfolioData || !_activePortfolioData.stocks) return;
-
-        const quarters = _activePortfolioData.quarters || [];
-        const stocks = _activePortfolioData.stocks || [];
-        const invName = (_activePortfolioData.investor && _activePortfolioData.investor.name) || 'investor';
-
-        const headers = ['Stock', 'Symbol', 'Holding Value', 'Qty Held', ...quarters];
-        const rows = [headers];
-
-        stocks.forEach(s => {
-            const row = [
-                `"${(s.stock || '').replace(/"/g, '""')}"`,
-                `"${(s.symbol || '').replace(/"/g, '""')}"`,
-                `"${(s.holding_value || '').replace(/"/g, '""')}"`,
-                `"${(s.qty_held || '').replace(/"/g, '""')}"`,
-            ];
-            quarters.forEach(q => {
-                const val = (s.quarters && s.quarters[q]) || '';
-                row.push(`"${val}"`);
-            });
-            rows.push(row);
-        });
-
-        const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(r => r.join(',')).join('\n');
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement('a');
-        link.setAttribute('href', encodedUri);
-        link.setAttribute('download', `${invName.replace(/[^a-zA-Z0-9_-]/g, '_')}_shareholding_2022_to_latest.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     };
 
 })();
