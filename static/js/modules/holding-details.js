@@ -19,9 +19,7 @@
             const dateStr = formatDateFormatted(item.buy_date);
             const isLongTerm = daysHeld >= 365;
 
-            const bInfo = getSymbolBadge(sym);
-
-            document.getElementById('detail-modal-sym').innerHTML = `<span class="stock-symbol-title">${cleanDisplaySymbol(sym)}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
+            document.getElementById('detail-modal-sym').innerHTML = `<span class="stock-symbol-title">${cleanDisplaySymbol(sym)}</span> <span class="badge ${isLongTerm ? 'badge-lt' : 'badge-st'}">${isLongTerm ? 'Long Term' : 'Short Term'}</span>`;
             document.getElementById('detail-modal-name').innerText = (info.name || sym) + (item.portfolioName ? ` • 📁 ${item.portfolioName}` : '');
 
             document.getElementById('detail-modal-duration').innerText = `⏱️ ${durationText}`;

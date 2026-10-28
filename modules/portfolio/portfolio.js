@@ -1383,7 +1383,6 @@
                 } else {
                     holdings.forEach(item => {
                         const sym = item.symbol;
-                        const bInfo = getSymbolBadge(sym);
                         const safePf = (item.portfolioName || activePortfolioName || '').replace(/[^a-zA-Z0-9_-]/g, '_');
                         const safeSym = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
                         const rowKey = `${safePf}_${safeSym}`;
@@ -1427,7 +1426,6 @@
                                 <div class="pf-mob-sym-group" title="Tap to view holding details">
                                     <div class="pf-mob-sym-row">
                                         <span class="pf-mob-sym">${cleanDisplaySymbol(sym)}</span>
-                                        <span class="badge ${bInfo.class}">${bInfo.label}</span>
                                         ${isAll ? `<span class="badge pf-badge">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}
                                     </div>
                                 </div>
@@ -1558,7 +1556,6 @@
                 } else {
                     holdings.forEach(item => {
                         const sym = item.symbol;
-                        const bInfo = getSymbolBadge(sym);
                         const safePf = (item.portfolioName || activePortfolioName || '').replace(/[^a-zA-Z0-9_-]/g, '_');
                         const safeSym = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
                         const rowKey = `${safePf}_${safeSym}`;
@@ -1578,7 +1575,7 @@
 
                         const tdStock = document.createElement('td');
                         tdStock.className = 'pf-col-stock';
-                        tdStock.innerHTML = `<span class="stock-symbol">${cleanDisplaySymbol(sym)}</span> <span class="badge ${bInfo.class}">${bInfo.label}</span>${isAll ? ` <span class="badge pf-badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}<div class="company-name" id="pf-name-${rowKey}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
+                        tdStock.innerHTML = `<span class="stock-symbol">${cleanDisplaySymbol(sym)}</span>${isAll ? ` <span class="badge pf-badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}<div class="company-name" id="pf-name-${rowKey}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
 
                         const tdQty = document.createElement('td');
                         tdQty.className = 'pf-col-qty';
