@@ -2547,6 +2547,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
       </div>
       <div class="ai-modal-actions">
         <!-- Standalone Action Buttons (Web / Desktop View) -->
+        <button id="aiRegenBtn" class="ai-btn" type="button" onclick="retryAiSummary()" title="Regenerate Analysis with Latest DB Prompt">🔄 Regenerate</button>
         <button id="aiShareImageBtn" class="ai-btn ai-share-btn" type="button" onclick="shareTranscriptAsImage()" title="Share Transcript as Full Screenshot Image">📸 Share Image</button>
         <button id="aiCopyBtn" class="ai-btn" type="button" onclick="copyAiSummary()" title="Copy Full Report">📋 Copy</button>
         <a id="aiPdfBtn" class="ai-btn" href="#" target="_blank" rel="noopener noreferrer" title="Open Official Source PDF">📄 Source PDF ↗</a>
@@ -2558,6 +2559,10 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
             <span class="actions-caret">▾</span>
           </button>
           <div id="aiActionsDropdownMenu" class="ai-actions-dropdown-menu" style="display: none;">
+            <button class="ai-dropdown-item" type="button" onclick="retryAiSummary(); closeAiActionsMenu();">
+              <span class="ai-dropdown-icon">🔄</span>
+              <span>Regenerate</span>
+            </button>
             <button class="ai-dropdown-item" id="aiMobCopyBtn" type="button" onclick="copyAiSummaryFromMenu()">
               <span class="ai-dropdown-icon">📋</span>
               <span>Copy Report</span>
@@ -4141,7 +4146,7 @@ function openPresentationAiByIndex(idx) {
   openConcallAiSummary(formatConcallQuarter(item.quarter), item.presentation, 'ppt');
 }
 
-async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall') {
+async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall', refresh = false) {
   _currentAiQuarter = quarter;
   _currentAiTranscript = transcriptUrl;
   _currentAiDocType = docType;
@@ -4201,7 +4206,8 @@ async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall')
         quarter: quarter,
         symbol: symbol,
         doc_type: docType,
-        industry: ''
+        industry: '',
+        refresh: Boolean(refresh)
       })
     });
     const data = await res.json();
@@ -4226,7 +4232,7 @@ async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall')
 
 function retryAiSummary() {
   if (_currentAiQuarter && _currentAiTranscript) {
-    openConcallAiSummary(_currentAiQuarter, _currentAiTranscript, _currentAiDocType || 'concall');
+    openConcallAiSummary(_currentAiQuarter, _currentAiTranscript, _currentAiDocType || 'concall', true);
   }
 }
 

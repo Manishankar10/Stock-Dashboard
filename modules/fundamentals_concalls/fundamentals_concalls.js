@@ -56,7 +56,8 @@
           actions = `<a class="concalls-action" href="${esc(doc.url)}" target="_blank" rel="noopener noreferrer">Transcript ↗</a>
             <button class="concalls-action summary" type="button" data-summary="${esc(doc.id)}">AI Summary</button>`;
         } else if (doc.type === 'ppt') {
-          actions = `<a class="concalls-action" href="${esc(doc.url)}" target="_blank" rel="noopener noreferrer">PPT ↗</a>`;
+          actions = `<a class="concalls-action" href="${esc(doc.url)}" target="_blank" rel="noopener noreferrer">PPT ↗</a>
+            <button class="concalls-action summary" type="button" data-summary="${esc(doc.id)}">AI Summary</button>`;
         }
         return `<div class="concalls-row"><div class="concalls-label">${label}</div><div class="concalls-actions">${actions}</div></div>`;
       }).join('');
@@ -76,13 +77,21 @@
     summarySource.href = record.url;
     summaryBody.innerHTML = '<div class="concall-summary-loading"><span class="concall-summary-spinner"></span><span>Reading the transcript and preparing a clear, brief summary…</span></div>';
     try {
+      const payload = {
+        ...record,
+        doc_type: record.type === 'ppt' ? 'ppt' : 'concall'
+      };
       const response = await fetch('/api/fundamentals/concalls/summarize', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record),
+        body: JSON.stringify(payload),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not summarize the transcript.');
-      summaryBody.innerHTML = renderSummary(result.summary || {});
+      if (result.analysis && typeof result.analysis === 'string') {
+        summaryBody.innerHTML = `<div class="concall-summary-overview markdown-body" style="white-space: pre-wrap; font-size: 13px; line-height: 1.6;">${esc(result.analysis)}</div>`;
+      } else {
+        summaryBody.innerHTML = renderSummary(result.summary || {});
+      }
       button.textContent = 'AI Summary';
     } catch (error) {
       summaryBody.innerHTML = `<div class="concalls-error">${esc(error.message)}</div>`;

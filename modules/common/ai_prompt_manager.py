@@ -179,9 +179,9 @@ def get_default_ai_prompt(prompt_type: str) -> str:
     return DEFAULT_AI_PROMPTS.get(prompt_type, "")
 
 
-def get_ai_prompts() -> Dict[str, str]:
+def get_ai_prompts(force_refresh: bool = False) -> Dict[str, str]:
     """Retrieve all current AI prompts from system settings with fallbacks."""
-    settings = get_system_settings()
+    settings = get_system_settings(force_refresh=force_refresh)
     custom_prompts = settings.get("ai_prompts") or {}
     res = {}
     for p_type, default_val in DEFAULT_AI_PROMPTS.items():
@@ -193,15 +193,15 @@ def get_ai_prompts() -> Dict[str, str]:
     return res
 
 
-def get_ai_prompt(prompt_type: str) -> str:
+def get_ai_prompt(prompt_type: str, force_refresh: bool = False) -> str:
     """Get active prompt template for a specific document type."""
-    prompts = get_ai_prompts()
+    prompts = get_ai_prompts(force_refresh=force_refresh)
     return prompts.get(prompt_type) or DEFAULT_AI_PROMPTS.get(prompt_type, "")
 
 
 def save_ai_prompts(prompts: Dict[str, str]) -> Dict[str, str]:
     """Update and persist AI prompts to system settings."""
-    current_prompts = get_ai_prompts()
+    current_prompts = get_ai_prompts(force_refresh=True)
     for k, v in prompts.items():
         if k in DEFAULT_AI_PROMPTS and isinstance(v, str):
             current_prompts[k] = v.strip() or DEFAULT_AI_PROMPTS[k]
@@ -210,9 +210,9 @@ def save_ai_prompts(prompts: Dict[str, str]) -> Dict[str, str]:
     return current_prompts
 
 
-def format_prompt(prompt_type: str, context: Dict[str, Any]) -> str:
+def format_prompt(prompt_type: str, context: Dict[str, Any], force_refresh: bool = False) -> str:
     """Format prompt template with dynamic variables safely without KeyError or brace crashes."""
-    template = get_ai_prompt(prompt_type)
+    template = get_ai_prompt(prompt_type, force_refresh=force_refresh)
     if not template:
         template = get_default_ai_prompt(prompt_type)
 

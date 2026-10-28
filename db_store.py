@@ -111,17 +111,38 @@ def save_user_doc_db(collection_name, username, data, filepath):
             print(f"MongoDB save_{collection_name} error for {username}: {e}")
 
 def load_system_settings_db(settings_file, default_factory=dict):
+    # 1. MongoDB (if connected)
     if db is not None:
         try:
             col = db["system_settings"]
             doc = col.find_one({"_id": "global_settings"})
-            if doc is not None and "settings" in doc:
+            if doc is not None:
                 res = default_factory()
-                res.update(doc["settings"])
+                if "settings" in doc and isinstance(doc["settings"], dict):
+                    res.update(doc["settings"])
+                else:
+                    res.update({k: v for k, v in doc.items() if k != "_id"})
                 return res
         except Exception as e:
             print(f"MongoDB load_system_settings error: {e}")
 
+    # 2. SQLite DB (capital_desk.db)
+    try:
+        if os.path.exists(_SQLITE_DB_PATH):
+            import sqlite3
+            with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT)")
+                row = conn.execute("SELECT value FROM system_settings WHERE key = 'global_settings'").fetchone()
+                if row and row[0]:
+                    res = default_factory()
+                    loaded = json.loads(row[0])
+                    if isinstance(loaded, dict):
+                        res.update(loaded)
+                        return res
+    except Exception as e:
+        print(f"SQLite load_system_settings error: {e}")
+
+    # 3. Fallback to local JSON file
     if not os.path.exists(settings_file):
         return default_factory()
     try:
@@ -135,6 +156,7 @@ def load_system_settings_db(settings_file, default_factory=dict):
         return default_factory()
 
 def save_system_settings_db(settings, settings_file):
+    # 1. Save to local JSON file
     try:
         os.makedirs(os.path.dirname(settings_file), exist_ok=True)
         tmp = settings_file + ".tmp"
@@ -144,6 +166,21 @@ def save_system_settings_db(settings, settings_file):
     except Exception:
         pass
 
+    # 2. Save to SQLite DB
+    try:
+        os.makedirs(os.path.dirname(_SQLITE_DB_PATH), exist_ok=True)
+        import sqlite3
+        with sqlite3.connect(_SQLITE_DB_PATH) as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT)")
+            conn.execute(
+                "INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)",
+                ('global_settings', json.dumps(settings, ensure_ascii=False))
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"SQLite save_system_settings error: {e}")
+
+    # 3. Save to MongoDB
     if db is not None:
         try:
             col = db["system_settings"]

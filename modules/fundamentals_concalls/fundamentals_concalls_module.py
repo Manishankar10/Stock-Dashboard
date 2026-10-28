@@ -289,7 +289,7 @@ _DETAILED_SUMMARY_CACHE = {}
 _DETAILED_SUMMARY_LOCK = Lock()
 
 
-def generate_document_analysis(url, company="Company", quarter="Quarter", year="", symbol="", industry="", doc_type="concall"):
+def generate_document_analysis(url, company="Company", quarter="Quarter", year="", symbol="", industry="", doc_type="concall", refresh=False):
     url = str(url or "").strip()
     if not url.startswith("http"):
         raise RuntimeError("A valid document URL is required.")
@@ -302,12 +302,26 @@ def generate_document_analysis(url, company="Company", quarter="Quarter", year="
     else:
         prompt_type = "concalls"
 
-    cache_key = sha256(f"{prompt_type}|{url}|{company}|{quarter}|{year}".encode("utf-8")).hexdigest()
+    # Always retrieve and format active prompt dynamically from system settings / DB
+    prompt = format_prompt(prompt_type, {
+        "company": company or symbol or "the Company",
+        "symbol": symbol,
+        "quarter": quarter or "Latest Quarter",
+        "year": year or quarter or "Fiscal Year",
+        "industry": industry or "Indian Equities",
+        "source_url": url,
+    }, force_refresh=refresh)
+
+    # Hash the formatted prompt so any prompt modification in DB immediately busts stale cache
+    prompt_hash = sha256(prompt.encode("utf-8")).hexdigest()[:16]
+    cache_key = sha256(f"{prompt_type}|{prompt_hash}|{url}|{company}|{quarter}|{year}".encode("utf-8")).hexdigest()
+
     now = time.time()
-    with _DETAILED_SUMMARY_LOCK:
-        cached = _DETAILED_SUMMARY_CACHE.get(cache_key)
-        if cached and now - cached[0] < 86400:
-            return cached[1]
+    if not refresh:
+        with _DETAILED_SUMMARY_LOCK:
+            cached = _DETAILED_SUMMARY_CACHE.get(cache_key)
+            if cached and now - cached[0] < 86400:
+                return cached[1]
 
     # Download document PDF
     headers = {
@@ -326,22 +340,13 @@ def generate_document_analysis(url, company="Company", quarter="Quarter", year="
 
     b64_pdf = base64.b64encode(pdf_bytes).decode("ascii")
 
-    # Format the prompt using our dynamic ai_prompt_manager
-    prompt = format_prompt(prompt_type, {
-        "company": company or symbol or "the Company",
-        "symbol": symbol,
-        "quarter": quarter or "Latest Quarter",
-        "year": year or quarter or "Fiscal Year",
-        "industry": industry or "Indian Equities",
-        "source_url": url,
-    })
-
     api_key = get_app_setting("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured in the application environment.")
 
     payload = {
         "contents": [{
+            "role": "user",
             "parts": [
                 {"text": prompt},
                 {"inline_data": {"mime_type": "application/pdf", "data": b64_pdf}}
@@ -376,8 +381,8 @@ def generate_document_analysis(url, company="Company", quarter="Quarter", year="
     raise RuntimeError(last_err or "Failed to generate document analysis with Gemini.")
 
 
-def generate_senior_concall_analysis(url, company="Company", quarter="Quarter", symbol="", industry=""):
-    return generate_document_analysis(url=url, company=company, quarter=quarter, symbol=symbol, industry=industry, doc_type="concall")
+def generate_senior_concall_analysis(url, company="Company", quarter="Quarter", symbol="", industry="", refresh=False):
+    return generate_document_analysis(url=url, company=company, quarter=quarter, symbol=symbol, industry=industry, doc_type="concall", refresh=refresh)
 
 
 @fundamentals_concalls_bp.post("/summarize")
@@ -396,6 +401,7 @@ def summarize_concall_transcript():
     symbol = data.get("symbol") or ""
     industry = data.get("industry") or ""
     doc_type = data.get("doc_type") or data.get("type") or ("ppt" if "/presentations" in request.path else ("annual_reports" if "/annual-reports" in request.path else "concall"))
+    refresh = bool(data.get("refresh") or request.args.get("refresh") == "1")
 
     try:
         report = generate_document_analysis(
@@ -406,10 +412,12 @@ def summarize_concall_transcript():
             symbol=symbol,
             industry=industry,
             doc_type=doc_type,
+            refresh=refresh,
         )
         return jsonify({
             "success": True,
             "analysis": report,
+            "summary": report,
             "company": company,
             "quarter": quarter,
             "year": year,
