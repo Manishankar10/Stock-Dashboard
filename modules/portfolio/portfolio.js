@@ -1675,8 +1675,8 @@
                 tfoot.innerHTML = `
                     <tr>
                         <td colspan="4" class="pf-col-total" style="text-align:left;">PORTFOLIO TOTAL:</td>
-                        <td id="pf-foot-daypnl" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'} pf-col-daypnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
                         <td id="pf-foot-pnl" class="${initialTotPnL >= 0 ? 'pos' : 'neg'} pf-col-pnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
+                        <td id="pf-foot-daypnl" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'} pf-col-daypnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
                         <td id="pf-foot-inv" class="pf-col-inv" style="text-align:right;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
                         <td id="pf-foot-val" class="pf-col-val" style="text-align:right;">${initialTotInvested > 0 ? initValStr : '₹0.00'}</td>
                         <td class="pf-col-details" style="text-align:center;"></td>
