@@ -203,6 +203,9 @@
         }
 
         async function openNotificationsModal() {
+            if (window.CapitalDeskPush) {
+                window.CapitalDeskPush.checkCurrentSubscription();
+            }
             await fetchAlerts();
             const notifModal = document.getElementById('notificationsModal');
             if (notifModal) {

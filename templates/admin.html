@@ -2050,9 +2050,14 @@
                                 Dispatches visual bullion rates banner to Web & PWA subscribers
                             </p>
                         </div>
-                        <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid #ca8a04; font-weight: 600; padding: 4px 10px; border-radius: 8px;">
-                            Rich Image Push
-                        </span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="gold-live-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; font-weight: 600; padding: 4px 10px; border-radius: 8px;">
+                                🟢 Live Market Synced
+                            </span>
+                            <button type="button" class="btn btn-secondary" onclick="fetchLiveBullionRates(true)" style="padding: 4px 9px; font-size: 11.5px;" title="Refresh live bullion market rates">
+                                🔄 Refresh Rates
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Live Visual Preview Card (Styled exactly as requested image) -->
@@ -2230,8 +2235,8 @@
                     <!-- Dispatch Buttons -->
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn" id="btn-send-portfolio" onclick="sendPortfolioPerformanceNotification()" 
-                            style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; font-weight: 700; padding: 10px 16px; border-radius: 8px;">
-                            📊 Send Portfolio Notification
+                            style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; font-weight: 700; padding: 10px 14px; border-radius: 8px;">
+                            📊 Broadcast / Custom Send
                         </button>
                         <button class="btn btn-secondary" onclick="autoCalculateFromPortfolios()" style="padding: 10px 14px;" title="Query database portfolio holdings to compute real market return">
                             ⚡ Auto-Calc DB
@@ -2240,6 +2245,58 @@
                             🖼️ Card Image
                         </a>
                     </div>
+
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+                        <button class="btn" id="btn-send-portfolio-all" onclick="sendPortfolioPersonalizedAllUsers()" 
+                            style="width: 100%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #ffffff; border: none; font-weight: 700; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            🚀 Send Unique EOD Notifications to ALL Users Individually (from DB)
+                        </button>
+                        <p style="margin: 6px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">
+                            Computes each user's unique daily return & top gainer/loser from their DB holdings and sends personalized push alerts.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: Users Individual Portfolio Performance Overview -->
+            <div class="metric-card" style="margin-bottom: 24px; padding: 22px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                            👥 Users EOD Portfolio Digest (Live DB Computation)
+                        </h3>
+                        <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                            Live calculation of each user's portfolio daily return, top gainer, and top loser for targeted personalized push alerts.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" onclick="loadUsersPortfolioDigest()" style="padding: 6px 12px; font-size: 12px;">
+                            🔄 Recalculate All
+                        </button>
+                        <button class="btn" onclick="sendPortfolioPersonalizedAllUsers()" style="background: #3b82f6; color: white; padding: 6px 14px; font-size: 12px; font-weight: 600;">
+                            🚀 Send to All Users
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive-container" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); text-align: left;">
+                                <th style="padding: 10px 12px;">User</th>
+                                <th style="padding: 10px 12px; text-align: center;">Holdings</th>
+                                <th style="padding: 10px 12px; text-align: center;">Today's Return</th>
+                                <th style="padding: 10px 12px;">Top Gainer</th>
+                                <th style="padding: 10px 12px;">Top Loser</th>
+                                <th style="padding: 10px 12px; text-align: right;">Current Value</th>
+                                <th style="padding: 10px 12px; text-align: center;">Devices</th>
+                                <th style="padding: 10px 12px; text-align: center;">Personalized Card</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-portfolio-digest-body">
+                            <tr><td colspan="8" style="text-align: center; padding: 20px; color: var(--text-secondary);">Computing real-time user portfolios...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -2273,7 +2330,13 @@
                 </div>
 
                 <div style="margin-bottom: 12px;">
-                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Firebase Service Account JSON (Paste content or upload firebase_service_account.json)</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                        <label style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary);">Firebase Service Account JSON (Paste or Upload .json file)</label>
+                        <label class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Select your downloaded Firebase credentials JSON file">
+                            📁 Choose .json File
+                            <input type="file" accept=".json" onchange="handleServiceAccountFileUpload(event)" style="display: none;">
+                        </label>
+                    </div>
                     <textarea id="fcm-cfg-service-account" rows="3" placeholder='Paste your Firebase Service Account JSON here (or place file at app_data/firebase_service_account.json)...' 
                         style="width: 100%; padding: 8px 10px; font-size: 11.5px; font-family: monospace; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);"></textarea>
                 </div>
@@ -2282,7 +2345,7 @@
                     <div id="fcm-status-alert-box" style="font-size: 12px; color: var(--text-secondary);">
                         Checking configuration status...
                     </div>
-                    <button class="btn" onclick="saveFcmConfiguration()" style="padding: 8px 18px; font-weight: 600;">
+                    <button class="btn" id="btn-save-fcm-cfg" onclick="saveFcmConfiguration()" style="padding: 8px 18px; font-weight: 600;">
                         💾 Save Firebase Configuration
                     </button>
                 </div>
@@ -2530,7 +2593,7 @@
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
             if (tabName === 'settings') { toggleAiPromptsSection(false); loadSystemSettings(); loadAdminAiPrompts(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); loadAdminTransactionsStatus(); loadAdminPeoplesStatus(); }
             if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); loadMongoStatus(); }
-            if (tabName === 'notifications') { loadNotificationStats(); updateGoldRatePreview(); updatePortfolioPerfPreview(); }
+            if (tabName === 'notifications') { loadNotificationStats(); fetchLiveBullionRates(false); loadUsersPortfolioDigest(); updatePortfolioPerfPreview(); }
         }
 
         async function checkAdminAuth() {
@@ -5195,5 +5258,6 @@
     </script>
     <script src="/static/js/core/pwa.js?v=1.0"></script>
     <script src="/static/js/core/push-notification-client.js?v=1.0"></script>
+    <script src="/static/js/modules/admin-notifications.js?v=2.2"></script>
 </body>
 </html>

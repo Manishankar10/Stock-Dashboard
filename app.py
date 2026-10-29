@@ -70,6 +70,7 @@ from modules.peoples import peoples_bp, init_peoples
 from modules.drawings import drawings_bp
 from modules.common.custom_queries_routes import custom_queries_bp
 from modules.technical_screener import technical_screener_bp
+from modules.notifications import notifications_bp
 
 # Initialize Flask Application
 app = Flask(__name__)
@@ -136,6 +137,7 @@ app.register_blueprint(market_data_bp)
 app.register_blueprint(watchlist_bp)
 app.register_blueprint(portfolio_bp)
 app.register_blueprint(analytics_bp)
+app.register_blueprint(notifications_bp)
 app.register_blueprint(alerts_bp)
 app.register_blueprint(news_bp)
 app.register_blueprint(insights_bp)
@@ -177,6 +179,13 @@ def serve_module_asset(filename):
 def serve_manifest():
     response = send_from_directory(os.path.join(app.root_path, "static"), "manifest.json", mimetype="application/manifest+json")
     response.headers["Cache-Control"] = "public, max-age=86400"
+    return response
+
+@app.route("/firebase-messaging-sw.js")
+def serve_firebase_messaging_sw():
+    response = send_from_directory(os.path.join(app.root_path, "static"), "firebase-messaging-sw.js", mimetype="application/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
 
 @app.route("/sw.js")

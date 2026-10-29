@@ -1,0 +1,392 @@
+import os
+from flask import Blueprint, request, jsonify, session, send_file, current_app
+from modules.common.auth_utils import login_required, admin_required
+from modules.common.ist_datetime import format_ist_standard, today_ist_str
+from modules.notifications.fcm_service import (
+    get_fcm_config,
+    register_device_token,
+    unregister_device_token,
+    send_web_push,
+    get_notification_history,
+    load_subscriptions,
+    DEFAULT_SERVICE_ACCOUNT_FILE
+)
+from modules.notifications.card_generator import (
+    generate_gold_silver_card,
+    generate_portfolio_card
+)
+from modules.notifications.live_bullion import fetch_live_bullion_rates
+from modules.notifications.user_portfolio_notifier import (
+    calculate_user_portfolio_performance,
+    get_all_users_portfolio_summaries,
+    dispatch_unique_portfolio_notifications
+)
+
+notifications_bp = Blueprint("notifications", __name__)
+
+
+# =====================================================================
+# Client Registration & Config Routes
+# =====================================================================
+
+@notifications_bp.route("/api/notifications/config", methods=["GET"])
+def api_notification_config():
+    """Returns VAPID Public key and push configuration for the client."""
+    config = get_fcm_config()
+    subs = load_subscriptions()
+    active_count = sum(1 for s in subs.values() if s.get("is_active", True))
+    return jsonify({
+        "success": True,
+        "is_configured": config["is_configured"],
+        "vapid_public_key": config["vapid_public_key"],
+        "project_id": config["project_id"],
+        "active_subscribers": active_count
+    })
+
+
+@notifications_bp.route("/api/notifications/subscribe", methods=["POST"])
+def api_subscribe_device():
+    """Registers an FCM token sent by the browser."""
+    data = request.get_json(silent=True) or {}
+    token = data.get("token", "").strip()
+    if not token:
+        return jsonify({"success": False, "error": "Token is required"}), 400
+
+    username = session.get("username", "guest")
+    user_agent = request.headers.get("User-Agent", "")
+    topics = data.get("topics", ["gold_silver_rates", "portfolio_performance"])
+
+    success, msg = register_device_token(
+        token=token,
+        username=username,
+        user_agent=user_agent,
+        topics=topics
+    )
+    return jsonify({"success": success, "message": msg})
+
+
+@notifications_bp.route("/api/notifications/unsubscribe", methods=["POST"])
+def api_unsubscribe_device():
+    """De-registers an FCM token."""
+    data = request.get_json(silent=True) or {}
+    token = data.get("token", "").strip()
+    if not token:
+        return jsonify({"success": False, "error": "Token is required"}), 400
+
+    success, msg = unregister_device_token(token)
+    return jsonify({"success": success, "message": msg})
+
+
+# =====================================================================
+# Dynamic Live Bullion Rates Route
+# =====================================================================
+
+@notifications_bp.route("/api/notifications/live-bullion", methods=["GET"])
+def api_live_bullion():
+    """Fetches real-time dynamic market rates for Gold 22K (916) and Ready Silver."""
+    force_refresh = request.args.get("refresh", "0") == "1"
+    rates = fetch_live_bullion_rates(force_refresh=force_refresh)
+    return jsonify({
+        "success": True,
+        "rates": rates
+    })
+
+
+# =====================================================================
+# Visual Image Card Rendering Endpoints
+# =====================================================================
+
+@notifications_bp.route("/api/notifications/render-gold-card.png", methods=["GET"])
+def render_gold_card_endpoint():
+    """Renders the custom Gold & Silver card image dynamically."""
+    gold_1g = request.args.get("gold_1g", "13,195")
+    gold_8g = request.args.get("gold_8g", "1,05,560")
+    silver_1g = request.args.get("silver_1g", "215.00")
+    silver_8g = request.args.get("silver_8g", "1,720")
+
+    buf = generate_gold_silver_card(
+        gold_1g=gold_1g,
+        gold_8g=gold_8g,
+        silver_1g=silver_1g,
+        silver_8g=silver_8g
+    )
+    return send_file(
+        buf,
+        mimetype="image/png",
+        as_attachment=False,
+        download_name="gold_silver_rates.png"
+    )
+
+
+@notifications_bp.route("/api/notifications/render-portfolio-card.png", methods=["GET"])
+def render_portfolio_card_endpoint():
+    """Renders the custom Portfolio Performance card image dynamically."""
+    perf = request.args.get("perf", "+0.50%")
+    tg_sym = request.args.get("top_gainer", "POCL")
+    tg_chg = request.args.get("top_gainer_pct", "+4.56%")
+    tl_sym = request.args.get("top_loser", "Polymedicure")
+    tl_chg = request.args.get("top_loser_pct", "-0.65%")
+    uname = request.args.get("username", "")
+    p_name = f"{uname.capitalize()}'s Portfolio" if uname else "Portfolio Digest"
+
+    buf = generate_portfolio_card(
+        performance=perf,
+        top_gainer_symbol=tg_sym,
+        top_gainer_change=tg_chg,
+        top_loser_symbol=tl_sym,
+        top_loser_change=tl_chg,
+        portfolio_name=p_name,
+        date_str=today_ist_str()
+    )
+    return send_file(
+        buf,
+        mimetype="image/png",
+        as_attachment=False,
+        download_name="portfolio_performance.png"
+    )
+
+
+# =====================================================================
+# Admin Dispatch Endpoints
+# =====================================================================
+
+@notifications_bp.route("/api/admin/notifications/stats", methods=["GET"])
+@admin_required
+def admin_notification_stats():
+    """Returns detailed notification statistics, subscriptions, and audit trail for Admin Panel."""
+    subs = load_subscriptions()
+    history = get_notification_history(limit=50)
+    config = get_fcm_config()
+
+    total_subscribers = len(subs)
+    active_subscribers = sum(1 for s in subs.values() if s.get("is_active", True))
+
+    return jsonify({
+        "success": True,
+        "config": config,
+        "total_subscribers": total_subscribers,
+        "active_subscribers": active_subscribers,
+        "subscribers_list": list(subs.values())[:30],
+        "history": history
+    })
+
+
+@notifications_bp.route("/api/admin/notifications/send-gold", methods=["POST"])
+@admin_required
+def admin_send_gold_notification():
+    """
+    Dispatches Gold & Silver Rates Notification to all Web & PWA subscribers.
+    Can dynamically fetch real-time bullion rates if not manually specified.
+    """
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+
+    # If use_live requested or values not provided, dynamically fetch from market
+    if data.get("use_live") or not data.get("gold_1g"):
+        live = fetch_live_bullion_rates(force_refresh=True)
+        gold_1g = live["gold_1g"]
+        gold_8g = live["gold_8g"]
+        silver_1g = live["silver_1g"]
+        silver_8g = live["silver_8g"]
+    else:
+        gold_1g = data.get("gold_1g", "13,195").strip()
+        gold_8g = data.get("gold_8g", "1,05,560").strip()
+        silver_1g = data.get("silver_1g", "215.00").strip()
+        silver_8g = data.get("silver_8g", "1,720").strip()
+
+    # Pre-render physical PNG for push image banner
+    gen_dir = os.path.join(current_app.root_path, "static", "notifications", "generated")
+    os.makedirs(gen_dir, exist_ok=True)
+    card_path = os.path.join(gen_dir, "gold_rates_latest.png")
+    generate_gold_silver_card(
+        gold_1g=gold_1g,
+        gold_8g=gold_8g,
+        silver_1g=silver_1g,
+        silver_8g=silver_8g,
+        output_path=card_path
+    )
+
+    base_url = request.url_root.rstrip("/")
+    image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
+
+    # Notification text
+    title = "👑 Standard Gold (22K) & Ready Silver Update"
+    body = f"Gold 22K: ₹{gold_1g}/g | ₹{gold_8g}/8g\nSilver: ₹{silver_1g}/g | ₹{silver_8g}/8g (99.9% Fine)"
+
+    result = send_web_push(
+        title=title,
+        body=body,
+        image_url=image_url,
+        data_payload={
+            "url": "/watchlists",
+            "type": "gold_silver_rates",
+            "gold_1g": gold_1g,
+            "gold_8g": gold_8g,
+            "silver_1g": silver_1g,
+            "silver_8g": silver_8g
+        },
+        target_topic="gold_silver_rates"
+    )
+
+    result["gold_1g"] = gold_1g
+    result["gold_8g"] = gold_8g
+    result["silver_1g"] = silver_1g
+    result["silver_8g"] = silver_8g
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/users-portfolio-overview", methods=["GET"])
+@admin_required
+def admin_users_portfolio_overview():
+    """
+    Computes and returns today's real performance summary for every user
+    based on their current stock holdings in the database.
+    """
+    summaries = get_all_users_portfolio_summaries()
+    return jsonify({
+        "success": True,
+        "users": summaries
+    })
+
+
+@notifications_bp.route("/api/admin/notifications/send-portfolio-all-users", methods=["POST"])
+@admin_required
+def admin_send_portfolio_all_users():
+    """
+    DISPATCHES PERSONALIZED EOD NOTIFICATIONS TO EVERY USER:
+    1. Reads each user's unique portfolio from the DB.
+    2. Fetches live market quotes for their stocks.
+    3. Calculates their net daily return %, top gainer, and top loser.
+    4. Generates a personalized PNG card banner for each user.
+    5. Dispatches FCM push targeted to each user's registered devices.
+    """
+    base_url = request.url_root.rstrip("/")
+    static_root = os.path.join(current_app.root_path, "static")
+
+    result = dispatch_unique_portfolio_notifications(base_url=base_url, static_root=static_root)
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/send-portfolio", methods=["POST"])
+@admin_required
+def admin_send_portfolio_notification():
+    """Dispatches EOD Portfolio Performance Notification (Custom/Broadcast)."""
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+
+    perf = data.get("perf", "+0.50%").strip()
+    top_gainer = data.get("top_gainer", "POCL").strip()
+    top_gainer_pct = data.get("top_gainer_pct", "+4.56%").strip()
+    top_loser = data.get("top_loser", "Polymedicure").strip()
+    top_loser_pct = data.get("top_loser_pct", "-0.65%").strip()
+
+    if not perf.startswith("+") and not perf.startswith("-"):
+        perf = f"+{perf}"
+    if not top_gainer_pct.startswith("+"):
+        top_gainer_pct = f"+{top_gainer_pct}"
+    if not top_loser_pct.startswith("-"):
+        top_loser_pct = f"-{top_loser_pct}"
+
+    gen_dir = os.path.join(current_app.root_path, "static", "notifications", "generated")
+    os.makedirs(gen_dir, exist_ok=True)
+    card_path = os.path.join(gen_dir, "portfolio_latest.png")
+    generate_portfolio_card(
+        performance=perf,
+        top_gainer_symbol=top_gainer,
+        top_gainer_change=top_gainer_pct,
+        top_loser_symbol=top_loser,
+        top_loser_change=top_loser_pct,
+        date_str=today_ist_str(),
+        output_path=card_path
+    )
+
+    base_url = request.url_root.rstrip("/")
+    image_url = f"{base_url}/static/notifications/generated/portfolio_latest.png"
+
+    title = "📈 Capital Desk EOD Portfolio Performance"
+    body = f"Today's Return: {perf} • Top Gainer: {top_gainer} ({top_gainer_pct}) • Top Loser: {top_loser} ({top_loser_pct})"
+
+    result = send_web_push(
+        title=title,
+        body=body,
+        image_url=image_url,
+        data_payload={
+            "url": "/portfolios",
+            "type": "portfolio_performance",
+            "performance": perf,
+            "top_gainer": top_gainer,
+            "top_loser": top_loser
+        },
+        target_topic="portfolio_performance"
+    )
+
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/send-test", methods=["POST"])
+@admin_required
+def admin_send_test_notification():
+    """Sends a quick test push notification."""
+    base_url = request.url_root.rstrip("/")
+    result = send_web_push(
+        title="🔔 Capital Desk Test Alert",
+        body="This is a test notification confirming your Web & PWA push connection is operational!",
+        image_url=f"{base_url}/static/screenshots/desktop-dashboard.png",
+        data_payload={"url": "/"},
+        target_topic=None
+    )
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/save-config", methods=["POST"])
+@admin_required
+def admin_save_fcm_config():
+    """Allows admin to save VAPID public key, project ID, and service account JSON."""
+    data = request.get_json(silent=True) or {}
+    vapid_key = data.get("vapid_public_key", "").strip()
+    project_id = data.get("project_id", "").strip()
+    service_account_json = data.get("service_account_json", "").strip()
+
+    from modules.common.system_settings import get_system_settings, update_system_settings
+    settings = get_system_settings()
+
+    if vapid_key:
+        settings["fcm_vapid_public_key"] = vapid_key
+    if project_id:
+        settings["fcm_project_id"] = project_id
+
+    if service_account_json:
+        try:
+            import json
+            parsed = json.loads(service_account_json)
+            os.makedirs(os.path.dirname(DEFAULT_SERVICE_ACCOUNT_FILE), exist_ok=True)
+            with open(DEFAULT_SERVICE_ACCOUNT_FILE, "w", encoding="utf-8") as f:
+                json.dump(parsed, f, indent=2)
+            with open("firebase_service_account.json", "w", encoding="utf-8") as f:
+                json.dump(parsed, f, indent=2)
+
+            if "project_id" in parsed and not project_id:
+                project_id = parsed["project_id"]
+                settings["fcm_project_id"] = project_id
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Invalid JSON format for Service Account: {e}"}), 400
+
+    update_system_settings(settings)
+
+    # Force re-initialize Firebase Admin
+    from modules.notifications.fcm_service import reload_fcm
+    is_ready = reload_fcm()
+    cfg = get_fcm_config()
+
+    if is_ready:
+        msg = f"Firebase successfully connected to project '{project_id or cfg.get('project_id')}'! Web Push is now live."
+    else:
+        if service_account_json or os.path.exists(DEFAULT_SERVICE_ACCOUNT_FILE):
+            msg = f"Settings saved, but Firebase reported: {cfg.get('init_error')}"
+        else:
+            msg = "VAPID key and Project ID saved! (Service Account JSON pending for live dispatch)"
+
+    return jsonify({
+        "success": True,
+        "message": msg,
+        "is_configured": is_ready,
+        "config": cfg
+    })
