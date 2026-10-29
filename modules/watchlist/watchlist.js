@@ -430,6 +430,52 @@
         }
         window.moveWatchlistStock = moveWatchlistStock;
 
+        async function syncStockWatchlists(symbol, targetWatchlists, addedCount = 0, removedCount = 0) {
+            if (!symbol || !Array.isArray(targetWatchlists)) return;
+            startWatchlistSpin();
+            try {
+                const res = await fetch('/api/watchlists/sync-stock-watchlists', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        watchlists: targetWatchlists
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    watchlistsData = data.watchlists;
+                    try {
+                        localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
+                    } catch(e) {}
+
+                    let msg = `Updated watchlists for ${cleanDisplaySymbol(symbol)}`;
+                    if (data.added_to && data.added_to.length > 0 && (!data.removed_from || data.removed_from.length === 0)) {
+                        msg = `Added ${cleanDisplaySymbol(symbol)} to "${data.added_to.join(', ')}"`;
+                    } else if (data.removed_from && data.removed_from.length > 0 && (!data.added_to || data.added_to.length === 0)) {
+                        msg = `Removed ${cleanDisplaySymbol(symbol)} from "${data.removed_from.join(', ')}"`;
+                    }
+                    showToast(msg, 'success');
+
+                    if (data.errors && data.errors.length > 0) {
+                        showToast(data.errors.join('; '), 'warning');
+                    }
+
+                    renderWatchlists();
+                    if (typeof refreshPrices === 'function') await refreshPrices();
+                } else {
+                    showToast(data.error || 'Failed to update watchlists', 'error');
+                }
+            } catch (err) {
+                console.error('Error syncing stock watchlists:', err);
+                showToast('Failed to update watchlists. Please check network connection.', 'error');
+            } finally {
+                stopWatchlistSpin();
+            }
+        }
+        window.syncStockWatchlists = syncStockWatchlists;
+
+
         function getSymbolBadge(sym, defaultExch = '') {
             if (!sym) return { label: 'NSE', class: 'badge-nse' };
             const s = sym.toUpperCase();
@@ -1144,7 +1190,7 @@
                 }
 
                 if (item.isMove) {
-                    const otherWatchlists = Object.keys(watchlistsData || {}).filter(wName => wName !== activeWatchlistName);
+                    const allWatchlists = Object.keys(watchlistsData || {});
                     const mMove = document.createElement('div');
                     mMove.className = 'menu-item wl-move-menu-item';
                     mMove.style.cssText = 'padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: space-between; position: relative; color: var(--text-primary);';
@@ -1169,16 +1215,15 @@
                         right: 100%;
                         bottom: 0;
                         margin-right: 4px;
-                        min-width: 170px;
-                        max-width: 240px;
-                        max-height: 240px;
-                        overflow-y: auto;
-                        overflow-x: hidden;
+                        min-width: 195px;
+                        max-width: 260px;
+                        max-height: 275px;
+                        overflow: hidden;
                         background: var(--bg-card);
                         border: 1px solid var(--border-color);
                         border-radius: 8px;
                         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
-                        padding: 4px 0;
+                        padding: 0;
                         z-index: 1000000;
                         text-align: left;
                         box-sizing: border-box;
@@ -1186,8 +1231,8 @@
 
                     const positionSubmenu = () => {
                         submenu.style.display = 'block';
-                        const smWidth = submenu.offsetWidth || 185;
-                        const smHeight = submenu.offsetHeight || 220;
+                        const smWidth = submenu.offsetWidth || 205;
+                        const smHeight = submenu.offsetHeight || 230;
                         const popRect = popover.getBoundingClientRect();
                         const vh = window.innerHeight || document.documentElement.clientHeight;
 
@@ -1246,74 +1291,207 @@
                             submenu.style.display = 'none';
                             mMove.classList.remove('active');
                             window._wlSubmenuHideTimer = null;
-                        }, 1000);
+                        }, 1200);
                     };
 
-                    if (otherWatchlists.length === 0) {
+                    if (allWatchlists.length === 0) {
                         const emptyItem = document.createElement('div');
                         emptyItem.className = 'wl-move-empty-item';
-                        emptyItem.style.cssText = 'padding: 8px 14px; font-size: 11px; color: var(--text-secondary); font-style: italic;';
-                        emptyItem.innerText = 'No other watchlists';
+                        emptyItem.style.cssText = 'padding: 10px 14px; font-size: 11px; color: var(--text-secondary); font-style: italic;';
+                        emptyItem.innerText = 'No watchlists';
                         submenu.appendChild(emptyItem);
                     } else {
-                        const titleItem = document.createElement('div');
-                        titleItem.style.cssText = 'padding: 6px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8); border-bottom: 1px solid var(--border-color); cursor: default;';
-                        titleItem.innerText = 'Move to Watchlist';
-                        submenu.appendChild(titleItem);
+                        // Top heading row with title on left and Done button on top right
+                        const headingRow = document.createElement('div');
+                        headingRow.className = 'wl-move-heading-row';
+                        headingRow.style.cssText = `
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 8px;
+                            padding: 6px 10px;
+                            border-bottom: 1px solid var(--border-color);
+                            background: var(--bg-subtle, rgba(255, 255, 255, 0.04));
+                            user-select: none;
+                        `;
 
-                        otherWatchlists.forEach(targetWl => {
+                        const titleSpan = document.createElement('span');
+                        titleSpan.style.cssText = 'font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8); white-space: nowrap;';
+                        titleSpan.innerText = 'Watchlists';
+
+                        const doneBtn = document.createElement('button');
+                        doneBtn.type = 'button';
+                        doneBtn.className = 'wl-move-done-btn';
+                        doneBtn.innerText = 'Done';
+                        doneBtn.style.cssText = `
+                            background: var(--accent, #3b82f6);
+                            color: #ffffff;
+                            border: none;
+                            border-radius: 4px;
+                            padding: 3px 10px;
+                            font-size: 11px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            line-height: 1.2;
+                            transition: opacity 0.15s ease;
+                        `;
+                        doneBtn.addEventListener('mouseenter', () => { doneBtn.style.opacity = '0.85'; });
+                        doneBtn.addEventListener('mouseleave', () => { doneBtn.style.opacity = '1'; });
+
+                        headingRow.appendChild(titleSpan);
+                        headingRow.appendChild(doneBtn);
+                        submenu.appendChild(headingRow);
+
+                        // Scrollable list container
+                        const listContainer = document.createElement('div');
+                        listContainer.className = 'wl-move-list-container';
+                        listContainer.style.cssText = `
+                            max-height: 220px;
+                            overflow-y: auto;
+                            overflow-x: hidden;
+                            padding: 3px 0;
+                        `;
+
+                        const isSymInWl = (targetWl) => {
+                            const list = watchlistsData && watchlistsData[targetWl];
+                            if (!Array.isArray(list)) return false;
+                            const cleanSym = String(sym).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+                            return list.some(item => {
+                                const itemStr = String(item).trim().toUpperCase();
+                                return itemStr === String(sym).trim().toUpperCase() || itemStr.replace(/\.(NS|BO)$/i, '') === cleanSym;
+                            });
+                        };
+
+                        allWatchlists.forEach(targetWl => {
                             const count = Array.isArray(watchlistsData[targetWl]) ? watchlistsData[targetWl].length : 0;
+                            const isPrechecked = isSymInWl(targetWl);
+                            const isCurrent = (targetWl === activeWatchlistName);
+
                             const targetItem = document.createElement('div');
                             targetItem.className = 'menu-item wl-move-target-item';
                             targetItem.style.cssText = `
-                                padding: 8px 14px;
+                                padding: 6px 10px;
                                 font-size: 12px;
                                 font-weight: 500;
                                 cursor: pointer;
                                 display: flex;
                                 align-items: center;
                                 justify-content: space-between;
-                                gap: 10px;
+                                gap: 8px;
                                 box-sizing: border-box;
                                 color: var(--text-primary);
+                                user-select: none;
                             `;
 
+                            const leftCol = document.createElement('div');
+                            leftCol.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 0;';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.className = 'wl-move-checkbox';
+                            checkbox.checked = isPrechecked;
+                            checkbox.dataset.wlName = targetWl;
+                            checkbox.dataset.initialChecked = isPrechecked ? '1' : '0';
+                            checkbox.style.cssText = 'cursor: pointer; width: 14px; height: 14px; accent-color: var(--accent, #3b82f6); margin: 0; flex-shrink: 0;';
+
                             const targetNameSpan = document.createElement('span');
-                            targetNameSpan.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;';
+                            targetNameSpan.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;';
                             targetNameSpan.title = targetWl;
                             targetNameSpan.innerText = targetWl;
 
+                            leftCol.appendChild(checkbox);
+                            leftCol.appendChild(targetNameSpan);
+
+                            if (isCurrent) {
+                                const currentBadge = document.createElement('span');
+                                currentBadge.style.cssText = 'font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(59, 130, 246, 0.18); color: var(--accent, #3b82f6); font-weight: 700; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.02em;';
+                                currentBadge.innerText = 'Current';
+                                leftCol.appendChild(currentBadge);
+                            }
+
                             const targetBadge = document.createElement('span');
                             targetBadge.style.cssText = 'font-size: 10px; color: var(--text-secondary); opacity: 0.8; font-weight: normal; flex-shrink: 0;';
-                            targetBadge.innerText = `${count} ${count === 1 ? 'stock' : 'stocks'}`;
+                            targetBadge.innerText = `${count}`;
 
-                            targetItem.appendChild(targetNameSpan);
+                            targetItem.appendChild(leftCol);
                             targetItem.appendChild(targetBadge);
 
-                            let targetTriggerTime = 0;
-                            const handleTargetClick = (ev) => {
-                                const now = Date.now();
-                                if (now - targetTriggerTime < 350) return;
-                                targetTriggerTime = now;
-                                if (ev) {
-                                    ev.preventDefault();
-                                    ev.stopPropagation();
-                                    ev.stopImmediatePropagation();
+                            // Toggle checkbox on item click
+                            targetItem.addEventListener('click', (ev) => {
+                                ev.preventDefault();
+                                ev.stopPropagation();
+                                mMove.classList.add('active');
+                                if (window._wlSubmenuHideTimer) {
+                                    clearTimeout(window._wlSubmenuHideTimer);
+                                    window._wlSubmenuHideTimer = null;
                                 }
-                                window._wlMenuJustClosed = true;
-                                setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
-                                closeAllWlMenus();
-                                moveWatchlistStock(activeWatchlistName, targetWl, sym);
-                            };
+                                if (ev.target !== checkbox) {
+                                    checkbox.checked = !checkbox.checked;
+                                }
+                            });
 
-                            targetItem.addEventListener('click', handleTargetClick);
-                            targetItem.addEventListener('touchend', handleTargetClick);
-                            targetItem.addEventListener('mouseenter', showSubmenu);
-                            submenu.appendChild(targetItem);
+                            checkbox.addEventListener('click', (ev) => {
+                                ev.stopPropagation();
+                                mMove.classList.add('active');
+                                if (window._wlSubmenuHideTimer) {
+                                    clearTimeout(window._wlSubmenuHideTimer);
+                                    window._wlSubmenuHideTimer = null;
+                                }
+                            });
+
+                            listContainer.appendChild(targetItem);
                         });
+
+                        submenu.appendChild(listContainer);
+
+                        // Done button click handler
+                        let doneTriggerTime = 0;
+                        const handleDoneClick = async (ev) => {
+                            const now = Date.now();
+                            if (now - doneTriggerTime < 350) return;
+                            doneTriggerTime = now;
+                            if (ev) {
+                                ev.preventDefault();
+                                ev.stopPropagation();
+                                ev.stopImmediatePropagation();
+                            }
+                            window._wlMenuJustClosed = true;
+                            setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
+
+                            const checkboxes = listContainer.querySelectorAll('.wl-move-checkbox');
+                            const targetWatchlists = [];
+                            let hasChanges = false;
+                            let addedCount = 0;
+                            let removedCount = 0;
+
+                            checkboxes.forEach(cb => {
+                                const wName = cb.dataset.wlName;
+                                const initial = cb.dataset.initialChecked === '1';
+                                const current = cb.checked;
+                                if (current) {
+                                    targetWatchlists.push(wName);
+                                }
+                                if (current !== initial) {
+                                    hasChanges = true;
+                                    if (current) addedCount++;
+                                    else removedCount++;
+                                }
+                            });
+
+                            closeAllWlMenus();
+
+                            if (!hasChanges) {
+                                return;
+                            }
+
+                            await syncStockWatchlists(sym, targetWatchlists, addedCount, removedCount);
+                        };
+
+                        doneBtn.addEventListener('click', handleDoneClick);
+                        doneBtn.addEventListener('touchend', handleDoneClick);
                     }
 
-                    // Hover behavior: immediate open, wait 2s before hiding when mouse leaves
+                    // Hover behavior: immediate open, wait before hiding when mouse leaves
                     mMove.addEventListener('mouseenter', showSubmenu);
                     mMove.addEventListener('mouseleave', (ev) => {
                         const rel = ev.relatedTarget;
@@ -1332,23 +1510,13 @@
                         }
                     });
 
-                    // Mobile tap toggle
+                    // Mobile tap / click toggle: ensure submenu stays open
                     mMove.addEventListener('click', (ev) => {
-                        if (ev.target.closest('.wl-move-target-item')) return;
+                        if (ev.target.closest('.wl-move-target-item') || ev.target.closest('.wl-move-done-btn') || ev.target.closest('.wl-move-heading-row')) return;
                         ev.preventDefault();
                         ev.stopPropagation();
-                        const isOpen = submenu.style.display === 'block';
-                        if (isOpen) {
-                            if (window._wlSubmenuHideTimer) {
-                                clearTimeout(window._wlSubmenuHideTimer);
-                                window._wlSubmenuHideTimer = null;
-                            }
-                            submenu.style.display = 'none';
-                            mMove.classList.remove('active');
-                        } else {
-                            showSubmenu();
-                            mMove.classList.add('active');
-                        }
+                        showSubmenu();
+                        mMove.classList.add('active');
                     });
 
                     mMove.appendChild(submenu);

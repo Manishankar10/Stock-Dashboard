@@ -372,3 +372,80 @@ def move_stock():
         "target_watchlist": target_key,
         "watchlists": data
     })
+
+@watchlist_bp.route("/api/watchlists/sync-stock-watchlists", methods=["POST"])
+@login_required
+def sync_stock_watchlists():
+    payload = request.get_json(silent=True) or {}
+    symbol = payload.get("symbol")
+    target_watchlists = payload.get("watchlists")
+
+    if not symbol or not isinstance(target_watchlists, list):
+        return jsonify({"error": "symbol and watchlists list are required"}), 400
+
+    data = load_data()
+    sym_unquoted = urllib.parse.unquote(str(symbol)).strip()
+    sym_clean = re.sub(r"\.(NS|BO)$", "", sym_unquoted, flags=re.IGNORECASE).upper()
+
+    settings = get_system_settings()
+    max_stocks = settings.get("max_stocks_per_watchlist", 50)
+
+    # Normalize target watchlist keys from input list
+    target_keys = set()
+    for w_name in target_watchlists:
+        k = find_watchlist_key(data, w_name)
+        if k:
+            target_keys.add(k)
+
+    # Match representation of symbol from existing data if present
+    matched_sym = None
+    for w_key, stock_list in data.items():
+        for s in stock_list:
+            s_clean = re.sub(r"\.(NS|BO)$", "", str(s).strip(), flags=re.IGNORECASE).upper()
+            if s_clean == sym_clean:
+                matched_sym = str(s).strip()
+                break
+        if matched_sym:
+            break
+
+    if not matched_sym:
+        resolved, _ = resolve_watchlist_symbol(sym_unquoted)
+        matched_sym = resolved if resolved else sym_unquoted
+
+    added_to = []
+    removed_from = []
+    errors = []
+
+    for w_key in list(data.keys()):
+        existing_indices = []
+        for idx, s in enumerate(data[w_key]):
+            s_clean = re.sub(r"\.(NS|BO)$", "", str(s).strip(), flags=re.IGNORECASE).upper()
+            if s_clean == sym_clean or str(s).strip().upper() == sym_unquoted.upper():
+                existing_indices.append(idx)
+
+        is_currently_in = len(existing_indices) > 0
+        should_be_in = w_key in target_keys
+
+        if is_currently_in and not should_be_in:
+            for idx in reversed(existing_indices):
+                del data[w_key][idx]
+            removed_from.append(w_key)
+        elif not is_currently_in and should_be_in:
+            if len(data[w_key]) >= max_stocks:
+                errors.append(f"Stock limit reached for '{w_key}' (max {max_stocks})")
+            else:
+                data[w_key].append(matched_sym)
+                added_to.append(w_key)
+
+    if added_to or removed_from:
+        save_data(data)
+
+    return json_ordered({
+        "success": True,
+        "symbol": matched_sym,
+        "added_to": added_to,
+        "removed_from": removed_from,
+        "errors": errors,
+        "watchlists": data
+    })
+
