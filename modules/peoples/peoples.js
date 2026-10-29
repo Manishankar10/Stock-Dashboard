@@ -166,11 +166,14 @@
                     </div>
 
                     <div class="peoples-card-stats">
-                        <div class="peoples-card-stat-item">
+                        <div class="peoples-card-stat-item peoples-card-stat-val-col">
                             <span class="peoples-stat-label">Portfolio Value</span>
-                            <span class="peoples-stat-val">₹${escapeHtml(inv.portfolio_value || '—')}${changePill}</span>
+                            <div class="peoples-stat-val-group">
+                                <span class="peoples-stat-val">₹${escapeHtml(inv.portfolio_value || '—')}</span>
+                                ${changePill}
+                            </div>
                         </div>
-                        <div class="peoples-card-stat-item" style="text-align: right;">
+                        <div class="peoples-card-stat-item peoples-card-stat-companies">
                             <span class="peoples-stat-label">Companies</span>
                             <span class="peoples-stat-val">${inv.stocks_count || 0} Stocks</span>
                         </div>

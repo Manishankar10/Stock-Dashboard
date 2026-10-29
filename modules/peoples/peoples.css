@@ -80,6 +80,10 @@
     margin-bottom: 0;
 }
 
+.peoples-cat-btn-short {
+    display: none;
+}
+
 .peoples-category-bar .pf-select-btn {
     padding: 7px 14px;
     font-size: 12.5px;
@@ -348,6 +352,19 @@
     color: var(--text-primary);
     margin-top: 2px;
     font-feature-settings: "tnum";
+}
+
+.peoples-stat-val-group {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.peoples-card-stat-companies {
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 75px;
 }
 
 .peoples-card-top-holdings {
@@ -899,6 +916,12 @@
 }
 
 @media (max-width: 768px) {
+    /* 1. Remove Live Exchange Filings message in responsive design only */
+    .peoples-header-actions,
+    .peoples-status-card {
+        display: none !important;
+    }
+
     .peoples-header-card,
     .peoples-detail-header-card,
     .peoples-toolbar-card {
@@ -912,6 +935,34 @@
 
     .peoples-subtitle {
         font-size: 11.5px;
+    }
+
+    /* 2. Image 1 Fix: Make all 3 category buttons in a single row without wrapping */
+    .peoples-category-bar {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-top: 12px !important;
+    }
+
+    .peoples-category-bar .pf-select-btn {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        padding: 8px 4px !important;
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        justify-content: center !important;
+        text-align: center !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        box-sizing: border-box !important;
     }
 
     .peoples-toolbar-row {
@@ -934,9 +985,72 @@
         flex: 1;
     }
 
+    /* 3. Image 2 Fix: Ensure investor cards and stats data are fully covered and never clipped */
     .peoples-cards-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .peoples-investor-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 14px 12px !important;
+        overflow: hidden !important;
+    }
+
+    .peoples-card-stats {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 8px 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .peoples-card-stat-val-col {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+
+    .peoples-stat-val-group {
+        display: flex !important;
+        align-items: baseline !important;
+        flex-wrap: wrap !important;
+        gap: 3px !important;
+    }
+
+    .peoples-stat-val {
+        font-size: 12.5px !important;
+        white-space: nowrap !important;
+    }
+
+    .peoples-card-stat-companies {
+        flex: 0 0 auto !important;
+        min-width: 75px !important;
+        text-align: right !important;
+    }
+
+    .peoples-card-stat-companies .peoples-stat-label {
+        font-size: 10px !important;
+        white-space: nowrap !important;
+    }
+
+    .peoples-card-stat-companies .peoples-stat-val {
+        font-size: 12.5px !important;
+        white-space: nowrap !important;
+    }
+
+    .peoples-card-top-holdings {
+        font-size: 11px !important;
+        line-height: 1.45 !important;
+        -webkit-line-clamp: 3 !important;
+        min-height: auto !important;
+        margin-bottom: 12px !important;
+        word-break: break-word !important;
     }
 
     .peoples-profile-banner {
@@ -982,15 +1096,33 @@
 }
 
 @media (max-width: 480px) {
+    /* Compact label for Ace on very narrow mobile screens (<480px) */
+    .peoples-cat-btn-full {
+        display: none !important;
+    }
+
+    .peoples-cat-btn-short {
+        display: inline !important;
+    }
+
     .peoples-category-bar {
-        gap: 6px;
+        gap: 4px !important;
     }
 
     .peoples-category-bar .pf-select-btn {
-        padding: 6px 10px;
-        font-size: 11.5px;
-        flex: 1;
-        justify-content: center;
+        padding: 7px 2px !important;
+        font-size: 11px !important;
+    }
+
+    .peoples-card-avatar {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        font-size: 14px !important;
+    }
+
+    .peoples-card-name {
+        font-size: 13.5px !important;
     }
 
     .peoples-highlight-chips .peoples-chip-btn {
