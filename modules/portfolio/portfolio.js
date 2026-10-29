@@ -1672,6 +1672,8 @@
                 }
 
                 const tfoot = document.createElement('tfoot');
+
+                
                 tfoot.innerHTML = `
                     <tr>
                         <td colspan="4" class="pf-col-total" style="text-align:left;">PORTFOLIO TOTAL:</td>
