@@ -1247,6 +1247,10 @@
             const refreshBtn = document.getElementById('bullion-refresh-btn');
             if (refreshBtn && forceRefresh) refreshBtn.classList.add('spinning');
 
+            if (window.CapitalDeskPush && typeof window.CapitalDeskPush.checkCurrentSubscription === 'function') {
+                window.CapitalDeskPush.checkCurrentSubscription();
+            }
+
             fetch(`/api/insights/bullion${forceRefresh ? '?refresh=1' : ''}`)
                 .then(res => res.json())
                 .then(data => {

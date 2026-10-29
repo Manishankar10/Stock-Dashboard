@@ -495,6 +495,42 @@
     flex-shrink: 0 !important;
     text-align: right !important;
 }
+/* Full-length Bullion Push Notification Button */
+.cd-bullion-push-btn {
+    width: 100% !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    background: rgba(234, 179, 8, 0.12) !important;
+    color: #eab308 !important;
+    border: 1px solid rgba(234, 179, 8, 0.35) !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    box-sizing: border-box !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+}
+
+.cd-bullion-push-btn:hover {
+    background: rgba(234, 179, 8, 0.2) !important;
+    border-color: rgba(234, 179, 8, 0.55) !important;
+    color: #fbbf24 !important;
+}
+
+.cd-bullion-push-btn.active {
+    background: rgba(16, 185, 129, 0.14) !important;
+    color: #10b981 !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.cd-bullion-push-btn.active:hover {
+    background: rgba(16, 185, 129, 0.22) !important;
+    border-color: rgba(16, 185, 129, 0.6) !important;
+}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

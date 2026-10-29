@@ -213,29 +213,50 @@
             }
         },
 
-        toggle: async function () {
+        toggle: async function (topics) {
             if (this.isSubscribed) {
                 return await this.unsubscribe();
             } else {
-                return await this.subscribe();
+                return await this.subscribe(topics);
             }
         },
 
         updateToggleUi: function (active) {
             const btns = document.querySelectorAll('.cd-push-toggle-btn');
             btns.forEach((btn) => {
-                if (active) {
-                    btn.classList.add('active');
-                    btn.style.background = '#10b981';
-                    btn.style.color = '#ffffff';
-                    btn.title = 'Push Alerts Active (Click to Disable)';
-                    btn.innerHTML = '✅ <span class="push-btn-text">Push Active</span>';
+                const isBullionBtn = btn.id === 'insights-bullion-notif-btn' || btn.classList.contains('cd-bullion-push-btn');
+                if (isBullionBtn) {
+                    if (active) {
+                        btn.classList.add('active');
+                        btn.style.background = 'rgba(16, 185, 129, 0.15)';
+                        btn.style.color = '#10b981';
+                        btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                        btn.title = 'Daily Bullion Alerts Active (Click to Disable)';
+                        btn.innerHTML = '✅ <span class="push-btn-text">Daily Bullion Alerts Active</span>';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.style.background = 'rgba(234, 179, 8, 0.12)';
+                        btn.style.color = '#eab308';
+                        btn.style.borderColor = 'rgba(234, 179, 8, 0.35)';
+                        btn.title = 'Click to Enable Daily Bullion Push Alerts';
+                        btn.innerHTML = '🔔 <span class="push-btn-text">Enable Daily Bullion Notifications</span>';
+                    }
                 } else {
-                    btn.classList.remove('active');
-                    btn.style.background = '#3b82f6';
-                    btn.style.color = '#ffffff';
-                    btn.title = 'Click to Enable Market & Portfolio Push Alerts';
-                    btn.innerHTML = '🔔 <span class="push-btn-text">Enable Push Alerts</span>';
+                    if (active) {
+                        btn.classList.add('active');
+                        btn.style.background = '#10b981';
+                        btn.style.color = '#ffffff';
+                        btn.style.borderColor = '#10b981';
+                        btn.title = 'Push Alerts Active (Click to Disable)';
+                        btn.innerHTML = '✅ <span class="push-btn-text">Push Active</span>';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.style.background = '#3b82f6';
+                        btn.style.color = '#ffffff';
+                        btn.style.borderColor = '#3b82f6';
+                        btn.title = 'Click to Enable Market & Portfolio Push Alerts';
+                        btn.innerHTML = '🔔 <span class="push-btn-text">Enable Push Alerts</span>';
+                    }
                 }
             });
 
