@@ -1183,7 +1183,7 @@
 
             const pfNames = Object.keys(portfoliosData);
             if (pfNames.length === 0) {
-                selectorMount.innerHTML = '<span style="color:#95a5a6; font-size:13px;">No portfolios created yet.</span>';
+                selectorMount.innerHTML = '<span style="color:#95a5a6; font-size:13px;">No portfolios created yet..</span>';
             } else {
                 if (pfNames.length > 1) {
                     const allBtn = document.createElement('button');
@@ -1673,7 +1673,7 @@
 
                 const tfoot = document.createElement('tfoot');
 
-                
+
                 tfoot.innerHTML = `
                     <tr>
                         <td colspan="4" class="pf-col-total" style="text-align:left;">PORTFOLIO TOTAL:</td>
