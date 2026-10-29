@@ -23,6 +23,10 @@
         </div>
         <!-- Header Actions (Mobile Filter Button) -->
         <div class="qr-top-bar-actions">
+            <div class="qr-results-counter" id="qr-results-counter">
+                <span class="qr-counter-bold" id="qr-filtered-count">0</span> results
+                <span class="qr-counter-total" id="qr-total-count">(0 total)</span>
+            </div>
             <button type="button" class="qr-mobile-filter-trigger" onclick="window.openQrMobileFilter()" title="Filter Results">
                 <span class="qr-filter-icon">⚡</span> Filter
                 <span class="qr-filter-badge-pill" id="qr-mobile-active-filter-badge" style="display: none;">0</span>
@@ -40,10 +44,7 @@
                     <input type="text" id="qr-search-input" class="qr-search-input" placeholder="Search a company (e.g. Angel One, Persistent, TCS)..." oninput="window.handleQrSearch(this.value)">
                     <button type="button" class="qr-search-clear-btn" id="qr-search-clear" onclick="window.clearQrSearch()" style="display: none;" title="Clear Search">✕</button>
                 </div>
-                <div class="qr-results-counter" id="qr-results-counter">
-                    <span class="qr-counter-bold" id="qr-filtered-count">0</span> results
-                    <span class="qr-counter-total" id="qr-total-count">(0 total)</span>
-                </div>
+
             </div>
 
             <!-- Date Selector Row -->
