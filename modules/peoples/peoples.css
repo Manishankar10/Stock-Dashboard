@@ -131,8 +131,9 @@
 
 .peoples-search-wrap {
     flex: 1;
-    min-width: 240px;
-    max-width: 480px;
+    min-width: 360px; /* 50% increase from 240px in web */
+    max-width: 720px; /* 50% increase from 480px in web */
+    width: 100%;
 }
 
 /* Reusable Standard Search Box across Peoples */
@@ -141,9 +142,11 @@
     align-items: center;
     gap: 9px;
     flex: 1;
-    min-width: 200px;
-    height: 38px;
-    min-height: 38px;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 40px;
+    min-height: 40px;
     flex-shrink: 0;
     padding: 0 14px;
     border: 1px solid var(--border-input, rgba(255, 255, 255, 0.12));
@@ -730,20 +733,23 @@
 }
 
 .peoples-stock-filter-wrap {
-    min-width: 120px;
-    max-width: 220px;
-    flex: 0 1 200px;
+    width: 320px;     /* 50% increase from 200-215px in web */
+    min-width: 280px; /* 50% increase from 180px in web */
+    max-width: 340px; /* 50% increase from 220px in web */
+    flex: 0 1 320px;
 }
 
 .peoples-stock-filter-wrap .peoples-search-box {
-    min-width: 120px;
-    height: 36px;
-    min-height: 36px;
-    padding: 0 10px;
+    width: 100% !important;
+    max-width: 340px !important;
+    min-width: 280px !important;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 12px;
 }
 
 .peoples-stock-filter-wrap .peoples-search-box input {
-    font-size: 12.5px !important;
+    font-size: 13px !important;
 }
 
 /* Matrix Table Wrapper */
@@ -970,8 +976,9 @@
     }
 
     .peoples-stock-filter-wrap {
-        max-width: 170px;
-        min-width: 110px;
+        max-width: 255px; /* 50% increase from 170px */
+        min-width: 165px; /* 50% increase from 110px */
+        flex: 0 1 250px;
     }
 
     .peoples-table-toolbar {
