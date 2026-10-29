@@ -439,7 +439,7 @@ function switchTab(tabName, pushState = true) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav-item').forEach(item => item.classList.remove('active'));
     
-    const activeNavKey = tabName === 'mutual-fund-detail' ? 'mutual-funds' : tabName;
+    const activeNavKey = tabName === 'mutual-fund-detail' ? 'mutual-funds' : (tabName === 'dashboard' ? 'portfolios' : tabName);
     const btnEl = document.getElementById(`btn-tab-${activeNavKey}`);
     const sidebarNavEl = document.getElementById(`sidebar-nav-${activeNavKey}`);
     if (btnEl) btnEl.classList.add('active');

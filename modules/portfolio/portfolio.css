@@ -9,3 +9,30 @@
     overflow-x: auto;
     padding-bottom: 4px;
 }
+
+/* Portfolio Analysis Button in Top Bar */
+.pf-analysis-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    background-color: var(--btn-secondary-bg);
+    color: var(--btn-secondary-text);
+    border: 1px solid var(--btn-secondary-border);
+}
+
+.pf-analysis-btn:hover {
+    background-color: var(--btn-secondary-hover);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.pf-analysis-btn .pf-btn-icon {
+    font-size: 14px;
+    line-height: 1;
+}

@@ -17,7 +17,10 @@
                         </div>
                     </div>
                     <div class="portfolio-desktop-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <button class="btn-primary" onclick="openCreatePortfolioModal()">+ Create Portfolio</button>
+                        <button type="button" class="btn-secondary pf-analysis-btn" id="pf-btn-analysis" onclick="switchTab('dashboard')" title="Portfolio Analysis">
+                            <span class="pf-btn-icon">📊</span> Analysis
+                        </button>
+                        <button type="button" class="btn-primary" onclick="openCreatePortfolioModal()">+ Create Portfolio</button>
                     </div>
                     <!-- Mobile Right-Side Menu Trigger & Dropdown -->
                     <div class="portfolio-mobile-menu-wrapper">
@@ -29,6 +32,9 @@
                             </svg>
                         </button>
                         <div class="pf-mobile-menu-dropdown" id="pf-mobile-menu-dropdown" style="display: none;">
+                            <button type="button" class="pf-mob-menu-item" onclick="switchTab('dashboard'); togglePfMobileMenu(false);">
+                                <span>📊 Analysis</span>
+                            </button>
                             <button type="button" class="pf-mob-menu-item" onclick="openAddHoldingModal(); togglePfMobileMenu(false);">
                                 <span>➕ Add Holding</span>
                             </button>
