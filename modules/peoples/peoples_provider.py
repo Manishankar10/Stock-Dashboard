@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import sqlite3
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Tuple
@@ -46,6 +47,9 @@ _MONTHS_ORDER = {
     "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
     "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
 }
+
+_SYNC_LOCK = threading.Lock()
+_IS_SYNCING = False
 
 
 def _get_db_connection() -> sqlite3.Connection:
@@ -84,15 +88,7 @@ def init_peoples_db():
         )
     """)
     conn.commit()
-
-    # Check if DB is empty or needs seeding (e.g. fii was 0)
-    cur.execute("SELECT COUNT(*) FROM peoples_investors WHERE category = 'fii'")
-    fii_count = cur.fetchone()[0]
     conn.close()
-
-    if fii_count == 0:
-        logger.info("Peoples SQLite DB needs seeding, syncing investors directory...")
-        sync_all_investors_delta()
 
 
 def save_investors_delta(investors: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -183,11 +179,31 @@ def save_investors_delta(investors: List[Dict[str, Any]]) -> Dict[str, Any]:
     conn.commit()
     conn.close()
 
-    # Mirror to JSON file as well for portability
+    # Mirror to JSON file as well for portability without recursive function calls
     try:
-        all_data = get_all_investors_from_db()
+        conn = _get_db_connection()
+        cur = conn.cursor()
+        def _fetch_mirror_cat(cat: str):
+            cur.execute("SELECT * FROM peoples_investors WHERE category = ? ORDER BY numeric_value DESC", (cat,))
+            return [dict(r) for r in cur.fetchall()]
+        m_ace = _fetch_mirror_cat("ace")
+        m_fii = _fetch_mirror_cat("fii")
+        m_dii = _fetch_mirror_cat("dii")
+        conn.close()
+
+        mirror_data = {
+            "ace": m_ace,
+            "fii": m_fii,
+            "dii": m_dii,
+            "counts": {
+                "ace": len(m_ace),
+                "fii": len(m_fii),
+                "dii": len(m_dii),
+                "total": len(m_ace) + len(m_fii) + len(m_dii)
+            }
+        }
         with open(_JSON_BACKUP_PATH, "w", encoding="utf-8") as f:
-            json.dump(all_data, f, indent=2, ensure_ascii=False)
+            json.dump(mirror_data, f, indent=2, ensure_ascii=False)
     except Exception as e:
         logger.warning("Could not write peoples JSON mirror: %s", e)
 
@@ -219,6 +235,19 @@ def get_all_investors_from_db() -> Dict[str, Any]:
     fii_list = fetch_cat("fii")
     dii_list = fetch_cat("dii")
     conn.close()
+
+    total_cnt = len(ace_list) + len(fii_list) + len(dii_list)
+
+    # Initial seeding if DB is empty and sync is not currently in progress
+    if total_cnt == 0 and not _IS_SYNCING:
+        logger.info("Peoples DB is completely empty, triggering initial sync...")
+        sync_all_investors_delta()
+        conn = _get_db_connection()
+        cur = conn.cursor()
+        ace_list = fetch_cat("ace")
+        fii_list = fetch_cat("fii")
+        dii_list = fetch_cat("dii")
+        conn.close()
 
     return {
         "ace": ace_list,
@@ -581,96 +610,121 @@ def sync_all_investors_delta() -> Dict[str, Any]:
     - Domestic Institutional Investors (DIIs & prominent Indian Mutual Funds/Insurers)
     
     Updates ONLY changed records and inserts new ones. Unchanged entries are left untouched.
+    Guarded with reentrancy lock to prevent recursion or concurrent syncs.
     """
-    start_time = time.time()
-    init_peoples_db()
+    global _IS_SYNCING
+    if _IS_SYNCING:
+        logger.warning("Sync already in progress, skipping concurrent/recursive sync call.")
+        return {
+            "success": False,
+            "message": "Sync already in progress.",
+            "error": "A sync is already in progress. Please wait for it to complete."
+        }
 
-    def fetch_cat_data(cat: str, url: str) -> List[Dict[str, Any]]:
+    with _SYNC_LOCK:
+        _IS_SYNCING = True
         try:
-            resp = requests.get(url, headers=_HEADERS, timeout=14)
-            if resp.status_code == 200:
-                return _parse_investor_index_table(resp.text, cat)
-        except Exception as e:
-            logger.error("Error fetching %s directory: %s", cat, e)
-        return []
+            start_time = time.time()
+            init_peoples_db()
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        f_ace = executor.submit(fetch_cat_data, "ace", _CATEGORY_URLS["ace"])
-        f_fii = executor.submit(fetch_cat_data, "fii", _CATEGORY_URLS["fii"])
-        f_dii = executor.submit(fetch_cat_data, "dii", _CATEGORY_URLS["dii"])
+            def fetch_cat_data(cat: str, url: str) -> List[Dict[str, Any]]:
+                try:
+                    resp = requests.get(url, headers=_HEADERS, timeout=14)
+                    if resp.status_code == 200:
+                        return _parse_investor_index_table(resp.text, cat)
+                except Exception as e:
+                    logger.error("Error fetching %s directory: %s", cat, e)
+                return []
 
-        ace_list = f_ace.result()
-        fii_list = f_fii.result()
-        inst_list = f_dii.result()
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                f_ace = executor.submit(fetch_cat_data, "ace", _CATEGORY_URLS["ace"])
+                f_fii = executor.submit(fetch_cat_data, "fii", _CATEGORY_URLS["fii"])
+                f_dii = executor.submit(fetch_cat_data, "dii", _CATEGORY_URLS["dii"])
 
-    fii_ids = {x["id"] for x in fii_list}
+                ace_list = f_ace.result()
+                fii_list = f_fii.result()
+                inst_list = f_dii.result()
 
-    # Filter out FII entities from the raw institutional list for pure DII
-    pure_dii_list = [x for x in inst_list if x["id"] not in fii_ids]
+            fii_ids = {x["id"] for x in fii_list}
 
-    all_source_investors: List[Dict[str, Any]] = []
-    all_source_investors.extend(ace_list)
-    all_source_investors.extend(fii_list)
-    all_source_investors.extend(pure_dii_list)
+            # Filter out FII entities from the raw institutional list for pure DII
+            pure_dii_list = [x for x in inst_list if x["id"] not in fii_ids]
 
-    # Inject comprehensive list of prominent Indian DII mutual funds and insurers
-    all_source_investors.extend(_PROMINENT_EXTRA_DII)
+            all_source_investors: List[Dict[str, Any]] = []
+            all_source_investors.extend(ace_list)
+            all_source_investors.extend(fii_list)
+            all_source_investors.extend(pure_dii_list)
 
-    # Deduplicate by ID
-    seen_ids = set()
-    deduped_investors: List[Dict[str, Any]] = []
-    for inv in all_source_investors:
-        inv_id = str(inv["id"])
-        if inv_id not in seen_ids:
-            seen_ids.add(inv_id)
-            deduped_investors.append(inv)
+            # Inject comprehensive list of prominent Indian DII mutual funds and insurers
+            all_source_investors.extend(_PROMINENT_EXTRA_DII)
 
-    # Execute delta update
-    delta_res = save_investors_delta(deduped_investors)
+            # Deduplicate by ID
+            seen_ids = set()
+            deduped_investors: List[Dict[str, Any]] = []
+            for inv in all_source_investors:
+                inv_id = str(inv["id"])
+                if inv_id not in seen_ids:
+                    seen_ids.add(inv_id)
+                    deduped_investors.append(inv)
 
-    duration = round(time.time() - start_time, 2)
-    last_synced_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            # Execute delta update
+            delta_res = save_investors_delta(deduped_investors)
 
-    # Record sync metadata
-    try:
-        conn = _get_db_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT OR REPLACE INTO peoples_sync_meta (key, value, updated_at)
-            VALUES ('last_synced_at', ?, CURRENT_TIMESTAMP)
-        """, (last_synced_at,))
+            duration = round(time.time() - start_time, 2)
+            last_synced_at = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        meta_val = json.dumps({
-            "added": delta_res["added"],
-            "updated": delta_res["updated"],
-            "unchanged": delta_res["unchanged"],
-            "total_source": delta_res["total"],
-            "duration_seconds": duration,
-            "status": "success"
-        })
-        cur.execute("""
-            INSERT OR REPLACE INTO peoples_sync_meta (key, value, updated_at)
-            VALUES ('last_sync_result', ?, CURRENT_TIMESTAMP)
-        """, (meta_val,))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Could not record peoples sync metadata: %s", e)
+            # Record sync metadata
+            try:
+                conn = _get_db_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT OR REPLACE INTO peoples_sync_meta (key, value, updated_at)
+                    VALUES ('last_synced_at', ?, CURRENT_TIMESTAMP)
+                """, (last_synced_at,))
 
-    db_data = get_all_investors_from_db()
-    counts = db_data.get("counts", {})
+                meta_val = json.dumps({
+                    "added": delta_res["added"],
+                    "updated": delta_res["updated"],
+                    "unchanged": delta_res["unchanged"],
+                    "total_source": delta_res["total"],
+                    "duration_seconds": duration,
+                    "status": "success"
+                })
+                cur.execute("""
+                    INSERT OR REPLACE INTO peoples_sync_meta (key, value, updated_at)
+                    VALUES ('last_sync_result', ?, CURRENT_TIMESTAMP)
+                """, (meta_val,))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                logger.warning("Could not record peoples sync metadata: %s", e)
 
-    return {
-        "success": True,
-        "message": f"Sync completed: {delta_res['total']} verified ({delta_res['added']} added, {delta_res['updated']} updated, {delta_res['unchanged']} unchanged).",
-        "added": delta_res["added"],
-        "updated": delta_res["updated"],
-        "unchanged": delta_res["unchanged"],
-        "total_source": delta_res["total"],
-        "counts": counts,
-        "duration_seconds": duration,
-        "last_synced_at": last_synced_at
-    }
+            # Direct count aggregation without full table deserialization
+            counts = {"ace": 0, "fii": 0, "dii": 0, "total": 0}
+            try:
+                conn = _get_db_connection()
+                cur = conn.cursor()
+                cur.execute("SELECT category, COUNT(*) as cnt FROM peoples_investors GROUP BY category")
+                for r in cur.fetchall():
+                    counts[r["category"]] = r["cnt"]
+                counts["total"] = counts.get("ace", 0) + counts.get("fii", 0) + counts.get("dii", 0)
+                conn.close()
+            except Exception as e:
+                logger.warning("Could not compute peoples counts: %s", e)
+
+            return {
+                "success": True,
+                "message": f"Sync completed: {delta_res['total']} verified ({delta_res['added']} added, {delta_res['updated']} updated, {delta_res['unchanged']} unchanged).",
+                "added": delta_res["added"],
+                "updated": delta_res["updated"],
+                "unchanged": delta_res["unchanged"],
+                "total_source": delta_res["total"],
+                "counts": counts,
+                "duration_seconds": duration,
+                "last_synced_at": last_synced_at
+            }
+        finally:
+            _IS_SYNCING = False
 
 
 def sync_and_save_investors_to_db() -> Dict[str, Any]:
@@ -682,8 +736,17 @@ def sync_and_save_investors_to_db() -> Dict[str, Any]:
 def get_peoples_sync_status() -> Dict[str, Any]:
     """Retrieve current DB investor counts and delta sync metadata for Admin Settings."""
     init_peoples_db()
-    db_data = get_all_investors_from_db()
-    counts = db_data.get("counts", {})
+    counts = {"ace": 0, "fii": 0, "dii": 0, "total": 0}
+    try:
+        conn = _get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT category, COUNT(*) as cnt FROM peoples_investors GROUP BY category")
+        for r in cur.fetchall():
+            counts[r["category"]] = r["cnt"]
+        counts["total"] = counts.get("ace", 0) + counts.get("fii", 0) + counts.get("dii", 0)
+        conn.close()
+    except Exception as e:
+        logger.warning("Could not compute peoples counts: %s", e)
 
     last_synced_at = None
     last_sync_result = {}
