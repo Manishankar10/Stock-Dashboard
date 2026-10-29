@@ -14,6 +14,59 @@
     let _isLoadedOnce = false;
     let _highlightOption = 'all'; // 'all', 'inc', 'dec', 'both'
     let _quarterScope = 'last';    // 'last', 'all'
+    let _sortColumn = 'stock';     // 'stock', 'qty', 'val', or specific quarter name (e.g. 'Sep 2026')
+    let _sortDirection = 'asc';    // 'asc', 'desc' (initial sorting is stock A-Z)
+
+    // Helper: Parse numerical values for sorting (normalized to Crores for values)
+    function _parseNumericVal(str) {
+        if (!str || str === '—' || str === '-') return -1;
+        const s = String(str).replace(/[₹,\s]/g, '').trim();
+        const match = s.match(/^([0-9.]+)\s*([a-zA-Z]+)?$/);
+        if (!match) {
+            const num = parseFloat(s);
+            return isNaN(num) ? -1 : num;
+        }
+        let num = parseFloat(match[1]);
+        if (isNaN(num)) return -1;
+        const unit = (match[2] || '').toLowerCase();
+        if (unit === 'cr' || unit === 'crore' || unit === 'crores') {
+            return num;
+        } else if (unit === 'l' || unit === 'lakh' || unit === 'lakhs' || unit === 'lac' || unit === 'lacs') {
+            return num * 0.01;
+        } else if (unit === 'k') {
+            return num * 0.0001;
+        } else if (unit === 'm') {
+            return num * 0.1;
+        } else if (unit === 'b') {
+            return num * 100;
+        }
+        return num;
+    }
+
+    function _parseNumericQty(str) {
+        if (!str || str === '—' || str === '-') return -1;
+        const s = String(str).replace(/,/g, '').trim();
+        const match = s.match(/^([0-9.]+)\s*([a-zA-Z]+)?$/);
+        if (!match) {
+            const num = parseFloat(s);
+            return isNaN(num) ? -1 : num;
+        }
+        let num = parseFloat(match[1]);
+        if (isNaN(num)) return -1;
+        const unit = (match[2] || '').toLowerCase();
+        if (unit === 'cr') return num * 10000000;
+        if (unit === 'l' || unit === 'lakh') return num * 100000;
+        if (unit === 'k') return num * 1000;
+        if (unit === 'm') return num * 1000000;
+        return num;
+    }
+
+    function _parseNumericPct(str) {
+        if (!str || str === '—' || str === '-') return -1;
+        const cleaned = String(str).replace(/[%,\s]/g, '').trim();
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? -1 : num;
+    }
 
     // Helper: Escape HTML
     function escapeHtml(str) {
@@ -295,6 +348,10 @@
             btn.classList.toggle('active', btn.getAttribute('data-highlight') === 'all');
         });
 
+        // Initial sorting is always Stock A-Z
+        _sortColumn = 'stock';
+        _sortDirection = 'asc';
+
         // Update banner profile
         const nameEl = document.getElementById('peoples-detail-name');
         const valEl = document.getElementById('peoples-detail-val');
@@ -406,30 +463,122 @@
             });
         }
 
-        // 2. Build Header Row
+        // Guard: Reset sort column to 'stock' if currently selected quarter is not in current view
+        if (_sortColumn !== 'stock' && _sortColumn !== 'qty' && _sortColumn !== 'val' && !quarters.includes(_sortColumn)) {
+            _sortColumn = 'stock';
+            _sortDirection = 'asc';
+        }
+
+        // Sort stocks based on active column and direction
+        stocks.sort((a, b) => {
+            let cmp = 0;
+            if (_sortColumn === 'stock') {
+                const nameA = (a.stock || '').toLowerCase();
+                const nameB = (b.stock || '').toLowerCase();
+                cmp = nameA.localeCompare(nameB);
+                return _sortDirection === 'asc' ? cmp : -cmp;
+            } else if (_sortColumn === 'qty') {
+                const valA = _parseNumericQty(a.qty_held);
+                const valB = _parseNumericQty(b.qty_held);
+                if (valA === -1 && valB === -1) {
+                    cmp = 0;
+                } else if (valA === -1) {
+                    return 1; // Missing values always at the bottom
+                } else if (valB === -1) {
+                    return -1;
+                } else {
+                    cmp = valA - valB;
+                    if (cmp !== 0) return _sortDirection === 'asc' ? cmp : -cmp;
+                }
+            } else if (_sortColumn === 'val') {
+                const valA = _parseNumericVal(a.holding_value);
+                const valB = _parseNumericVal(b.holding_value);
+                if (valA === -1 && valB === -1) {
+                    cmp = 0;
+                } else if (valA === -1) {
+                    return 1; // Missing values always at the bottom
+                } else if (valB === -1) {
+                    return -1;
+                } else {
+                    cmp = valA - valB;
+                    if (cmp !== 0) return _sortDirection === 'asc' ? cmp : -cmp;
+                }
+            } else {
+                // Quarter percentage column
+                const rawA = a.quarters ? a.quarters[_sortColumn] : '';
+                const rawB = b.quarters ? b.quarters[_sortColumn] : '';
+                const valA = _parseNumericPct(rawA);
+                const valB = _parseNumericPct(rawB);
+                if (valA === -1 && valB === -1) {
+                    cmp = 0;
+                } else if (valA === -1) {
+                    return 1; // Missing values always at the bottom
+                } else if (valB === -1) {
+                    return -1;
+                } else {
+                    cmp = valA - valB;
+                    if (cmp !== 0) return _sortDirection === 'asc' ? cmp : -cmp;
+                }
+            }
+
+            // Tie-breaker: Always sort by stock name A-Z
+            const stockNameA = (a.stock || '').toLowerCase();
+            const stockNameB = (b.stock || '').toLowerCase();
+            return stockNameA.localeCompare(stockNameB);
+        });
+
+        // Helper functions for header sort indicators (color-only, NO icons/symbols)
+        function getSortClass(colKey) {
+            if (_sortColumn === colKey) {
+                return `peoples-th-sorted ${_sortDirection === 'desc' ? 'peoples-th-desc' : 'peoples-th-asc'}`;
+            }
+            return '';
+        }
+
+        function getSortTitle(colKey, label) {
+            if (_sortColumn === colKey) {
+                if (colKey === 'stock') {
+                    return _sortDirection === 'asc' ? 'Sorted: A to Z (Click to sort Z to A)' : 'Sorted: Z to A (Click to sort A to Z)';
+                }
+                return _sortDirection === 'desc' ? `${label}: Sorted High to Low (Click to sort Low to High)` : `${label}: Sorted Low to High (Click to sort High to Low)`;
+            }
+            return `Sort by ${label}`;
+        }
+
+        // 2. Build Header Row (Stock -> Qty Held -> Quarters -> Holding Value as LAST column)
         let qHeadersHtml = '';
         if (_quarterScope === 'last' && allQuarters.length >= 2) {
             const prevQ = allQuarters[allQuarters.length - 2];
             const lastQ = allQuarters[allQuarters.length - 1];
             qHeadersHtml = `
-                <th style="text-align: right;">${escapeHtml(prevQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Prev Qtr)</span></th>
-                <th style="text-align: right;">${escapeHtml(lastQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Last Qtr)</span></th>
+                <th class="peoples-th-sortable ${getSortClass(prevQ)}" onclick="togglePeoplesMatrixSort('${escapeHtml(prevQ)}')" title="${getSortTitle(prevQ, prevQ)}" style="text-align: right;">
+                    ${escapeHtml(prevQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Prev Qtr)</span>
+                </th>
+                <th class="peoples-th-sortable ${getSortClass(lastQ)}" onclick="togglePeoplesMatrixSort('${escapeHtml(lastQ)}')" title="${getSortTitle(lastQ, lastQ)}" style="text-align: right;">
+                    ${escapeHtml(lastQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Last Qtr)</span>
+                </th>
             `;
         } else if (_quarterScope === 'last' && allQuarters.length === 1) {
             const lastQ = allQuarters[0];
             qHeadersHtml = `
-                <th style="text-align: right;">${escapeHtml(lastQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Last Qtr)</span></th>
+                <th class="peoples-th-sortable ${getSortClass(lastQ)}" onclick="togglePeoplesMatrixSort('${escapeHtml(lastQ)}')" title="${getSortTitle(lastQ, lastQ)}" style="text-align: right;">
+                    ${escapeHtml(lastQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Last Qtr)</span>
+                </th>
             `;
         } else {
-            qHeadersHtml = quarters.map(qName => `<th style="text-align: right;">${escapeHtml(qName)}</th>`).join('');
+            qHeadersHtml = quarters.map(qName => `
+                <th class="peoples-th-sortable ${getSortClass(qName)}" onclick="togglePeoplesMatrixSort('${escapeHtml(qName)}')" title="${getSortTitle(qName, qName)}" style="text-align: right;">
+                    ${escapeHtml(qName)}
+                </th>
+            `).join('');
         }
 
         thead.innerHTML = `
             <tr>
-                <th style="text-align: left;">Stock</th>
-                <th style="text-align: right;">Holding Value</th>
-                <th style="text-align: right;">Qty Held</th>
+                <th class="peoples-th-sortable ${getSortClass('stock')}" onclick="togglePeoplesMatrixSort('stock')" title="${getSortTitle('stock', 'Stock Name')}" style="text-align: left;">Stock</th>
+                <th class="peoples-th-sortable ${getSortClass('qty')}" onclick="togglePeoplesMatrixSort('qty')" title="${getSortTitle('qty', 'Qty Held')}" style="text-align: right;">Qty Held</th>
                 ${qHeadersHtml}
+                <th class="peoples-th-sortable ${getSortClass('val')}" onclick="togglePeoplesMatrixSort('val')" title="${getSortTitle('val', 'Holding Value')}" style="text-align: right;">Holding Value</th>
             </tr>
         `;
 
@@ -548,9 +697,9 @@
                                 ${sym ? `<span class="peoples-stock-sub">${escapeHtml(sym)}</span>` : ''}
                             </div>
                         </td>
-                        <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(holdingVal)}</td>
-                        <td style="color: var(--text-secondary);">${escapeHtml(qtyHeld)}</td>
+                        <td style="color: var(--text-secondary); text-align: right;">${escapeHtml(qtyHeld)}</td>
                         ${qCells}
+                        <td style="font-weight: 600; color: var(--text-primary); text-align: right;">${escapeHtml(holdingVal)}</td>
                     </tr>
                 `;
             }).join('');
@@ -570,6 +719,19 @@
             }
         }
     }
+
+    // Toggle Matrix Sorting on column header click
+    window.togglePeoplesMatrixSort = function (colKey) {
+        if (_sortColumn === colKey) {
+            _sortDirection = _sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            _sortColumn = colKey;
+            _sortDirection = (colKey === 'stock') ? 'asc' : 'desc';
+        }
+        if (_activePortfolioData) {
+            renderMatrixTable(_activePortfolioData);
+        }
+    };
 
     // Filter stocks inside table as user types
     window.filterInvestorStocks = function () {

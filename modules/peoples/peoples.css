@@ -778,6 +778,42 @@
     z-index: 2;
 }
 
+/* Sortable Matrix Column Headers */
+.peoples-matrix-table thead th.peoples-th-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+
+.peoples-matrix-table thead th.peoples-th-sortable:hover {
+    color: var(--text-primary) !important;
+}
+
+/* Sorted Column Header - No symbols, pure color indication */
+.peoples-matrix-table thead th.peoples-th-sorted,
+.peoples-matrix-table thead th.peoples-th-sorted.peoples-th-asc {
+    color: #10b981 !important; /* Emerald green for ascending (A-Z or Low to High) */
+    font-weight: 700 !important;
+}
+
+.peoples-matrix-table thead th.peoples-th-sorted.peoples-th-desc {
+    color: #06b6d4 !important; /* Vibrant cyan for descending (Z-A or High to Low) */
+    font-weight: 700 !important;
+}
+
+/* Light Mode Overrides for High Contrast */
+:root:not([data-theme="dark"]) .peoples-matrix-table thead th.peoples-th-sorted,
+:root:not([data-theme="dark"]) .peoples-matrix-table thead th.peoples-th-sorted.peoples-th-asc,
+[data-theme="light"] .peoples-matrix-table thead th.peoples-th-sorted,
+[data-theme="light"] .peoples-matrix-table thead th.peoples-th-sorted.peoples-th-asc {
+    color: #059669 !important;
+}
+
+:root:not([data-theme="dark"]) .peoples-matrix-table thead th.peoples-th-sorted.peoples-th-desc,
+[data-theme="light"] .peoples-matrix-table thead th.peoples-th-sorted.peoples-th-desc {
+    color: #0284c7 !important;
+}
+
 /* First Column Sticky (Stock Name) */
 .peoples-matrix-table thead th:first-child,
 .peoples-matrix-table tbody td:first-child {
