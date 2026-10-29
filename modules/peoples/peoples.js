@@ -34,23 +34,36 @@
         return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
 
+    const BRAND_LOADER_HTML = `
+        <div class="chart-loader-brand-box">
+            <div class="chart-loader-spinner-ring"></div>
+            <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+        </div>
+        <div class="cd-loader-text-box">
+            <div class="cd-loader-title">Loading Superstar Investors...</div>
+            <div class="cd-loader-badge">Ace Investors • FII • DII</div>
+            <div class="cd-loader-subtitle">Synchronizing verified public shareholder portfolios from official disclosures</div>
+        </div>
+    `;
+
     // Main entry point called by router.js when switching to 'peoples' tab
     window.loadPeoplesModule = async function (force = false) {
         if (_isLoadedOnce && !force) return;
 
         const gridEl = document.getElementById('peoples-grid');
         const emptyEl = document.getElementById('peoples-empty-state');
+        const dirLoadingEl = document.getElementById('peoples-directory-loading');
+
+        if (dirLoadingEl) {
+            dirLoadingEl.innerHTML = BRAND_LOADER_HTML;
+            dirLoadingEl.style.display = 'flex';
+        }
         if (gridEl) {
-            gridEl.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px;">
-                    <div class="spinner-border text-primary" style="width: 2rem; height: 2rem;" role="status">
-                        <span class="sr-only">Loading investors...</span>
-                    </div>
-                    <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 10px;">
-                        Fetching live Ace Investors, FII & DII directory...
-                    </div>
-                </div>
-            `;
+            gridEl.style.display = 'none';
+            gridEl.innerHTML = '';
+        }
+        if (emptyEl) {
+            emptyEl.style.display = 'none';
         }
 
         try {
@@ -73,13 +86,26 @@
             if (countDii) countDii.innerText = _allInvestors.dii.length;
 
             _isLoadedOnce = true;
+            if (dirLoadingEl) dirLoadingEl.style.display = 'none';
+            if (gridEl) gridEl.style.display = 'grid';
             renderInvestorsGrid();
         } catch (e) {
             console.error('Error fetching peoples investors:', e);
+            if (dirLoadingEl) dirLoadingEl.style.display = 'none';
             if (gridEl) {
+                gridEl.style.display = 'grid';
                 gridEl.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 36px 20px; color: #ef4444;">
-                        Failed to load investor directory. Please check network connection and try again.
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>
+                        <div style="font-size: 15px; font-weight: 700; color: #ef4444; margin-bottom: 6px;">
+                            Failed to load investor directory
+                        </div>
+                        <div style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px;">
+                            Please check network connection or try refreshing the directory.
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="loadPeoplesModule(true)" style="padding: 7px 16px; font-size: 12.5px;">
+                            🔄 Retry Loading
+                        </button>
                     </div>
                 `;
             }
@@ -291,8 +317,21 @@
         // Show Brand Chart Loader
         const matrixWrapper = document.getElementById('peoples-matrix-wrapper');
         const loadingEl = document.getElementById('peoples-matrix-loading');
+        if (loadingEl) {
+            loadingEl.innerHTML = `
+                <div class="chart-loader-brand-box">
+                    <div class="chart-loader-spinner-ring"></div>
+                    <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                </div>
+                <div class="cd-loader-text-box">
+                    <div class="cd-loader-title">Fetching Holdings & Disclosures...</div>
+                    <div class="cd-loader-badge">Live Exchange Filings</div>
+                    <div class="cd-loader-subtitle">Loading holding history from 2022 to latest quarter on demand</div>
+                </div>
+            `;
+            loadingEl.style.display = 'flex';
+        }
         if (matrixWrapper) matrixWrapper.style.display = 'none';
-        if (loadingEl) loadingEl.style.display = 'flex';
 
         try {
             const res = await fetch(`/api/peoples/portfolio/${id}/${slug}`);

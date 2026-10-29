@@ -862,6 +862,25 @@
 }
 
 /* =========================================================
+   CAPITAL DESK BRAND ANIMATED LOADER INTEGRATION
+   ========================================================= */
+
+.peoples-shell .cd-brand-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 64px 20px;
+    width: 100%;
+    min-height: 240px;
+    text-align: center;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 5;
+}
+
+/* =========================================================
    STAKE INCREASE / DECREASE HIGHLIGHT WITH DOTTED BORDER
    ========================================================= */
 
