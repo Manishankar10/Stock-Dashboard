@@ -14,7 +14,9 @@ from flask import Blueprint, jsonify, render_template, request, send_from_direct
 from .peoples_provider import (
     fetch_investor_portfolio,
     get_all_investors_from_db,
+    get_peoples_sync_status,
     init_peoples_db,
+    sync_all_investors_delta,
     sync_and_save_investors_to_db,
 )
 
@@ -74,9 +76,9 @@ def api_get_all_investors():
 @peoples_bp.post("/api/peoples/sync-db")
 @_guard
 def api_sync_investors_db():
-    """Re-sync the investors master list from official feeds into SQLite DB."""
-    data = sync_and_save_investors_to_db()
-    return jsonify({"success": True, "counts": data.get("counts")})
+    """Re-sync the investors master list from official feeds into SQLite DB using delta updates."""
+    data = sync_all_investors_delta()
+    return jsonify(data)
 
 
 @peoples_bp.get("/api/peoples/portfolio/<investor_id>/<slug>")

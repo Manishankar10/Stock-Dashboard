@@ -15,6 +15,135 @@
                 document.documentElement.style.backgroundColor = (theme === 'light') ? '#f8fafc' : '#0f172a';
             } catch(e) {}
         })();
+
+        // ==========================================
+        // PEOPLES / SUPERSTAR INVESTORS CONTROLLER
+        // ==========================================
+        async function loadAdminPeoplesStatus() {
+            try {
+                const res = await fetch('/api/admin/peoples/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                const counts = s.counts || {};
+                const lastSyncRes = s.last_sync_result || {};
+
+                const lastUpEl = document.getElementById('admin-peoples-last-synced');
+                const totalCountEl = document.getElementById('admin-peoples-total-count');
+                const aceCountEl = document.getElementById('admin-peoples-ace-count');
+                const fiiCountEl = document.getElementById('admin-peoples-fii-count');
+                const diiCountEl = document.getElementById('admin-peoples-dii-count');
+                const deltaResEl = document.getElementById('admin-peoples-delta-result');
+                const statusMsg = document.getElementById('admin-peoples-status-msg');
+                const badge = document.getElementById('admin-peoples-sync-badge');
+
+                if (lastUpEl) lastUpEl.innerText = s.last_synced_at || 'Not synced yet';
+                if (totalCountEl) totalCountEl.innerText = `${counts.total || 0} Investors`;
+                if (aceCountEl) aceCountEl.innerText = `${counts.ace || 0} Ace`;
+                if (fiiCountEl) fiiCountEl.innerText = `${counts.fii || 0} FII`;
+                if (diiCountEl) diiCountEl.innerText = `${counts.dii || 0} DII`;
+
+                if (deltaResEl) {
+                    if (lastSyncRes.total_source !== undefined) {
+                        deltaResEl.innerText = `${lastSyncRes.added || 0} Added • ${lastSyncRes.updated || 0} Updated • ${lastSyncRes.unchanged || 0} Unchanged`;
+                    } else {
+                        deltaResEl.innerText = '—';
+                    }
+                }
+
+                if (badge) {
+                    badge.style.display = 'inline-block';
+                    badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                    badge.style.color = '#10b981';
+                    badge.innerText = 'Up to Date';
+                }
+
+                if (statusMsg && !statusMsg.innerText.includes('Sync completed')) {
+                    statusMsg.innerText = `Ready • Database has ${counts.total || 0} investors across all categories`;
+                }
+            } catch (e) {
+                console.error("Error loading peoples status:", e);
+            }
+        }
+
+        async function triggerAdminPeoplesSync() {
+            const syncBtn = document.getElementById('btn-sync-peoples');
+            const syncIcon = document.getElementById('admin-peoples-sync-icon');
+            const syncText = document.getElementById('admin-peoples-sync-text');
+            const progContainer = document.getElementById('admin-peoples-progress-container');
+            const progText = document.getElementById('admin-peoples-progress-text');
+            const statusMsg = document.getElementById('admin-peoples-status-msg');
+            const badge = document.getElementById('admin-peoples-sync-badge');
+
+            try {
+                if (syncBtn) {
+                    syncBtn.disabled = true;
+                    syncBtn.style.opacity = '0.75';
+                }
+                if (syncText) syncText.innerText = 'Syncing from Source...';
+                if (syncIcon) syncIcon.innerText = '⏳';
+                if (progContainer) progContainer.style.display = 'block';
+                if (progText) progText.innerText = 'Scraping official directories & applying delta updates...';
+                if (statusMsg) statusMsg.innerText = 'Connecting to official sources and checking changes...';
+                if (badge) {
+                    badge.style.display = 'inline-block';
+                    badge.style.background = 'rgba(2, 132, 199, 0.15)';
+                    badge.style.color = '#0284c7';
+                    badge.innerText = 'Syncing...';
+                }
+
+                const res = await fetch('/api/admin/peoples/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await res.json();
+
+                if (progContainer) progContainer.style.display = 'none';
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.style.opacity = '1';
+                }
+                if (syncText) syncText.innerText = 'Sync All Investors (Delta)';
+                if (syncIcon) syncIcon.innerText = '👑';
+
+                if (data.success) {
+                    if (statusMsg) {
+                        statusMsg.innerText = `Sync completed in ${data.duration_seconds || 0}s (${data.added || 0} added, ${data.updated || 0} updated, ${data.unchanged || 0} unchanged)`;
+                    }
+                    if (badge) {
+                        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                        badge.style.color = '#10b981';
+                        badge.innerText = 'Up to Date';
+                    }
+                    await loadAdminPeoplesStatus();
+                    alert(`✅ Superstar Investors Sync Completed!
+
+• Total Processed: ${data.total_source || 0}
+• Newly Added: ${data.added || 0}
+• Updated Changes: ${data.updated || 0}
+• Unchanged (Preserved): ${data.unchanged || 0}
+• Current DB Total: ${data.counts?.total || 0} (Ace: ${data.counts?.ace || 0}, FII: ${data.counts?.fii || 0}, DII: ${data.counts?.dii || 0})
+• Time: ${data.duration_seconds || 0}s`);
+                } else {
+                    alert('❌ Failed to sync investors: ' + (data.error || 'Unknown error'));
+                    if (statusMsg) statusMsg.innerText = 'Sync failed: ' + (data.error || 'Unknown error');
+                }
+            } catch (e) {
+                if (progContainer) progContainer.style.display = 'none';
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.style.opacity = '1';
+                }
+                if (syncText) syncText.innerText = 'Sync All Investors (Delta)';
+                if (syncIcon) syncIcon.innerText = '👑';
+                alert('❌ Error requesting investor sync: ' + e.message);
+                if (statusMsg) statusMsg.innerText = 'Error: ' + e.message;
+            }
+        }
+
     </script>
     <style>
         html, body {
@@ -1640,6 +1769,82 @@
                     </div>
                 </div>
 
+                <!-- CARD 7: Peoples / Superstar Investors Dataset Management -->
+                <div class="metric-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    👑 Superstar Investors (Peoples) Dataset Management
+                                </h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                                    Synchronize and update Ace Investors, FIIs, and DIIs (including all major Indian Mutual Fund houses) into the SQLite database with delta-only updates.
+                                </p>
+                            </div>
+                            <span id="admin-peoples-sync-badge" class="badge" style="font-size: 12px; display: none;"></span>
+                        </div>
+
+                        <div class="settings-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Last Synced</span>
+                                <div id="admin-peoples-last-synced" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Total Investors</span>
+                                <div id="admin-peoples-total-count" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Ace Investors</span>
+                                <div id="admin-peoples-ace-count" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">FII Portfolios</span>
+                                <div id="admin-peoples-fii-count" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">DII Portfolios</span>
+                                <div id="admin-peoples-dii-count" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-top: 4px;">Loading...</div>
+                            </div>
+                            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Last Delta Result</span>
+                                <div id="admin-peoples-delta-result" style="font-size: 12px; font-weight: 600; color: #10b981; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</div>
+                            </div>
+                        </div>
+
+                        <!-- Live Progress & Status Bar -->
+                        <div id="admin-peoples-progress-container" style="display: none; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span id="admin-peoples-progress-text" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary);">Scraping &amp; verifying investors from official source...</span>
+                                <span id="admin-peoples-progress-percent" style="font-size: 12px; font-weight: 700; color: #10b981;">Syncing...</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                                <div id="admin-peoples-progress-bar" style="width: 100%; height: 100%; background: #10b981; border-radius: 4px; animation: pulse 1.5s infinite;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Callout Banner -->
+                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 10px;">
+                            <span style="font-size: 18px; line-height: 1;">⚡</span>
+                            <div style="font-size: 12px; color: var(--text-primary); line-height: 1.5;">
+                                <strong>Incremental Delta Synchronization &amp; Complete Coverage:</strong> Scrapes and verifies master investor directories across Ace Investors, FIIs, and DIIs (including all major Indian Mutual Fund houses). Only modified fields and new investors are updated in the database; unchanged entries remain intact with zero disruption to active users.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                        <div id="admin-peoples-status-msg" style="font-size: 12px; color: var(--text-secondary); max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready to synchronize</div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary" onclick="loadAdminPeoplesStatus()" style="font-size: 12.5px; padding: 8px 14px;">
+                                🔄 Check Status
+                            </button>
+                            <button type="button" id="btn-sync-peoples" class="btn" onclick="triggerAdminPeoplesSync()" style="padding: 8px 18px; font-size: 12.5px; font-weight: 600; background: #059669; border-color: #059669; color: #fff; display: inline-flex; align-items: center; gap: 6px;">
+                                <span id="admin-peoples-sync-icon">👑</span>
+                                <span id="admin-peoples-sync-text">Sync All Investors (Delta)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div> <!-- End of .admin-datasets-grid -->
 
         </div>
@@ -1934,7 +2139,7 @@
             if (tabContent) tabContent.classList.add('active');
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
-            if (tabName === 'settings') { loadSystemSettings(); loadAdminAiPrompts(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); loadAdminTransactionsStatus(); }
+            if (tabName === 'settings') { loadSystemSettings(); loadAdminAiPrompts(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); loadAdminTransactionsStatus(); loadAdminPeoplesStatus(); }
             if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); }
         }
 
@@ -4267,6 +4472,135 @@
         }
 
         initAdmin();
+
+        // ==========================================
+        // PEOPLES / SUPERSTAR INVESTORS CONTROLLER
+        // ==========================================
+        async function loadAdminPeoplesStatus() {
+            try {
+                const res = await fetch('/api/admin/peoples/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                const counts = s.counts || {};
+                const lastSyncRes = s.last_sync_result || {};
+
+                const lastUpEl = document.getElementById('admin-peoples-last-synced');
+                const totalCountEl = document.getElementById('admin-peoples-total-count');
+                const aceCountEl = document.getElementById('admin-peoples-ace-count');
+                const fiiCountEl = document.getElementById('admin-peoples-fii-count');
+                const diiCountEl = document.getElementById('admin-peoples-dii-count');
+                const deltaResEl = document.getElementById('admin-peoples-delta-result');
+                const statusMsg = document.getElementById('admin-peoples-status-msg');
+                const badge = document.getElementById('admin-peoples-sync-badge');
+
+                if (lastUpEl) lastUpEl.innerText = s.last_synced_at || 'Not synced yet';
+                if (totalCountEl) totalCountEl.innerText = `${counts.total || 0} Investors`;
+                if (aceCountEl) aceCountEl.innerText = `${counts.ace || 0} Ace`;
+                if (fiiCountEl) fiiCountEl.innerText = `${counts.fii || 0} FII`;
+                if (diiCountEl) diiCountEl.innerText = `${counts.dii || 0} DII`;
+
+                if (deltaResEl) {
+                    if (lastSyncRes.total_source !== undefined) {
+                        deltaResEl.innerText = `${lastSyncRes.added || 0} Added • ${lastSyncRes.updated || 0} Updated • ${lastSyncRes.unchanged || 0} Unchanged`;
+                    } else {
+                        deltaResEl.innerText = '—';
+                    }
+                }
+
+                if (badge) {
+                    badge.style.display = 'inline-block';
+                    badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                    badge.style.color = '#10b981';
+                    badge.innerText = 'Up to Date';
+                }
+
+                if (statusMsg && !statusMsg.innerText.includes('Sync completed')) {
+                    statusMsg.innerText = `Ready • Database has ${counts.total || 0} investors across all categories`;
+                }
+            } catch (e) {
+                console.error("Error loading peoples status:", e);
+            }
+        }
+
+        async function triggerAdminPeoplesSync() {
+            const syncBtn = document.getElementById('btn-sync-peoples');
+            const syncIcon = document.getElementById('admin-peoples-sync-icon');
+            const syncText = document.getElementById('admin-peoples-sync-text');
+            const progContainer = document.getElementById('admin-peoples-progress-container');
+            const progText = document.getElementById('admin-peoples-progress-text');
+            const statusMsg = document.getElementById('admin-peoples-status-msg');
+            const badge = document.getElementById('admin-peoples-sync-badge');
+
+            try {
+                if (syncBtn) {
+                    syncBtn.disabled = true;
+                    syncBtn.style.opacity = '0.75';
+                }
+                if (syncText) syncText.innerText = 'Syncing from Source...';
+                if (syncIcon) syncIcon.innerText = '⏳';
+                if (progContainer) progContainer.style.display = 'block';
+                if (progText) progText.innerText = 'Scraping official directories & applying delta updates...';
+                if (statusMsg) statusMsg.innerText = 'Connecting to official sources and checking changes...';
+                if (badge) {
+                    badge.style.display = 'inline-block';
+                    badge.style.background = 'rgba(2, 132, 199, 0.15)';
+                    badge.style.color = '#0284c7';
+                    badge.innerText = 'Syncing...';
+                }
+
+                const res = await fetch('/api/admin/peoples/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await res.json();
+
+                if (progContainer) progContainer.style.display = 'none';
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.style.opacity = '1';
+                }
+                if (syncText) syncText.innerText = 'Sync All Investors (Delta)';
+                if (syncIcon) syncIcon.innerText = '👑';
+
+                if (data.success) {
+                    if (statusMsg) {
+                        statusMsg.innerText = `Sync completed in ${data.duration_seconds || 0}s (${data.added || 0} added, ${data.updated || 0} updated, ${data.unchanged || 0} unchanged)`;
+                    }
+                    if (badge) {
+                        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                        badge.style.color = '#10b981';
+                        badge.innerText = 'Up to Date';
+                    }
+                    await loadAdminPeoplesStatus();
+                    alert(`✅ Superstar Investors Sync Completed!
+
+• Total Processed: ${data.total_source || 0}
+• Newly Added: ${data.added || 0}
+• Updated Changes: ${data.updated || 0}
+• Unchanged (Preserved): ${data.unchanged || 0}
+• Current DB Total: ${data.counts?.total || 0} (Ace: ${data.counts?.ace || 0}, FII: ${data.counts?.fii || 0}, DII: ${data.counts?.dii || 0})
+• Time: ${data.duration_seconds || 0}s`);
+                } else {
+                    alert('❌ Failed to sync investors: ' + (data.error || 'Unknown error'));
+                    if (statusMsg) statusMsg.innerText = 'Sync failed: ' + (data.error || 'Unknown error');
+                }
+            } catch (e) {
+                if (progContainer) progContainer.style.display = 'none';
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.style.opacity = '1';
+                }
+                if (syncText) syncText.innerText = 'Sync All Investors (Delta)';
+                if (syncIcon) syncIcon.innerText = '👑';
+                alert('❌ Error requesting investor sync: ' + e.message);
+                if (statusMsg) statusMsg.innerText = 'Error: ' + e.message;
+            }
+        }
+
     </script>
     <script src="/static/js/core/pwa.js?v=1.0"></script>
 </body>

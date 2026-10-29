@@ -775,6 +775,34 @@ def admin_transactions_sync():
 
 
 # ==============================================================================
+# PEOPLES / SUPERSTAR INVESTORS DATASET MANAGEMENT
+# ==============================================================================
+@auth_admin_bp.route("/api/admin/peoples/status", methods=["GET"])
+@admin_required
+def admin_peoples_status():
+    from modules.peoples.peoples_provider import get_peoples_sync_status
+    try:
+        status = get_peoples_sync_status()
+        return jsonify({
+            "success": True,
+            "status": status
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@auth_admin_bp.route("/api/admin/peoples/sync", methods=["POST"])
+@admin_required
+def admin_peoples_sync():
+    from modules.peoples.peoples_provider import sync_all_investors_delta
+    try:
+        res = sync_all_investors_delta()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ==============================================================================
 # PRODUCTION JSON FILES DOWNLOAD & MANAGEMENT
 # ==============================================================================
 def _scan_json_files(include_external_logs=False):
