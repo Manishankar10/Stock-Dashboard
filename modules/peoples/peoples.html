@@ -150,12 +150,23 @@
                         </div>
                     </div>
 
-                    <!-- Right: Search Filter Stocks in Table -->
-                    <div class="peoples-stock-filter-wrap">
-                        <label class="search-box peoples-search-box">
-                            <span aria-hidden="true">⌕</span>
-                            <input id="peoples-stock-filter-input" type="search" placeholder="Filter company in portfolio..." autocomplete="off" oninput="filterInvestorStocks()">
-                        </label>
+                    <!-- Right: Quarter Scope Dropdown & Search Filter Stocks in Table -->
+                    <div class="peoples-toolbar-right-controls">
+                        <!-- Dropdown: Last Qtr / All Qtr -->
+                        <div class="peoples-scope-dropdown-wrap">
+                            <select id="peoples-qtr-scope-select" class="peoples-qtr-select" onchange="changePeoplesQuarterScope(this.value)" aria-label="Quarter Scope">
+                                <option value="last">Last Qtr</option>
+                                <option value="all">All Qtr</option>
+                            </select>
+                        </div>
+
+                        <!-- Search Filter Stocks in Table -->
+                        <div class="peoples-stock-filter-wrap">
+                            <label class="search-box peoples-search-box">
+                                <span aria-hidden="true">⌕</span>
+                                <input id="peoples-stock-filter-input" type="search" placeholder="Filter company in portfolio..." autocomplete="off" oninput="filterInvestorStocks()">
+                            </label>
+                        </div>
                     </div>
                 </div>
 

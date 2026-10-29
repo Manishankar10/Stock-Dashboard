@@ -2,7 +2,8 @@
  * Capital Desk - Peoples (Superstar Investors, FII & DII) Client Module
  * Location: modules/peoples/peoples.js
  * Handles live directory viewing, tab segregation, search/filtering,
- * stake change highlight options, and renders on-demand quarterly holding matrices.
+ * stake change highlight options, Last Qtr vs All Qtr view scopes,
+ * and renders on-demand quarterly holding matrices.
  */
 
 (function () {
@@ -12,6 +13,7 @@
     let _isLoadingDirectory = false;
     let _isLoadedOnce = false;
     let _highlightOption = 'all'; // 'all', 'inc', 'dec', 'both'
+    let _quarterScope = 'last';    // 'last', 'all'
 
     // Helper: Escape HTML
     function escapeHtml(str) {
@@ -197,6 +199,14 @@
         renderInvestorsGrid();
     };
 
+    // Quarter Scope Selector Handler: 'last', 'all'
+    window.changePeoplesQuarterScope = function (scope) {
+        _quarterScope = scope;
+        if (_activePortfolioData) {
+            renderMatrixTable(_activePortfolioData);
+        }
+    };
+
     // Highlight Option Handler: 'all', 'inc', 'dec', 'both'
     window.setPeoplesHighlight = function (mode) {
         _highlightOption = mode;
@@ -231,7 +241,7 @@
         });
     }
 
-    // Open Investor Stock List Detail View (2022 to Latest Quarter Matrix)
+    // Open Investor Stock List Detail View
     window.openInvestorDetail = async function (id, slug, name, category, val, stocksCount) {
         const dirView = document.getElementById('peoples-directory-view');
         const detailView = document.getElementById('peoples-detail-view');
@@ -244,6 +254,11 @@
         // Reset stock filter input
         const stockFilterInput = document.getElementById('peoples-stock-filter-input');
         if (stockFilterInput) stockFilterInput.value = '';
+
+        // Reset quarter scope dropdown to 'last'
+        _quarterScope = 'last';
+        const scopeSelect = document.getElementById('peoples-qtr-scope-select');
+        if (scopeSelect) scopeSelect.value = 'last';
 
         // Reset highlight option to 'all'
         _highlightOption = 'all';
@@ -302,7 +317,7 @@
         if (dirView) dirView.style.display = 'block';
     };
 
-    // Render Matrix Table matching user's requested layout
+    // Render Matrix Table matching user's requested layout & scope
     function renderMatrixTable(data) {
         const matrixWrapper = document.getElementById('peoples-matrix-wrapper');
         const loadingEl = document.getElementById('peoples-matrix-loading');
@@ -311,8 +326,32 @@
 
         if (!matrixWrapper || !thead || !tbody) return;
 
-        const quarters = data.quarters || [];
+        const allQuarters = data.quarters || [];
+        let quarters = [];
+
+        // 1. Determine Quarters to display based on _quarterScope ('last' vs 'all')
+        if (_quarterScope === 'last') {
+            if (allQuarters.length >= 2) {
+                quarters = [allQuarters[allQuarters.length - 2], allQuarters[allQuarters.length - 1]];
+            } else if (allQuarters.length === 1) {
+                quarters = [allQuarters[0]];
+            }
+        } else {
+            quarters = [...allQuarters];
+        }
+
         let stocks = data.stocks || [];
+
+        // In 'last' quarter scope, filter out legacy stocks that had no holding in either the last or previous quarter
+        if (_quarterScope === 'last' && allQuarters.length >= 2) {
+            const lastQ = allQuarters[allQuarters.length - 1];
+            const prevQ = allQuarters[allQuarters.length - 2];
+            stocks = stocks.filter(s => {
+                const vLast = s.quarters ? s.quarters[lastQ] : '';
+                const vPrev = s.quarters ? s.quarters[prevQ] : '';
+                return (vLast && vLast !== '—' && vLast !== '-') || (vPrev && vPrev !== '—' && vPrev !== '-');
+            });
+        }
 
         // Apply in-table search filter if any
         const stockFilterInput = document.getElementById('peoples-stock-filter-input');
@@ -325,17 +364,34 @@
             });
         }
 
-        // 1. Build Header Row: Stock, Holding Value, Qty Held, [Quarters from 2022]
+        // 2. Build Header Row
+        let qHeadersHtml = '';
+        if (_quarterScope === 'last' && allQuarters.length >= 2) {
+            const prevQ = allQuarters[allQuarters.length - 2];
+            const lastQ = allQuarters[allQuarters.length - 1];
+            qHeadersHtml = `
+                <th style="text-align: right;">${escapeHtml(prevQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Prev Qtr)</span></th>
+                <th style="text-align: right;">${escapeHtml(lastQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Last Qtr)</span></th>
+            `;
+        } else if (_quarterScope === 'last' && allQuarters.length === 1) {
+            const lastQ = allQuarters[0];
+            qHeadersHtml = `
+                <th style="text-align: right;">${escapeHtml(lastQ)} <span style="font-size: 10px; opacity: 0.65; font-weight: 500;">(Last Qtr)</span></th>
+            `;
+        } else {
+            qHeadersHtml = quarters.map(qName => `<th style="text-align: right;">${escapeHtml(qName)}</th>`).join('');
+        }
+
         thead.innerHTML = `
             <tr>
                 <th style="text-align: left;">Stock</th>
                 <th style="text-align: right;">Holding Value</th>
                 <th style="text-align: right;">Qty Held</th>
-                ${quarters.map(qName => `<th style="text-align: right;">${escapeHtml(qName)}</th>`).join('')}
+                ${qHeadersHtml}
             </tr>
         `;
 
-        // 2. Build Rows
+        // 3. Build Rows
         if (stocks.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -352,42 +408,76 @@
                 const qtyHeld = item.qty_held || '—';
 
                 // Render quarterly percentage cells
-                const qCells = quarters.map((qName, qIdx) => {
+                const qCells = quarters.map((qName) => {
                     const rawVal = item.quarters ? item.quarters[qName] : '';
-                    if (!rawVal) {
-                        return `<td class="peoples-pct-empty" data-change="none">—</td>`;
-                    }
+                    const hasCurr = Boolean(rawVal && rawVal !== '—' && rawVal !== '-');
 
-                    // Compare with previous recorded quarter to determine change
-                    let colorClass = 'peoples-pct-cell';
-                    let changeType = 'none';
-
-                    if (qIdx > 0) {
-                        let prevVal = null;
-                        for (let p = qIdx - 1; p >= 0; p--) {
-                            const pQ = quarters[p];
-                            const val = item.quarters ? item.quarters[pQ] : '';
-                            if (val && val !== '—' && val !== '-') {
-                                prevVal = val;
+                    // Find preceding chronological quarter in allQuarters to detect changes
+                    const fullIdx = allQuarters.indexOf(qName);
+                    let prevVal = null;
+                    if (fullIdx > 0) {
+                        for (let p = fullIdx - 1; p >= 0; p--) {
+                            const pQ = allQuarters[p];
+                            const v = item.quarters ? item.quarters[pQ] : '';
+                            if (v && v !== '—' && v !== '-') {
+                                prevVal = v;
                                 break;
                             }
                         }
+                    }
 
-                        if (prevVal) {
-                            try {
-                                const currNum = parseFloat(rawVal);
-                                const prevNum = parseFloat(prevVal);
-                                if (!isNaN(currNum) && !isNaN(prevNum)) {
-                                    if (currNum > prevNum + 0.0001) {
-                                        colorClass += ' peoples-pct-up';
-                                        changeType = 'up';
-                                    } else if (currNum < prevNum - 0.0001) {
-                                        colorClass += ' peoples-pct-down';
-                                        changeType = 'down';
-                                    }
-                                }
-                            } catch (_) {}
+                    const hasPrev = Boolean(prevVal && prevVal !== '—' && prevVal !== '-');
+
+                    let colorClass = 'peoples-pct-cell';
+                    let changeType = 'none';
+                    let displayVal = '—';
+                    let cellTitle = '';
+
+                    if (hasCurr && !hasPrev) {
+                        // CASE 1: Freshly added! Even if no data compared with previous quarter -> Highlight as UP
+                        colorClass += ' peoples-pct-up';
+                        changeType = 'up';
+                        cellTitle = 'Fresh addition (New holding ≥ 1%)';
+                        try {
+                            const num = parseFloat(rawVal);
+                            displayVal = !isNaN(num) ? num.toFixed(2) : rawVal;
+                        } catch (_) {
+                            displayVal = rawVal;
                         }
+                    } else if (!hasCurr && hasPrev) {
+                        // CASE 2: No data compared with last quarter / Exited! Highlight as DOWN
+                        colorClass += ' peoples-pct-down';
+                        changeType = 'down';
+                        displayVal = '—';
+                        cellTitle = `Exited / below 1% (was ${prevVal}% in previous quarter)`;
+                    } else if (hasCurr && hasPrev) {
+                        // CASE 3: Both quarters have data -> compare values
+                        try {
+                            const currNum = parseFloat(rawVal);
+                            const prevNum = parseFloat(prevVal);
+                            if (!isNaN(currNum) && !isNaN(prevNum)) {
+                                if (currNum > prevNum + 0.0001) {
+                                    colorClass += ' peoples-pct-up';
+                                    changeType = 'up';
+                                    cellTitle = `Increased from ${prevNum.toFixed(2)}% (+${(currNum - prevNum).toFixed(2)}%)`;
+                                } else if (currNum < prevNum - 0.0001) {
+                                    colorClass += ' peoples-pct-down';
+                                    changeType = 'down';
+                                    cellTitle = `Decreased from ${prevNum.toFixed(2)}% (${(currNum - prevNum).toFixed(2)}%)`;
+                                } else {
+                                    cellTitle = `Unchanged (${currNum.toFixed(2)}%)`;
+                                }
+                            }
+                            const num = parseFloat(rawVal);
+                            displayVal = !isNaN(num) ? num.toFixed(2) : rawVal;
+                        } catch (_) {
+                            displayVal = rawVal;
+                        }
+                    } else {
+                        // CASE 4: Neither quarter has data
+                        colorClass = 'peoples-pct-empty';
+                        changeType = 'none';
+                        displayVal = '—';
                     }
 
                     // Determine dotted border highlight based on active option
@@ -401,16 +491,9 @@
                         if (changeType === 'down') borderClass = ' peoples-border-down';
                     }
 
-                    // Format as float with 2 decimals if possible, e.g. 1.08, 2.58
-                    let formattedVal = rawVal;
-                    try {
-                        const num = parseFloat(rawVal);
-                        if (!isNaN(num)) {
-                            formattedVal = num.toFixed(2);
-                        }
-                    } catch (_) {}
+                    const emptyClass = !hasCurr ? ' peoples-pct-empty' : '';
 
-                    return `<td class="${colorClass}${borderClass}" data-change="${changeType}">${formattedVal}</td>`;
+                    return `<td class="${colorClass}${emptyClass}${borderClass}" data-change="${changeType}" title="${escapeHtml(cellTitle)}">${displayVal}</td>`;
                 }).join('');
 
                 return `
@@ -434,11 +517,15 @@
         if (loadingEl) loadingEl.style.display = 'none';
         if (matrixWrapper) {
             matrixWrapper.style.display = 'block';
-            // Auto-scroll horizontally to the latest quarter (right edge)
-            // Cursor points to the latest quarter; user scrolls left to see older holdings
-            setTimeout(() => {
-                matrixWrapper.scrollLeft = matrixWrapper.scrollWidth;
-            }, 60);
+
+            // If viewing All Quarters, auto-scroll horizontally to the latest quarter (right edge)
+            if (_quarterScope === 'all') {
+                setTimeout(() => {
+                    matrixWrapper.scrollLeft = matrixWrapper.scrollWidth;
+                }, 60);
+            } else {
+                matrixWrapper.scrollLeft = 0;
+            }
         }
     }
 
