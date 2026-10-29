@@ -1,13 +1,30 @@
 import os
 import io
-from PIL import Image, ImageDraw, ImageFont
+import logging
+
+logger = logging.getLogger(__name__)
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    Image = ImageDraw = ImageFont = None
+    logger.warning("Pillow is not installed. Fallback notification badges will be used.")
 
 # Try loading system fonts or fallback
 def _get_font(size, bold=False):
+    if not PIL_AVAILABLE or ImageFont is None:
+        return None
     font_paths = [
+        # Windows
         r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf",
         r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf",
         r"C:\Windows\Fonts\calibrib.ttf" if bold else r"C:\Windows\Fonts\calibri.ttf",
+        # Linux / Docker / Render
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
     ]
     for fp in font_paths:
         if os.path.exists(fp):
@@ -15,7 +32,10 @@ def _get_font(size, bold=False):
                 return ImageFont.truetype(fp, size)
             except Exception:
                 continue
-    return ImageFont.load_default()
+    try:
+        return ImageFont.load_default()
+    except Exception:
+        return None
 
 def format_currency_inr(val):
     if isinstance(val, (int, float)):
@@ -32,6 +52,8 @@ def generate_gold_silver_card(
     """
     Renders high-res 882x410 dark-themed card matching user's exact uploaded image.
     """
+    if not PIL_AVAILABLE or Image is None:
+        return "/static/favicon-192.png"
     width, height = 882, 410
     im = Image.new("RGBA", (width, height), (15, 23, 42, 255)) # Slate 900
     draw = ImageDraw.Draw(im)

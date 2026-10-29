@@ -3,7 +3,7 @@
 // Institutional Offline Resilience & App Shell Caching
 // =========================================================
 
-const CACHE_VERSION = 'v1.0.4';
+const CACHE_VERSION = 'v1.0.5';
 const STATIC_CACHE = `capital-desk-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capital-desk-runtime-${CACHE_VERSION}`;
 
@@ -28,7 +28,8 @@ const PRECACHE_ASSETS = [
     '/static/css/responsive.css',
     '/static/js/core/app-core.js',
     '/static/js/core/router.js',
-    '/static/js/core/pwa.js'
+    '/static/js/core/pwa.js',
+    '/static/js/core/push-notification-client.js'
 ];
 
 // 1. Install Event: Cache app shell
