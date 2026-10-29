@@ -1,7 +1,9 @@
 """Fetch and normalize the public IPO/GMP feed for the IPO tracker.
-Primary provider: InvestorGain (live IPO GMP report)
-Secondary fallback: IPOWatch
-Tertiary fallback: gmptoday / bundled seed
+Multi-source consensus provider:
+1. InvestorGain (live IPO GMP report)
+2. IPOWatch (Mainboard & SME GMP table)
+3. IPOJi (live issue tracker & GMP rates)
+Self-healing persistent fallback: auto-cached seed in seed_ipos.json
 """
 
 import copy
@@ -30,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 INVESTORGAIN_URL = os.environ.get("IPO_TRACKER_FEED_URL", "https://www.investorgain.com/report/live-ipo-gmp/331/")
 IPOWATCH_URL = "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/"
+IPOJI_URL = "https://ipoji.com/ipo-gmp/"
 GMPTODAY_URL = "https://gmptoday.in/api/gmp.json"
 
 PROVIDER_PAGE_URL = "https://www.investorgain.com/report/live-ipo-gmp/331/"
@@ -77,15 +80,43 @@ _refresh_percent = 0
 _refresh_error = None
 
 
-def _load_fallback_seed():
+def _save_seed(payload):
+    """Save normalized payload to disk so app has guaranteed fresh offline seed."""
+    if not payload or not isinstance(payload.get("ipos"), list) or not payload["ipos"]:
+        return
     try:
-        app_seed = os.path.join("app_data", "seed_ipos.json")
-        seed_path = app_seed if os.path.exists(app_seed) else os.path.join(os.path.dirname(__file__), "seed_ipos.json")
-        if os.path.exists(seed_path):
-            with open(seed_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict) and isinstance(data.get("ipos"), list) and data["ipos"]:
-                    return data
+        paths = [
+            os.path.join(os.path.dirname(__file__), "seed_ipos.json"),
+            os.path.join("app_data", "seed_ipos.json")
+        ]
+        for p in paths:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2, ensure_ascii=False)
+    except Exception as exc:
+        logger.debug("Notice saving seed backup: %s", exc)
+
+
+def _load_fallback_seed():
+    """Load persistent seed from disk, supporting both dict and list schemas."""
+    try:
+        paths = [
+            os.path.join("app_data", "seed_ipos.json"),
+            os.path.join(os.path.dirname(__file__), "seed_ipos.json")
+        ]
+        for seed_path in paths:
+            if os.path.exists(seed_path):
+                with open(seed_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and isinstance(data.get("ipos"), list) and data["ipos"]:
+                        return data
+                    elif isinstance(data, list) and data:
+                        return {
+                            "ipos": data,
+                            "provider": "Cached Backup Seed",
+                            "generated_display": "Offline Seed Backup",
+                            "is_stale": True
+                        }
     except Exception as exc:
         logger.warning("Error loading fallback IPO seed: %s", exc)
     return None
@@ -139,7 +170,7 @@ def _number(value):
     if isinstance(value, (int, float)):
         return float(value)
     raw = str(value).strip().replace(",", "").replace("₹", "")
-    if not raw or raw.lower() in {"-", "—", "n/a", "na", "none", "null"}:
+    if not raw or raw.lower() in {"-", "—", "--", "n/a", "na", "none", "null"}:
         return None
     match = re.search(r"[-+]?(?:\d+\.?\d*|\.\d+)", raw)
     if not match:
@@ -166,6 +197,42 @@ def _parse_date(val):
         curr_year = dt.datetime.now().year
         return f"{day} {mon} {curr_year}"
     return val_str
+
+
+def clean_company_name(name):
+    """Normalize company name to canonical lowercase string."""
+    if not name:
+        return ""
+    n = re.sub(r"\s+(?:IPO|BSE\s+SME|NSE\s+SME|SME)\s+[UOC]$", "", name, flags=re.IGNORECASE)
+    n = re.sub(r"\s+[UOC]$", "", n)
+    n = re.sub(r"\s+(?:Upcoming|Open|Closed|Allotted|Listed)$", "", n, flags=re.IGNORECASE)
+    n = re.sub(r"\s+(?:IPO|BSE\s+SME|NSE\s+SME|SME|Mainboard)$", "", n, flags=re.IGNORECASE)
+    n = re.sub(r"\s+(?:Ltd\.?|Limited|Pvt\.?|Private)$", "", n, flags=re.IGNORECASE)
+    n = re.sub(r"[^\w\s]", " ", n)
+    n = re.sub(r"\s+", " ", n).strip().lower()
+    return n
+
+
+def get_company_tokens(name):
+    """Extract significant lowercase word tokens for fuzzy cross-source matching."""
+    clean = re.sub(r'(ipo|bse|nse|sme|mainboard|open|closed|upcoming|allotted|listed|ltd|limited|pvt|private|and|solutions|industries|india)', ' ', (name or '').lower())
+    clean = re.sub(r'[^\w\s]', ' ', clean)
+    tokens = [w for w in clean.split() if len(w) >= 2]
+    return set(tokens)
+
+
+def is_company_match(name1, name2):
+    """Return True if name1 and name2 refer to the same IPO across different websites."""
+    k1 = clean_company_name(name1)
+    k2 = clean_company_name(name2)
+    if k1 and k2 and (k1 == k2 or k1 in k2 or k2 in k1):
+        return True
+    t1 = get_company_tokens(name1)
+    t2 = get_company_tokens(name2)
+    if not t1 or not t2:
+        return False
+    inter = t1 & t2
+    return len(inter) >= min(len(t1), len(t2)) or (len(inter) >= 2 and len(inter) / max(len(t1), len(t2)) >= 0.6)
 
 
 def _fetch_url(url, is_json=False):
@@ -196,9 +263,7 @@ def _fetch_from_investorgain():
         return None
 
     soup = BeautifulSoup(resp.text, "html.parser")
-    table = soup.find("table", id="reportTable")
-    if not table:
-        table = soup.find("table")
+    table = soup.find("table", id="reportTable") or soup.find("table")
     if not table:
         return None
 
@@ -239,13 +304,21 @@ def _fetch_from_investorgain():
 
         segment = "SME" if any("sme" in b.lower() for b in badges) or "sme" in raw_name.lower() else "MAINBOARD"
 
-        # GMP column (e.g. '₹ 111 (16.02%) 83 ↓ / 111 ↑')
+        # GMP column (e.g. '₹ 111 (16.02%) 83 ↓ / 111 ↑', '₹ -- (0.00%) 0 ↓ / 0 ↑')
         gmp_td = tds[1].get_text(" ", strip=True) if len(tds) > 1 else ""
-        gmp = _number(gmp_td.split("(")[0] if "(" in gmp_td else gmp_td)
-
+        gmp = None
         gmp_pct = None
+
         if "(" in gmp_td and "%" in gmp_td:
             gmp_pct = _number(gmp_td.split("(")[1].split("%")[0])
+
+        # Explicitly recognize '₹ -- (0.00%)' or '0 ↓ / 0 ↑' as 0.0 GMP (flat / nil)
+        if re.search(r"₹\s*--\s*\(\s*0(?:\.0+)?%\s*\)", gmp_td) or "0 ↓ / 0 ↑" in gmp_td:
+            gmp = 0.0
+            gmp_pct = 0.0
+        else:
+            left_part = gmp_td.split("(")[0] if "(" in gmp_td else gmp_td
+            gmp = _number(left_part)
 
         gmp_min, gmp_max = None, None
         if "/" in gmp_td:
@@ -279,7 +352,12 @@ def _fetch_from_investorgain():
         list_d = _parse_date(tds[10].get_text(" ", strip=True)) if len(tds) > 10 else ""
         dates = f"{open_d} to {close_d}" if (open_d and close_d) else (f"Opens {open_d}" if open_d else "Dates not reported")
 
-        source_rows = [{"label": "InvestorGain Live GMP", "url": detail_url, "gmp": gmp}]
+        if gmp is None and gmp_pct is not None and price_val and price_val > 0:
+            gmp = round((gmp_pct * price_val) / 100.0, 2)
+        elif gmp_pct is None and gmp is not None and price_val and price_val > 0:
+            gmp_pct = round((gmp / price_val) * 100.0, 2)
+
+        source_rows = [{"label": "InvestorGain Live", "url": detail_url, "gmp": gmp}]
 
         ipos.append({
             "id": slug,
@@ -298,8 +376,8 @@ def _fetch_from_investorgain():
             "min_investment": min_inv,
             "subscription": subscription,
             "gmp": gmp,
-            "gmp_min": gmp_min,
-            "gmp_max": gmp_max,
+            "gmp_min": gmp_min if gmp_min is not None else gmp,
+            "gmp_max": gmp_max if gmp_max is not None else gmp,
             "gmp_pct": gmp_pct,
             "source_count": 1,
             "confidence": confidence,
@@ -340,12 +418,15 @@ def _fetch_from_ipowatch():
             clean_name = re.sub(r"(?:Upcoming|Open|Closed|Allotted|Listed)$", "", raw_name, flags=re.IGNORECASE).strip()
             segment = "SME" if "sme" in raw_name.lower() else "MAINBOARD"
 
-            gmp = _number(tds[1].get_text(" ", strip=True))
+            gmp_text = tds[1].get_text(" ", strip=True)
+            gmp = _number(gmp_text)
             price_val = _number(tds[3].get_text(" ", strip=True))
             est_gain_text = tds[4].get_text(" ", strip=True) if len(tds) > 4 else ""
             gmp_pct = None
             if "(" in est_gain_text and "%" in est_gain_text:
                 gmp_pct = _number(est_gain_text.split("(")[1].split("%")[0])
+            if gmp_pct is None and gmp is not None and price_val and price_val > 0:
+                gmp_pct = round((gmp / price_val) * 100.0, 2)
 
             dates_text = tds[5].get_text(" ", strip=True) if len(tds) > 5 else "Dates not reported"
 
@@ -370,8 +451,8 @@ def _fetch_from_ipowatch():
                 "min_investment": None,
                 "subscription": None,
                 "gmp": gmp,
-                "gmp_min": None,
-                "gmp_max": None,
+                "gmp_min": gmp,
+                "gmp_max": gmp,
                 "gmp_pct": gmp_pct,
                 "source_count": 1,
                 "confidence": "Moderate",
@@ -379,6 +460,80 @@ def _fetch_from_ipowatch():
                 "source_rows": [{"label": "IPOWatch GMP", "url": detail_url, "gmp": gmp}],
                 "detail_url": detail_url,
             })
+
+    return ipos if ipos else None
+
+
+def _fetch_from_ipoji():
+    """Tertiary provider: parse IPOJi live GMP table."""
+    resp = _fetch_url(IPOJI_URL, is_json=False)
+    if not resp or resp.status_code != 200 or not resp.text:
+        return None
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    table = soup.find("table")
+    if not table:
+        return None
+
+    ipos = []
+    rows = table.find_all("tr")
+    for row in rows[1:]:
+        tds = row.find_all("td")
+        if len(tds) < 5:
+            continue
+
+        raw_name = tds[0].get_text(" ", strip=True)
+        type_text = tds[1].get_text(" ", strip=True) if len(tds) > 1 else ""
+        price_text = tds[2].get_text(" ", strip=True) if len(tds) > 2 else ""
+        gmp_text = tds[3].get_text(" ", strip=True) if len(tds) > 3 else ""
+        pct_text = tds[4].get_text(" ", strip=True) if len(tds) > 4 else ""
+        dates_text = tds[6].get_text(" ", strip=True) if len(tds) > 6 else ""
+        status_text = tds[7].get_text(" ", strip=True) if len(tds) > 7 else "Upcoming"
+
+        clean_name = re.sub(r"\s+(?:IPO|BSE\s+SME|NSE\s+SME|Mainboard)\s+(?:Open|Closed|Upcoming)$", "", raw_name, flags=re.IGNORECASE).strip()
+        segment = "SME" if "sme" in type_text.lower() or "sme" in raw_name.lower() else "MAINBOARD"
+
+        price_val = None
+        if "-" in price_text:
+            price_val = _number(price_text.split("-")[-1])
+        else:
+            price_val = _number(price_text)
+
+        gmp = _number(gmp_text)
+        gmp_pct = _number(pct_text)
+        if gmp_pct is None and gmp is not None and price_val and price_val > 0:
+            gmp_pct = round((gmp / price_val) * 100.0, 2)
+
+        link = tds[0].find("a")
+        detail_url = link.get("href", IPOJI_URL) if link else IPOJI_URL
+        slug = clean_name.lower().replace(" ", "-")
+
+        ipos.append({
+            "id": slug,
+            "name": clean_name[:180],
+            "segment": segment,
+            "status": status_text.capitalize(),
+            "dates": dates_text[:100],
+            "open_date": "",
+            "close_date": "",
+            "allotment_date": "",
+            "listing_date": "",
+            "upper_price": price_val,
+            "upper_price_display": f"₹{price_val:g}" if price_val else "Not reported",
+            "issue_size": "Not reported",
+            "lot_size": None,
+            "min_investment": None,
+            "subscription": None,
+            "gmp": gmp,
+            "gmp_min": gmp,
+            "gmp_max": gmp,
+            "gmp_pct": gmp_pct,
+            "source_count": 1,
+            "confidence": "Moderate",
+            "score": None,
+            "source_rows": [{"label": "IPOJi GMP", "url": detail_url, "gmp": gmp}],
+            "detail_url": detail_url,
+        })
 
     return ipos if ipos else None
 
@@ -425,54 +580,143 @@ def normalize_ipo(item):
 
 
 def _fetch_payload():
-    """Try InvestorGain first, then IPOWatch, then fallback to seed."""
-    ipos = None
-    provider_name = "InvestorGain"
-    provider_url = PROVIDER_PAGE_URL
+    """Fetch from InvestorGain, IPOWatch, and IPOJi, then merge, cross-enrich, and auto-persist seed."""
+    ig_ipos = None
+    iw_ipos = None
+    ipoji_ipos = None
 
     try:
-        ipos = _fetch_from_investorgain()
-        if ipos:
-            provider_name = "InvestorGain"
-            provider_url = INVESTORGAIN_URL
+        ig_ipos = _fetch_from_investorgain()
     except Exception as exc:
         logger.warning("InvestorGain fetch notice: %s", exc)
 
-    if not ipos:
-        try:
-            ipos = _fetch_from_ipowatch()
-            if ipos:
-                provider_name = "IPOWatch"
-                provider_url = IPOWATCH_URL
-        except Exception as exc:
-            logger.warning("IPOWatch fetch notice: %s", exc)
+    try:
+        iw_ipos = _fetch_from_ipowatch()
+    except Exception as exc:
+        logger.warning("IPOWatch fetch notice: %s", exc)
 
-    if not ipos:
+    try:
+        ipoji_ipos = _fetch_from_ipoji()
+    except Exception as exc:
+        logger.warning("IPOJi fetch notice: %s", exc)
+
+    merged_ipos = []
+    base_list = ig_ipos or iw_ipos or ipoji_ipos or []
+
+    for item in base_list:
+        name = item["name"]
+        item_copy = copy.deepcopy(item)
+        source_rows = item_copy.get("source_rows") or []
+
+        # Find matches from other sources
+        other_matches = []
+        if iw_ipos and base_list is not iw_ipos:
+            m = next((x for x in iw_ipos if is_company_match(name, x["name"])), None)
+            if m:
+                other_matches.append(m)
+        if ipoji_ipos and base_list is not ipoji_ipos:
+            m = next((x for x in ipoji_ipos if is_company_match(name, x["name"])), None)
+            if m:
+                other_matches.append(m)
+
+        # Merge sources and cross-enrich GMP
+        for m in other_matches:
+            if m.get("source_rows"):
+                for s in m["source_rows"]:
+                    if not any(existing.get("label") == s.get("label") for existing in source_rows):
+                        source_rows.append(s)
+
+            # Enrich missing fields
+            if item_copy.get("upper_price") is None and m.get("upper_price"):
+                item_copy["upper_price"] = m["upper_price"]
+                item_copy["upper_price_display"] = m["upper_price_display"]
+
+            # Cross-enrich GMP if base had None but match has valid GMP
+            if item_copy.get("gmp") is None and m.get("gmp") is not None:
+                item_copy["gmp"] = m["gmp"]
+                item_copy["gmp_pct"] = m["gmp_pct"]
+
+        # Collect all valid GMP values from all reporting sources
+        valid_gmps = [s["gmp"] for s in source_rows if s.get("gmp") is not None]
+        if valid_gmps:
+            valid_gmps_sorted = sorted(valid_gmps)
+            median_gmp = valid_gmps_sorted[len(valid_gmps_sorted) // 2]
+
+            # If base item had no gmp, use consensus median
+            if item_copy.get("gmp") is None:
+                item_copy["gmp"] = median_gmp
+
+            item_copy["gmp_min"] = min(valid_gmps)
+            item_copy["gmp_max"] = max(valid_gmps)
+
+            if item_copy.get("upper_price") and item_copy["upper_price"] > 0:
+                item_copy["gmp_pct"] = round((item_copy["gmp"] / item_copy["upper_price"]) * 100.0, 2)
+
+            item_copy["confidence"] = "High" if len(valid_gmps) >= 2 else "Moderate"
+        else:
+            item_copy["gmp"] = None
+            item_copy["gmp_pct"] = None
+            item_copy["gmp_min"] = None
+            item_copy["gmp_max"] = None
+            item_copy["confidence"] = "Unverified"
+
+        # Keep sources that report valid GMP if available, else retain base source
+        reporting_sources = [s for s in source_rows if s.get("gmp") is not None]
+        if reporting_sources:
+            item_copy["source_rows"] = reporting_sources
+            item_copy["source_count"] = len(reporting_sources)
+        else:
+            item_copy["source_rows"] = source_rows
+            item_copy["source_count"] = len(source_rows)
+
+        merged_ipos.append(item_copy)
+
+    # Append any IPOs from secondary providers that were completely missed by the base provider
+    for secondary in (iw_ipos or []) + (ipoji_ipos or []):
+        sec_name = secondary["name"]
+        if not any(is_company_match(sec_name, existing["name"]) for existing in merged_ipos):
+            merged_ipos.append(copy.deepcopy(secondary))
+
+    if not merged_ipos:
         seed = _load_fallback_seed()
         if seed and isinstance(seed.get("ipos"), list) and seed["ipos"]:
-            ipos = seed["ipos"]
-            provider_name = seed.get("provider", "InvestorGain")
-            provider_url = seed.get("provider_url", PROVIDER_PAGE_URL)
+            merged_ipos = seed["ipos"]
 
-    if not ipos:
-        raise IPOFeedError("Could not reach the live IPO data provider. Please retry in a moment.")
+    if not merged_ipos:
+        raise IPOFeedError("Could not reach any live IPO data provider. Please retry in a moment.")
+
+    # Sort merged IPOs: open issues first, then upcoming, then recently closed
+    def _status_order(st):
+        s = (st or "").lower()
+        if "open" in s:
+            return 0
+        if "upcom" in s or "pre" in s:
+            return 1
+        return 2
+
+    merged_ipos.sort(key=lambda x: _status_order(x.get("status")))
 
     now_iso = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     now_display = format_ist_display()
+    provider_name = "InvestorGain & IPOWatch Multi-Source"
 
-    return {
-        "ipos": ipos,
+    payload = {
+        "ipos": merged_ipos,
         "generated_at": now_iso,
         "generated_display": f"{provider_name} Live Sync · {now_display}",
         "fetched_at": now_iso,
         "provider": provider_name,
-        "provider_url": provider_url,
-        "provider_data_url": provider_url,
+        "provider_url": PROVIDER_PAGE_URL,
+        "provider_data_url": PROVIDER_PAGE_URL,
         "official_ipo_url": OFFICIAL_IPO_URL,
         "license": "Live Market Tracking",
         "is_stale": False,
         "refresh_error": None,
     }
+
+    # Automatically save fresh seed to disk for permanent resilience
+    _save_seed(payload)
+    return payload
 
 
 def get_ipo_data(force_refresh=False):
@@ -527,7 +771,7 @@ def save_synced_ipo_data(json_data):
         "generated_at": json_data.get("generated_at") or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "generated_display": json_data.get("generated_display") or "Client direct sync",
         "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-        "provider": json_data.get("provider") or "InvestorGain",
+        "provider": json_data.get("provider") or "InvestorGain & IPOWatch Multi-Source",
         "provider_url": json_data.get("provider_url") or PROVIDER_PAGE_URL,
         "provider_data_url": json_data.get("provider_data_url") or PROVIDER_PAGE_URL,
         "official_ipo_url": OFFICIAL_IPO_URL,
@@ -539,6 +783,7 @@ def save_synced_ipo_data(json_data):
         _cached_payload = payload
         _cached_monotonic = time.monotonic()
         _persist_cache_to_mongo(payload)
+    _save_seed(payload)
     return payload
 
 
@@ -589,7 +834,7 @@ def get_ipo_refresh_status():
             except Exception:
                 last_updated_display = str(last_updated)
         else:
-            last_updated_display = "Never" 
+            last_updated_display = "Never"
 
         return {
             "is_refreshing": _is_refreshing,
@@ -600,7 +845,7 @@ def get_ipo_refresh_status():
             "last_updated_display": last_updated_display or "Never",
             "total_ipos": len(ipos),
             "counts": counts,
-            "provider": payload.get("provider", "InvestorGain / IPOWatch"),
+            "provider": payload.get("provider", "InvestorGain & IPOWatch Multi-Source"),
             "storage": "MongoDB Atlas (Synced)",
         }
 
@@ -627,7 +872,7 @@ def start_admin_ipo_refresh():
     return {
         "success": True,
         "status": "started",
-        "message": "Background refresh started. Live IPOs and GMP data are being fetched.",
+        "message": "Background refresh started. Multi-source IPOs and GMP data are being synchronized.",
         **get_ipo_refresh_status(),
     }
 
@@ -638,13 +883,13 @@ def _run_admin_ipo_refresh_worker():
         logger.info("Admin initiated IPO & GMP live refresh...")
         with _refresh_lock:
             _refresh_percent = 35
-            _refresh_progress = "Fetching and parsing live issues from InvestorGain & IPOWatch..."
+            _refresh_progress = "Fetching and parsing live issues from InvestorGain, IPOWatch & IPOJi..."
 
         payload = _fetch_payload()
 
         with _refresh_lock:
             _refresh_percent = 80
-            _refresh_progress = f"Parsed {len(payload.get('ipos', []))} issues. Persisting to MongoDB Atlas..."
+            _refresh_progress = f"Parsed and merged {len(payload.get('ipos', []))} issues across providers. Persisting to storage..."
 
         with _cache_lock:
             _cached_payload = payload
@@ -654,7 +899,7 @@ def _run_admin_ipo_refresh_worker():
         total_count = len(payload.get("ipos", []))
         with _refresh_lock:
             _refresh_percent = 100
-            _refresh_progress = f"Completed successfully! {total_count} IPOs synchronized and cached in MongoDB Atlas."
+            _refresh_progress = f"Completed successfully! {total_count} IPOs synchronized and cached with multi-source GMP."
             _refresh_error = None
         logger.info(f"IPO refresh completed: {total_count} records saved.")
     except Exception as exc:
@@ -665,4 +910,3 @@ def _run_admin_ipo_refresh_worker():
     finally:
         with _refresh_lock:
             _is_refreshing = False
-

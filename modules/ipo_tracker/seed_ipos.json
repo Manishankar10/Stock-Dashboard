@@ -1,1 +1,1074 @@
-[]
+{
+  "ipos": [
+    {
+      "id": "gmp/antala-industries-ipo/2375",
+      "name": "Antala Industries",
+      "segment": "SME",
+      "status": "Open",
+      "dates": "29 Oct 2026 to 2 Nov 2026",
+      "open_date": "29 Oct 2026",
+      "close_date": "2 Nov 2026",
+      "allotment_date": "3 Nov 2026",
+      "listing_date": "5 Nov 2026",
+      "upper_price": 67.0,
+      "upper_price_display": "₹67",
+      "issue_size": "₹23.33 Cr",
+      "lot_size": 2000.0,
+      "min_investment": 134000.0,
+      "subscription": 0.82,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/antala-industries-ipo/2375/",
+          "gmp": 0.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/antala-industries-ipo-gmp-today/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/antala-industries-ipo/2375/"
+    },
+    {
+      "id": "gmp/bombay-coated-and-special-steels-ipo/1936",
+      "name": "Bombay Coated and Special Steels",
+      "segment": "MAINBOARD",
+      "status": "Open",
+      "dates": "29 Oct 2026 to 2 Nov 2026",
+      "open_date": "29 Oct 2026",
+      "close_date": "2 Nov 2026",
+      "allotment_date": "3 Nov 2026",
+      "listing_date": "5 Nov 2026",
+      "upper_price": 82.0,
+      "upper_price_display": "₹82",
+      "issue_size": "₹183.06 Cr",
+      "lot_size": 182.0,
+      "min_investment": 14924.0,
+      "subscription": 2.81,
+      "gmp": 9.0,
+      "gmp_min": 9.0,
+      "gmp_max": 9.0,
+      "gmp_pct": 10.98,
+      "source_count": 3,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/bombay-coated-and-special-steels-ipo/1936/",
+          "gmp": 9.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "/bombay-coated-special-steels-ipo-gmp-grey-market-premium/",
+          "gmp": 9.0
+        },
+        {
+          "label": "IPOJi GMP",
+          "url": "/ipo/bombay-coated-and-special-steels-ipo",
+          "gmp": 9.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/bombay-coated-and-special-steels-ipo/1936/"
+    },
+    {
+      "id": "gmp/mksons-fine-jewels-ipo/2288",
+      "name": "M.K.Sons Fine Jewels",
+      "segment": "MAINBOARD",
+      "status": "Open",
+      "dates": "28 Oct 2026 to 30 Oct 2026",
+      "open_date": "28 Oct 2026",
+      "close_date": "30 Oct 2026",
+      "allotment_date": "2 Nov 2026",
+      "listing_date": "4 Nov 2026",
+      "upper_price": 162.0,
+      "upper_price_display": "₹162",
+      "issue_size": "₹275.40 Cr",
+      "lot_size": 91.0,
+      "min_investment": 14742.0,
+      "subscription": 1.18,
+      "gmp": 12.0,
+      "gmp_min": 9.0,
+      "gmp_max": 15.0,
+      "gmp_pct": 7.41,
+      "source_count": 3,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/mksons-fine-jewels-ipo/2288/",
+          "gmp": 12.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/mksons-fine-jewels-ipo-gmp-today/",
+          "gmp": 15.0
+        },
+        {
+          "label": "IPOJi GMP",
+          "url": "/ipo/mksons-fine-jewels-ipo",
+          "gmp": 9.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/mksons-fine-jewels-ipo/2288/"
+    },
+    {
+      "id": "gmp/ajwa-projects-ipo/2017",
+      "name": "Ajwa Projects",
+      "segment": "SME",
+      "status": "Open",
+      "dates": "28 Oct 2026 to 30 Oct 2026",
+      "open_date": "28 Oct 2026",
+      "close_date": "30 Oct 2026",
+      "allotment_date": "2 Nov 2026",
+      "listing_date": "4 Nov 2026",
+      "upper_price": 203.0,
+      "upper_price_display": "₹203",
+      "issue_size": "₹38.05 Cr",
+      "lot_size": 600.0,
+      "min_investment": 121800.0,
+      "subscription": 0.87,
+      "gmp": 5.0,
+      "gmp_min": 5.0,
+      "gmp_max": 35.0,
+      "gmp_pct": 2.46,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/ajwa-projects-ipo/2017/",
+          "gmp": 5.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/ajwa-projects-ipo-gmp-today/",
+          "gmp": 35.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/ajwa-projects-ipo/2017/"
+    },
+    {
+      "id": "gmp/carver-roboweld-ipo/2393",
+      "name": "Carver Roboweld",
+      "segment": "SME",
+      "status": "Open",
+      "dates": "28 Oct 2026 to 30 Oct 2026",
+      "open_date": "28 Oct 2026",
+      "close_date": "30 Oct 2026",
+      "allotment_date": "2 Nov 2026",
+      "listing_date": "4 Nov 2026",
+      "upper_price": 80.0,
+      "upper_price_display": "₹80",
+      "issue_size": "₹28.29 Cr",
+      "lot_size": 1600.0,
+      "min_investment": 128000.0,
+      "subscription": 0.83,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/carver-roboweld-ipo/2393/",
+          "gmp": 0.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/carver-roboweld-ipo-gmp-today/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/carver-roboweld-ipo/2393/"
+    },
+    {
+      "id": "gmp/vedant-poly-fabs-ipo/2297",
+      "name": "Vedant Poly Fabs",
+      "segment": "SME",
+      "status": "Upcoming",
+      "dates": "2 Nov 2026 to 4 Nov 2026",
+      "open_date": "2 Nov 2026",
+      "close_date": "4 Nov 2026",
+      "allotment_date": "5 Nov 2026",
+      "listing_date": "9 Nov 2026",
+      "upper_price": 94.0,
+      "upper_price_display": "₹94",
+      "issue_size": "₹56.68 Cr",
+      "lot_size": 1200.0,
+      "min_investment": 112800.0,
+      "subscription": null,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/vedant-poly-fabs-ipo/2297/",
+          "gmp": 0.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/vedant-poly-fabs-ipo-gmp-today/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/vedant-poly-fabs-ipo/2297/"
+    },
+    {
+      "id": "gmp/hgs-india-ipo/2241",
+      "name": "HGS (India)",
+      "segment": "SME",
+      "status": "Upcoming",
+      "dates": "30 Oct 2026 to 3 Nov 2026",
+      "open_date": "30 Oct 2026",
+      "close_date": "3 Nov 2026",
+      "allotment_date": "4 Nov 2026",
+      "listing_date": "6 Nov 2026",
+      "upper_price": 120.0,
+      "upper_price_display": "₹120",
+      "issue_size": "₹34.56 Cr",
+      "lot_size": 1200.0,
+      "min_investment": 144000.0,
+      "subscription": null,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/hgs-india-ipo/2241/",
+          "gmp": 0.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/hgs-india-ipo-gmp-today/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/hgs-india-ipo/2241/"
+    },
+    {
+      "id": "gmp/johnsoncab-electricals-ipo/2371",
+      "name": "Johnsoncab Electricals",
+      "segment": "SME",
+      "status": "Upcoming",
+      "dates": "30 Oct 2026 to 3 Nov 2026",
+      "open_date": "30 Oct 2026",
+      "close_date": "3 Nov 2026",
+      "allotment_date": "4 Nov 2026",
+      "listing_date": "6 Nov 2026",
+      "upper_price": 200.0,
+      "upper_price_display": "₹200",
+      "issue_size": "₹56.02 Cr",
+      "lot_size": 600.0,
+      "min_investment": 120000.0,
+      "subscription": null,
+      "gmp": 13.0,
+      "gmp_min": 10.0,
+      "gmp_max": 13.0,
+      "gmp_pct": 6.5,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/johnsoncab-electricals-ipo/2371/",
+          "gmp": 13.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/johnsoncab-electricals-ipo-gmp-today/",
+          "gmp": 10.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/johnsoncab-electricals-ipo/2371/"
+    },
+    {
+      "id": "gmp/vectras-enprocon-ipo/1998",
+      "name": "Vectras Enprocon",
+      "segment": "SME",
+      "status": "Upcoming",
+      "dates": "30 Oct 2026 to 3 Nov 2026",
+      "open_date": "30 Oct 2026",
+      "close_date": "3 Nov 2026",
+      "allotment_date": "4 Nov 2026",
+      "listing_date": "6 Nov 2026",
+      "upper_price": 105.0,
+      "upper_price_display": "₹105",
+      "issue_size": "₹53.05 Cr",
+      "lot_size": 1200.0,
+      "min_investment": 126000.0,
+      "subscription": null,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/vectras-enprocon-ipo/1998/",
+          "gmp": 0.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/vectras-enprocon-ipo-gmp-today/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/vectras-enprocon-ipo/1998/"
+    },
+    {
+      "id": "gmp/maxwell-engineering-solutions-ipo/1965",
+      "name": "Maxwell Engineering Solutions",
+      "segment": "SME",
+      "status": "Upcoming",
+      "dates": "30 Oct 2026 to 3 Nov 2026",
+      "open_date": "30 Oct 2026",
+      "close_date": "3 Nov 2026",
+      "allotment_date": "4 Nov 2026",
+      "listing_date": "6 Nov 2026",
+      "upper_price": 158.0,
+      "upper_price_display": "₹158",
+      "issue_size": "₹57.64 Cr",
+      "lot_size": 800.0,
+      "min_investment": 126400.0,
+      "subscription": null,
+      "gmp": 52.0,
+      "gmp_min": 40.0,
+      "gmp_max": 52.0,
+      "gmp_pct": 32.91,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/maxwell-engineering-solutions-ipo/1965/",
+          "gmp": 52.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "https://ipowatch.in/maxwell-engineering-solutions-ipo-gmp-today/",
+          "gmp": 40.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/maxwell-engineering-solutions-ipo/1965/"
+    },
+    {
+      "id": "gmp/wiscon-industries-ipo/2356",
+      "name": "Wiscon Industries",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "27 Oct 2026 to 29 Oct 2026",
+      "open_date": "27 Oct 2026",
+      "close_date": "29 Oct 2026",
+      "allotment_date": "30 Oct 2026",
+      "listing_date": "3 Nov 2026",
+      "upper_price": 204.0,
+      "upper_price_display": "₹204",
+      "issue_size": "₹110.00 Cr",
+      "lot_size": 600.0,
+      "min_investment": 122400.0,
+      "subscription": 1.17,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/wiscon-industries-ipo/2356/",
+          "gmp": 0.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "/wiscon-industries-ipo-gmp-today/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/wiscon-industries-ipo/2356/"
+    },
+    {
+      "id": "gmp/sfc-environmental-technologies-ipo/1642",
+      "name": "SFC Environmental Technologies",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "27 Oct 2026 to 29 Oct 2026",
+      "open_date": "27 Oct 2026",
+      "close_date": "29 Oct 2026",
+      "allotment_date": "30 Oct 2026",
+      "listing_date": "3 Nov 2026",
+      "upper_price": 330.0,
+      "upper_price_display": "₹330",
+      "issue_size": "₹667.53 Cr",
+      "lot_size": 45.0,
+      "min_investment": 14850.0,
+      "subscription": 9.47,
+      "gmp": 18.5,
+      "gmp_min": 12.0,
+      "gmp_max": 18.5,
+      "gmp_pct": 5.61,
+      "source_count": 3,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/sfc-environmental-technologies-ipo/1642/",
+          "gmp": 18.5
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "/sfc-environmental-technologies-ipo-gmp-grey-market-premium/",
+          "gmp": 12.0
+        },
+        {
+          "label": "IPOJi GMP",
+          "url": "/ipo/sfc-environmental-technologies-ipo",
+          "gmp": 18.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/sfc-environmental-technologies-ipo/1642/"
+    },
+    {
+      "id": "gmp/bls-polymers-ipo/1849",
+      "name": "BLS Polymers",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "27 Oct 2026 to 29 Oct 2026",
+      "open_date": "27 Oct 2026",
+      "close_date": "29 Oct 2026",
+      "allotment_date": "30 Oct 2026",
+      "listing_date": "3 Nov 2026",
+      "upper_price": 150.0,
+      "upper_price_display": "₹150",
+      "issue_size": "₹255.00 Cr",
+      "lot_size": 100.0,
+      "min_investment": 15000.0,
+      "subscription": 241.22,
+      "gmp": 68.0,
+      "gmp_min": 51.0,
+      "gmp_max": 68.0,
+      "gmp_pct": 45.33,
+      "source_count": 3,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/bls-polymers-ipo/1849/",
+          "gmp": 68.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "/bls-polymers-ipo-gmp-grey-market-premium/",
+          "gmp": 51.0
+        },
+        {
+          "label": "IPOJi GMP",
+          "url": "/ipo/bls-polymers-ipo",
+          "gmp": 63.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/bls-polymers-ipo/1849/"
+    },
+    {
+      "id": "gmp/eaaa-india-alternatives-ipo/1635",
+      "name": "EAAA India Alternatives",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "26 Oct 2026 to 28 Oct 2026",
+      "open_date": "26 Oct 2026",
+      "close_date": "28 Oct 2026",
+      "allotment_date": "29 Oct 2026",
+      "listing_date": "2 Nov 2026",
+      "upper_price": 1665.0,
+      "upper_price_display": "₹1665",
+      "issue_size": "₹1200.00 Cr",
+      "lot_size": 9.0,
+      "min_investment": 14985.0,
+      "subscription": 5.51,
+      "gmp": 38.0,
+      "gmp_min": 30.0,
+      "gmp_max": 38.0,
+      "gmp_pct": 2.28,
+      "source_count": 3,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/eaaa-india-alternatives-ipo/1635/",
+          "gmp": 38.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "/eaaa-india-alternatives-ipo-gmp-today/",
+          "gmp": 30.0
+        },
+        {
+          "label": "IPOJi GMP",
+          "url": "/ipo/eaaa-india-alternatives-ipo",
+          "gmp": 37.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/eaaa-india-alternatives-ipo/1635/"
+    },
+    {
+      "id": "gmp/core4-engineers-ipo/2229",
+      "name": "Core4 Engineers",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "23 Oct 2026 to 27 Oct 2026",
+      "open_date": "23 Oct 2026",
+      "close_date": "27 Oct 2026",
+      "allotment_date": "28 Oct 2026",
+      "listing_date": "30 Oct 2026",
+      "upper_price": 93.0,
+      "upper_price_display": "₹93",
+      "issue_size": "₹54.82 Cr",
+      "lot_size": 1200.0,
+      "min_investment": 111600.0,
+      "subscription": 5.44,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 2,
+      "confidence": "High",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/core4-engineers-ipo/2229/",
+          "gmp": 0.0
+        },
+        {
+          "label": "IPOWatch GMP",
+          "url": "/core4-engineers-ipo-gmp-grey-market-premium/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/core4-engineers-ipo/2229/"
+    },
+    {
+      "id": "gmp/paras-healthcare-ipo/1728",
+      "name": "Paras Healthcare",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "21 Oct 2026 to 23 Oct 2026",
+      "open_date": "21 Oct 2026",
+      "close_date": "23 Oct 2026",
+      "allotment_date": "26 Oct 2026",
+      "listing_date": "28 Oct 2026",
+      "upper_price": 693.0,
+      "upper_price_display": "₹693",
+      "issue_size": "₹1450.00 Cr",
+      "lot_size": 21.0,
+      "min_investment": 14553.0,
+      "subscription": 2.34,
+      "gmp": 13.0,
+      "gmp_min": 13.0,
+      "gmp_max": 13.0,
+      "gmp_pct": 1.88,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/paras-healthcare-ipo/1728/",
+          "gmp": 13.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/paras-healthcare-ipo/1728/"
+    },
+    {
+      "id": "gmp/jio-platforms-ipo/2306",
+      "name": "Jio Platforms",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "21 Oct 2026 to 23 Oct 2026",
+      "open_date": "21 Oct 2026",
+      "close_date": "23 Oct 2026",
+      "allotment_date": "26 Oct 2026",
+      "listing_date": "28 Oct 2026",
+      "upper_price": 1119.0,
+      "upper_price_display": "₹1119",
+      "issue_size": "₹30187.65 Cr",
+      "lot_size": 12.0,
+      "min_investment": 13428.0,
+      "subscription": 21.36,
+      "gmp": 250.0,
+      "gmp_min": 250.0,
+      "gmp_max": 250.0,
+      "gmp_pct": 22.34,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/jio-platforms-ipo/2306/",
+          "gmp": 250.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/jio-platforms-ipo/2306/"
+    },
+    {
+      "id": "gmp/zetwerk-ipo/2279",
+      "name": "Zetwerk",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "15 Oct 2026 to 19 Oct 2026",
+      "open_date": "15 Oct 2026",
+      "close_date": "19 Oct 2026",
+      "allotment_date": "21 Oct 2026",
+      "listing_date": "23 Oct 2026",
+      "upper_price": 151.0,
+      "upper_price_display": "₹151",
+      "issue_size": "₹5012.33 Cr",
+      "lot_size": 99.0,
+      "min_investment": 14949.0,
+      "subscription": 3.1,
+      "gmp": 1.2,
+      "gmp_min": 1.2,
+      "gmp_max": 1.2,
+      "gmp_pct": 0.79,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/zetwerk-ipo/2279/",
+          "gmp": 1.2
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/zetwerk-ipo/2279/"
+    },
+    {
+      "id": "gmp/tonbo-imaging-india-ipo/2369",
+      "name": "Tonbo Imaging India",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "15 Oct 2026 to 19 Oct 2026",
+      "open_date": "15 Oct 2026",
+      "close_date": "19 Oct 2026",
+      "allotment_date": "21 Oct 2026",
+      "listing_date": "23 Oct 2026",
+      "upper_price": 700.0,
+      "upper_price_display": "₹700",
+      "issue_size": "₹852.18 Cr",
+      "lot_size": 21.0,
+      "min_investment": 14700.0,
+      "subscription": 132.81,
+      "gmp": 452.0,
+      "gmp_min": 452.0,
+      "gmp_max": 452.0,
+      "gmp_pct": 64.57,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/tonbo-imaging-india-ipo/2369/",
+          "gmp": 452.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/tonbo-imaging-india-ipo/2369/"
+    },
+    {
+      "id": "gmp/sahajanand-medical-technologies-ipo/1842",
+      "name": "Sahajanand Medical Technologies",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "15 Oct 2026 to 19 Oct 2026",
+      "open_date": "15 Oct 2026",
+      "close_date": "19 Oct 2026",
+      "allotment_date": "21 Oct 2026",
+      "listing_date": "23 Oct 2026",
+      "upper_price": 344.0,
+      "upper_price_display": "₹344",
+      "issue_size": "₹475.48 Cr",
+      "lot_size": 43.0,
+      "min_investment": 14792.0,
+      "subscription": 14.21,
+      "gmp": 17.0,
+      "gmp_min": 17.0,
+      "gmp_max": 17.0,
+      "gmp_pct": 4.94,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/sahajanand-medical-technologies-ipo/1842/",
+          "gmp": 17.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/sahajanand-medical-technologies-ipo/1842/"
+    },
+    {
+      "id": "gmp/bonfiglioli-transmissions-ipo/2124",
+      "name": "Bonfiglioli Transmissions",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "15 Oct 2026 to 19 Oct 2026",
+      "open_date": "15 Oct 2026",
+      "close_date": "19 Oct 2026",
+      "allotment_date": "21 Oct 2026",
+      "listing_date": "23 Oct 2026",
+      "upper_price": 586.0,
+      "upper_price_display": "₹586",
+      "issue_size": "₹2533.66 Cr",
+      "lot_size": 25.0,
+      "min_investment": 14650.0,
+      "subscription": 46.05,
+      "gmp": 66.0,
+      "gmp_min": 66.0,
+      "gmp_max": 66.0,
+      "gmp_pct": 11.26,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/bonfiglioli-transmissions-ipo/2124/",
+          "gmp": 66.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/bonfiglioli-transmissions-ipo/2124/"
+    },
+    {
+      "id": "gmp/shellz-india-ipo/2228",
+      "name": "Shellz India",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "15 Oct 2026 to 19 Oct 2026",
+      "open_date": "15 Oct 2026",
+      "close_date": "19 Oct 2026",
+      "allotment_date": "21 Oct 2026",
+      "listing_date": "23 Oct 2026",
+      "upper_price": 179.0,
+      "upper_price_display": "₹179",
+      "issue_size": "₹59.97 Cr",
+      "lot_size": 800.0,
+      "min_investment": 143200.0,
+      "subscription": 58.54,
+      "gmp": 7.0,
+      "gmp_min": 7.0,
+      "gmp_max": 7.0,
+      "gmp_pct": 3.91,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/shellz-india-ipo/2228/",
+          "gmp": 7.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/shellz-india-ipo/2228/"
+    },
+    {
+      "id": "gmp/ravita-engineering-services-ipo/2220",
+      "name": "Ravita Engineering Services",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "14 Oct 2026 to 16 Oct 2026",
+      "open_date": "14 Oct 2026",
+      "close_date": "16 Oct 2026",
+      "allotment_date": "19 Oct 2026",
+      "listing_date": "22 Oct 2026",
+      "upper_price": 112.0,
+      "upper_price_display": "₹112",
+      "issue_size": "₹116.05 Cr",
+      "lot_size": 1200.0,
+      "min_investment": 134400.0,
+      "subscription": 7.11,
+      "gmp": 1.0,
+      "gmp_min": 1.0,
+      "gmp_max": 1.0,
+      "gmp_pct": 0.89,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/ravita-engineering-services-ipo/2220/",
+          "gmp": 1.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/ravita-engineering-services-ipo/2220/"
+    },
+    {
+      "id": "gmp/fusion-cx-ipo/1792",
+      "name": "Fusion CX",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "14 Oct 2026 to 16 Oct 2026",
+      "open_date": "14 Oct 2026",
+      "close_date": "16 Oct 2026",
+      "allotment_date": "19 Oct 2026",
+      "listing_date": "22 Oct 2026",
+      "upper_price": 289.0,
+      "upper_price_display": "₹289",
+      "issue_size": "₹702.00 Cr",
+      "lot_size": 51.0,
+      "min_investment": 14739.0,
+      "subscription": 4.68,
+      "gmp": 13.5,
+      "gmp_min": 13.5,
+      "gmp_max": 13.5,
+      "gmp_pct": 4.67,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/fusion-cx-ipo/1792/",
+          "gmp": 13.5
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/fusion-cx-ipo/1792/"
+    },
+    {
+      "id": "gmp/hd-fire-protect-ipo/1902",
+      "name": "HD Fire Protect",
+      "segment": "MAINBOARD",
+      "status": "Closed",
+      "dates": "13 Oct 2026 to 15 Oct 2026",
+      "open_date": "13 Oct 2026",
+      "close_date": "15 Oct 2026",
+      "allotment_date": "16 Oct 2026",
+      "listing_date": "21 Oct 2026",
+      "upper_price": 271.0,
+      "upper_price_display": "₹271",
+      "issue_size": "₹712.13 Cr",
+      "lot_size": 55.0,
+      "min_investment": 14905.0,
+      "subscription": 131.73,
+      "gmp": 70.0,
+      "gmp_min": 70.0,
+      "gmp_max": 70.0,
+      "gmp_pct": 25.83,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/hd-fire-protect-ipo/1902/",
+          "gmp": 70.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/hd-fire-protect-ipo/1902/"
+    },
+    {
+      "id": "gmp/vaibhav-vyapaar-ipo/2335",
+      "name": "Vaibhav Vyapaar",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "13 Oct 2026 to 15 Oct 2026",
+      "open_date": "13 Oct 2026",
+      "close_date": "15 Oct 2026",
+      "allotment_date": "16 Oct 2026",
+      "listing_date": "21 Oct 2026",
+      "upper_price": 54.0,
+      "upper_price_display": "₹54",
+      "issue_size": "₹42.10 Cr",
+      "lot_size": 2000.0,
+      "min_investment": 108000.0,
+      "subscription": 3.23,
+      "gmp": 3.0,
+      "gmp_min": 3.0,
+      "gmp_max": 3.0,
+      "gmp_pct": 5.56,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/vaibhav-vyapaar-ipo/2335/",
+          "gmp": 3.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/vaibhav-vyapaar-ipo/2335/"
+    },
+    {
+      "id": "gmp/rkfashion-accessories-ipo/2292",
+      "name": "R.K.Fashion Accessories",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "5 Oct 2026 to 7 Oct 2026",
+      "open_date": "5 Oct 2026",
+      "close_date": "7 Oct 2026",
+      "allotment_date": "8 Oct 2026",
+      "listing_date": "12 Oct 2026",
+      "upper_price": 82.0,
+      "upper_price_display": "₹82",
+      "issue_size": "₹34.99 Cr",
+      "lot_size": 1600.0,
+      "min_investment": 131200.0,
+      "subscription": 2.7,
+      "gmp": 1.5,
+      "gmp_min": 1.5,
+      "gmp_max": 1.5,
+      "gmp_pct": 1.83,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/rkfashion-accessories-ipo/2292/",
+          "gmp": 1.5
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/rkfashion-accessories-ipo/2292/"
+    },
+    {
+      "id": "gmp/paramount-syntex-ipo/2001",
+      "name": "Paramount Syntex",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "30 Sep 2026 to 6 Oct 2026",
+      "open_date": "30 Sep 2026",
+      "close_date": "6 Oct 2026",
+      "allotment_date": "7 Oct 2026",
+      "listing_date": "9 Oct 2026",
+      "upper_price": 127.0,
+      "upper_price_display": "₹127",
+      "issue_size": "₹81.79 Cr",
+      "lot_size": 1000.0,
+      "min_investment": 127000.0,
+      "subscription": 1.88,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/paramount-syntex-ipo/2001/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/paramount-syntex-ipo/2001/"
+    },
+    {
+      "id": "gmp/acme-india-industries-ipo/2006",
+      "name": "Acme India Industries",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "30 Sep 2026 to 6 Oct 2026",
+      "open_date": "30 Sep 2026",
+      "close_date": "6 Oct 2026",
+      "allotment_date": "7 Oct 2026",
+      "listing_date": "9 Oct 2026",
+      "upper_price": 196.0,
+      "upper_price_display": "₹196",
+      "issue_size": "₹121.69 Cr",
+      "lot_size": 600.0,
+      "min_investment": 117600.0,
+      "subscription": 124.23,
+      "gmp": 43.0,
+      "gmp_min": 43.0,
+      "gmp_max": 43.0,
+      "gmp_pct": 21.94,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/acme-india-industries-ipo/2006/",
+          "gmp": 43.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/acme-india-industries-ipo/2006/"
+    },
+    {
+      "id": "gmp/tna-solutions-ipo/2370",
+      "name": "TNA Solutions",
+      "segment": "SME",
+      "status": "Closed",
+      "dates": "30 Sep 2026 to 6 Oct 2026",
+      "open_date": "30 Sep 2026",
+      "close_date": "6 Oct 2026",
+      "allotment_date": "7 Oct 2026",
+      "listing_date": "9 Oct 2026",
+      "upper_price": 70.0,
+      "upper_price_display": "₹70",
+      "issue_size": "₹37.86 Cr",
+      "lot_size": 2000.0,
+      "min_investment": 140000.0,
+      "subscription": 55.2,
+      "gmp": 0.0,
+      "gmp_min": 0.0,
+      "gmp_max": 0.0,
+      "gmp_pct": 0.0,
+      "source_count": 1,
+      "confidence": "Moderate",
+      "score": null,
+      "source_rows": [
+        {
+          "label": "InvestorGain Live",
+          "url": "https://www.investorgain.com/gmp/tna-solutions-ipo/2370/",
+          "gmp": 0.0
+        }
+      ],
+      "detail_url": "https://www.investorgain.com/gmp/tna-solutions-ipo/2370/"
+    }
+  ],
+  "generated_at": "2026-10-29T16:45:50+00:00",
+  "generated_display": "InvestorGain & IPOWatch Multi-Source Live Sync · 29 Oct 2026, 10:15 PM IST",
+  "fetched_at": "2026-10-29T16:45:50+00:00",
+  "provider": "InvestorGain & IPOWatch Multi-Source",
+  "provider_url": "https://www.investorgain.com/report/live-ipo-gmp/331/",
+  "provider_data_url": "https://www.investorgain.com/report/live-ipo-gmp/331/",
+  "official_ipo_url": "https://www.nseindia.com/market-data/all-upcoming-issues-ipo",
+  "license": "Live Market Tracking",
+  "is_stale": false,
+  "refresh_error": null
+}

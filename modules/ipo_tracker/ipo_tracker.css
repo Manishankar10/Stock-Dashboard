@@ -147,6 +147,7 @@ h1 { margin: 0; font-size: clamp(25px, 3vw, 32px); letter-spacing: -.04em; }
 .value-muted { display: block; color: var(--text-muted); white-space: nowrap; }
 .gmp-value { color: #059669; }
 .gmp-negative { color: #dc2626; }
+.gmp-neutral { color: var(--text-secondary); }
 .gmp-range { color: var(--text-secondary); }
 .confidence { color: var(--text-muted); }
 .source-details { position: relative; min-width: 100px; }

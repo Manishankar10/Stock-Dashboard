@@ -81,8 +81,14 @@
                 return 0;
             }
 
-            const isMissingA = valA === -Infinity || valA === 0;
-            const isMissingB = valB === -Infinity || valB === 0;
+            let isMissingA, isMissingB;
+            if (currentSortKey === 'dates') {
+                isMissingA = valA === 0;
+                isMissingB = valB === 0;
+            } else {
+                isMissingA = valA === -Infinity;
+                isMissingB = valB === -Infinity;
+            }
             if (isMissingA && !isMissingB) return 1;
             if (!isMissingA && isMissingB) return -1;
             if (isMissingA && isMissingB) return 0;
@@ -176,20 +182,29 @@
         const group = classifyStatus(ipo.status);
         const segment = String(ipo.segment || 'IPO').toUpperCase();
         const gmp = ipo.gmp;
-        const gmpClass = Number(gmp) < 0 ? 'gmp-negative' : 'gmp-value';
+        const numGmp = gmp != null && Number.isFinite(Number(gmp)) ? Number(gmp) : null;
+        const gmpClass = numGmp === null ? '' : (numGmp < 0 ? 'gmp-negative' : (numGmp === 0 ? 'gmp-neutral' : 'gmp-value'));
         let gmpHtml = '<span class="value-muted">Not reported</span>';
-        if (gmp != null && Number.isFinite(Number(gmp))) {
+        if (numGmp !== null) {
             let range = '';
             if (ipo.gmp_min != null && ipo.gmp_max != null && Number(ipo.gmp_min) !== Number(ipo.gmp_max)) {
                 range = '<span class="secondary-line gmp-range">Range ' + escapeHtml(formatCurrency(ipo.gmp_min)) + '–' + escapeHtml(formatCurrency(ipo.gmp_max)) + '</span>';
             }
             const confidence = ipo.confidence ? '<span class="secondary-line confidence">' + escapeHtml(ipo.confidence) + ' confidence</span>' : '';
-            gmpHtml = '<span class="value-main ' + gmpClass + '">' + escapeHtml(formatCurrency(gmp)) + '</span>' + range + confidence;
+            if (numGmp === 0) {
+                gmpHtml = '<span class="value-main gmp-neutral">₹0</span><span class="secondary-line" style="color: var(--text-muted, #64748b);">Flat / Nil</span>' + confidence;
+            } else {
+                gmpHtml = '<span class="value-main ' + gmpClass + '">' + escapeHtml(formatCurrency(numGmp)) + '</span>' + range + confidence;
+            }
         }
 
-        const percentage = ipo.gmp_pct == null
-            ? '<span class="value-muted">—</span>'
-            : '<span class="value-main gmp-pct-val ' + gmpClass + '">' + (Number(ipo.gmp_pct) > 0 ? '+' : '') + escapeHtml(formatNumber(ipo.gmp_pct, 2)) + '%</span>';
+        const numPct = ipo.gmp_pct != null && Number.isFinite(Number(ipo.gmp_pct)) ? Number(ipo.gmp_pct) : null;
+        let percentage = '<span class="value-muted">—</span>';
+        if (numPct !== null) {
+            const pctClass = numPct < 0 ? 'gmp-negative' : (numPct === 0 ? 'gmp-neutral' : 'gmp-value');
+            const prefix = numPct > 0 ? '+' : '';
+            percentage = '<span class="value-main gmp-pct-val ' + pctClass + '">' + prefix + escapeHtml(formatNumber(numPct, 2)) + '%</span>';
+        }
         const upperPrice = ipo.upper_price == null
             ? '<span class="value-muted">Not reported</span>'
             : '<span class="value-main">' + escapeHtml(formatCurrency(ipo.upper_price)) + '</span><span class="secondary-line">upper band</span>';
