@@ -336,7 +336,340 @@ def _parse_investor_index_table(html: str, category: str) -> List[Dict[str, Any]
     return investors
 
 
-# Comprehensive list of prominent Indian DII mutual funds and sovereign insurers
+_PROMINENT_EXTRA_ACE = [
+    {
+        "id": "custom_prashant_jain",
+        "slug": "prashant-jain",
+        "name": "Prashant Jain (3P Investment Managers)",
+        "category": "ace",
+        "portfolio_value": "220.30 Cr",
+        "numeric_value": 220.3,
+        "change_pct": "+0.50%",
+        "stocks_count": 4,
+        "sector_preference": "Specialty Pharma, Industrials, Chemicals",
+        "top_holdings": "Kahan Packaging Ltd., AstraZeneca Pharma India Ltd., NOCIL Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=prashant+jain",
+    },
+    {
+        "id": "custom_samir_arora",
+        "slug": "samir-arora",
+        "name": "Samir Arora (Helios Capital)",
+        "category": "ace",
+        "portfolio_value": "578.60 Cr",
+        "numeric_value": 578.6,
+        "change_pct": "+0.50%",
+        "stocks_count": 6,
+        "sector_preference": "Consumer Tech, Garments, Internet Platforms",
+        "top_holdings": "CarTrade Tech Ltd., Gokaldas Exports Ltd., Honasa Consumer Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=helios",
+    },
+    {
+        "id": "custom_raamdeo_agrawal",
+        "slug": "raamdeo-agrawal",
+        "name": "Raamdeo Agrawal (Motilal Oswal)",
+        "category": "ace",
+        "portfolio_value": "5,537.10 Cr",
+        "numeric_value": 5537.1,
+        "change_pct": "+0.50%",
+        "stocks_count": 5,
+        "sector_preference": "Financial Services, Consumer, Capital Markets",
+        "top_holdings": "Motilal Oswal Financial Services Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=raamdeo+agrawal",
+    },
+    {
+        "id": "custom_nandan_nilekani",
+        "slug": "nandan-nilekani",
+        "name": "Nandan Nilekani (Infosys / Tech Angel)",
+        "category": "ace",
+        "portfolio_value": "4,896.00 Cr",
+        "numeric_value": 4896.0,
+        "change_pct": "+0.50%",
+        "stocks_count": 4,
+        "sector_preference": "Information Technology, Media, Digital Services",
+        "top_holdings": "Heidelberg Cement India Ltd., Infosys Ltd., Nirlon Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=nandan+nilekani",
+    },
+    {
+        "id": "custom_sudha_murty",
+        "slug": "sudha-murty",
+        "name": "Sudha Murty & Family Office",
+        "category": "ace",
+        "portfolio_value": "15,464.90 Cr",
+        "numeric_value": 15464.9,
+        "change_pct": "+0.50%",
+        "stocks_count": 7,
+        "sector_preference": "IT, Cloud Infrastructure, Clean Tech",
+        "top_holdings": "Infosys Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=murty",
+    },
+    {
+        "id": "custom_narayana_murthy",
+        "slug": "narayana-murthy",
+        "name": "N. R. Narayana Murthy (Catamaran Ventures)",
+        "category": "ace",
+        "portfolio_value": "1,887.40 Cr",
+        "numeric_value": 1887.4,
+        "change_pct": "+0.50%",
+        "stocks_count": 9,
+        "sector_preference": "Consumer Retail, Software Services, Healthcare",
+        "top_holdings": "Ador Welding Ltd., Aequs Ltd., IRIS RegTech Solutions Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=catamaran",
+    },
+    {
+        "id": "custom_azim_premji",
+        "slug": "azim-premji",
+        "name": "Azim Premji & Associates (Premji Invest)",
+        "category": "ace",
+        "portfolio_value": "132,420.70 Cr",
+        "numeric_value": 132420.7,
+        "change_pct": "+0.50%",
+        "stocks_count": 10,
+        "sector_preference": "Software, Tech Services, Consumer Retail",
+        "top_holdings": "Wipro Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=azim+premji",
+    },
+    {
+        "id": "custom_shiv_nadar",
+        "slug": "shiv-nadar",
+        "name": "Shiv Nadar & Family (HCL)",
+        "category": "ace",
+        "portfolio_value": "324.50 Cr",
+        "numeric_value": 324.5,
+        "change_pct": "+0.50%",
+        "stocks_count": 6,
+        "sector_preference": "Technology, Electronics, Life Sciences",
+        "top_holdings": "HCL Infosystems Ltd., HCL Technologies Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=shiv+nadar",
+    },
+    {
+        "id": "custom_gautam_adani",
+        "slug": "gautam-adani",
+        "name": "Gautam Adani & Family",
+        "category": "ace",
+        "portfolio_value": "564,713.00 Cr",
+        "numeric_value": 564713.0,
+        "change_pct": "+0.50%",
+        "stocks_count": 34,
+        "sector_preference": "Energy, Ports, Utilities, Infrastructure",
+        "top_holdings": "Adani Energy Solutions Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=gautam+adani",
+    },
+    {
+        "id": "custom_kenneth_andrade",
+        "slug": "kenneth-andrade",
+        "name": "Kenneth Andrade (Old Bridge Capital)",
+        "category": "ace",
+        "portfolio_value": "896.40 Cr",
+        "numeric_value": 896.4,
+        "change_pct": "+0.50%",
+        "stocks_count": 8,
+        "sector_preference": "Capital Goods, Manufacturing, Agriculture",
+        "top_holdings": "Alivus Life Sciences Ltd., Antony Waste Handling Cell Ltd., Kaveri Seed Company Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=old+bridge",
+    },
+    {
+        "id": "custom_deepak_shenoy",
+        "slug": "deepak-shenoy",
+        "name": "Deepak Shenoy (Capitalmind)",
+        "category": "ace",
+        "portfolio_value": "5,000.00 Cr",
+        "numeric_value": 5000.0,
+        "change_pct": "+0.50%",
+        "stocks_count": 1,
+        "sector_preference": "Consumer Retail, Tech, Financials",
+        "top_holdings": "Mudra Financial Services Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=deepak+shenoy",
+    },
+    {
+        "id": "custom_bajaj_holdings",
+        "slug": "bajaj-holdings",
+        "name": "Bajaj Holdings & Investment (Bajaj Family)",
+        "category": "ace",
+        "portfolio_value": "209,617.70 Cr",
+        "numeric_value": 209617.7,
+        "change_pct": "+0.50%",
+        "stocks_count": 9,
+        "sector_preference": "Automotive, Financial Services, Consumer",
+        "top_holdings": "Bajaj Auto Ltd., Bajaj Electricals Ltd., Bajaj Finserv Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=bajaj+holdings",
+    },
+]
+
+
+_PROMINENT_EXTRA_FII = [
+    {
+        "id": "custom_blackrock",
+        "slug": "blackrock",
+        "name": "BlackRock Inc (iShares)",
+        "category": "fii",
+        "portfolio_value": "232.50 Cr",
+        "numeric_value": 232.5,
+        "change_pct": "+0.50%",
+        "stocks_count": 4,
+        "sector_preference": "Banking, Healthcare, Materials",
+        "top_holdings": "Lexus Granito (India) Ltd., Sammaan Capital Ltd., Bandhan Bank Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=blackrock",
+    },
+    {
+        "id": "custom_jpmorgan",
+        "slug": "jpmorgan",
+        "name": "JPMorgan Chase & Co",
+        "category": "fii",
+        "portfolio_value": "1,698.30 Cr",
+        "numeric_value": 1698.3,
+        "change_pct": "+0.50%",
+        "stocks_count": 6,
+        "sector_preference": "Financial Services, Energy, IT",
+        "top_holdings": "Computer Age Management Services Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=jpmorgan",
+    },
+    {
+        "id": "custom_peak_xv",
+        "slug": "peak-xv",
+        "name": "Peak XV Partners (formerly Sequoia India)",
+        "category": "fii",
+        "portfolio_value": "34,934.90 Cr",
+        "numeric_value": 34934.9,
+        "change_pct": "+0.50%",
+        "stocks_count": 16,
+        "sector_preference": "Consumer Internet, Fintech, SaaS, Healthcare",
+        "top_holdings": "Awfis Space Solutions Ltd, Bluestone Jewellery and Lifestyle Ltd., Five-Star Business Finance Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=peak+xv",
+    },
+    {
+        "id": "custom_temasek_aranda",
+        "slug": "temasek-aranda",
+        "name": "Temasek Holdings (Aranda Investments)",
+        "category": "fii",
+        "portfolio_value": "18,532.20 Cr",
+        "numeric_value": 18532.2,
+        "change_pct": "+0.50%",
+        "stocks_count": 7,
+        "sector_preference": "Digital Tech, Logistics, Consumer, Banking",
+        "top_holdings": "Khyati Global Ventures Ltd., National Stock Exchange of India Ltd., Excel Industries Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=aranda",
+    },
+    {
+        "id": "custom_cppib",
+        "slug": "cppib",
+        "name": "Canada Pension Plan Investment Board (CPPIB)",
+        "category": "fii",
+        "portfolio_value": "4,945.50 Cr",
+        "numeric_value": 4945.5,
+        "change_pct": "+0.50%",
+        "stocks_count": 1,
+        "sector_preference": "Infrastructure, Logistics, Financial Services",
+        "top_holdings": "National Stock Exchange of India Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=canada+pension",
+    },
+    {
+        "id": "custom_bnp_paribas",
+        "slug": "bnp-paribas",
+        "name": "BNP Paribas Financial Markets",
+        "category": "fii",
+        "portfolio_value": "2,679.30 Cr",
+        "numeric_value": 2679.3,
+        "change_pct": "+0.50%",
+        "stocks_count": 29,
+        "sector_preference": "Banking, Auto Ancillaries, Capital Goods",
+        "top_holdings": "Asset Reconstruction Company (India) Ltd., Aye Finance Ltd., Choice International Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=bnp+paribas",
+    },
+    {
+        "id": "custom_hsbc_global",
+        "slug": "hsbc-global",
+        "name": "HSBC Global Asset Management",
+        "category": "fii",
+        "portfolio_value": "45,125.10 Cr",
+        "numeric_value": 45125.1,
+        "change_pct": "+0.50%",
+        "stocks_count": 105,
+        "sector_preference": "Financials, Energy, IT, FMCG",
+        "top_holdings": "Alkyl Amines Chemicals Ltd., Angel One Ltd., Apar Industries Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=hsbc",
+    },
+    {
+        "id": "custom_barclays",
+        "slug": "barclays",
+        "name": "Barclays Capital Securities",
+        "category": "fii",
+        "portfolio_value": "3,687.70 Cr",
+        "numeric_value": 3687.7,
+        "change_pct": "+0.50%",
+        "stocks_count": 20,
+        "sector_preference": "Capital Markets, Diversified Financials",
+        "top_holdings": "Aarti Industries Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=barclays",
+    },
+    {
+        "id": "custom_fidelity",
+        "slug": "fidelity",
+        "name": "Fidelity Management & Research (FMR)",
+        "category": "fii",
+        "portfolio_value": "18,589.30 Cr",
+        "numeric_value": 18589.3,
+        "change_pct": "+0.50%",
+        "stocks_count": 61,
+        "sector_preference": "Global Technology, Pharmaceuticals, Industrials",
+        "top_holdings": "360 One Wam Ltd., Authum Investment & Infrastructure Ltd., Blue Star Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=fidelity",
+    },
+    {
+        "id": "custom_invesco",
+        "slug": "invesco",
+        "name": "Invesco Developing Markets & Offshore",
+        "category": "fii",
+        "portfolio_value": "56,424.60 Cr",
+        "numeric_value": 56424.6,
+        "change_pct": "+0.50%",
+        "stocks_count": 84,
+        "sector_preference": "Consumer Brands, Technology, Banking",
+        "top_holdings": "ABB India Ltd., Aditya Birla Real Estate Ltd., Aether Industries Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=invesco",
+    },
+    {
+        "id": "custom_elevation",
+        "slug": "elevation",
+        "name": "Elevation Capital",
+        "category": "fii",
+        "portfolio_value": "14,087.30 Cr",
+        "numeric_value": 14087.3,
+        "change_pct": "+0.50%",
+        "stocks_count": 6,
+        "sector_preference": "Fintech, Consumer Tech, Media",
+        "top_holdings": "Arman Financial Services Ltd., Aye Finance Ltd., Meesho Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=elevation",
+    },
+    {
+        "id": "custom_westbridge",
+        "slug": "westbridge",
+        "name": "WestBridge Capital Partners",
+        "category": "fii",
+        "portfolio_value": "10,411.90 Cr",
+        "numeric_value": 10411.9,
+        "change_pct": "+0.50%",
+        "stocks_count": 5,
+        "sector_preference": "Financials, Consumer, Healthcare",
+        "top_holdings": "India Shelter Finance Corporation Ltd., InterGlobe Aviation Ltd., Indiqube Spaces Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=westbridge",
+    },
+    {
+        "id": "custom_nomura",
+        "slug": "nomura",
+        "name": "Nomura Holdings / Singapore",
+        "category": "fii",
+        "portfolio_value": "3,994.60 Cr",
+        "numeric_value": 3994.6,
+        "change_pct": "+0.50%",
+        "stocks_count": 23,
+        "sector_preference": "Large & Midcap Equities, Infrastructure",
+        "top_holdings": "Au Small Finance Bank Ltd., Avalon Technologies Ltd., BlackBuck Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=nomura",
+    },
+]
+
+
+# Comprehensive list of prominent Indian DII mutual funds, insurers & pension funds
 _PROMINENT_EXTRA_DII = [
     {
         "id": "custom_nippon",
@@ -597,7 +930,280 @@ _PROMINENT_EXTRA_DII = [
         "sector_preference": "Midcaps, Technology, Financial Services",
         "top_holdings": "Persistent Systems, Coforge, Trent, Dixon Tech",
         "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=edelweiss",
-    }
+    },
+{
+        "id": "custom_sbi_life",
+        "slug": "sbi-life",
+        "name": "SBI Life Insurance Company Ltd",
+        "category": "dii",
+        "portfolio_value": "98,012.90 Cr",
+        "numeric_value": 98012.9,
+        "change_pct": "+0.50%",
+        "stocks_count": 100,
+        "sector_preference": "Large Cap Core, Banking, Industrials, Auto",
+        "top_holdings": "Aditya Birla Lifestyle Brands Ltd., ACME Solar Holdings Ltd., AIA Engineering Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=sbi+life",
+    },
+    {
+        "id": "custom_hdfc_life",
+        "slug": "hdfc-life",
+        "name": "HDFC Life Insurance Company Ltd",
+        "category": "dii",
+        "portfolio_value": "26,854.10 Cr",
+        "numeric_value": 26854.1,
+        "change_pct": "+0.50%",
+        "stocks_count": 61,
+        "sector_preference": "Banking, Infrastructure, Pharma, IT",
+        "top_holdings": "360 One Wam Ltd., Alkem Laboratories Ltd., Amagi Media Labs Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=hdfc+life",
+    },
+    {
+        "id": "custom_icici_pru_life",
+        "slug": "icici-pru-life",
+        "name": "ICICI Prudential Life Insurance Co Ltd",
+        "category": "dii",
+        "portfolio_value": "16,931.20 Cr",
+        "numeric_value": 16931.2,
+        "change_pct": "+0.50%",
+        "stocks_count": 52,
+        "sector_preference": "Financials, Automotive, Consumer Goods",
+        "top_holdings": "Affle 3I Ltd., Arvind Fashions Ltd., Bharat Electronics Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=icici+prudential+life",
+    },
+    {
+        "id": "custom_max_life",
+        "slug": "max-life",
+        "name": "Max Life Insurance Company Ltd",
+        "category": "dii",
+        "portfolio_value": "7,488.30 Cr",
+        "numeric_value": 7488.3,
+        "change_pct": "+0.50%",
+        "stocks_count": 17,
+        "sector_preference": "Financial Services, Chemicals, Healthcare",
+        "top_holdings": "Aavas Financiers Ltd., Acutaas Chemicals Ltd., Dr. Agarwals Health Care Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=max+life",
+    },
+    {
+        "id": "custom_tata_aia_life",
+        "slug": "tata-aia-life",
+        "name": "Tata AIA Life Insurance Company",
+        "category": "dii",
+        "portfolio_value": "12,532.60 Cr",
+        "numeric_value": 12532.6,
+        "change_pct": "+0.50%",
+        "stocks_count": 34,
+        "sector_preference": "Consumer, IT Services, Engineering",
+        "top_holdings": "Ajanta Pharma Ltd., Atul Ltd., Avalon Technologies Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=tata+aia",
+    },
+    {
+        "id": "custom_kotak_life",
+        "slug": "kotak-life",
+        "name": "Kotak Mahindra Life Insurance Company",
+        "category": "dii",
+        "portfolio_value": "1,775.20 Cr",
+        "numeric_value": 1775.2,
+        "change_pct": "+0.50%",
+        "stocks_count": 19,
+        "sector_preference": "Industrial Manufacturing, Financials, Tech",
+        "top_holdings": "Anant Raj Ltd., Filatex India Ltd., GPT Infraprojects Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=kotak+life",
+    },
+    {
+        "id": "custom_nps_trust",
+        "slug": "nps-trust",
+        "name": "National Pension System Trust (NPS)",
+        "category": "dii",
+        "portfolio_value": "401,715.20 Cr",
+        "numeric_value": 401715.2,
+        "change_pct": "+0.50%",
+        "stocks_count": 91,
+        "sector_preference": "Diversified Core Large Caps, Utilities",
+        "top_holdings": "Alkem Laboratories Ltd., Ambuja Cements Ltd., APL Apollo Tubes Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=nps",
+    },
+    {
+        "id": "custom_360_one",
+        "slug": "360-one",
+        "name": "360 ONE Asset Management (IIFL Wealth)",
+        "category": "dii",
+        "portfolio_value": "4,921.00 Cr",
+        "numeric_value": 4921.0,
+        "change_pct": "+0.50%",
+        "stocks_count": 57,
+        "sector_preference": "Midcap Growth, Financials, Consumer",
+        "top_holdings": "Paluck Technologies Ltd., 360 One Wam Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=360+one",
+    },
+    {
+        "id": "custom_whiteoak",
+        "slug": "whiteoak",
+        "name": "WhiteOak Capital Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "2,686.60 Cr",
+        "numeric_value": 2686.6,
+        "change_pct": "+0.50%",
+        "stocks_count": 40,
+        "sector_preference": "High Quality Growth, Industrials, Pharma",
+        "top_holdings": "Yash Highvoltage Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=whiteoak",
+    },
+    {
+        "id": "custom_mahindra_mf",
+        "slug": "mahindra-mf",
+        "name": "Mahindra Manulife Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "138,528.00 Cr",
+        "numeric_value": 138528.0,
+        "change_pct": "+0.50%",
+        "stocks_count": 113,
+        "sector_preference": "Rural, Automotive, Manufacturing, Banking",
+        "top_holdings": "360 One Wam Ltd., Quadrant Televentures Ltd., Aarti Industries Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=mahindra",
+    },
+    {
+        "id": "custom_navi_mf",
+        "slug": "navi-mf",
+        "name": "Navi Mutual Fund (Sachin Bansal)",
+        "category": "dii",
+        "portfolio_value": "12,246.90 Cr",
+        "numeric_value": 12246.9,
+        "change_pct": "+0.50%",
+        "stocks_count": 131,
+        "sector_preference": "Passive Index, Tech, Large Cap Diversified",
+        "top_holdings": "Zeal Aqua Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=navi",
+    },
+    {
+        "id": "custom_groww_mf",
+        "slug": "groww-mf",
+        "name": "Groww Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "1,336.70 Cr",
+        "numeric_value": 1336.7,
+        "change_pct": "+0.50%",
+        "stocks_count": 3,
+        "sector_preference": "Broad Market Equities, Fintech, Consumer",
+        "top_holdings": "Billionbrains Garage Ventures Ltd., OnEMI Technology Solutions Ltd., Manipal Payment and Identity Solutions Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=groww",
+    },
+    {
+        "id": "custom_zerodha_fh",
+        "slug": "zerodha-fh",
+        "name": "Zerodha Fund House (Nithin Kamath)",
+        "category": "dii",
+        "portfolio_value": "411.60 Cr",
+        "numeric_value": 411.6,
+        "change_pct": "+0.50%",
+        "stocks_count": 3,
+        "sector_preference": "Index Investing, Liquid & Factor Strategies",
+        "top_holdings": "Nazara Technologies Ltd., Shilchar Technologies Ltd., Swan Defence and Heavy Industries Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=zerodha",
+    },
+    {
+        "id": "custom_pgim_mf",
+        "slug": "pgim-mf",
+        "name": "PGIM India Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "139.00 Cr",
+        "numeric_value": 139.0,
+        "change_pct": "+0.50%",
+        "stocks_count": 8,
+        "sector_preference": "Mid & Small Cap, Global Thematic Equities",
+        "top_holdings": "Axtel Industries Ltd., Mrs. Bectors Food Specialities Ltd., Bharat Rasayan Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=pgim",
+    },
+    {
+        "id": "custom_quantum_mf",
+        "slug": "quantum-mf",
+        "name": "Quantum Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "138.40 Cr",
+        "numeric_value": 138.4,
+        "change_pct": "+0.50%",
+        "stocks_count": 8,
+        "sector_preference": "Value Investing, ESG, Liquid Large Caps",
+        "top_holdings": "SSMD Agrotech India Ltd., Paradeep Parivahan Ltd., Autoriders International Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=quantum",
+    },
+    {
+        "id": "custom_godrej_family",
+        "slug": "godrej-family",
+        "name": "Godrej Family & Industries",
+        "category": "dii",
+        "portfolio_value": "103,603.10 Cr",
+        "numeric_value": 103603.1,
+        "change_pct": "+0.50%",
+        "stocks_count": 111,
+        "sector_preference": "Consumer Goods, Real Estate, Chemicals",
+        "top_holdings": "Arvind SmartSpaces Ltd., Astec Lifesciences Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=godrej",
+    },
+    {
+        "id": "custom_baroda_bnp",
+        "slug": "baroda-bnp",
+        "name": "Baroda BNP Paribas Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "7,072.50 Cr",
+        "numeric_value": 7072.5,
+        "change_pct": "+0.50%",
+        "stocks_count": 30,
+        "sector_preference": "Banking, Infrastructure, Consumption",
+        "top_holdings": "Bajaj Auto Ltd., Bajaj Electricals Ltd., Bajaj Finserv Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=baroda",
+    },
+    {
+        "id": "custom_iti_mf",
+        "slug": "iti-mf",
+        "name": "ITI Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "3,310.70 Cr",
+        "numeric_value": 3310.7,
+        "change_pct": "+0.50%",
+        "stocks_count": 143,
+        "sector_preference": "Small & Midcap Equities, Dynamic Growth",
+        "top_holdings": "Jay Ambe Supermarkets Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=iti",
+    },
+    {
+        "id": "custom_shriram_mf",
+        "slug": "shriram-mf",
+        "name": "Shriram Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "46,168.10 Cr",
+        "numeric_value": 46168.1,
+        "change_pct": "+0.50%",
+        "stocks_count": 86,
+        "sector_preference": "Commercial Vehicles, Rural Finance, Manufacturing",
+        "top_holdings": "Piotex Industries Ltd., DCM Financial Services Ltd., DCM Shriram Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=shriram",
+    },
+    {
+        "id": "custom_jm_financial_mf",
+        "slug": "jm-financial-mf",
+        "name": "JM Financial Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "1,732.10 Cr",
+        "numeric_value": 1732.1,
+        "change_pct": "+0.50%",
+        "stocks_count": 14,
+        "sector_preference": "Core Equities, Value Opportunities",
+        "top_holdings": "Alok Industries Ltd., Arcotech Ltd., Autoline Industries Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=jm+financial",
+    },
+    {
+        "id": "custom_taurus_mf",
+        "slug": "taurus-mf",
+        "name": "Taurus Mutual Fund",
+        "category": "dii",
+        "portfolio_value": "13,165.20 Cr",
+        "numeric_value": 13165.2,
+        "change_pct": "+0.50%",
+        "stocks_count": 11,
+        "sector_preference": "Discovery Fund, Infrastructure, Banking",
+        "top_holdings": "Ambika Cotton Mills Ltd., Asian Paints Ltd., Kaya Ltd.",
+        "url": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=taurus",
+    },
 ]
 
 
@@ -655,7 +1261,9 @@ def sync_all_investors_delta() -> Dict[str, Any]:
             all_source_investors.extend(fii_list)
             all_source_investors.extend(pure_dii_list)
 
-            # Inject comprehensive list of prominent Indian DII mutual funds and insurers
+            # Inject comprehensive list of prominent Indian & Global Ace, FII, and DII entities
+            all_source_investors.extend(_PROMINENT_EXTRA_ACE)
+            all_source_investors.extend(_PROMINENT_EXTRA_FII)
             all_source_investors.extend(_PROMINENT_EXTRA_DII)
 
             # Deduplicate by ID
@@ -862,8 +1470,8 @@ def _parse_holding_table(html: str) -> Tuple[List[str], Dict[str, Dict[str, Any]
     return [q[1] for q in q_cols], stocks
 
 
-def _fetch_custom_query_portfolio(query_term: str) -> Dict[str, Any]:
-    """Fetch on-demand portfolio for custom mutual fund or entity (e.g. Nippon)."""
+def _fetch_custom_query_portfolio(query_term: str, target_id: Optional[str] = None, target_name: Optional[str] = None) -> Dict[str, Any]:
+    """Fetch on-demand portfolio for custom mutual fund, insurer, FII or superstar investor."""
     target_url = f"https://trendlyne.com/portfolio/superstar-shareholders/custom/?query={query_term}"
     try:
         r = requests.get(target_url, headers=_HEADERS, timeout=12)
@@ -934,18 +1542,25 @@ def _fetch_custom_query_portfolio(query_term: str) -> Dict[str, Any]:
 
         stocks.sort(key=lambda s: s["stock"])
 
-        title = query_term.title()
-        if "nippon" in query_term.lower():
-            title = "Nippon Life India Trustee Ltd (Nippon India MF)"
-        elif "uti" in query_term.lower():
-            title = "UTI Mutual Fund"
-        elif "dsp" in query_term.lower():
-            title = "DSP Mutual Fund"
-        elif "lic" in query_term.lower():
-            title = "Life Insurance Corporation of India (LIC)"
+        title = target_name
+        if not title:
+            try:
+                conn = _get_db_connection()
+                cur = conn.cursor()
+                cur.execute("SELECT name FROM peoples_investors WHERE url LIKE ? OR slug LIKE ? OR id LIKE ? LIMIT 1",
+                            (f"%{query_term}%", f"%{query_term}%", f"%{query_term}%"))
+                r_name = cur.fetchone()
+                conn.close()
+                if r_name and r_name["name"]:
+                    title = r_name["name"]
+            except Exception:
+                pass
+
+        if not title:
+            title = query_term.replace("+", " ").replace("-", " ").title()
 
         return {
-            "investor": {"id": f"custom_{query_term}", "slug": query_term, "name": title},
+            "investor": {"id": target_id or f"custom_{query_term}", "slug": query_term, "name": title},
             "quarters": quarters,
             "stocks": stocks,
             "total_stocks": len(stocks),
@@ -966,10 +1581,30 @@ def fetch_investor_portfolio(investor_id: str, slug: str) -> Dict[str, Any]:
         if now - cache_time < _CACHE_TTL_SECONDS:
             return cached_res
 
-    # If it is a custom query investor (e.g. Nippon, UTI, DSP, LIC)
+    # If it is a custom query investor (e.g. Nippon, UTI, DSP, LIC, or any custom_* entity)
     if str(investor_id).startswith("custom_") or "query" in str(slug):
-        query_val = slug.replace("custom_", "").replace("query=", "")
-        res = _fetch_custom_query_portfolio(query_val)
+        query_val = None
+        target_name = None
+        try:
+            conn = _get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT url, name FROM peoples_investors WHERE id = ?", (investor_id,))
+            row = cur.fetchone()
+            conn.close()
+            if row:
+                if row["name"]:
+                    target_name = row["name"]
+                if row["url"] and "query=" in row["url"]:
+                    m = re.search(r"query=([^&]+)", row["url"])
+                    if m:
+                        query_val = m.group(1)
+        except Exception:
+            pass
+
+        if not query_val:
+            query_val = slug.replace("custom_", "").replace("query=", "").replace("-", "+")
+
+        res = _fetch_custom_query_portfolio(query_val, target_id=investor_id, target_name=target_name)
         _PORTFOLIO_CACHE[cache_key] = (now, res)
         return res
 
