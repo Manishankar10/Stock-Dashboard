@@ -68,6 +68,7 @@ from modules.industries_overview import industries_overview_bp, init_industries_
 from modules.shareholding import shareholding_bp, init_shareholding
 from modules.peoples import peoples_bp, init_peoples
 from modules.drawings import drawings_bp
+from modules.common.custom_queries_routes import custom_queries_bp
 from modules.technical_screener import technical_screener_bp
 
 # Initialize Flask Application
@@ -156,6 +157,7 @@ app.register_blueprint(shareholding_bp)
 app.register_blueprint(peoples_bp)
 app.register_blueprint(drawings_bp)
 app.register_blueprint(technical_screener_bp)
+app.register_blueprint(custom_queries_bp)
 
 # Static Asset Serving for Modules
 @app.route("/modules/<path:filename>")

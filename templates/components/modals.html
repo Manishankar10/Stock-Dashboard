@@ -1552,5 +1552,57 @@
         </div>
     </div>
 
+    <!-- =========================================================
+         CUSTOM QUERY SAVE / UPDATE CHOICE MODAL
+    ========================================================= -->
+    <div id="customQueryChoiceModal" class="modal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 100060; background: rgba(15,23,42,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+        <div class="small-modal-content" style="width: 480px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
+            <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
+                <div style="font-size: 26px; line-height: 1; padding: 10px; border-radius: 10px; background: rgba(59, 130, 246, 0.15); color: var(--accent, #3b82f6); flex-shrink: 0;">
+                    💾
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 6px 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary, #ffffff);">Save Custom Query</h3>
+                    <div style="font-size: 13.5px; color: var(--text-secondary, #94a3b8); line-height: 1.5;">
+                        You are editing saved query "<strong style="color: var(--text-primary);"><span id="cqChoiceQueryName"></span></strong>".<br>
+                        Would you like to update the existing query or save it as a new query?
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 22px; flex-wrap: wrap;">
+                <button type="button" id="cqChoiceCancelBtn" class="btn-secondary" style="padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;">Cancel</button>
+                <button type="button" id="cqChoiceNewBtn" class="btn-secondary" style="padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color);">➕ Save as New Query</button>
+                <button type="button" id="cqChoiceUpdateBtn" class="btn-primary" style="padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>🔄 Update</span> "<span id="cqChoiceBtnQueryName" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom;"></span>"
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         CUSTOM QUERY NAME / RENAME INPUT MODAL
+    ========================================================= -->
+    <div id="customQueryNameModal" class="modal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 100065; background: rgba(15,23,42,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+        <div class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid var(--border-color, #363a45); padding-bottom: 10px;">
+                <h3 id="cqNameModalTitle" style="margin: 0; font-size: 16.5px; font-weight: 700; color: var(--text-primary, #ffffff); display: flex; align-items: center; gap: 8px;">
+                    💾 Save Custom Query
+                </h3>
+                <span style="font-size: 22px; cursor: pointer; color: var(--text-secondary); line-height: 1;" onclick="document.getElementById('customQueryNameModal').style.display='none'">&times;</span>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label id="cqNameModalDesc" style="display: block; font-size: 13px; color: var(--text-secondary, #94a3b8); margin-bottom: 8px; font-weight: 500;">Enter a name for this custom query:</label>
+                <input type="text" id="cqNameInput" style="width: 100%; padding: 10px 14px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 8px; color: var(--text-primary, #ffffff); font-size: 13.5px; outline: none; box-sizing: border-box;" placeholder="e.g. High Growth Leaders" autocomplete="off" spellcheck="false">
+                <div style="font-size: 11.5px; color: var(--text-secondary, #94a3b8); margin-top: 6px; line-height: 1.4;">
+                    💡 If this name already exists, it will automatically increment by 1, 2, ...
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 20px;">
+                <button type="button" id="cqNameCancelBtn" class="btn-secondary" style="padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;">Cancel</button>
+                <button type="button" id="cqNameSubmitBtn" class="btn-primary" style="padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;">Save Query</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Global Bottom Center Toaster Container -->
     <div id="appBottomToastContainer" class="app-bottom-toast-container" aria-live="polite" aria-atomic="true"></div>

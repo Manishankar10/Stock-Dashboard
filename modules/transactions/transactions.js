@@ -799,6 +799,27 @@
             const badge = document.getElementById('tx-apply-count-badge');
             if (badge) badge.style.display = 'none';
         }
+        if (typeof window.initCustomQueryManager === 'function' && !window._customQueryManagers['transactions']) {
+            window.initCustomQueryManager({
+                moduleName: 'transactions',
+                prefix: 'tx',
+                textareaId: 'tx-custom-query-input',
+                selectId: 'tx-saved-queries-select',
+                saveBtnId: 'tx-save-query-btn',
+                renameBtnId: 'tx-rename-query-btn',
+                deleteBtnId: 'tx-delete-query-btn',
+                clearBtnId: 'tx-custom-clear-input',
+                onSelectQuery: () => {
+                    if (typeof validateTxQueryDebounced === 'function') {
+                        validateTxQueryDebounced();
+                    }
+                }
+            });
+        }
+        if (window._customQueryManagers && window._customQueryManagers['transactions']) {
+            window._customQueryManagers['transactions'].loadQueries();
+        }
+
         setTimeout(() => {
             if (input) input.focus();
         }, 80);

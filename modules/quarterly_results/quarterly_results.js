@@ -1190,6 +1190,27 @@
             const badge = document.getElementById('qr-apply-count-badge');
             if (badge) badge.style.display = 'none';
         }
+        if (typeof window.initCustomQueryManager === 'function' && !window._customQueryManagers['quarterly_results']) {
+            window.initCustomQueryManager({
+                moduleName: 'quarterly_results',
+                prefix: 'qr',
+                textareaId: 'qr-custom-query-input',
+                selectId: 'qr-saved-queries-select',
+                saveBtnId: 'qr-save-query-btn',
+                renameBtnId: 'qr-rename-query-btn',
+                deleteBtnId: 'qr-delete-query-btn',
+                clearBtnId: 'qr-custom-clear-input',
+                onSelectQuery: () => {
+                    if (typeof validateCustomQueryDebounced === 'function') {
+                        validateCustomQueryDebounced();
+                    }
+                }
+            });
+        }
+        if (window._customQueryManagers && window._customQueryManagers['quarterly_results']) {
+            window._customQueryManagers['quarterly_results'].loadQueries();
+        }
+
         setTimeout(() => {
             if (input) input.focus();
         }, 100);

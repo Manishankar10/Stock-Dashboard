@@ -551,6 +551,27 @@
             customQueryFeedback.style.display = 'none';
             if (applyCountBadge) applyCountBadge.style.display = 'none';
         }
+        if (typeof window.initCustomQueryManager === 'function' && !window._customQueryManagers['shareholding']) {
+            window.initCustomQueryManager({
+                moduleName: 'shareholding',
+                prefix: 'shp',
+                textareaId: 'shp-custom-query-input',
+                selectId: 'shp-saved-queries-select',
+                saveBtnId: 'shp-save-query-btn',
+                renameBtnId: 'shp-rename-query-btn',
+                deleteBtnId: 'shp-delete-query-btn',
+                clearBtnId: 'shp-custom-clear-input',
+                onSelectQuery: () => {
+                    if (typeof validateQueryDebounced === 'function') {
+                        validateQueryDebounced();
+                    }
+                }
+            });
+        }
+        if (window._customQueryManagers && window._customQueryManagers['shareholding']) {
+            window._customQueryManagers['shareholding'].loadQueries();
+        }
+
         setTimeout(() => {
             if (customQueryInput) customQueryInput.focus();
         }, 100);
@@ -559,6 +580,7 @@
     function closeCustomModal() {
         if (customModal) customModal.style.display = 'none';
     }
+    window.openShpCustomModal = openCustomModal;
     window.closeShpCustomModal = closeCustomModal;
 
     function insertTokenAtCursor(token) {
