@@ -492,6 +492,25 @@
     letter-spacing: -0.02em;
 }
 
+.peoples-detail-sebi-tag {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    background: var(--bg-subtle, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border-color);
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+:root:not([data-theme="dark"]) .peoples-detail-sebi-tag {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
 .peoples-detail-meta {
     font-size: 12.5px;
     color: var(--text-secondary);
@@ -554,18 +573,22 @@
 }
 
 .peoples-table-toolbar {
-    padding: 12px 16px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .peoples-toolbar-left {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .peoples-table-title {
@@ -573,12 +596,7 @@
     font-size: 14px;
     font-weight: 700;
     color: var(--text-primary);
-}
-
-.peoples-table-desc {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-top: 2px;
+    white-space: nowrap;
 }
 
 /* Highlight Option Buttons Group */
@@ -586,13 +604,16 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .peoples-highlight-label {
     font-size: 11.5px;
     color: var(--text-secondary);
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .peoples-highlight-chips {
@@ -603,12 +624,13 @@
     padding: 3px;
     border-radius: 8px;
     border: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .peoples-chip-btn {
     border: none;
     background: transparent;
-    padding: 5px 11px;
+    padding: 5px 10px;
     font-size: 11.5px;
     font-weight: 600;
     border-radius: 6px;
@@ -666,11 +688,11 @@
 .peoples-toolbar-right-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    flex: 1;
+    gap: 8px;
+    flex-wrap: nowrap !important;
+    flex: 0 1 auto;
     justify-content: flex-end;
-    min-width: 280px;
+    min-width: 0;
 }
 
 .peoples-scope-dropdown-wrap {
@@ -680,10 +702,10 @@
 }
 
 .peoples-qtr-select {
-    height: 38px;
-    min-height: 38px;
-    padding: 0 12px;
-    font-size: 12.5px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 12px;
     font-weight: 600;
     border-radius: 8px;
     border: 1px solid var(--border-input, rgba(255, 255, 255, 0.12));
@@ -708,9 +730,20 @@
 }
 
 .peoples-stock-filter-wrap {
-    min-width: 200px;
-    max-width: 280px;
-    flex: 1;
+    min-width: 120px;
+    max-width: 220px;
+    flex: 0 1 200px;
+}
+
+.peoples-stock-filter-wrap .peoples-search-box {
+    min-width: 120px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 10px;
+}
+
+.peoples-stock-filter-wrap .peoples-search-box input {
+    font-size: 12.5px !important;
 }
 
 /* Matrix Table Wrapper */
@@ -869,53 +902,77 @@
    RESPONSIVE DESIGN ADAPTATIONS
    ========================================================= */
 
-@media (max-width: 900px) {
-    .peoples-table-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
+/* Web single-row optimization on compact desktop / laptop screens (769px - 1180px) */
+@media (max-width: 1180px) and (min-width: 769px) {
+    .peoples-highlight-label {
+        display: none;
     }
 
-    .peoples-toolbar-left {
-        width: 100%;
-    }
-
-    .peoples-highlight-group {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
-    .peoples-highlight-chips {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        justify-content: flex-start;
-    }
-
-    .peoples-toolbar-right-controls {
-        width: 100%;
-        justify-content: stretch;
-        gap: 8px;
-    }
-
-    .peoples-scope-dropdown-wrap {
-        flex: 1;
-        min-width: 120px;
-    }
-
-    .peoples-qtr-select {
-        width: 100%;
+    .peoples-chip-btn {
+        padding: 4px 7px;
+        font-size: 11px;
+        gap: 3px;
     }
 
     .peoples-stock-filter-wrap {
-        width: 100%;
-        max-width: 100%;
-        flex: 2;
-        min-width: 180px;
+        max-width: 170px;
+        min-width: 110px;
+    }
+
+    .peoples-table-toolbar {
+        gap: 8px;
+        padding: 10px 12px;
     }
 }
 
 @media (max-width: 768px) {
+    .peoples-table-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .peoples-toolbar-left {
+        width: 100% !important;
+    }
+
+    .peoples-highlight-group {
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+
+    .peoples-highlight-chips {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        justify-content: flex-start !important;
+    }
+
+    .peoples-toolbar-right-controls {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        justify-content: stretch !important;
+        gap: 8px !important;
+    }
+
+    .peoples-scope-dropdown-wrap {
+        flex: 0 0 auto !important;
+        min-width: 105px !important;
+    }
+
+    .peoples-stock-filter-wrap {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 120px !important;
+    }
+
+    .peoples-detail-sebi-tag {
+        font-size: 10.5px !important;
+        padding: 2px 6px !important;
+    }
     /* 1. Remove Live Exchange Filings message in responsive design only */
     .peoples-header-actions,
     .peoples-status-card {
