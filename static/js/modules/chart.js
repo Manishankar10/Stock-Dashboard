@@ -5753,7 +5753,15 @@
             if (data.candles && Array.isArray(data.candles)) {
                 for (let i = 0; i < data.candles.length; i++) {
                     const c = data.candles[i];
-                    map.set(c.time, { candle: c });
+                    if (!c || c.time === undefined || c.time === null) continue;
+                    const prev = i > 0 ? data.candles[i - 1] : null;
+                    let r = map.get(c.time);
+                    if (!r) {
+                        r = {};
+                        map.set(c.time, r);
+                    }
+                    r.candle = c;
+                    r.prevClose = (prev && prev.close !== undefined && prev.close !== null) ? prev.close : null;
                 }
             }
 
@@ -6267,6 +6275,33 @@
         }
 
         function renderInHouseCharts(data) {
+            // Safety sort and deduplicate candles strictly ascending by time before building indicator maps
+            if (data.candles && Array.isArray(data.candles)) {
+                const candleMap = new Map();
+                data.candles.forEach(c => {
+                    if (c && c.time !== undefined && c.time !== null) {
+                        candleMap.set(c.time, c);
+                    }
+                });
+                data.candles = Array.from(candleMap.values()).sort((a, b) => {
+                    if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+                    return String(a.time).localeCompare(String(b.time));
+                });
+            }
+
+            if (data.volume && Array.isArray(data.volume)) {
+                const volMap = new Map();
+                data.volume.forEach(v => {
+                    if (v && v.time !== undefined && v.time !== null) {
+                        volMap.set(v.time, v);
+                    }
+                });
+                data.volume = Array.from(volMap.values()).sort((a, b) => {
+                    if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+                    return String(a.time).localeCompare(String(b.time));
+                });
+            }
+
             cachedChartData = data;
             window.cachedChartData = data;
             buildIndicatorDataMap(data);
@@ -7378,8 +7413,33 @@
 
             const elChgPct = document.getElementById('legChgPct');
             if (elChgPct) {
-                if (o && c && o > 0) {
-                    const pct = ((c - o) / o) * 100;
+                // Calculate candle % by current price - previous candle close price (not current candle open - current price)
+                let prevClose = (rec && rec.prevClose !== undefined) ? rec.prevClose : null;
+                if (prevClose === null && fullData && Array.isArray(fullData.candles) && fullData.candles.length > 0) {
+                    if (lookupTime === null || lookupTime === undefined || lookupTime === fullData.candles[fullData.candles.length - 1].time) {
+                        if (fullData.candles.length > 1) {
+                            prevClose = fullData.candles[fullData.candles.length - 2].close;
+                        }
+                    } else {
+                        const idx = fullData.candles.findIndex(candle => candle && candle.time === lookupTime);
+                        if (idx > 0) {
+                            prevClose = fullData.candles[idx - 1].close;
+                        }
+                    }
+                }
+
+                const currentPrice = (c !== undefined && c !== null) ? c : 0;
+                if (currentPrice > 0 && prevClose !== null && prevClose > 0) {
+                    const diff = currentPrice - prevClose;
+                    const pct = (diff / prevClose) * 100;
+                    const sign = pct >= 0 ? '+' : '';
+                    const color = pct >= 0 ? '#10b981' : '#ef4444';
+                    elChgPct.innerText = `(${sign}${pct.toFixed(2)}%)`;
+                    elChgPct.style.color = color;
+                } else if (currentPrice > 0 && o && o > 0) {
+                    // Fallback for earliest candle in data if no previous candle close exists
+                    const diff = currentPrice - o;
+                    const pct = (diff / o) * 100;
                     const sign = pct >= 0 ? '+' : '';
                     const color = pct >= 0 ? '#10b981' : '#ef4444';
                     elChgPct.innerText = `(${sign}${pct.toFixed(2)}%)`;
@@ -8388,7 +8448,7 @@
             ctx.fillText(sep, curX, line2Y);
             curX += ctx.measureText(sep).width;
 
-            const isGreen = !legChgPct.startsWith('-');
+            const isGreen = !legChgPct.includes('-');
             const chgColor = isGreen ? '#26a69a' : '#ef5350';
 
             function drawMetric(label, val, valColor) {
