@@ -479,6 +479,9 @@
                             <div class="chart-popover-menu" id="popover-tools" style="min-width: 260px; max-height: 480px; overflow-y: auto;">
                                 <div class="popover-menu-title">Tool Color</div>
                                 <div class="tool-color-selector" style="display: flex; gap: 6px; padding: 4px 12px 8px; align-items: center; flex-wrap: wrap;">
+                                    <div class="color-dot" style="background: #731717;" onclick="setActiveToolColor('#731717', this)" title="Support (#731717)"></div>
+                                    <div class="color-dot" style="background: #788325;" onclick="setActiveToolColor('#788325', this)" title="Resistance (#788325)"></div>
+                                    <div class="color-dot" style="background: #0b845c;" onclick="setActiveToolColor('#0b845c', this)" title="Target (#0b845c)"></div>
                                     <div class="color-dot active" style="background: #10b981;" onclick="setActiveToolColor('#10b981', this)" title="Emerald Green"></div>
                                     <div class="color-dot" style="background: #ef5350;" onclick="setActiveToolColor('#ef5350', this)" title="Red"></div>
                                     <div class="color-dot" style="background: #3b82f6;" onclick="setActiveToolColor('#3b82f6', this)" title="Blue"></div>
@@ -1331,6 +1334,9 @@
                 <div class="form-group" id="editDrawingColorGroup" style="margin-bottom: 16px;">
                     <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Drawing Color</label>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #731717; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#731717')" title="Support (#731717)"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #788325; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#788325')" title="Resistance (#788325)"></div>
+                        <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #0b845c; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#0b845c')" title="Target (#0b845c)"></div>
                         <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #10b981; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#10b981')" title="Emerald"></div>
                         <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #ef5350; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#ef5350')" title="Red"></div>
                         <div class="edit-color-dot" style="width: 24px; height: 24px; border-radius: 6px; background: #3b82f6; cursor: pointer; border: 2px solid transparent;" onclick="setEditDrawingColor('#3b82f6')" title="Blue"></div>
@@ -1398,6 +1404,8 @@
                         <div style="flex: 1;">
                             <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); margin-bottom: 6px;">Font Size</label>
                             <select id="editDrawingFontSize" style="width: 100%; padding: 7px 10px; background: var(--bg-input, #131722); border: 1px solid var(--border-input, #363a45); border-radius: 6px; color: var(--text-primary, #ffffff); font-size: 12px;">
+                                <option value="8">8px</option>
+                                <option value="9">9px</option>
                                 <option value="10">10px</option>
                                 <option value="12" selected>12px</option>
                                 <option value="14">14px</option>

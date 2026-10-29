@@ -154,6 +154,93 @@
             } catch(e){}
         }
 
+        
+        // =========================================================
+        // DRAWING PERSISTENCE HELPERS (Trendline Color, Text, Size, Pos)
+        // =========================================================
+        function getLastTrendlineColor() {
+            try {
+                const c = localStorage.getItem('cd_last_trendline_color');
+                if (c && /^#([0-9A-F]{3}){1,2}$/i.test(c)) return c;
+            } catch(e) {}
+            return '#3b82f6';
+        }
+        function setLastTrendlineColor(color) {
+            if (!color) return;
+            try {
+                localStorage.setItem('cd_last_trendline_color', color);
+            } catch(e) {}
+        }
+
+        function getLastDrawingTextColor() {
+            try {
+                const c = localStorage.getItem('cd_last_drawing_text_color');
+                if (c && /^#([0-9A-F]{3}){1,2}$/i.test(c)) return c;
+            } catch(e) {}
+            return '#ffffff';
+        }
+        function setLastDrawingTextColor(color) {
+            if (!color) return;
+            try {
+                localStorage.setItem('cd_last_drawing_text_color', color);
+            } catch(e) {}
+        }
+
+        function getLastDrawingFontSize() {
+            try {
+                const s = localStorage.getItem('cd_last_drawing_font_size');
+                const num = parseInt(s);
+                if (!isNaN(num) && num > 0) return num;
+            } catch(e) {}
+            return 12;
+        }
+        function setLastDrawingFontSize(size) {
+            const num = parseInt(size);
+            if (isNaN(num) || num <= 0) return;
+            try {
+                localStorage.setItem('cd_last_drawing_font_size', String(num));
+            } catch(e) {}
+        }
+
+        function getLastDrawingTextPos() {
+            try {
+                const p = localStorage.getItem('cd_last_drawing_text_pos');
+                if (['left', 'center', 'right'].includes(p)) return p;
+            } catch(e) {}
+            return 'center';
+        }
+        function setLastDrawingTextPos(pos) {
+            if (!['left', 'center', 'right'].includes(pos)) return;
+            try {
+                localStorage.setItem('cd_last_drawing_text_pos', pos);
+            } catch(e) {}
+        }
+
+        function getLastDrawingTextValign() {
+            try {
+                const v = localStorage.getItem('cd_last_drawing_text_valign');
+                if (['top', 'middle', 'bottom'].includes(v)) return v;
+            } catch(e) {}
+            return 'top';
+        }
+        function setLastDrawingTextValign(valign) {
+            if (!['top', 'middle', 'bottom'].includes(valign)) return;
+            try {
+                localStorage.setItem('cd_last_drawing_text_valign', valign);
+            } catch(e) {}
+        }
+
+        window.getLastTrendlineColor = getLastTrendlineColor;
+        window.setLastTrendlineColor = setLastTrendlineColor;
+        window.getLastDrawingTextColor = getLastDrawingTextColor;
+        window.setLastDrawingTextColor = setLastDrawingTextColor;
+        window.getLastDrawingFontSize = getLastDrawingFontSize;
+        window.setLastDrawingFontSize = setLastDrawingFontSize;
+        window.getLastDrawingTextPos = getLastDrawingTextPos;
+        window.setLastDrawingTextPos = setLastDrawingTextPos;
+        window.getLastDrawingTextValign = getLastDrawingTextValign;
+        window.setLastDrawingTextValign = setLastDrawingTextValign;
+
         var activeToolColor = '#10b981'; // Active drawing color
         var activeToolLineWidth = 2; // Active line thickness (1, 2, 3, 4)
         var activeToolLineStyle = 'solid'; // Active line style ('solid', 'dashed', 'dotted')
@@ -171,6 +258,9 @@
 
         function setActiveToolColor(colorHex, el) {
             activeToolColor = colorHex;
+            if (currentDrawingTool === 'trendline') {
+                setLastTrendlineColor(colorHex);
+            }
             document.querySelectorAll('.tool-color-selector .color-dot').forEach(dot => dot.classList.remove('active'));
             if (el) {
                 el.classList.add('active');
@@ -600,6 +690,9 @@
             const shape = shapes.find(s => s.id === id);
             if (shape) {
                 shape.color = newColor;
+                if (shape.type === 'trendline') {
+                    setLastTrendlineColor(newColor);
+                }
                 if (shape.type === 'rectangle') {
                     shape.fillColor = hexToRgba(newColor, 0.18);
                 }
@@ -639,7 +732,7 @@
 
             lines.forEach(l => {
                 const labelName = l.label || (l.type === 'target' ? 'Target' : l.type === 'stoploss' ? 'Stop Loss' : l.type === 'resistance' ? 'Resistance' : 'Support');
-                const itemColor = l.color || (l.type === 'resistance' || l.type === 'stoploss' ? '#ef5350' : '#10b981');
+                const itemColor = l.color || (l.type === 'resistance' ? '#788325' : (l.type === 'target' ? '#0b845c' : (l.type === 'support' ? '#731717' : (l.type === 'stoploss' ? '#ef5350' : '#731717'))));
                 const isHidden = !!l.hidden;
                 const isLocked = !!l.locked;
                 html += `
@@ -746,6 +839,7 @@
             if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
             const input = document.getElementById('editDrawingTextPos');
             if (input) input.value = pos;
+            setLastDrawingTextPos(pos);
             document.querySelectorAll('#editDrawingTextPosGroup .edit-text-pos-btn').forEach(btn => {
                 const active = btn.dataset.pos === pos;
                 btn.style.borderColor = active ? '#3b82f6' : 'var(--border-color, #363a45)';
@@ -760,6 +854,7 @@
             if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
             const input = document.getElementById('editDrawingTextValign');
             if (input) input.value = valign;
+            setLastDrawingTextValign(valign);
             document.querySelectorAll('#editDrawingTextValignGroup .edit-text-valign-btn').forEach(btn => {
                 const active = btn.dataset.valign === valign;
                 btn.style.borderColor = active ? '#3b82f6' : 'var(--border-color, #363a45)';
@@ -794,10 +889,10 @@
 
             let currentColor = '#10b981';
             let currentText = '';
-            let currentTextColor = '#ffffff';
-            let currentFontSize = 12;
-            let currentTextPos = 'center';
-            let currentTextValign = 'top';
+            let currentTextColor = getLastDrawingTextColor();
+            let currentFontSize = getLastDrawingFontSize();
+            let currentTextPos = getLastDrawingTextPos();
+            let currentTextValign = getLastDrawingTextValign();
 
             if (kind === 'line') {
                 const lines = getSavedPriceLines(currentChartSymbol);
@@ -815,12 +910,13 @@
 
                 if (price2Group) price2Group.style.display = 'none';
 
-                currentColor = line.color || (line.type === 'resistance' || line.type === 'stoploss' ? '#ef5350' : '#10b981');
+                currentColor = line.color || (line.type === 'resistance' ? '#788325' : (line.type === 'target' ? '#0b845c' : (line.type === 'support' ? '#731717' : (line.type === 'stoploss' ? '#ef5350' : '#731717'))));
                 currentText = line.text || '';
-                currentTextColor = line.textColor || currentColor;
-                currentFontSize = line.fontSize || 12;
-                currentTextPos = line.textPos || 'center';
-                currentTextValign = line.textValign || 'top';
+                const hasCustomText = !!(line.text && line.text.trim());
+                currentTextColor = (hasCustomText && line.textColor) ? line.textColor : getLastDrawingTextColor();
+                currentFontSize = (hasCustomText && line.fontSize) ? line.fontSize : getLastDrawingFontSize();
+                currentTextPos = (hasCustomText && line.textPos) ? line.textPos : getLastDrawingTextPos();
+                currentTextValign = (hasCustomText && line.textValign) ? line.textValign : getLastDrawingTextValign();
 
                 const currentWidth = line.lineWidth ? parseInt(line.lineWidth) : 2;
                 const currentStyle = line.lineStyle || 'dashed';
@@ -841,12 +937,13 @@
                 }
                 const typeInput = document.getElementById('editDrawingType');
                 if (typeInput) typeInput.value = shape.type;
-                currentColor = shape.color || '#3b82f6';
+                currentColor = shape.color || (shape.type === 'trendline' ? getLastTrendlineColor() : '#3b82f6');
                 currentText = shape.text || '';
-                currentTextColor = shape.textColor || currentColor;
-                currentFontSize = shape.fontSize || 12;
-                currentTextPos = shape.textPos || 'center';
-                currentTextValign = shape.textValign || 'top';
+                const hasShapeCustomText = !!(shape.text && shape.text.trim());
+                currentTextColor = (hasShapeCustomText && shape.textColor) ? shape.textColor : getLastDrawingTextColor();
+                currentFontSize = (hasShapeCustomText && shape.fontSize) ? shape.fontSize : getLastDrawingFontSize();
+                currentTextPos = (hasShapeCustomText && shape.textPos) ? shape.textPos : getLastDrawingTextPos();
+                currentTextValign = (hasShapeCustomText && shape.textValign) ? shape.textValign : getLastDrawingTextValign();
 
                 const propsGroup = document.getElementById('editDrawingLinePropsGroup');
                 if (shape.type === 'note') {
@@ -1035,6 +1132,11 @@
             const chosenTextPos = textPosInput ? (textPosInput.value || 'center') : 'center';
             const chosenTextValign = textValignInput ? (textValignInput.value || 'top') : 'top';
 
+            setLastDrawingTextColor(chosenTextColor);
+            setLastDrawingFontSize(chosenFontSize);
+            setLastDrawingTextPos(chosenTextPos);
+            setLastDrawingTextValign(chosenTextValign);
+
             if (kind === 'line') {
                 const priceInput = document.getElementById('editDrawingPrice1');
                 const newPrice = priceInput ? parseFloat(priceInput.value) : NaN;
@@ -1072,6 +1174,9 @@
                 const shape = shapes.find(s => s.id === id);
                 if (shape) {
                     shape.color = chosenColor;
+                    if (shape.type === 'trendline') {
+                        setLastTrendlineColor(chosenColor);
+                    }
                     shape.locked = chosenLocked;
                     shape.text = chosenText;
                     shape.textColor = chosenTextColor;
@@ -1160,20 +1265,23 @@
 
             let defaultPrice = latestCandlePrice;
             let label = 'Support';
-            let color = activeToolColor || '#10b981';
+            let color = '#731717';
 
             if (type === 'target') {
                 defaultPrice = parseFloat((latestCandlePrice * 1.05).toFixed(2));
                 label = 'Target';
-                color = activeToolColor || '#10b981';
+                color = '#0b845c';
             } else if (type === 'stoploss') {
                 defaultPrice = parseFloat((latestCandlePrice * 0.95).toFixed(2));
                 label = 'Stop Loss';
-                color = activeToolColor || '#ef5350';
+                color = '#ef5350';
             } else if (type === 'resistance') {
                 defaultPrice = parseFloat((latestCandlePrice * 1.03).toFixed(2));
                 label = 'Resistance';
-                color = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
+                color = '#788325';
+            } else if (type === 'support') {
+                label = 'Support';
+                color = '#731717';
             }
 
             const inputVal = await showCustomPrompt({ title: `Add ${label} Line`, message: `Enter custom price for ${label}:`, defaultValue: defaultPrice, placeholder: 'e.g. 2450.00' });
@@ -1198,8 +1306,8 @@
             else if (activeToolLineStyle === 'dotted') ls = LightweightCharts.LineStyle.Dotted;
             else if (activeToolLineStyle === 'dashed') ls = LightweightCharts.LineStyle.Dashed;
 
-            const defaultColor = (type === 'resistance' || type === 'stoploss') ? '#ef5350' : '#10b981';
-            const lineColor = color || ((activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : defaultColor);
+            const defaultColor = type === 'resistance' ? '#788325' : (type === 'target' ? '#0b845c' : (type === 'support' ? '#731717' : (type === 'stoploss' ? '#ef5350' : '#731717')));
+            const lineColor = color || defaultColor;
 
             const lineData = {
                 id: lineId,
@@ -1208,7 +1316,11 @@
                 color: lineColor,
                 label: label,
                 lineWidth: lw,
-                lineStyle: activeToolLineStyle || 'dashed'
+                lineStyle: activeToolLineStyle || 'dashed',
+                fontSize: getLastDrawingFontSize(),
+                textColor: getLastDrawingTextColor(),
+                textPos: getLastDrawingTextPos(),
+                textValign: getLastDrawingTextValign()
             };
 
             const priceLine = mainSeries.createPriceLine({
@@ -1283,31 +1395,31 @@
             },
             'support_click': {
                 id: 'support_click',
-                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#731717" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="#731717"/></svg>',
                 title: 'Support Line (Click)',
                 action: () => activateDrawingTool('support_click')
             },
             'resistance_click': {
                 id: 'resistance_click',
-                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#ef5350" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="#ef5350"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#788325" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="8" cy="8" r="1.8" fill="#788325"/></svg>',
                 title: 'Resistance Line (Click)',
                 action: () => activateDrawingTool('resistance_click')
             },
             'support': {
                 id: 'support',
-                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="currentColor"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#731717" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="#731717"/></svg>',
                 title: 'Support Line (Price)',
                 action: () => addHorizontalLinePrompt('support')
             },
             'resistance': {
                 id: 'resistance',
-                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#ef5350" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="#ef5350"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#788325" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="8" x2="15" y2="8"/><circle cx="4" cy="8" r="1.5" fill="#788325"/></svg>',
                 title: 'Resistance Line (Price)',
                 action: () => addHorizontalLinePrompt('resistance')
             },
             'target': {
                 id: 'target',
-                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="5" x2="15" y2="5"/><path d="M8 5 L8 12 M5 9 L8 12 L11 9"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#0b845c" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="5" x2="15" y2="5"/><path d="M8 5 L8 12 M5 9 L8 12 L11 9"/></svg>',
                 title: 'Target Price Line',
                 action: () => addHorizontalLinePrompt('target')
             },
@@ -1693,6 +1805,24 @@
             drawingPoints = [];
             tempMousePos = null;
 
+            if (toolType === 'trendline') {
+                activeToolColor = getLastTrendlineColor();
+                const picker = document.getElementById('toolCustomColorPicker');
+                if (picker) picker.value = activeToolColor;
+            } else if (toolType === 'support_click' || toolType === 'support') {
+                activeToolColor = '#731717';
+                const picker = document.getElementById('toolCustomColorPicker');
+                if (picker) picker.value = activeToolColor;
+            } else if (toolType === 'resistance_click' || toolType === 'resistance') {
+                activeToolColor = '#788325';
+                const picker = document.getElementById('toolCustomColorPicker');
+                if (picker) picker.value = activeToolColor;
+            } else if (toolType === 'target') {
+                activeToolColor = '#0b845c';
+                const picker = document.getElementById('toolCustomColorPicker');
+                if (picker) picker.value = activeToolColor;
+            }
+
             updateDrawingToolButtonsUI();
             showDrawingBanner(toolType);
             enableCanvasInteractions(true);
@@ -1717,7 +1847,19 @@
                 if (btn) {
                     if (t === currentDrawingTool) {
                         btn.classList.add('active');
-                        btn.style.background = (t === 'resistance_click' || t === 'stoploss') ? '#ef5350' : '#10b981';
+                        if (t === 'resistance_click' || t === 'resistance') {
+                            btn.style.background = '#788325';
+                        } else if (t === 'support_click' || t === 'support') {
+                            btn.style.background = '#731717';
+                        } else if (t === 'target') {
+                            btn.style.background = '#0b845c';
+                        } else if (t === 'stoploss') {
+                            btn.style.background = '#ef5350';
+                        } else if (t === 'trendline') {
+                            btn.style.background = getLastTrendlineColor();
+                        } else {
+                            btn.style.background = '#3b82f6';
+                        }
                         btn.style.color = '#ffffff';
                     } else {
                         btn.classList.remove('active');
@@ -2979,13 +3121,12 @@
 
             // 1-Point Tools (Support Click, Resistance Click, Vertical, Note)
             if (activeTool === 'support_click') {
-                addHorizontalLineAtPrice('support', parseFloat(endPt.price.toFixed(2)), activeToolColor || '#10b981', 'Support');
+                addHorizontalLineAtPrice('support', parseFloat(endPt.price.toFixed(2)), '#731717', 'Support');
                 showSupportAddedToast(parseFloat(endPt.price.toFixed(2)), '🟢 Support Line');
                 cancelDrawingTool();
                 return true;
             } else if (activeTool === 'resistance_click') {
-                const resColor = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
-                addHorizontalLineAtPrice('resistance', parseFloat(endPt.price.toFixed(2)), resColor, 'Resistance');
+                addHorizontalLineAtPrice('resistance', parseFloat(endPt.price.toFixed(2)), '#788325', 'Resistance');
                 showSupportAddedToast(parseFloat(endPt.price.toFixed(2)), '🔴 Resistance Line');
                 cancelDrawingTool();
                 return true;
@@ -3068,12 +3209,19 @@
                         futureOffset2: pt2.futureOffset || 0,
                         futureTime2: pt2.futureTime || null,
                         price2: pt2.price,
-                        color: activeToolColor || (activeTool === 'trendline' ? '#3b82f6' : activeTool === 'rectangle' ? '#a855f7' : activeTool === 'fib' ? '#6366f1' : '#10b981'),
+                        color: (activeTool === 'trendline') ? ((activeToolColor && activeToolColor !== '#10b981' && activeToolColor !== '#731717' && activeToolColor !== '#788325' && activeToolColor !== '#0b845c') ? activeToolColor : getLastTrendlineColor()) : (activeToolColor || '#10b981'),
                         fillColor: activeTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null,
                         lineWidth: activeToolLineWidth || 2,
-                        lineStyle: activeToolLineStyle || 'solid'
+                        lineStyle: activeToolLineStyle || 'solid',
+                        fontSize: getLastDrawingFontSize(),
+                        textColor: getLastDrawingTextColor(),
+                        textPos: getLastDrawingTextPos(),
+                        textValign: getLastDrawingTextValign()
                     };
 
+                    if (activeTool === 'trendline') {
+                        setLastTrendlineColor(shape.color);
+                    }
                     saveChartShapeForSymbol(currentChartSymbol, shape);
                     cancelDrawingTool();
                     return true;
@@ -3239,13 +3387,12 @@
                 if (pt.price === null || pt.price === undefined) return;
 
                 if (currentDrawingTool === 'support_click') {
-                    addHorizontalLineAtPrice('support', parseFloat(pt.price.toFixed(2)), activeToolColor || '#10b981', 'Support');
+                    addHorizontalLineAtPrice('support', parseFloat(pt.price.toFixed(2)), '#731717', 'Support');
                     showSupportAddedToast(parseFloat(pt.price.toFixed(2)), '🟢 Support Line');
                     cancelDrawingTool();
                     return;
                 } else if (currentDrawingTool === 'resistance_click') {
-                    const resColor = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
-                    addHorizontalLineAtPrice('resistance', parseFloat(pt.price.toFixed(2)), resColor, 'Resistance');
+                    addHorizontalLineAtPrice('resistance', parseFloat(pt.price.toFixed(2)), '#788325', 'Resistance');
                     showSupportAddedToast(parseFloat(pt.price.toFixed(2)), '🔴 Resistance Line');
                     cancelDrawingTool();
                     return;
@@ -3333,12 +3480,19 @@
                             futureOffset2: pt2.futureOffset || 0,
                             futureTime2: pt2.futureTime || null,
                             price2: pt2.price,
-                            color: activeToolColor || (currentDrawingTool === 'trendline' ? '#3b82f6' : currentDrawingTool === 'rectangle' ? '#a855f7' : currentDrawingTool === 'fib' ? '#6366f1' : '#10b981'),
+                            color: (currentDrawingTool === 'trendline') ? ((activeToolColor && activeToolColor !== '#10b981' && activeToolColor !== '#731717' && activeToolColor !== '#788325' && activeToolColor !== '#0b845c') ? activeToolColor : getLastTrendlineColor()) : (activeToolColor || '#10b981'),
                             fillColor: currentDrawingTool === 'rectangle' ? hexToRgba(activeToolColor || '#a855f7', 0.18) : null,
                             lineWidth: activeToolLineWidth || 2,
-                            lineStyle: activeToolLineStyle || 'solid'
+                            lineStyle: activeToolLineStyle || 'solid',
+                            fontSize: getLastDrawingFontSize(),
+                            textColor: getLastDrawingTextColor(),
+                            textPos: getLastDrawingTextPos(),
+                            textValign: getLastDrawingTextValign()
                         };
 
+                        if (currentDrawingTool === 'trendline') {
+                            setLastTrendlineColor(shape.color);
+                        }
                         saveChartShapeForSymbol(currentChartSymbol, shape);
                         cancelDrawingTool();
                     }
@@ -4053,6 +4207,11 @@
                             updatePriceLineColorById(obj.id, newColor);
                         } else {
                             updateShapeColorById(obj.id, newColor);
+                            const shapes = getSavedChartShapes(currentChartSymbol);
+                            const s = shapes.find(x => x.id === obj.id);
+                            if (s && s.type === 'trendline') {
+                                setLastTrendlineColor(newColor);
+                            }
                         }
                     };
                     colorInput.addEventListener('input', onColorChange);
@@ -4213,7 +4372,7 @@
                     const labelName = lineData.label || (lineData.type === 'target' ? 'Target' : lineData.type === 'stoploss' ? 'Stop Loss' : lineData.type === 'resistance' ? 'Resistance' : 'Support');
                     const lockPrefix = lineData.locked ? '🔒 ' : '';
                     const textStr = `${lockPrefix}${labelName}: ₹${lineData.price}`;
-                    const lineColor = lineData.color || (lineData.type === 'resistance' || lineData.type === 'stoploss' ? '#ef5350' : '#10b981');
+                    const lineColor = lineData.color || (lineData.type === 'resistance' ? '#788325' : (lineData.type === 'target' ? '#0b845c' : (lineData.type === 'support' ? '#731717' : (lineData.type === 'stoploss' ? '#ef5350' : '#731717'))));
 
                     ctx.save();
                     ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
@@ -6877,7 +7036,7 @@
                         <span style="font-size: 10px; font-weight: 700; color: #787b86; text-transform: uppercase; letter-spacing: 0.5px;">Quick Price Action</span>
                         <button type="button" id="btnClosePlusMenu" onclick="hidePlusActionMenu()" style="background: transparent; border: none; color: #94a3b8; font-size: 14px; font-weight: bold; cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px; transition: color 0.15s;" onmouseover="this.style.color='#ef5350'" onmouseout="this.style.color='#94a3b8'" title="Close Menu">✕</button>
                     </div>
-                    <button type="button" id="btnPlusActionTarget" onclick="executePlusAction('target')" style="background: transparent; border: none; color: #10b981; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                    <button type="button" id="btnPlusActionTarget" onclick="executePlusAction('target')" style="background: transparent; border: none; color: #0b845c; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
                         🎯 Draw Target Line (₹<span id="plusActionTargetPrice">-</span>)
                     </button>
                     <button type="button" id="btnPlusActionStoploss" onclick="executePlusAction('stoploss')" style="background: transparent; border: none; color: #ef5350; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
@@ -6886,10 +7045,10 @@
                     <button type="button" id="btnPlusActionAlert" onclick="executePlusAction('alert')" style="background: transparent; border: none; color: #3b82f6; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
                         🔔 Create Price Alert (₹<span id="plusActionAlertPrice">-</span>)
                     </button>
-                    <button type="button" id="btnPlusActionSupport" onclick="executePlusAction('support')" style="background: transparent; border: none; color: #10b981; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                    <button type="button" id="btnPlusActionSupport" onclick="executePlusAction('support')" style="background: transparent; border: none; color: #731717; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
                         🟢 Draw Support Line (₹<span id="plusActionSupportPrice">-</span>)
                     </button>
-                    <button type="button" id="btnPlusActionResistance" onclick="executePlusAction('resistance')" style="background: transparent; border: none; color: #ef5350; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
+                    <button type="button" id="btnPlusActionResistance" onclick="executePlusAction('resistance')" style="background: transparent; border: none; color: #788325; padding: 8px 10px; font-size: 12px; font-weight: 600; text-align: left; width: 100%; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; transition: background 0.15s;" onmouseover="this.style.background='#2a2e39'" onmouseout="this.style.background='transparent'">
                         🔴 Draw Resistance Line (₹<span id="plusActionResistancePrice">-</span>)
                     </button>
                 `;
@@ -6952,17 +7111,16 @@
             hidePlusActionMenu();
 
             if (actionType === 'target') {
-                addHorizontalLineAtPrice('target', price, '#10b981', 'Target');
+                addHorizontalLineAtPrice('target', price, '#0b845c', 'Target');
                 showSupportAddedToast(price, '🎯 Target Line');
             } else if (actionType === 'stoploss') {
                 addHorizontalLineAtPrice('stoploss', price, '#ef5350', 'Stop Loss');
                 showSupportAddedToast(price, '🛑 Stop Loss Line');
             } else if (actionType === 'support') {
-                addHorizontalLineAtPrice('support', price, activeToolColor || '#10b981', 'Support');
+                addHorizontalLineAtPrice('support', price, '#731717', 'Support');
                 showSupportAddedToast(price, '🟢 Support Line');
             } else if (actionType === 'resistance') {
-                const resColor = (activeToolColor && activeToolColor !== '#10b981') ? activeToolColor : '#ef5350';
-                addHorizontalLineAtPrice('resistance', price, resColor, 'Resistance');
+                addHorizontalLineAtPrice('resistance', price, '#788325', 'Resistance');
                 showSupportAddedToast(price, '🔴 Resistance Line');
             } else if (actionType === 'alert') {
                 openCreateAlertModal(currentChartSymbol, price);
@@ -6998,8 +7156,12 @@
                 mainContainer.appendChild(toast);
             }
             if (toast) {
-                const isRed = labelStr.includes('Resistance') || labelStr.includes('Stop Loss') || labelStr.includes('🛑') || labelStr.includes('🔴');
-                toast.style.background = isRed ? '#ef5350' : '#10b981';
+                let toastBg = '#731717';
+                if (labelStr.includes('Resistance') || labelStr.includes('🔴')) toastBg = '#788325';
+                else if (labelStr.includes('Target') || labelStr.includes('🎯')) toastBg = '#0b845c';
+                else if (labelStr.includes('Stop Loss') || labelStr.includes('🛑')) toastBg = '#ef5350';
+                else if (labelStr.includes('Support') || labelStr.includes('🟢')) toastBg = '#731717';
+                toast.style.background = toastBg;
                 toast.innerText = `${labelStr} added at ₹${price}`;
                 toast.style.opacity = '1';
                 toast.style.display = 'block';
