@@ -967,3 +967,437 @@ def admin_download_all_json_zip():
         mimetype="application/zip"
     )
 
+
+
+# ==============================================================================
+# MONGODB DATABASE BACKUP & EXPORT MANAGEMENT
+# ==============================================================================
+
+def _mask_mongo_uri(uri):
+    """Mask credentials in MongoDB URI string for safe UI display."""
+    if not uri:
+        return ""
+    import re
+    return re.sub(r":([^/@:]+)@", r":********@", str(uri))
+
+
+def _resolve_mongodb_client(custom_uri=None):
+    """
+    Returns (client, db_instance, is_custom, error_msg, resolved_uri).
+    Attempts to connect using custom_uri, or existing db_store.db, or MONGO_URI in environment.
+    """
+    from pymongo import MongoClient
+    import db_store
+
+    # 1. Custom URI provided in request
+    if custom_uri and str(custom_uri).strip():
+        uri_clean = str(custom_uri).strip()
+        try:
+            client = MongoClient(uri_clean, serverSelectionTimeoutMS=4000)
+            client.admin.command("ping")
+            try:
+                db_inst = client.get_default_database()
+            except Exception:
+                db_inst = client.get_database("capital_desk")
+            return client, db_inst, True, None, uri_clean
+        except Exception as e:
+            return None, None, True, f"Could not connect to custom MongoDB URI: {e}", uri_clean
+
+    # 2. Existing active connection in db_store
+    if getattr(db_store, "db", None) is not None:
+        try:
+            db_store.db.command("ping")
+            env_uri = getattr(db_store, "_MONGO_URI", "") or os.environ.get("MONGO_URI") or os.environ.get("MONGODB_URI") or ""
+            return getattr(db_store, "_client", None), db_store.db, False, None, env_uri
+        except Exception:
+            pass
+
+    # 3. Environment variable MONGO_URI or MONGODB_URI
+    env_uri = os.environ.get("MONGO_URI") or os.environ.get("MONGODB_URI")
+    if env_uri and env_uri.strip():
+        try:
+            client = MongoClient(env_uri.strip(), serverSelectionTimeoutMS=4000)
+            client.admin.command("ping")
+            try:
+                db_inst = client.get_default_database()
+            except Exception:
+                db_inst = client.get_database("capital_desk")
+            return client, db_inst, False, None, env_uri.strip()
+        except Exception as e:
+            return None, None, False, f"Could not connect to environment MongoDB URI: {e}", env_uri.strip()
+
+    return None, None, False, "MongoDB is not connected. No active MONGO_URI found in environment.", ""
+
+
+def _export_live_mongo_to_zip(db_inst):
+    """Exports all non-system collections from a live MongoDB instance to an in-memory ZIP."""
+    import bson.json_util as json_util
+    from modules.common.ist_datetime import format_ist_display
+
+    col_names = sorted([c for c in db_inst.list_collection_names() if not c.startswith("system.")])
+    buf = io.BytesIO()
+    manifest = {
+        "database": db_inst.name,
+        "exported_at": format_ist_display(),
+        "exported_at_iso": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "source": "MongoDB Atlas / Live Server",
+        "total_collections": len(col_names),
+        "total_documents": 0,
+        "collections": {}
+    }
+
+    total_docs = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for cname in col_names:
+            try:
+                docs = list(db_inst[cname].find({}))
+                manifest["collections"][cname] = len(docs)
+                total_docs += len(docs)
+                zf.writestr(f"{cname}.json", json_util.dumps(docs, indent=2))
+            except Exception as e:
+                manifest["collections"][cname] = f"Error: {e}"
+
+        manifest["total_documents"] = total_docs
+        zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+
+        col_summary_lines = "\n".join(f"  - {c}: {manifest['collections'].get(c, 0)} documents" for c in col_names)
+        readme = f"""Capital Desk - MongoDB Database Backup
+===================================================
+Database: {db_inst.name}
+Exported At: {manifest['exported_at']}
+Total Collections: {len(col_names)}
+Total Documents: {total_docs}
+
+Collections Included:
+{col_summary_lines}
+
+Restore Instructions:
+To restore a collection using mongoimport:
+  mongoimport --uri="<YOUR_MONGO_URI>" --collection=<COLLECTION_NAME> --file=<COLLECTION_NAME>.json --jsonArray
+"""
+        zf.writestr("README.txt", readme)
+
+    buf.seek(0)
+    return buf, manifest, total_docs
+
+
+def _export_live_mongo_to_json(db_inst):
+    """Exports all non-system collections from a live MongoDB instance into a single JSON."""
+    import bson.json_util as json_util
+    from modules.common.ist_datetime import format_ist_display
+
+    col_names = sorted([c for c in db_inst.list_collection_names() if not c.startswith("system.")])
+    manifest = {
+        "database": db_inst.name,
+        "exported_at": format_ist_display(),
+        "exported_at_iso": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "source": "MongoDB Atlas / Live Server",
+        "total_collections": len(col_names),
+        "total_documents": 0,
+        "collections": {}
+    }
+    dump_data = {
+        "metadata": manifest,
+        "collections": {}
+    }
+
+    total_docs = 0
+    for cname in col_names:
+        try:
+            docs = list(db_inst[cname].find({}))
+            dump_data["collections"][cname] = docs
+            manifest["collections"][cname] = len(docs)
+            total_docs += len(docs)
+        except Exception as e:
+            dump_data["collections"][cname] = []
+            manifest["collections"][cname] = f"Error: {e}"
+
+    manifest["total_documents"] = total_docs
+    return json_util.dumps(dump_data, indent=2), manifest, total_docs
+
+
+def _export_local_db_as_mongo_zip():
+    """Fallback export: reads SQLite & local JSON datasets, formatting them as MongoDB collection JSONs inside a ZIP."""
+    import sqlite3
+    import bson.json_util as json_util
+    from modules.common.ist_datetime import format_ist_display
+
+    collections = {}
+    sqlite_path = os.path.join(USER_DATA_DIR, "capital_desk.db")
+
+    # 1. Read SQLite tables
+    if os.path.exists(sqlite_path):
+        try:
+            with sqlite3.connect(sqlite_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables = [t[0] for t in cursor.fetchall()]
+                for tbl in tables:
+                    try:
+                        cursor.execute(f"SELECT * FROM [{tbl}]")
+                        col_names = [d[0] for d in cursor.description]
+                        rows = cursor.fetchall()
+                        table_docs = []
+                        for row in rows:
+                            d = dict(zip(col_names, row))
+                            if "data" in d and isinstance(d["data"], str):
+                                try:
+                                    d["data"] = json.loads(d["data"])
+                                except Exception:
+                                    pass
+                            if "_id" not in d and "id" in d:
+                                d["_id"] = d["id"]
+                            table_docs.append(d)
+                        collections[tbl] = table_docs
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    # 2. Add users
+    users_data = load_users()
+    if users_data:
+        u_docs = []
+        for uname, uinfo in users_data.items():
+            doc = dict(uinfo)
+            doc["_id"] = uname
+            u_docs.append(doc)
+        collections["users"] = u_docs
+
+    # 3. Add system settings
+    sys_settings = get_system_settings()
+    if sys_settings:
+        collections["system_settings"] = [{"_id": "global_settings", "settings": sys_settings}]
+
+    # 4. Add custom queries
+    cq_path = os.path.join(USER_DATA_DIR, "custom_queries.json")
+    if os.path.exists(cq_path):
+        try:
+            with open(cq_path, "r", encoding="utf-8") as f:
+                collections["custom_queries"] = json.load(f)
+        except Exception:
+            pass
+
+    # 5. Add IPO tracker cache
+    ipo_seed = os.path.join(BASE_DATA_DIR, "modules", "ipo_tracker", "seed_ipos.json")
+    if os.path.exists(ipo_seed):
+        try:
+            with open(ipo_seed, "r", encoding="utf-8") as f:
+                collections["ipo_tracker_cache"] = [{"_id": "latest", "payload": json.load(f)}]
+        except Exception:
+            pass
+
+    buf = io.BytesIO()
+    manifest = {
+        "database": "capital_desk (local_storage_fallback)",
+        "exported_at": format_ist_display(),
+        "exported_at_iso": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "source": "Local SQLite & JSON Storage (MongoDB Collection Format)",
+        "total_collections": len(collections),
+        "total_documents": sum(len(docs) for docs in collections.values()),
+        "collections": {k: len(v) for k, v in collections.items()}
+    }
+
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for cname, docs in collections.items():
+            zf.writestr(f"{cname}.json", json_util.dumps(docs, indent=2))
+        zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+
+        col_lines = "\n".join(f"  - {c}: {len(collections[c])} documents" for c in collections)
+        readme = f"""Capital Desk - Local Storage Backup (MongoDB Collection Format)
+=====================================================================
+Database: capital_desk
+Exported At: {manifest['exported_at']}
+Total Collections: {len(collections)}
+Total Documents: {manifest['total_documents']}
+
+Note: This archive was exported from local SQLite & JSON production datasets formatted 
+as standard MongoDB collections for easy restoration or migration to MongoDB Atlas.
+
+Collections Included:
+{col_lines}
+
+Restore Instructions:
+To restore to a MongoDB Atlas cluster using mongoimport:
+  mongoimport --uri="<YOUR_MONGO_URI>" --collection=<COLLECTION_NAME> --file=<COLLECTION_NAME>.json --jsonArray
+"""
+        zf.writestr("README.txt", readme)
+
+    buf.seek(0)
+    return buf, manifest, manifest["total_documents"]
+
+
+@auth_admin_bp.route("/api/admin/mongodb/status", methods=["GET", "POST"])
+@admin_required
+def admin_mongodb_status():
+    custom_uri = None
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        custom_uri = data.get("custom_uri") or data.get("mongo_uri")
+    elif request.args.get("custom_uri"):
+        custom_uri = request.args.get("custom_uri")
+
+    client, db_inst, is_custom, error_msg, resolved_uri = _resolve_mongodb_client(custom_uri)
+    if not db_inst:
+        return jsonify({
+            "success": True,
+            "connected": False,
+            "error": error_msg or "MongoDB is not connected.",
+            "has_env_uri": bool(os.environ.get("MONGO_URI") or os.environ.get("MONGODB_URI")),
+            "is_custom": is_custom
+        })
+
+    try:
+        col_names = sorted([c for c in db_inst.list_collection_names() if not c.startswith("system.")])
+        col_list = []
+        total_docs = 0
+        for c in col_names:
+            try:
+                cnt = db_inst[c].count_documents({})
+            except Exception:
+                try:
+                    cnt = db_inst[c].estimated_document_count()
+                except Exception:
+                    cnt = 0
+            col_list.append({"name": c, "count": cnt})
+            total_docs += cnt
+
+        return jsonify({
+            "success": True,
+            "connected": True,
+            "database": db_inst.name,
+            "masked_uri": _mask_mongo_uri(resolved_uri),
+            "total_collections": len(col_names),
+            "total_documents": total_docs,
+            "collections": col_list,
+            "is_custom": is_custom
+        })
+    except Exception as e:
+        return jsonify({
+            "success": True,
+            "connected": False,
+            "error": f"Connected to server but failed listing collections: {e}",
+            "masked_uri": _mask_mongo_uri(resolved_uri),
+            "is_custom": is_custom
+        })
+
+
+@auth_admin_bp.route("/api/admin/mongodb/export", methods=["GET", "POST"])
+@admin_required
+def admin_mongodb_export():
+    custom_uri = None
+    format_type = request.args.get("format", "zip").lower()
+    
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        custom_uri = data.get("custom_uri") or data.get("mongo_uri")
+        if "format" in data:
+            format_type = data["format"].lower()
+    if not custom_uri and request.args.get("mongo_uri"):
+        custom_uri = request.args.get("mongo_uri")
+
+    client, db_inst, is_custom, error_msg, resolved_uri = _resolve_mongodb_client(custom_uri)
+    
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # If live MongoDB is not connected, provide fallback to local storage MongoDB-format export
+    if not db_inst:
+        if request.args.get("fallback", "").lower() in ["1", "true", "yes"] or not custom_uri:
+            buf, manifest, total_docs = _export_local_db_as_mongo_zip()
+            zip_name = f"capital_desk_mongodb_local_backup_{ts}.zip"
+            return send_file(
+                buf,
+                as_attachment=True,
+                download_name=zip_name,
+                mimetype="application/zip"
+            )
+        return jsonify({"error": error_msg or "MongoDB is not connected. Please provide a valid MONGO_URI."}), 400
+
+    if format_type == "json":
+        json_str, manifest, total_docs = _export_live_mongo_to_json(db_inst)
+        buf = io.BytesIO(json_str.encode("utf-8"))
+        buf.seek(0)
+        json_name = f"capital_desk_mongodb_{db_inst.name}_{ts}.json"
+        return send_file(
+            buf,
+            as_attachment=True,
+            download_name=json_name,
+            mimetype="application/json"
+        )
+    else:
+        buf, manifest, total_docs = _export_live_mongo_to_zip(db_inst)
+        zip_name = f"capital_desk_mongodb_{db_inst.name}_{ts}.zip"
+        return send_file(
+            buf,
+            as_attachment=True,
+            download_name=zip_name,
+            mimetype="application/zip"
+        )
+
+
+@auth_admin_bp.route("/api/admin/mongodb/export_local", methods=["GET"])
+@admin_required
+def admin_mongodb_export_local():
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    buf, manifest, total_docs = _export_local_db_as_mongo_zip()
+    zip_name = f"capital_desk_local_db_mongo_format_{ts}.zip"
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=zip_name,
+        mimetype="application/zip"
+    )
+
+
+@auth_admin_bp.route("/api/admin/mongodb/save_uri", methods=["POST"])
+@admin_required
+def admin_mongodb_save_uri():
+    data = request.get_json(silent=True) or {}
+    new_uri = (data.get("mongo_uri") or "").strip()
+    if not new_uri:
+        return jsonify({"error": "MongoDB URI cannot be empty."}), 400
+
+    from pymongo import MongoClient
+    import db_store
+
+    try:
+        test_client = MongoClient(new_uri, serverSelectionTimeoutMS=4000)
+        test_client.admin.command("ping")
+        try:
+            test_db = test_client.get_default_database()
+        except Exception:
+            test_db = test_client.get_database("capital_desk")
+    except Exception as e:
+        return jsonify({"error": f"Connection test failed: {e}"}), 400
+
+    # Save to environment and .env
+    os.environ["MONGO_URI"] = new_uri
+    env_file = os.path.join(BASE_DATA_DIR, ".env")
+    try:
+        content = ""
+        if os.path.exists(env_file):
+            with open(env_file, "r", encoding="utf-8") as f:
+                content = f.read()
+
+        if "MONGO_URI=" in content:
+            import re
+            content = re.sub(r"MONGO_URI=.*", f"MONGO_URI={new_uri}", content)
+        else:
+            content += f"\nMONGO_URI={new_uri}\n"
+
+        with open(env_file, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        pass
+
+    # Update db_store runtime state
+    db_store.db = test_db
+    db_store._client = test_client
+    db_store._MONGO_URI = new_uri
+
+    return jsonify({
+        "success": True,
+        "message": f"Successfully connected to MongoDB '{test_db.name}' and saved MONGO_URI to .env!",
+        "database": test_db.name,
+        "masked_uri": _mask_mongo_uri(new_uri)
+    })

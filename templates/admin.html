@@ -926,6 +926,7 @@
             <button class="tab-btn" id="tab-btn-logs" onclick="switchAdminTab('logs')">📜 Real-Time Login Audit Logs</button>
             <button class="tab-btn" id="tab-btn-settings" onclick="switchAdminTab('settings')">⚙️ System Setting</button>
             <button class="tab-btn" id="tab-btn-system" onclick="switchAdminTab('system')">🖥️ System Info & Backup</button>
+            <button class="tab-btn" id="tab-btn-notifications" onclick="switchAdminTab('notifications')">🔔 Notifications</button>
         </div>
 
         <!-- TAB 1: User Management -->
@@ -1923,6 +1924,74 @@
                 </div>
             </div>
 
+            <!-- MongoDB Database Backup & Export Card -->
+            <div class="metric-card" style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; flex-wrap: wrap; margin-bottom: 16px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            🍃 MongoDB Database Backup & Download
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                            Backup and download all database collections directly from MongoDB Atlas or local database storage.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                        <span id="admin-mongo-status-badge" style="padding: 6px 12px; font-size: 12px; font-weight: 650; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(148, 163, 184, 0.12); color: var(--text-secondary);">
+                            <span class="live-dot" style="width: 8px; height: 8px; background: #94a3b8;"></span> MongoDB: Checking...
+                        </span>
+                        <button type="button" class="btn btn-secondary" onclick="loadMongoStatus(true)" style="display: inline-flex; align-items: center; gap: 6px;">
+                            🔄 Refresh Status
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MongoDB Connection & Metadata Details Box -->
+                <div id="admin-mongo-info-box" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                    <div style="color: var(--text-secondary); font-size: 13px;">Checking MongoDB connection...</div>
+                </div>
+
+                <!-- Action Download Buttons -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <button id="admin-mongo-download-zip-btn" type="button" class="btn" onclick="triggerMongoBackupDownload('zip')" style="display: inline-flex; align-items: center; gap: 6px;">
+                        📦 Backup MongoDB & Download (.ZIP Archive)
+                    </button>
+                    <button id="admin-mongo-download-json-btn" type="button" class="btn btn-secondary" onclick="triggerMongoBackupDownload('json')" style="display: inline-flex; align-items: center; gap: 6px;">
+                        📄 Download Single JSON (.JSON)
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleCustomMongoUriBox()" style="display: inline-flex; align-items: center; gap: 6px;">
+                        ⚙️ Connection Settings & Custom URI
+                    </button>
+                    <a id="admin-mongo-local-fallback-btn" href="/api/admin/mongodb/export_local?format=zip" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Export SQLite & JSON data in MongoDB collection format">
+                        💾 Export Local DB as MongoDB Collections (.ZIP)
+                    </a>
+                </div>
+
+                <!-- Collapsible Custom Connection String / Save Box -->
+                <div id="admin-mongo-custom-uri-box" style="display: none; margin-top: 16px; padding: 16px; border: 1px dashed var(--border-color); border-radius: 8px; background: var(--bg-surface);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: var(--text-primary);">
+                        🔗 MongoDB Connection URI Configuration
+                    </h4>
+                    <p style="margin: 0 0 12px 0; font-size: 12px; color: var(--text-secondary);">
+                        Enter a MongoDB Atlas or server connection string (e.g. <code>mongodb+srv://username:password@cluster.mongodb.net/capital_desk</code>). You can test the connection, download directly from this cluster, or save it permanently to <code>.env</code>.
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                        <input type="text" id="admin-mongo-custom-uri-input" placeholder="mongodb+srv://username:password@cluster.mongodb.net/capital_desk?retryWrites=true&w=majority" style="flex: 1; min-width: 280px; padding: 9px 12px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-family: monospace;">
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" onclick="testCustomMongoUri()" style="display: inline-flex; align-items: center; gap: 6px;">
+                            🔌 Test Connection
+                        </button>
+                        <button type="button" class="btn" onclick="saveMongoUriToEnv()" style="display: inline-flex; align-items: center; gap: 6px;">
+                            💾 Save to .env & Connect
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="triggerMongoBackupDownload('zip', true)" style="display: inline-flex; align-items: center; gap: 6px;">
+                            📥 Download from this URI (.ZIP)
+                        </button>
+                    </div>
+                    <div id="admin-mongo-test-result" style="margin-top: 10px; font-size: 12px; display: none;"></div>
+                </div>
+            </div>
+
             <div class="metric-card" style="margin-bottom: 20px;">
                 <h3 style="margin-top: 0; margin-bottom: 12px;">🖥️ Server Environment & Health</h3>
                 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;"><strong>Engine:</strong> Flask (Python 3.11+ WSGI Backend)</p>
@@ -1932,11 +2001,324 @@
                 <div class="system-tools-actions" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
                     <a href="/api/admin/system_backup/export" class="btn" style="text-decoration: none;">📥 Download Full System Backup (Users & Portfolios JSON)</a>
                     <button class="btn btn-secondary" onclick="triggerImportSystemBackup()">📤 Import System Backup JSON</button>
+                    <a href="/api/admin/mongodb/export?format=zip" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Download MongoDB backup as ZIP archive">🍃 Download MongoDB (.ZIP)</a>
                     <button class="btn btn-secondary" onclick="loadAdminStats()">🔄 Refresh Admin Data</button>
                 </div>
                 <input type="file" id="system-backup-file-input" accept=".json" style="display: none;" onchange="handleSystemBackupFileSelect(event)">
             </div>
         </div>
+
+        <!-- TAB 5: Web & PWA Push Notifications -->
+        <div id="tab-notifications" class="tab-content">
+            <!-- Metric Overview Cards -->
+            <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
+                <div class="metric-card">
+                    <div class="title">Total Push Subscribers</div>
+                    <div class="value" id="stat-notif-subscribers" style="color: #3b82f6;">0</div>
+                    <div class="sub-value" id="stat-notif-active-devices">0 Active Web & PWA devices</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">FCM Engine Status</div>
+                    <div class="value" id="stat-notif-fcm-status" style="font-size: 18px; color: #10b981;">Checking...</div>
+                    <div class="sub-value" id="stat-notif-fcm-subtext">Firebase Cloud Messaging v1</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Total Pushes Dispatched</div>
+                    <div class="value" id="stat-notif-sent-count" style="color: #f59e0b;">0</div>
+                    <div class="sub-value" id="stat-notif-last-sent">No alerts sent yet</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Current Browser Push</div>
+                    <div class="value" id="stat-notif-client-perm" style="font-size: 18px;">Checking...</div>
+                    <div class="sub-value" style="margin-top: 6px;">
+                        <button class="btn btn-secondary" onclick="CapitalDeskPush.toggle(); setTimeout(loadNotificationStats, 1000);" style="padding: 3px 8px; font-size: 11px;">Toggle Sub</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two Main Notification Dispatch Columns -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                
+                <!-- COLUMN 1: Gold & Silver Rates Notification -->
+                <div class="metric-card" style="padding: 22px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                👑 Gold & Silver Rates Dispatcher
+                            </h3>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                                Dispatches visual bullion rates banner to Web & PWA subscribers
+                            </p>
+                        </div>
+                        <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid #ca8a04; font-weight: 600; padding: 4px 10px; border-radius: 8px;">
+                            Rich Image Push
+                        </span>
+                    </div>
+
+                    <!-- Live Visual Preview Card (Styled exactly as requested image) -->
+                    <div style="background: #111827; border: 1px solid #1f293d; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                        <!-- Gold Section -->
+                        <div style="margin-bottom: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 14px; font-weight: 700; color: #ffffff;">👑 Standard Gold (22 Karat)</span>
+                                <span style="font-size: 10px; font-weight: 700; background: #242013; color: #facc15; border: 1px solid #ca8a04; padding: 2px 7px; border-radius: 5px;">916 HALLMARK</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">1 GRAM</div>
+                                    <div id="preview-gold-1g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹13,195</div>
+                                    <div style="font-size: 9.5px; color: #64748b;">Jewellery Rate</div>
+                                </div>
+                                <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">8 GM (1 SOVEREIGN)</div>
+                                    <div id="preview-gold-8g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹1,05,560</div>
+                                    <div style="font-size: 9.5px; color: #64748b;">1 Pavan / Sovereign</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Silver Section -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 14px; font-weight: 700; color: #ffffff;">🥈 Ready Silver</span>
+                                <span style="font-size: 10px; font-weight: 700; background: #1e293b; color: #cbd5e1; border: 1px solid #64748b; padding: 2px 7px; border-radius: 5px;">99.9% FINE</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">1 GRAM</div>
+                                    <div id="preview-silver-1g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹215.00</div>
+                                    <div style="font-size: 9.5px; color: #64748b;">Retail Rate</div>
+                                </div>
+                                <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">8 GRAMS</div>
+                                    <div id="preview-silver-8g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹1,720</div>
+                                    <div style="font-size: 9.5px; color: #64748b;">Coin Rate</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Controls Form -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Gold 1 Gram (₹)</label>
+                            <input type="text" id="input-gold-1g" value="13,195" oninput="updateGoldRatePreview()" 
+                                style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Gold 8 Grams / Sovereign (₹)</label>
+                            <input type="text" id="input-gold-8g" value="1,05,560" oninput="updateGoldRatePreview()" 
+                                style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Silver 1 Gram (₹)</label>
+                            <input type="text" id="input-silver-1g" value="215.00" oninput="updateGoldRatePreview()" 
+                                style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Silver 8 Grams (₹)</label>
+                            <input type="text" id="input-silver-8g" value="1,720" oninput="updateGoldRatePreview()" 
+                                style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        </div>
+                    </div>
+
+                    <!-- Dispatch Buttons -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn" id="btn-send-gold" onclick="sendGoldRatesNotification()" 
+                            style="flex: 1; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; border: none; font-weight: 700; padding: 10px 16px; border-radius: 8px;">
+                            🚀 Send Gold & Silver Notification
+                        </button>
+                        <button class="btn btn-secondary" onclick="autoCalculate8gRates()" style="padding: 10px 14px;" title="Auto-multiply 1g by 8">
+                            ⚡ 8x Multiplier
+                        </button>
+                        <a id="btn-preview-gold-img" href="/api/notifications/render-gold-card.png" target="_blank" class="btn btn-secondary" style="padding: 10px 14px; text-decoration: none;" title="Open full-resolution generated PNG banner">
+                            🖼️ Card Image
+                        </a>
+                    </div>
+                </div>
+
+                <!-- COLUMN 2: EOD Portfolio Performance Notification -->
+                <div class="metric-card" style="padding: 22px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                📈 EOD Portfolio Performance Dispatcher
+                            </h3>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                                Dispatches daily market performance & top gainers/losers to subscribers
+                            </p>
+                        </div>
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; font-weight: 600; padding: 4px 10px; border-radius: 8px;">
+                            EOD Digest
+                        </span>
+                    </div>
+
+                    <!-- Live Visual Preview Card -->
+                    <div style="background: #111827; border: 1px solid #1f293d; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <span style="font-size: 14px; font-weight: 700; color: #ffffff;">📈 Capital Desk Portfolio Digest</span>
+                                <div style="font-size: 9.5px; color: #64748b;">Market Close Summary</div>
+                            </div>
+                            <span style="font-size: 10px; font-weight: 700; background: #132e22; color: #10b981; border: 1px solid #10b981; padding: 2px 7px; border-radius: 5px;">EOD SUMMARY</span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <!-- Performance Box -->
+                            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px;">
+                                <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">TODAY'S RETURN</div>
+                                <div id="preview-perf-val" style="font-size: 22px; font-weight: 800; color: #10b981; margin: 3px 0;">+0.50%</div>
+                                <div style="font-size: 9.5px; color: #10b981;">✅ Net Positive Return</div>
+                            </div>
+
+                            <!-- Top Gainer & Loser Stack -->
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 9px; font-weight: 600; color: #94a3b8;">🚀 TOP GAINER</div>
+                                        <div id="preview-perf-gainer-sym" style="font-size: 13px; font-weight: 800; color: #ffffff;">POCL</div>
+                                    </div>
+                                    <span id="preview-perf-gainer-pct" style="font-size: 11.5px; font-weight: 800; background: #132e22; color: #10b981; padding: 2px 6px; border-radius: 4px;">+4.56%</span>
+                                </div>
+
+                                <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 9px; font-weight: 600; color: #94a3b8;">🔻 TOP LOSER</div>
+                                        <div id="preview-perf-loser-sym" style="font-size: 13px; font-weight: 800; color: #ffffff;">Polymedicure</div>
+                                    </div>
+                                    <span id="preview-perf-loser-pct" style="font-size: 11.5px; font-weight: 800; background: #351a1a; color: #ef4444; padding: 2px 6px; border-radius: 4px;">-0.65%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Controls Form -->
+                    <div style="margin-bottom: 14px;">
+                        <div style="margin-bottom: 8px;">
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Today's Overall Performance (%)</label>
+                            <input type="text" id="input-perf-val" value="+0.50%" oninput="updatePortfolioPerfPreview()" 
+                                style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Top Gainer Symbol</label>
+                                <input type="text" id="input-perf-gainer-sym" value="POCL" oninput="updatePortfolioPerfPreview()" 
+                                    style="width: 100%; padding: 8px 10px; font-size: 12.5px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Top Gainer Gain (%)</label>
+                                <input type="text" id="input-perf-gainer-chg" value="+4.56%" oninput="updatePortfolioPerfPreview()" 
+                                    style="width: 100%; padding: 8px 10px; font-size: 12.5px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Top Loser Symbol</label>
+                                <input type="text" id="input-perf-loser-sym" value="Polymedicure" oninput="updatePortfolioPerfPreview()" 
+                                    style="width: 100%; padding: 8px 10px; font-size: 12.5px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Top Loser Loss (%)</label>
+                                <input type="text" id="input-perf-loser-chg" value="-0.65%" oninput="updatePortfolioPerfPreview()" 
+                                    style="width: 100%; padding: 8px 10px; font-size: 12.5px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dispatch Buttons -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn" id="btn-send-portfolio" onclick="sendPortfolioPerformanceNotification()" 
+                            style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; font-weight: 700; padding: 10px 16px; border-radius: 8px;">
+                            📊 Send Portfolio Notification
+                        </button>
+                        <button class="btn btn-secondary" onclick="autoCalculateFromPortfolios()" style="padding: 10px 14px;" title="Query database portfolio holdings to compute real market return">
+                            ⚡ Auto-Calc DB
+                        </button>
+                        <a id="btn-preview-perf-img" href="/api/notifications/render-portfolio-card.png" target="_blank" class="btn btn-secondary" style="padding: 10px 14px; text-decoration: none;" title="Open full-resolution generated PNG banner">
+                            🖼️ Card Image
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: Firebase FCM Configuration & Diagnostics -->
+            <div class="metric-card" style="margin-bottom: 24px; padding: 22px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                            ⚙️ Firebase Cloud Messaging (FCM) Credentials
+                        </h3>
+                        <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                            Enter your Firebase Project ID, VAPID Public Key, and Service Account JSON to activate live browser push notifications.
+                        </p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="sendTestPushAlert()" style="padding: 6px 12px; font-size: 12px;">
+                        🧪 Send Diagnostic Test Push
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Firebase Project ID</label>
+                        <input type="text" id="fcm-cfg-project-id" placeholder="e.g. capital-desk-12345" 
+                            style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web Push VAPID Public Key</label>
+                        <input type="text" id="fcm-cfg-vapid-key" placeholder="e.g. BElv... (From Firebase Web Configuration)" 
+                            style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Firebase Service Account JSON (Paste content or upload firebase_service_account.json)</label>
+                    <textarea id="fcm-cfg-service-account" rows="3" placeholder='Paste your Firebase Service Account JSON here (or place file at app_data/firebase_service_account.json)...' 
+                        style="width: 100%; padding: 8px 10px; font-size: 11.5px; font-family: monospace; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);"></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div id="fcm-status-alert-box" style="font-size: 12px; color: var(--text-secondary);">
+                        Checking configuration status...
+                    </div>
+                    <button class="btn" onclick="saveFcmConfiguration()" style="padding: 8px 18px; font-weight: 600;">
+                        💾 Save Firebase Configuration
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION: Notification History & Audit Log -->
+            <div class="metric-card" style="padding: 22px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        📜 Dispatched Notification Audit Trail
+                    </h3>
+                    <button class="btn btn-secondary" onclick="loadNotificationStats()" style="padding: 5px 12px; font-size: 12px;">
+                        🔄 Refresh Audit Log
+                    </button>
+                </div>
+
+                <div class="table-responsive-container" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); text-align: left;">
+                                <th style="padding: 10px 12px;">Timestamp (IST)</th>
+                                <th style="padding: 10px 12px;">Topic / Event</th>
+                                <th style="padding: 10px 12px;">Notification Title</th>
+                                <th style="padding: 10px 12px;">Message Summary</th>
+                                <th style="padding: 10px 12px; text-align: center;">Recipients</th>
+                                <th style="padding: 10px 12px; text-align: center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notif-history-table-body">
+                            <tr><td colspan="6" style="text-align: center; padding: 25px; color: var(--text-secondary);">Loading notification audit trail...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- MODAL: Inspect User Data -->
@@ -2147,7 +2529,8 @@
 
             if (tabName === 'logs') { loadAdminLogs(); loadExternalApiLogsBadge(); }
             if (tabName === 'settings') { toggleAiPromptsSection(false); loadSystemSettings(); loadAdminAiPrompts(); loadAdminIndustriesStatus(); loadAdminCorporateActionsStatus(); loadAdminIpoStatus(); loadAdminQuarterlyResultsStatus(); loadAdminShareholdingStatus(); loadAdminTransactionsStatus(); loadAdminPeoplesStatus(); }
-            if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); }
+            if (tabName === 'system') { loadAdminStats(); loadProductionJsonFilesList(); loadMongoStatus(); }
+            if (tabName === 'notifications') { loadNotificationStats(); updateGoldRatePreview(); updatePortfolioPerfPreview(); }
         }
 
         async function checkAdminAuth() {
@@ -4501,6 +4884,7 @@
             await loadAdminTransactionsStatus();
             await loadExternalApiLogsBadge();
             await loadProductionJsonFilesList();
+            await loadMongoStatus();
         }
 
         initAdmin();
@@ -4633,7 +5017,183 @@
             }
         }
 
+
+        // =========================================================
+        // MONGODB DATABASE BACKUP & EXPORT CONTROLLER
+        // =========================================================
+        let _mongoStatusCache = null;
+
+        async function loadMongoStatus(force) {
+            const badge = document.getElementById('admin-mongo-status-badge');
+            const infoBox = document.getElementById('admin-mongo-info-box');
+            if (badge) {
+                badge.style.background = 'rgba(148, 163, 184, 0.12)';
+                badge.style.color = 'var(--text-secondary)';
+                badge.innerHTML = `<span class="live-dot" style="width: 8px; height: 8px; background: #94a3b8;"></span> MongoDB: Checking...`;
+            }
+
+            try {
+                const res = await fetch('/api/admin/mongodb/status' + (force ? '?refresh=1' : ''));
+                const data = await res.json();
+                _mongoStatusCache = data;
+
+                if (data.connected) {
+                    if (badge) {
+                        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                        badge.style.color = '#10b981';
+                        badge.innerHTML = `<span class="live-dot" style="width: 8px; height: 8px; background: #10b981;"></span> MongoDB: Connected (${escapeHtml(data.database)})`;
+                    }
+                    if (infoBox) {
+                        const colPills = (data.collections || []).map(c => 
+                            `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border-color); font-size: 11.5px; color: var(--text-primary);">
+                                📁 <strong>${escapeHtml(c.name)}</strong>: <span style="color: #3b82f6; font-weight: 700;">${c.count}</span>
+                            </span>`
+                        ).join(' ');
+
+                        infoBox.innerHTML = `
+                            <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; align-items: center;">
+                                <div><span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: 700;">Database:</span> <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(data.database)}</strong></div>
+                                <div><span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: 700;">URI:</span> <code style="font-size: 11px; background: var(--bg-card); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color);">${escapeHtml(data.masked_uri || 'Configured via Environment')}</code></div>
+                                <div><span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: 700;">Collections:</span> <strong style="color: #10b981; font-size: 13.5px;">${data.total_collections}</strong></div>
+                                <div><span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: 700;">Total Documents:</span> <strong style="color: #3b82f6; font-size: 13.5px;">${data.total_documents}</strong></div>
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Live Collections Detected:</div>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap; max-height: 120px; overflow-y: auto;">
+                                    ${colPills || '<span style="color: var(--text-muted); font-size: 12px;">No collections found</span>'}
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    if (badge) {
+                        badge.style.background = 'rgba(245, 158, 11, 0.15)';
+                        badge.style.color = '#f59e0b';
+                        badge.innerHTML = `<span class="live-dot" style="width: 8px; height: 8px; background: #f59e0b;"></span> MongoDB: Not Connected (Local Storage)`;
+                    }
+                    if (infoBox) {
+                        infoBox.innerHTML = `
+                            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                <span style="font-size: 20px;">⚠️</span>
+                                <div>
+                                    <strong style="color: var(--text-primary); font-size: 13.5px; display: block; margin-bottom: 4px;">MongoDB Atlas is currently not connected</strong>
+                                    <div style="color: var(--text-secondary); font-size: 12.5px; line-height: 1.5;">
+                                        No active <code>MONGO_URI</code> detected in server environment. The application is running using local SQLite (<code>capital_desk.db</code>) and JSON store.
+                                    </div>
+                                    <div style="margin-top: 8px; color: var(--text-secondary); font-size: 12px;">
+                                        👉 You can click <strong>"Export Local DB as MongoDB Collections (.ZIP)"</strong> to download all local tables formatted as MongoDB collections, or click <strong>"Connection Settings & Custom URI"</strong> to connect directly to any MongoDB Atlas instance.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (err) {
+                if (badge) {
+                    badge.style.background = 'rgba(239, 68, 68, 0.15)';
+                    badge.style.color = '#ef4444';
+                    badge.innerHTML = `<span class="live-dot" style="width: 8px; height: 8px; background: #ef4444;"></span> MongoDB: Status Error`;
+                }
+            }
+        }
+
+        function toggleCustomMongoUriBox() {
+            const box = document.getElementById('admin-mongo-custom-uri-box');
+            if (!box) return;
+            box.style.display = (box.style.display === 'none' || getComputedStyle(box).display === 'none') ? 'block' : 'none';
+        }
+
+        function triggerMongoBackupDownload(format, useCustom) {
+            format = format || 'zip';
+            if (useCustom) {
+                const uri = (document.getElementById('admin-mongo-custom-uri-input')?.value || '').trim();
+                if (!uri) {
+                    alert('Please enter a MongoDB connection URI to download from.');
+                    return;
+                }
+                window.location.href = `/api/admin/mongodb/export?format=${format}&mongo_uri=${encodeURIComponent(uri)}`;
+                return;
+            }
+
+            if (_mongoStatusCache && _mongoStatusCache.connected) {
+                window.location.href = `/api/admin/mongodb/export?format=${format}`;
+            } else {
+                if (confirm('MongoDB Atlas is not actively connected in this environment.\n\nWould you like to export your local database (SQLite & JSON store) formatted as MongoDB collection JSONs in a ZIP archive?')) {
+                    window.location.href = `/api/admin/mongodb/export_local?format=zip`;
+                } else {
+                    toggleCustomMongoUriBox();
+                }
+            }
+        }
+
+        async function testCustomMongoUri() {
+            const input = document.getElementById('admin-mongo-custom-uri-input');
+            const resultBox = document.getElementById('admin-mongo-test-result');
+            const uri = (input?.value || '').trim();
+            if (!uri) {
+                alert('Please enter a MongoDB Connection URI first.');
+                return;
+            }
+
+            if (resultBox) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = 'var(--text-secondary)';
+                resultBox.innerHTML = `⏳ Testing connection to MongoDB cluster...`;
+            }
+
+            try {
+                const res = await fetch('/api/admin/mongodb/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ custom_uri: uri })
+                });
+                const data = await res.json();
+                if (resultBox) {
+                    if (data.connected) {
+                        resultBox.style.color = '#10b981';
+                        resultBox.innerHTML = `✅ Successfully connected to database <strong>${escapeHtml(data.database)}</strong>! (${data.total_collections} collections, ${data.total_documents} documents found)`;
+                    } else {
+                        resultBox.style.color = '#ef4444';
+                        resultBox.innerHTML = `❌ Connection failed: ${escapeHtml(data.error || 'Server unreachable')}`;
+                    }
+                }
+            } catch (err) {
+                if (resultBox) {
+                    resultBox.style.color = '#ef4444';
+                    resultBox.innerHTML = `❌ Connection test error: ${escapeHtml(err.message)}`;
+                }
+            }
+        }
+
+        async function saveMongoUriToEnv() {
+            const input = document.getElementById('admin-mongo-custom-uri-input');
+            const uri = (input?.value || '').trim();
+            if (!uri) {
+                alert('Please enter a MongoDB Connection URI to save.');
+                return;
+            }
+
+            if (!confirm('Save this MONGO_URI to .env and initialize database connection?')) return;
+
+            try {
+                const res = await fetch('/api/admin/mongodb/save_uri', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mongo_uri: uri })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ ${data.message}`);
+                    await loadMongoStatus(true);
+                } else {
+                    alert(`❌ Failed to save: ${data.error}`);
+                }
+            } catch (err) {
+                alert(`❌ Error saving URI: ${err.message}`);
+            }
+        }
     </script>
     <script src="/static/js/core/pwa.js?v=1.0"></script>
+    <script src="/static/js/core/push-notification-client.js?v=1.0"></script>
 </body>
 </html>
