@@ -194,23 +194,62 @@
         checkCurrentSubscription: async function () {
             if (!this.isSupported() || this.isLoading) return;
 
+            // If user explicitly disabled notifications via the toggle button, do not auto-subscribe
+            if (localStorage.getItem('cd_push_disabled') === 'true') {
+                this.isSubscribed = false;
+                this.currentToken = null;
+                this.updateToggleUi(false);
+                return;
+            }
+
             try {
                 if (Notification.permission === 'granted') {
-                    // Silently refresh & ensure token is registered with current device context (PWA / Web)
-                    if (this.config && this.config.vapid_public_key) {
-                        await this.subscribe(["gold_silver_rates", "portfolio_performance"], true);
-                        return;
-                    }
-
                     if ('serviceWorker' in navigator && 'PushManager' in window) {
                         const registration = await navigator.serviceWorker.ready;
                         const subscription = await registration.pushManager.getSubscription();
-                        if (subscription) {
-                            this.isSubscribed = true;
-                            this.currentToken = subscription.endpoint;
-                            this.updateToggleUi(true);
+                        if (!subscription) {
+                            // No browser push subscription exists on this device yet!
+                            // Do NOT automatically create one or spam DB on page reload.
+                            this.isSubscribed = false;
+                            this.currentToken = null;
+                            this.updateToggleUi(false);
                             return;
                         }
+
+                        // Browser has a push subscription. Check if it still exists in the backend DB!
+                        try {
+                            const checkResp = await fetch('/api/notifications/check-subscription', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    token: subscription.endpoint,
+                                    endpoint: subscription.endpoint
+                                })
+                            });
+                            if (checkResp.ok) {
+                                const checkData = await checkResp.json();
+                                if (!checkData.registered) {
+                                    // Token was deleted from DB (e.g. manually or via admin). Clean up local subscription!
+                                    console.info('[Push] Subscription was removed from DB. Unsubscribing local browser push manager.');
+                                    await subscription.unsubscribe().catch(() => {});
+                                    this.isSubscribed = false;
+                                    this.currentToken = null;
+                                    localStorage.setItem('cd_push_disabled', 'true');
+                                    sessionStorage.removeItem('cd_push_synced');
+                                    this.updateToggleUi(false);
+                                    return;
+                                }
+                            }
+                        } catch (chkErr) {
+                            console.warn('[Push] Could not verify DB subscription status:', chkErr);
+                        }
+
+                        // Subscription is verified active both in browser and database.
+                        this.isSubscribed = true;
+                        this.currentToken = subscription.endpoint;
+                        localStorage.removeItem('cd_push_disabled');
+                        this.updateToggleUi(true);
+                        return;
                     }
                 }
                 this.isSubscribed = false;
@@ -365,6 +404,8 @@
                 if (data.success) {
                     this.isSubscribed = true;
                     this.currentToken = tokenString;
+                    localStorage.removeItem('cd_push_disabled');
+                    sessionStorage.setItem('cd_push_synced', '1');
 
                     // Dismiss any PWA prompt banner
                     const promptBanner = document.getElementById('cd-pwa-push-prompt-banner');
@@ -447,6 +488,8 @@
 
                 this.isSubscribed = false;
                 this.currentToken = null;
+                localStorage.setItem('cd_push_disabled', 'true');
+                sessionStorage.removeItem('cd_push_synced');
 
                 if (typeof window.showToast === 'function') {
                     window.showToast('Push notifications disabled.', 'info');

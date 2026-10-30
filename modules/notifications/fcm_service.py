@@ -306,10 +306,36 @@ def clean_fcm_token(token_str):
     return token_str
 
 
+def is_token_registered(token_or_endpoint, username=None):
+    """
+    Checks if a token, clean token, or endpoint is actively registered in subscriptions.
+    """
+    if not token_or_endpoint:
+        return False
+    subs = load_subscriptions()
+    clean_tok = clean_fcm_token(token_or_endpoint)
+
+    for k, v in subs.items():
+        if not v.get("is_active", True):
+            continue
+        if username and v.get("username") != username:
+            continue
+        if k == token_or_endpoint or v.get("token") == token_or_endpoint:
+            return True
+        if clean_tok and (v.get("clean_token") == clean_tok or clean_tok in k):
+            return True
+        v_sub = v.get("subscription")
+        if isinstance(v_sub, dict) and v_sub.get("endpoint") == token_or_endpoint:
+            return True
+        if clean_tok and isinstance(v_sub, dict) and clean_tok in str(v_sub.get("endpoint", "")):
+            return True
+    return False
+
+
 def register_device_token(token, username=None, user_agent="", topics=None, subscription=None, is_pwa=False):
     """
     Registers or updates an FCM Web/PWA device key for a registered user.
-    Supports storing more than one key/device per user (e.g. PC, Phone PWA, Laptop).
+    Deduplicates physical devices and ensures only one canonical record per device/browser.
     Strictly rejects unregistered or guest users.
     """
     if not token or not isinstance(token, str) or str(token).startswith("browser-granted-"):
@@ -362,9 +388,34 @@ def register_device_token(token, username=None, user_agent="", topics=None, subs
     else:
         device_label = f"{platform} - {browser} (Web Tab)"
 
-    # Store key: Each unique device produces a unique token, so one user can store multiple keys
+    endpoint = ""
+    if isinstance(subscription, dict) and subscription.get("endpoint"):
+        endpoint = subscription.get("endpoint", "").strip()
+    elif token.startswith("http://") or token.startswith("https://"):
+        endpoint = token.strip()
+
+    # Deduplication: Prune any previous duplicate keys for this physical device across subs
+    keys_to_remove = []
+    for k, v in subs.items():
+        v_sub = v.get("subscription")
+        v_ep = v_sub.get("endpoint", "") if isinstance(v_sub, dict) else (k if k.startswith("http") else "")
+        v_clean = v.get("clean_token", "") or clean_fcm_token(k)
+
+        if k == token or k == endpoint:
+            keys_to_remove.append(k)
+        elif clean_tok and (v_clean == clean_tok or clean_tok in k or (v_ep and clean_tok in v_ep)):
+            keys_to_remove.append(k)
+        elif endpoint and v_ep and v_ep == endpoint:
+            keys_to_remove.append(k)
+        elif v.get("username") == username and v.get("is_pwa") == bool(is_pwa) and v.get("device_name") == device_label:
+            keys_to_remove.append(k)
+
+    for k in set(keys_to_remove):
+        subs.pop(k, None)
+
+    canonical_key = endpoint or token
     sub_data = {
-        "token": token,
+        "token": canonical_key,
         "clean_token": clean_tok,
         "subscription": subscription or subs.get(token, {}).get("subscription"),
         "username": username,
@@ -376,22 +427,37 @@ def register_device_token(token, username=None, user_agent="", topics=None, subs
         "last_active": timestamp,
         "is_active": True
     }
-    subs[token] = sub_data
-
+    subs[canonical_key] = sub_data
     save_subscriptions(subs)
 
-    # Count active keys for this user
     user_keys_count = sum(1 for s in subs.values() if s.get("username") == username and s.get("is_active", True))
     logger.info(f"[Push] Registered key for '{username}' ({device_label}). Total active keys for user: {user_keys_count}")
     return True, f"Key registered successfully for '{username}'. Active keys: {user_keys_count}"
 
 
 def unregister_device_token(token):
-    """Marks a device token as deactivated or deletes it."""
+    """Marks a device token as deactivated or deletes it across all matching aliases."""
+    if not token:
+        return False, "Token is required"
     subs = load_subscriptions()
-    if token in subs:
-        del subs[token]
+    clean_tok = clean_fcm_token(token)
+    keys_to_delete = []
+
+    for k, v in subs.items():
+        if k == token or v.get("clean_token") == token or v.get("token") == token:
+            keys_to_delete.append(k)
+        elif clean_tok and (v.get("clean_token") == clean_tok or clean_tok in k):
+            keys_to_delete.append(k)
+        else:
+            v_sub = v.get("subscription")
+            if isinstance(v_sub, dict) and (v_sub.get("endpoint") == token or (clean_tok and clean_tok in str(v_sub.get("endpoint", "")))):
+                keys_to_delete.append(k)
+
+    if keys_to_delete:
+        for k in set(keys_to_delete):
+            subs.pop(k, None)
         save_subscriptions(subs)
+        logger.info(f"[Push] Unregistered {len(keys_to_delete)} key(s) matching token: {token[:25]}...")
         return True, "Device unsubscribed"
     return False, "Token not found"
 
@@ -399,8 +465,7 @@ def unregister_device_token(token):
 def get_user_tokens(username, topic=None):
     """
     Returns ALL active registered device keys/tokens for a specific registered user.
-    Enables sending targeted notifications across multiple devices of the same user.
-    Returns empty list if user is unregistered.
+    Deduplicated by physical device destination.
     """
     if not username or username == "guest":
         return []
@@ -415,6 +480,8 @@ def get_user_tokens(username, topic=None):
 
     subs = load_subscriptions()
     tokens = []
+    seen_destinations = set()
+
     for t, data in subs.items():
         if not data.get("is_active", True):
             continue
@@ -422,14 +489,24 @@ def get_user_tokens(username, topic=None):
             continue
         if topic and topic not in data.get("topics", []):
             continue
+
+        clean_tok = data.get("clean_token") or clean_fcm_token(t)
+        v_sub = data.get("subscription")
+        endpoint = v_sub.get("endpoint") if isinstance(v_sub, dict) else (t if t.startswith("http") else "")
+        dest_id = clean_tok or endpoint or t
+
+        if dest_id in seen_destinations:
+            continue
+        seen_destinations.add(dest_id)
         tokens.append(t)
-    return list(dict.fromkeys(tokens))
+
+    return tokens
 
 
 def get_active_tokens(topic=None):
     """
     Returns active tokens list ONLY for verified registered users.
-    STRICT: Unregistered users and guests are completely excluded from receiving notifications.
+    Deduplicated by physical device destination.
     """
     try:
         from modules.common.auth_utils import load_users
@@ -439,17 +516,28 @@ def get_active_tokens(topic=None):
 
     subs = load_subscriptions()
     tokens = []
+    seen_destinations = set()
+
     for t, data in subs.items():
         if not data.get("is_active", True):
             continue
         sub_user = data.get("username", "")
-        # NEVER send notifications to unregistered or guest users
         if not sub_user or sub_user == "guest" or sub_user not in registered_users:
             continue
         if topic and topic not in data.get("topics", []):
             continue
+
+        clean_tok = data.get("clean_token") or clean_fcm_token(t)
+        v_sub = data.get("subscription")
+        endpoint = v_sub.get("endpoint") if isinstance(v_sub, dict) else (t if t.startswith("http") else "")
+        dest_id = clean_tok or endpoint or t
+
+        if dest_id in seen_destinations:
+            continue
+        seen_destinations.add(dest_id)
         tokens.append(t)
-    return list(dict.fromkeys(tokens))
+
+    return tokens
 
 
 # =====================================================================
@@ -578,9 +666,10 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
     invalid_tokens = []
     failure_details = []
 
-    # Partition targets into Standard WebPush (has keys) vs Pure FCM Tokens
+    # Partition targets into Standard WebPush (has keys) vs Pure FCM Tokens (strictly deduplicated)
     webpush_targets = []
     fcm_tokens = []
+    seen_dispatches = set()
 
     for tok in tokens:
         sub_info = subs.get(tok)
@@ -593,10 +682,19 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
         sub_info = sub_info or {}
         sub_obj = sub_info.get("subscription")
 
+        clean_tok = sub_info.get("clean_token") or clean_fcm_token(tok)
+        endpoint = sub_obj.get("endpoint") if isinstance(sub_obj, dict) else (tok if tok.startswith("http") else "")
+        dest_id = clean_tok or endpoint or tok
+
+        # Deduplication check: NEVER dispatch twice to the same physical device in the same batch
+        if dest_id in seen_dispatches:
+            logger.info(f"[WebPush] Skipping duplicate destination {dest_id[:25]}...")
+            continue
+        seen_dispatches.add(dest_id)
+
         if isinstance(sub_obj, dict) and sub_obj.get("endpoint") and sub_obj.get("keys"):
             webpush_targets.append((tok, sub_obj))
         elif tok.startswith("http://") or tok.startswith("https://"):
-            # Check if any sub in DB has this token as endpoint with keys
             matched_sub = None
             for s in subs.values():
                 s_obj = s.get("subscription")
@@ -606,7 +704,6 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
             if matched_sub:
                 webpush_targets.append((tok, matched_sub))
             else:
-                # Raw browser endpoint without p256dh/auth encryption keys cannot be delivered
                 invalid_tokens.append(tok)
                 failure_count += 1
                 failure_details.append(f"Legacy endpoint missing encryption keys: {tok[:30]}...")

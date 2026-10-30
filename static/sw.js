@@ -3,7 +3,7 @@
 // Institutional Offline Resilience & App Shell Caching
 // =========================================================
 
-const CACHE_VERSION = 'v1.1.0';
+const CACHE_VERSION = 'v1.1.1';
 const STATIC_CACHE = `capital-desk-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capital-desk-runtime-${CACHE_VERSION}`;
 
@@ -195,12 +195,13 @@ self.addEventListener('push', (event) => {
         icon: icon,
         badge: badge,
         image: image,
-        tag: data.tag || ('capital-desk-alert-' + Date.now()),
+        tag: data.tag || (data.type ? ('cd-' + data.type) : (data.timestamp ? ('cd-' + data.timestamp) : 'capital-desk-alert')),
         data: {
             url: targetUrl,
             timestamp: Date.now()
         },
         requireInteraction: true,
+        renotify: false,
         vibrate: [200, 100, 200],
         actions: [
             { action: 'open', title: 'Open Capital Desk' }
@@ -236,9 +237,4 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// 7. Optional Firebase Messaging Compat fallback
-try {
-    importScripts('/firebase-messaging-sw.js');
-} catch (e) {
-    // Ignore fallback import error
-}
+// Handled natively within this service worker without duplicate external script imports.

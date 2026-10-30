@@ -6,6 +6,7 @@ from modules.notifications.fcm_service import (
     get_fcm_config,
     register_device_token,
     unregister_device_token,
+    is_token_registered,
     send_web_push,
     get_notification_history,
     load_subscriptions,
@@ -52,6 +53,20 @@ def api_notification_config():
         "active_subscribers": len(unique_users),
         "total_active_keys": len(active_keys)
     })
+
+
+@notifications_bp.route("/api/notifications/check-subscription", methods=["POST"])
+def api_check_subscription():
+    """Checks whether the client's current device token/endpoint is registered in the database."""
+    data = request.get_json(silent=True) or {}
+    token = (data.get("token") or data.get("endpoint") or "").strip()
+    username = session.get("username")
+
+    if not token or not username or username == "guest":
+        return jsonify({"registered": False})
+
+    is_reg = is_token_registered(token, username=username)
+    return jsonify({"registered": is_reg, "username": username})
 
 
 @notifications_bp.route("/api/notifications/subscribe", methods=["POST"])

@@ -13,7 +13,9 @@ try {
     // Non-blocking: Standard W3C push handler below handles all notifications natively
 }
 
-// 1. Standard Web Push Protocol Handler
+// 1. Standard Web Push Protocol Handler (Guarded against double registration)
+if (!self._cd_sw_push_registered) {
+self._cd_sw_push_registered = true;
 self.addEventListener('push', (event) => {
     let payload = {};
     if (event.data) {
@@ -44,7 +46,8 @@ self.addEventListener('push', (event) => {
         icon: icon,
         badge: badge,
         image: image,
-        tag: data.tag || 'capital-desk-alert-' + Date.now(),
+        tag: data.tag || (data.type ? ('cd-' + data.type) : (data.timestamp ? ('cd-' + data.timestamp) : 'capital-desk-alert')),
+        renotify: false,
         data: {
             url: targetUrl,
             timestamp: Date.now()
@@ -86,6 +89,8 @@ self.addEventListener('notificationclick', (event) => {
         })
     );
 });
+
+}
 
 // 3. Optional Compat Messaging initialization if config passed via message
 self.addEventListener('message', (event) => {
