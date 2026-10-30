@@ -683,14 +683,14 @@
         const slice = list.slice(0, Math.min(limit, 4));
 
         wlMount.innerHTML = slice.map(s => `
-            <div style="display: grid; grid-template-columns: 2.2fr 1.3fr 1.3fr 1.2fr; align-items: center; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 7px 10px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 12.5px; font-weight: 800; color: #ffffff;">${cleanSymbol(s.symbol)}</span>
-                    <span style="font-size: 9px; font-weight: 700; background: #1e3a8a; color: #93c5fd; padding: 1px 5px; border-radius: 4px;">${s.exchange || 'NSE'}</span>
+            <div class="notif-watchlist-grid-row">
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                    <span style="font-size: 12.5px; font-weight: 800; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cleanSymbol(s.symbol)}</span>
+                    <span style="font-size: 9px; font-weight: 700; background: #1e3a8a; color: #93c5fd; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;">${s.exchange || 'NSE'}</span>
                 </div>
-                <div style="text-align: right; font-size: 12px; font-weight: 700; color: #f1f5f9;">${s.ltp}</div>
-                <div style="text-align: right; font-size: 11.5px; font-weight: 700; color: #f1f5f9;">${s.change_val}</div>
-                <div style="text-align: right; font-size: 11.5px; font-weight: 800; color: #10b981;">${s.change_pct}</div>
+                <div style="text-align: right; font-size: 12px; font-weight: 700; color: #f1f5f9; white-space: nowrap;">${s.ltp}</div>
+                <div style="text-align: right; font-size: 11.5px; font-weight: 700; color: #f1f5f9; white-space: nowrap;">${s.change_val}</div>
+                <div style="text-align: right; font-size: 11.5px; font-weight: 800; color: #10b981; white-space: nowrap;">${s.change_pct}</div>
             </div>
         `).join('');
     }
@@ -980,7 +980,7 @@
                             <td style="padding: 10px 12px; white-space: nowrap; font-family: monospace; font-size: 11.5px;">${formatNotifDateTime(item.timestamp_display || item.timestamp)}</td>
                             <td style="padding: 10px 12px; font-weight: 600;">${item.type || 'General'}</td>
                             <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${item.title || '-'}</td>
-                            <td style="padding: 10px 12px; color: var(--text-secondary); max-width: 320px; white-space: pre-wrap; font-size: 11.5px;">${item.body || '-'}</td>
+                            <td style="padding: 10px 12px; color: var(--text-secondary); max-width: 300px; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 11.5px;">${item.body || '-'}</td>
                             <td style="padding: 10px 12px; text-align: center; font-weight: 700;">${item.recipient_count || 0}</td>
                             <td style="padding: 10px 12px; text-align: center;">
                                 <span class="badge" style="padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; ${badgeStyle}">
