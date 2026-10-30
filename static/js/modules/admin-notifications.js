@@ -168,6 +168,11 @@
                 if (s1) s1.value = r.silver_1g;
                 if (s8) s8.value = r.silver_8g;
 
+                const updatedVal = document.getElementById('gold-last-updated-val');
+                if (updatedVal && r.updated_at) {
+                    updatedVal.innerText = `${r.updated_at} (IST)`;
+                }
+
                 window.updateGoldRatePreview();
                 if (badge) {
                     badge.innerText = '🟢 Live Market Synced';
@@ -177,6 +182,8 @@
         } catch (err) {
             console.warn('[Admin] Live bullion fetch failed:', err);
             if (badge) badge.innerText = '⚠️ Offline Benchmark';
+            const updatedVal = document.getElementById('gold-last-updated-val');
+            if (updatedVal) updatedVal.innerText = 'Offline Market Benchmark';
         }
     };
 
@@ -487,6 +494,13 @@
             const pLoserSym = document.getElementById('preview-perf-loser-sym');
             const pLoserPct = document.getElementById('preview-perf-loser-pct');
             const previewLink = document.getElementById('btn-preview-perf-img');
+            const eodUpdatedVal = document.getElementById('eod-last-updated-val');
+
+            if (eodUpdatedVal) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                eodUpdatedVal.innerText = `Today ${timeStr} (IST)`;
+            }
 
             if (perfEl) {
                 perfEl.innerText = topUser.net_return_pct;
