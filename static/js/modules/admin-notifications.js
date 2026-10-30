@@ -402,16 +402,22 @@
             const data = await res.json();
             if (data.success && data.users && data.users.length > 0) {
                 const u = data.users[0];
-                document.getElementById('input-perf-val').value = u.net_return_pct;
-                document.getElementById('input-perf-gainer-sym').value = u.top_gainer_symbol;
-                document.getElementById('input-perf-gainer-chg').value = u.top_gainer_change;
-                document.getElementById('input-perf-loser-sym').value = u.top_loser_symbol;
-                document.getElementById('input-perf-loser-chg').value = u.top_loser_change;
-                window.updatePortfolioPerfPreview();
-                alert(`✅ Calculated live from ${u.username}'s portfolio:\n• Return: ${u.net_return_pct}\n• Top Gainer: ${u.top_gainer_symbol} (${u.top_gainer_change})\n• Top Loser: ${u.top_loser_symbol} (${u.top_loser_change})`);
+                const perfEl = document.getElementById('preview-perf-val');
+                const pGainerSym = document.getElementById('preview-perf-gainer-sym');
+                const pGainerPct = document.getElementById('preview-perf-gainer-pct');
+                const pLoserSym = document.getElementById('preview-perf-loser-sym');
+                const pLoserPct = document.getElementById('preview-perf-loser-pct');
+                if (perfEl) {
+                    perfEl.innerText = u.net_return_pct;
+                    perfEl.style.color = String(u.net_return_pct).startsWith('-') ? '#ef4444' : '#10b981';
+                }
+                if (pGainerSym) pGainerSym.innerText = u.top_gainer_symbol;
+                if (pGainerPct) pGainerPct.innerText = u.top_gainer_change;
+                if (pLoserSym) pLoserSym.innerText = u.top_loser_symbol;
+                if (pLoserPct) pLoserPct.innerText = u.top_loser_change;
             }
         } catch (e) {
-            window.updatePortfolioPerfPreview();
+            console.warn('[Admin] autoCalculateFromPortfolios error:', e);
         }
     };
 
@@ -471,6 +477,27 @@
             if (!data.success || !data.users || data.users.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: var(--text-secondary);">No user accounts found.</td></tr>';
                 return;
+            }
+
+            // Sync the preview card banner with top user's real database portfolio
+            const topUser = data.users[0];
+            const perfEl = document.getElementById('preview-perf-val');
+            const pGainerSym = document.getElementById('preview-perf-gainer-sym');
+            const pGainerPct = document.getElementById('preview-perf-gainer-pct');
+            const pLoserSym = document.getElementById('preview-perf-loser-sym');
+            const pLoserPct = document.getElementById('preview-perf-loser-pct');
+            const previewLink = document.getElementById('btn-preview-perf-img');
+
+            if (perfEl) {
+                perfEl.innerText = topUser.net_return_pct;
+                perfEl.style.color = String(topUser.net_return_pct).startsWith('-') ? '#ef4444' : '#10b981';
+            }
+            if (pGainerSym) pGainerSym.innerText = topUser.top_gainer_symbol;
+            if (pGainerPct) pGainerPct.innerText = topUser.top_gainer_change;
+            if (pLoserSym) pLoserSym.innerText = topUser.top_loser_symbol;
+            if (pLoserPct) pLoserPct.innerText = topUser.top_loser_change;
+            if (previewLink) {
+                previewLink.href = `/api/notifications/render-portfolio-card.png?perf=${encodeURIComponent(topUser.net_return_pct)}&top_gainer=${encodeURIComponent(topUser.top_gainer_symbol)}&top_gainer_pct=${encodeURIComponent(topUser.top_gainer_change)}&top_loser=${encodeURIComponent(topUser.top_loser_symbol)}&top_loser_pct=${encodeURIComponent(topUser.top_loser_change)}&username=${encodeURIComponent(topUser.username)}&t=${Date.now()}`;
             }
 
             tbody.innerHTML = data.users.map((u) => {
