@@ -735,7 +735,7 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                         subscription_info=raw_sub,
                         data=wp_payload,
                         vapid_private_key=priv_key,
-                        vapid_claims={"sub": "mailto:admin@capitaldesk.local"},
+                        vapid_claims={"sub": "mailto:admin@capitaldesk.app"},
                         ttl=86400,
                         headers={
                             "Urgency": "high",
@@ -799,7 +799,8 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                     notification=messaging.AndroidNotification(
                         priority="max",
                         default_sound=True,
-                        default_vibrate_timings=True
+                        default_vibrate_timings=True,
+                        visibility="public"
                     )
                 )
 

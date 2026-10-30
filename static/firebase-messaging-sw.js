@@ -59,15 +59,31 @@ self.addEventListener('push', (event) => {
             timestamp: Date.now()
         },
         requireInteraction: false,
-        vibrate: [200, 100, 200],
+        vibrate: [250, 100, 250, 100, 250],
+        silent: false,
         actions: [
             { action: 'open', title: 'Open Capital Desk' }
         ]
     };
 
-    event.waitUntil(
-        self.registration.showNotification(title, notificationOptions)
-    );
+    // Resilient Dual-Stage Dispatcher:
+    // Try rich options first (with image & actions). If locked phone or browser rejects rich layout,
+    // seamlessly fall back to safe core options so the alert is GUARANTEED to appear on lock screen.
+    const showPromise = self.registration.showNotification(title, notificationOptions)
+        .catch((err) => {
+            console.warn('[SW] Rich notification failed (phone locked or asset unsupported), retrying with safe core options:', err);
+            return self.registration.showNotification(title, {
+                body: body,
+                icon: icon || '/static/favicon-192.png',
+                badge: badge || '/static/favicon-32.png',
+                tag: notificationOptions.tag,
+                renotify: true,
+                vibrate: [250, 100, 250],
+                data: notificationOptions.data
+            });
+        });
+
+    event.waitUntil(showPromise);
 });
 
 // 2. Notification Click Handling (Focus Existing or Open New Window)
