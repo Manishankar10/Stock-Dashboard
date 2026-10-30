@@ -3300,6 +3300,74 @@
 }
 
 
+/* Push Notification Button Spinner & Loading States */
+.cd-push-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: cdPushSpin 0.75s linear infinite;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+.cd-push-spinner-sm {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+}
+
+.cd-push-spinner-blue {
+    border-color: rgba(59, 130, 246, 0.25);
+    border-top-color: #3b82f6;
+}
+
+.cd-push-spinner-white {
+    border-color: rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+}
+
+.cd-push-spinner-lg {
+    width: 20px;
+    height: 20px;
+    border-width: 2.5px;
+    border-color: rgba(59, 130, 246, 0.25);
+    border-top-color: #3b82f6;
+}
+
+@keyframes cdPushSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.cd-push-toggle-btn.is-loading,
+#insights-bullion-notif-btn.is-loading,
+#modal-push-toggle-btn.is-loading {
+    cursor: wait !important;
+    pointer-events: none !important;
+    opacity: 0.9 !important;
+}
+
+.modal-push-banner.is-loading {
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    background: linear-gradient(145deg, rgba(59, 130, 246, 0.09) 0%, rgba(15, 23, 42, 0.85) 100%) !important;
+    box-shadow: 0 4px 22px -2px rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-theme="light"] .modal-push-banner.is-loading {
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    background: linear-gradient(145deg, rgba(59, 130, 246, 0.08) 0%, #eff6ff 100%) !important;
+    box-shadow: 0 4px 20px -2px rgba(59, 130, 246, 0.15) !important;
+}
+
+.modal-push-banner.is-loading .modal-push-bell-box {
+    background: rgba(59, 130, 246, 0.18) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
 /* Floating In-App PWA Push Notification Permission Prompt */
 .cd-pwa-push-prompt {
     position: fixed;

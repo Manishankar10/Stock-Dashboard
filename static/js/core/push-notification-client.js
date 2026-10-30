@@ -24,6 +24,7 @@
         config: null,
         isSubscribed: false,
         currentToken: null,
+        isLoading: false,
 
         loadFirebaseCompat: function () {
             if (typeof firebase !== 'undefined' && firebase.messaging) {
@@ -54,6 +55,62 @@
         getPermission: function () {
             if (!('Notification' in window)) return 'unsupported';
             return Notification.permission;
+        },
+
+        setLoadingState: function (loading, isActivating = true) {
+            this.isLoading = !!loading;
+
+            const btns = document.querySelectorAll('.cd-push-toggle-btn');
+            btns.forEach((btn) => {
+                if (loading) {
+                    btn.disabled = true;
+                    btn.classList.add('is-loading');
+                    const isBullionBtn = btn.id === 'insights-bullion-notif-btn' || btn.classList.contains('cd-bullion-push-btn');
+                    if (isBullionBtn) {
+                        btn.style.background = 'rgba(59, 130, 246, 0.12)';
+                        btn.style.color = '#3b82f6';
+                        btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                        const txt = isActivating ? 'Activating Bullion Alerts...' : 'Disabling Bullion Alerts...';
+                        btn.innerHTML = `<span class="cd-push-spinner cd-push-spinner-sm cd-push-spinner-blue"></span> <span class="push-btn-text">${txt}</span>`;
+                    } else {
+                        btn.style.background = '#2563eb';
+                        btn.style.color = '#ffffff';
+                        btn.style.borderColor = '#2563eb';
+                        const txt = isActivating ? 'Activating Push Alerts...' : 'Disabling Push Alerts...';
+                        btn.innerHTML = `<span class="cd-push-spinner cd-push-spinner-white"></span> <span class="push-btn-text">${txt}</span>`;
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('is-loading');
+                }
+            });
+
+            const bellBox = document.getElementById('modal-push-bell-box');
+            const desc = document.getElementById('modal-push-desc');
+            const banner = document.getElementById('modal-push-banner');
+
+            if (loading) {
+                if (bellBox) {
+                    bellBox.innerHTML = '<span class="cd-push-spinner cd-push-spinner-lg"></span>';
+                }
+                if (desc) {
+                    const txt = isActivating
+                        ? '⏳ Activating: Establishing push channel & registering device...'
+                        : '⏳ Updating: Unregistering device push subscription...';
+                    desc.innerHTML = `<span style="color: #3b82f6; font-weight: 600;">${txt}</span>`;
+                }
+                if (banner) {
+                    banner.classList.add('is-loading');
+                }
+            } else {
+                if (banner) {
+                    banner.classList.remove('is-loading');
+                }
+                if (bellBox) {
+                    bellBox.innerHTML = '🔔';
+                }
+                this.updateToggleUi(this.isSubscribed);
+            }
         },
 
         cleanupRogueRegistrations: async function () {
@@ -135,7 +192,7 @@
         },
 
         checkCurrentSubscription: async function () {
-            if (!this.isSupported()) return;
+            if (!this.isSupported() || this.isLoading) return;
 
             try {
                 if (Notification.permission === 'granted') {
@@ -182,12 +239,16 @@
                 return { success: false, error: 'iOS requires Home Screen installation' };
             }
 
+            if (!silent) {
+                this.setLoadingState(true, true);
+            }
+
             try {
                 // Request Browser Notification Permission
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
                     if (!silent) alert('Notification permission was blocked or dismissed. Please allow notifications in your browser address bar settings.');
-                    this.updateToggleUi(false);
+                    this.isSubscribed = false;
                     return { success: false, error: 'Permission denied' };
                 }
 
@@ -203,7 +264,7 @@
                 if (!vapidKey) {
                     const errMsg = 'Web Push VAPID Key is not configured yet. Please configure it in the Admin Panel (Notifications tab) first.';
                     if (!silent) alert(errMsg);
-                    this.updateToggleUi(false);
+                    this.isSubscribed = false;
                     return { success: false, error: errMsg };
                 }
 
@@ -304,7 +365,6 @@
                 if (data.success) {
                     this.isSubscribed = true;
                     this.currentToken = tokenString;
-                    this.updateToggleUi(true);
 
                     // Dismiss any PWA prompt banner
                     const promptBanner = document.getElementById('cd-pwa-push-prompt-banner');
@@ -322,8 +382,8 @@
                     }
                     return { success: true };
                 } else {
+                    this.isSubscribed = false;
                     const errMsg = data.error || 'Server rejected subscription';
-                    this.updateToggleUi(false);
                     if (!silent) {
                         if (resp.status === 401 || errMsg.toLowerCase().includes('log in') || errMsg.toLowerCase().includes('unregistered')) {
                             if (typeof window.showToast === 'function') {
@@ -342,16 +402,23 @@
                     return { success: false, error: errMsg };
                 }
             } catch (err) {
+                this.isSubscribed = false;
                 console.error('[Push] Subscription failed:', err);
-                this.updateToggleUi(false);
                 if (!silent) alert('Could not enable notifications: ' + err.message);
                 return { success: false, error: err.message };
+            } finally {
+                if (!silent) {
+                    this.setLoadingState(false);
+                } else {
+                    this.updateToggleUi(this.isSubscribed);
+                }
             }
         },
 
         unsubscribe: async function () {
-            if (!this.isSupported()) return;
+            if (!this.isSupported() || this.isLoading) return;
 
+            this.setLoadingState(true, false);
             try {
                 const tokensToUnregister = [];
                 if (this.currentToken) {
@@ -380,7 +447,6 @@
 
                 this.isSubscribed = false;
                 this.currentToken = null;
-                this.updateToggleUi(false);
 
                 if (typeof window.showToast === 'function') {
                     window.showToast('Push notifications disabled.', 'info');
@@ -391,18 +457,23 @@
             } catch (err) {
                 console.error('[Push] Unsubscribe error:', err);
                 return { success: false, error: err.message };
+            } finally {
+                this.setLoadingState(false);
             }
         },
 
         toggle: async function (topics) {
+            if (this.isLoading) return;
             if (this.isSubscribed) {
                 return await this.unsubscribe();
             } else {
-                return await this.subscribe(topics);
+                return await this.subscribe(topics, false);
             }
         },
 
         updateToggleUi: function (active) {
+            if (this.isLoading) return;
+
             const btns = document.querySelectorAll('.cd-push-toggle-btn');
             btns.forEach((btn) => {
                 const isBullionBtn = btn.id === 'insights-bullion-notif-btn' || btn.classList.contains('cd-bullion-push-btn');
@@ -440,6 +511,11 @@
                     }
                 }
             });
+
+            const bellBox = document.getElementById('modal-push-bell-box');
+            if (bellBox) {
+                bellBox.innerHTML = '🔔';
+            }
 
             const banner = document.getElementById('modal-push-banner');
             if (banner) {
