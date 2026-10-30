@@ -192,7 +192,7 @@ def render_portfolio_card_endpoint():
 def admin_notification_stats():
     """Returns detailed notification statistics, subscriptions, and audit trail for Admin Panel."""
     subs = load_subscriptions()
-    history = get_notification_history(limit=50)
+    history = get_notification_history(limit=500)
     config = get_fcm_config()
 
     total_subscribers = len(subs)

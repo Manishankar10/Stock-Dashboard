@@ -712,33 +712,109 @@
                 elLastSent.innerText = `Last sent: ${history[0].timestamp}`;
             }
 
-            const tbody = document.getElementById('notif-history-table-body');
-            if (tbody) {
-                if (history.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: var(--text-secondary);">No notification dispatches recorded yet. Use the buttons above to test.</td></tr>';
-                } else {
-                    tbody.innerHTML = history.map((item) => {
-                        const isSuccess = String(item.status).toLowerCase().includes('delivered') || String(item.status).toLowerCase().includes('sent');
-                        const badgeStyle = isSuccess ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid #ca8a04;';
-                        return `
-                            <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 10px 12px; white-space: nowrap; font-family: monospace; font-size: 11.5px;">${item.timestamp || '-'}</td>
-                                <td style="padding: 10px 12px; font-weight: 600;">${item.type || 'General'}</td>
-                                <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${item.title || '-'}</td>
-                                <td style="padding: 10px 12px; color: var(--text-secondary); max-width: 320px; white-space: pre-wrap; font-size: 11.5px;">${item.body || '-'}</td>
-                                <td style="padding: 10px 12px; text-align: center; font-weight: 700;">${item.recipient_count || 0}</td>
-                                <td style="padding: 10px 12px; text-align: center;">
-                                    <span class="badge" style="padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; ${badgeStyle}">
-                                        ${item.status || 'Logged'}
-                                    </span>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
-                }
-            }
+            _notifHistoryAll = history;
+            window.renderNotifHistoryPage(_notifCurrentPage);
         } catch (err) {
             console.error('[Admin] Error loading notification stats:', err);
+        }
+    };
+
+    // 9. Audit Trail Client-Side Pagination Controller (20 items default)
+    let _notifHistoryAll = [];
+    let _notifCurrentPage = 1;
+    let _notifPageSize = 20;
+
+    window.renderNotifHistoryPage = function (page = 1) {
+        const totalItems = _notifHistoryAll.length;
+        const totalPages = Math.ceil(totalItems / _notifPageSize) || 1;
+        _notifCurrentPage = Math.max(1, Math.min(page, totalPages));
+
+        const tbody = document.getElementById('notif-history-table-body');
+        if (tbody) {
+            if (totalItems === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: var(--text-secondary);">No notification dispatches recorded yet. Use the buttons above to test.</td></tr>';
+            } else {
+                const startIndex = (_notifCurrentPage - 1) * _notifPageSize;
+                const endIndex = Math.min(startIndex + _notifPageSize, totalItems);
+                const pageItems = _notifHistoryAll.slice(startIndex, endIndex);
+
+                tbody.innerHTML = pageItems.map((item) => {
+                    const isSuccess = String(item.status).toLowerCase().includes('delivered') || String(item.status).toLowerCase().includes('sent');
+                    const badgeStyle = isSuccess ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid #ca8a04;';
+                    return `
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 10px 12px; white-space: nowrap; font-family: monospace; font-size: 11.5px;">${item.timestamp || '-'}</td>
+                            <td style="padding: 10px 12px; font-weight: 600;">${item.type || 'General'}</td>
+                            <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${item.title || '-'}</td>
+                            <td style="padding: 10px 12px; color: var(--text-secondary); max-width: 320px; white-space: pre-wrap; font-size: 11.5px;">${item.body || '-'}</td>
+                            <td style="padding: 10px 12px; text-align: center; font-weight: 700;">${item.recipient_count || 0}</td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span class="badge" style="padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; ${badgeStyle}">
+                                    ${item.status || 'Logged'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Update pagination bar elements
+        const infoEl = document.getElementById('notif-history-pagination-info');
+        const pageIndEl = document.getElementById('notif-history-page-indicator');
+        const prevBtn = document.getElementById('btn-notif-prev');
+        const nextBtn = document.getElementById('btn-notif-next');
+        const sizeSelect = document.getElementById('notif-history-page-size');
+
+        if (sizeSelect && sizeSelect.value !== String(_notifPageSize)) {
+            sizeSelect.value = String(_notifPageSize);
+        }
+
+        if (infoEl) {
+            if (totalItems === 0) {
+                infoEl.innerText = 'Showing 0–0 of 0';
+            } else {
+                const start = (_notifCurrentPage - 1) * _notifPageSize + 1;
+                const end = Math.min(_notifCurrentPage * _notifPageSize, totalItems);
+                infoEl.innerText = `Showing ${start}–${end} of ${totalItems}`;
+            }
+        }
+
+        if (pageIndEl) {
+            pageIndEl.innerText = `Page ${_notifCurrentPage} of ${totalPages}`;
+        }
+
+        if (prevBtn) {
+            const disabled = _notifCurrentPage <= 1;
+            prevBtn.disabled = disabled;
+            prevBtn.style.opacity = disabled ? '0.5' : '1';
+            prevBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+        }
+
+        if (nextBtn) {
+            const disabled = _notifCurrentPage >= totalPages;
+            nextBtn.disabled = disabled;
+            nextBtn.style.opacity = disabled ? '0.5' : '1';
+            nextBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+        }
+    };
+
+    window.changeNotifHistoryPageSize = function (newSize) {
+        _notifPageSize = parseInt(newSize, 10) || 20;
+        _notifCurrentPage = 1;
+        window.renderNotifHistoryPage(1);
+    };
+
+    window.prevNotifHistoryPage = function () {
+        if (_notifCurrentPage > 1) {
+            window.renderNotifHistoryPage(_notifCurrentPage - 1);
+        }
+    };
+
+    window.nextNotifHistoryPage = function () {
+        const totalPages = Math.ceil(_notifHistoryAll.length / _notifPageSize) || 1;
+        if (_notifCurrentPage < totalPages) {
+            window.renderNotifHistoryPage(_notifCurrentPage + 1);
         }
     };
 })();
