@@ -358,19 +358,46 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                 "status": "No Active Subscribers"
             }
 
-        # Build WebpushConfig
+        # Helper to resolve URLs to valid https:// required by WebpushFCMOptions
+        def _resolve_https(url_str):
+            if not url_str or not isinstance(url_str, str):
+                return None
+            url_str = url_str.strip()
+            if url_str.startswith("https://"):
+                return url_str
+            if url_str.startswith("http://"):
+                return "https://" + url_str[7:]
+            try:
+                from flask import has_request_context, request
+                if has_request_context() and request and request.host:
+                    path = url_str if url_str.startswith("/") else f"/{url_str}"
+                    return f"https://{request.host}{path}"
+            except Exception:
+                pass
+            return None
+
+        # Build WebpushConfig with valid https:// link or None (never relative '/')
+        raw_link = payload_data.get("url", "/")
+        https_link = _resolve_https(raw_link)
+
+        fcm_options = None
+        if https_link and https_link.startswith("https://"):
+            fcm_options = messaging.WebpushFCMOptions(link=https_link)
+
+        full_icon = _resolve_https(icon_url) or icon_url
+        full_badge = _resolve_https("/static/favicon-32.png") or "/static/favicon-32.png"
+        full_image = _resolve_https(image_url) if image_url else None
+
         webpush_notification = messaging.WebpushNotification(
             title=title,
             body=body,
-            icon=icon_url,
-            badge="/static/favicon-32.png",
-            image=image_url if image_url else None
+            icon=full_icon,
+            badge=full_badge,
+            image=full_image
         )
         webpush_config = messaging.WebpushConfig(
             notification=webpush_notification,
-            fcm_options=messaging.WebpushFCMOptions(
-                link=payload_data.get("url", "/")
-            ),
+            fcm_options=fcm_options,
             data={str(k): str(v) for k, v in payload_data.items()}
         )
 
@@ -384,7 +411,7 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
             chunk = tokens[i:i + chunk_size]
             multicast = messaging.MulticastMessage(
                 tokens=chunk,
-                notification=messaging.Notification(title=title, body=body, image=image_url),
+                notification=messaging.Notification(title=title, body=body, image=full_image),
                 webpush=webpush_config,
                 data={str(k): str(v) for k, v in payload_data.items()}
             )
