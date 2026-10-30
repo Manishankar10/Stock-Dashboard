@@ -714,6 +714,28 @@
             }
 
             /* Tab 5: Push Notifications on Mobile */
+            .notif-inputs-2col {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 8px !important;
+            }
+            .notif-inputs-2col label {
+                font-size: 11px !important;
+                line-height: 1.2 !important;
+                margin-bottom: 3px !important;
+                display: block !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+            .notif-inputs-2col input {
+                padding: 7px 8px !important;
+                font-size: 12.5px !important;
+                min-width: 0 !important;
+            }
+            .notif-gold-subcards-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 8px !important;
+            }
             #tab-notifications {
                 width: 100% !important;
                 max-width: 100% !important;
@@ -787,12 +809,29 @@
                 gap: 6px !important;
             }
             .notif-inputs-2col {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                 gap: 8px !important;
             }
+            .notif-inputs-2col label {
+                font-size: 11px !important;
+                line-height: 1.2 !important;
+                margin-bottom: 3px !important;
+                display: block !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+            .notif-inputs-2col input {
+                padding: 7px 8px !important;
+                font-size: 12.5px !important;
+                min-width: 0 !important;
+            }
             .notif-gold-subcards-grid {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                 gap: 8px !important;
+            }
+            .notif-gold-subcards-grid .price-val {
+                font-size: 16px !important;
             }
             .metric-card {
                 padding: 8px 10px !important;
@@ -2225,12 +2264,12 @@
                             <div class="notif-gold-subcards-grid">
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">1 GRAM</div>
-                                    <div id="preview-gold-1g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹13,040</div>
+                                    <div id="preview-gold-1g" class="price-val" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹13,040</div>
                                     <div style="font-size: 9.5px; color: #64748b;">Jewellery Rate</div>
                                 </div>
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">8 GM (1 SOVEREIGN)</div>
-                                    <div id="preview-gold-8g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹1,04,320</div>
+                                    <div id="preview-gold-8g" class="price-val" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹1,04,320</div>
                                     <div style="font-size: 9.5px; color: #64748b;">1 Pavan / Sovereign</div>
                                 </div>
                             </div>
@@ -2245,12 +2284,12 @@
                             <div class="notif-gold-subcards-grid">
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">1 GRAM</div>
-                                    <div id="preview-silver-1g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹210.00</div>
+                                    <div id="preview-silver-1g" class="price-val" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹210.00</div>
                                     <div style="font-size: 9.5px; color: #64748b;">Retail Rate</div>
                                 </div>
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">8 GRAMS</div>
-                                    <div id="preview-silver-8g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹1,680</div>
+                                    <div id="preview-silver-8g" class="price-val" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹1,680</div>
                                     <div style="font-size: 9.5px; color: #64748b;">Coin Rate</div>
                                 </div>
                             </div>
