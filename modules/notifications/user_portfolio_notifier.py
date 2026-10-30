@@ -141,11 +141,14 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
     os.makedirs(gen_dir, exist_ok=True)
 
     for uname in users.keys():
-        perf = calculate_user_portfolio_performance(uname)
         tokens = user_tokens.get(uname, [])
 
-        # If user has no holdings and no tokens, skip
-        if not perf["has_holdings"] and not tokens:
+        # Strictly ignore users with no registered devices: do NOT calculate, do NOT generate card, do NOT log
+        if not tokens:
+            continue
+
+        perf = calculate_user_portfolio_performance(uname)
+        if not perf["has_holdings"]:
             continue
 
         # Personalized card generation
@@ -174,40 +177,26 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
         title = f"📈 {uname.capitalize()}'s EOD Portfolio: {perf_val}"
         body = f"Today's Net Return: {perf_val} • Top Gainer: {g_sym} ({g_chg}) • Top Loser: {l_sym} ({l_chg})"
 
-        # If user has subscribed tokens, dispatch targeted
-        if tokens:
-            push_res = send_web_push(
-                title=title,
-                body=body,
-                image_url=image_url,
-                data_payload={
-                    "url": "/portfolios",
-                    "type": "portfolio_performance",
-                    "username": uname,
-                    "performance": perf_val,
-                    "top_gainer": g_sym,
-                    "top_loser": l_sym
-                },
-                target_topic=None,
-                specific_tokens=tokens
-            )
-            dispatched_count = push_res.get("recipient_count", 0)
-            if push_res.get("success"):
-                status_text = push_res.get("status", "Sent")
-            else:
-                status_text = f"Failed ({push_res.get('error', push_res.get('message', 'Rejected by FCM'))[:80]})" 
+        push_res = send_web_push(
+            title=title,
+            body=body,
+            image_url=image_url,
+            data_payload={
+                "url": "/portfolios",
+                "type": "portfolio_performance",
+                "username": uname,
+                "performance": perf_val,
+                "top_gainer": g_sym,
+                "top_loser": l_sym
+            },
+            target_topic=None,
+            specific_tokens=tokens
+        )
+        dispatched_count = push_res.get("recipient_count", 0)
+        if push_res.get("success"):
+            status_text = push_res.get("status", "Sent")
         else:
-            # Record audit log that card was prepared but user has not enabled push yet
-            dispatched_count = 0
-            status_text = "Calculated (No registered device)"
-            log_notification_event(
-                event_type="portfolio_performance",
-                title=title,
-                body=body,
-                status=status_text,
-                recipient_count=0,
-                metadata={"username": uname, "image": image_url}
-            )
+            status_text = f"Failed ({push_res.get('error', push_res.get('message', 'Rejected by FCM'))[:80]})"
 
         total_dispatched += dispatched_count
         results.append({
@@ -221,6 +210,15 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
             "image_url": image_url
         })
 
+    if not results:
+        return {
+            "success": False,
+            "message": "No users with active registered devices found. No calculation or audit logs recorded.",
+            "total_users_processed": 0,
+            "total_devices_targeted": 0,
+            "user_breakdown": []
+        }
+
     return {
         "success": True,
         "total_users_processed": len(users),
@@ -231,11 +229,22 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
 
 def send_portfolio_digest_to_user(username, base_url=""):
     """Dispatches a personalized portfolio digest specifically to a single user."""
-    from modules.notifications.card_generator import generate_portfolio_card
-    from modules.notifications.fcm_service import get_user_tokens, send_web_push, log_notification_event
-    from modules.common.data_paths import BASE_DATA_DIR
+    from modules.notifications.fcm_service import get_user_tokens
 
     tokens = get_user_tokens(username)
+    if not tokens:
+        return {
+            "success": False,
+            "message": f"User '{username}' has 0 active registered devices. Enable notifications on the user device first.",
+            "recipient_count": 0,
+            "username": username,
+            "status": "No Registered Device"
+        }
+
+    from modules.notifications.card_generator import generate_portfolio_card
+    from modules.notifications.fcm_service import send_web_push
+    from modules.common.data_paths import BASE_DATA_DIR
+
     perf = calculate_user_portfolio_performance(username)
 
     perf_val = perf["net_return_pct"]
@@ -263,24 +272,6 @@ def send_portfolio_digest_to_user(username, base_url=""):
     image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
     title = f"📈 {username.capitalize()}'s EOD Portfolio: {perf_val}"
     body = f"Today's Net Return: {perf_val} • Top Gainer: {g_sym} ({g_chg}) • Top Loser: {l_sym} ({l_chg})"
-
-    if not tokens:
-        status_text = "Calculated (No registered device)"
-        log_notification_event(
-            event_type="portfolio_performance",
-            title=title,
-            body=body,
-            status=status_text,
-            recipient_count=0,
-            metadata={"username": username, "image": image_url}
-        )
-        return {
-            "success": False,
-            "message": f"User '{username}' has no active registered devices. Please ask '{username}' to enable push notifications first.",
-            "recipient_count": 0,
-            "username": username,
-            "status": status_text
-        }
 
     res = send_web_push(
         title=title,

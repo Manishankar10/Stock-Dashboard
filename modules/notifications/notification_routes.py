@@ -228,6 +228,16 @@ def admin_send_gold_notification():
                 "recipient_count": 0,
                 "target_username": target_user
             })
+    else:
+        active_tokens = get_active_tokens(topic="gold_silver_rates")
+        if not active_tokens:
+            return jsonify({
+                "success": False,
+                "message": "0 active subscribers found for Gold & Silver rates. No card calculated or logged.",
+                "recipient_count": 0,
+                "target_username": "all"
+            })
+        specific_tokens = active_tokens
 
     # If use_live requested or values not provided, dynamically fetch from market
     if data.get("use_live") or not data.get("gold_1g"):
@@ -300,43 +310,11 @@ def admin_send_sample_user():
 
     tokens = get_user_tokens(username)
     if not tokens:
-        # Pre-render the card anyway so the admin can preview it or simulate
-        gen_dir = os.path.join(current_app.root_path, "static", "notifications", "generated")
-        os.makedirs(gen_dir, exist_ok=True)
-        card_path = os.path.join(gen_dir, "gold_rates_latest.png")
-        live = fetch_live_bullion_rates(force_refresh=True)
-        generate_gold_silver_card(
-            gold_1g=live["gold_1g"],
-            gold_8g=live["gold_8g"],
-            silver_1g=live["silver_1g"],
-            silver_8g=live["silver_8g"],
-            output_path=card_path
-        )
-        base_url = request.url_root.rstrip("/")
-        image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
-        title = f"👑 Standard Gold (22K) & Ready Silver - Sample for {username.capitalize()}"
-        body = f"Gold 22K: ₹{live['gold_1g']}/g | ₹{live['gold_8g']}/8g\nSilver: ₹{live['silver_1g']}/g | ₹{live['silver_8g']}/8g (99.9% Fine)"
-
-        from modules.notifications.fcm_service import log_notification_event
-        log_notification_event(
-            event_type="gold_silver_rates",
-            title=title,
-            body=body,
-            status=f"Prepared (Awaiting {username}'s device)",
-            recipient_count=0,
-            metadata={"username": username, "image": image_url}
-        )
         return jsonify({
-            "success": True,
-            "simulated": True,
-            "message": f"Sample Gold Notification prepared & card rendered for '{username}'! However, '{username}' currently has 0 registered devices in database. Ask '{username}' to log in on their browser/phone and tap 'Enable Notifications' to receive it live.",
+            "success": False,
+            "message": f"User '{username}' has 0 active registered devices. Enable notifications on the user device first.",
             "recipient_count": 0,
-            "username": username,
-            "image_url": image_url,
-            "gold_1g": live["gold_1g"],
-            "gold_8g": live["gold_8g"],
-            "silver_1g": live["silver_1g"],
-            "silver_8g": live["silver_8g"]
+            "username": username
         })
 
     if notif_type == "gold":
@@ -397,25 +375,23 @@ def admin_send_welcome():
         body = f"Welcome to Capital Desk, {target_user.capitalize()}!! Best wishes on your financial journey. 🚀"
         specific_tokens = get_user_tokens(target_user)
         if not specific_tokens:
-            from modules.notifications.fcm_service import log_notification_event
-            log_notification_event(
-                event_type="welcome",
-                title=title,
-                body=body,
-                status=f"Prepared (Awaiting {target_user}'s device)",
-                recipient_count=0,
-                metadata={"username": target_user}
-            )
             return jsonify({
-                "success": True,
-                "simulated": True,
-                "message": f"Welcome Notification prepared for '{target_user}'! Best wishes message logged in audit trail. However, '{target_user}' currently has 0 registered devices in database. Ask '{target_user}' to log in on their browser/phone and tap 'Enable Notifications' to receive it live.",
+                "success": False,
+                "message": f"User '{target_user}' has 0 active registered devices. Enable notifications on the user device first.",
                 "recipient_count": 0,
                 "target_username": target_user
             })
     else:
         body = "Welcome to Capital Desk!! Best wishes on your financial journey. 🚀"
-        specific_tokens = None
+        active_tokens = get_active_tokens()
+        if not active_tokens:
+            return jsonify({
+                "success": False,
+                "message": "0 active registered devices found. Enable notifications on a client device first.",
+                "recipient_count": 0,
+                "target_username": "all"
+            })
+        specific_tokens = active_tokens
 
     result = send_web_push(
         title=title,

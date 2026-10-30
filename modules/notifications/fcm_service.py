@@ -531,16 +531,8 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
         payload_data["url"] = "/"
 
     if recipient_count == 0:
-        log_notification_event(
-            event_type=target_topic or "broadcast",
-            title=title,
-            body=body,
-            status="No Active Subscribers",
-            recipient_count=0,
-            metadata={"image": image_url}
-        )
         return {
-            "success": True,
+            "success": False,
             "message": "No registered Web/PWA devices found. Enable notifications on your client device to test.",
             "recipient_count": 0,
             "status": "No Active Subscribers"
