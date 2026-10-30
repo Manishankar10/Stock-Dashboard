@@ -334,7 +334,8 @@ def generate_watchlist_card(
     stocks=None,
     username="Sampath",
     date_str="Today",
-    output_path=None
+    output_path=None,
+    limit=5
 ):
     """
     Renders high-res 882x440 dark glassy card matching user's watchlist image format:
@@ -364,7 +365,25 @@ def generate_watchlist_card(
         if val_pct > 0.0:
             filtered_stocks.append(s)
 
-    width, height = 882, 440
+    try:
+        limit = int(limit or 5)
+    except Exception:
+        limit = 5
+    if limit < 1:
+        limit = 5
+
+    # Scale canvas height comfortably if limit > 5
+    row_count = min(len(filtered_stocks), limit)
+    tbl_y = 72
+    th_h = 42
+    if limit > 5:
+        row_h = 52
+        height = max(440, tbl_y + th_h + (max(row_count, 1) * row_h) + 24)
+    else:
+        height = 440
+        row_h = 60 if row_count <= 4 else (height - tbl_y - 22 - th_h) / max(limit, 1)
+
+    width = 882
     im = Image.new("RGBA", (width, height), (13, 20, 36, 255))
     draw = ImageDraw.Draw(im)
 
@@ -401,20 +420,19 @@ def generate_watchlist_card(
     # Header Row
     sec_y = 24
     draw.ellipse([30, sec_y + 5, 44, sec_y + 19], fill=color_green)
-    display_name = "Watchlist: Top 5 Gainers"
+    display_name = f"Watchlist: Top {limit} Gainers"
     draw.text((54, sec_y), display_name, font=font_title, fill=color_white)
 
-    # Right Badge: TOP 5 GAINERS
-    badge_text = "TOP 5 GAINERS"
+    # Right Badge: TOP _ GAINERS
+    badge_text = f"TOP {limit} GAINERS"
     badge_w = 150
     badge_h = 30
     badge_x = width - 30 - badge_w
     draw.rounded_rectangle([badge_x, sec_y - 2, badge_x + badge_w, sec_y + badge_h], radius=7, fill=(16, 45, 35, 255), outline=color_green, width=1)
     draw.text((badge_x + 18, sec_y + 4), badge_text, font=font_badge, fill=color_green)
 
-    # Inner Glassy Table Frame (Subtitle removed as requested)
+    # Inner Glassy Table Frame
     tbl_x = 30
-    tbl_y = sec_y + 48
     tbl_w = width - 60
     tbl_h = height - tbl_y - 22
 
@@ -448,14 +466,14 @@ def generate_watchlist_card(
 
     # Rows (up to 5)
     row_y = tbl_y + th_h
-    row_count = min(len(filtered_stocks), 5)
+    row_count = min(len(filtered_stocks), limit)
     row_h = 60 if row_count <= 4 else (tbl_h - th_h) / 5
 
     if not filtered_stocks:
         no_text = "No positive stock gainers found in watchlist today."
         draw.text((tbl_x + 180, row_y + 60), no_text, font=_get_font(18, bold=True), fill=color_muted)
     else:
-        for i, s in enumerate(filtered_stocks[:5]):
+        for i, s in enumerate(filtered_stocks[:limit]):
             cur_y = row_y + (i * row_h)
             cent_y = cur_y + (row_h / 2) - 12
 

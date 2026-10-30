@@ -611,10 +611,26 @@
         }
     };
 
-    // 6A. Send Watchlist Top 5 Gainers to All Users
+    // Helper: update button label & preview link when count changes
+    window.updateWatchlistBtnCount = function (val) {
+        let count = parseInt(val, 10);
+        if (isNaN(count) || count < 1) count = 5;
+        const btnNum = document.getElementById('watchlist-btn-count-num');
+        if (btnNum) btnNum.textContent = count;
+        const descNum = document.getElementById('watchlist-desc-count-num');
+        if (descNum) descNum.textContent = count;
+        const previewBtn = document.getElementById('btn-preview-watchlist-img');
+        if (previewBtn) {
+            previewBtn.href = `/api/notifications/render-watchlist-card.png?limit=${count}`;
+        }
+    };
+
+    // 6A. Send Watchlist Top N Gainers to All Users
     window.sendWatchlistGainersAllUsers = async function () {
         const btn = document.getElementById('btn-send-watchlist-all');
-        const originalText = btn ? btn.innerHTML : '⭐ Send Watchlist Top 5 Gainers to ALL Users (from DB)';
+        const countInput = document.getElementById('watchlist-gainers-count');
+        const limit = countInput ? (parseInt(countInput.value, 10) || 5) : 5;
+        const originalText = btn ? btn.innerHTML : `⭐ Send watchlist top ${limit} gainers to ALL users`;
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '⏳ Computing Watchlist Momentum & Dispatching...';
@@ -622,7 +638,9 @@
 
         try {
             const res = await fetch('/api/admin/notifications/send-watchlist-all-users', {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ limit: limit })
             });
             const data = await res.json();
             if (data.success) {
@@ -630,7 +648,7 @@
                 if (data.total_devices_targeted === 0) {
                     alert(`⚠️ No Push Devices Delivered:\n\n• Users Processed: ${data.total_users_processed}\n• Devices Delivered: 0\n\nBreakdown:\n${breakdown || 'No active devices registered'}`);
                 } else {
-                    alert(`✅ Watchlist Top Gainers Push Completed!\n\n• Users Processed: ${data.total_users_processed}\n• Devices Delivered: ${data.total_devices_targeted}\n\nBreakdown:\n${breakdown}`);
+                    alert(`✅ Watchlist Top ${limit} Gainers Push Completed!\n\n• Users Processed: ${data.total_users_processed}\n• Devices Delivered: ${data.total_devices_targeted}\n\nBreakdown:\n${breakdown}`);
                 }
                 await window.loadNotificationStats();
             } else {
@@ -646,9 +664,11 @@
         }
     };
 
-    // 6B. Send Sample Watchlist Top 5 Gainers to Specific User (e.g. Sampath)
+    // 6B. Send Sample Watchlist Top N Gainers to Specific User (e.g. Sampath)
     window.sendWatchlistGainersSampleUser = async function (username = 'sampath') {
         const btn = document.getElementById('btn-send-watchlist-sampath');
+        const countInput = document.getElementById('watchlist-gainers-count');
+        const limit = countInput ? (parseInt(countInput.value, 10) || 5) : 5;
         const originalText = btn ? btn.innerHTML : '👤 Sampath';
         if (btn) {
             btn.disabled = true;
@@ -659,7 +679,7 @@
             const res = await fetch('/api/admin/notifications/send-watchlist-sample-user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: username })
+                body: JSON.stringify({ username: username, limit: limit })
             });
             const data = await res.json();
             if (data.success) {

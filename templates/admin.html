@@ -2260,24 +2260,32 @@
                         Computes each user's unique daily return & top gainer/loser directly from their database holdings and sends personalized push alerts.
                     </p>
 
-                    <!-- Watchlist Top 5 Gainers Dispatcher Section -->
+                    <!-- Watchlist Top Gainers Dispatcher Section -->
                     <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border-color);">
-                        <div style="display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <!-- Dynamic Top Gainers Count Selector (Default: 5) -->
+                            <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 10px;" title="Set number of top positive gainers to send (Default: 5)">
+                                <label for="watchlist-gainers-count" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">Top:</label>
+                                <input type="number" id="watchlist-gainers-count" min="1" max="15" value="5" 
+                                    oninput="updateWatchlistBtnCount(this.value)" 
+                                    style="width: 46px; padding: 5px 6px; font-size: 13px; font-weight: 700; text-align: center; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);" title="Change top gainers count">
+                            </div>
+
                             <button class="btn" id="btn-send-watchlist-all" onclick="sendWatchlistGainersAllUsers()" 
                                 style="flex: 1; min-width: 250px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; font-weight: 700; padding: 11px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                ⭐ Send Watchlist Top 5 Gainers to ALL Users (from DB)
+                                ⭐ Send watchlist top <span id="watchlist-btn-count-num">5</span> gainers to ALL users
                             </button>
                             <button class="btn btn-secondary" id="btn-send-watchlist-sampath" onclick="sendWatchlistGainersSampleUser('sampath')" 
                                 style="padding: 11px 14px; color: #34d399; border-color: rgba(52, 211, 153, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample watchlist digest directly to Sampath">
                                 👤 Sampath
                             </button>
-                            <a id="btn-preview-watchlist-img" href="/api/notifications/render-watchlist-card.png" target="_blank" class="btn btn-secondary" 
+                            <a id="btn-preview-watchlist-img" href="/api/notifications/render-watchlist-card.png?limit=5" target="_blank" class="btn btn-secondary" 
                                 style="padding: 11px 14px; text-decoration: none; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" title="Open full-resolution generated Watchlist PNG banner">
                                 🖼️ Card Image
                             </a>
                         </div>
                         <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">
-                            Scans each user's watchlist from DB, filters out negative stocks, and delivers their Top 5 positive gainers in a glassy table card.
+                            Scans each user's watchlist from DB, filters out negative stocks, and delivers their Top <span id="watchlist-desc-count-num">5</span> positive gainers in a glassy table card.
                         </p>
                     </div>
                 </div>

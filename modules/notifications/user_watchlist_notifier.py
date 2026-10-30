@@ -85,10 +85,14 @@ def get_user_watchlist_top_gainers(username, limit=5):
     return stock_stats[:limit]
 
 
-def dispatch_unique_watchlist_notifications(base_url="", static_root=None):
+def dispatch_unique_watchlist_notifications(base_url="", static_root=None, limit=5):
     """
-    Dispatches personalized Top 5 Watchlist Gainers notifications to all verified users with active devices.
+    Dispatches personalized Top N Watchlist Gainers notifications to all verified users with active devices.
     """
+    try:
+        limit = int(limit or 5)
+    except Exception:
+        limit = 5
     from modules.common.data_paths import BASE_DATA_DIR
     if static_root is None:
         static_root = os.path.join(BASE_DATA_DIR, "static")
@@ -120,7 +124,7 @@ def dispatch_unique_watchlist_notifications(base_url="", static_root=None):
         if not tokens:
             continue
 
-        gainers = get_user_watchlist_top_gainers(uname, limit=5)
+        gainers = get_user_watchlist_top_gainers(uname, limit=limit)
 
         card_filename = f"watchlist_{uname}.png"
         card_disk_path = os.path.join(gen_dir, card_filename)
@@ -129,14 +133,15 @@ def dispatch_unique_watchlist_notifications(base_url="", static_root=None):
             stocks=gainers,
             username=uname,
             date_str=today_ist_str(),
-            output_path=card_disk_path
+            output_path=card_disk_path,
+            limit=limit
         )
 
         image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
 
         if gainers:
             gainers_str = ", ".join(f"{s['symbol']} ({s['change_pct']})" for s in gainers[:3])
-            title = f"⭐ {uname.capitalize()}'s Watchlist: Top 5 Gainers"
+            title = f"⭐ {uname.capitalize()}'s Watchlist: Top {limit} Gainers"
             body = f"Today's Top Momentum: {gainers_str}"
         else:
             title = f"⭐ {uname.capitalize()}'s Watchlist Momentum"
@@ -189,8 +194,12 @@ def dispatch_unique_watchlist_notifications(base_url="", static_root=None):
     }
 
 
-def send_watchlist_digest_to_user(username, base_url=""):
+def send_watchlist_digest_to_user(username, base_url="", limit=5):
     """Dispatches a personalized watchlist top gainers digest specifically to a single user."""
+    try:
+        limit = int(limit or 5)
+    except Exception:
+        limit = 5
     tokens = get_user_tokens(username)
     if not tokens:
         return {
@@ -205,7 +214,7 @@ def send_watchlist_digest_to_user(username, base_url=""):
     gen_dir = os.path.join(BASE_DATA_DIR, "static", "notifications", "generated")
     os.makedirs(gen_dir, exist_ok=True)
 
-    gainers = get_user_watchlist_top_gainers(username, limit=5)
+    gainers = get_user_watchlist_top_gainers(username, limit=limit)
     card_filename = f"watchlist_{username}.png"
     card_disk_path = os.path.join(gen_dir, card_filename)
 
@@ -213,14 +222,15 @@ def send_watchlist_digest_to_user(username, base_url=""):
         stocks=gainers,
         username=username,
         date_str=today_ist_str(),
-        output_path=card_disk_path
+        output_path=card_disk_path,
+        limit=limit
     )
 
     image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
 
     if gainers:
         gainers_str = ", ".join(f"{s['symbol']} ({s['change_pct']})" for s in gainers[:3])
-        title = f"⭐ {username.capitalize()}'s Watchlist: Top 5 Gainers"
+        title = f"⭐ {username.capitalize()}'s Watchlist: Top {limit} Gainers"
         body = f"Today's Top Momentum: {gainers_str}"
     else:
         title = f"⭐ {username.capitalize()}'s Watchlist Momentum"

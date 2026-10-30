@@ -211,12 +211,17 @@ def render_portfolio_card_endpoint():
 def render_watchlist_card_endpoint():
     """Renders the custom Watchlist Top Gainers card image dynamically."""
     uname = request.args.get("username", "") or session.get("username", "sampath")
-    gainers = get_user_watchlist_top_gainers(uname, limit=5)
+    try:
+        limit = int(request.args.get("limit", 5) or 5)
+    except Exception:
+        limit = 5
+    gainers = get_user_watchlist_top_gainers(uname, limit=limit)
 
     buf = generate_watchlist_card(
         stocks=gainers,
         username=uname,
-        date_str=today_ist_str()
+        date_str=today_ist_str(),
+        limit=limit
     )
     return send_file(
         buf,
@@ -505,7 +510,7 @@ def admin_users_portfolio_overview():
 @admin_required
 def admin_send_watchlist_all_users():
     """
-    DISPATCHES PERSONALIZED TOP 5 WATCHLIST GAINERS NOTIFICATIONS TO EVERY USER:
+    DISPATCHES PERSONALIZED TOP N WATCHLIST GAINERS NOTIFICATIONS TO EVERY USER:
     1. Reads each user's watchlist from DB.
     2. Fetches live market quotes.
     3. Strictly filters out negative stocks and sorts descending by change %.
@@ -514,20 +519,29 @@ def admin_send_watchlist_all_users():
     """
     base_url = request.url_root.rstrip("/")
     static_root = os.path.join(current_app.root_path, "static")
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    try:
+        limit = int(data.get("limit", 5) or 5)
+    except Exception:
+        limit = 5
 
-    result = dispatch_unique_watchlist_notifications(base_url=base_url, static_root=static_root)
+    result = dispatch_unique_watchlist_notifications(base_url=base_url, static_root=static_root, limit=limit)
     return jsonify(result)
 
 
 @notifications_bp.route("/api/admin/notifications/send-watchlist-sample-user", methods=["POST"])
 @admin_required
 def admin_send_watchlist_sample_user():
-    """Dispatches personalized Top 5 Watchlist Gainers specifically to a sample user (e.g. Sampath)."""
+    """Dispatches personalized Top N Watchlist Gainers specifically to a sample user (e.g. Sampath)."""
     data = request.get_json(silent=True) or request.form.to_dict() or {}
     username = data.get("username", "sampath").strip()
+    try:
+        limit = int(data.get("limit", 5) or 5)
+    except Exception:
+        limit = 5
     base_url = request.url_root.rstrip("/")
 
-    result = send_watchlist_digest_to_user(username=username, base_url=base_url)
+    result = send_watchlist_digest_to_user(username=username, base_url=base_url, limit=limit)
     return jsonify(result)
 
 
