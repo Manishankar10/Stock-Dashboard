@@ -3210,13 +3210,15 @@
     position: relative;
     background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
     border: 1px solid rgba(59, 130, 246, 0.28);
-    border-radius: 14px;
-    padding: 16px 18px;
+    border-radius: 12px;
+    padding: 10px 14px;
     margin-bottom: 16px;
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
     display: flex;
-    flex-direction: column;
-    gap: 14px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
     box-sizing: border-box;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -3241,21 +3243,22 @@
 
 .modal-push-content {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
 }
 
 .modal-push-bell-box {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
-    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(59, 130, 246, 0.14);
     border: 1px solid rgba(59, 130, 246, 0.28);
-    font-size: 19px;
+    font-size: 16px;
     line-height: 1;
     transition: all 0.3s ease;
     flex-shrink: 0;
@@ -3273,37 +3276,36 @@
 
 .modal-push-title {
     font-weight: 700;
-    font-size: 14px;
+    font-size: 13.5px;
     color: var(--text-primary);
     letter-spacing: 0.2px;
-    margin-bottom: 3px;
+    margin: 0;
+    white-space: nowrap;
 }
 
 .modal-push-desc {
-    font-size: 12px;
-    line-height: 1.45;
-    color: var(--text-secondary);
-    word-break: break-word;
+    display: none !important;
 }
 
-/* Center button container in both web and responsive */
+/* Same row button container */
 .modal-push-actions {
     display: flex;
-    justify-content: center;
     align-items: center;
-    width: 100%;
+    justify-content: flex-end;
+    width: auto;
+    flex-shrink: 0;
 }
 
 .modal-push-actions .cd-push-toggle-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 8px 24px;
-    min-width: 170px;
-    border-radius: 9px;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 7px 16px;
+    min-width: 120px;
+    border-radius: 8px;
     cursor: pointer;
     box-sizing: border-box;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -3311,6 +3313,7 @@
     border: 1px solid #3b82f6;
     background: #3b82f6;
     color: #ffffff;
+    white-space: nowrap;
 }
 
 .modal-push-actions .cd-push-toggle-btn:hover {

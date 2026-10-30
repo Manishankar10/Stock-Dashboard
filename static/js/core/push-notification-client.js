@@ -94,10 +94,7 @@
                     bellBox.innerHTML = '<span class="cd-push-spinner cd-push-spinner-lg"></span>';
                 }
                 if (desc) {
-                    const txt = isActivating
-                        ? '⏳ Activating: Establishing push channel & registering device...'
-                        : '⏳ Updating: Unregistering device push subscription...';
-                    desc.innerHTML = `<span style="color: #3b82f6; font-weight: 600;">${txt}</span>`;
+                    desc.style.display = 'none';
                 }
                 if (banner) {
                     banner.classList.add('is-loading');
@@ -571,11 +568,7 @@
 
             const desc = document.getElementById('modal-push-desc');
             if (desc) {
-                if (active) {
-                    desc.innerHTML = '<span style="color: #10b981; font-weight: 600;">✅ Active: Receiving live Gold/Silver updates and daily EOD portfolio summaries.</span>';
-                } else {
-                    desc.innerText = 'Receive real-time Gold/Silver rates and personal EOD portfolio performance';
-                }
+                desc.style.display = 'none';
             }
         }
     };
