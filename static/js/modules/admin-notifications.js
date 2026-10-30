@@ -612,6 +612,7 @@
             const fcmStatusEl = document.getElementById('stat-notif-fcm-status');
             const fcmSubtextEl = document.getElementById('stat-notif-fcm-subtext');
             const fcmAlertBox = document.getElementById('fcm-status-alert-box');
+            const fcmHdrBadge = document.getElementById('fcm-header-status-badge');
 
             if (data.config && data.config.is_configured) {
                 if (fcmStatusEl) {
@@ -622,12 +623,24 @@
                 if (fcmAlertBox) {
                     fcmAlertBox.innerHTML = '<span style="color:#10b981; font-weight:600;">✅ Firebase Admin Service Account connected and ready for live push dispatches.</span>';
                 }
+                if (fcmHdrBadge) {
+                    fcmHdrBadge.innerText = 'Connected & Active';
+                    fcmHdrBadge.style.color = '#10b981';
+                    fcmHdrBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+                    fcmHdrBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                }
             } else if (data.config && data.config.service_account_detected) {
                 if (fcmStatusEl) {
                     fcmStatusEl.innerText = 'Service Account Present';
                     fcmStatusEl.style.color = '#3b82f6';
                 }
                 if (fcmSubtextEl) fcmSubtextEl.innerText = 'Initializing...';
+                if (fcmHdrBadge) {
+                    fcmHdrBadge.innerText = 'Service Account Present';
+                    fcmHdrBadge.style.color = '#3b82f6';
+                    fcmHdrBadge.style.background = 'rgba(59, 130, 246, 0.15)';
+                    fcmHdrBadge.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                }
             } else {
                 if (fcmStatusEl) {
                     fcmStatusEl.innerText = 'Setup Required';
@@ -636,6 +649,12 @@
                 if (fcmSubtextEl) fcmSubtextEl.innerText = 'Simulation Mode Active';
                 if (fcmAlertBox) {
                     fcmAlertBox.innerHTML = '<span style="color:#f59e0b; font-weight:600;">⚠️ Firebase Service Account JSON pending. Dispatches will be simulated and logged in the audit trail until credentials are provided.</span>';
+                }
+                if (fcmHdrBadge) {
+                    fcmHdrBadge.innerText = 'Setup Required';
+                    fcmHdrBadge.style.color = '#f59e0b';
+                    fcmHdrBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+                    fcmHdrBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
                 }
             }
 

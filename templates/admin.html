@@ -289,6 +289,19 @@
             gap: 16px;
             margin-bottom: 24px;
         }
+        #fcm-credentials-accordion summary::-webkit-details-marker {
+            display: none;
+        }
+        #fcm-credentials-accordion summary {
+            list-style: none;
+        }
+        #fcm-credentials-accordion[open] .fcm-toggle-chevron {
+            transform: rotate(180deg);
+        }
+        .fcm-toggle-chevron {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
         .metric-card {
             background: var(--bg-card);
             border-radius: 12px;
@@ -2291,82 +2304,88 @@
                 </div>
             </div>
 
-            <!-- SECTION: Firebase FCM Configuration & Diagnostics -->
-            <div class="metric-card" style="margin-bottom: 24px; padding: 22px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <!-- SECTION: Firebase FCM Configuration & Diagnostics (Always Collapsed by Default) -->
+            <details id="fcm-credentials-accordion" class="metric-card" style="margin-bottom: 24px; padding: 18px 22px;">
+                <summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
                             ⚙️ Firebase Cloud Messaging (FCM) Credentials
+                            <span id="fcm-header-status-badge" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Connected</span>
                         </h3>
                         <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--text-secondary);">
-                            Enter your Firebase Project ID, VAPID Public Key, and Service Account JSON to activate live browser push notifications.
+                            Enter your Firebase Project ID, VAPID Public Key, and Service Account JSON to activate live browser push notifications. (Click to Expand / Edit)
                         </p>
                     </div>
-                    <button class="btn btn-secondary" onclick="sendTestPushAlert()" style="padding: 6px 12px; font-size: 12px;">
-                        🧪 Send Diagnostic Test Push
-                    </button>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 12px;">
-                    <div>
-                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Firebase Project ID</label>
-                        <input type="text" id="fcm-cfg-project-id" placeholder="e.g. capital-desk-12345" 
-                            style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web Push VAPID Public Key</label>
-                        <input type="text" id="fcm-cfg-vapid-key" placeholder="Starts with B... (From Cloud Messaging -> Web Configuration)" 
-                            style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
-                        <small style="display: block; font-size: 10.5px; color: #f59e0b; margin-top: 4px;">⚠️ Must start with <strong>B...</strong> (87 chars, Cloud Messaging tab)</small>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web Push VAPID Private Key</label>
-                        <input type="password" id="fcm-cfg-vapid-priv-key" placeholder="From Cloud Messaging -> ⋮ -> Copy private key" 
-                            style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
-                        <small style="display: block; font-size: 10.5px; color: #a78bfa; margin-top: 4px;">🔑 From Cloud Messaging -> Click ⋮ next to certificate -> Copy private key</small>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Messaging Sender ID (Project Number)</label>
-                        <input type="text" id="fcm-cfg-sender-id" placeholder="e.g. 142964374702 (Project Number)" 
-                            style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
-                        <small style="display: block; font-size: 10.5px; color: var(--text-secondary); margin-top: 4px;">Numeric project number from Cloud Messaging tab</small>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web API Key (Optional)</label>
-                        <input type="text" id="fcm-cfg-api-key" placeholder="Starts with AIzaSy... (From General tab)" 
-                            style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
-                        <small style="display: block; font-size: 10.5px; color: #38bdf8; margin-top: 4px;">ℹ️ Starts with <strong>AIzaSy...</strong> (39 chars, General tab)</small>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
-                        <label style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary);">Firebase Service Account JSON (Paste or Upload .json file)</label>
-                        <label class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Select your downloaded Firebase credentials JSON file">
-                            📁 Choose .json File
-                            <input type="file" accept=".json" onchange="handleServiceAccountFileUpload(event)" style="display: none;">
-                        </label>
-                    </div>
-                    <textarea id="fcm-cfg-service-account" rows="3" placeholder='Paste your Firebase Service Account JSON here (or place file at app_data/firebase_service_account.json)...' 
-                        style="width: 100%; padding: 8px 10px; font-size: 11.5px; font-family: monospace; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);"></textarea>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div id="fcm-status-alert-box" style="font-size: 12px; color: var(--text-secondary);">
-                        Checking configuration status...
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" type="button" onclick="generateNativeVapidKeys()" 
-                            style="padding: 8px 14px; font-size: 12px; font-weight: 600; color: #10b981; border-color: rgba(16, 185, 129, 0.4);" 
-                            title="Generate a mathematically matched local VAPID keypair in 1 click">
-                            ⚡ 1-Click Auto-Generate Keys
+                    <div style="display: flex; align-items: center; gap: 10px;" onclick="event.stopPropagation()">
+                        <button class="btn btn-secondary" onclick="sendTestPushAlert()" style="padding: 6px 12px; font-size: 12px;">
+                            🧪 Send Diagnostic Test Push
                         </button>
-                        <button class="btn" id="btn-save-fcm-cfg" onclick="saveFcmConfiguration()" style="padding: 8px 18px; font-weight: 600;">
-                            💾 Save Firebase Configuration
-                        </button>
+                        <span class="fcm-toggle-chevron" style="font-size: 14px; color: var(--text-secondary); cursor: pointer; padding: 4px;" onclick="document.getElementById('fcm-credentials-accordion').toggleAttribute('open')">▼</span>
+                    </div>
+                </summary>
+
+                <div style="margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 12px;">
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Firebase Project ID</label>
+                            <input type="text" id="fcm-cfg-project-id" placeholder="e.g. capital-desk-12345" 
+                                style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web Push VAPID Public Key</label>
+                            <input type="text" id="fcm-cfg-vapid-key" placeholder="Starts with B... (From Cloud Messaging -> Web Configuration)" 
+                                style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            <small style="display: block; font-size: 10.5px; color: #f59e0b; margin-top: 4px;">⚠️ Must start with <strong>B...</strong> (87 chars, Cloud Messaging tab)</small>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web Push VAPID Private Key</label>
+                            <input type="password" id="fcm-cfg-vapid-priv-key" placeholder="From Cloud Messaging -> ⋮ -> Copy private key" 
+                                style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            <small style="display: block; font-size: 10.5px; color: #a78bfa; margin-top: 4px;">🔑 From Cloud Messaging -> Click ⋮ next to certificate -> Copy private key</small>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Messaging Sender ID (Project Number)</label>
+                            <input type="text" id="fcm-cfg-sender-id" placeholder="e.g. 142964374702 (Project Number)" 
+                                style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            <small style="display: block; font-size: 10.5px; color: var(--text-secondary); margin-top: 4px;">Numeric project number from Cloud Messaging tab</small>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web API Key (Optional)</label>
+                            <input type="text" id="fcm-cfg-api-key" placeholder="Starts with AIzaSy... (From General tab)" 
+                                style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                            <small style="display: block; font-size: 10.5px; color: #38bdf8; margin-top: 4px;">ℹ️ Starts with <strong>AIzaSy...</strong> (39 chars, General tab)</small>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                            <label style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary);">Firebase Service Account JSON (Paste or Upload .json file)</label>
+                            <label class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Select your downloaded Firebase credentials JSON file">
+                                📁 Choose .json File
+                                <input type="file" accept=".json" onchange="handleServiceAccountFileUpload(event)" style="display: none;">
+                            </label>
+                        </div>
+                        <textarea id="fcm-cfg-service-account" rows="3" placeholder='Paste your Firebase Service Account JSON here (or place file at app_data/firebase_service_account.json)...' 
+                            style="width: 100%; padding: 8px 10px; font-size: 11.5px; font-family: monospace; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);"></textarea>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div id="fcm-status-alert-box" style="font-size: 12px; color: var(--text-secondary);">
+                            Checking configuration status...
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" type="button" onclick="generateNativeVapidKeys()" 
+                                style="padding: 8px 14px; font-size: 12px; font-weight: 600; color: #10b981; border-color: rgba(16, 185, 129, 0.4);" 
+                                title="Generate a mathematically matched local VAPID keypair in 1 click">
+                                ⚡ 1-Click Auto-Generate Keys
+                            </button>
+                            <button class="btn" id="btn-save-fcm-cfg" onclick="saveFcmConfiguration()" style="padding: 8px 18px; font-weight: 600;">
+                                💾 Save Firebase Configuration
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </details>
 
             <!-- SECTION: Notification History & Audit Log -->
             <div class="metric-card" style="padding: 22px;">
@@ -5275,6 +5294,6 @@
     </script>
     <script src="/static/js/core/pwa.js?v=1.0"></script>
     <script src="/static/js/core/push-notification-client.js?v=2.8"></script>
-    <script src="/static/js/modules/admin-notifications.js?v=2.7"></script>
+    <script src="/static/js/modules/admin-notifications.js?v=2.8"></script>
 </body>
 </html>
