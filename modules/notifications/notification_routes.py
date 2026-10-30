@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, request, jsonify, session, send_file, current_app
-from modules.common.auth_utils import login_required, admin_required
+from modules.common.auth_utils import login_required, admin_required, load_users
 from modules.common.ist_datetime import format_ist_standard, today_ist_str
 from modules.notifications.fcm_service import (
     get_fcm_config,
@@ -9,6 +9,7 @@ from modules.notifications.fcm_service import (
     send_web_push,
     get_notification_history,
     load_subscriptions,
+    get_user_tokens,
     DEFAULT_SERVICE_ACCOUNT_FILE
 )
 from modules.notifications.card_generator import (
@@ -34,25 +35,50 @@ def api_notification_config():
     """Returns VAPID Public key and push configuration for the client."""
     config = get_fcm_config()
     subs = load_subscriptions()
-    active_count = sum(1 for s in subs.values() if s.get("is_active", True))
+    try:
+        registered_users = set(load_users().keys())
+    except Exception:
+        registered_users = set()
+
+    active_keys = [s for s in subs.values() if s.get("is_active", True) and s.get("username") in registered_users]
+    unique_users = set(s.get("username") for s in active_keys)
+
     return jsonify({
         "success": True,
         "is_configured": config["is_configured"],
         "vapid_public_key": config["vapid_public_key"],
         "project_id": config["project_id"],
-        "active_subscribers": active_count
+        "active_subscribers": len(unique_users),
+        "total_active_keys": len(active_keys)
     })
 
 
 @notifications_bp.route("/api/notifications/subscribe", methods=["POST"])
 def api_subscribe_device():
-    """Registers an FCM token sent by the browser."""
+    """Registers an FCM device key for an authenticated registered user. Allows multiple keys per user."""
     data = request.get_json(silent=True) or {}
     token = data.get("token", "").strip()
     if not token:
         return jsonify({"success": False, "error": "Token is required"}), 400
 
-    username = session.get("username", "guest")
+    username = session.get("username")
+    if not username or username == "guest":
+        return jsonify({
+            "success": False,
+            "error": "Authentication required. Please log in with a registered Capital Desk account to enable push notifications."
+        }), 401
+
+    try:
+        registered_users = load_users()
+    except Exception:
+        registered_users = {}
+
+    if username not in registered_users:
+        return jsonify({
+            "success": False,
+            "error": f"User '{username}' is not a registered user."
+        }), 403
+
     user_agent = request.headers.get("User-Agent", "")
     topics = data.get("topics", ["gold_silver_rates", "portfolio_performance"])
 
@@ -62,7 +88,16 @@ def api_subscribe_device():
         user_agent=user_agent,
         topics=topics
     )
-    return jsonify({"success": success, "message": msg})
+    if not success:
+        return jsonify({"success": False, "error": msg}), 400
+
+    user_keys = get_user_tokens(username)
+    return jsonify({
+        "success": True,
+        "message": msg,
+        "username": username,
+        "registered_keys_count": len(user_keys)
+    })
 
 
 @notifications_bp.route("/api/notifications/unsubscribe", methods=["POST"])

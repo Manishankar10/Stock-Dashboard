@@ -7,7 +7,8 @@ from modules.notifications.card_generator import generate_portfolio_card
 from modules.notifications.fcm_service import (
     load_subscriptions,
     send_web_push,
-    log_notification_event
+    log_notification_event,
+    get_user_tokens
 )
 from modules.common.ist_datetime import format_ist_standard, today_ist_str
 
@@ -100,22 +101,15 @@ def calculate_user_portfolio_performance(username):
 
 def get_all_users_portfolio_summaries():
     """
-    Returns an overview of all users and their computed portfolio performance today.
+    Returns an overview of all registered users and their computed portfolio performance today,
+    showing exactly how many active device keys are registered per user.
     """
     users = load_users()
-    subs = load_subscriptions()
-
-    # Map tokens per user
-    user_device_counts = {}
-    for s in subs.values():
-        u = s.get("username", "guest")
-        if s.get("is_active", True):
-            user_device_counts[u] = user_device_counts.get(u, 0) + 1
-
     summaries = []
     for uname in users.keys():
         perf = calculate_user_portfolio_performance(uname)
-        perf["registered_devices"] = user_device_counts.get(uname, 0)
+        user_keys = get_user_tokens(uname)
+        perf["registered_devices"] = len(user_keys)
         summaries.append(perf)
 
     return summaries

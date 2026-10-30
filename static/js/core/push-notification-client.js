@@ -155,17 +155,35 @@
                     this.currentToken = tokenString;
                     this.updateToggleUi(true);
 
+                    const devMsg = data.registered_keys_count > 1 ? ` (${data.registered_keys_count} active devices)` : '';
+                    const successMsg = `🔔 Notifications enabled for ${data.username || 'your account'}${devMsg}!`;
                     if (typeof window.showToast === 'function') {
-                        window.showToast('🔔 Notifications enabled! You will receive Gold rates & Portfolio alerts.', 'success', 3500);
+                        window.showToast(successMsg, 'success', 3500);
                     } else {
-                        alert('🔔 Notifications enabled successfully! You will receive live market and portfolio alerts.');
+                        alert(successMsg);
                     }
                     return { success: true };
                 } else {
-                    throw new Error(data.error || 'Server rejected subscription');
+                    const errMsg = data.error || 'Server rejected subscription';
+                    this.updateToggleUi(false);
+                    if (resp.status === 401 || errMsg.toLowerCase().includes('log in') || errMsg.toLowerCase().includes('unregistered')) {
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('Please log in with a registered account to enable notifications.', 'warning', 4500);
+                        } else {
+                            alert('Please log in with a registered Capital Desk account to enable notifications.');
+                        }
+                    } else {
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('Subscription error: ' + errMsg, 'error', 4000);
+                        } else {
+                            alert('Could not enable notifications: ' + errMsg);
+                        }
+                    }
+                    return { success: false, error: errMsg };
                 }
             } catch (err) {
                 console.error('[Push] Subscription failed:', err);
+                this.updateToggleUi(false);
                 alert('Could not enable notifications: ' + err.message);
                 return { success: false, error: err.message };
             }

@@ -5,7 +5,10 @@ from modules.notifications.fcm_service import (
     unregister_device_token,
     send_web_push,
     get_notification_history,
-    load_subscriptions
+    load_subscriptions,
+    get_user_tokens,
+    get_active_tokens,
+    clean_fcm_token
 )
 from modules.notifications.card_generator import (
     generate_gold_silver_card,
@@ -20,6 +23,9 @@ __all__ = [
     "send_web_push",
     "get_notification_history",
     "load_subscriptions",
+    "get_user_tokens",
+    "get_active_tokens",
+    "clean_fcm_token",
     "generate_gold_silver_card",
     "generate_portfolio_card"
 ]

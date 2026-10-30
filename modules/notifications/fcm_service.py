@@ -172,38 +172,87 @@ def save_subscriptions(subs):
             logger.error(f"MongoDB save_subscriptions error: {e}")
 
 
-def register_device_token(token, username="guest", user_agent="", topics=None):
+def clean_fcm_token(token_str):
+    """Extracts the clean FCM registration token if an endpoint URL was passed."""
+    if not token_str or not isinstance(token_str, str):
+        return ""
+    token_str = token_str.strip()
+    if "fcm.googleapis.com/fcm/send/" in token_str:
+        return token_str.split("fcm.googleapis.com/fcm/send/")[-1]
+    if "fcm.googleapis.com/wpush/v2/" in token_str:
+        return token_str.split("fcm.googleapis.com/wpush/v2/")[-1]
+    return token_str
+
+
+def register_device_token(token, username=None, user_agent="", topics=None):
     """
-    Registers or updates an FCM Web/PWA device token.
+    Registers or updates an FCM Web/PWA device key for a registered user.
+    Supports storing more than one key/device per user (e.g. PC, Phone PWA, Laptop).
+    Strictly rejects unregistered or guest users.
     """
     if not token or not isinstance(token, str):
         return False, "Invalid push token"
+
+    # 1. Enforce that ONLY registered users can have device keys registered
+    try:
+        from modules.common.auth_utils import load_users
+        registered_users = load_users()
+    except Exception:
+        registered_users = {}
+
+    if not username or username == "guest" or username not in registered_users:
+        logger.warning(f"[Push Security] Rejected subscription for non-registered user: '{username}'")
+        return False, "Unregistered user. Only registered Capital Desk accounts can enable push notifications."
 
     if topics is None:
         topics = ["gold_silver_rates", "portfolio_performance"]
 
     subs = load_subscriptions()
     timestamp = format_ist_standard()
+    clean_tok = clean_fcm_token(token)
 
-    if token in subs:
-        subs[token]["last_active"] = timestamp
-        subs[token]["username"] = username
-        subs[token]["user_agent"] = user_agent or subs[token].get("user_agent", "")
-        subs[token]["topics"] = list(set(subs[token].get("topics", []) + topics))
-        subs[token]["is_active"] = True
-    else:
-        subs[token] = {
-            "token": token,
-            "username": username,
-            "user_agent": user_agent,
-            "topics": topics,
-            "created_at": timestamp,
-            "last_active": timestamp,
-            "is_active": True
-        }
+    # Derive human-friendly device label from User-Agent
+    device_label = "Browser Device"
+    ua = (user_agent or "").lower()
+    if "iphone" in ua or "ipad" in ua:
+        device_label = "Apple iOS Device (PWA)"
+    elif "android" in ua:
+        device_label = "Android Device (PWA)"
+    elif "windows" in ua:
+        device_label = "Windows PC"
+    elif "macintosh" in ua or "mac os" in ua:
+        device_label = "Mac Desktop"
+    elif "linux" in ua:
+        device_label = "Linux Desktop"
+
+    if "chrome" in ua and "edg" not in ua:
+        device_label += " - Chrome"
+    elif "edg" in ua:
+        device_label += " - Edge"
+    elif "firefox" in ua:
+        device_label += " - Firefox"
+    elif "safari" in ua and "chrome" not in ua:
+        device_label += " - Safari"
+
+    # Store key: Each unique device produces a unique token, so one user can store multiple keys
+    subs[token] = {
+        "token": token,
+        "clean_token": clean_tok,
+        "username": username,
+        "user_agent": user_agent or subs.get(token, {}).get("user_agent", ""),
+        "device_name": device_label,
+        "topics": list(set(topics)),
+        "created_at": subs.get(token, {}).get("created_at", timestamp),
+        "last_active": timestamp,
+        "is_active": True
+    }
 
     save_subscriptions(subs)
-    return True, "Device subscribed successfully"
+
+    # Count active keys for this user
+    user_keys_count = sum(1 for s in subs.values() if s.get("username") == username and s.get("is_active", True))
+    logger.info(f"[Push] Registered key for '{username}' ({device_label}). Total active keys for user: {user_keys_count}")
+    return True, f"Key registered successfully for '{username}'. Active keys: {user_keys_count}"
 
 
 def unregister_device_token(token):
@@ -216,19 +265,64 @@ def unregister_device_token(token):
     return False, "Token not found"
 
 
-def get_active_tokens(topic=None):
-    """Returns active tokens list, optionally filtered by topic."""
+def get_user_tokens(username, topic=None):
+    """
+    Returns ALL active registered device keys/tokens for a specific registered user.
+    Enables sending targeted notifications across multiple devices of the same user.
+    Returns empty list if user is unregistered.
+    """
+    if not username or username == "guest":
+        return []
+
+    try:
+        from modules.common.auth_utils import load_users
+        registered_users = load_users()
+        if username not in registered_users:
+            return []
+    except Exception:
+        pass
+
     subs = load_subscriptions()
     tokens = []
     for t, data in subs.items():
         if not data.get("is_active", True):
             continue
-        if topic:
-            if topic in data.get("topics", []):
-                tokens.append(t)
-        else:
-            tokens.append(t)
-    return tokens
+        if data.get("username") != username:
+            continue
+        if topic and topic not in data.get("topics", []):
+            continue
+        clean_tok = data.get("clean_token") or clean_fcm_token(t)
+        if clean_tok:
+            tokens.append(clean_tok)
+    return list(dict.fromkeys(tokens))
+
+
+def get_active_tokens(topic=None):
+    """
+    Returns active tokens list ONLY for verified registered users.
+    STRICT: Unregistered users and guests are completely excluded from receiving notifications.
+    """
+    try:
+        from modules.common.auth_utils import load_users
+        registered_users = set(load_users().keys())
+    except Exception:
+        registered_users = set()
+
+    subs = load_subscriptions()
+    tokens = []
+    for t, data in subs.items():
+        if not data.get("is_active", True):
+            continue
+        sub_user = data.get("username", "")
+        # NEVER send notifications to unregistered or guest users
+        if not sub_user or sub_user == "guest" or sub_user not in registered_users:
+            continue
+        if topic and topic not in data.get("topics", []):
+            continue
+        clean_tok = data.get("clean_token") or clean_fcm_token(t)
+        if clean_tok:
+            tokens.append(clean_tok)
+    return list(dict.fromkeys(tokens))
 
 
 # =====================================================================
