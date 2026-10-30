@@ -405,49 +405,8 @@
         <div class="modal-content" id="chartModalContent">
             <!-- Top Controls Bar -->
             <div class="chart-topbar">
+                                <!-- Left: Indicators & Tools Controls Group (Starts from most left side) -->
                 <div class="chart-header-left">
-                    <div class="stock-title chart-symbol-search-container" id="chartSymbolSearchContainer">
-                        <!-- Small search icon before company symbol box to indicate search is available -->
-                        <span class="chart-symbol-search-icon-lead" id="chartSymbolSearchLeadIcon" onclick="toggleChartSymbolSearch(event)" title="Click to search stock or type any key on chart">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                        </span>
-                        <!-- Clickable Symbol Pill Button (TradingView style as in attached design) -->
-                        <div class="chart-symbol-pill-box" id="chartSymbolPillBox" onclick="toggleChartSymbolSearch(event)" title="Click to search stock · Scroll mouse wheel to navigate watchlist">
-                            <span id="chartSymbolDisplay" class="chart-symbol-pill-text">ROLEXRINGS</span>
-                            <span class="chart-symbol-pill-arrow">▾</span>
-                        </div>
-                        <span id="chartNameDisplay" class="chart-name-text" onclick="toggleChartSymbolSearch(event)" title="Click to search stock">Rolex Rings Ltd</span>
-
-                        <!-- Elegant In-Screen Floating Search Panel (stays right on the same chart screen, NO separate popup!) -->
-                        <div class="chart-symbol-search-dropdown" id="chartSymbolSearchDropdown" style="display: none;" onclick="event.stopPropagation();">
-                            <div class="chart-search-input-wrapper">
-                                <span class="chart-search-input-icon">🔍</span>
-                                <input type="text" id="chartSymbolSearchInput" class="chart-symbol-search-input" placeholder="Search symbol or name (e.g. POCL, TCS)..." autocomplete="off" spellcheck="false" oninput="window.triggerChartSymbolSearch && window.triggerChartSymbolSearch(this.value)" onkeyup="window.triggerChartSymbolSearch && window.triggerChartSymbolSearch(this.value)">
-                                <span class="chart-search-keyboard-hint">ESC</span>
-                                <button type="button" class="chart-search-clear-btn" id="chartSymbolSearchClear" onclick="clearChartSymbolSearch(event)" title="Clear">✕</button>
-                            </div>
-                            <div class="chart-search-dropdown-body">
-                                <div class="chart-search-status-bar" id="chartSearchStatusBar" style="display: none;">Searching...</div>
-                                <div class="chart-search-results-list" id="chartSearchResultsList">
-                                    <!-- Dynamically populated stock items -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Mobile Tool Hint (Decreased Size, Shown at Top Header) -->
-                    <div id="chartMobileToolHint" class="chart-mobile-tool-hint" style="display: none;">
-                        <span id="chartMobileToolHintText">Tap chart to draw</span>
-                        <button type="button" class="tool-hint-cancel-btn" onclick="cancelDrawingTool(); if (event) event.stopPropagation();" title="Cancel Drawing Tool">✕</button>
-                    </div>
-                    <!-- Mobile Close Icon (Top Right on same Stock Name Row) -->
-                    <button type="button" class="chart-close-btn chart-mobile-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
-                </div>
-                
-                <div class="chart-header-right">
-                    <!-- Top Menu Controls Group -->
                     <div class="chart-popovers-container">
                         <!-- 1. Indicators Popover -->
                         <div class="chart-popover-wrapper">
@@ -667,9 +626,48 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Right: Stock Symbol / Search Container (Image 1 contents) + Close Button -->
+                <div class="chart-header-right">
+                    <div class="stock-title chart-symbol-search-container" id="chartSymbolSearchContainer">
+                        <!-- Small search icon before company symbol box to indicate search is available -->
+                        <span class="chart-symbol-search-icon-lead" id="chartSymbolSearchLeadIcon" onclick="toggleChartSymbolSearch(event)" title="Click to search stock or type any key on chart">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </span>
+                        <!-- Clickable Symbol Pill Button (TradingView style as in attached design) -->
+                        <div class="chart-symbol-pill-box" id="chartSymbolPillBox" onclick="toggleChartSymbolSearch(event)" title="Click to search stock · Scroll mouse wheel to navigate watchlist">
+                            <span id="chartSymbolDisplay" class="chart-symbol-pill-text">ROLEXRINGS</span>
+                            <span class="chart-symbol-pill-arrow">▾</span>
+                        </div>
+                        <span id="chartNameDisplay" class="chart-name-text" onclick="toggleChartSymbolSearch(event)" title="Click to search stock">Rolex Rings Ltd</span>
 
-                    <!-- Top Right Close Icon (Desktop) -->
-                    <button type="button" class="chart-close-btn chart-desktop-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
+                        <!-- Elegant In-Screen Floating Search Panel (stays right on the same chart screen, NO separate popup!) -->
+                        <div class="chart-symbol-search-dropdown" id="chartSymbolSearchDropdown" style="display: none;" onclick="event.stopPropagation();">
+                            <div class="chart-search-input-wrapper">
+                                <span class="chart-search-input-icon">🔍</span>
+                                <input type="text" id="chartSymbolSearchInput" class="chart-symbol-search-input" placeholder="Search symbol or name (e.g. POCL, TCS)..." autocomplete="off" spellcheck="false" oninput="window.triggerChartSymbolSearch && window.triggerChartSymbolSearch(this.value)" onkeyup="window.triggerChartSymbolSearch && window.triggerChartSymbolSearch(this.value)">
+                                <span class="chart-search-keyboard-hint">ESC</span>
+                                <button type="button" class="chart-search-clear-btn" id="chartSymbolSearchClear" onclick="clearChartSymbolSearch(event)" title="Clear">✕</button>
+                            </div>
+                            <div class="chart-search-dropdown-body">
+                                <div class="chart-search-status-bar" id="chartSearchStatusBar" style="display: none;">Searching...</div>
+                                <div class="chart-search-results-list" id="chartSearchResultsList">
+                                    <!-- Dynamically populated stock items -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Mobile Tool Hint (Decreased Size, Shown at Top Header) -->
+                    <div id="chartMobileToolHint" class="chart-mobile-tool-hint" style="display: none;">
+                        <span id="chartMobileToolHintText">Tap chart to draw</span>
+                        <button type="button" class="tool-hint-cancel-btn" onclick="cancelDrawingTool(); if (event) event.stopPropagation();" title="Cancel Drawing Tool">✕</button>
+                    </div>
+                    <!-- Close Button (Positioned at rightmost end after stock symbol) -->
+                    <button type="button" class="chart-close-btn" onclick="closeChartModal(); if (event) event.stopPropagation();" title="Close Chart Modal (Esc)">&times;</button>
                 </div>
             </div>
 
