@@ -559,7 +559,7 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
     raw_link = payload_data.get("url", "/")
     https_link = _resolve_https(raw_link)
     full_icon = _resolve_https(icon_url) or icon_url
-    full_badge = _resolve_https("/static/favicon-32.png") or "/static/favicon-32.png"
+    full_badge = _resolve_https("/static/badge-cd.png") or "/static/badge-cd.png"
     full_image = _resolve_https(image_url) if image_url else None
 
     subs = load_subscriptions()

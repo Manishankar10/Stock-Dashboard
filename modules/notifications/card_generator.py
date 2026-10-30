@@ -90,8 +90,9 @@ def generate_gold_silver_card(
     # SECTION 1: Standard Gold (22 Karat)
     # Header Row
     sec1_y = 20
-    # Gold Title
-    draw.text((32, sec1_y), "👑 Standard Gold (22 Karat)", font=font_title, fill=(255, 255, 255, 255))
+    # Gold Title with sleek gold indicator
+    draw.ellipse([32, sec1_y + 8, 44, sec1_y + 20], fill=gold_yellow)
+    draw.text((54, sec1_y), "Standard Gold (22 Karat)", font=font_title, fill=(255, 255, 255, 255))
     
     # 916 Hallmark Badge
     badge_text = "916 HALLMARK"
@@ -121,7 +122,8 @@ def generate_gold_silver_card(
 
     # SECTION 2: Ready Silver
     sec2_y = box_y + box_h + 24
-    draw.text((32, sec2_y), "🥈 Ready Silver", font=font_title, fill=(255, 255, 255, 255))
+    draw.ellipse([32, sec2_y + 8, 44, sec2_y + 20], fill=silver_white)
+    draw.text((54, sec2_y), "Ready Silver", font=font_title, fill=(255, 255, 255, 255))
 
     # 99.9% Fine Badge
     s_badge_text = "99.9% FINE"
@@ -192,7 +194,8 @@ def generate_portfolio_card(
 
     # Header
     sec_y = 22
-    draw.text((32, sec_y), "📈 Portfolio Performance Digest", font=font_title, fill=(255, 255, 255, 255))
+    draw.ellipse([32, sec_y + 7, 44, sec_y + 19], fill=(59, 130, 246, 255))
+    draw.text((54, sec_y), "Portfolio Performance Digest", font=font_title, fill=(255, 255, 255, 255))
     
     # EOD Badge
     badge_text = "EOD SUMMARY"
@@ -225,7 +228,9 @@ def generate_portfolio_card(
     draw.rounded_rectangle([32, box_y, 32 + col1_w, box_y + box_total_h], radius=16, fill=card_box_bg, outline=card_box_border, width=2)
     draw.text((54, box_y + 24), "TODAY'S PERFORMANCE", font=font_label, fill=text_muted)
     draw.text((54, box_y + 65), perf_text, font=font_large_perf, fill=perf_color)
-    draw.text((54, box_y + 130), "✅ Net Daily Market Return" if is_positive else "⚠️ Daily Drawdown", font=font_sub, fill=text_muted)
+    dot_color = green_color if is_positive else red_color
+    draw.ellipse([54, box_y + 135, 62, box_y + 143], fill=dot_color)
+    draw.text((68, box_y + 128), "Net Daily Market Return" if is_positive else "Daily Drawdown", font=font_sub, fill=text_muted)
     draw.text((54, box_y + 160), "CAPITAL DESK ANALYTICS", font=_get_font(13, bold=True), fill=(99, 102, 241, 255))
 
     # Right Col: Top Gainer (Upper) & Top Loser (Lower)
@@ -234,7 +239,9 @@ def generate_portfolio_card(
 
     # Top Gainer Box
     draw.rounded_rectangle([col2_x, box_y, col2_x + col2_w, box_y + half_h], radius=14, fill=card_box_bg, outline=card_box_border, width=2)
-    draw.text((col2_x + 24, box_y + 16), "🚀 TOP GAINER", font=font_label, fill=text_muted)
+    # Sleek green up-triangle icon
+    draw.polygon([(col2_x + 24, box_y + 27), (col2_x + 31, box_y + 18), (col2_x + 38, box_y + 27)], fill=green_color)
+    draw.text((col2_x + 44, box_y + 16), "TOP GAINER", font=font_label, fill=text_muted)
     draw.text((col2_x + 24, box_y + 44), str(top_gainer_symbol), font=font_symbol, fill=(255, 255, 255, 255))
     
     g_change = str(top_gainer_change).strip()
@@ -252,7 +259,9 @@ def generate_portfolio_card(
     # Top Loser Box
     box_loser_y = box_y + half_h + 16
     draw.rounded_rectangle([col2_x, box_loser_y, col2_x + col2_w, box_loser_y + half_h], radius=14, fill=card_box_bg, outline=card_box_border, width=2)
-    draw.text((col2_x + 24, box_loser_y + 16), "🔻 TOP LOSER", font=font_label, fill=text_muted)
+    # Sleek red down-triangle icon
+    draw.polygon([(col2_x + 24, box_loser_y + 18), (col2_x + 38, box_loser_y + 18), (col2_x + 31, box_loser_y + 27)], fill=red_color)
+    draw.text((col2_x + 44, box_loser_y + 16), "TOP LOSER", font=font_label, fill=text_muted)
     draw.text((col2_x + 24, box_loser_y + 44), str(top_loser_symbol), font=font_symbol, fill=(255, 255, 255, 255))
 
     l_change = str(top_loser_change).strip()

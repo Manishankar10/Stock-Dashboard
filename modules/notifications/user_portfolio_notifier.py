@@ -174,7 +174,7 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
 
         image_url = f"{base_url}/static/notifications/generated/{card_filename}"
 
-        title = f"📈 {uname.capitalize()}'s EOD Portfolio: {perf_val}"
+        title = f"📈 Portfolio's Performance: {perf_val}"
         body = f"Today's Net Return: {perf_val} • Top Gainer: {g_sym} ({g_chg}) • Top Loser: {l_sym} ({l_chg})"
 
         push_res = send_web_push(
@@ -270,7 +270,7 @@ def send_portfolio_digest_to_user(username, base_url=""):
     )
 
     image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
-    title = f"📈 {username.capitalize()}'s EOD Portfolio: {perf_val}"
+    title = f"📈 Portfolio's Performance: {perf_val}"
     body = f"Today's Net Return: {perf_val} • Top Gainer: {g_sym} ({g_chg}) • Top Loser: {l_sym} ({l_chg})"
 
     res = send_web_push(

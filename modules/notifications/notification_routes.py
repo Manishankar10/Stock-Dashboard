@@ -268,8 +268,7 @@ def admin_send_gold_notification():
     image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
 
     # Notification text
-    title_suffix = f" for {target_user.capitalize()}" if (target_user and target_user.lower() != "all") else ""
-    title = f"👑 Standard Gold (22K) & Ready Silver Update{title_suffix}"
+    title = "👑 Gold (22k) & Silver update"
     body = f"Gold 22K: ₹{gold_1g}/g | ₹{gold_8g}/8g\nSilver: ₹{silver_1g}/g | ₹{silver_8g}/8g (99.9% Fine)"
 
     result = send_web_push(
@@ -337,7 +336,7 @@ def admin_send_sample_user():
         base_url = request.url_root.rstrip("/")
         image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
 
-        title = f"👑 Standard Gold (22K) & Ready Silver - Sample for {username.capitalize()}"
+        title = "👑 Gold (22k) & Silver update"
         body = f"Gold 22K: ₹{gold_1g}/g | ₹{gold_8g}/8g\nSilver: ₹{silver_1g}/g | ₹{silver_8g}/8g (99.9% Fine)"
 
         res = send_web_push(
@@ -512,7 +511,7 @@ def admin_send_portfolio_notification():
     base_url = request.url_root.rstrip("/")
     image_url = f"{base_url}/static/notifications/generated/portfolio_latest.png"
 
-    title = "📈 Capital Desk EOD Portfolio Performance"
+    title = f"📈 Portfolio's Performance: {perf}"
     body = f"Today's Return: {perf} • Top Gainer: {top_gainer} ({top_gainer_pct}) • Top Loser: {top_loser} ({top_loser_pct})"
 
     result = send_web_push(
