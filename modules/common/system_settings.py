@@ -9,7 +9,10 @@ DEFAULT_SYSTEM_SETTINGS = {
     "max_stocks_per_watchlist": 50,
     "ai_prompts": {},
     "fcm_vapid_public_key": "",
-    "fcm_project_id": ""
+    "fcm_project_id": "",
+    "fcm_messaging_sender_id": "",
+    "fcm_api_key": "",
+    "fcm_app_id": ""
 }
 
 _SYSTEM_SETTINGS_CACHE = None
@@ -72,6 +75,12 @@ def update_system_settings(new_settings):
         current["fcm_vapid_public_key"] = str(new_settings["fcm_vapid_public_key"]).strip()
     if "fcm_project_id" in new_settings:
         current["fcm_project_id"] = str(new_settings["fcm_project_id"]).strip()
+    if "fcm_messaging_sender_id" in new_settings:
+        current["fcm_messaging_sender_id"] = str(new_settings["fcm_messaging_sender_id"]).strip()
+    if "fcm_api_key" in new_settings:
+        current["fcm_api_key"] = str(new_settings["fcm_api_key"]).strip()
+    if "fcm_app_id" in new_settings:
+        current["fcm_app_id"] = str(new_settings["fcm_app_id"]).strip()
 
     # Clean any accidental root keys like 'success' or nested 'settings'
     clean_settings = {
@@ -79,7 +88,10 @@ def update_system_settings(new_settings):
         "max_stocks_per_watchlist": current.get("max_stocks_per_watchlist", 50),
         "ai_prompts": current.get("ai_prompts", {}),
         "fcm_vapid_public_key": current.get("fcm_vapid_public_key", ""),
-        "fcm_project_id": current.get("fcm_project_id", "")
+        "fcm_project_id": current.get("fcm_project_id", ""),
+        "fcm_messaging_sender_id": current.get("fcm_messaging_sender_id", ""),
+        "fcm_api_key": current.get("fcm_api_key", ""),
+        "fcm_app_id": current.get("fcm_app_id", "")
     }
 
     save_system_settings_db(clean_settings, SYSTEM_SETTINGS_FILE)

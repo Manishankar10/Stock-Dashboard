@@ -378,6 +378,8 @@ def admin_save_fcm_config():
     data = request.get_json(silent=True) or {}
     vapid_key = data.get("vapid_public_key", "").strip()
     project_id = data.get("project_id", "").strip()
+    sender_id = data.get("messaging_sender_id", data.get("sender_id", "")).strip()
+    api_key = data.get("api_key", "").strip()
     service_account_json = data.get("service_account_json", "").strip()
 
     from modules.common.system_settings import get_system_settings, update_system_settings
@@ -387,6 +389,10 @@ def admin_save_fcm_config():
         settings["fcm_vapid_public_key"] = vapid_key
     if project_id:
         settings["fcm_project_id"] = project_id
+    if sender_id:
+        settings["fcm_messaging_sender_id"] = sender_id
+    if api_key:
+        settings["fcm_api_key"] = api_key
 
     if service_account_json:
         try:

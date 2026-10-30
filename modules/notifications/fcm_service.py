@@ -24,10 +24,12 @@ _fcm_init_error = None
 
 def get_fcm_config():
     """
-    Returns current FCM configuration status, VAPID public key, and project ID.
+    Returns current FCM configuration status, VAPID public key, project ID, and sender ID.
     """
     vapid_key = os.environ.get("FIREBASE_VAPID_PUBLIC_KEY", "")
     project_id = os.environ.get("FIREBASE_PROJECT_ID", "")
+    sender_id = os.environ.get("FIREBASE_MESSAGING_SENDER_ID", "")
+    api_key = os.environ.get("FIREBASE_API_KEY", "")
 
     # Check system_settings if not in env
     try:
@@ -37,6 +39,10 @@ def get_fcm_config():
             vapid_key = settings.get("fcm_vapid_public_key", "")
         if not project_id:
             project_id = settings.get("fcm_project_id", "")
+        if not sender_id:
+            sender_id = settings.get("fcm_messaging_sender_id", "")
+        if not api_key:
+            api_key = settings.get("fcm_api_key", "")
     except Exception:
         pass
 
@@ -48,7 +54,7 @@ def get_fcm_config():
     )
 
     # Auto-extract project_id from service account file/env if not explicitly set
-    if not project_id and service_account_exists:
+    if service_account_exists:
         try:
             sa_data = None
             if os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"):
@@ -60,7 +66,8 @@ def get_fcm_config():
                 with open("firebase_service_account.json", "r", encoding="utf-8") as f:
                     sa_data = json.load(f)
             if sa_data and isinstance(sa_data, dict):
-                project_id = sa_data.get("project_id", "")
+                if not project_id:
+                    project_id = sa_data.get("project_id", "")
         except Exception:
             pass
 
@@ -69,6 +76,8 @@ def get_fcm_config():
         "service_account_detected": service_account_exists,
         "vapid_public_key": vapid_key,
         "project_id": project_id,
+        "messaging_sender_id": sender_id,
+        "api_key": api_key,
         "init_error": _fcm_init_error
     }
 

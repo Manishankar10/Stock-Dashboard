@@ -38,6 +38,8 @@
     window.saveFcmConfiguration = async function () {
         const vapid = (document.getElementById('fcm-cfg-vapid-key')?.value || '').trim();
         const projId = (document.getElementById('fcm-cfg-project-id')?.value || '').trim();
+        const senderId = (document.getElementById('fcm-cfg-sender-id')?.value || '').trim();
+        const apiKey = (document.getElementById('fcm-cfg-api-key')?.value || '').trim();
         const saJson = (document.getElementById('fcm-cfg-service-account')?.value || '').trim();
 
         if (!vapid && !projId && !saJson) {
@@ -69,6 +71,8 @@
                 body: JSON.stringify({
                     vapid_public_key: vapid,
                     project_id: projId,
+                    messaging_sender_id: senderId,
+                    api_key: apiKey,
                     service_account_json: saJson
                 })
             });
@@ -461,11 +465,19 @@
             if (data.config) {
                 const vapidInput = document.getElementById('fcm-cfg-vapid-key');
                 const projInput = document.getElementById('fcm-cfg-project-id');
+                const senderInput = document.getElementById('fcm-cfg-sender-id');
+                const apiKeyInput = document.getElementById('fcm-cfg-api-key');
                 if (vapidInput && data.config.vapid_public_key && !vapidInput.value) {
                     vapidInput.value = data.config.vapid_public_key;
                 }
                 if (projInput && data.config.project_id && !projInput.value) {
                     projInput.value = data.config.project_id;
+                }
+                if (senderInput && data.config.messaging_sender_id && !senderInput.value) {
+                    senderInput.value = data.config.messaging_sender_id;
+                }
+                if (apiKeyInput && data.config.api_key && !apiKeyInput.value) {
+                    apiKeyInput.value = data.config.api_key;
                 }
             }
 

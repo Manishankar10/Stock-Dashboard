@@ -25,6 +25,25 @@
         isSubscribed: false,
         currentToken: null,
 
+        loadFirebaseCompat: function () {
+            if (typeof firebase !== 'undefined' && firebase.messaging) {
+                return Promise.resolve(true);
+            }
+            return new Promise((resolve) => {
+                const s1 = document.createElement('script');
+                s1.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+                s1.onload = () => {
+                    const s2 = document.createElement('script');
+                    s2.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js';
+                    s2.onload = () => resolve(true);
+                    s2.onerror = () => resolve(false);
+                    document.head.appendChild(s2);
+                };
+                s1.onerror = () => resolve(false);
+                document.head.appendChild(s1);
+            });
+        },
+
         isSupported: function () {
             return (
                 'serviceWorker' in navigator &&
@@ -60,6 +79,12 @@
 
             try {
                 if (Notification.permission === 'granted') {
+                    // If server has VAPID key configured, silently refresh / ensure real FCM token is registered
+                    if (this.config && this.config.vapid_public_key) {
+                        await this.subscribe(["gold_silver_rates", "portfolio_performance"], true);
+                        return;
+                    }
+
                     if ('serviceWorker' in navigator && 'PushManager' in window) {
                         const registration = await navigator.serviceWorker.ready;
                         const subscription = await registration.pushManager.getSubscription();
@@ -80,9 +105,9 @@
             }
         },
 
-        subscribe: async function (topics = ["gold_silver_rates", "portfolio_performance"]) {
+        subscribe: async function (topics = ["gold_silver_rates", "portfolio_performance"], silent = false) {
             if (!this.isSupported()) {
-                alert('Push notifications are not supported on this browser or platform.');
+                if (!silent) alert('Push notifications are not supported on this browser or platform.');
                 return { success: false, error: 'Unsupported' };
             }
 
@@ -90,7 +115,7 @@
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
             if (isIOS && !isStandalone) {
-                alert('On iOS / iPhone, you must first tap Share ⎋ -> "Add to Home Screen" to enable push notifications.');
+                if (!silent) alert('On iOS / iPhone, you must first tap Share ⎋ -> "Add to Home Screen" to enable push notifications.');
                 return { success: false, error: 'iOS requires Home Screen installation' };
             }
 
@@ -98,7 +123,7 @@
                 // Request Browser Notification Permission
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
-                    alert('Notification permission was blocked or dismissed. Please allow notifications in your browser address bar settings.');
+                    if (!silent) alert('Notification permission was blocked or dismissed. Please allow notifications in your browser address bar settings.');
                     this.updateToggleUi(false);
                     return { success: false, error: 'Permission denied' };
                 }
@@ -115,7 +140,7 @@
 
                 if (!vapidKey) {
                     const errMsg = 'Firebase Web Push VAPID Key is not configured yet. Please configure it in the Admin Panel (Notifications tab) first.';
-                    alert(errMsg);
+                    if (!silent) alert(errMsg);
                     this.updateToggleUi(false);
                     return { success: false, error: errMsg };
                 }
@@ -123,7 +148,48 @@
                 let tokenString = null;
                 let subJson = null;
 
-                if ('PushManager' in window && 'serviceWorker' in navigator) {
+                // 1. Try Firebase Web SDK (compat) to generate an authentic Google FCM token
+                try {
+                    await this.loadFirebaseCompat();
+                    if (typeof firebase !== 'undefined' && firebase.messaging && (this.config.project_id || vapidKey)) {
+                        if (!firebase.apps.length) {
+                            firebase.initializeApp({
+                                projectId: this.config.project_id || undefined,
+                                messagingSenderId: this.config.messaging_sender_id || undefined,
+                                apiKey: this.config.api_key || undefined,
+                                appId: this.config.app_id || undefined
+                            });
+                        }
+                        const messaging = firebase.messaging();
+                        
+                        let swReg = null;
+                        if ('serviceWorker' in navigator) {
+                            try {
+                                swReg = await navigator.serviceWorker.ready;
+                            } catch (e) {
+                                swReg = null;
+                            }
+                        }
+
+                        try {
+                            tokenString = await messaging.getToken({
+                                vapidKey: vapidKey,
+                                serviceWorkerRegistration: swReg || undefined
+                            });
+                        } catch (tokErr) {
+                            console.warn('[Push] getToken with swReg failed, trying default registration:', tokErr);
+                            tokenString = await messaging.getToken({
+                                vapidKey: vapidKey
+                            });
+                        }
+                        console.info('[Push] Generated official Firebase FCM token:', tokenString ? tokenString.substring(0, 20) + '...' : null);
+                    }
+                } catch (fbErr) {
+                    console.warn('[Push] Firebase SDK getToken error, falling back to native PushManager:', fbErr);
+                }
+
+                // 2. Fallback to native PushManager if Firebase SDK was not used or failed
+                if (!tokenString && 'PushManager' in window && 'serviceWorker' in navigator) {
                     const registration = await navigator.serviceWorker.ready;
                     let subscription = await registration.pushManager.getSubscription();
 
@@ -181,28 +247,32 @@
                     this.currentToken = tokenString;
                     this.updateToggleUi(true);
 
-                    const devMsg = data.registered_keys_count > 1 ? ` (${data.registered_keys_count} active devices)` : '';
-                    const successMsg = `🔔 Notifications enabled for ${data.username || 'your account'}${devMsg}!`;
-                    if (typeof window.showToast === 'function') {
-                        window.showToast(successMsg, 'success', 3500);
-                    } else {
-                        alert(successMsg);
+                    if (!silent) {
+                        const devMsg = data.registered_keys_count > 1 ? ` (${data.registered_keys_count} active devices)` : '';
+                        const successMsg = `🔔 Notifications enabled for ${data.username || 'your account'}${devMsg}!`;
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(successMsg, 'success', 3500);
+                        } else {
+                            alert(successMsg);
+                        }
                     }
                     return { success: true };
                 } else {
                     const errMsg = data.error || 'Server rejected subscription';
                     this.updateToggleUi(false);
-                    if (resp.status === 401 || errMsg.toLowerCase().includes('log in') || errMsg.toLowerCase().includes('unregistered')) {
-                        if (typeof window.showToast === 'function') {
-                            window.showToast('Please log in with a registered account to enable notifications.', 'warning', 4500);
+                    if (!silent) {
+                        if (resp.status === 401 || errMsg.toLowerCase().includes('log in') || errMsg.toLowerCase().includes('unregistered')) {
+                            if (typeof window.showToast === 'function') {
+                                window.showToast('Please log in with a registered account to enable notifications.', 'warning', 4500);
+                            } else {
+                                alert('Please log in with a registered Capital Desk account to enable notifications.');
+                            }
                         } else {
-                            alert('Please log in with a registered Capital Desk account to enable notifications.');
-                        }
-                    } else {
-                        if (typeof window.showToast === 'function') {
-                            window.showToast('Subscription error: ' + errMsg, 'error', 4000);
-                        } else {
-                            alert('Could not enable notifications: ' + errMsg);
+                            if (typeof window.showToast === 'function') {
+                                window.showToast('Subscription error: ' + errMsg, 'error', 4000);
+                            } else {
+                                alert('Could not enable notifications: ' + errMsg);
+                            }
                         }
                     }
                     return { success: false, error: errMsg };
@@ -210,7 +280,7 @@
             } catch (err) {
                 console.error('[Push] Subscription failed:', err);
                 this.updateToggleUi(false);
-                alert('Could not enable notifications: ' + err.message);
+                if (!silent) alert('Could not enable notifications: ' + err.message);
                 return { success: false, error: err.message };
             }
         },
@@ -219,26 +289,29 @@
             if (!this.isSupported()) return;
 
             try {
+                const tokensToUnregister = [];
+                if (this.currentToken) {
+                    tokensToUnregister.push(this.currentToken);
+                }
+
                 if ('serviceWorker' in navigator && 'PushManager' in window) {
                     const registration = await navigator.serviceWorker.ready;
                     const subscription = await registration.pushManager.getSubscription();
 
                     if (subscription) {
-                        const tokenString = subscription.endpoint;
-                        await subscription.unsubscribe();
-
-                        await fetch('/api/notifications/unsubscribe', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token: tokenString })
-                        });
+                        if (subscription.endpoint && !tokensToUnregister.includes(subscription.endpoint)) {
+                            tokensToUnregister.push(subscription.endpoint);
+                        }
+                        await subscription.unsubscribe().catch(() => {});
                     }
-                } else if (this.currentToken) {
+                }
+
+                for (const tok of tokensToUnregister) {
                     await fetch('/api/notifications/unsubscribe', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: this.currentToken })
-                    });
+                        body: JSON.stringify({ token: tok })
+                    }).catch(() => {});
                 }
 
                 this.isSubscribed = false;

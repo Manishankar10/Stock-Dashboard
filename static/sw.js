@@ -3,7 +3,7 @@
 // Institutional Offline Resilience & App Shell Caching
 // =========================================================
 
-const CACHE_VERSION = 'v1.0.5';
+const CACHE_VERSION = 'v1.0.6';
 const STATIC_CACHE = `capital-desk-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capital-desk-runtime-${CACHE_VERSION}`;
 
@@ -29,7 +29,8 @@ const PRECACHE_ASSETS = [
     '/static/js/core/app-core.js',
     '/static/js/core/router.js',
     '/static/js/core/pwa.js',
-    '/static/js/core/push-notification-client.js'
+    '/static/js/core/push-notification-client.js',
+    '/firebase-messaging-sw.js'
 ];
 
 // 1. Install Event: Cache app shell
@@ -162,3 +163,10 @@ self.addEventListener('message', (event) => {
         self.skipWaiting();
     }
 });
+
+// 5. Firebase Cloud Messaging & Web Push Handlers
+try {
+    importScripts('/firebase-messaging-sw.js');
+} catch (e) {
+    console.warn('[SW] Could not import /firebase-messaging-sw.js:', e);
+}
