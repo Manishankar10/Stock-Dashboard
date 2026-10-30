@@ -2146,28 +2146,15 @@
                         </div>
                     </div>
 
-                    <!-- Target Recipient Selection -->
-                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">🎯 Target Recipient:</label>
-                            <select id="gold-target-user-select" onchange="handleGoldTargetUserChange(this.value)"
-                                style="padding: 6px 10px; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
-                                <option value="all">📢 All Active Subscribers</option>
-                                <option value="sampath" selected>👤 Sampath Only (Sample Test)</option>
-                                <option value="custom">🔍 Specific Username...</option>
-                            </select>
-                            <input type="text" id="gold-custom-username" placeholder="Username (e.g. sampath)" style="display: none; width: 140px; padding: 5px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
-                        </div>
-                        <button class="btn btn-secondary" onclick="sendSampleGoldToUser('sampath')" style="font-size: 11.5px; padding: 5px 12px; color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);" title="Direct one-click test dispatch to user sampath">
-                            ⚡ Send Sample to Sampath
-                        </button>
-                    </div>
-
                     <!-- Dispatch Buttons -->
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn" id="btn-send-gold" onclick="sendGoldRatesNotification()" 
-                            style="flex: 1; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; border: none; font-weight: 700; padding: 10px 16px; border-radius: 8px;">
+                            style="flex: 1; min-width: 200px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; border: none; font-weight: 700; padding: 10px 16px; border-radius: 8px;">
                             🚀 Send Gold & Silver Notification
+                        </button>
+                        <button class="btn btn-secondary" id="btn-send-gold-sampath" onclick="sendSampleGoldToUser('sampath')" 
+                            style="padding: 10px 14px; color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample gold & silver notification directly to Sampath">
+                            👤 Sampath
                         </button>
                         <button class="btn btn-secondary" onclick="autoCalculate8gRates()" style="padding: 10px 14px;" title="Auto-multiply 1g by 8">
                             ⚡ 8x Multiplier
@@ -2184,8 +2171,8 @@
                             🎉 Send Welcome Notification (Best Wishes)
                         </button>
                         <button class="btn btn-secondary" onclick="sendWelcomeNotification('sampath')" 
-                            style="padding: 10px 14px; color: #a78bfa; border-color: rgba(167, 139, 250, 0.4); font-size: 12px; font-weight: 600;" title="Send welcome message directly to Sampath">
-                            👤 Welcome to Sampath
+                            style="padding: 10px 14px; color: #a78bfa; border-color: rgba(167, 139, 250, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send welcome message directly to Sampath">
+                            👤 Sampath
                         </button>
                     </div>
                 </div>
