@@ -2259,6 +2259,27 @@
                     <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">
                         Computes each user's unique daily return & top gainer/loser directly from their database holdings and sends personalized push alerts.
                     </p>
+
+                    <!-- Watchlist Top 5 Gainers Dispatcher Section -->
+                    <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border-color);">
+                        <div style="display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap;">
+                            <button class="btn" id="btn-send-watchlist-all" onclick="sendWatchlistGainersAllUsers()" 
+                                style="flex: 1; min-width: 250px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; font-weight: 700; padding: 11px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                ⭐ Send Watchlist Top 5 Gainers to ALL Users (from DB)
+                            </button>
+                            <button class="btn btn-secondary" id="btn-send-watchlist-sampath" onclick="sendWatchlistGainersSampleUser('sampath')" 
+                                style="padding: 11px 14px; color: #34d399; border-color: rgba(52, 211, 153, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample watchlist digest directly to Sampath">
+                                👤 Sampath
+                            </button>
+                            <a id="btn-preview-watchlist-img" href="/api/notifications/render-watchlist-card.png" target="_blank" class="btn btn-secondary" 
+                                style="padding: 11px 14px; text-decoration: none; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" title="Open full-resolution generated Watchlist PNG banner">
+                                🖼️ Card Image
+                            </a>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">
+                            Scans each user's watchlist from DB, filters out negative stocks, and delivers their Top 5 positive gainers in a glassy table card.
+                        </p>
+                    </div>
                 </div>
             </div>
 

@@ -16,6 +16,7 @@ from modules.notifications.fcm_service import (
 from modules.notifications.card_generator import (
     generate_gold_silver_card,
     generate_portfolio_card,
+    generate_watchlist_card,
     clean_stock_symbol
 )
 from modules.notifications.live_bullion import fetch_live_bullion_rates
@@ -23,6 +24,11 @@ from modules.notifications.user_portfolio_notifier import (
     calculate_user_portfolio_performance,
     get_all_users_portfolio_summaries,
     dispatch_unique_portfolio_notifications
+)
+from modules.notifications.user_watchlist_notifier import (
+    get_user_watchlist_top_gainers,
+    dispatch_unique_watchlist_notifications,
+    send_watchlist_digest_to_user
 )
 
 notifications_bp = Blueprint("notifications", __name__)
@@ -198,6 +204,25 @@ def render_portfolio_card_endpoint():
         mimetype="image/png",
         as_attachment=False,
         download_name="portfolio_performance.png"
+    )
+
+
+@notifications_bp.route("/api/notifications/render-watchlist-card.png", methods=["GET"])
+def render_watchlist_card_endpoint():
+    """Renders the custom Watchlist Top Gainers card image dynamically."""
+    uname = request.args.get("username", "") or session.get("username", "sampath")
+    gainers = get_user_watchlist_top_gainers(uname, limit=5)
+
+    buf = generate_watchlist_card(
+        stocks=gainers,
+        username=uname,
+        date_str=today_ist_str()
+    )
+    return send_file(
+        buf,
+        mimetype="image/png",
+        as_attachment=False,
+        download_name="watchlist_top_gainers.png"
     )
 
 
@@ -474,6 +499,36 @@ def admin_users_portfolio_overview():
         "success": True,
         "users": summaries
     })
+
+
+@notifications_bp.route("/api/admin/notifications/send-watchlist-all-users", methods=["POST"])
+@admin_required
+def admin_send_watchlist_all_users():
+    """
+    DISPATCHES PERSONALIZED TOP 5 WATCHLIST GAINERS NOTIFICATIONS TO EVERY USER:
+    1. Reads each user's watchlist from DB.
+    2. Fetches live market quotes.
+    3. Strictly filters out negative stocks and sorts descending by change %.
+    4. Generates a glassy image card in the requested format.
+    5. Dispatches FCM push targeted to each user's active devices.
+    """
+    base_url = request.url_root.rstrip("/")
+    static_root = os.path.join(current_app.root_path, "static")
+
+    result = dispatch_unique_watchlist_notifications(base_url=base_url, static_root=static_root)
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/send-watchlist-sample-user", methods=["POST"])
+@admin_required
+def admin_send_watchlist_sample_user():
+    """Dispatches personalized Top 5 Watchlist Gainers specifically to a sample user (e.g. Sampath)."""
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    username = data.get("username", "sampath").strip()
+    base_url = request.url_root.rstrip("/")
+
+    result = send_watchlist_digest_to_user(username=username, base_url=base_url)
+    return jsonify(result)
 
 
 @notifications_bp.route("/api/admin/notifications/send-portfolio-all-users", methods=["POST"])

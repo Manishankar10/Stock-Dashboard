@@ -320,3 +320,199 @@ def generate_portfolio_card(
     im.save(buf, format="PNG", optimize=True)
     buf.seek(0)
     return buf
+
+
+def _draw_sort_arrows(draw, x, y, color=(100, 116, 139, 255)):
+    """Draws subtle sort indicators (up & down triangles) in table header."""
+    # Up triangle
+    draw.polygon([(x, y + 5), (x + 7, y + 5), (x + 3.5, y + 1)], fill=color)
+    # Down triangle
+    draw.polygon([(x, y + 8), (x + 7, y + 8), (x + 3.5, y + 12)], fill=color)
+
+
+def generate_watchlist_card(
+    stocks=None,
+    username="Sampath",
+    date_str="Today",
+    output_path=None
+):
+    """
+    Renders high-res 882x440 dark glassy card matching user's watchlist image format:
+    Columns: SYMBOL (with NSE/BSE badge), LTP (₹), CHANGE (₹), CHANGE (%) in emerald green.
+    Excludes negative stocks. Up to 5 top gainers.
+    """
+    if not PIL_AVAILABLE or Image is None:
+        return "/static/favicon-192.png"
+
+    if stocks is None:
+        stocks = [
+            {"symbol": "POCL", "exchange": "NSE", "ltp": "₹392.75", "change_val": "+₹15.15", "change_pct": "+4.01%"},
+            {"symbol": "INDHOTEL", "exchange": "NSE", "ltp": "₹823.10", "change_val": "+₹13.10", "change_pct": "+1.62%"},
+            {"symbol": "TCS", "exchange": "NSE", "ltp": "₹3,940.50", "change_val": "+₹32.80", "change_pct": "+0.84%"},
+            {"symbol": "INFY", "exchange": "NSE", "ltp": "₹1,855.20", "change_val": "+₹12.40", "change_pct": "+0.67%"},
+            {"symbol": "RELIANCE", "exchange": "NSE", "ltp": "₹2,740.00", "change_val": "+₹14.50", "change_pct": "+0.53%"},
+        ]
+
+    # Strictly filter out negative and non-positive stocks
+    filtered_stocks = []
+    for s in stocks:
+        raw_pct = str(s.get("change_pct", "0")).replace("%", "").replace("+", "").strip()
+        try:
+            val_pct = float(raw_pct)
+        except Exception:
+            val_pct = 0.0
+        if val_pct > 0.0:
+            filtered_stocks.append(s)
+
+    width, height = 882, 440
+    im = Image.new("RGBA", (width, height), (13, 20, 36, 255))
+    draw = ImageDraw.Draw(im)
+
+    # Outer border & glassy card canvas
+    draw.rounded_rectangle(
+        [6, 6, width - 6, height - 6],
+        radius=20,
+        fill=(17, 24, 43, 255),
+        outline=(37, 52, 78, 255),
+        width=2
+    )
+
+    # Fonts
+    font_title = _get_font(23, bold=True)
+    font_badge = _get_font(15, bold=True)
+    font_sub = _get_font(14, bold=False)
+    font_th = _get_font(13, bold=True)
+    font_sym = _get_font(20, bold=True)
+    font_exch = _get_font(12, bold=True)
+    font_val = _get_font(19, bold=True)
+    font_pct = _get_font(20, bold=True)
+
+    # Palette
+    color_green = (16, 185, 129, 255)      # #10b981
+    color_muted = (148, 163, 184, 255)     # #94a3b8
+    color_th_arrow = (100, 116, 139, 255)
+    color_white = (255, 255, 255, 255)
+    color_val = (241, 245, 249, 255)       # #f1f5f9
+    tbl_bg = (19, 29, 49, 255)
+    tbl_border = (33, 47, 72, 255)
+    th_bg = (23, 34, 57, 255)
+    row_line = (33, 47, 72, 255)
+
+    # Header Row
+    sec_y = 22
+    draw.ellipse([30, sec_y + 6, 44, sec_y + 20], fill=color_green)
+    display_name = f"{username.capitalize()}'s Watchlist Top Gainers" if username else "Watchlist Top Gainers"
+    draw.text((54, sec_y), display_name, font=font_title, fill=color_white)
+
+    # Right Badge: TOP 5 GAINERS
+    badge_text = "TOP 5 GAINERS"
+    badge_w = 150
+    badge_h = 30
+    badge_x = width - 30 - badge_w
+    draw.rounded_rectangle([badge_x, sec_y - 2, badge_x + badge_w, sec_y + badge_h], radius=7, fill=(16, 45, 35, 255), outline=color_green, width=1)
+    draw.text((badge_x + 18, sec_y + 4), badge_text, font=font_badge, fill=color_green)
+
+    # Sub-header info
+    draw.text((54, sec_y + 32), f"Market Momentum • {date_str} • Positive Gainers Only", font=font_sub, fill=color_muted)
+
+    # Inner Glassy Table Frame
+    tbl_x = 30
+    tbl_y = sec_y + 64
+    tbl_w = width - 60
+    tbl_h = height - tbl_y - 22
+
+    draw.rounded_rectangle([tbl_x, tbl_y, tbl_x + tbl_w, tbl_y + tbl_h], radius=12, fill=tbl_bg, outline=tbl_border, width=1)
+
+    # Table Header
+    th_h = 42
+    draw.rounded_rectangle([tbl_x, tbl_y, tbl_x + tbl_w, tbl_y + th_h], radius=12, fill=th_bg)
+    draw.rectangle([tbl_x, tbl_y + th_h - 10, tbl_x + tbl_w, tbl_y + th_h], fill=th_bg)
+    draw.line([(tbl_x, tbl_y + th_h), (tbl_x + tbl_w, tbl_y + th_h)], fill=tbl_border, width=1)
+
+    # Column Positions
+    c1_x = tbl_x + 24   # SYMBOL
+    c2_x = tbl_x + 360  # LTP (₹)
+    c3_x = tbl_x + 530  # CHANGE (₹)
+    c4_x = tbl_x + 700  # CHANGE (%)
+
+    # Header Texts with Sort Indicators
+    draw.text((c1_x, tbl_y + 12), "SYMBOL", font=font_th, fill=color_muted)
+    _draw_sort_arrows(draw, c1_x + 64, tbl_y + 14, color_th_arrow)
+
+    draw.text((c2_x, tbl_y + 12), "LTP (₹)", font=font_th, fill=color_muted)
+    _draw_sort_arrows(draw, c2_x + 56, tbl_y + 14, color_th_arrow)
+
+    draw.text((c3_x, tbl_y + 12), "CHANGE (₹)", font=font_th, fill=color_muted)
+    _draw_sort_arrows(draw, c3_x + 84, tbl_y + 14, color_th_arrow)
+
+    draw.text((c4_x, tbl_y + 12), "CHANGE (%)", font=font_th, fill=color_muted)
+    # Down arrow in green next to CHANGE (%)
+    draw.polygon([(c4_x + 92, tbl_y + 17), (c4_x + 102, tbl_y + 17), (c4_x + 97, tbl_y + 24)], fill=color_green)
+
+    # Rows (up to 5)
+    row_y = tbl_y + th_h
+    row_count = min(len(filtered_stocks), 5)
+    row_h = 60 if row_count <= 4 else (tbl_h - th_h) / 5
+
+    if not filtered_stocks:
+        no_text = "No positive stock gainers found in watchlist today."
+        draw.text((tbl_x + 180, row_y + 60), no_text, font=_get_font(18, bold=True), fill=color_muted)
+    else:
+        for i, s in enumerate(filtered_stocks[:5]):
+            cur_y = row_y + (i * row_h)
+            cent_y = cur_y + (row_h / 2) - 12
+
+            if i > 0:
+                draw.line([(tbl_x, cur_y), (tbl_x + tbl_w, cur_y)], fill=row_line, width=1)
+
+            # 1. Symbol + Exchange Badge
+            sym_text = clean_stock_symbol(str(s.get("symbol", "-"))).upper()
+            draw.text((c1_x, cent_y), sym_text, font=font_sym, fill=color_white)
+
+            try:
+                sym_bbox = font_sym.getbbox(sym_text)
+                sym_w = sym_bbox[2] - sym_bbox[0]
+            except Exception:
+                sym_w = len(sym_text) * 12
+
+            exch_text = str(s.get("exchange", "NSE")).upper()
+            badge_bx = c1_x + sym_w + 10
+            badge_by = cent_y + 2
+            b_w = 42
+            b_h = 20
+            draw.rounded_rectangle([badge_bx, badge_by, badge_bx + b_w, badge_by + b_h], radius=5, fill=(30, 58, 138, 255), outline=(59, 130, 246, 255), width=1)
+            draw.text((badge_bx + 7, badge_by + 2), exch_text, font=font_exch, fill=(147, 197, 253, 255))
+
+            # 2. LTP
+            ltp_str = str(s.get("ltp", "-"))
+            if not ltp_str.startswith("₹") and ltp_str != "-":
+                ltp_str = f"₹{ltp_str}"
+            draw.text((c2_x, cent_y), ltp_str, font=font_val, fill=color_val)
+
+            # 3. Change (₹)
+            chg_val = str(s.get("change_val", "-"))
+            if chg_val != "-" and not chg_val.startswith("+") and not chg_val.startswith("-"):
+                chg_val = f"+{chg_val}"
+            if not "₹" in chg_val and chg_val != "-":
+                if chg_val.startswith("+"):
+                    chg_val = f"+₹{chg_val[1:]}"
+                else:
+                    chg_val = f"₹{chg_val}"
+            draw.text((c3_x, cent_y), chg_val, font=font_val, fill=color_white)
+
+            # 4. Change (%) in bright emerald green
+            pct_val = str(s.get("change_pct", "-"))
+            if pct_val != "-" and not pct_val.startswith("+") and not pct_val.startswith("-"):
+                pct_val = f"+{pct_val}"
+            if not pct_val.endswith("%") and pct_val != "-":
+                pct_val += "%"
+            draw.text((c4_x, cent_y), pct_val, font=font_pct, fill=color_green)
+
+    if output_path:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        im.save(output_path, "PNG", optimize=True)
+
+    buf = io.BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    buf.seek(0)
+    return buf

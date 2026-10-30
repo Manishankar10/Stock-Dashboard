@@ -611,6 +611,73 @@
         }
     };
 
+    // 6A. Send Watchlist Top 5 Gainers to All Users
+    window.sendWatchlistGainersAllUsers = async function () {
+        const btn = document.getElementById('btn-send-watchlist-all');
+        const originalText = btn ? btn.innerHTML : '⭐ Send Watchlist Top 5 Gainers to ALL Users (from DB)';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Computing Watchlist Momentum & Dispatching...';
+        }
+
+        try {
+            const res = await fetch('/api/admin/notifications/send-watchlist-all-users', {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (data.success) {
+                const breakdown = (data.user_breakdown || []).map(u => `• ${u.username}: ${u.gainers_count} top positive gainers (${(u.top_gainers || []).join(', ') || 'None'}) -> ${u.status}`).join('\n');
+                if (data.total_devices_targeted === 0) {
+                    alert(`⚠️ No Push Devices Delivered:\n\n• Users Processed: ${data.total_users_processed}\n• Devices Delivered: 0\n\nBreakdown:\n${breakdown || 'No active devices registered'}`);
+                } else {
+                    alert(`✅ Watchlist Top Gainers Push Completed!\n\n• Users Processed: ${data.total_users_processed}\n• Devices Delivered: ${data.total_devices_targeted}\n\nBreakdown:\n${breakdown}`);
+                }
+                await window.loadNotificationStats();
+            } else {
+                alert('⚠️ Error dispatching watchlist notifications: ' + (data.error || data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            alert('❌ Network/Server Error: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    };
+
+    // 6B. Send Sample Watchlist Top 5 Gainers to Specific User (e.g. Sampath)
+    window.sendWatchlistGainersSampleUser = async function (username = 'sampath') {
+        const btn = document.getElementById('btn-send-watchlist-sampath');
+        const originalText = btn ? btn.innerHTML : '👤 Sampath';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Sending...';
+        }
+
+        try {
+            const res = await fetch('/api/admin/notifications/send-watchlist-sample-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ Watchlist Top Gainers Dispatched to ${data.username}!\n\n• Positive Gainers: ${data.gainers_count}\n• Recipients: ${data.recipient_count}\n• Status: ${data.status}`);
+                await window.loadNotificationStats();
+            } else {
+                alert('⚠️ Could not send watchlist notification: ' + (data.error || data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            alert('❌ Network/Server Error: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    };
+
     // 6. Send Unique Personalized EOD to All Users
     window.sendPortfolioPersonalizedAllUsers = async function () {
         const btn = document.getElementById('btn-send-portfolio-all');
