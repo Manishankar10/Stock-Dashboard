@@ -3,7 +3,7 @@
 // Institutional Offline Resilience & App Shell Caching
 // =========================================================
 
-const CACHE_VERSION = 'v1.0.8';
+const CACHE_VERSION = 'v1.0.9';
 const STATIC_CACHE = `capital-desk-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capital-desk-runtime-${CACHE_VERSION}`;
 
@@ -164,9 +164,81 @@ self.addEventListener('message', (event) => {
     }
 });
 
-// 5. Firebase Cloud Messaging & Web Push Handlers
+// 5. Native Web Push Event Handler (PWA & Web Browser)
+self.addEventListener('push', (event) => {
+    let payload = {};
+    if (event.data) {
+        try {
+            payload = event.data.json();
+        } catch (err) {
+            payload = {
+                notification: {
+                    title: 'Capital Desk Notification',
+                    body: event.data.text()
+                }
+            };
+        }
+    }
+
+    const notification = payload.notification || payload;
+    const data = payload.data || {};
+
+    const title = notification.title || 'Capital Desk Alert';
+    const body = notification.body || 'New financial market update available.';
+    const icon = notification.icon || '/static/favicon-192.png';
+    const badge = notification.badge || '/static/favicon-32.png';
+    const image = notification.image || data.image || null;
+    const targetUrl = data.url || (notification.click_action || '/');
+
+    const notificationOptions = {
+        body: body,
+        icon: icon,
+        badge: badge,
+        image: image,
+        tag: data.tag || ('capital-desk-alert-' + Date.now()),
+        data: {
+            url: targetUrl,
+            timestamp: Date.now()
+        },
+        requireInteraction: true,
+        vibrate: [200, 100, 200],
+        actions: [
+            { action: 'open', title: 'Open Capital Desk' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(title, notificationOptions)
+    );
+});
+
+// 6. Notification Click Handling (Focus Existing PWA / Tab or Open Window)
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            for (let i = 0; i < clientList.length; i++) {
+                const client = clientList[i];
+                if (client.url && 'focus' in client) {
+                    if (targetUrl && targetUrl !== '/') {
+                        client.navigate(targetUrl);
+                    }
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
+});
+
+// 7. Optional Firebase Messaging Compat fallback
 try {
     importScripts('/firebase-messaging-sw.js');
 } catch (e) {
-    console.warn('[SW] Could not import /firebase-messaging-sw.js:', e);
+    // Ignore fallback import error
 }

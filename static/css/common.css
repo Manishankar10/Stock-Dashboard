@@ -3298,3 +3298,108 @@
     border-color: #10b981;
     box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
 }
+
+
+/* Floating In-App PWA Push Notification Permission Prompt */
+.cd-pwa-push-prompt {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 480px;
+    z-index: 99999;
+    animation: cdFadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cdFadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.cd-pwa-prompt-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.cd-pwa-prompt-icon {
+    font-size: 26px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.cd-pwa-prompt-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.cd-pwa-prompt-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 2px;
+}
+
+.cd-pwa-prompt-desc {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    line-height: 1.35;
+}
+
+.cd-pwa-prompt-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.btn-pwa-push-allow {
+    padding: 7px 14px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-pwa-push-allow:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-pwa-push-dismiss {
+    padding: 5px 10px;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color 0.2s;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.btn-pwa-push-dismiss:hover {
+    color: #94a3b8;
+}

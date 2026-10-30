@@ -82,13 +82,15 @@ def api_subscribe_device():
     user_agent = request.headers.get("User-Agent", "")
     topics = data.get("topics", ["gold_silver_rates", "portfolio_performance"])
     subscription_obj = data.get("subscription")
+    is_pwa = bool(data.get("is_pwa", False))
 
     success, msg = register_device_token(
         token=token,
         username=username,
         user_agent=user_agent,
         topics=topics,
-        subscription=subscription_obj
+        subscription=subscription_obj,
+        is_pwa=is_pwa
     )
     if not success:
         return jsonify({"success": False, "error": msg}), 400

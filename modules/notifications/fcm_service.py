@@ -306,7 +306,7 @@ def clean_fcm_token(token_str):
     return token_str
 
 
-def register_device_token(token, username=None, user_agent="", topics=None, subscription=None):
+def register_device_token(token, username=None, user_agent="", topics=None, subscription=None, is_pwa=False):
     """
     Registers or updates an FCM Web/PWA device key for a registered user.
     Supports storing more than one key/device per user (e.g. PC, Phone PWA, Laptop).
@@ -333,28 +333,34 @@ def register_device_token(token, username=None, user_agent="", topics=None, subs
     timestamp = format_ist_standard()
     clean_tok = clean_fcm_token(token)
 
-    # Derive human-friendly device label from User-Agent
-    device_label = "Browser Device"
+    # Derive human-friendly device label from User-Agent and PWA status
     ua = (user_agent or "").lower()
+    platform = "PC"
     if "iphone" in ua or "ipad" in ua:
-        device_label = "Apple iOS Device (PWA)"
+        platform = "Apple iOS"
     elif "android" in ua:
-        device_label = "Android Device (PWA)"
+        platform = "Android"
     elif "windows" in ua:
-        device_label = "Windows PC"
+        platform = "Windows"
     elif "macintosh" in ua or "mac os" in ua:
-        device_label = "Mac Desktop"
+        platform = "Mac"
     elif "linux" in ua:
-        device_label = "Linux Desktop"
+        platform = "Linux"
 
-    if "chrome" in ua and "edg" not in ua:
-        device_label += " - Chrome"
-    elif "edg" in ua:
-        device_label += " - Edge"
+    browser = "Browser"
+    if "edg" in ua:
+        browser = "Edge"
+    elif "chrome" in ua:
+        browser = "Chrome"
     elif "firefox" in ua:
-        device_label += " - Firefox"
-    elif "safari" in ua and "chrome" not in ua:
-        device_label += " - Safari"
+        browser = "Firefox"
+    elif "safari" in ua:
+        browser = "Safari"
+
+    if is_pwa:
+        device_label = f"{platform} (Installed PWA App)"
+    else:
+        device_label = f"{platform} - {browser} (Web Tab)"
 
     # Store key: Each unique device produces a unique token, so one user can store multiple keys
     sub_data = {
@@ -364,6 +370,7 @@ def register_device_token(token, username=None, user_agent="", topics=None, subs
         "username": username,
         "user_agent": user_agent or subs.get(token, {}).get("user_agent", ""),
         "device_name": device_label,
+        "is_pwa": bool(is_pwa),
         "topics": list(set(topics)),
         "created_at": subs.get(token, {}).get("created_at", timestamp),
         "last_active": timestamp,
@@ -631,11 +638,16 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                         data=wp_payload,
                         vapid_private_key=priv_key,
                         vapid_claims={"sub": "mailto:admin@capitaldesk.local"},
+                        ttl=86400,
+                        headers={
+                            "Urgency": "high",
+                            "TTL": "86400"
+                        },
                         timeout=10
                     )
                     if resp.status_code in (200, 201, 202):
                         success_count += 1
-                        logger.info(f"[WebPush] Delivered alert to browser ({tok[:25]}...)")
+                        logger.info(f"[WebPush] Delivered alert to browser/PWA ({tok[:25]}...)")
                     else:
                         failure_count += 1
                         failure_details.append(f"WebPush HTTP {resp.status_code}")
@@ -679,9 +691,18 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                     image=full_image
                 )
                 webpush_config = messaging.WebpushConfig(
+                    headers={"Urgency": "high", "TTL": "86400"},
                     notification=webpush_notification,
                     fcm_options=fcm_options,
                     data={str(k): str(v) for k, v in payload_data.items()}
+                )
+                android_config = messaging.AndroidConfig(
+                    priority="high",
+                    notification=messaging.AndroidNotification(
+                        priority="max",
+                        default_sound=True,
+                        default_vibrate_timings=True
+                    )
                 )
 
                 chunk_size = 500
@@ -691,6 +712,7 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                         tokens=chunk,
                         notification=messaging.Notification(title=title, body=body, image=full_image),
                         webpush=webpush_config,
+                        android=android_config,
                         data={str(k): str(v) for k, v in payload_data.items()}
                     )
                     batch_response = messaging.send_each_for_multicast(multicast)

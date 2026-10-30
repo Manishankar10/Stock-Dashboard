@@ -56,11 +56,29 @@
             return Notification.permission;
         },
 
+        cleanupRogueRegistrations: async function () {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of registrations) {
+                        if (reg.scope && reg.scope.includes('firebase-cloud-messaging-push-scope')) {
+                            console.info('[Push] Pruned rogue Firebase scope registration:', reg.scope);
+                            await reg.unregister();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Push] Error cleaning up rogue registrations:', e);
+                }
+            }
+        },
+
         init: async function () {
             if (!this.isSupported()) {
                 console.info('[Push] Browser does not support Web Push / Service Workers.');
                 return;
             }
+
+            await this.cleanupRogueRegistrations();
 
             try {
                 const res = await fetch('/api/notifications/config');
@@ -72,6 +90,48 @@
             }
 
             await this.checkCurrentSubscription();
+            this.checkPwaNotificationPrompt();
+        },
+
+        checkPwaNotificationPrompt: function () {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                                 window.navigator.standalone === true ||
+                                 document.referrer.includes('android-app://');
+            if (isStandalone && 'Notification' in window && Notification.permission === 'default') {
+                if (!sessionStorage.getItem('cd_pwa_notif_prompt_dismissed')) {
+                    setTimeout(() => this.showPwaPromptBanner(), 1500);
+                }
+            }
+        },
+
+        showPwaPromptBanner: function () {
+            if (document.getElementById('cd-pwa-push-prompt-banner')) return;
+            const banner = document.createElement('div');
+            banner.id = 'cd-pwa-push-prompt-banner';
+            banner.className = 'cd-pwa-push-prompt';
+            banner.innerHTML = `
+                <div class="cd-pwa-prompt-card">
+                    <div class="cd-pwa-prompt-icon">🔔</div>
+                    <div class="cd-pwa-prompt-body">
+                        <div class="cd-pwa-prompt-title">Enable App Push Alerts</div>
+                        <div class="cd-pwa-prompt-desc">Receive real-time Gold/Silver updates and daily EOD portfolio summaries directly on this device.</div>
+                    </div>
+                    <div class="cd-pwa-prompt-actions">
+                        <button type="button" class="btn-pwa-push-allow" id="btn-pwa-push-allow">Enable Alerts</button>
+                        <button type="button" class="btn-pwa-push-dismiss" id="btn-pwa-push-dismiss">Later</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(banner);
+
+            document.getElementById('btn-pwa-push-allow')?.addEventListener('click', async () => {
+                banner.remove();
+                await this.subscribe(["gold_silver_rates", "portfolio_performance"], false);
+            });
+            document.getElementById('btn-pwa-push-dismiss')?.addEventListener('click', () => {
+                banner.remove();
+                sessionStorage.setItem('cd_pwa_notif_prompt_dismissed', '1');
+            });
         },
 
         checkCurrentSubscription: async function () {
@@ -79,7 +139,7 @@
 
             try {
                 if (Notification.permission === 'granted') {
-                    // If server has VAPID key configured, silently refresh / ensure real FCM token is registered
+                    // Silently refresh & ensure token is registered with current device context (PWA / Web)
                     if (this.config && this.config.vapid_public_key) {
                         await this.subscribe(["gold_silver_rates", "portfolio_performance"], true);
                         return;
@@ -111,9 +171,12 @@
                 return { success: false, error: 'Unsupported' };
             }
 
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                                 window.navigator.standalone === true ||
+                                 document.referrer.includes('android-app://');
+
             // iOS Safari check
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
             if (isIOS && !isStandalone) {
                 if (!silent) alert('On iOS / iPhone, you must first tap Share ⎋ -> "Add to Home Screen" to enable push notifications.');
                 return { success: false, error: 'iOS requires Home Screen installation' };
@@ -137,132 +200,103 @@
                 }
 
                 const vapidKey = this.config ? (this.config.vapid_public_key || '').trim() : '';
-
                 if (!vapidKey) {
-                    const errMsg = 'Firebase Web Push VAPID Key is not configured yet. Please configure it in the Admin Panel (Notifications tab) first.';
+                    const errMsg = 'Web Push VAPID Key is not configured yet. Please configure it in the Admin Panel (Notifications tab) first.';
                     if (!silent) alert(errMsg);
                     this.updateToggleUi(false);
                     return { success: false, error: errMsg };
                 }
 
-                let tokenString = null;
-                let subJson = null;
-
-                // 1. Try Firebase Web SDK (compat) to generate an authentic Google FCM token
-                try {
-                    await this.loadFirebaseCompat();
-                    if (typeof firebase !== 'undefined' && firebase.messaging && (this.config.project_id || vapidKey)) {
-                        if (!firebase.apps.length) {
-                            firebase.initializeApp({
-                                projectId: this.config.project_id || undefined,
-                                messagingSenderId: this.config.messaging_sender_id || undefined,
-                                apiKey: this.config.api_key || undefined,
-                                appId: this.config.app_id || undefined
-                            });
-                        }
-                        const messaging = firebase.messaging();
-                        
-                        let swReg = null;
-                        if ('serviceWorker' in navigator) {
-                            try {
-                                swReg = await navigator.serviceWorker.ready;
-                            } catch (e) {
-                                swReg = null;
-                            }
-                        }
-
-                        try {
-                            tokenString = await messaging.getToken({
-                                vapidKey: vapidKey,
-                                serviceWorkerRegistration: swReg || undefined
-                            });
-                        } catch (tokErr) {
-                            console.warn('[Push] getToken with swReg failed, trying default registration:', tokErr);
-                            tokenString = await messaging.getToken({
-                                vapidKey: vapidKey
-                            });
-                        }
-                        console.info('[Push] Generated official Firebase FCM token:', tokenString ? tokenString.substring(0, 20) + '...' : null);
-                    }
-                } catch (fbErr) {
-                    console.warn('[Push] Firebase SDK getToken error, falling back to native PushManager:', fbErr);
+                if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                    throw new Error('Push messaging is not supported in this environment.');
                 }
 
-                // 2. Fallback to native PushManager if Firebase SDK was not used or failed
-                if (!tokenString && 'PushManager' in window && 'serviceWorker' in navigator) {
-                    const registration = await navigator.serviceWorker.ready;
-                    let subscription = await registration.pushManager.getSubscription();
+                const registration = await navigator.serviceWorker.ready;
+                if (!registration) {
+                    throw new Error('Service Worker registration is not active.');
+                }
 
-                    // If existing subscription was created with different or missing VAPID key, refresh it
-                    if (subscription) {
-                        try {
-                            const currentKey = subscription.options && subscription.options.applicationServerKey;
-                            const targetKey = urlB64ToUint8Array(vapidKey);
-                            let match = false;
-                            if (currentKey) {
-                                const curBytes = new Uint8Array(currentKey);
-                                if (curBytes.length === targetKey.length) {
-                                    match = true;
-                                    for (let i = 0; i < curBytes.length; i++) {
-                                        if (curBytes[i] !== targetKey[i]) {
-                                            match = false;
-                                            break;
-                                        }
+                let subscription = await registration.pushManager.getSubscription();
+                const targetKey = urlB64ToUint8Array(vapidKey);
+
+                // Verify VAPID key match
+                if (subscription) {
+                    try {
+                        const currentKey = subscription.options && subscription.options.applicationServerKey;
+                        let match = false;
+                        if (currentKey) {
+                            const curBytes = new Uint8Array(currentKey);
+                            if (curBytes.length === targetKey.length) {
+                                match = true;
+                                for (let i = 0; i < curBytes.length; i++) {
+                                    if (curBytes[i] !== targetKey[i]) {
+                                        match = false;
+                                        break;
                                     }
                                 }
                             }
-                            if (!match) {
-                                console.info('[Push] VAPID key changed or mismatched, renewing browser push subscription...');
-                                await subscription.unsubscribe();
-                                subscription = null;
+                        }
+                        if (!match) {
+                            console.info('[Push] Renewing push subscription with updated VAPID key...');
+                            await subscription.unsubscribe();
+                            subscription = null;
+                        }
+                    } catch (e) {
+                        console.warn('[Push] Key verification check warning:', e);
+                    }
+                }
+
+                if (!subscription) {
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: targetKey
+                    });
+                }
+
+                let subJson = subscription.toJSON();
+                let tokenString = subscription.endpoint;
+
+                // Optional FCM Token retrieval using swReg ONLY (never standalone to prevent rogue worker)
+                if (this.config && this.config.project_id && this.config.api_key) {
+                    try {
+                        await this.loadFirebaseCompat();
+                        if (typeof firebase !== 'undefined' && firebase.messaging) {
+                            if (!firebase.apps.length) {
+                                firebase.initializeApp({
+                                    projectId: this.config.project_id,
+                                    messagingSenderId: this.config.messaging_sender_id,
+                                    apiKey: this.config.api_key,
+                                    appId: this.config.app_id
+                                });
                             }
-                        } catch (e) {
-                            console.warn('[Push] Could not verify subscription key match:', e);
+                            const messaging = firebase.messaging();
+                            const fcmTok = await messaging.getToken({
+                                vapidKey: vapidKey,
+                                serviceWorkerRegistration: registration
+                            });
+                            if (fcmTok) {
+                                tokenString = fcmTok;
+                            }
                         }
-                    }
-
-                    if (!subscription) {
-                        const subscribeOptions = {
-                            userVisibleOnly: true,
-                            applicationServerKey: urlB64ToUint8Array(vapidKey)
-                        };
-                        try {
-                            subscription = await registration.pushManager.subscribe(subscribeOptions);
-                        } catch (subErr) {
-                            console.error('[Push] PushManager subscribe error:', subErr);
-                            throw new Error('Browser push registration failed: ' + subErr.message);
-                        }
-                    }
-
-                    if (subscription) {
-                        subJson = subscription.toJSON();
-                        tokenString = subscription.endpoint;
+                    } catch (fbErr) {
+                        // Safe: fallback to standard W3C subscription endpoint
+                        console.info('[Push] Using direct W3C WebPush endpoint for PWA delivery.');
                     }
                 }
 
                 if (!tokenString) {
-                    throw new Error('Could not establish push subscription with browser. Please check notification permissions.');
+                    throw new Error('Could not establish push subscription with browser.');
                 }
 
-                // Ensure full WebPush encryption keys are always attached if available
-                if (!subJson && 'serviceWorker' in navigator && 'PushManager' in window) {
-                    try {
-                        const registration = await navigator.serviceWorker.ready;
-                        const sub = await registration.pushManager.getSubscription();
-                        if (sub) {
-                            subJson = sub.toJSON();
-                        }
-                    } catch (e) {}
-                }
-
-                // Register token with backend DB
+                // Register token with backend DB, including is_pwa flag
                 const resp = await fetch('/api/notifications/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         token: tokenString,
                         subscription: subJson,
-                        topics: topics
+                        topics: topics,
+                        is_pwa: isStandalone
                     })
                 });
 
@@ -272,9 +306,14 @@
                     this.currentToken = tokenString;
                     this.updateToggleUi(true);
 
+                    // Dismiss any PWA prompt banner
+                    const promptBanner = document.getElementById('cd-pwa-push-prompt-banner');
+                    if (promptBanner) promptBanner.remove();
+
                     if (!silent) {
                         const devMsg = data.registered_keys_count > 1 ? ` (${data.registered_keys_count} active devices)` : '';
-                        const successMsg = `🔔 Notifications enabled for ${data.username || 'your account'}${devMsg}!`;
+                        const appType = isStandalone ? 'Capital Desk App' : 'Browser';
+                        const successMsg = `🔔 Notifications enabled on ${appType} for ${data.username || 'your account'}${devMsg}!`;
                         if (typeof window.showToast === 'function') {
                             window.showToast(successMsg, 'success', 3500);
                         } else {
