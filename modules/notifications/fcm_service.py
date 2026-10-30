@@ -41,24 +41,40 @@ def get_or_create_vapid_keys():
     if pub_setting.startswith("AIzaSy"):
         pub_setting = ""
 
+    from py_vapid import Vapid
+    import base64
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+    # If private key was provided, derive matching public key
+    if priv_setting:
+        try:
+            v_check = Vapid.from_string(priv_setting)
+            derived_pub = base64.urlsafe_b64encode(v_check.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)).rstrip(b'=').decode('ascii')
+            # Always use derived_pub as it is the exact mathematical public key for priv_setting
+            if pub_setting != derived_pub:
+                try:
+                    settings["fcm_vapid_public_key"] = derived_pub
+                    from modules.common.system_settings import update_system_settings
+                    update_system_settings(settings)
+                except Exception:
+                    pass
+            return {"public_key": derived_pub, "private_key": priv_setting}
+        except Exception as e:
+            logger.warning(f"[VAPID] Invalid private key provided: {e}")
+
+    # Check local saved file
     if os.path.exists(VAPID_KEYS_FILE):
         try:
             with open(VAPID_KEYS_FILE, "r", encoding="utf-8") as f:
                 saved = json.load(f)
                 if saved.get("public_key") and saved.get("private_key"):
-                    if pub_setting and priv_setting:
-                        return {"public_key": pub_setting, "private_key": priv_setting}
-                    if pub_setting and pub_setting.startswith("B"):
-                        return {"public_key": pub_setting, "private_key": saved.get("private_key")}
-                    return saved
+                    if not pub_setting or pub_setting == saved.get("public_key"):
+                        return saved
         except Exception:
             pass
 
+    # Generate a fresh, perfectly matched EC P-256 keypair
     try:
-        from py_vapid import Vapid
-        import base64
-        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-
         v = Vapid()
         v.generate_keys()
         raw_pub = v.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
@@ -67,12 +83,22 @@ def get_or_create_vapid_keys():
         priv_b64 = base64.urlsafe_b64encode(raw_priv).rstrip(b'=').decode('ascii')
 
         keys = {
-            "public_key": pub_setting if (pub_setting and pub_setting.startswith("B")) else pub_b64,
-            "private_key": priv_setting or priv_b64
+            "public_key": pub_b64,
+            "private_key": priv_b64
         }
         os.makedirs(os.path.dirname(VAPID_KEYS_FILE), exist_ok=True)
         with open(VAPID_KEYS_FILE, "w", encoding="utf-8") as f:
             json.dump(keys, f, indent=2)
+
+        if not pub_setting or not priv_setting:
+            try:
+                settings["fcm_vapid_public_key"] = pub_b64
+                settings["fcm_vapid_private_key"] = priv_b64
+                from modules.common.system_settings import update_system_settings
+                update_system_settings(settings)
+            except Exception:
+                pass
+
         return keys
     except Exception as e:
         logger.warning(f"Could not auto-generate VAPID keypair: {e}")
@@ -110,10 +136,9 @@ def get_fcm_config():
         api_key = vapid_key
         vapid_key = ""
 
-    # Ensure valid VAPID key is always present
+    # Ensure valid VAPID key is always present and matched
     vapid_keys = get_or_create_vapid_keys()
-    if not vapid_key:
-        vapid_key = vapid_keys.get("public_key", "")
+    vapid_key = vapid_keys.get("public_key") or vapid_key
 
     service_account_exists = (
         bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")) or
@@ -144,6 +169,8 @@ def get_fcm_config():
         "is_configured": service_account_exists and _is_firebase_ready(),
         "service_account_detected": service_account_exists,
         "vapid_public_key": vapid_key,
+        "vapid_private_key": vapid_keys.get("private_key", ""),
+        "has_vapid_private_key": bool(vapid_keys.get("private_key")),
         "project_id": project_id,
         "messaging_sender_id": sender_id,
         "api_key": api_key,
@@ -621,10 +648,15 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                         failure_count += 1
                         failure_details.append(f"WebPush HTTP {resp.status_code}")
                 except WebPushException as wpe:
-                    if wpe.response is not None and wpe.response.status_code in (404, 410):
+                    status_code = wpe.response.status_code if wpe.response is not None else None
+                    if status_code in (404, 410):
                         invalid_tokens.append(tok)
                         failure_count += 1
-                        failure_details.append(f"Expired browser key (HTTP {wpe.response.status_code})")
+                        failure_details.append(f"Expired browser key (HTTP {status_code})")
+                    elif status_code == 403 or "vapid" in str(wpe).lower():
+                        invalid_tokens.append(tok)
+                        failure_count += 1
+                        failure_details.append(f"Mismatched VAPID subscription pruned (HTTP {status_code or 403})")
                     else:
                         failure_count += 1
                         failure_details.append(f"WebPush error: {str(wpe)[:80]}")

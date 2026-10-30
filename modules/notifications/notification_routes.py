@@ -381,6 +381,94 @@ def admin_send_sample_user():
         return jsonify(res)
 
 
+@notifications_bp.route("/api/admin/notifications/send-welcome", methods=["POST"])
+@admin_required
+def admin_send_welcome():
+    """
+    Sends a welcoming greeting notification:
+    'Welcome to Capital Desk!! Best wishes message only'
+    Can be targeted to 'all' or to a specific user (e.g. 'sampath').
+    """
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    target_user = (data.get("username") or data.get("target_username") or "").strip()
+
+    title = "🎉 Welcome to Capital Desk!"
+    if target_user and target_user.lower() != "all":
+        body = f"Welcome to Capital Desk, {target_user.capitalize()}!! Best wishes on your financial journey. 🚀"
+        specific_tokens = get_user_tokens(target_user)
+        if not specific_tokens:
+            from modules.notifications.fcm_service import log_notification_event
+            log_notification_event(
+                event_type="welcome",
+                title=title,
+                body=body,
+                status=f"Prepared (Awaiting {target_user}'s device)",
+                recipient_count=0,
+                metadata={"username": target_user}
+            )
+            return jsonify({
+                "success": True,
+                "simulated": True,
+                "message": f"Welcome Notification prepared for '{target_user}'! Best wishes message logged in audit trail. However, '{target_user}' currently has 0 registered devices in database. Ask '{target_user}' to log in on their browser/phone and tap 'Enable Notifications' to receive it live.",
+                "recipient_count": 0,
+                "target_username": target_user
+            })
+    else:
+        body = "Welcome to Capital Desk!! Best wishes on your financial journey. 🚀"
+        specific_tokens = None
+
+    result = send_web_push(
+        title=title,
+        body=body,
+        data_payload={
+            "url": "/",
+            "type": "welcome",
+            "target_user": target_user or "all"
+        },
+        specific_tokens=specific_tokens
+    )
+    result["target_username"] = target_user or "all"
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/generate-vapid-keys", methods=["POST"])
+@admin_required
+def admin_generate_vapid_keys():
+    """Generates a fresh, mathematically matched EC P-256 VAPID keypair."""
+    try:
+        from py_vapid import Vapid
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        from modules.notifications.fcm_service import VAPID_KEYS_FILE
+        import base64
+        import json
+
+        v = Vapid()
+        v.generate_keys()
+        raw_pub = v.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+        pub_b64 = base64.urlsafe_b64encode(raw_pub).rstrip(b'=').decode('ascii')
+        raw_priv = v.private_key.private_numbers().private_value.to_bytes(32, 'big')
+        priv_b64 = base64.urlsafe_b64encode(raw_priv).rstrip(b'=').decode('ascii')
+
+        os.makedirs(os.path.dirname(VAPID_KEYS_FILE), exist_ok=True)
+        with open(VAPID_KEYS_FILE, "w", encoding="utf-8") as f:
+            json.dump({"public_key": pub_b64, "private_key": priv_b64}, f, indent=2)
+
+        from modules.common.system_settings import get_system_settings, update_system_settings
+        settings = get_system_settings()
+        settings["fcm_vapid_public_key"] = pub_b64
+        settings["fcm_vapid_private_key"] = priv_b64
+        update_system_settings(settings)
+
+        return jsonify({
+            "success": True,
+            "public_key": pub_b64,
+            "private_key": priv_b64,
+            "message": "Generated new 100% matched VAPID keypair successfully! Browser subscriptions will use this keypair."
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @notifications_bp.route("/api/admin/notifications/users-portfolio-overview", methods=["GET"])
 @admin_required
 def admin_users_portfolio_overview():
@@ -489,6 +577,7 @@ def admin_save_fcm_config():
     """Allows admin to save VAPID public key, project ID, and service account JSON."""
     data = request.get_json(silent=True) or {}
     vapid_key = data.get("vapid_public_key", "").strip()
+    vapid_priv_key = data.get("vapid_private_key", "").strip()
     project_id = data.get("project_id", "").strip()
     sender_id = data.get("messaging_sender_id", data.get("sender_id", "")).strip()
     api_key = data.get("api_key", "").strip()
@@ -509,6 +598,8 @@ def admin_save_fcm_config():
 
     if vapid_key:
         settings["fcm_vapid_public_key"] = vapid_key
+    if vapid_priv_key:
+        settings["fcm_vapid_private_key"] = vapid_priv_key
     if project_id:
         settings["fcm_project_id"] = project_id
     if sender_id:

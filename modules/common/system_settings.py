@@ -9,6 +9,7 @@ DEFAULT_SYSTEM_SETTINGS = {
     "max_stocks_per_watchlist": 50,
     "ai_prompts": {},
     "fcm_vapid_public_key": "",
+    "fcm_vapid_private_key": "",
     "fcm_project_id": "",
     "fcm_messaging_sender_id": "",
     "fcm_api_key": "",
@@ -73,6 +74,8 @@ def update_system_settings(new_settings):
 
     if "fcm_vapid_public_key" in new_settings:
         current["fcm_vapid_public_key"] = str(new_settings["fcm_vapid_public_key"]).strip()
+    if "fcm_vapid_private_key" in new_settings:
+        current["fcm_vapid_private_key"] = str(new_settings["fcm_vapid_private_key"]).strip()
     if "fcm_project_id" in new_settings:
         current["fcm_project_id"] = str(new_settings["fcm_project_id"]).strip()
     if "fcm_messaging_sender_id" in new_settings:
@@ -98,6 +101,7 @@ def update_system_settings(new_settings):
         "max_stocks_per_watchlist": current.get("max_stocks_per_watchlist", 50),
         "ai_prompts": current.get("ai_prompts", {}),
         "fcm_vapid_public_key": current.get("fcm_vapid_public_key", ""),
+        "fcm_vapid_private_key": current.get("fcm_vapid_private_key", ""),
         "fcm_project_id": current.get("fcm_project_id", ""),
         "fcm_messaging_sender_id": current.get("fcm_messaging_sender_id", ""),
         "fcm_api_key": current.get("fcm_api_key", ""),

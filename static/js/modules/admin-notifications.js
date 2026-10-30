@@ -37,12 +37,13 @@
     // 2. Save Firebase FCM Configuration (Method A)
     window.saveFcmConfiguration = async function () {
         let vapid = (document.getElementById('fcm-cfg-vapid-key')?.value || '').trim();
+        let vapidPriv = (document.getElementById('fcm-cfg-vapid-priv-key')?.value || '').trim();
         let projId = (document.getElementById('fcm-cfg-project-id')?.value || '').trim();
         let senderId = (document.getElementById('fcm-cfg-sender-id')?.value || '').trim();
         let apiKey = (document.getElementById('fcm-cfg-api-key')?.value || '').trim();
         const saJson = (document.getElementById('fcm-cfg-service-account')?.value || '').trim();
 
-        if (!vapid && !projId && !saJson) {
+        if (!vapid && !projId && !saJson && !vapidPriv) {
             alert('Please enter your Web Push VAPID Key, Project ID, or Service Account JSON.');
             return;
         }
@@ -87,6 +88,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     vapid_public_key: vapid,
+                    vapid_private_key: vapidPriv,
                     project_id: projId,
                     messaging_sender_id: senderId,
                     api_key: apiKey,
@@ -111,6 +113,38 @@
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = originalText;
             }
+        }
+    };
+
+    // 2b. 1-Click Auto-Generate Matched VAPID Keys
+    window.generateNativeVapidKeys = async function () {
+        if (!confirm('Generate a fresh, 100% mathematically matched VAPID EC P-256 keypair?\n\nThis will generate matching Public and Private keys, save them in system settings, and enable native Web Push instantly without any 403 VAPID mismatch errors.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/notifications/generate-vapid-keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (document.getElementById('fcm-cfg-vapid-key')) {
+                    document.getElementById('fcm-cfg-vapid-key').value = data.public_key;
+                }
+                if (document.getElementById('fcm-cfg-vapid-priv-key')) {
+                    document.getElementById('fcm-cfg-vapid-priv-key').value = data.private_key;
+                }
+                alert('⚡ Success! Generated and saved a 100% matched VAPID keypair:\n\n• Public Key: ' + data.public_key.substring(0, 20) + '...\n• Private Key: ' + data.private_key.substring(0, 10) + '...\n\nYour push subscriptions are now cryptographically paired.');
+                if (window.CapitalDeskPush) {
+                    window.CapitalDeskPush.init();
+                }
+                await window.loadNotificationStats();
+            } else {
+                alert('❌ Error generating keys: ' + (data.error || 'Unknown error'));
+            }
+        } catch (err) {
+            alert('❌ Network error generating keys: ' + err.message);
         }
     };
 
@@ -224,6 +258,53 @@
             await window.loadNotificationStats();
         } catch (err) {
             alert('❌ Error sending sample: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    };
+
+    // Send Welcome Notification (Best Wishes)
+    window.sendWelcomeNotification = async function (username) {
+        let targetUser = username;
+        if (!targetUser) {
+            const targetSelect = document.getElementById('gold-target-user-select');
+            if (targetSelect && targetSelect.value !== 'custom') {
+                targetUser = targetSelect.value;
+            } else if (targetSelect && targetSelect.value === 'custom') {
+                targetUser = (document.getElementById('gold-custom-username')?.value || '').trim() || 'all';
+            } else {
+                targetUser = 'all';
+            }
+        }
+
+        const btn = document.getElementById('btn-send-welcome');
+        const originalText = btn ? btn.innerHTML : '🎉 Send Welcome Notification (Best Wishes)';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Sending Welcome...';
+        }
+
+        try {
+            const res = await fetch('/api/admin/notifications/send-welcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: targetUser
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                alert(`🎉 Welcome Notification Dispatched Successfully!\n\n• Target: ${data.target_username || targetUser}\n• Status: ${data.status}\n• Recipients: ${data.recipient_count} device(s)\n• Message: ${data.message || 'Delivered'}`);
+            } else {
+                alert(`⚠️ Notice: ${data.message || 'Could not send'}`);
+            }
+            await window.loadNotificationStats();
+        } catch (err) {
+            alert('❌ Error sending welcome notification: ' + err.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -534,11 +615,15 @@
             // Fill inputs if currently empty
             if (data.config) {
                 const vapidInput = document.getElementById('fcm-cfg-vapid-key');
+                const vapidPrivInput = document.getElementById('fcm-cfg-vapid-priv-key');
                 const projInput = document.getElementById('fcm-cfg-project-id');
                 const senderInput = document.getElementById('fcm-cfg-sender-id');
                 const apiKeyInput = document.getElementById('fcm-cfg-api-key');
                 if (vapidInput && data.config.vapid_public_key && !vapidInput.value) {
                     vapidInput.value = data.config.vapid_public_key;
+                }
+                if (vapidPrivInput && data.config.vapid_private_key && !vapidPrivInput.value) {
+                    vapidPrivInput.value = data.config.vapid_private_key;
                 }
                 if (projInput && data.config.project_id && !projInput.value) {
                     projInput.value = data.config.project_id;

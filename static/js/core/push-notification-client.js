@@ -198,12 +198,26 @@
                         try {
                             const currentKey = subscription.options && subscription.options.applicationServerKey;
                             const targetKey = urlB64ToUint8Array(vapidKey);
-                            if (!currentKey || currentKey.byteLength !== targetKey.byteLength) {
+                            let match = false;
+                            if (currentKey) {
+                                const curBytes = new Uint8Array(currentKey);
+                                if (curBytes.length === targetKey.length) {
+                                    match = true;
+                                    for (let i = 0; i < curBytes.length; i++) {
+                                        if (curBytes[i] !== targetKey[i]) {
+                                            match = false;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (!match) {
+                                console.info('[Push] VAPID key changed or mismatched, renewing browser push subscription...');
                                 await subscription.unsubscribe();
                                 subscription = null;
                             }
                         } catch (e) {
-                            // If check fails, keep subscription
+                            console.warn('[Push] Could not verify subscription key match:', e);
                         }
                     }
 
