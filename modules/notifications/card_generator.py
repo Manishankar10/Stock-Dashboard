@@ -37,6 +37,23 @@ def _get_font(size, bold=False):
     except Exception:
         return None
 
+
+def clean_stock_symbol(sym):
+    """
+    Strips exchange suffixes like .NS, .BS, .BO, .NSE, .BSE from stock symbols.
+    E.g., 'GAUDIUMIVF.NS' -> 'GAUDIUMIVF', 'TCS.BO' -> 'TCS', 'INFY.BS' -> 'INFY'.
+    """
+    if not sym or not isinstance(sym, str):
+        return "-"
+    s = sym.strip()
+    if s in ("-", "--", "N/A", "None", ""):
+        return "-"
+    for suffix in [".NS", ".ns", ".BO", ".bo", ".BS", ".bs", ".NSE", ".nse", ".BSE", ".bse"]:
+        if s.endswith(suffix):
+            s = s[:-len(suffix)]
+            break
+    return s.strip()
+
 def format_currency_inr(val):
     if isinstance(val, (int, float)):
         return f"{val:,.2f}".rstrip('0').rstrip('.')
@@ -171,6 +188,9 @@ def generate_portfolio_card(
     """
     Renders a high-res 882x410 dark-themed card for End-of-Day Portfolio Performance.
     """
+    top_gainer_symbol = clean_stock_symbol(top_gainer_symbol)
+    top_loser_symbol = clean_stock_symbol(top_loser_symbol)
+
     width, height = 882, 410
     im = Image.new("RGBA", (width, height), (15, 23, 42, 255))
     draw = ImageDraw.Draw(im)

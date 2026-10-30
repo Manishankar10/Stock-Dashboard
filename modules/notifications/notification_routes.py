@@ -14,7 +14,8 @@ from modules.notifications.fcm_service import (
 )
 from modules.notifications.card_generator import (
     generate_gold_silver_card,
-    generate_portfolio_card
+    generate_portfolio_card,
+    clean_stock_symbol
 )
 from modules.notifications.live_bullion import fetch_live_bullion_rates
 from modules.notifications.user_portfolio_notifier import (
@@ -161,9 +162,9 @@ def render_gold_card_endpoint():
 def render_portfolio_card_endpoint():
     """Renders the custom Portfolio Performance card image dynamically."""
     perf = request.args.get("perf", "+0.50%")
-    tg_sym = request.args.get("top_gainer", "POCL")
+    tg_sym = clean_stock_symbol(request.args.get("top_gainer", "POCL"))
     tg_chg = request.args.get("top_gainer_pct", "+4.56%")
-    tl_sym = request.args.get("top_loser", "Polymedicure")
+    tl_sym = clean_stock_symbol(request.args.get("top_loser", "Polymedicure"))
     tl_chg = request.args.get("top_loser_pct", "-0.65%")
     uname = request.args.get("username", "")
     p_name = f"{uname.capitalize()}'s Portfolio" if uname else "Portfolio Digest"
@@ -485,9 +486,9 @@ def admin_send_portfolio_notification():
     data = request.get_json(silent=True) or request.form.to_dict() or {}
 
     perf = data.get("perf", "+0.50%").strip()
-    top_gainer = data.get("top_gainer", "POCL").strip()
+    top_gainer = clean_stock_symbol(data.get("top_gainer", "POCL"))
     top_gainer_pct = data.get("top_gainer_pct", "+4.56%").strip()
-    top_loser = data.get("top_loser", "Polymedicure").strip()
+    top_loser = clean_stock_symbol(data.get("top_loser", "Polymedicure"))
     top_loser_pct = data.get("top_loser_pct", "-0.65%").strip()
 
     if not perf.startswith("+") and not perf.startswith("-"):

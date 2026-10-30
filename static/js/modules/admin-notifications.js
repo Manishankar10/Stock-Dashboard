@@ -6,6 +6,20 @@
 (function () {
     'use strict';
 
+    function cleanSymbol(sym) {
+        if (!sym || typeof sym !== 'string') return '-';
+        let s = sym.trim();
+        if (['-','--','N/A','None',''].includes(s)) return '-';
+        const suffixes = ['.NS', '.ns', '.BO', '.bo', '.BS', '.bs', '.NSE', '.nse', '.BSE', '.bse'];
+        for (const suf of suffixes) {
+            if (s.endsWith(suf)) {
+                s = s.slice(0, -suf.length);
+                break;
+            }
+        }
+        return s.trim();
+    }
+
     // 1. File Upload Helper for Service Account JSON
     window.handleServiceAccountFileUpload = function (event) {
         const file = event.target.files && event.target.files[0];
@@ -376,9 +390,9 @@
     // 4. Portfolio Performance Card Helpers
     window.updatePortfolioPerfPreview = function () {
         const perf = document.getElementById('input-perf-val')?.value || '+0.50%';
-        const gSym = document.getElementById('input-perf-gainer-sym')?.value || 'POCL';
+        const gSym = cleanSymbol(document.getElementById('input-perf-gainer-sym')?.value || 'POCL');
         const gPct = document.getElementById('input-perf-gainer-chg')?.value || '+4.56%';
-        const lSym = document.getElementById('input-perf-loser-sym')?.value || 'Polymedicure';
+        const lSym = cleanSymbol(document.getElementById('input-perf-loser-sym')?.value || 'Polymedicure');
         const lPct = document.getElementById('input-perf-loser-chg')?.value || '-0.65%';
 
         const perfEl = document.getElementById('preview-perf-val');
@@ -409,6 +423,8 @@
             const data = await res.json();
             if (data.success && data.users && data.users.length > 0) {
                 const u = data.users[0];
+                const gSymClean = cleanSymbol(u.top_gainer_symbol);
+                const lSymClean = cleanSymbol(u.top_loser_symbol);
                 const perfEl = document.getElementById('preview-perf-val');
                 const pGainerSym = document.getElementById('preview-perf-gainer-sym');
                 const pGainerPct = document.getElementById('preview-perf-gainer-pct');
@@ -418,16 +434,30 @@
                     perfEl.innerText = u.net_return_pct;
                     perfEl.style.color = String(u.net_return_pct).startsWith('-') ? '#ef4444' : '#10b981';
                 }
-                if (pGainerSym) pGainerSym.innerText = u.top_gainer_symbol || '-';
+                if (pGainerSym) pGainerSym.innerText = gSymClean;
                 if (pGainerPct) {
                     pGainerPct.innerText = u.top_gainer_change || '-';
-                    pGainerPct.style.color = (u.top_gainer_change === '-' || u.top_gainer_symbol === '-') ? 'var(--text-secondary)' : '#10b981';
+                    pGainerPct.style.color = (u.top_gainer_change === '-' || gSymClean === '-') ? 'var(--text-secondary)' : '#10b981';
                 }
-                if (pLoserSym) pLoserSym.innerText = u.top_loser_symbol || '-';
+                if (pLoserSym) pLoserSym.innerText = lSymClean;
                 if (pLoserPct) {
                     pLoserPct.innerText = u.top_loser_change || '-';
-                    pLoserPct.style.color = (u.top_loser_change === '-' || u.top_loser_symbol === '-') ? 'var(--text-secondary)' : '#ef4444';
+                    pLoserPct.style.color = (u.top_loser_change === '-' || lSymClean === '-') ? 'var(--text-secondary)' : '#ef4444';
                 }
+
+                // Sync input boxes if present
+                const inPerf = document.getElementById('input-perf-val');
+                const inGSym = document.getElementById('input-perf-gainer-sym');
+                const inGPct = document.getElementById('input-perf-gainer-chg');
+                const inLSym = document.getElementById('input-perf-loser-sym');
+                const inLPct = document.getElementById('input-perf-loser-chg');
+                if (inPerf && u.net_return_pct) inPerf.value = u.net_return_pct;
+                if (inGSym) inGSym.value = gSymClean;
+                if (inGPct && u.top_gainer_change) inGPct.value = u.top_gainer_change;
+                if (inLSym) inLSym.value = lSymClean;
+                if (inLPct && u.top_loser_change) inLPct.value = u.top_loser_change;
+
+                window.updatePortfolioPerfPreview();
             }
         } catch (e) {
             console.warn('[Admin] autoCalculateFromPortfolios error:', e);
@@ -444,9 +474,9 @@
 
         try {
             const perf = document.getElementById('input-perf-val')?.value || '+0.50%';
-            const gSym = document.getElementById('input-perf-gainer-sym')?.value || 'POCL';
+            const gSym = cleanSymbol(document.getElementById('input-perf-gainer-sym')?.value || 'POCL');
             const gPct = document.getElementById('input-perf-gainer-chg')?.value || '+4.56%';
-            const lSym = document.getElementById('input-perf-loser-sym')?.value || 'Polymedicure';
+            const lSym = cleanSymbol(document.getElementById('input-perf-loser-sym')?.value || 'Polymedicure');
             const lPct = document.getElementById('input-perf-loser-chg')?.value || '-0.65%';
 
             const res = await fetch('/api/admin/notifications/send-portfolio', {
@@ -530,7 +560,9 @@
                 const isPositive = !String(u.net_return_pct).startsWith('-');
                 const retColor = isPositive ? '#10b981' : '#ef4444';
                 const retBg = isPositive ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-                const cardUrl = `/api/notifications/render-portfolio-card.png?perf=${encodeURIComponent(u.net_return_pct)}&top_gainer=${encodeURIComponent(u.top_gainer_symbol)}&top_gainer_pct=${encodeURIComponent(u.top_gainer_change)}&top_loser=${encodeURIComponent(u.top_loser_symbol)}&top_loser_pct=${encodeURIComponent(u.top_loser_change)}&username=${encodeURIComponent(u.username)}`;
+                const gClean = cleanSymbol(u.top_gainer_symbol);
+                const lClean = cleanSymbol(u.top_loser_symbol);
+                const cardUrl = `/api/notifications/render-portfolio-card.png?perf=${encodeURIComponent(u.net_return_pct)}&top_gainer=${encodeURIComponent(gClean)}&top_gainer_pct=${encodeURIComponent(u.top_gainer_change)}&top_loser=${encodeURIComponent(lClean)}&top_loser_pct=${encodeURIComponent(u.top_loser_change)}&username=${encodeURIComponent(u.username)}`;
 
                 return `
                     <tr style="border-bottom: 1px solid var(--border-color);">
@@ -546,14 +578,14 @@
                             </span>
                         </td>
                         <td style="padding: 10px 12px;">
-                            ${u.top_gainer_symbol === '-' ? '<span style="color: var(--text-secondary);">-</span>' : `
-                                <span style="font-weight: 700; color: var(--text-primary);">${u.top_gainer_symbol}</span>
+                            ${gClean === '-' ? '<span style="color: var(--text-secondary);">-</span>' : `
+                                <span style="font-weight: 700; color: var(--text-primary);">${gClean}</span>
                                 <span style="color: #10b981; font-weight: 600; font-size: 11.5px; margin-left: 4px;">${u.top_gainer_change}</span>
                             `}
                         </td>
                         <td style="padding: 10px 12px;">
-                            ${u.top_loser_symbol === '-' ? '<span style="color: var(--text-secondary);">-</span>' : `
-                                <span style="font-weight: 700; color: var(--text-primary);">${u.top_loser_symbol}</span>
+                            ${lClean === '-' ? '<span style="color: var(--text-secondary);">-</span>' : `
+                                <span style="font-weight: 700; color: var(--text-primary);">${lClean}</span>
                                 <span style="color: #ef4444; font-weight: 600; font-size: 11.5px; margin-left: 4px;">${u.top_loser_change}</span>
                             `}
                         </td>

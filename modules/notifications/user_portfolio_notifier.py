@@ -3,7 +3,7 @@ import logging
 from modules.common.auth_utils import load_users
 from modules.portfolio.portfolio_routes import load_portfolios
 from modules.common.market_fetcher import format_financial_symbol, fetcher
-from modules.notifications.card_generator import generate_portfolio_card
+from modules.notifications.card_generator import generate_portfolio_card, clean_stock_symbol
 from modules.notifications.fcm_service import (
     load_subscriptions,
     send_web_push,
@@ -68,7 +68,8 @@ def calculate_user_portfolio_performance(username):
             total_prev += prev_val
 
             stock_stats.append({
-                "symbol": sym,
+                "symbol": clean_stock_symbol(sym),
+                "raw_symbol": sym,
                 "portfolio": pf_name,
                 "quantity": qty,
                 "price": curr_p,
@@ -86,7 +87,7 @@ def calculate_user_portfolio_performance(username):
 
     # If no stocks gain in positive (> 0.00%), show '-' (dash)
     if top_gainer and top_gainer.get("change_pct", 0) > 0:
-        gainer_sym = top_gainer["symbol"]
+        gainer_sym = clean_stock_symbol(top_gainer["symbol"])
         gainer_chg = f"{top_gainer['change_pct']:+.2f}%"
     else:
         gainer_sym = "-"
@@ -94,7 +95,7 @@ def calculate_user_portfolio_performance(username):
 
     # If no stocks lose in negative (< 0.00%), show '-' (dash)
     if top_loser and top_loser.get("change_pct", 0) < 0:
-        loser_sym = top_loser["symbol"]
+        loser_sym = clean_stock_symbol(top_loser["symbol"])
         loser_chg = f"{top_loser['change_pct']:+.2f}%"
     else:
         loser_sym = "-"
@@ -169,9 +170,9 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
 
         # Personalized card generation
         perf_val = perf["net_return_pct"]
-        g_sym = perf["top_gainer_symbol"]
+        g_sym = clean_stock_symbol(perf["top_gainer_symbol"])
         g_chg = perf["top_gainer_change"]
-        l_sym = perf["top_loser_symbol"]
+        l_sym = clean_stock_symbol(perf["top_loser_symbol"])
         l_chg = perf["top_loser_change"]
 
         card_filename = f"portfolio_{uname}.png"
@@ -266,9 +267,9 @@ def send_portfolio_digest_to_user(username, base_url=""):
     perf = calculate_user_portfolio_performance(username)
 
     perf_val = perf["net_return_pct"]
-    g_sym = perf["top_gainer_symbol"]
+    g_sym = clean_stock_symbol(perf["top_gainer_symbol"])
     g_chg = perf["top_gainer_change"]
-    l_sym = perf["top_loser_symbol"]
+    l_sym = clean_stock_symbol(perf["top_loser_symbol"])
     l_chg = perf["top_loser_change"]
 
     gen_dir = os.path.join(BASE_DATA_DIR, "static", "notifications", "generated")
