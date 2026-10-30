@@ -399,9 +399,9 @@ def generate_watchlist_card(
     row_line = (33, 47, 72, 255)
 
     # Header Row
-    sec_y = 22
-    draw.ellipse([30, sec_y + 6, 44, sec_y + 20], fill=color_green)
-    display_name = f"{username.capitalize()}'s Watchlist Top Gainers" if username else "Watchlist Top Gainers"
+    sec_y = 24
+    draw.ellipse([30, sec_y + 5, 44, sec_y + 19], fill=color_green)
+    display_name = "Watchlist: Top 5 Gainers"
     draw.text((54, sec_y), display_name, font=font_title, fill=color_white)
 
     # Right Badge: TOP 5 GAINERS
@@ -412,12 +412,9 @@ def generate_watchlist_card(
     draw.rounded_rectangle([badge_x, sec_y - 2, badge_x + badge_w, sec_y + badge_h], radius=7, fill=(16, 45, 35, 255), outline=color_green, width=1)
     draw.text((badge_x + 18, sec_y + 4), badge_text, font=font_badge, fill=color_green)
 
-    # Sub-header info
-    draw.text((54, sec_y + 32), f"Market Momentum • {date_str} • Positive Gainers Only", font=font_sub, fill=color_muted)
-
-    # Inner Glassy Table Frame
+    # Inner Glassy Table Frame (Subtitle removed as requested)
     tbl_x = 30
-    tbl_y = sec_y + 64
+    tbl_y = sec_y + 48
     tbl_w = width - 60
     tbl_h = height - tbl_y - 22
 
