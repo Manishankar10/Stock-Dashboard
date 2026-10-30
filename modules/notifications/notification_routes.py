@@ -1,7 +1,7 @@
 import os
 from flask import Blueprint, request, jsonify, session, send_file, current_app
 from modules.common.auth_utils import login_required, admin_required, load_users
-from modules.common.ist_datetime import format_ist_standard, today_ist_str
+from modules.common.ist_datetime import format_ist_standard, format_ist_display, today_ist_str
 from modules.notifications.fcm_service import (
     get_fcm_config,
     register_device_token,
@@ -245,6 +245,13 @@ def admin_notification_stats():
 
     total_subscribers = len(subs)
     active_subscribers = sum(1 for s in subs.values() if s.get("is_active", True))
+
+    for h in history:
+        if not h.get("timestamp_display") and h.get("timestamp"):
+            try:
+                h["timestamp_display"] = format_ist_display(h["timestamp"], with_tz=True)
+            except Exception:
+                h["timestamp_display"] = h.get("timestamp")
 
     return jsonify({
         "success": True,

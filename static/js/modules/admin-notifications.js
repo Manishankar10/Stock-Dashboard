@@ -20,6 +20,62 @@
         return s.trim();
     }
 
+    function formatNotifDateTime(val, withTz = true) {
+        if (!val) return '—';
+        try {
+            let str = String(val).trim();
+            str = str.replace(/\s*\([iI][sS][tT]\)/g, '').trim();
+            const dmyMatch = /^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s+(AM|PM)(\s+IST)?$/i.exec(str);
+            if (dmyMatch) {
+                return withTz ? (str.toUpperCase().endsWith('IST') ? str : `${str} IST`) : str.replace(/\s+IST$/i, '');
+            }
+
+            let d;
+            if (val instanceof Date) {
+                d = val;
+            } else if (typeof val === 'number') {
+                d = new Date(val);
+            } else if (str.includes(' ') && !str.includes('T')) {
+                d = new Date(str.replace(' ', 'T') + '+05:30');
+                if (isNaN(d.getTime())) {
+                    d = new Date(str.replace(' ', 'T'));
+                }
+            } else {
+                d = new Date(str);
+            }
+
+            if (!d || isNaN(d.getTime())) return str;
+
+            const parts = new Intl.DateTimeFormat('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            }).formatToParts(d);
+
+            const p = {};
+            parts.forEach(pt => p[pt.type] = pt.value);
+            const day = p.day || String(d.getDate()).padStart(2, '0');
+            const month = p.month || String(d.getMonth() + 1).padStart(2, '0');
+            const year = p.year || d.getFullYear();
+            const hour = p.hour || '12';
+            const minute = p.minute || '00';
+            const second = p.second || '00';
+            const dayPeriod = (p.dayPeriod || '').toUpperCase() || (d.getHours() >= 12 ? 'PM' : 'AM');
+
+            const formatted = `${day}-${month}-${year} ${hour}:${minute}:${second} ${dayPeriod}`;
+            return withTz ? `${formatted} IST` : formatted;
+        } catch (e) {
+            return String(val || '—');
+        }
+    }
+    window.formatNotifDateTime = formatNotifDateTime;
+
+
     // 1. File Upload Helper for Service Account JSON
     window.handleServiceAccountFileUpload = function (event) {
         const file = event.target.files && event.target.files[0];
@@ -184,13 +240,13 @@
 
                 const updatedVal = document.getElementById('gold-last-updated-val');
                 if (updatedVal && r.updated_at) {
-                    updatedVal.innerText = `${r.updated_at} (IST)`;
+                    updatedVal.innerText = formatNotifDateTime(r.updated_at_display || r.updated_at);
                 }
 
                 window.updateGoldRatePreview();
                 if (badge) {
                     badge.innerText = '🟢 Live Market Synced';
-                    badge.title = `Source: ${r.source} (${r.updated_at})`;
+                    badge.title = `Source: ${r.source} (${formatNotifDateTime(r.updated_at_display || r.updated_at)})`;
                 }
             }
         } catch (err) {
@@ -533,9 +589,7 @@
             const eodUpdatedVal = document.getElementById('eod-last-updated-val');
 
             if (eodUpdatedVal) {
-                const now = new Date();
-                const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-                eodUpdatedVal.innerText = `Today ${timeStr} (IST)`;
+                eodUpdatedVal.innerText = formatNotifDateTime(new Date());
             }
 
             if (perfEl) {
@@ -858,7 +912,7 @@
             const elLastSent = document.getElementById('stat-notif-last-sent');
             if (elSentCount) elSentCount.innerText = history.length;
             if (elLastSent && history.length > 0) {
-                elLastSent.innerText = `Last sent: ${history[0].timestamp}`;
+                elLastSent.innerText = `Last sent: ${formatNotifDateTime(history[0].timestamp_display || history[0].timestamp)}`;
             }
 
             _notifHistoryAll = history;
@@ -892,7 +946,7 @@
                     const badgeStyle = isSuccess ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid #ca8a04;';
                     return `
                         <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 10px 12px; white-space: nowrap; font-family: monospace; font-size: 11.5px;">${item.timestamp || '-'}</td>
+                            <td style="padding: 10px 12px; white-space: nowrap; font-family: monospace; font-size: 11.5px;">${formatNotifDateTime(item.timestamp_display || item.timestamp)}</td>
                             <td style="padding: 10px 12px; font-weight: 600;">${item.type || 'General'}</td>
                             <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${item.title || '-'}</td>
                             <td style="padding: 10px 12px; color: var(--text-secondary); max-width: 320px; white-space: pre-wrap; font-size: 11.5px;">${item.body || '-'}</td>

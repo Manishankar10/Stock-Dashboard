@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from modules.common.ist_datetime import format_ist_standard, now_ist
+from modules.common.ist_datetime import format_ist_standard, format_ist_display, now_ist
 from modules.common.data_paths import BASE_DATA_DIR, USER_DATA_DIR, APP_DATA_DIR
 
 try:
@@ -550,6 +550,7 @@ def log_notification_event(event_type, title, body, status="Sent", recipient_cou
     """
     entry = {
         "timestamp": format_ist_standard(),
+        "timestamp_display": format_ist_display(with_tz=True),
         "type": event_type,
         "title": title,
         "body": body,

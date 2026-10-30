@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import time
-from modules.common.ist_datetime import format_ist_standard
+from modules.common.ist_datetime import format_ist_standard, format_ist_display
 
 _BULLION_CACHE = {
     "data": None,
@@ -89,6 +89,7 @@ def fetch_live_bullion_rates(force_refresh=False):
         "silver_8g": silver_8g,
         "source": source,
         "updated_at": format_ist_standard(),
+        "updated_at_display": format_ist_display(with_tz=True),
         "is_live": True
     }
 
