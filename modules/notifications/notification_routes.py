@@ -506,12 +506,21 @@ def admin_generate_vapid_keys():
 def admin_users_portfolio_overview():
     """
     Computes and returns today's real performance summary for every user
-    based on their current stock holdings in the database.
+    based on their current stock holdings in the database, plus sample watchlist gainers.
     """
     summaries = get_all_users_portfolio_summaries()
+    sample_watchlist = []
+    try:
+        sample_watchlist = get_user_watchlist_top_gainers("sampath", limit=5)
+        if not sample_watchlist and summaries:
+            sample_watchlist = get_user_watchlist_top_gainers(summaries[0]["username"], limit=5)
+    except Exception:
+        sample_watchlist = []
+
     return jsonify({
         "success": True,
-        "users": summaries
+        "users": summaries,
+        "sample_watchlist": sample_watchlist
     })
 
 

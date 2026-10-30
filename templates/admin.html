@@ -2182,7 +2182,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                         <div>
                             <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                                📈 Portfolio Performance Dispatcher
+                                📈 Portfolio/Watchlist Performance Dispatcher
                             </h3>
                             <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">
                                 Last calculated: <span id="eod-last-updated-val" style="color: var(--text-primary); font-weight: 600;">Live Market Sync</span>
@@ -2249,6 +2249,46 @@
 
                     <!-- Watchlist Top Gainers Dispatcher Section -->
                     <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border-color);">
+                        <!-- Live Visual Preview Card for Watchlist Performance Digest -->
+                        <div style="background: #111827; border: 1px solid #1f293d; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div>
+                                    <span style="font-size: 14px; font-weight: 700; color: #ffffff;">⭐ Capital Desk Watchlist Performance Digest</span>
+                                    <div style="font-size: 9.5px; color: #64748b;">Top Watchlist Momentum (Positive Only)</div>
+                                </div>
+                                <span style="font-size: 10px; font-weight: 700; background: #132e22; color: #10b981; border: 1px solid #10b981; padding: 2px 7px; border-radius: 5px;">TOP GAINERS</span>
+                            </div>
+
+                            <!-- Column Headers matching Watchlist table -->
+                            <div style="display: grid; grid-template-columns: 2.2fr 1.3fr 1.3fr 1.2fr; padding: 4px 10px 8px 10px; font-size: 10.5px; font-weight: 700; color: #94a3b8; border-bottom: 1px solid #1f293d; margin-bottom: 6px; letter-spacing: 0.5px;">
+                                <div>SYMBOL <span style="font-size: 9px; opacity: 0.6;">↕</span></div>
+                                <div style="text-align: right;">LTP (₹) <span style="font-size: 9px; opacity: 0.6;">↕</span></div>
+                                <div style="text-align: right;">CHANGE (₹) <span style="font-size: 9px; opacity: 0.6;">↕</span></div>
+                                <div style="text-align: right; color: #10b981;">CHANGE (%) <span style="font-size: 9px;">▼</span></div>
+                            </div>
+
+                            <div id="preview-watchlist-table-mount" style="display: flex; flex-direction: column; gap: 6px;">
+                                <div style="display: grid; grid-template-columns: 2.2fr 1.3fr 1.3fr 1.2fr; align-items: center; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 7px 10px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 12.5px; font-weight: 800; color: #ffffff;">POCL</span>
+                                        <span style="font-size: 9px; font-weight: 700; background: #1e3a8a; color: #93c5fd; padding: 1px 5px; border-radius: 4px;">NSE</span>
+                                    </div>
+                                    <div style="text-align: right; font-size: 12px; font-weight: 700; color: #f1f5f9;">₹392.75</div>
+                                    <div style="text-align: right; font-size: 11.5px; font-weight: 700; color: #f1f5f9;">+₹15.15</div>
+                                    <div style="text-align: right; font-size: 11.5px; font-weight: 800; color: #10b981;">+4.01%</div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 2.2fr 1.3fr 1.3fr 1.2fr; align-items: center; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 7px 10px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 12.5px; font-weight: 800; color: #ffffff;">INDHOTEL</span>
+                                        <span style="font-size: 9px; font-weight: 700; background: #1e3a8a; color: #93c5fd; padding: 1px 5px; border-radius: 4px;">NSE</span>
+                                    </div>
+                                    <div style="text-align: right; font-size: 12px; font-weight: 700; color: #f1f5f9;">₹823.10</div>
+                                    <div style="text-align: right; font-size: 11.5px; font-weight: 700; color: #f1f5f9;">+₹13.10</div>
+                                    <div style="text-align: right; font-size: 11.5px; font-weight: 800; color: #10b981;">+1.62%</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             <!-- Dynamic Top Gainers Count Selector (Default: 5) -->
                             <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 10px;" title="Set number of top positive gainers to send (Default: 5)">
@@ -5337,6 +5377,6 @@
     </script>
     <script src="/static/js/core/pwa.js?v=1.1"></script>
     <script src="/static/js/core/push-notification-client.js?v=3.0"></script>
-    <script src="/static/js/modules/admin-notifications.js?v=3.4"></script>
+    <script src="/static/js/modules/admin-notifications.js?v=3.5"></script>
 </body>
 </html>

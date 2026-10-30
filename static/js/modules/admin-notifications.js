@@ -610,6 +610,12 @@
                 previewLink.href = `/api/notifications/render-portfolio-card.png?perf=${encodeURIComponent(topUser.net_return_pct)}&top_gainer=${encodeURIComponent(topUser.top_gainer_symbol)}&top_gainer_pct=${encodeURIComponent(topUser.top_gainer_change)}&top_loser=${encodeURIComponent(topUser.top_loser_symbol)}&top_loser_pct=${encodeURIComponent(topUser.top_loser_change)}&username=${encodeURIComponent(topUser.username)}&t=${Date.now()}`;
             }
 
+            // Sync Watchlist Performance Digest preview card
+            if (data.sample_watchlist && data.sample_watchlist.length > 0) {
+                _cachedSampleWatchlist = data.sample_watchlist;
+                renderWatchlistPreviewCard(data.sample_watchlist);
+            }
+
             tbody.innerHTML = data.users.map((u) => {
                 const isPositive = !String(u.net_return_pct).startsWith('-');
                 const retColor = isPositive ? '#10b981' : '#ef4444';
@@ -665,6 +671,30 @@
         }
     };
 
+    let _cachedSampleWatchlist = [];
+    function renderWatchlistPreviewCard(gainers) {
+        const wlMount = document.getElementById('preview-watchlist-table-mount');
+        if (!wlMount) return;
+        const list = gainers || _cachedSampleWatchlist || [];
+        if (!list || list.length === 0) return;
+
+        const countInput = document.getElementById('watchlist-gainers-count');
+        const limit = countInput ? (parseInt(countInput.value, 10) || 5) : 5;
+        const slice = list.slice(0, Math.min(limit, 4));
+
+        wlMount.innerHTML = slice.map(s => `
+            <div style="display: grid; grid-template-columns: 2.2fr 1.3fr 1.3fr 1.2fr; align-items: center; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 7px 10px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12.5px; font-weight: 800; color: #ffffff;">${cleanSymbol(s.symbol)}</span>
+                    <span style="font-size: 9px; font-weight: 700; background: #1e3a8a; color: #93c5fd; padding: 1px 5px; border-radius: 4px;">${s.exchange || 'NSE'}</span>
+                </div>
+                <div style="text-align: right; font-size: 12px; font-weight: 700; color: #f1f5f9;">${s.ltp}</div>
+                <div style="text-align: right; font-size: 11.5px; font-weight: 700; color: #f1f5f9;">${s.change_val}</div>
+                <div style="text-align: right; font-size: 11.5px; font-weight: 800; color: #10b981;">${s.change_pct}</div>
+            </div>
+        `).join('');
+    }
+
     // Helper: update button label & preview link when count changes
     window.updateWatchlistBtnCount = function (val) {
         let count = parseInt(val, 10);
@@ -677,6 +707,7 @@
         if (previewBtn) {
             previewBtn.href = `/api/notifications/render-watchlist-card.png?limit=${count}`;
         }
+        renderWatchlistPreviewCard(_cachedSampleWatchlist);
     };
 
     // 6A. Send Watchlist Top N Gainers to All Users
