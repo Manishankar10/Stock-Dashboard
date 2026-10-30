@@ -191,8 +191,11 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
                 target_topic=None,
                 specific_tokens=tokens
             )
-            dispatched_count = len(tokens)
-            status_text = push_res.get("status", "Sent")
+            dispatched_count = push_res.get("recipient_count", 0)
+            if push_res.get("success"):
+                status_text = push_res.get("status", "Sent")
+            else:
+                status_text = f"Failed ({push_res.get('error', push_res.get('message', 'Rejected by FCM'))[:80]})" 
         else:
             # Record audit log that card was prepared but user has not enabled push yet
             dispatched_count = 0

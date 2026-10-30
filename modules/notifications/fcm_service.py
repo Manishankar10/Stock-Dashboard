@@ -47,6 +47,23 @@ def get_fcm_config():
         os.path.exists("firebase_service_account.json")
     )
 
+    # Auto-extract project_id from service account file/env if not explicitly set
+    if not project_id and service_account_exists:
+        try:
+            sa_data = None
+            if os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"):
+                sa_data = json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT_JSON"])
+            elif os.path.exists(DEFAULT_SERVICE_ACCOUNT_FILE):
+                with open(DEFAULT_SERVICE_ACCOUNT_FILE, "r", encoding="utf-8") as f:
+                    sa_data = json.load(f)
+            elif os.path.exists("firebase_service_account.json"):
+                with open("firebase_service_account.json", "r", encoding="utf-8") as f:
+                    sa_data = json.load(f)
+            if sa_data and isinstance(sa_data, dict):
+                project_id = sa_data.get("project_id", "")
+        except Exception:
+            pass
+
     return {
         "is_configured": service_account_exists and _is_firebase_ready(),
         "service_account_detected": service_account_exists,
@@ -190,7 +207,8 @@ def register_device_token(token, username=None, user_agent="", topics=None):
     Supports storing more than one key/device per user (e.g. PC, Phone PWA, Laptop).
     Strictly rejects unregistered or guest users.
     """
-    if not token or not isinstance(token, str):
+    if not token or not isinstance(token, str) or str(token).startswith("browser-granted-"):
+        return False, "Invalid push token. Device subscription was not established by browser."
         return False, "Invalid push token"
 
     # 1. Enforce that ONLY registered users can have device keys registered
@@ -513,21 +531,63 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
             success_count += batch_response.success_count
             failure_count += batch_response.failure_count
 
-            # Collect invalid tokens to prune
+            # Collect failure details and invalid tokens to prune
+            failure_details = []
             for idx, resp in enumerate(batch_response.responses):
                 if not resp.success:
-                    err_code = resp.exception.code if hasattr(resp.exception, 'code') else str(resp.exception)
-                    if "registration-token-not-registered" in str(err_code).lower() or "invalid-argument" in str(err_code).lower():
+                    err = resp.exception
+                    err_code = getattr(err, 'code', 'error')
+                    err_str = str(err)
+                    failure_details.append(f"{err_code}: {err_str}")
+                    logger.warning(f"[FCM Send Failure] Token {chunk[idx][:25]}... failed: {err_code} - {err_str}")
+
+                    err_lower = err_str.lower()
+                    if "not-registered" in err_lower or "invalid" in err_lower or "not_found" in err_lower or "mismatch" in err_lower:
                         invalid_tokens.append(chunk[idx])
 
-        # Prune dead tokens
+        # Prune dead/invalid tokens from subs
         if invalid_tokens:
             subs = load_subscriptions()
+            pruned_count = 0
             for inv_tok in invalid_tokens:
-                subs.pop(inv_tok, None)
-            save_subscriptions(subs)
+                if inv_tok in subs:
+                    subs.pop(inv_tok, None)
+                    pruned_count += 1
+                to_delete = [k for k, v in subs.items() if k == inv_tok or v.get("clean_token") == inv_tok or (len(inv_tok) > 10 and inv_tok in k)]
+                for k in to_delete:
+                    subs.pop(k, None)
+                    pruned_count += 1
+            if pruned_count > 0:
+                save_subscriptions(subs)
+                logger.info(f"[Push] Pruned {pruned_count} invalid push key(s) from database.")
 
-        status = f"Delivered ({success_count} succeeded, {failure_count} failed)"
+        first_err = failure_details[0] if failure_details else "Device token rejected by Firebase"
+
+        # STRICT: If 0 devices succeeded and there were failures, this is a FAILURE
+        if success_count == 0 and failure_count > 0:
+            status = f"Failed (All {failure_count} device(s) failed: {first_err[:80]})"
+            log_notification_event(
+                event_type=target_topic or "broadcast",
+                title=title,
+                body=body,
+                status="Failed",
+                recipient_count=0,
+                metadata={"image": image_url, "failures": failure_count, "error": first_err},
+                error_msg=first_err
+            )
+            return {
+                "success": False,
+                "simulated": False,
+                "message": f"Dispatch failed: 0 succeeded, {failure_count} device(s) rejected ({first_err}).",
+                "recipient_count": 0,
+                "failed_count": failure_count,
+                "status": "Failed",
+                "fcm_configured": True,
+                "error": first_err
+            }
+
+        # When at least 1 succeeded
+        status = f"Delivered ({success_count} succeeded, {failure_count} failed)" if failure_count > 0 else f"Delivered ({success_count} succeeded)"
         log_notification_event(
             event_type=target_topic or "broadcast",
             title=title,
@@ -540,7 +600,7 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
         return {
             "success": True,
             "simulated": False,
-            "message": f"Push notification dispatched to {success_count} device(s) successfully.",
+            "message": f"Push notification dispatched to {success_count} device(s) successfully." + (f" ({failure_count} failed)" if failure_count else ""),
             "recipient_count": success_count,
             "failed_count": failure_count,
             "status": status,

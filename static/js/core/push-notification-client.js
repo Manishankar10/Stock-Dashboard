@@ -111,24 +111,46 @@
                     } catch (e) {}
                 }
 
-                const vapidKey = this.config ? this.config.vapid_public_key : '';
+                const vapidKey = this.config ? (this.config.vapid_public_key || '').trim() : '';
 
-                let tokenString = 'browser-granted-' + Date.now();
+                if (!vapidKey) {
+                    const errMsg = 'Firebase Web Push VAPID Key is not configured yet. Please configure it in the Admin Panel (Notifications tab) first.';
+                    alert(errMsg);
+                    this.updateToggleUi(false);
+                    return { success: false, error: errMsg };
+                }
+
+                let tokenString = null;
                 let subJson = null;
 
                 if ('PushManager' in window && 'serviceWorker' in navigator) {
                     const registration = await navigator.serviceWorker.ready;
                     let subscription = await registration.pushManager.getSubscription();
 
-                    if (!subscription) {
-                        const subscribeOptions = { userVisibleOnly: true };
-                        if (vapidKey) {
-                            subscribeOptions.applicationServerKey = urlB64ToUint8Array(vapidKey);
+                    // If existing subscription was created with different or missing VAPID key, refresh it
+                    if (subscription) {
+                        try {
+                            const currentKey = subscription.options && subscription.options.applicationServerKey;
+                            const targetKey = urlB64ToUint8Array(vapidKey);
+                            if (!currentKey || currentKey.byteLength !== targetKey.byteLength) {
+                                await subscription.unsubscribe();
+                                subscription = null;
+                            }
+                        } catch (e) {
+                            // If check fails, keep subscription
                         }
+                    }
+
+                    if (!subscription) {
+                        const subscribeOptions = {
+                            userVisibleOnly: true,
+                            applicationServerKey: urlB64ToUint8Array(vapidKey)
+                        };
                         try {
                             subscription = await registration.pushManager.subscribe(subscribeOptions);
                         } catch (subErr) {
-                            console.warn('[Push] Native PushManager subscribe warning:', subErr);
+                            console.error('[Push] PushManager subscribe error:', subErr);
+                            throw new Error('Browser push registration failed: ' + subErr.message);
                         }
                     }
 
@@ -136,6 +158,10 @@
                         subJson = subscription.toJSON();
                         tokenString = subscription.endpoint;
                     }
+                }
+
+                if (!tokenString) {
+                    throw new Error('Could not establish push subscription with browser. Please check notification permissions.');
                 }
 
                 // Register token with backend DB

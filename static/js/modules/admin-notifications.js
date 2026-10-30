@@ -383,11 +383,15 @@
             const data = await res.json();
             if (data.success) {
                 const breakdown = (data.user_breakdown || []).map(u => `• ${u.username}: ${u.performance} (Gainer: ${u.top_gainer}, Loser: ${u.top_loser}) -> ${u.status}`).join('\n');
-                alert(`✅ Personalized EOD Portfolio Push Completed!\n\n• Users Processed: ${data.total_users_processed}\n• Devices Targeted: ${data.total_devices_targeted}\n\nBreakdown:\n${breakdown}`);
+                if (data.total_devices_targeted === 0) {
+                    alert(`⚠️ No Push Devices Delivered:\n\n• Users Processed: ${data.total_users_processed}\n• Devices Delivered: 0\n\nBreakdown:\n${breakdown || 'No active devices registered'}`);
+                } else {
+                    alert(`✅ Personalized EOD Portfolio Push Completed!\n\n• Users Processed: ${data.total_users_processed}\n• Devices Delivered: ${data.total_devices_targeted}\n\nBreakdown:\n${breakdown}`);
+                }
                 await window.loadNotificationStats();
                 await window.loadUsersPortfolioDigest();
             } else {
-                alert('⚠️ Error dispatching notifications: ' + (data.error || 'Unknown error'));
+                alert('⚠️ Error dispatching notifications: ' + (data.error || data.message || 'Unknown error'));
             }
         } catch (err) {
             alert('❌ Network/Server Error: ' + err.message);
