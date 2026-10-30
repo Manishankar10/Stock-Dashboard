@@ -418,10 +418,16 @@
                     perfEl.innerText = u.net_return_pct;
                     perfEl.style.color = String(u.net_return_pct).startsWith('-') ? '#ef4444' : '#10b981';
                 }
-                if (pGainerSym) pGainerSym.innerText = u.top_gainer_symbol;
-                if (pGainerPct) pGainerPct.innerText = u.top_gainer_change;
-                if (pLoserSym) pLoserSym.innerText = u.top_loser_symbol;
-                if (pLoserPct) pLoserPct.innerText = u.top_loser_change;
+                if (pGainerSym) pGainerSym.innerText = u.top_gainer_symbol || '-';
+                if (pGainerPct) {
+                    pGainerPct.innerText = u.top_gainer_change || '-';
+                    pGainerPct.style.color = (u.top_gainer_change === '-' || u.top_gainer_symbol === '-') ? 'var(--text-secondary)' : '#10b981';
+                }
+                if (pLoserSym) pLoserSym.innerText = u.top_loser_symbol || '-';
+                if (pLoserPct) {
+                    pLoserPct.innerText = u.top_loser_change || '-';
+                    pLoserPct.style.color = (u.top_loser_change === '-' || u.top_loser_symbol === '-') ? 'var(--text-secondary)' : '#ef4444';
+                }
             }
         } catch (e) {
             console.warn('[Admin] autoCalculateFromPortfolios error:', e);
@@ -506,10 +512,16 @@
                 perfEl.innerText = topUser.net_return_pct;
                 perfEl.style.color = String(topUser.net_return_pct).startsWith('-') ? '#ef4444' : '#10b981';
             }
-            if (pGainerSym) pGainerSym.innerText = topUser.top_gainer_symbol;
-            if (pGainerPct) pGainerPct.innerText = topUser.top_gainer_change;
-            if (pLoserSym) pLoserSym.innerText = topUser.top_loser_symbol;
-            if (pLoserPct) pLoserPct.innerText = topUser.top_loser_change;
+            if (pGainerSym) pGainerSym.innerText = topUser.top_gainer_symbol || '-';
+            if (pGainerPct) {
+                pGainerPct.innerText = topUser.top_gainer_change || '-';
+                pGainerPct.style.color = (topUser.top_gainer_change === '-' || topUser.top_gainer_symbol === '-') ? 'var(--text-secondary)' : '#10b981';
+            }
+            if (pLoserSym) pLoserSym.innerText = topUser.top_loser_symbol || '-';
+            if (pLoserPct) {
+                pLoserPct.innerText = topUser.top_loser_change || '-';
+                pLoserPct.style.color = (topUser.top_loser_change === '-' || topUser.top_loser_symbol === '-') ? 'var(--text-secondary)' : '#ef4444';
+            }
             if (previewLink) {
                 previewLink.href = `/api/notifications/render-portfolio-card.png?perf=${encodeURIComponent(topUser.net_return_pct)}&top_gainer=${encodeURIComponent(topUser.top_gainer_symbol)}&top_gainer_pct=${encodeURIComponent(topUser.top_gainer_change)}&top_loser=${encodeURIComponent(topUser.top_loser_symbol)}&top_loser_pct=${encodeURIComponent(topUser.top_loser_change)}&username=${encodeURIComponent(topUser.username)}&t=${Date.now()}`;
             }
@@ -534,12 +546,16 @@
                             </span>
                         </td>
                         <td style="padding: 10px 12px;">
-                            <span style="font-weight: 700; color: var(--text-primary);">${u.top_gainer_symbol}</span>
-                            <span style="color: #10b981; font-weight: 600; font-size: 11.5px; margin-left: 4px;">${u.top_gainer_change}</span>
+                            ${u.top_gainer_symbol === '-' ? '<span style="color: var(--text-secondary);">-</span>' : `
+                                <span style="font-weight: 700; color: var(--text-primary);">${u.top_gainer_symbol}</span>
+                                <span style="color: #10b981; font-weight: 600; font-size: 11.5px; margin-left: 4px;">${u.top_gainer_change}</span>
+                            `}
                         </td>
                         <td style="padding: 10px 12px;">
-                            <span style="font-weight: 700; color: var(--text-primary);">${u.top_loser_symbol}</span>
-                            <span style="color: #ef4444; font-weight: 600; font-size: 11.5px; margin-left: 4px;">${u.top_loser_change}</span>
+                            ${u.top_loser_symbol === '-' ? '<span style="color: var(--text-secondary);">-</span>' : `
+                                <span style="font-weight: 700; color: var(--text-primary);">${u.top_loser_symbol}</span>
+                                <span style="color: #ef4444; font-weight: 600; font-size: 11.5px; margin-left: 4px;">${u.top_loser_change}</span>
+                            `}
                         </td>
                         <td style="padding: 10px 12px; text-align: right; font-weight: 600; font-family: monospace;">
                             ₹${(u.total_current_val || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}

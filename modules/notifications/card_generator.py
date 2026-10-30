@@ -245,16 +245,24 @@ def generate_portfolio_card(
     draw.text((col2_x + 24, box_y + 44), str(top_gainer_symbol), font=font_symbol, fill=(255, 255, 255, 255))
     
     g_change = str(top_gainer_change).strip()
-    if not g_change.startswith("+") and not g_change.startswith("-"):
-        g_change = f"+{g_change}"
-    if not g_change.endswith("%"):
-        g_change += "%"
+    is_gainer_na = str(top_gainer_symbol).strip() in ("-", "--", "N/A", "None", "") or g_change in ("-", "--", "N/A", "None", "")
+    if is_gainer_na:
+        g_change = "-"
+    else:
+        if not g_change.startswith("+") and not g_change.startswith("-"):
+            g_change = f"+{g_change}"
+        if not g_change.endswith("%"):
+            g_change += "%"
     
     # Gainer badge pill
     g_pill_w = 120
     g_pill_x = col2_x + col2_w - 24 - g_pill_w
-    draw.rounded_rectangle([g_pill_x, box_y + 40, g_pill_x + g_pill_w, box_y + 80], radius=8, fill=(16, 45, 35, 255), outline=green_color, width=1)
-    draw.text((g_pill_x + 14, box_y + 48), g_change, font=font_change, fill=green_color)
+    if is_gainer_na:
+        draw.rounded_rectangle([g_pill_x, box_y + 40, g_pill_x + g_pill_w, box_y + 80], radius=8, fill=(30, 41, 59, 255), outline=(71, 85, 105, 255), width=1)
+        draw.text((g_pill_x + 52, box_y + 48), "-", font=font_change, fill=text_muted)
+    else:
+        draw.rounded_rectangle([g_pill_x, box_y + 40, g_pill_x + g_pill_w, box_y + 80], radius=8, fill=(16, 45, 35, 255), outline=green_color, width=1)
+        draw.text((g_pill_x + 14, box_y + 48), g_change, font=font_change, fill=green_color)
 
     # Top Loser Box
     box_loser_y = box_y + half_h + 16
@@ -265,16 +273,24 @@ def generate_portfolio_card(
     draw.text((col2_x + 24, box_loser_y + 44), str(top_loser_symbol), font=font_symbol, fill=(255, 255, 255, 255))
 
     l_change = str(top_loser_change).strip()
-    if not l_change.startswith("-"):
-        l_change = f"-{l_change}"
-    if not l_change.endswith("%"):
-        l_change += "%"
+    is_loser_na = str(top_loser_symbol).strip() in ("-", "--", "N/A", "None", "") or l_change in ("-", "--", "N/A", "None", "")
+    if is_loser_na:
+        l_change = "-"
+    else:
+        if not l_change.startswith("-") and not l_change.startswith("+"):
+            l_change = f"-{l_change}"
+        if not l_change.endswith("%"):
+            l_change += "%"
 
     # Loser badge pill
     l_pill_w = 120
     l_pill_x = col2_x + col2_w - 24 - l_pill_w
-    draw.rounded_rectangle([l_pill_x, box_loser_y + 40, l_pill_x + l_pill_w, box_loser_y + 80], radius=8, fill=(45, 20, 20, 255), outline=red_color, width=1)
-    draw.text((l_pill_x + 14, box_loser_y + 48), l_change, font=font_change, fill=red_color)
+    if is_loser_na:
+        draw.rounded_rectangle([l_pill_x, box_loser_y + 40, l_pill_x + l_pill_w, box_loser_y + 80], radius=8, fill=(30, 41, 59, 255), outline=(71, 85, 105, 255), width=1)
+        draw.text((l_pill_x + 52, box_loser_y + 48), "-", font=font_change, fill=text_muted)
+    else:
+        draw.rounded_rectangle([l_pill_x, box_loser_y + 40, l_pill_x + l_pill_w, box_loser_y + 80], radius=8, fill=(45, 20, 20, 255), outline=red_color, width=1)
+        draw.text((l_pill_x + 14, box_loser_y + 48), l_change, font=font_change, fill=red_color)
 
     if output_path:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)

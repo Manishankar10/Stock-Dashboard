@@ -28,10 +28,10 @@ def calculate_user_portfolio_performance(username):
             "holdings_count": 0,
             "net_return_pct": "+0.00%",
             "net_return_float": 0.0,
-            "top_gainer_symbol": "N/A",
-            "top_gainer_change": "+0.00%",
-            "top_loser_symbol": "N/A",
-            "top_loser_change": "-0.00%",
+            "top_gainer_symbol": "-",
+            "top_gainer_change": "-",
+            "top_loser_symbol": "-",
+            "top_loser_change": "-",
             "total_current_val": 0.0,
             "stock_details": []
         }
@@ -84,16 +84,32 @@ def calculate_user_portfolio_performance(username):
     top_gainer = stock_stats[0] if stock_stats else None
     top_loser = stock_stats[-1] if stock_stats else None
 
+    # If no stocks gain in positive (> 0.00%), show '-' (dash)
+    if top_gainer and top_gainer.get("change_pct", 0) > 0:
+        gainer_sym = top_gainer["symbol"]
+        gainer_chg = f"{top_gainer['change_pct']:+.2f}%"
+    else:
+        gainer_sym = "-"
+        gainer_chg = "-"
+
+    # If no stocks lose in negative (< 0.00%), show '-' (dash)
+    if top_loser and top_loser.get("change_pct", 0) < 0:
+        loser_sym = top_loser["symbol"]
+        loser_chg = f"{top_loser['change_pct']:+.2f}%"
+    else:
+        loser_sym = "-"
+        loser_chg = "-"
+
     return {
         "username": username,
         "has_holdings": len(stock_stats) > 0,
         "holdings_count": len(stock_stats),
         "net_return_pct": net_return_str,
         "net_return_float": round(net_return_float, 2),
-        "top_gainer_symbol": top_gainer["symbol"] if top_gainer else "N/A",
-        "top_gainer_change": f"{top_gainer['change_pct']:+.2f}%" if top_gainer else "+0.00%",
-        "top_loser_symbol": top_loser["symbol"] if top_loser else "N/A",
-        "top_loser_change": f"{top_loser['change_pct']:+.2f}%" if top_loser else "-0.00%",
+        "top_gainer_symbol": gainer_sym,
+        "top_gainer_change": gainer_chg,
+        "top_loser_symbol": loser_sym,
+        "top_loser_change": loser_chg,
         "total_current_val": round(total_curr, 2),
         "stock_details": stock_stats
     }
@@ -174,8 +190,10 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
 
         image_url = f"{base_url}/static/notifications/generated/{card_filename}"
 
+        g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
+        l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
         title = f"📈 Portfolio's Performance: {perf_val}"
-        body = f"Today's Net Return: {perf_val} • Top Gainer: {g_sym} ({g_chg}) • Top Loser: {l_sym} ({l_chg})"
+        body = f"Today's Net Return: {perf_val} • Top Gainer: {g_display} • Top Loser: {l_display}"
 
         push_res = send_web_push(
             title=title,
@@ -270,8 +288,10 @@ def send_portfolio_digest_to_user(username, base_url=""):
     )
 
     image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
+    g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
+    l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
     title = f"📈 Portfolio's Performance: {perf_val}"
-    body = f"Today's Net Return: {perf_val} • Top Gainer: {g_sym} ({g_chg}) • Top Loser: {l_sym} ({l_chg})"
+    body = f"Today's Net Return: {perf_val} • Top Gainer: {g_display} • Top Loser: {l_display}"
 
     res = send_web_push(
         title=title,

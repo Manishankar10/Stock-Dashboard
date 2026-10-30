@@ -511,8 +511,10 @@ def admin_send_portfolio_notification():
     base_url = request.url_root.rstrip("/")
     image_url = f"{base_url}/static/notifications/generated/portfolio_latest.png"
 
+    g_display = "-" if top_gainer in ("-", "N/A") or top_gainer_pct in ("-", "N/A") else f"{top_gainer} ({top_gainer_pct})"
+    l_display = "-" if top_loser in ("-", "N/A") or top_loser_pct in ("-", "N/A") else f"{top_loser} ({top_loser_pct})"
     title = f"📈 Portfolio's Performance: {perf}"
-    body = f"Today's Return: {perf} • Top Gainer: {top_gainer} ({top_gainer_pct}) • Top Loser: {top_loser} ({top_loser_pct})"
+    body = f"Today's Return: {perf} • Top Gainer: {g_display} • Top Loser: {l_display}"
 
     result = send_web_push(
         title=title,
