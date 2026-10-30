@@ -52,13 +52,13 @@ self.addEventListener('push', (event) => {
         icon: icon,
         badge: badge,
         image: image,
-        tag: data.tag || (data.type ? ('cd-' + data.type) : ('cd-' + Date.now())),
+        tag: data.tag || ('cd-' + (data.type || 'alert') + '-' + Date.now()),
         renotify: true,
         data: {
             url: targetUrl,
             timestamp: Date.now()
         },
-        requireInteraction: false,
+        requireInteraction: true,
         vibrate: [250, 100, 250, 100, 250],
         silent: false,
         actions: [

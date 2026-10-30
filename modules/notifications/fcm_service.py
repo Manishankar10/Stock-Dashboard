@@ -739,7 +739,9 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
                         ttl=86400,
                         headers={
                             "Urgency": "high",
-                            "TTL": "86400"
+                            "urgency": "high",
+                            "TTL": "86400",
+                            "ttl": "86400"
                         },
                         timeout=10
                     )
