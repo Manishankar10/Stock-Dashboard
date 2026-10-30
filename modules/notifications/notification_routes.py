@@ -11,6 +11,8 @@ from modules.notifications.fcm_service import (
     get_notification_history,
     load_subscriptions,
     get_user_tokens,
+    get_active_tokens,
+    reload_fcm,
     DEFAULT_SERVICE_ACCOUNT_FILE
 )
 from modules.notifications.card_generator import (
@@ -302,10 +304,10 @@ def admin_send_gold_notification():
         silver_1g = live["silver_1g"]
         silver_8g = live["silver_8g"]
     else:
-        gold_1g = data.get("gold_1g", "13,195").strip()
-        gold_8g = data.get("gold_8g", "1,05,560").strip()
-        silver_1g = data.get("silver_1g", "215.00").strip()
-        silver_8g = data.get("silver_8g", "1,720").strip()
+        gold_1g = data.get("gold_1g", "13,040").replace("₹", "").strip()
+        gold_8g = data.get("gold_8g", "104,320").replace("₹", "").strip()
+        silver_1g = data.get("silver_1g", "210.00").replace("₹", "").strip()
+        silver_8g = data.get("silver_8g", "1,680").replace("₹", "").strip()
 
     # Pre-render physical PNG for push image banner
     gen_dir = os.path.join(current_app.root_path, "static", "notifications", "generated")
@@ -322,9 +324,9 @@ def admin_send_gold_notification():
     base_url = request.url_root.rstrip("/")
     image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
 
-    # Notification text
-    title = "👑 Gold (22k) & Silver update"
-    body = f"Gold 22K: ₹{gold_1g}/g | ₹{gold_8g}/8g\nSilver: ₹{silver_1g}/g | ₹{silver_8g}/8g (99.9% Fine)"
+    # Notification text (Optimized for mobile & desktop)
+    title = "👑 Gold (22K) & Silver Rates"
+    body = f"🟡 Gold: ₹{gold_1g}/g (8g: ₹{gold_8g}) • ⚪ Silver: ₹{silver_1g}/g"
 
     result = send_web_push(
         title=title,
@@ -391,8 +393,8 @@ def admin_send_sample_user():
         base_url = request.url_root.rstrip("/")
         image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
 
-        title = "👑 Gold (22k) & Silver update"
-        body = f"Gold 22K: ₹{gold_1g}/g | ₹{gold_8g}/8g\nSilver: ₹{silver_1g}/g | ₹{silver_8g}/8g (99.9% Fine)"
+        title = "👑 Gold (22K) & Silver Rates"
+        body = f"🟡 Gold: ₹{gold_1g}/g (8g: ₹{gold_8g}) • ⚪ Silver: ₹{silver_1g}/g"
 
         res = send_web_push(
             title=title,
@@ -607,8 +609,8 @@ def admin_send_portfolio_notification():
 
     g_display = "-" if top_gainer in ("-", "N/A") or top_gainer_pct in ("-", "N/A") else f"{top_gainer} ({top_gainer_pct})"
     l_display = "-" if top_loser in ("-", "N/A") or top_loser_pct in ("-", "N/A") else f"{top_loser} ({top_loser_pct})"
-    title = f"📈 Portfolio's Performance: {perf}"
-    body = f"Today's Return: {perf} • Top Gainer: {g_display} • Top Loser: {l_display}"
+    title = f"📈 Portfolio Performance: {perf}"
+    body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
     result = send_web_push(
         title=title,

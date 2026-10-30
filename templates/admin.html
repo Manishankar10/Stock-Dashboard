@@ -2090,12 +2090,12 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">1 GRAM</div>
-                                    <div id="preview-gold-1g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹13,195</div>
+                                    <div id="preview-gold-1g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹13,040</div>
                                     <div style="font-size: 9.5px; color: #64748b;">Jewellery Rate</div>
                                 </div>
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">8 GM (1 SOVEREIGN)</div>
-                                    <div id="preview-gold-8g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹1,05,560</div>
+                                    <div id="preview-gold-8g" style="font-size: 18px; font-weight: 800; color: #facc15; margin: 2px 0;">₹1,04,320</div>
                                     <div style="font-size: 9.5px; color: #64748b;">1 Pavan / Sovereign</div>
                                 </div>
                             </div>
@@ -2110,12 +2110,12 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">1 GRAM</div>
-                                    <div id="preview-silver-1g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹215.00</div>
+                                    <div id="preview-silver-1g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹210.00</div>
                                     <div style="font-size: 9.5px; color: #64748b;">Retail Rate</div>
                                 </div>
                                 <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
                                     <div style="font-size: 10px; font-weight: 600; color: #94a3b8;">8 GRAMS</div>
-                                    <div id="preview-silver-8g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹1,720</div>
+                                    <div id="preview-silver-8g" style="font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 2px 0;">₹1,680</div>
                                     <div style="font-size: 9.5px; color: #64748b;">Coin Rate</div>
                                 </div>
                             </div>
@@ -2126,22 +2126,22 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
                         <div>
                             <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Gold 1 Gram (₹)</label>
-                            <input type="text" id="input-gold-1g" value="13,195" oninput="updateGoldRatePreview()" 
+                            <input type="text" id="input-gold-1g" value="13,040" oninput="updateGoldRatePreview()" 
                                 style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
                         </div>
                         <div>
                             <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Gold 8 Grams / Sovereign (₹)</label>
-                            <input type="text" id="input-gold-8g" value="1,05,560" oninput="updateGoldRatePreview()" 
+                            <input type="text" id="input-gold-8g" value="1,04,320" oninput="updateGoldRatePreview()" 
                                 style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
                         </div>
                         <div>
                             <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Silver 1 Gram (₹)</label>
-                            <input type="text" id="input-silver-1g" value="215.00" oninput="updateGoldRatePreview()" 
+                            <input type="text" id="input-silver-1g" value="210.00" oninput="updateGoldRatePreview()" 
                                 style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
                         </div>
                         <div>
                             <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Silver 8 Grams (₹)</label>
-                            <input type="text" id="input-silver-8g" value="1,720" oninput="updateGoldRatePreview()" 
+                            <input type="text" id="input-silver-8g" value="1,680" oninput="updateGoldRatePreview()" 
                                 style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
                         </div>
                     </div>
@@ -5024,6 +5024,9 @@
             await loadExternalApiLogsBadge();
             await loadProductionJsonFilesList();
             await loadMongoStatus();
+            try {
+                if (typeof fetchLiveBullionRates === 'function') fetchLiveBullionRates(false);
+            } catch (e) {}
         }
 
         initAdmin();
@@ -5334,6 +5337,6 @@
     </script>
     <script src="/static/js/core/pwa.js?v=1.1"></script>
     <script src="/static/js/core/push-notification-client.js?v=3.0"></script>
-    <script src="/static/js/modules/admin-notifications.js?v=3.3"></script>
+    <script src="/static/js/modules/admin-notifications.js?v=3.4"></script>
 </body>
 </html>

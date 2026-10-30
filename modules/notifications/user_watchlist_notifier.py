@@ -140,12 +140,12 @@ def dispatch_unique_watchlist_notifications(base_url="", static_root=None, limit
         image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
 
         if gainers:
-            gainers_str = ", ".join(f"{s['symbol']} ({s['change_pct']})" for s in gainers[:3])
-            title = f"⭐ {uname.capitalize()}'s Watchlist: Top {limit} Gainers"
-            body = f"Today's Top Momentum: {gainers_str}"
+            gainers_str = " • ".join(f"{s['symbol']} ({s['change_pct']})" for s in gainers[:3])
+            title = f"⭐ Watchlist: Top {limit} Gainers"
+            body = f"🟢 {gainers_str}"
         else:
-            title = f"⭐ {uname.capitalize()}'s Watchlist Momentum"
-            body = "No positive stock gainers found in your watchlist today."
+            title = "⭐ Watchlist Momentum"
+            body = "No positive stock gainers in your watchlist today."
 
         push_res = send_web_push(
             title=title,
@@ -229,12 +229,12 @@ def send_watchlist_digest_to_user(username, base_url="", limit=5):
     image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
 
     if gainers:
-        gainers_str = ", ".join(f"{s['symbol']} ({s['change_pct']})" for s in gainers[:3])
-        title = f"⭐ {username.capitalize()}'s Watchlist: Top {limit} Gainers"
-        body = f"Today's Top Momentum: {gainers_str}"
+        gainers_str = " • ".join(f"{s['symbol']} ({s['change_pct']})" for s in gainers[:3])
+        title = f"⭐ Watchlist: Top {limit} Gainers"
+        body = f"🟢 {gainers_str}"
     else:
-        title = f"⭐ {username.capitalize()}'s Watchlist Momentum"
-        body = "No positive stock gainers found in your watchlist today."
+        title = "⭐ Watchlist Momentum"
+        body = "No positive stock gainers in your watchlist today."
 
     push_res = send_web_push(
         title=title,

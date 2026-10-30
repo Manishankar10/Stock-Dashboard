@@ -183,11 +183,17 @@ self.addEventListener('push', (event) => {
     const notification = payload.notification || payload;
     const data = payload.data || {};
 
+    function toAbsoluteUrl(u) {
+        if (!u || typeof u !== 'string') return null;
+        if (u.startsWith('http://') || u.startsWith('https://')) return u;
+        return (self.location.origin || '') + (u.startsWith('/') ? u : '/' + u);
+    }
+
     const title = notification.title || 'Capital Desk Alert';
     const body = notification.body || 'New financial market update available.';
-    const icon = notification.icon || '/static/favicon-192.png';
-    const badge = notification.badge || '/static/favicon-32.png';
-    const image = notification.image || data.image || null;
+    const icon = toAbsoluteUrl(notification.icon || '/static/favicon-192.png');
+    const badge = toAbsoluteUrl(notification.badge || '/static/favicon-32.png');
+    const image = toAbsoluteUrl(notification.image || data.image || null);
     const targetUrl = data.url || (notification.click_action || '/');
 
     const notificationOptions = {
@@ -195,13 +201,13 @@ self.addEventListener('push', (event) => {
         icon: icon,
         badge: badge,
         image: image,
-        tag: data.tag || (data.type ? ('cd-' + data.type) : (data.timestamp ? ('cd-' + data.timestamp) : 'capital-desk-alert')),
+        tag: data.tag || (data.type ? ('cd-' + data.type) : ('cd-' + Date.now())),
+        renotify: true,
         data: {
             url: targetUrl,
             timestamp: Date.now()
         },
-        requireInteraction: true,
-        renotify: false,
+        requireInteraction: false,
         vibrate: [200, 100, 200],
         actions: [
             { action: 'open', title: 'Open Capital Desk' }

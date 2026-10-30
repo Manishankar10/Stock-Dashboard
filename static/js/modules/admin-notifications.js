@@ -1020,4 +1020,26 @@
             window.renderNotifHistoryPage(_notifCurrentPage + 1);
         }
     };
+
+    // Auto-fetch latest bullion rates, portfolio previews, and stats immediately on load
+    function initNotificationsController() {
+        if (typeof window.fetchLiveBullionRates === 'function') {
+            window.fetchLiveBullionRates(false);
+        }
+        if (typeof window.loadNotificationStats === 'function') {
+            window.loadNotificationStats();
+        }
+        if (typeof window.loadUsersPortfolioDigest === 'function') {
+            window.loadUsersPortfolioDigest();
+        }
+        if (typeof window.updateGoldRatePreview === 'function') {
+            window.updateGoldRatePreview();
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNotificationsController);
+    } else {
+        setTimeout(initNotificationsController, 50);
+    }
 })();
