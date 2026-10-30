@@ -33,7 +33,7 @@ self.addEventListener('push', (event) => {
     const title = notification.title || 'Capital Desk Alert';
     const body = notification.body || 'New financial market update available.';
     const icon = notification.icon || '/static/favicon-192.png';
-    const badge = notification.badge || '/static/badge-cd.png';
+    const badge = notification.badge || '/static/favicon-32.png';
     const image = notification.image || data.image || null;
     const targetUrl = data.url || (notification.click_action || '/');
 
