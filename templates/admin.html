@@ -283,6 +283,12 @@
             gap: 16px;
             margin-bottom: 24px;
         }
+        .notif-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
         .metric-card {
             background: var(--bg-card);
             border-radius: 12px;
@@ -584,7 +590,7 @@
             }
 
             /* Compact 2x2 KPI Grid on Mobile */
-            .summary-grid {
+            .summary-grid, .notif-kpi-grid {
                 grid-template-columns: repeat(2, 1fr) !important;
                 gap: 8px !important;
                 margin-bottom: 14px !important;
@@ -2011,7 +2017,7 @@
         <!-- TAB 5: Web & PWA Push Notifications -->
         <div id="tab-notifications" class="tab-content">
             <!-- Metric Overview Cards -->
-            <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
+            <div class="summary-grid notif-kpi-grid" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px;">
                 <div class="metric-card">
                     <div class="title">Total Push Subscribers</div>
                     <div class="value" id="stat-notif-subscribers" style="color: #3b82f6;">0</div>
