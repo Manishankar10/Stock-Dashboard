@@ -5918,6 +5918,15 @@
             }
             if (nameDisplay) nameDisplay.innerText = info.name || cleanSym || sym;
 
+            // Ensure mouse wheel navigation & search events are set up
+            if (typeof setupChartSymbolSearchEvents === 'function') {
+                setupChartSymbolSearchEvents();
+            }
+            // Update pill tooltip with current index in active watchlist if available
+            if (typeof updateChartSymbolPillPosition === 'function') {
+                updateChartSymbolPillPosition(sym);
+            }
+
             // Remove any existing empty chart overlay when opening new symbol
             const existingEmptyOverlay = document.getElementById('chartEmptyStateOverlay');
             if (existingEmptyOverlay) existingEmptyOverlay.remove();
@@ -6040,10 +6049,18 @@
         }
 
         async function loadChartData() {
-            showChartLoader(currentChartSymbol, currentChartInterval, currentChartRange);
+            const reqSymbol = currentChartSymbol;
+            const reqRange = currentChartRange;
+            const reqInterval = currentChartInterval;
+            showChartLoader(reqSymbol, reqInterval, reqRange);
             try {
-                const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(currentChartSymbol)}&range=${currentChartRange}&interval=${currentChartInterval}`);
+                const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(reqSymbol)}&range=${reqRange}&interval=${reqInterval}`);
                 const data = await res.json();
+
+                // Ignore stale in-flight response if user navigated to a different symbol/interval/range
+                if (reqSymbol !== currentChartSymbol || reqRange !== currentChartRange || reqInterval !== currentChartInterval) {
+                    return;
+                }
 
                 if (data.error) {
                     hideChartLoader();
@@ -6065,11 +6082,14 @@
 
                 renderInHouseCharts(data);
             } catch (err) {
+                if (reqSymbol !== currentChartSymbol) return;
                 console.error('Chart fetch error:', err);
                 hideChartLoader();
                 showEmptyChartState(err.message || 'Error loading chart data');
             } finally {
-                hideChartLoader();
+                if (reqSymbol === currentChartSymbol) {
+                    hideChartLoader();
+                }
             }
         }
 
@@ -8052,6 +8072,173 @@
             });
         }
 
+        // =========================================================
+        // WATCHLIST SCROLL NAVIGATION FOR CHART SYMBOL DROPDOWN
+        // =========================================================
+        function getActiveChartWatchlist() {
+            // 1. Check DOM rows from active watchlist table if currently mounted
+            try {
+                const domRows = document.querySelectorAll('#watchlist-table-mount tbody tr.pf-row, #watchlist-view-mount tbody tr.pf-row, .watchlist-container table tbody tr.pf-row');
+                if (domRows && domRows.length > 0) {
+                    const domSymbols = Array.from(domRows)
+                        .map(r => r.dataset.symbol || r.getAttribute('data-symbol'))
+                        .filter(Boolean);
+                    if (domSymbols.length > 0) {
+                        let activeName = '';
+                        const activeTabBtn = document.querySelector('#watchlist-selector-mount .pf-select-btn.active, .watchlist-selector-bar .pf-select-btn.active');
+                        if (activeTabBtn && activeTabBtn.dataset && activeTabBtn.dataset.watchlistName) {
+                            activeName = activeTabBtn.dataset.watchlistName;
+                        } else if (typeof activeWatchlistName !== 'undefined' && activeWatchlistName) {
+                            activeName = activeWatchlistName;
+                        }
+                        return { name: activeName || 'Watchlist', symbols: domSymbols };
+                    }
+                }
+            } catch (e) {}
+
+            // 2. Check in-memory watchlistsData or localStorage cache
+            let wData = (typeof watchlistsData !== 'undefined' && watchlistsData) ? watchlistsData : (window.watchlistsData || null);
+            if (!wData) {
+                try {
+                    const cached = localStorage.getItem('cd_cached_watchlists');
+                    if (cached) wData = JSON.parse(cached);
+                } catch(e) {}
+            }
+
+            let activeName = (typeof activeWatchlistName !== 'undefined' && activeWatchlistName) ? activeWatchlistName : (window.activeWatchlistName || '');
+
+            if (wData && typeof wData === 'object') {
+                // If activeName exists and has stocks
+                if (activeName && Array.isArray(wData[activeName]) && wData[activeName].length > 0) {
+                    return { name: activeName, symbols: wData[activeName] };
+                }
+
+                // If currentChartSymbol is in any watchlist, prefer that watchlist
+                const curClean = (currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                if (curClean) {
+                    for (const [name, list] of Object.entries(wData)) {
+                        if (Array.isArray(list) && list.some(s => String(s || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim() === curClean)) {
+                            return { name: name, symbols: list };
+                        }
+                    }
+                }
+
+                // Otherwise pick first non-empty watchlist
+                for (const [name, list] of Object.entries(wData)) {
+                    if (Array.isArray(list) && list.length > 0) {
+                        return { name: name, symbols: list };
+                    }
+                }
+            }
+
+            return { name: '', symbols: [] };
+        }
+
+        let _lastSymbolWheelTime = 0;
+        function navigateChartWatchlist(direction) {
+            const { name: wlName, symbols } = getActiveChartWatchlist();
+            if (!symbols || symbols.length === 0) return false;
+
+            const curClean = (currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+            let currentIndex = symbols.findIndex(s => {
+                if (!s) return false;
+                const sClean = String(s).replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                return sClean === curClean || String(s).toUpperCase() === (currentChartSymbol || '').toUpperCase();
+            });
+
+            let targetIndex;
+            if (direction === 'next') {
+                targetIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % symbols.length;
+            } else {
+                targetIndex = currentIndex === -1 ? (symbols.length - 1) : (currentIndex - 1 + symbols.length) % symbols.length;
+            }
+
+            const targetSymbol = symbols[targetIndex];
+            if (!targetSymbol) return false;
+
+            const targetClean = String(targetSymbol).replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+            if (targetClean === curClean && symbols.length > 1) return false;
+
+            let finalSym = String(targetSymbol).trim().toUpperCase();
+            if (!finalSym.includes('.') && !finalSym.startsWith('^') && !finalSym.includes('=F')) {
+                finalSym += '.NS';
+            }
+
+            // Close search dropdown if open
+            closeChartSymbolSearch();
+
+            // Load new chart
+            openInHouseChart(finalSym, currentChartInterval);
+
+            // Update pill tooltip with current position
+            updateChartSymbolPillPosition(finalSym, targetIndex + 1, symbols.length, wlName);
+            return true;
+        }
+
+        function updateChartSymbolPillPosition(sym, explicitPos, explicitTotal, explicitWlName) {
+            const pillBox = document.getElementById('chartSymbolPillBox');
+            if (!pillBox) return;
+
+            try {
+                let pos = explicitPos;
+                let total = explicitTotal;
+                let wlName = explicitWlName;
+
+                if (!pos || !total) {
+                    const { name, symbols } = getActiveChartWatchlist();
+                    wlName = name || wlName;
+                    if (symbols && symbols.length > 0) {
+                        total = symbols.length;
+                        const clean = (sym || currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                        const idx = symbols.findIndex(s => {
+                            if (!s) return false;
+                            const sClean = String(s).replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                            return sClean === clean || String(s).toUpperCase() === (sym || '').toUpperCase();
+                        });
+                        if (idx !== -1) {
+                            pos = idx + 1;
+                        }
+                    }
+                }
+
+                const cleanLabel = (sym || currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                if (pos && total) {
+                    pillBox.title = `${cleanLabel} (${pos}/${total} in ${wlName || 'Watchlist'})\nScroll mouse wheel to navigate · Click to search`;
+                } else {
+                    pillBox.title = `${cleanLabel}\nScroll mouse wheel to navigate watchlist · Click to search`;
+                }
+
+                // Add visual pulse effect
+                pillBox.classList.remove('pill-nav-pulse');
+                void pillBox.offsetWidth;
+                pillBox.classList.add('pill-nav-pulse');
+            } catch(e) {
+                pillBox.title = 'Click to search stock · Scroll mouse wheel to navigate watchlist';
+            }
+        }
+
+        function handleSymbolPillWheel(e) {
+            // Do not intercept if scrolling inside the open search results dropdown list
+            if (e.target.closest('#chartSymbolSearchDropdown')) return;
+
+            // Do not navigate if search dropdown is open
+            const dd = document.getElementById('chartSymbolSearchDropdown');
+            if (dd && dd.style.display !== 'none' && dd.style.display !== '') return;
+
+            const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+            if (Math.abs(delta) < 2) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const now = Date.now();
+            if (now - _lastSymbolWheelTime < 160) return;
+            _lastSymbolWheelTime = now;
+
+            const direction = delta > 0 ? 'next' : 'prev';
+            navigateChartWatchlist(direction);
+        }
+
         let chartSearchEventsInitialized = false;
         function setupChartSymbolSearchEvents() {
             const input = document.getElementById('chartSymbolSearchInput');
@@ -8099,6 +8286,19 @@
                         closeChartSymbolSearch();
                     }
                 });
+            }
+
+            // Mouse Wheel Navigation over Symbol Pill Dropdown (TradingView web style)
+            const pillBox = document.getElementById('chartSymbolPillBox');
+            if (pillBox && !pillBox._wheelBound) {
+                pillBox._wheelBound = true;
+                pillBox.addEventListener('wheel', handleSymbolPillWheel, { passive: false });
+            }
+
+            const searchContainer = document.getElementById('chartSymbolSearchContainer');
+            if (searchContainer && !searchContainer._wheelBound) {
+                searchContainer._wheelBound = true;
+                searchContainer.addEventListener('wheel', handleSymbolPillWheel, { passive: false });
             }
 
             if (!chartSearchEventsInitialized) {
@@ -8153,6 +8353,9 @@
             setupChartSymbolSearchEvents();
         }
 
+        window.navigateChartWatchlist = navigateChartWatchlist;
+        window.getActiveChartWatchlist = getActiveChartWatchlist;
+        window.updateChartSymbolPillPosition = updateChartSymbolPillPosition;
         window.openChartSymbolSearch = openChartSymbolSearch;
         window.closeChartSymbolSearch = closeChartSymbolSearch;
         window.toggleChartSymbolSearch = toggleChartSymbolSearch;

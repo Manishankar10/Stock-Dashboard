@@ -1594,6 +1594,14 @@
         .chart-symbol-pill-box { display: inline-flex; align-items: center; gap: 6px; background: #1e222d; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 6px; padding: 4px 10px; height: 28px; cursor: pointer; user-select: none; transition: all 0.15s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); flex-shrink: 0; }
         .chart-symbol-pill-box:hover { background: #2a2e39; border-color: rgba(255, 255, 255, 0.32); }
         .chart-symbol-pill-box.active { background: #181c27; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
+        @keyframes pillNavPulse {
+            0% { transform: scale(0.97); }
+            50% { transform: scale(1.04); }
+            100% { transform: scale(1); }
+        }
+        .chart-symbol-pill-box.pill-nav-pulse {
+            animation: pillNavPulse 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
         .chart-symbol-pill-text { font-weight: 800; font-size: 15px; color: #ffffff; letter-spacing: 0.5px; line-height: 1; text-transform: uppercase; }
         .chart-symbol-pill-arrow { font-size: 10px; color: #94a3b8; transition: transform 0.2s ease; margin-left: 2px; }
         .chart-symbol-pill-box.active .chart-symbol-pill-arrow { transform: rotate(180deg); color: #3b82f6; }
