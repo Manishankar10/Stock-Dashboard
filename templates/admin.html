@@ -2236,7 +2236,7 @@
                     <div style="display: flex; gap: 10px; align-items: stretch; margin-top: 16px;">
                         <button class="btn" id="btn-send-portfolio-all" onclick="sendPortfolioPersonalizedAllUsers()" 
                             style="flex: 1; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #ffffff; border: none; font-weight: 700; padding: 11px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            🚀 Send Portfolio Performance to All Users
+                            🚀 Send Portfolio Performance
                         </button>
                         <a id="btn-preview-perf-img" href="/api/notifications/render-portfolio-card.png" target="_blank" class="btn btn-secondary" 
                             style="padding: 11px 16px; text-decoration: none; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" title="Open full-resolution generated PNG banner">
@@ -2260,7 +2260,7 @@
 
                             <button class="btn" id="btn-send-watchlist-all" onclick="sendWatchlistGainersAllUsers()" 
                                 style="flex: 1; min-width: 250px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; font-weight: 700; padding: 11px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                ⭐ Send watchlist top <span id="watchlist-btn-count-num">5</span> gainers to ALL users
+                                ⭐ Send top <span id="watchlist-btn-count-num">5</span> watchlist gainers
                             </button>
                             <button class="btn btn-secondary" id="btn-send-watchlist-sampath" onclick="sendWatchlistGainersSampleUser('sampath')" 
                                 style="padding: 11px 14px; color: #34d399; border-color: rgba(52, 211, 153, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample watchlist digest directly to Sampath">
@@ -5334,6 +5334,6 @@
     </script>
     <script src="/static/js/core/pwa.js?v=1.1"></script>
     <script src="/static/js/core/push-notification-client.js?v=3.0"></script>
-    <script src="/static/js/modules/admin-notifications.js?v=3.2"></script>
+    <script src="/static/js/modules/admin-notifications.js?v=3.3"></script>
 </body>
 </html>

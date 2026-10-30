@@ -684,7 +684,7 @@
         const btn = document.getElementById('btn-send-watchlist-all');
         const countInput = document.getElementById('watchlist-gainers-count');
         const limit = countInput ? (parseInt(countInput.value, 10) || 5) : 5;
-        const originalText = btn ? btn.innerHTML : `⭐ Send watchlist top ${limit} gainers to ALL users`;
+        const originalText = btn ? btn.innerHTML : `⭐ Send top ${limit} watchlist gainers`;
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '⏳ Computing Watchlist Momentum & Dispatching...';
@@ -755,7 +755,7 @@
     // 6. Send Unique Personalized EOD to All Users
     window.sendPortfolioPersonalizedAllUsers = async function () {
         const btn = document.getElementById('btn-send-portfolio-all');
-        const originalText = btn ? btn.innerHTML : '🚀 Send Portfolio Performance to All Users';
+        const originalText = btn ? btn.innerHTML : '🚀 Send Portfolio Performance';
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '⏳ Computing Real DB Portfolios & Dispatching Unique Pushes...';
