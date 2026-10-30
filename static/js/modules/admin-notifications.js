@@ -36,14 +36,31 @@
 
     // 2. Save Firebase FCM Configuration (Method A)
     window.saveFcmConfiguration = async function () {
-        const vapid = (document.getElementById('fcm-cfg-vapid-key')?.value || '').trim();
-        const projId = (document.getElementById('fcm-cfg-project-id')?.value || '').trim();
-        const senderId = (document.getElementById('fcm-cfg-sender-id')?.value || '').trim();
-        const apiKey = (document.getElementById('fcm-cfg-api-key')?.value || '').trim();
+        let vapid = (document.getElementById('fcm-cfg-vapid-key')?.value || '').trim();
+        let projId = (document.getElementById('fcm-cfg-project-id')?.value || '').trim();
+        let senderId = (document.getElementById('fcm-cfg-sender-id')?.value || '').trim();
+        let apiKey = (document.getElementById('fcm-cfg-api-key')?.value || '').trim();
         const saJson = (document.getElementById('fcm-cfg-service-account')?.value || '').trim();
 
         if (!vapid && !projId && !saJson) {
             alert('Please enter your Web Push VAPID Key, Project ID, or Service Account JSON.');
+            return;
+        }
+
+        // Smart Swap Detection
+        if (vapid.startsWith('AIzaSy') && (apiKey.startsWith('B') || apiKey.length > 50)) {
+            const temp = vapid;
+            vapid = apiKey;
+            apiKey = temp;
+            if (document.getElementById('fcm-cfg-vapid-key')) document.getElementById('fcm-cfg-vapid-key').value = vapid;
+            if (document.getElementById('fcm-cfg-api-key')) document.getElementById('fcm-cfg-api-key').value = apiKey;
+            alert('🔄 Notice: We detected that your Web Push VAPID Key and Web API Key were swapped in the boxes and automatically corrected them for you!');
+        } else if (vapid.startsWith('AIzaSy') && !apiKey) {
+            apiKey = vapid;
+            vapid = '';
+            if (document.getElementById('fcm-cfg-vapid-key')) document.getElementById('fcm-cfg-vapid-key').value = '';
+            if (document.getElementById('fcm-cfg-api-key')) document.getElementById('fcm-cfg-api-key').value = apiKey;
+            alert('⚠️ Notice: The key you entered in "Web Push VAPID Key" is actually a Google Web API Key (starts with AIzaSy). We moved it to the Web API Key field. Please copy the real VAPID Key (starts with B...) from Cloud Messaging -> Web Configuration and paste it into Web Push VAPID Key.');
             return;
         }
 
@@ -173,6 +190,48 @@
         window.updateGoldRatePreview();
     };
 
+    window.handleGoldTargetUserChange = function (val) {
+        const customInput = document.getElementById('gold-custom-username');
+        if (customInput) {
+            customInput.style.display = (val === 'custom') ? 'inline-block' : 'none';
+            if (val === 'custom') customInput.focus();
+        }
+    };
+
+    window.sendSampleGoldToUser = async function (username = 'sampath') {
+        const btn = event?.currentTarget;
+        const originalText = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Sending to ' + username + '...';
+        }
+
+        try {
+            const res = await fetch('/api/admin/notifications/send-sample-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    type: 'gold'
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ Gold & Silver sample successfully delivered to ${username}!\n\n• Recipients: ${data.recipient_count} device(s)\n• Status: ${data.status}`);
+            } else {
+                alert(`⚠️ Notice: ${data.message || 'Could not dispatch'}`);
+            }
+            await window.loadNotificationStats();
+        } catch (err) {
+            alert('❌ Error sending sample: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    };
+
     window.sendGoldRatesNotification = async function () {
         const btn = document.getElementById('btn-send-gold');
         const originalText = btn ? btn.innerHTML : '🚀 Send Gold & Silver Notification';
@@ -187,6 +246,16 @@
             const s1 = document.getElementById('input-silver-1g')?.value || '215.00';
             const s8 = document.getElementById('input-silver-8g')?.value || '1,720';
 
+            let targetUser = 'all';
+            const targetSelect = document.getElementById('gold-target-user-select');
+            if (targetSelect) {
+                if (targetSelect.value === 'custom') {
+                    targetUser = (document.getElementById('gold-custom-username')?.value || '').trim() || 'all';
+                } else {
+                    targetUser = targetSelect.value;
+                }
+            }
+
             const res = await fetch('/api/admin/notifications/send-gold', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -194,13 +263,14 @@
                     gold_1g: g1,
                     gold_8g: g8,
                     silver_1g: s1,
-                    silver_8g: s8
+                    silver_8g: s8,
+                    username: targetUser
                 })
             });
 
             const data = await res.json();
             if (data.success) {
-                alert(`✅ Gold & Silver Notification Dispatched!\n\n• Status: ${data.status}\n• Recipients: ${data.recipient_count} device(s)\n• Message: ${data.message || 'Dispatched'}`);
+                alert(`✅ Gold & Silver Notification Dispatched!\n\n• Target: ${data.target_username || targetUser}\n• Status: ${data.status}\n• Recipients: ${data.recipient_count} device(s)\n• Message: ${data.message || 'Dispatched'}`);
             } else {
                 alert(`⚠️ Notification Warning: ${data.message || 'Could not send'}`);
             }

@@ -2127,6 +2127,23 @@
                         </div>
                     </div>
 
+                    <!-- Target Recipient Selection -->
+                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">🎯 Target Recipient:</label>
+                            <select id="gold-target-user-select" onchange="handleGoldTargetUserChange(this.value)"
+                                style="padding: 6px 10px; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                                <option value="all">📢 All Active Subscribers</option>
+                                <option value="sampath" selected>👤 Sampath Only (Sample Test)</option>
+                                <option value="custom">🔍 Specific Username...</option>
+                            </select>
+                            <input type="text" id="gold-custom-username" placeholder="Username (e.g. sampath)" style="display: none; width: 140px; padding: 5px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        </div>
+                        <button class="btn btn-secondary" onclick="sendSampleGoldToUser('sampath')" style="font-size: 11.5px; padding: 5px 12px; color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);" title="Direct one-click test dispatch to user sampath">
+                            ⚡ Send Sample to Sampath
+                        </button>
+                    </div>
+
                     <!-- Dispatch Buttons -->
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn" id="btn-send-gold" onclick="sendGoldRatesNotification()" 
@@ -2324,18 +2341,21 @@
                     </div>
                     <div>
                         <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web Push VAPID Public Key</label>
-                        <input type="text" id="fcm-cfg-vapid-key" placeholder="e.g. BElv... (From Firebase Cloud Messaging)" 
+                        <input type="text" id="fcm-cfg-vapid-key" placeholder="Starts with B... (From Cloud Messaging -> Web Configuration)" 
                             style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        <small style="display: block; font-size: 10.5px; color: #f59e0b; margin-top: 4px;">⚠️ Must start with <strong>B...</strong> (87 chars, Cloud Messaging tab)</small>
                     </div>
                     <div>
                         <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Messaging Sender ID (Project Number)</label>
-                        <input type="text" id="fcm-cfg-sender-id" placeholder="e.g. 782194839210 (Cloud Messaging tab)" 
+                        <input type="text" id="fcm-cfg-sender-id" placeholder="e.g. 142964374702 (Project Number)" 
                             style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        <small style="display: block; font-size: 10.5px; color: var(--text-secondary); margin-top: 4px;">Numeric project number from Cloud Messaging tab</small>
                     </div>
                     <div>
                         <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Web API Key (Optional)</label>
-                        <input type="text" id="fcm-cfg-api-key" placeholder="e.g. AIzaSy... (Project General tab)" 
+                        <input type="text" id="fcm-cfg-api-key" placeholder="Starts with AIzaSy... (From General tab)" 
                             style="width: 100%; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);">
+                        <small style="display: block; font-size: 10.5px; color: #38bdf8; margin-top: 4px;">ℹ️ Starts with <strong>AIzaSy...</strong> (39 chars, General tab)</small>
                     </div>
                 </div>
 
@@ -5268,6 +5288,6 @@
     </script>
     <script src="/static/js/core/pwa.js?v=1.0"></script>
     <script src="/static/js/core/push-notification-client.js?v=2.6"></script>
-    <script src="/static/js/modules/admin-notifications.js?v=2.4"></script>
+    <script src="/static/js/modules/admin-notifications.js?v=2.5"></script>
 </body>
 </html>

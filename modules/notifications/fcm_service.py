@@ -46,6 +46,13 @@ def get_fcm_config():
     except Exception:
         pass
 
+    # Smart Auto-Correction: If VAPID Key and Web API Key were swapped
+    if vapid_key and vapid_key.startswith("AIzaSy") and api_key and (api_key.startswith("B") or len(api_key) > 50):
+        vapid_key, api_key = api_key, vapid_key
+    elif vapid_key and vapid_key.startswith("AIzaSy") and not api_key:
+        api_key = vapid_key
+        vapid_key = ""
+
     service_account_exists = (
         bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")) or
         os.path.exists(os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH", "")) or

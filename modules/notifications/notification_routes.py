@@ -210,10 +210,22 @@ def admin_notification_stats():
 @admin_required
 def admin_send_gold_notification():
     """
-    Dispatches Gold & Silver Rates Notification to all Web & PWA subscribers.
+    Dispatches Gold & Silver Rates Notification to all Web & PWA subscribers (or a specific user).
     Can dynamically fetch real-time bullion rates if not manually specified.
     """
     data = request.get_json(silent=True) or request.form.to_dict() or {}
+    target_user = (data.get("username") or data.get("target_username") or "").strip()
+
+    specific_tokens = None
+    if target_user and target_user.lower() != "all":
+        specific_tokens = get_user_tokens(target_user)
+        if not specific_tokens:
+            return jsonify({
+                "success": False,
+                "message": f"User '{target_user}' has 0 active registered devices in database. Please ask '{target_user}' to log in on their browser/phone and click 'Enable Notifications' first.",
+                "recipient_count": 0,
+                "target_username": target_user
+            })
 
     # If use_live requested or values not provided, dynamically fetch from market
     if data.get("use_live") or not data.get("gold_1g"):
@@ -244,7 +256,8 @@ def admin_send_gold_notification():
     image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
 
     # Notification text
-    title = "👑 Standard Gold (22K) & Ready Silver Update"
+    title_suffix = f" for {target_user.capitalize()}" if (target_user and target_user.lower() != "all") else ""
+    title = f"👑 Standard Gold (22K) & Ready Silver Update{title_suffix}"
     body = f"Gold 22K: ₹{gold_1g}/g | ₹{gold_8g}/8g\nSilver: ₹{silver_1g}/g | ₹{silver_8g}/8g (99.9% Fine)"
 
     result = send_web_push(
@@ -257,16 +270,81 @@ def admin_send_gold_notification():
             "gold_1g": gold_1g,
             "gold_8g": gold_8g,
             "silver_1g": silver_1g,
-            "silver_8g": silver_8g
+            "silver_8g": silver_8g,
+            "target_user": target_user or "all"
         },
-        target_topic="gold_silver_rates"
+        target_topic="gold_silver_rates" if not specific_tokens else None,
+        specific_tokens=specific_tokens
     )
 
     result["gold_1g"] = gold_1g
     result["gold_8g"] = gold_8g
     result["silver_1g"] = silver_1g
     result["silver_8g"] = silver_8g
+    result["target_username"] = target_user or "all"
     return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/send-sample-user", methods=["POST"])
+@admin_required
+def admin_send_sample_user():
+    """Directly dispatches a sample gold or portfolio notification to a specific user (e.g. sampath)."""
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    username = (data.get("username") or "sampath").strip()
+    notif_type = data.get("type", "gold").strip().lower()
+
+    if not username:
+        return jsonify({"success": False, "message": "Username is required."}), 400
+
+    tokens = get_user_tokens(username)
+    if not tokens:
+        return jsonify({
+            "success": False,
+            "message": f"User '{username}' has 0 active registered devices. Please ask '{username}' to log in on their browser/phone and click 'Enable Notifications' first.",
+            "recipient_count": 0,
+            "username": username
+        })
+
+    if notif_type == "gold":
+        live = fetch_live_bullion_rates(force_refresh=True)
+        gold_1g = live["gold_1g"]
+        gold_8g = live["gold_8g"]
+        silver_1g = live["silver_1g"]
+        silver_8g = live["silver_8g"]
+
+        gen_dir = os.path.join(current_app.root_path, "static", "notifications", "generated")
+        os.makedirs(gen_dir, exist_ok=True)
+        card_path = os.path.join(gen_dir, "gold_rates_latest.png")
+        generate_gold_silver_card(
+            gold_1g=gold_1g,
+            gold_8g=gold_8g,
+            silver_1g=silver_1g,
+            silver_8g=silver_8g,
+            output_path=card_path
+        )
+        base_url = request.url_root.rstrip("/")
+        image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
+
+        title = f"👑 Standard Gold (22K) & Ready Silver - Sample for {username.capitalize()}"
+        body = f"Gold 22K: ₹{gold_1g}/g | ₹{gold_8g}/8g\nSilver: ₹{silver_1g}/g | ₹{silver_8g}/8g (99.9% Fine)"
+
+        res = send_web_push(
+            title=title,
+            body=body,
+            image_url=image_url,
+            data_payload={
+                "url": "/watchlists",
+                "type": "gold_silver_rates",
+                "target_user": username
+            },
+            specific_tokens=tokens
+        )
+        res["username"] = username
+        return jsonify(res)
+    else:
+        from modules.notifications.user_portfolio_notifier import send_portfolio_digest_to_user
+        res = send_portfolio_digest_to_user(username)
+        return jsonify(res)
 
 
 @notifications_bp.route("/api/admin/notifications/users-portfolio-overview", methods=["GET"])
@@ -381,6 +459,16 @@ def admin_save_fcm_config():
     sender_id = data.get("messaging_sender_id", data.get("sender_id", "")).strip()
     api_key = data.get("api_key", "").strip()
     service_account_json = data.get("service_account_json", "").strip()
+
+    # Smart Auto-Correction: If user swapped VAPID Public Key and Web API Key
+    swapped = False
+    if vapid_key.startswith("AIzaSy") and (api_key.startswith("B") or len(api_key) > 50):
+        vapid_key, api_key = api_key, vapid_key
+        swapped = True
+    elif vapid_key.startswith("AIzaSy") and not api_key:
+        api_key = vapid_key
+        vapid_key = ""
+        swapped = True
 
     from modules.common.system_settings import get_system_settings, update_system_settings
     settings = get_system_settings()

@@ -82,6 +82,16 @@ def update_system_settings(new_settings):
     if "fcm_app_id" in new_settings:
         current["fcm_app_id"] = str(new_settings["fcm_app_id"]).strip()
 
+    # Smart Auto-Correction: If VAPID Key and Web API Key were swapped
+    v_val = current.get("fcm_vapid_public_key", "")
+    a_val = current.get("fcm_api_key", "")
+    if v_val.startswith("AIzaSy") and (a_val.startswith("B") or len(a_val) > 50):
+        current["fcm_vapid_public_key"] = a_val
+        current["fcm_api_key"] = v_val
+    elif v_val.startswith("AIzaSy") and not a_val:
+        current["fcm_api_key"] = v_val
+        current["fcm_vapid_public_key"] = ""
+
     # Clean any accidental root keys like 'success' or nested 'settings'
     clean_settings = {
         "max_watchlists_per_user": current.get("max_watchlists_per_user", 10),
