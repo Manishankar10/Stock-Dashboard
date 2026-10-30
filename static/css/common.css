@@ -1720,6 +1720,35 @@
             color: #34d399 !important;
             text-decoration: underline !important;
         }
+
+        /* Web Notification Tabs: Clear All on Right Side */
+        .notif-clear-all-web {
+            display: inline-flex !important;
+            align-items: center !important;
+            font-size: 11px !important;
+            padding: 5px 12px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            border-radius: 6px !important;
+            white-space: nowrap !important;
+        }
+        .notif-clear-all-mobile {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .notif-modal-tabs-left {
+                width: 100% !important;
+                display: flex !important;
+                gap: 8px !important;
+            }
+            .notif-clear-all-web {
+                display: none !important;
+            }
+            .notif-clear-all-mobile {
+                display: flex !important;
+            }
+        }
         .tf-btn, .int-btn { background: transparent; color: #787b86; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
         .tf-btn:hover, .int-btn:hover { color: #d1d4dc; background: #2a2e39; }
         .tf-btn.active, .int-btn.active { background: #10b981; color: #ffffff; }

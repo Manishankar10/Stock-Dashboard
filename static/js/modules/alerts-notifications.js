@@ -243,11 +243,14 @@
                 if (contentNotifs) {
                     contentNotifs.classList.remove('hidden');
                     contentNotifs.style.setProperty('display', 'flex', 'important');
+                    contentNotifs.style.setProperty('flex-direction', 'column', 'important');
                 }
                 if (contentAlerts) {
                     contentAlerts.classList.add('hidden');
                     contentAlerts.style.setProperty('display', 'none', 'important');
                 }
+                const clearAllWebBtn = document.getElementById('notif-clear-all-btn-web');
+                if (clearAllWebBtn) clearAllWebBtn.style.setProperty('display', '', '');
             } else {
                 if (btnAlerts) btnAlerts.classList.add('active');
                 if (btnNotifs) btnNotifs.classList.remove('active');
@@ -259,6 +262,8 @@
                     contentNotifs.classList.add('hidden');
                     contentNotifs.style.setProperty('display', 'none', 'important');
                 }
+                const clearAllWebBtn = document.getElementById('notif-clear-all-btn-web');
+                if (clearAllWebBtn) clearAllWebBtn.style.setProperty('display', 'none', 'important');
             }
             renderNotificationsModalContent();
         }
@@ -271,6 +276,17 @@
             const alertsLabel = document.getElementById('alerts-count-label');
             if (notifLabel) notifLabel.innerText = notifs.length;
             if (alertsLabel) alertsLabel.innerText = alerts.length;
+
+            const clearAllWebBtn = document.getElementById('notif-clear-all-btn-web');
+            if (clearAllWebBtn && activeNotifTab === 'notifs') {
+                if (notifs.length === 0) {
+                    clearAllWebBtn.style.opacity = '0.5';
+                    clearAllWebBtn.style.pointerEvents = 'none';
+                } else {
+                    clearAllWebBtn.style.opacity = '1';
+                    clearAllWebBtn.style.pointerEvents = 'auto';
+                }
+            }
 
             // Render Notifications Tab
             const notifMount = document.getElementById('notifications-list-mount');

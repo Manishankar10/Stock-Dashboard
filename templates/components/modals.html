@@ -1293,18 +1293,25 @@
             </div>
 
             <!-- Modal Sub-Tabs -->
-            <div id="notifications-modal-tabs" class="notif-modal-tabs" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;">
-                <button class="pf-select-btn active" id="notif-tab-btn-notifs" onclick="switchNotifTab('notifs')">
-                    🔔 Triggered (<span id="notif-count-label">0</span>)
-                </button>
-                <button class="pf-select-btn" id="notif-tab-btn-alerts" onclick="switchNotifTab('alerts')">
-                    🎯 Active Alerts (<span id="alerts-count-label">0</span>)
+            <div id="notifications-modal-tabs" class="notif-modal-tabs" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;">
+                <div class="notif-modal-tabs-left" style="display: flex; gap: 8px; align-items: center;">
+                    <button class="pf-select-btn active" id="notif-tab-btn-notifs" onclick="switchNotifTab('notifs')">
+                        🔔 Triggered (<span id="notif-count-label">0</span>)
+                    </button>
+                    <button class="pf-select-btn" id="notif-tab-btn-alerts" onclick="switchNotifTab('alerts')">
+                        🎯 Active Alerts (<span id="alerts-count-label">0</span>)
+                    </button>
+                </div>
+                <button type="button" id="notif-clear-all-btn-web" class="btn-secondary notif-clear-all-web" 
+                    style="font-size: 11px; padding: 5px 12px; font-weight: 600; cursor: pointer; border-radius: 6px; white-space: nowrap;" 
+                    onclick="clearAllNotifications()" title="Clear all triggered notifications">
+                    Clear All Notifications
                 </button>
             </div>
 
             <!-- Tab Content: Triggered Notifications -->
-            <div id="notif-tab-content-notifs">
-                <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+            <div id="notif-tab-content-notifs" style="display: flex; flex-direction: column;">
+                <div class="notif-clear-all-mobile" style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
                     <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="clearAllNotifications()">Clear All Notifications</button>
                 </div>
                 <div id="notifications-list-mount" style="max-height: 380px; overflow-y: auto;">
