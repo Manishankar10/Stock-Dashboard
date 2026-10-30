@@ -701,7 +701,7 @@
     // 6. Send Unique Personalized EOD to All Users
     window.sendPortfolioPersonalizedAllUsers = async function () {
         const btn = document.getElementById('btn-send-portfolio-all');
-        const originalText = btn ? btn.innerHTML : '🚀 Send Unique EOD Notifications to ALL Users Individually (from DB)';
+        const originalText = btn ? btn.innerHTML : '🚀 Send Portfolio Performance to All Users';
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '⏳ Computing Real DB Portfolios & Dispatching Unique Pushes...';
