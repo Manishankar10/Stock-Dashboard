@@ -402,6 +402,15 @@
                 }
             });
 
+            const banner = document.getElementById('modal-push-banner');
+            if (banner) {
+                if (active) {
+                    banner.classList.add('active');
+                } else {
+                    banner.classList.remove('active');
+                }
+            }
+
             const desc = document.getElementById('modal-push-desc');
             if (desc) {
                 if (active) {

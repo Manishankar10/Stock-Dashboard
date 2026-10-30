@@ -3172,3 +3172,129 @@
     border-color: var(--border-color, #e2e8f0) !important;
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
+
+
+/* =========================================================
+   Web & PWA Push Notification Banner in Alerts Modal
+========================================================= */
+.modal-push-banner {
+    position: relative;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-sizing: border-box;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] .modal-push-banner {
+    background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+    border-color: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.08);
+}
+
+.modal-push-banner.active {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%);
+    box-shadow: 0 4px 22px -2px rgba(16, 185, 129, 0.15);
+}
+
+[data-theme="light"] .modal-push-banner.active {
+    background: linear-gradient(145deg, rgba(16, 185, 129, 0.06) 0%, #f0fdf4 100%);
+    border-color: rgba(16, 185, 129, 0.35);
+    box-shadow: 0 4px 18px -2px rgba(16, 185, 129, 0.12);
+}
+
+.modal-push-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.modal-push-bell-box {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    font-size: 19px;
+    line-height: 1;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.modal-push-banner.active .modal-push-bell-box {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.modal-push-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-push-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    letter-spacing: 0.2px;
+    margin-bottom: 3px;
+}
+
+.modal-push-desc {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+/* Center button container in both web and responsive */
+.modal-push-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.modal-push-actions .cd-push-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 24px;
+    min-width: 170px;
+    border-radius: 9px;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+    border: 1px solid #3b82f6;
+    background: #3b82f6;
+    color: #ffffff;
+}
+
+.modal-push-actions .cd-push-toggle-btn:hover {
+    transform: translateY(-1.5px);
+    filter: brightness(1.08);
+}
+
+.modal-push-actions .cd-push-toggle-btn:active {
+    transform: translateY(0);
+}
+
+.modal-push-actions .cd-push-toggle-btn.active {
+    background: #10b981;
+    border-color: #10b981;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+}

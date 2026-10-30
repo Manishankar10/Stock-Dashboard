@@ -3503,7 +3503,8 @@
         color: var(--text-primary) !important;
     }
 
-    #notificationsModal .modal-content > div:nth-child(2) {
+    #notificationsModal .modal-content #notifications-modal-tabs,
+    #notificationsModal .modal-content .notif-modal-tabs {
         display: flex !important;
         gap: 8px !important;
         padding-bottom: 10px !important;
@@ -3519,6 +3520,35 @@
         padding: 9px 12px !important;
         text-align: center !important;
         border-radius: 8px !important;
+    }
+
+    /* Web & PWA Push Notifications Banner Responsive */
+    #modal-push-banner {
+        padding: 14px 16px !important;
+        margin-bottom: 14px !important;
+        border-radius: 12px !important;
+        gap: 12px !important;
+    }
+
+    #modal-push-banner .modal-push-content {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    #modal-push-banner .modal-push-actions {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    #modal-push-banner .cd-push-toggle-btn {
+        width: 100% !important;
+        max-width: 260px !important;
+        justify-content: center !important;
+        padding: 9px 20px !important;
+        font-size: 13px !important;
     }
 
     #notif-tab-content-notifs,
