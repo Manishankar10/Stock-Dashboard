@@ -1840,9 +1840,28 @@
             font-size: 14px;
             line-height: 1;
             color: #d1d4dc;
-            cursor: pointer;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-drag: element;
             transition: all 0.15s ease;
             padding: 0;
+            position: relative;
+        }
+        .chart-web-fav-btn:active {
+            cursor: grabbing;
+        }
+        .chart-web-fav-btn.is-dragging {
+            opacity: 0.35 !important;
+            transform: scale(0.9) !important;
+            border-color: #3b82f6 !important;
+        }
+        .chart-web-fav-btn.fav-drop-before {
+            box-shadow: -2.5px 0 0 0 #10b981 !important;
+            background: rgba(16, 185, 129, 0.12) !important;
+        }
+        .chart-web-fav-btn.fav-drop-after {
+            box-shadow: 2.5px 0 0 0 #10b981 !important;
+            background: rgba(16, 185, 129, 0.12) !important;
         }
         .chart-web-fav-btn:hover {
             background: #2a2e39;
@@ -1871,6 +1890,13 @@
             background: rgba(16, 185, 129, 0.15);
             border-color: #10b981;
             color: #059669;
+        }
+        [data-theme="light"] #chartModal .chart-web-fav-btn.is-dragging {
+            border-color: #2563eb !important;
+        }
+        [data-theme="light"] #chartModal .chart-web-fav-btn.fav-drop-before,
+        [data-theme="light"] #chartModal .chart-web-fav-btn.fav-drop-after {
+            background: rgba(16, 185, 129, 0.15) !important;
         }
 
         /* Default mobile shortcut bar and mobile elements hidden on desktop/web */

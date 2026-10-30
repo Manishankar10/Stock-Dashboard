@@ -1540,6 +1540,26 @@
             });
         }
 
+        let _draggedFavToolId = null;
+        let _favToolJustDragged = false;
+
+        function moveFavoriteToolPosition(sourceId, targetId, position) {
+            if (!sourceId || !targetId || sourceId === targetId) return false;
+            let favs = getFavoriteTools().slice();
+            const srcIdx = favs.indexOf(sourceId);
+            if (srcIdx === -1) return false;
+
+            favs.splice(srcIdx, 1);
+            const targetIdx = favs.indexOf(targetId);
+            if (targetIdx === -1) return false;
+
+            const insertIdx = (position === 'after') ? targetIdx + 1 : targetIdx;
+            favs.splice(insertIdx, 0, sourceId);
+
+            setFavoriteTools(favs);
+            return true;
+        }
+
         function renderFavoriteToolsShortcuts() {
             const favs = getFavoriteTools();
             const webBar = document.getElementById('chartWebFavBar');
@@ -1547,7 +1567,7 @@
             const mobileIcons = document.getElementById('mobileFavBarIcons');
             const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
 
-            // Render Web Toolbar (Image 2 - at end of legend row)
+            // Render Web Toolbar (Image 2 - at end of legend row, with drag-and-drop reordering in web only)
             if (webBar) {
                 if (isMobile) {
                     webBar.innerHTML = '';
@@ -1555,6 +1575,29 @@
                 } else {
                     webBar.style.display = 'flex';
                     webBar.innerHTML = '';
+
+                    // Drag-and-drop container drop target (allows dropping to end of list)
+                    webBar.ondragover = (e) => {
+                        e.preventDefault();
+                        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                    };
+                    webBar.ondrop = (e) => {
+                        if (e.target && e.target.closest && e.target.closest('.chart-web-fav-btn')) return;
+                        e.preventDefault();
+                        let sourceId = '';
+                        try { if (e.dataTransfer) sourceId = e.dataTransfer.getData('text/plain'); } catch(err){}
+                        if (!sourceId) sourceId = _draggedFavToolId;
+                        if (sourceId) {
+                            let curFavs = getFavoriteTools().slice();
+                            const srcIdx = curFavs.indexOf(sourceId);
+                            if (srcIdx !== -1 && srcIdx !== curFavs.length - 1) {
+                                curFavs.splice(srcIdx, 1);
+                                curFavs.push(sourceId);
+                                setFavoriteTools(curFavs);
+                            }
+                        }
+                    };
+
                     favs.forEach(id => {
                         const meta = CHART_TOOL_META[id];
                         if (!meta) return;
@@ -1562,10 +1605,76 @@
                         btn.type = 'button';
                         btn.className = `chart-web-fav-btn ${currentDrawingTool === id ? 'active' : ''}`;
                         btn.setAttribute('data-tool-id', id);
-                        btn.title = meta.title;
+                        btn.title = `${meta.title} · Drag to reorder`;
                         btn.innerHTML = meta.icon;
+
+                        // Drag & Drop reordering: Web Only
+                        btn.draggable = true;
+                        btn.setAttribute('draggable', 'true');
+
+                        btn.ondragstart = (e) => {
+                            _draggedFavToolId = id;
+                            _favToolJustDragged = true;
+                            if (e.dataTransfer) {
+                                try { e.dataTransfer.setData('text/plain', id); } catch(err){}
+                                e.dataTransfer.effectAllowed = 'move';
+                            }
+                            btn.classList.add('is-dragging');
+                            webBar.classList.add('fav-reordering-active');
+                        };
+
+                        btn.ondragover = (e) => {
+                            e.preventDefault();
+                            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                            const rect = btn.getBoundingClientRect();
+                            const isLeftHalf = (e.clientX - rect.left) < (rect.width / 2);
+                            webBar.querySelectorAll('.chart-web-fav-btn').forEach(b => {
+                                if (b !== btn) b.classList.remove('fav-drop-before', 'fav-drop-after');
+                            });
+                            btn.classList.toggle('fav-drop-before', isLeftHalf);
+                            btn.classList.toggle('fav-drop-after', !isLeftHalf);
+                        };
+
+                        btn.ondragleave = () => {
+                            btn.classList.remove('fav-drop-before', 'fav-drop-after');
+                        };
+
+                        btn.ondragend = () => {
+                            _draggedFavToolId = null;
+                            webBar.classList.remove('fav-reordering-active');
+                            webBar.querySelectorAll('.chart-web-fav-btn').forEach(b => {
+                                b.classList.remove('is-dragging', 'fav-drop-before', 'fav-drop-after');
+                            });
+                            setTimeout(() => { _favToolJustDragged = false; }, 120);
+                        };
+
+                        btn.ondrop = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const rect = btn.getBoundingClientRect();
+                            const isLeftHalf = (e.clientX - rect.left) < (rect.width / 2);
+                            const dropPos = isLeftHalf ? 'before' : 'after';
+
+                            webBar.querySelectorAll('.chart-web-fav-btn').forEach(b => {
+                                b.classList.remove('is-dragging', 'fav-drop-before', 'fav-drop-after');
+                            });
+
+                            let sourceId = '';
+                            try { if (e.dataTransfer) sourceId = e.dataTransfer.getData('text/plain'); } catch(err){}
+                            if (!sourceId) sourceId = _draggedFavToolId;
+
+                            if (sourceId && sourceId !== id) {
+                                moveFavoriteToolPosition(sourceId, id, dropPos);
+                            }
+                            _draggedFavToolId = null;
+                        };
+
                         btn.onclick = (e) => {
                             e.stopPropagation();
+                            if (_favToolJustDragged) {
+                                _favToolJustDragged = false;
+                                return;
+                            }
                             executeToolById(id);
                         };
                         webBar.appendChild(btn);
@@ -8367,6 +8476,9 @@
 
         window.openInHouseChart = openInHouseChart;
         window.closeChartModal = closeChartModal;
+        window.getFavoriteTools = getFavoriteTools;
+        window.setFavoriteTools = setFavoriteTools;
+        window.moveFavoriteToolPosition = moveFavoriteToolPosition;
         window.cancelDrawingTool = cancelDrawingTool;
         window.activateDrawingTool = activateDrawingTool;
         window.showDrawingBanner = showDrawingBanner;

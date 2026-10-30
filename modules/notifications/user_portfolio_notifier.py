@@ -193,7 +193,7 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
 
         g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
         l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
-        title = f"📈 Portfolio Performance: {perf_val}"
+        title = f"📈 Today's Portfolio: {perf_val}"
         body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
         push_res = send_web_push(
@@ -291,7 +291,7 @@ def send_portfolio_digest_to_user(username, base_url=""):
     image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
     g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
     l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
-    title = f"📈 Portfolio Performance: {perf_val}"
+    title = f"📈 Today's Portfolio: {perf_val}"
     body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
     res = send_web_push(

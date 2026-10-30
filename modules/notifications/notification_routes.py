@@ -618,7 +618,7 @@ def admin_send_portfolio_notification():
 
     g_display = "-" if top_gainer in ("-", "N/A") or top_gainer_pct in ("-", "N/A") else f"{top_gainer} ({top_gainer_pct})"
     l_display = "-" if top_loser in ("-", "N/A") or top_loser_pct in ("-", "N/A") else f"{top_loser} ({top_loser_pct})"
-    title = f"📈 Portfolio Performance: {perf}"
+    title = f"📈 Today's Portfolio: {perf}"
     body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
     result = send_web_push(
