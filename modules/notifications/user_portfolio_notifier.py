@@ -227,3 +227,74 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
         "total_devices_targeted": total_dispatched,
         "user_breakdown": results
     }
+
+
+def send_portfolio_digest_to_user(username, base_url=""):
+    """Dispatches a personalized portfolio digest specifically to a single user."""
+    from modules.notifications.card_generator import generate_portfolio_card
+    from modules.notifications.fcm_service import get_user_tokens, send_web_push, log_notification_event
+    from modules.common.data_paths import BASE_DATA_DIR
+
+    tokens = get_user_tokens(username)
+    perf = calculate_user_portfolio_performance(username)
+
+    perf_val = perf["net_return_pct"]
+    g_sym = perf["top_gainer_symbol"]
+    g_chg = perf["top_gainer_change"]
+    l_sym = perf["top_loser_symbol"]
+    l_chg = perf["top_loser_change"]
+
+    gen_dir = os.path.join(BASE_DATA_DIR, "static", "notifications", "generated")
+    os.makedirs(gen_dir, exist_ok=True)
+    card_filename = f"portfolio_{username}.png"
+    card_disk_path = os.path.join(gen_dir, card_filename)
+
+    generate_portfolio_card(
+        performance=perf_val,
+        top_gainer_symbol=g_sym,
+        top_gainer_change=g_chg,
+        top_loser_symbol=l_sym,
+        top_loser_change=l_chg,
+        portfolio_name=f"{username.capitalize()}'s Portfolio",
+        date_str=today_ist_str(),
+        output_path=card_disk_path
+    )
+
+    image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
+    title = f"📈 {username.capitalize()}'s EOD Portfolio: {perf_val}"
+    body = f"Today's Net Return: {perf_val} • Top Gainer: {g_sym} ({g_chg}) • Top Loser: {l_sym} ({l_chg})"
+
+    if not tokens:
+        status_text = "Calculated (No registered device)"
+        log_notification_event(
+            event_type="portfolio_performance",
+            title=title,
+            body=body,
+            status=status_text,
+            recipient_count=0,
+            metadata={"username": username, "image": image_url}
+        )
+        return {
+            "success": False,
+            "message": f"User '{username}' has no active registered devices. Please ask '{username}' to enable push notifications first.",
+            "recipient_count": 0,
+            "username": username,
+            "status": status_text
+        }
+
+    res = send_web_push(
+        title=title,
+        body=body,
+        image_url=image_url,
+        data_payload={
+            "url": "/portfolios",
+            "type": "portfolio_performance",
+            "username": username,
+            "performance": perf_val,
+            "top_gainer": g_sym,
+            "top_loser": l_sym
+        },
+        specific_tokens=tokens
+    )
+    res["username"] = username
+    return res

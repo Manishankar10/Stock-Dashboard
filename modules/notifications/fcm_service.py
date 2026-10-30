@@ -15,11 +15,68 @@ logger = logging.getLogger(__name__)
 PUSH_SUBSCRIPTIONS_FILE = os.path.join(USER_DATA_DIR, "push_subscriptions.json")
 NOTIFICATION_HISTORY_FILE = os.path.join(USER_DATA_DIR, "notification_history.json")
 DEFAULT_SERVICE_ACCOUNT_FILE = os.path.join(APP_DATA_DIR, "firebase_service_account.json")
+VAPID_KEYS_FILE = os.path.join(USER_DATA_DIR, "vapid_keys.json")
 
 # Singleton state
 _firebase_app = None
 _fcm_initialized = False
 _fcm_init_error = None
+
+
+def get_or_create_vapid_keys():
+    """
+    Retrieves or generates an RFC 8292 compliant EC P-256 VAPID keypair.
+    Always ensures Capital Desk has valid VAPID keys for direct browser push dispatches.
+    """
+    try:
+        from modules.common.system_settings import get_system_settings
+        settings = get_system_settings()
+    except Exception:
+        settings = {}
+
+    pub_setting = (settings.get("fcm_vapid_public_key") or os.environ.get("FIREBASE_VAPID_PUBLIC_KEY", "")).strip()
+    priv_setting = (settings.get("fcm_vapid_private_key") or os.environ.get("FIREBASE_VAPID_PRIVATE_KEY", "")).strip()
+
+    # If pub_setting starts with AIzaSy, it's a Google API key, ignore it for VAPID
+    if pub_setting.startswith("AIzaSy"):
+        pub_setting = ""
+
+    if os.path.exists(VAPID_KEYS_FILE):
+        try:
+            with open(VAPID_KEYS_FILE, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+                if saved.get("public_key") and saved.get("private_key"):
+                    if pub_setting and priv_setting:
+                        return {"public_key": pub_setting, "private_key": priv_setting}
+                    if pub_setting and pub_setting.startswith("B"):
+                        return {"public_key": pub_setting, "private_key": saved.get("private_key")}
+                    return saved
+        except Exception:
+            pass
+
+    try:
+        from py_vapid import Vapid
+        import base64
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+        v = Vapid()
+        v.generate_keys()
+        raw_pub = v.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+        pub_b64 = base64.urlsafe_b64encode(raw_pub).rstrip(b'=').decode('ascii')
+        raw_priv = v.private_key.private_numbers().private_value.to_bytes(32, 'big')
+        priv_b64 = base64.urlsafe_b64encode(raw_priv).rstrip(b'=').decode('ascii')
+
+        keys = {
+            "public_key": pub_setting if (pub_setting and pub_setting.startswith("B")) else pub_b64,
+            "private_key": priv_setting or priv_b64
+        }
+        os.makedirs(os.path.dirname(VAPID_KEYS_FILE), exist_ok=True)
+        with open(VAPID_KEYS_FILE, "w", encoding="utf-8") as f:
+            json.dump(keys, f, indent=2)
+        return keys
+    except Exception as e:
+        logger.warning(f"Could not auto-generate VAPID keypair: {e}")
+        return {"public_key": pub_setting, "private_key": priv_setting}
 
 
 def get_fcm_config():
@@ -52,6 +109,11 @@ def get_fcm_config():
     elif vapid_key and vapid_key.startswith("AIzaSy") and not api_key:
         api_key = vapid_key
         vapid_key = ""
+
+    # Ensure valid VAPID key is always present
+    vapid_keys = get_or_create_vapid_keys()
+    if not vapid_key:
+        vapid_key = vapid_keys.get("public_key", "")
 
     service_account_exists = (
         bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")) or
@@ -217,7 +279,7 @@ def clean_fcm_token(token_str):
     return token_str
 
 
-def register_device_token(token, username=None, user_agent="", topics=None):
+def register_device_token(token, username=None, user_agent="", topics=None, subscription=None):
     """
     Registers or updates an FCM Web/PWA device key for a registered user.
     Supports storing more than one key/device per user (e.g. PC, Phone PWA, Laptop).
@@ -225,7 +287,6 @@ def register_device_token(token, username=None, user_agent="", topics=None):
     """
     if not token or not isinstance(token, str) or str(token).startswith("browser-granted-"):
         return False, "Invalid push token. Device subscription was not established by browser."
-        return False, "Invalid push token"
 
     # 1. Enforce that ONLY registered users can have device keys registered
     try:
@@ -269,9 +330,10 @@ def register_device_token(token, username=None, user_agent="", topics=None):
         device_label += " - Safari"
 
     # Store key: Each unique device produces a unique token, so one user can store multiple keys
-    subs[token] = {
+    sub_data = {
         "token": token,
         "clean_token": clean_tok,
+        "subscription": subscription or subs.get(token, {}).get("subscription"),
         "username": username,
         "user_agent": user_agent or subs.get(token, {}).get("user_agent", ""),
         "device_name": device_label,
@@ -280,6 +342,7 @@ def register_device_token(token, username=None, user_agent="", topics=None):
         "last_active": timestamp,
         "is_active": True
     }
+    subs[token] = sub_data
 
     save_subscriptions(subs)
 
@@ -325,9 +388,7 @@ def get_user_tokens(username, topic=None):
             continue
         if topic and topic not in data.get("topics", []):
             continue
-        clean_tok = data.get("clean_token") or clean_fcm_token(t)
-        if clean_tok:
-            tokens.append(clean_tok)
+        tokens.append(t)
     return list(dict.fromkeys(tokens))
 
 
@@ -353,9 +414,7 @@ def get_active_tokens(topic=None):
             continue
         if topic and topic not in data.get("topics", []):
             continue
-        clean_tok = data.get("clean_token") or clean_fcm_token(t)
-        if clean_tok:
-            tokens.append(clean_tok)
+        tokens.append(t)
     return list(dict.fromkeys(tokens))
 
 
@@ -431,7 +490,9 @@ def get_notification_history(limit=50):
 def send_web_push(title, body, image_url=None, data_payload=None, target_topic=None, specific_tokens=None, icon_url="/static/favicon-192.png"):
     """
     Sends a push notification to registered Web & PWA browsers.
-    Supports real FCM sending if credentials are present, or simulated dispatch with full audit trail.
+    Dual-Engine Dispatcher:
+      1. Standard WebPush (via pywebpush RFC 8292) for native browser endpoints (Chrome, Edge, Safari iOS/macOS, Firefox).
+      2. Google FCM v1 (via firebase-admin) for Firebase Registration Tokens.
     """
     tokens = specific_tokens or get_active_tokens(topic=target_topic)
     recipient_count = len(tokens)
@@ -442,203 +503,249 @@ def send_web_push(title, body, image_url=None, data_payload=None, target_topic=N
     if "url" not in payload_data:
         payload_data["url"] = "/"
 
-    ready = _is_firebase_ready()
-
-    if not ready:
-        # Graceful simulation mode: records audit trail and informs admin
-        status = "Logged (Simulated - FCM credentials pending)"
-        note = "Notification prepared and logged. Please configure your Firebase Service Account in Admin settings to dispatch live browser alerts."
+    if recipient_count == 0:
         log_notification_event(
             event_type=target_topic or "broadcast",
             title=title,
             body=body,
-            status=status,
-            recipient_count=recipient_count,
-            metadata={"image": image_url, "simulated": True},
-            error_msg=_fcm_init_error
+            status="No Active Subscribers",
+            recipient_count=0,
+            metadata={"image": image_url}
         )
         return {
             "success": True,
-            "simulated": True,
-            "message": note,
-            "recipient_count": recipient_count,
-            "status": status,
-            "fcm_configured": False
+            "message": "No registered Web/PWA devices found. Enable notifications on your client device to test.",
+            "recipient_count": 0,
+            "status": "No Active Subscribers"
         }
 
-    # Live Firebase Admin Dispatch
-    try:
-        from firebase_admin import messaging
-
-        if recipient_count == 0:
-            log_notification_event(
-                event_type=target_topic or "broadcast",
-                title=title,
-                body=body,
-                status="No Active Subscribers",
-                recipient_count=0,
-                metadata={"image": image_url}
-            )
-            return {
-                "success": True,
-                "message": "No registered Web/PWA devices found. Enable notifications on your client device to test.",
-                "recipient_count": 0,
-                "status": "No Active Subscribers"
-            }
-
-        # Helper to resolve URLs to valid https:// required by WebpushFCMOptions
-        def _resolve_https(url_str):
-            if not url_str or not isinstance(url_str, str):
-                return None
-            url_str = url_str.strip()
-            if url_str.startswith("https://"):
-                return url_str
-            if url_str.startswith("http://"):
-                return "https://" + url_str[7:]
-            try:
-                from flask import has_request_context, request
-                if has_request_context() and request and request.host:
-                    path = url_str if url_str.startswith("/") else f"/{url_str}"
-                    return f"https://{request.host}{path}"
-            except Exception:
-                pass
+    # Helper to resolve URLs to valid https://
+    def _resolve_https(url_str):
+        if not url_str or not isinstance(url_str, str):
             return None
+        url_str = url_str.strip()
+        if url_str.startswith("https://"):
+            return url_str
+        if url_str.startswith("http://"):
+            return "https://" + url_str[7:]
+        try:
+            from flask import has_request_context, request
+            if has_request_context() and request and request.host:
+                path = url_str if url_str.startswith("/") else f"/{url_str}"
+                return f"https://{request.host}{path}"
+        except Exception:
+            pass
+        return None
 
-        # Build WebpushConfig with valid https:// link or None (never relative '/')
-        raw_link = payload_data.get("url", "/")
-        https_link = _resolve_https(raw_link)
+    raw_link = payload_data.get("url", "/")
+    https_link = _resolve_https(raw_link)
+    full_icon = _resolve_https(icon_url) or icon_url
+    full_badge = _resolve_https("/static/favicon-32.png") or "/static/favicon-32.png"
+    full_image = _resolve_https(image_url) if image_url else None
 
-        fcm_options = None
-        if https_link and https_link.startswith("https://"):
-            fcm_options = messaging.WebpushFCMOptions(link=https_link)
+    subs = load_subscriptions()
+    vapid_keys = get_or_create_vapid_keys()
+    priv_key = vapid_keys.get("private_key")
 
-        full_icon = _resolve_https(icon_url) or icon_url
-        full_badge = _resolve_https("/static/favicon-32.png") or "/static/favicon-32.png"
-        full_image = _resolve_https(image_url) if image_url else None
+    success_count = 0
+    failure_count = 0
+    invalid_tokens = []
+    failure_details = []
 
-        webpush_notification = messaging.WebpushNotification(
-            title=title,
-            body=body,
-            icon=full_icon,
-            badge=full_badge,
-            image=full_image
-        )
-        webpush_config = messaging.WebpushConfig(
-            notification=webpush_notification,
-            fcm_options=fcm_options,
-            data={str(k): str(v) for k, v in payload_data.items()}
-        )
+    # Partition targets into Standard WebPush (has keys) vs Pure FCM Tokens
+    webpush_targets = []
+    fcm_tokens = []
 
-        # Batch Multicast Send (chunks of 500 max)
-        chunk_size = 500
-        success_count = 0
-        failure_count = 0
-        invalid_tokens = []
+    for tok in tokens:
+        sub_info = subs.get(tok)
+        if not sub_info:
+            for s_k, s_v in subs.items():
+                if s_v.get("clean_token") == tok or (len(tok) > 10 and tok in s_k):
+                    sub_info = s_v
+                    tok = s_k
+                    break
+        sub_info = sub_info or {}
+        sub_obj = sub_info.get("subscription")
 
-        for i in range(0, len(tokens), chunk_size):
-            chunk = tokens[i:i + chunk_size]
-            multicast = messaging.MulticastMessage(
-                tokens=chunk,
-                notification=messaging.Notification(title=title, body=body, image=full_image),
-                webpush=webpush_config,
-                data={str(k): str(v) for k, v in payload_data.items()}
-            )
-            batch_response = messaging.send_each_for_multicast(multicast)
-            success_count += batch_response.success_count
-            failure_count += batch_response.failure_count
+        if isinstance(sub_obj, dict) and sub_obj.get("endpoint") and sub_obj.get("keys"):
+            webpush_targets.append((tok, sub_obj))
+        elif tok.startswith("http://") or tok.startswith("https://"):
+            # Check if any sub in DB has this token as endpoint with keys
+            matched_sub = None
+            for s in subs.values():
+                s_obj = s.get("subscription")
+                if isinstance(s_obj, dict) and s_obj.get("endpoint") == tok and s_obj.get("keys"):
+                    matched_sub = s_obj
+                    break
+            if matched_sub:
+                webpush_targets.append((tok, matched_sub))
+            else:
+                # Raw browser endpoint without p256dh/auth encryption keys cannot be delivered
+                invalid_tokens.append(tok)
+                failure_count += 1
+                failure_details.append(f"Legacy endpoint missing encryption keys: {tok[:30]}...")
+        else:
+            fcm_tokens.append(tok)
 
-            # Collect failure details and invalid tokens to prune
-            failure_details = []
-            for idx, resp in enumerate(batch_response.responses):
-                if not resp.success:
-                    err = resp.exception
-                    err_code = getattr(err, 'code', 'error')
-                    err_str = str(err)
-                    failure_details.append(f"{err_code}: {err_str}")
-                    logger.warning(f"[FCM Send Failure] Token {chunk[idx][:25]}... failed: {err_code} - {err_str}")
+    # 1. Execute RFC 8292 Standard WebPush via pywebpush
+    if webpush_targets and priv_key:
+        try:
+            from pywebpush import webpush, WebPushException
+            wp_payload = json.dumps({
+                "notification": {
+                    "title": title,
+                    "body": body,
+                    "icon": full_icon,
+                    "badge": full_badge,
+                    "image": full_image
+                },
+                "data": {
+                    "url": raw_link,
+                    **{str(k): str(v) for k, v in payload_data.items()}
+                }
+            })
 
-                    err_lower = err_str.lower()
-                    if "not-registered" in err_lower or "invalid" in err_lower or "not_found" in err_lower or "mismatch" in err_lower:
-                        invalid_tokens.append(chunk[idx])
+            for tok, raw_sub in webpush_targets:
+                try:
+                    resp = webpush(
+                        subscription_info=raw_sub,
+                        data=wp_payload,
+                        vapid_private_key=priv_key,
+                        vapid_claims={"sub": "mailto:admin@capitaldesk.local"},
+                        timeout=10
+                    )
+                    if resp.status_code in (200, 201, 202):
+                        success_count += 1
+                        logger.info(f"[WebPush] Delivered alert to browser ({tok[:25]}...)")
+                    else:
+                        failure_count += 1
+                        failure_details.append(f"WebPush HTTP {resp.status_code}")
+                except WebPushException as wpe:
+                    if wpe.response is not None and wpe.response.status_code in (404, 410):
+                        invalid_tokens.append(tok)
+                        failure_count += 1
+                        failure_details.append(f"Expired browser key (HTTP {wpe.response.status_code})")
+                    else:
+                        failure_count += 1
+                        failure_details.append(f"WebPush error: {str(wpe)[:80]}")
+                except Exception as wp_generic_err:
+                    failure_count += 1
+                    failure_details.append(f"WebPush error: {str(wp_generic_err)[:80]}")
+        except Exception as wp_import_err:
+            logger.warning(f"Could not load pywebpush: {wp_import_err}")
+    elif webpush_targets and not priv_key:
+        failure_count += len(webpush_targets)
+        failure_details.append("VAPID private key unavailable for browser WebPush dispatch")
 
-        # Prune dead/invalid tokens from subs
-        if invalid_tokens:
-            subs = load_subscriptions()
-            pruned_count = 0
-            for inv_tok in invalid_tokens:
-                if inv_tok in subs:
-                    subs.pop(inv_tok, None)
-                    pruned_count += 1
-                to_delete = [k for k, v in subs.items() if k == inv_tok or v.get("clean_token") == inv_tok or (len(inv_tok) > 10 and inv_tok in k)]
-                for k in to_delete:
-                    subs.pop(k, None)
-                    pruned_count += 1
-            if pruned_count > 0:
-                save_subscriptions(subs)
-                logger.info(f"[Push] Pruned {pruned_count} invalid push key(s) from database.")
+    # 2. Execute Firebase Admin SDK Multicast for pure FCM tokens
+    if fcm_tokens:
+        if _is_firebase_ready():
+            try:
+                from firebase_admin import messaging
 
-        first_err = failure_details[0] if failure_details else "Device token rejected by Firebase"
+                fcm_options = None
+                if https_link and https_link.startswith("https://"):
+                    fcm_options = messaging.WebpushFCMOptions(link=https_link)
 
-        # STRICT: If 0 devices succeeded and there were failures, this is a FAILURE
-        if success_count == 0 and failure_count > 0:
-            status = f"Failed (All {failure_count} device(s) failed: {first_err[:80]})"
-            log_notification_event(
-                event_type=target_topic or "broadcast",
-                title=title,
-                body=body,
-                status="Failed",
-                recipient_count=0,
-                metadata={"image": image_url, "failures": failure_count, "error": first_err},
-                error_msg=first_err
-            )
-            return {
-                "success": False,
-                "simulated": False,
-                "message": f"Dispatch failed: 0 succeeded, {failure_count} device(s) rejected ({first_err}).",
-                "recipient_count": 0,
-                "failed_count": failure_count,
-                "status": "Failed",
-                "fcm_configured": True,
-                "error": first_err
-            }
+                webpush_notification = messaging.WebpushNotification(
+                    title=title,
+                    body=body,
+                    icon=full_icon,
+                    badge=full_badge,
+                    image=full_image
+                )
+                webpush_config = messaging.WebpushConfig(
+                    notification=webpush_notification,
+                    fcm_options=fcm_options,
+                    data={str(k): str(v) for k, v in payload_data.items()}
+                )
 
-        # When at least 1 succeeded
-        status = f"Delivered ({success_count} succeeded, {failure_count} failed)" if failure_count > 0 else f"Delivered ({success_count} succeeded)"
-        log_notification_event(
-            event_type=target_topic or "broadcast",
-            title=title,
-            body=body,
-            status=status,
-            recipient_count=success_count,
-            metadata={"image": image_url, "failures": failure_count}
-        )
+                chunk_size = 500
+                for i in range(0, len(fcm_tokens), chunk_size):
+                    chunk = fcm_tokens[i:i + chunk_size]
+                    multicast = messaging.MulticastMessage(
+                        tokens=chunk,
+                        notification=messaging.Notification(title=title, body=body, image=full_image),
+                        webpush=webpush_config,
+                        data={str(k): str(v) for k, v in payload_data.items()}
+                    )
+                    batch_response = messaging.send_each_for_multicast(multicast)
+                    success_count += batch_response.success_count
+                    failure_count += batch_response.failure_count
 
-        return {
-            "success": True,
-            "simulated": False,
-            "message": f"Push notification dispatched to {success_count} device(s) successfully." + (f" ({failure_count} failed)" if failure_count else ""),
-            "recipient_count": success_count,
-            "failed_count": failure_count,
-            "status": status,
-            "fcm_configured": True
-        }
+                    for idx, resp in enumerate(batch_response.responses):
+                        if not resp.success:
+                            err = resp.exception
+                            err_code = getattr(err, 'code', 'error')
+                            err_str = str(err)
+                            failure_details.append(f"{err_code}: {err_str}")
+                            err_lower = err_str.lower()
+                            if "not-registered" in err_lower or "invalid" in err_lower or "not_found" in err_lower or "mismatch" in err_lower:
+                                invalid_tokens.append(chunk[idx])
+            except Exception as fcm_err:
+                logger.error(f"FCM Multicast error: {fcm_err}")
+                failure_count += len(fcm_tokens)
+                failure_details.append(f"FCM error: {str(fcm_err)[:80]}")
+        else:
+            failure_count += len(fcm_tokens)
+            failure_details.append("Firebase Service Account credentials file not found for pure FCM tokens")
 
-    except Exception as e:
-        logger.error(f"FCM Multicast Dispatch error: {e}")
-        status = f"Dispatch Error: {str(e)[:100]}"
+    # Prune dead/invalid tokens from subs
+    if invalid_tokens:
+        subs = load_subscriptions()
+        pruned_count = 0
+        for inv_tok in invalid_tokens:
+            if inv_tok in subs:
+                subs.pop(inv_tok, None)
+                pruned_count += 1
+            to_delete = [k for k, v in subs.items() if k == inv_tok or v.get("clean_token") == inv_tok or (len(inv_tok) > 10 and inv_tok in k)]
+            for k in to_delete:
+                subs.pop(k, None)
+                pruned_count += 1
+        if pruned_count > 0:
+            save_subscriptions(subs)
+            logger.info(f"[Push] Pruned {pruned_count} invalid push key(s) from database.")
+
+    first_err = failure_details[0] if failure_details else "Device token rejected"
+
+    # STRICT: If 0 devices succeeded and there were failures, this is a FAILURE
+    if success_count == 0 and failure_count > 0:
+        status = f"Failed (All {failure_count} device(s) failed: {first_err[:80]})"
         log_notification_event(
             event_type=target_topic or "broadcast",
             title=title,
             body=body,
             status="Failed",
             recipient_count=0,
-            metadata={"image": image_url},
-            error_msg=str(e)
+            metadata={"image": image_url, "failures": failure_count, "error": first_err},
+            error_msg=first_err
         )
         return {
             "success": False,
-            "message": f"Error dispatching notification: {e}",
+            "simulated": False,
+            "message": f"Dispatch failed: 0 succeeded, {failure_count} device(s) rejected ({first_err}).",
             "recipient_count": 0,
+            "failed_count": failure_count,
             "status": "Failed",
-            "fcm_configured": True
+            "error": first_err
         }
+
+    # When at least 1 succeeded
+    status = f"Delivered ({success_count} succeeded, {failure_count} failed)" if failure_count > 0 else f"Delivered ({success_count} succeeded)"
+    log_notification_event(
+        event_type=target_topic or "broadcast",
+        title=title,
+        body=body,
+        status=status,
+        recipient_count=success_count,
+        metadata={"image": image_url, "failures": failure_count}
+    )
+
+    return {
+        "success": True,
+        "simulated": False,
+        "message": f"Push notification dispatched to {success_count} device(s) successfully." + (f" ({failure_count} failed)" if failure_count else ""),
+        "recipient_count": success_count,
+        "failed_count": failure_count,
+        "status": status
+    }

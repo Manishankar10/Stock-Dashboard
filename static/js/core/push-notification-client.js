@@ -230,6 +230,17 @@
                     throw new Error('Could not establish push subscription with browser. Please check notification permissions.');
                 }
 
+                // Ensure full WebPush encryption keys are always attached if available
+                if (!subJson && 'serviceWorker' in navigator && 'PushManager' in window) {
+                    try {
+                        const registration = await navigator.serviceWorker.ready;
+                        const sub = await registration.pushManager.getSubscription();
+                        if (sub) {
+                            subJson = sub.toJSON();
+                        }
+                    } catch (e) {}
+                }
+
                 // Register token with backend DB
                 const resp = await fetch('/api/notifications/subscribe', {
                     method: 'POST',

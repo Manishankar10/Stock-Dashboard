@@ -81,12 +81,14 @@ def api_subscribe_device():
 
     user_agent = request.headers.get("User-Agent", "")
     topics = data.get("topics", ["gold_silver_rates", "portfolio_performance"])
+    subscription_obj = data.get("subscription")
 
     success, msg = register_device_token(
         token=token,
         username=username,
         user_agent=user_agent,
-        topics=topics
+        topics=topics,
+        subscription=subscription_obj
     )
     if not success:
         return jsonify({"success": False, "error": msg}), 400
@@ -298,11 +300,43 @@ def admin_send_sample_user():
 
     tokens = get_user_tokens(username)
     if not tokens:
+        # Pre-render the card anyway so the admin can preview it or simulate
+        gen_dir = os.path.join(current_app.root_path, "static", "notifications", "generated")
+        os.makedirs(gen_dir, exist_ok=True)
+        card_path = os.path.join(gen_dir, "gold_rates_latest.png")
+        live = fetch_live_bullion_rates(force_refresh=True)
+        generate_gold_silver_card(
+            gold_1g=live["gold_1g"],
+            gold_8g=live["gold_8g"],
+            silver_1g=live["silver_1g"],
+            silver_8g=live["silver_8g"],
+            output_path=card_path
+        )
+        base_url = request.url_root.rstrip("/")
+        image_url = f"{base_url}/static/notifications/generated/gold_rates_latest.png"
+        title = f"👑 Standard Gold (22K) & Ready Silver - Sample for {username.capitalize()}"
+        body = f"Gold 22K: ₹{live['gold_1g']}/g | ₹{live['gold_8g']}/8g\nSilver: ₹{live['silver_1g']}/g | ₹{live['silver_8g']}/8g (99.9% Fine)"
+
+        from modules.notifications.fcm_service import log_notification_event
+        log_notification_event(
+            event_type="gold_silver_rates",
+            title=title,
+            body=body,
+            status=f"Prepared (Awaiting {username}'s device)",
+            recipient_count=0,
+            metadata={"username": username, "image": image_url}
+        )
         return jsonify({
-            "success": False,
-            "message": f"User '{username}' has 0 active registered devices. Please ask '{username}' to log in on their browser/phone and click 'Enable Notifications' first.",
+            "success": True,
+            "simulated": True,
+            "message": f"Sample Gold Notification prepared & card rendered for '{username}'! However, '{username}' currently has 0 registered devices in database. Ask '{username}' to log in on their browser/phone and tap 'Enable Notifications' to receive it live.",
             "recipient_count": 0,
-            "username": username
+            "username": username,
+            "image_url": image_url,
+            "gold_1g": live["gold_1g"],
+            "gold_8g": live["gold_8g"],
+            "silver_1g": live["silver_1g"],
+            "silver_8g": live["silver_8g"]
         })
 
     if notif_type == "gold":

@@ -32,6 +32,8 @@ def fetch_live_bullion_rates(force_refresh=False):
     silver_8g = "1,720"
     source = "Fallback Bullion Benchmark"
 
+    import re
+
     # 1. Fetch Gold Rates
     try:
         r_gold = requests.get('https://www.goodreturns.in/gold-rates/', headers=headers, timeout=8)
@@ -42,14 +44,15 @@ def fetch_live_bullion_rates(force_refresh=False):
                 for tr in table.find_all('tr'):
                     tds = [td.get_text().strip().replace('\u20b9', '').replace(',', '').strip() for td in tr.find_all(['td', 'th'])]
                     if len(tds) >= 3:
-                        gram_label = tds[0]
+                        gram_label = tds[0].split()[0] if tds[0] else ''
                         # Look for 1 Gram and 8 Grams in 22K column (index 2)
-                        if gram_label == '1':
-                            val = float(tds[2])
-                            gold_1g = f"{int(val):,}"
-                        elif gram_label == '8':
-                            val = float(tds[2])
-                            gold_8g = f"{int(val):,}"
+                        m22k = re.search(r"(\d+(?:\.\d+)?)", tds[2])
+                        if m22k:
+                            val = float(m22k.group(1))
+                            if gram_label == '1':
+                                gold_1g = f"{int(val):,}"
+                            elif gram_label == '8':
+                                gold_8g = f"{int(val):,}"
             source = "Goodreturns Live Bullion (22K 916 Hallmark)"
     except Exception as e:
         print(f"Error fetching live gold rates: {e}")
@@ -64,13 +67,14 @@ def fetch_live_bullion_rates(force_refresh=False):
                 for tr in table_s.find_all('tr'):
                     tds = [td.get_text().strip().replace('\u20b9', '').replace(',', '').strip() for td in tr.find_all(['td', 'th'])]
                     if len(tds) >= 2:
-                        gram_label = tds[0]
-                        if gram_label == '1':
-                            val = float(tds[1])
-                            silver_1g = f"{val:,.2f}"
-                        elif gram_label == '8':
-                            val = float(tds[1])
-                            silver_8g = f"{int(val):,}"
+                        gram_label = tds[0].split()[0] if tds[0] else ''
+                        msilver = re.search(r"(\d+(?:\.\d+)?)", tds[1])
+                        if msilver:
+                            val = float(msilver.group(1))
+                            if gram_label == '1':
+                                silver_1g = f"{val:,.2f}"
+                            elif gram_label == '8':
+                                silver_8g = f"{int(val):,}"
             if "Goodreturns" in source:
                 source += " & Ready Silver (99.9% Fine)"
             else:
