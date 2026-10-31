@@ -238,7 +238,7 @@
                     <span class="shp-comp-title" onclick="if(window.openFundamentalsModal) window.openFundamentalsModal('${symbol}');" title="Click to view ${name} fundamentals">
                         ${name}
                     </span>
-                    <span class="shp-symbol-badge">${symbol}</span>
+                    <span class="shp-symbol-badge">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(record.symbol) : record.symbol.replace(/\.(NS|BS|BO)$/i, ''))}</span>
                     <div class="shp-sub-details">
                         <span class="shp-board-tag ${boardClass}">${board}</span>
                     </div>
@@ -511,7 +511,7 @@
         if (!remarksModal) return;
         const comp = record.name || record.symbol || 'Company';
         if (remarksModalTitle) {
-            remarksModalTitle.textContent = `${comp} (${record.symbol}) - Disclosures & Remarks`;
+            remarksModalTitle.textContent = `${comp} (${typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(record.symbol) : record.symbol.replace(/\.(NS|BS|BO)$/i, '')}) - Disclosures & Remarks`;
         }
         let fullRemarks = record.remarksWeb || 'No general remarks provided.';
         if (record.promoterDematNotes) {
@@ -638,7 +638,7 @@
                     if (data.valid) {
                         customQueryFeedback.className = 'shp-query-feedback valid';
                         const count = data.match_count || 0;
-                        const sample = (data.matches || []).slice(0, 5).map(m => m.symbol).join(', ');
+                        const sample = (data.matches || []).slice(0, 5).map(m => typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(m.symbol) : m.symbol).join(', ');
                         const sampleSuffix = count > 5 ? `, +${count - 5} more` : '';
                         customQueryFeedback.innerHTML = `✓ <strong>Valid Query</strong> — matches <strong>${count}</strong> stocks${sample ? ` (${sample}${sampleSuffix})` : ''}`;
                         if (applyCountBadge) {

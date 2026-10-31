@@ -200,7 +200,7 @@
 
     window.openOfficialFeedsModal = function (symbol, watchlistName) {
         let targetWl = watchlistName;
-        const clean = String(symbol || '').trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+        const clean = (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : String(symbol || '').replace(/\.(NS|BS|BO)$/i, '')).trim().toUpperCase();
         if (!targetWl && window.watchlistsData && clean) {
             for (const [wl, list] of Object.entries(window.watchlistsData)) {
                 if (Array.isArray(list) && list.some(item => {
@@ -256,7 +256,7 @@
             const link = item.url || item.source_page || '#';
             return `${heading}<article class="of-item">
                 <div class="of-item-top">
-                    <div class="of-company-line"><a class="of-company-link" href="#" data-of-fundamental="${esc(item.chart_symbol || item.symbol || '')}">${esc(item.company || 'Company')}</a><span class="of-name-separator"> - </span><a class="of-symbol-link" href="#" data-of-chart="${esc(item.chart_symbol || item.symbol || '')}">${esc(item.symbol || '')}</a></div>
+                    <div class="of-company-line"><a class="of-company-link" href="#" data-of-fundamental="${esc(item.chart_symbol || item.symbol || '')}">${esc(item.company || 'Company')}</a><span class="of-name-separator"> - </span><a class="of-symbol-link" href="#" data-of-chart="${esc(item.chart_symbol || item.symbol || '')}">${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(item.symbol || '') : (item.symbol || '').replace(/\.(NS|BS|BO)$/i, ''))}</a></div>
                     <span class="of-item-date">${esc(formatDate(item.date))}</span>
                 </div>
                 <a class="of-subject" href="${esc(link)}" target="_blank" rel="noopener noreferrer">${esc(item.subject || 'Company announcement')} ↗</a>
@@ -350,7 +350,7 @@
             renderItems(data.items);
             const isPf = currentWatchlist.toLowerCase().includes('portfolio');
             const countSuffix = isPf ? 'portfolio stocks' : 'stocks';
-            modal.querySelector('#of-count').textContent = `${loadedItems.length} loaded\n${currentSymbol || `${data.symbols_count || 0} ${countSuffix}`}`;
+            modal.querySelector('#of-count').textContent = `${loadedItems.length} loaded\n${(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(currentSymbol) : currentSymbol) || `${data.symbols_count || 0} ${countSuffix}`}`;
             if (data.failed_symbols) modal.querySelector('#of-count').title = `${data.failed_symbols} exchange queries did not return data.`;
         } catch (error) {
             loadError = error.message || 'Could not load official feeds.';

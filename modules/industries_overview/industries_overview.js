@@ -564,7 +564,7 @@
                             <a href="javascript:void(0)" class="ind-stock-link" onclick="openFundamentalsModal('${escapeHtml(nseSym || sym)}')" title="${escapeHtml(stk.name)}">
                                 <span class="stock-name-text">${escapeHtml(stk.name)}</span>
                             </a>
-                            ${sym ? `<span class="stock-sym-sub">${escapeHtml(sym)}</span>` : ''}
+                            ${sym ? `<span class="stock-sym-sub">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym.replace(/\.(NS|BS|BO)$/i, ''))}</span>` : ''}
                         </div>
                     </td>
                     <td class="th-num"><strong>${cmpStr}</strong></td>

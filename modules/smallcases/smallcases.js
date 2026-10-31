@@ -525,7 +525,7 @@
 
                                         return `
                                             <tr>
-                                                <td><strong>${escapeHtml(h.stock_name)}</strong><div class="company-name">${escapeHtml(h.symbol)}</div></td>
+                                                <td><strong>${escapeHtml(h.stock_name)}</strong><div class="company-name">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(h.symbol) : h.symbol)}</div></td>
                                                 <td>${h.quantity}</td>
                                                 <td>₹${h.average_buy_price ? h.average_buy_price.toFixed(2) : '-'}</td>
                                                 <td>${isPrivacyMode ? '₹ ••••••' : `₹${(h.invested || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`}</td>
@@ -574,7 +574,7 @@
                     html += `
                         <tr>
                             <td>${escapeHtml(window.formatAppDate ? window.formatAppDate(t.transaction_date) : t.transaction_date)}</td>
-                            <td><strong>${escapeHtml(t.stock_name || t.symbol)}</strong></td>
+                            <td><strong>${escapeHtml(t.stock_name || (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(t.symbol) : t.symbol))}</strong></td>
                             <td><span class="badge ${t.transaction_type === 'BUY' ? 'badge-lt' : 'badge-st'}">${escapeHtml(t.transaction_type)}</span></td>
                             <td>${t.quantity}</td>
                             <td>₹${t.price ? t.price.toFixed(2) : '-'}</td>
@@ -956,7 +956,7 @@
                             div.innerHTML = `
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div>
-                                        <strong style="color: var(--text-primary);">${escapeHtml(item.symbol || '')}</strong>
+                                        <strong style="color: var(--text-primary);">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(item.symbol || '') : (item.symbol || ''))}</strong>
                                         <div style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(item.name || '')}</div>
                                     </div>
                                     <span class="badge badge-nse" style="font-size: 10px;">${escapeHtml(item.exchange || 'NSE')}</span>
@@ -1194,7 +1194,7 @@
                         <td style="padding: 10px 12px; vertical-align: middle;">
                             <div style="font-weight: 700; color: var(--text-primary);">${escapeHtml(item.name || item.symbol)}</div>
                             <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-                                <span class="stock-symbol" style="font-size: 11px;">${escapeHtml(item.symbol)}</span>
+                                <span class="stock-symbol" style="font-size: 11px;">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(item.symbol) : item.symbol)}</span>
                                 <span class="badge badge-nse" style="font-size: 9.5px; padding: 1px 4px;">${escapeHtml(item.exchange || 'NSE')}</span>
                             </div>
                         </td>

@@ -2365,7 +2365,7 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
           <div class="sec-sub" id="chartSectionSub">Technical Price History, 50 DMA, 200 DMA & Volumes</div>
         </div>
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-          <a href="/?chart={{ symbol|replace('.NS', '')|replace('.BO', '') }}" class="chart-direct-link" id="fundamentalsChartLink" onclick="openTechnicalChartFromFundamentals(event)" title="Open Interactive Technical Chart for this stock">
+          <a href="/?chart={{ symbol|replace('.NS', '')|replace('.BO', '')|replace('.BS', '') }}" class="chart-direct-link" id="fundamentalsChartLink" onclick="openTechnicalChartFromFundamentals(event)" title="Open Interactive Technical Chart for this stock">
             <span style="font-size: 13px;">📈</span>
             <span>Chart</span>
             <span style="font-size: 10px; opacity: 0.65; margin-left: 1px;">↗</span>
@@ -2743,6 +2743,14 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 </div>
 
 <script>
+function cleanDisplaySymbol(sym) {
+    if (sym === null || sym === undefined) return '';
+    const s = String(sym).trim();
+    if (s.startsWith('^') || s.includes('=F')) return s;
+    return s.replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
+}
+window.cleanDisplaySymbol = cleanDisplaySymbol;
+
 const symbol = {{ symbol|tojson }};
 window.fundamentalsSymbol = symbol;
 
@@ -3894,7 +3902,7 @@ function render(d) {
   currentFundamentalMode = window.currentFundamentalMode;
 
   document.getElementById('companyTitle').textContent = c.name || symbol;
-  document.getElementById('companySub').textContent = symbol;
+  document.getElementById('companySub').textContent = cleanDisplaySymbol(symbol);
   document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
   document.getElementById('screenerBtn').href = `https://www.screener.in/company/${encodeURIComponent(baseSym)}/`;
   const chartLinkEl = document.getElementById('fundamentalsChartLink');
@@ -4363,7 +4371,7 @@ async function shareTranscriptAsImage() {
 
   const compName = (window._lastFundamentalsData?.company?.name) || symbol;
   const qtr = _currentAiQuarter || 'Concall';
-  if (titleEl) titleEl.textContent = `${compName} (${symbol}) — ${qtr}`;
+  if (titleEl) titleEl.textContent = `${compName} (${cleanDisplaySymbol(symbol)}) — ${qtr}`;
 
   if (shareModal) shareModal.style.display = 'flex';
 
@@ -4409,7 +4417,7 @@ async function shareTranscriptAsImage() {
             ✨ Senior Equity Research Analyst · Concall Analysis
           </div>
           <div style="font-size:26px; font-weight:800; color:#ffffff; line-height:1.2;">
-            ${esc(compName)} <span style="font-size:18px; color:#94a3b8; font-weight:600;">(${esc(symbol)})</span>
+            ${esc(compName)} <span style="font-size:18px; color:#94a3b8; font-weight:600;">(${esc(cleanDisplaySymbol(symbol))})</span>
           </div>
           <div style="font-size:15px; font-weight:600; color:#38bdf8; margin-top:4px;">
             ${esc(qtr)} Earnings Conference Call Detailed Analysis & Disclosures
@@ -4534,8 +4542,8 @@ function closeTranscriptShareModal() {
 async function triggerNativeShare() {
   const compName = (window._lastFundamentalsData?.company?.name) || symbol;
   const qtr = _currentAiQuarter || 'Concall';
-  const shareTitle = `${compName} (${symbol}) ${qtr} Earnings Concall Transcript Analysis`;
-  const shareText = `Full Fact-Based Concall Transcript Analysis for ${compName} (${symbol}) - 100% Content Coverage with KPI metrics, guidance tracker and analyst Q&A.`;
+  const shareTitle = `${compName} (${cleanDisplaySymbol(symbol)}) ${qtr} Earnings Concall Transcript Analysis`;
+  const shareText = `Full Fact-Based Concall Transcript Analysis for ${compName} (${cleanDisplaySymbol(symbol)}) - 100% Content Coverage with KPI metrics, guidance tracker and analyst Q&A.`;
 
   if (navigator.canShare && _transcriptImageFile && navigator.canShare({ files: [_transcriptImageFile] })) {
     try {
@@ -4619,7 +4627,7 @@ function shareToWhatsApp() {
   copyTranscriptImage();
   const compName = (window._lastFundamentalsData?.company?.name) || symbol;
   const qtr = _currentAiQuarter || 'Concall';
-  const msg = `*${compName} (${symbol}) ${qtr} Earnings Concall Transcript Analysis*\n\n📊 Full fact-based research report with KPI metrics, guidance tracker and analyst Q&A.\n(Full single-image screenshot copied to clipboard — paste directly into WhatsApp!)\n\n${window.location.href}`;
+  const msg = `*${compName} (${cleanDisplaySymbol(symbol)}) ${qtr} Earnings Concall Transcript Analysis*\n\n📊 Full fact-based research report with KPI metrics, guidance tracker and analyst Q&A.\n(Full single-image screenshot copied to clipboard — paste directly into WhatsApp!)\n\n${window.location.href}`;
   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
@@ -4627,14 +4635,14 @@ function shareToTelegram() {
   copyTranscriptImage();
   const compName = (window._lastFundamentalsData?.company?.name) || symbol;
   const qtr = _currentAiQuarter || 'Concall';
-  const msg = `${compName} (${symbol}) ${qtr} Earnings Concall Transcript Analysis\nFull fact-based research report with KPI metrics, guidance tracker & analyst Q&A.\n(Screenshot copied to clipboard — paste directly into Telegram!)`;
+  const msg = `${compName} (${cleanDisplaySymbol(symbol)}) ${qtr} Earnings Concall Transcript Analysis\nFull fact-based research report with KPI metrics, guidance tracker & analyst Q&A.\n(Screenshot copied to clipboard — paste directly into Telegram!)`;
   window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function shareToTwitter() {
   const compName = (window._lastFundamentalsData?.company?.name) || symbol;
   const qtr = _currentAiQuarter || 'Concall';
-  const msg = `Earnings Concall Transcript Analysis: $${symbol} ${qtr}\nDetailed KPI metrics, guidance table & analyst Q&A summary via Capital Desk.`;
+  const msg = `Earnings Concall Transcript Analysis: $${cleanDisplaySymbol(symbol)} ${qtr}\nDetailed KPI metrics, guidance table & analyst Q&A summary via Capital Desk.`;
   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(msg)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
 }
 
@@ -4642,8 +4650,8 @@ function shareToEmail() {
   copyTranscriptImage();
   const compName = (window._lastFundamentalsData?.company?.name) || symbol;
   const qtr = _currentAiQuarter || 'Concall';
-  const subject = `${compName} (${symbol}) — ${qtr} Earnings Concall Transcript Analysis`;
-  const body = `Hi,\n\nPlease find the detailed fact-based earnings conference call transcript analysis for ${compName} (${symbol}) for ${qtr}.\n\nThe full high-resolution single-image screenshot has been copied to your clipboard so you can paste it directly, or download it from:\n${window.location.href}\n\nBest regards,\nCapital Desk Equity Research`;
+  const subject = `${compName} (${cleanDisplaySymbol(symbol)}) — ${qtr} Earnings Concall Transcript Analysis`;
+  const body = `Hi,\n\nPlease find the detailed fact-based earnings conference call transcript analysis for ${compName} (${cleanDisplaySymbol(symbol)}) for ${qtr}.\n\nThe full high-resolution single-image screenshot has been copied to your clipboard so you can paste it directly, or download it from:\n${window.location.href}\n\nBest regards,\nCapital Desk Equity Research`;
   window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
 }
 

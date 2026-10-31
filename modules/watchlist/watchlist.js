@@ -1355,10 +1355,10 @@
                         const isSymInWl = (targetWl) => {
                             const list = watchlistsData && watchlistsData[targetWl];
                             if (!Array.isArray(list)) return false;
-                            const cleanSym = String(sym).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+                            const cleanSym = (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : String(sym).replace(/\.(NS|BS|BO)$/i, '')).trim().toUpperCase();
                             return list.some(item => {
                                 const itemStr = String(item).trim().toUpperCase();
-                                return itemStr === String(sym).trim().toUpperCase() || itemStr.replace(/\.(NS|BO)$/i, '') === cleanSym;
+                                return itemStr === String(sym).trim().toUpperCase() || (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(itemStr) : itemStr.replace(/\.(NS|BS|BO)$/i, '')) === cleanSym;
                             });
                         };
 

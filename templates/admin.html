@@ -3131,7 +3131,7 @@
                             html += '<div class="modal-table-scroll"><table style="width:100%; min-width:440px; font-size:12px; background:var(--bg-card); border-radius:6px; overflow:hidden;"><thead><tr><th>Symbol</th><th style="text-align:right;">Buy Price</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Invested (₹)</th><th>Buy Date</th></tr></thead><tbody>';
                             holdings.forEach(h => {
                                 const inv = (h.buy_price * h.quantity).toLocaleString('en-IN', {minimumFractionDigits:2});
-                                html += `<tr><td><strong>${h.symbol}</strong></td><td style="text-align:right;">₹${h.buy_price}</td><td style="text-align:right;">${h.quantity}</td><td style="text-align:right; font-weight:700;">₹${inv}</td><td>${h.buy_date}</td></tr>`;
+                                html += `<tr><td><strong>${typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(h.symbol) : (h.symbol || '').replace(/\.(NS|BS|BO)$/i, '')}</strong></td><td style="text-align:right;">₹${h.buy_price}</td><td style="text-align:right;">${h.quantity}</td><td style="text-align:right; font-weight:700;">₹${inv}</td><td>${h.buy_date}</td></tr>`;
                             });
                             html += '</tbody></table></div>';
                         }

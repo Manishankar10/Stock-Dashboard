@@ -346,12 +346,12 @@
                 <td>
                     <div class="tx-stock-cell">
                         <div class="tx-stock-top-row">
-                            <a href="javascript:void(0)" class="tx-stock-ticker" onclick="window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${deal.symbol}">
-                                ${escapeHtml(deal.symbol)} <span class="tx-exch-tag">NSE</span>
+                            <a href="javascript:void(0)" class="tx-stock-ticker" onclick="window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${escapeHtml(cleanDisplaySymbol(deal.symbol))}">
+                                ${escapeHtml(cleanDisplaySymbol(deal.symbol))} <span class="tx-exch-tag">NSE</span>
                             </a>
                         </div>
-                        <a href="javascript:void(0)" class="tx-stock-name" onclick="window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${escapeHtml(deal.company || deal.symbol)}">
-                            ${escapeHtml(deal.company || deal.symbol)}
+                        <a href="javascript:void(0)" class="tx-stock-name" onclick="window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${escapeHtml(deal.company || cleanDisplaySymbol(deal.symbol))}">
+                            ${escapeHtml(deal.company || cleanDisplaySymbol(deal.symbol))}
                         </a>
                     </div>
                 </td>
@@ -402,10 +402,10 @@
             const catIcon = isPromoter ? '👑 ' : '';
 
             html += `
-            <div class="tx-card-item" onclick="window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${escapeHtml(deal.company || deal.symbol)}">
+            <div class="tx-card-item" onclick="window.openTxStockFundamentals('${deal.symbol}')" title="Open fundamentals for ${escapeHtml(deal.company || cleanDisplaySymbol(deal.symbol))}">
                 <div class="tx-card-header">
                     <div class="tx-card-stock">
-                        <span class="tx-card-ticker">${escapeHtml(deal.symbol)}</span>
+                        <span class="tx-card-ticker">${escapeHtml(cleanDisplaySymbol(deal.symbol))}</span>
                         <span class="tx-exch-tag">NSE</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -415,8 +415,8 @@
                 </div>
 
                 <div class="tx-card-company-row">
-                    <div class="tx-card-company" title="Open fundamentals for ${escapeHtml(deal.company || deal.symbol)}">
-                        ${escapeHtml(deal.company || deal.symbol)}
+                    <div class="tx-card-company" title="Open fundamentals for ${escapeHtml(deal.company || cleanDisplaySymbol(deal.symbol))}">
+                        ${escapeHtml(deal.company || cleanDisplaySymbol(deal.symbol))}
                     </div>
                 </div>
 
@@ -750,7 +750,7 @@
 
     window.openTxStockChart = function (symbol) {
         if (!symbol) return;
-        const clean = symbol.replace(/\.(?:NS|BO)$/i, '').trim();
+        const clean = cleanDisplaySymbol(symbol).trim();
         if (typeof window.openChart === 'function') {
             window.openChart(clean);
         } else if (typeof window.openInHouseChart === 'function') {
@@ -762,7 +762,7 @@
 
     window.openTxStockFundamentals = function (symbol) {
         if (!symbol) return;
-        const clean = symbol.replace(/\.(?:NS|BO)$/i, '').trim();
+        const clean = cleanDisplaySymbol(symbol).trim();
         if (typeof window.openFundamentalsModal === 'function') {
             window.openFundamentalsModal(clean);
         } else if (typeof openFundamentalsModal === 'function') {

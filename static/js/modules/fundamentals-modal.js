@@ -2,6 +2,13 @@
         // FUNDAMENTALS MODAL
         // =========================================================
         let _fundamentalsMsgListenerAttached = false;
+        function cleanDisplaySymbol(sym) {
+            if (sym === null || sym === undefined) return '';
+            const s = String(sym).trim();
+            if (s.startsWith('^') || s.includes('=F')) return s;
+            return s.replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
+        }
+
         let _currentModalSymbol = '';
 
         function openFundamentalsModal(symbol) {
@@ -18,7 +25,7 @@
             const safeSymbol = String(symbol || '').trim();
             if (!safeSymbol) return;
 
-            const cleanSym = safeSymbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+            const cleanSym = cleanDisplaySymbol(safeSymbol).toUpperCase();
             _currentModalSymbol = safeSymbol;
 
             // Reset logo & placeholder with clean stock monogram
@@ -45,7 +52,7 @@
                 webLogoPhEl.style.display = 'flex';
             }
             if (webNameEl) {
-                webNameEl.textContent = safeSymbol;
+                webNameEl.textContent = cleanDisplaySymbol(safeSymbol);
             }
             if (subtitle) {
                 subtitle.textContent = cleanSym;
@@ -148,7 +155,7 @@
                         if (rBtnEl) rBtnEl.classList.remove('refreshing');
 
                         const dispSymbol = retSym || _currentModalSymbol;
-                        const cleanDispSym = String(dispSymbol).replace(/\.(NS|BO)$/i, '').toUpperCase();
+                        const cleanDispSym = cleanDisplaySymbol(dispSymbol).toUpperCase();
 
                         if (nEl && name) {
                             nEl.textContent = name;
@@ -484,8 +491,8 @@
             stockNewsState.isLoadingMore = false;
             stockNewsState.fetchedMax = false;
 
-            titleEl.innerHTML = cleanSym ? `📰 News for <strong>${cleanSym}</strong>` : `📰 Latest Market News`;
-            subtitleEl.innerText = cleanSym ? `Real-time news headlines & coverage for ${cleanSym}` : `Real-time updates for Indian Stock Market & Economy`;
+            titleEl.innerHTML = cleanSym ? `📰 News for <strong>${escapeHtml(cleanDisplaySymbol(cleanSym))}</strong>` : `📰 Latest Market News`;
+            subtitleEl.innerText = cleanSym ? `Real-time news headlines & coverage for ${cleanDisplaySymbol(cleanSym)}` : `Real-time updates for Indian Stock Market & Economy`;
             
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
@@ -597,7 +604,7 @@
         function getStockWatchlistStatus(symbol) {
             const sym = String(symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '') || '').trim().toUpperCase();
             if (!sym) return { isAdded: false, watchlists: [] };
-            const cleanSym = sym.replace(/\.(NS|BO)$/i, '');
+            const cleanSym = cleanDisplaySymbol(sym);
 
             const watchlists = (typeof window.watchlistsData === 'object' && window.watchlistsData) ? window.watchlistsData : {};
             const containing = [];
@@ -605,7 +612,7 @@
             Object.entries(watchlists).forEach(([wlName, list]) => {
                 if (!Array.isArray(list)) return;
                 const match = list.some(item => {
-                    const s = (typeof item === 'string' ? item : (item && item.symbol ? item.symbol : '')).trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
+                    const s = cleanDisplaySymbol(typeof item === 'string' ? item : (item && item.symbol ? item.symbol : '')).trim().toUpperCase();
                     return s === cleanSym;
                 });
                 if (match) containing.push(wlName);
@@ -733,7 +740,7 @@
         async function openStockWatchlistActionModal(symbol, forcedMode = null) {
             const sym = String(symbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '') || (typeof stockNewsState !== 'undefined' ? stockNewsState.symbol : '') || '').trim().toUpperCase();
             if (!sym) return;
-            const cleanSym = sym.replace(/\.(NS|BO)$/i, '');
+            const cleanSym = cleanDisplaySymbol(sym);
 
             await ensureWatchlistsDataLoaded();
 

@@ -694,7 +694,7 @@
                                 <span class="peoples-stock-name" onclick="handleStockClick('${escapeHtml(sym || stockName)}')">
                                     ${escapeHtml(stockName)}
                                 </span>
-                                ${sym ? `<span class="peoples-stock-sub">${escapeHtml(sym)}</span>` : ''}
+                                ${sym ? `<span class="peoples-stock-sub">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym.replace(/\.(NS|BS|BO)$/i, ''))}</span>` : ''}
                             </div>
                         </td>
                         <td style="color: var(--text-secondary); text-align: right;">${escapeHtml(qtyHeld)}</td>

@@ -100,7 +100,7 @@
         return dateGroups.map(group => {
             const rowsHtml = group.events.map(ev => {
                 const sym = escapeHtml(ev.symbol || '');
-                const comp = escapeHtml(ev.company || ev.symbol || 'Company');
+                const comp = escapeHtml(ev.company || (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(ev.symbol) : ev.symbol) || 'Company');
                 const evType = (ev.type || '').toLowerCase();
 
                 let badgeHtml = '';
@@ -117,7 +117,7 @@
                 }
 
                 return `
-                    <div class="upcoming-event-row" onclick="window.upcomingEventStockClick('${sym}')" title="Click to view chart for ${sym}">
+                    <div class="upcoming-event-row" onclick="window.upcomingEventStockClick('${sym}')" title="Click to view chart for ${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(ev.symbol) : sym)}">
                         <div class="upcoming-company-info">
                             <span class="upcoming-company-name">${comp}</span>
                             <span class="upcoming-link-icon" title="View Chart">↗</span>

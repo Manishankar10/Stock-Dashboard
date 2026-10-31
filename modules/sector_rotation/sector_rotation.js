@@ -789,8 +789,8 @@
                         ${idx + 1}
                     </td>
                     <td>
-                        <div class="sr-stock-sym-group" onclick="openSectorStockChart('${c.symbol}')" title="Click to view interactive chart for ${escapeHtml(c.symbol)}">
-                            <span class="sr-stock-sym-text">${escapeHtml(c.symbol)}</span>
+                        <div class="sr-stock-sym-group" onclick="openSectorStockChart('${c.symbol}')" title="Click to view interactive chart for ${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(c.symbol) : c.symbol.replace(/\.(NS|BS|BO)$/i, ''))}">
+                            <span class="sr-stock-sym-text">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(c.symbol) : c.symbol.replace(/\.(NS|BS|BO)$/i, ''))}</span>
                             <span class="sr-stock-exchange-badge">NSE</span>
                         </div>
                     </td>
@@ -857,7 +857,7 @@
 
     window.openSectorStockChart = function (symbol) {
         if (!symbol) return;
-        const clean = symbol.replace(/\.(?:NS|BO)$/i, '').trim();
+        const clean = (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(?:NS|BS|BO)$/i, '')).trim();
         if (typeof window.openChart === 'function') {
             window.openChart(clean);
         } else if (typeof window.openInHouseChart === 'function') {

@@ -532,12 +532,17 @@
         window.showCustomPrompt = showCustomPrompt;
 
         function cleanDisplaySymbol(sym) {
-            if (!sym) return '';
+            if (sym === null || sym === undefined) return '';
             const s = String(sym).trim();
             if (s.startsWith('^') || s.includes('=F')) return s;
-            return s.replace(/\.(NS|BO)$/i, '');
+            // Hide .NS, .BS (and .BO, .NSE, .BSE) exchange suffixes only for display
+            return s.replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
         }
         window.cleanDisplaySymbol = cleanDisplaySymbol;
+        window.formatDisplaySymbol = cleanDisplaySymbol;
+        window.displaySymbol = cleanDisplaySymbol;
+        window.hideSymbolSuffix = cleanDisplaySymbol;
+        window.stripExchangeSuffix = cleanDisplaySymbol;
 
         // Global App State
         let currentTab = 'watchlists';

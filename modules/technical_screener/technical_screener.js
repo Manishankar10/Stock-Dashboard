@@ -389,7 +389,7 @@
                 } else {
                     stocks.forEach(stk => {
                         const sym = stk.symbol || '';
-                        const name = stk.name || sym;
+                        const name = stk.name || (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym.replace(/\.(NS|BS|BO)$/i, ''));
                         const ltp = typeof stk.ltp === 'number' ? `₹${stk.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—';
                         const chg = typeof stk.change_pct === 'number' ? stk.change_pct : 0;
                         const chgClass = chg >= 0 ? 'pos' : 'neg';
@@ -400,7 +400,7 @@
                             <div class="ts-stock-row" data-stock-symbol="${escapeHtml(sym)}" data-stock-name="${escapeHtml(name)}">
                                 <div class="ts-stock-meta">
                                     <div class="ts-stock-symbol-row">
-                                        <span class="ts-stock-sym" onclick="openTechnicalStockChart('${escapeHtml(sym)}', '${escapeHtml(scId)}')">${escapeHtml(sym)}</span>
+                                        <span class="ts-stock-sym" onclick="openTechnicalStockChart('${escapeHtml(sym)}', '${escapeHtml(scId)}')">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym.replace(/\.(NS|BS|BO)$/i, ''))}</span>
                                         <span class="ts-stock-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
                                     </div>
                                     ${metric ? `<span class="ts-stock-metric-pill" title="${escapeHtml(metric)}">${escapeHtml(metric)}</span>` : ''}

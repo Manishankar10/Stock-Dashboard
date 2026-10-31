@@ -206,7 +206,7 @@
                     </td>
                     <td>
                         <div class="br-report-cell">
-                            <span class="br-report-title">${esc(rep.title || `${rep.symbol} Research Report`)}</span>
+                            <span class="br-report-title">${esc(rep.title || `${typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(rep.symbol) : rep.symbol} Research Report`)}</span>
                             <div class="br-report-meta-row">
                                 <span class="br-rating-badge ${ratingCls}">${esc(rating)}</span>
                                 ${tp ? `<span class="br-target-tag">Target: <strong>${esc(tp)}</strong> ${upside}</span>` : ''}
@@ -244,7 +244,7 @@
 
         let displayLabel = '';
         if (symbol) {
-            displayLabel = `${symbol}${companyName ? ' • ' + companyName : ''}`;
+            displayLabel = `${typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, '')}${companyName ? ' • ' + companyName : ''}`;
             if (selectEl) selectEl.style.display = 'none';
         } else if (watchlistName) {
             displayLabel = `Watchlist: ${watchlistName}`;
@@ -292,7 +292,7 @@
                 // If watchlist, populate stock select dropdown
                 if (watchlistName && selectEl && data.symbols) {
                     selectEl.innerHTML = '<option value="">All Watchlist Stocks</option>' +
-                        data.symbols.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+                        data.symbols.map(s => `<option value="${esc(s)}">${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(s) : s.replace(/\.(NS|BS|BO)$/i, ''))}</option>`).join('');
                 }
             } else {
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:30px; color:#ef4444;">Could not load research reports.</td></tr>`;
@@ -348,7 +348,7 @@
         containerEl.innerHTML = `
             <div style="text-align: center; padding: 24px; color: var(--text-secondary);">
                 <div style="font-size: 20px; margin-bottom: 6px;">⏳</div>
-                <div>Fetching recent 6 months institutional &amp; broker research papers for ${esc(symbol)}...</div>
+                <div>Fetching recent 6 months institutional &amp; broker research papers for ${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, ''))}...</div>
             </div>
         `;
 
@@ -377,7 +377,7 @@
             } else {
                 containerEl.innerHTML = `
                     <div style="text-align: center; padding: 24px; color: var(--text-secondary); font-size: 13px;">
-                        No recent institutional research reports found for ${esc(symbol)}.
+                        No recent institutional research reports found for ${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, ''))}.
                     </div>
                 `;
             }
@@ -403,7 +403,7 @@
         const sourceLinkEl = aiModal.querySelector('#br-ai-source-link');
         const contentEl = aiModal.querySelector('#br-ai-content');
 
-        if (titleEl) titleEl.innerText = `${reportData.symbol || 'Stock'} - AI Research Briefing`;
+        if (titleEl) titleEl.innerText = `${(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(reportData.symbol) : reportData.symbol) || 'Stock'} - AI Research Briefing`;
         if (subEl) subEl.innerText = reportData.title || 'Institutional Equity Research & Valuation Report';
         if (authorEl) authorEl.innerText = reportData.author || 'Institutional Research';
         if (dateEl) dateEl.innerText = reportData.date || 'Recent';

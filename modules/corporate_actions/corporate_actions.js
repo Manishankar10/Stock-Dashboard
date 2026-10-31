@@ -75,7 +75,7 @@
 
     function cleanSymbol(sym) {
         if (!sym) return '';
-        return String(sym).replace(/\.(NS|BO)$/i, '').trim().toUpperCase();
+        return String(sym).replace(/\.(NS|BS|BO|NSE|BSE)$/i, '').trim().toUpperCase();
     }
 
     // Extract live user symbols from frontend global stores or API payload

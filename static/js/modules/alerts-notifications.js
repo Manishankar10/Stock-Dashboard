@@ -5,6 +5,13 @@
         let activeNotifTab = 'notifs';
         let _isAlertsLoading = false;
 
+        function cleanDisplaySymbol(sym) {
+            if (sym === null || sym === undefined) return '';
+            const s = String(sym).trim();
+            if (s.startsWith('^') || s.includes('=F')) return s;
+            return s.replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
+        }
+
         function getBrandLogoLoaderHTML(title = 'Loading Alerts & Notifications...', subtitle = 'Fetching your latest price triggers & active alerts...') {
             if (typeof window.createBrandLoaderHTML === 'function') {
                 return window.createBrandLoaderHTML({
@@ -362,7 +369,7 @@
                         ` : '';
                         const symLinkTitle = sym ? `
                             <a href="javascript:void(0)" onclick="openStockChartSafely('${escapeHtml(sym)}')" class="alert-stock-link" style="color:var(--accent, #10b981); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer;" title="Click to open chart for ${escapeHtml(sym)}">
-                                <span>${escapeHtml(n.title)}</span>
+                                <span>${escapeHtml(cleanDisplaySymbol(n.title))}</span>
                                 <span style="font-size:12px; opacity:0.85;">📈</span>
                             </a>
                         ` : escapeHtml(n.title);
@@ -408,8 +415,8 @@
                             <div class="alert-item-card" style="background:var(--bg-subtle, #1e222d); border:1px solid var(--border-color, #334155); border-radius:8px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
                                 <div>
                                     <div style="font-weight:700; font-size:14px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-                                        <a href="javascript:void(0)" onclick="openStockChartSafely('${escapeHtml(sym)}')" class="alert-stock-link" style="color:var(--accent, #10b981); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer;" title="Click to open interactive chart for ${escapeHtml(sym)}">
-                                            <span>${escapeHtml(sym)}</span>
+                                        <a href="javascript:void(0)" onclick="openStockChartSafely('${escapeHtml(sym)}')" class="alert-stock-link" style="color:var(--accent, #10b981); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer;" title="Click to open interactive chart for ${escapeHtml(cleanDisplaySymbol(sym))}">
+                                            <span>${escapeHtml(cleanDisplaySymbol(sym))}</span>
                                             <span style="font-size:12px; opacity:0.85;">📈</span>
                                         </a>
                                         ${statusBadge}

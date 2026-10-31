@@ -315,7 +315,7 @@
                                         userAlertsData = data.alerts_data;
                                         updateNotificationBadge();
                                         if (typeof showToast === 'function') {
-                                            showToast(`🔔 Alert Triggered: ${alt.symbol} reached ₹${targetPrice}!`, 'warning', 5000);
+                                            showToast(`🔔 Alert Triggered: ${typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(alt.symbol) : alt.symbol} reached ₹${targetPrice}!`, 'warning', 5000);
                                         }
                                         const notifModal = document.getElementById('notificationsModal');
                                         if (notifModal && notifModal.style.display === 'block') {

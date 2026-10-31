@@ -173,7 +173,7 @@
                 chartTop = new Chart(topCtx, {
                     type: 'bar',
                     data: {
-                        labels: topHoldings.map(h => `${h.symbol} (${h.pfName})`),
+                        labels: topHoldings.map(h => `${typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(h.symbol) : h.symbol} (${h.pfName})`),
                         datasets: [{
                             label: 'Overall ROI (%)',
                             data: topHoldings.map(h => parseFloat(h.pnlPct.toFixed(2))),
@@ -291,7 +291,7 @@
         // Normalize stock ticker symbols (strip .NS, .BO, clean spaces)
         function cleanStockSymbol(sym) {
             if (!sym) return '';
-            return String(sym).replace(/\.NS$/i, '').replace(/\.BO$/i, '').trim().toUpperCase();
+            return String(sym).replace(/\.(NS|BS|BO|NSE|BSE)$/i, '').trim().toUpperCase();
         }
 
         // Intelligently resolve sector and cap tier for any stock
@@ -879,7 +879,7 @@
                                 ${escapeHtml(item.name || item.symbol)}
                             </div>
                             <div class="pa-modal-comp-sym">
-                                ${escapeHtml(item.symbol)} · ${escapeHtml(item.pfName || '')}
+                                ${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(item.symbol) : item.symbol)} · ${escapeHtml(item.pfName || '')}
                             </div>
                         </td>
                         <td class="pa-modal-mktval-wrap">

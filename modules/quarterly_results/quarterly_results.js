@@ -26,7 +26,7 @@
 
     function cleanSymbol(sym) {
         if (!sym) return '';
-        return String(sym).trim().toUpperCase().replace(/\.NS$|\.BO$/, '');
+        return String(sym).trim().toUpperCase().replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
     }
 
     function escapeHtml(str) {

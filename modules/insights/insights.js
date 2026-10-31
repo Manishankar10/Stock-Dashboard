@@ -1015,7 +1015,7 @@
             const gainerSymEl = document.getElementById('insights-top-gainer-sym');
             const gainerValEl = document.getElementById('insights-top-gainer-val');
             if (gainerSymEl && gainer) {
-                gainerSymEl.innerText = gainer.symbol;
+                gainerSymEl.innerText = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(gainer.symbol) : gainer.symbol;
                 const sign = gainer.change_pct >= 0 ? '+' : '';
                 gainerValEl.innerText = `${sign}${gainer.change_pct.toFixed(2)}% (₹${gainer.ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})})`;
                 const color = gainer.change_pct >= 0 ? '#10b981' : '#ef4444';
@@ -1032,7 +1032,7 @@
             const loserSymEl = document.getElementById('insights-top-loser-sym');
             const loserValEl = document.getElementById('insights-top-loser-val');
             if (loserSymEl && loser) {
-                loserSymEl.innerText = loser.symbol;
+                loserSymEl.innerText = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(loser.symbol) : loser.symbol;
                 const sign = loser.change_pct >= 0 ? '+' : '';
                 loserValEl.innerText = `${sign}${loser.change_pct.toFixed(2)}% (₹${loser.ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})})`;
                 const color = loser.change_pct >= 0 ? '#10b981' : '#ef4444';
@@ -1127,7 +1127,7 @@
 
                         item.innerHTML = `
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <strong class="insights-thesis-stock-trigger" style="color: var(--text-primary); font-size: 13px; cursor: pointer;" title="Click stock name to view fundamentals" onclick="event.stopPropagation(); openInsightsFundamentals('${escapeHtml(t.symbol)}');">${escapeHtml(t.symbol)}</strong>
+                                <strong class="insights-thesis-stock-trigger" style="color: var(--text-primary); font-size: 13px; cursor: pointer;" title="Click stock name to view fundamentals" onclick="event.stopPropagation(); openInsightsFundamentals('${escapeHtml(t.symbol)}');">${escapeHtml(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(t.symbol) : t.symbol)}</strong>
                                 <span style="color: ${pnlColor}; font-weight: 700;" title="Click data to view technical chart">${pnlSign}${t.pnl_pct}% Return</span>
                             </div>
                             <div style="color: var(--text-secondary); font-style: italic; font-size: 11px;" title="Click data to view technical chart">"${escapeHtml(t.buy_reason)}"</div>

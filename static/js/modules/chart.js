@@ -1,6 +1,12 @@
         // =========================================================
         // TECHNICAL CHARTS (PRO CANVAS ENGINE)
         // =========================================================
+        function cleanDisplaySymbol(sym) {
+            if (sym === null || sym === undefined) return '';
+            const s = String(sym).trim();
+            if (s.startsWith('^') || s.includes('=F')) return s;
+            return s.replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
+        }
         var currentChartSymbol = window.currentChartSymbol || '';
         var savedChartInterval = '1d';
         try {
@@ -6020,7 +6026,7 @@
             const info = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
             const symDisplay = document.getElementById('chartSymbolDisplay');
             const nameDisplay = document.getElementById('chartNameDisplay');
-            const cleanSym = sym ? sym.replace('.NS', '').replace('.BO', '') : '';
+            const cleanSym = cleanDisplaySymbol(sym);
             if (symDisplay) {
                 symDisplay.innerText = cleanSym || sym;
                 symDisplay.setAttribute('data-full-symbol', sym);
@@ -6177,7 +6183,7 @@
                     return;
                 }
 
-                const cleanSym = data.symbol ? data.symbol.replace('.NS', '').replace('.BO', '') : '';
+                const cleanSym = cleanDisplaySymbol(data.symbol);
                 const symDisplay = document.getElementById('chartSymbolDisplay');
                 const nameDisplay = document.getElementById('chartNameDisplay');
                 if (symDisplay) {
@@ -8104,7 +8110,7 @@
                     <div class="chart-search-result-item ${activeClass}" data-index="${idx}" data-symbol="${escapeHtml(item.symbol)}" onclick="selectChartSymbol('${escapeHtml(item.symbol)}')">
                         <div class="search-item-left">
                             <div class="search-item-header">
-                                <span class="search-item-symbol">${escapeHtml(item.cleanSymbol)}</span>
+                                <span class="search-item-symbol">${escapeHtml(cleanDisplaySymbol(item.cleanSymbol || item.symbol))}</span>
                                 <span class="search-item-badge ${badgeClass}">${escapeHtml(item.exchange)}</span>
                             </div>
                             <div class="search-item-name">${escapeHtml(item.name)}</div>
@@ -8223,10 +8229,10 @@
                 }
 
                 // If currentChartSymbol is in any watchlist, prefer that watchlist
-                const curClean = (currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                const curClean = cleanDisplaySymbol(currentChartSymbol || '').toUpperCase().trim();
                 if (curClean) {
                     for (const [name, list] of Object.entries(wData)) {
-                        if (Array.isArray(list) && list.some(s => String(s || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim() === curClean)) {
+                        if (Array.isArray(list) && list.some(s => cleanDisplaySymbol(s || '').toUpperCase().trim() === curClean)) {
                             return { name: name, symbols: list };
                         }
                     }
@@ -8248,10 +8254,10 @@
             const { name: wlName, symbols } = getActiveChartWatchlist();
             if (!symbols || symbols.length === 0) return false;
 
-            const curClean = (currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+            const curClean = cleanDisplaySymbol(currentChartSymbol || '').toUpperCase().trim();
             let currentIndex = symbols.findIndex(s => {
                 if (!s) return false;
-                const sClean = String(s).replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                const sClean = cleanDisplaySymbol(s).toUpperCase().trim();
                 return sClean === curClean || String(s).toUpperCase() === (currentChartSymbol || '').toUpperCase();
             });
 
@@ -8265,7 +8271,7 @@
             const targetSymbol = symbols[targetIndex];
             if (!targetSymbol) return false;
 
-            const targetClean = String(targetSymbol).replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+            const targetClean = cleanDisplaySymbol(targetSymbol).toUpperCase().trim();
             if (targetClean === curClean && symbols.length > 1) return false;
 
             let finalSym = String(targetSymbol).trim().toUpperCase();
@@ -8298,10 +8304,10 @@
                     wlName = name || wlName;
                     if (symbols && symbols.length > 0) {
                         total = symbols.length;
-                        const clean = (sym || currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                        const clean = cleanDisplaySymbol(sym || currentChartSymbol || '').toUpperCase().trim();
                         const idx = symbols.findIndex(s => {
                             if (!s) return false;
-                            const sClean = String(s).replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                            const sClean = cleanDisplaySymbol(s).toUpperCase().trim();
                             return sClean === clean || String(s).toUpperCase() === (sym || '').toUpperCase();
                         });
                         if (idx !== -1) {
@@ -8310,7 +8316,7 @@
                     }
                 }
 
-                const cleanLabel = (sym || currentChartSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().trim();
+                const cleanLabel = cleanDisplaySymbol(sym || currentChartSymbol || '').toUpperCase().trim();
                 if (pos && total) {
                     pillBox.title = `${cleanLabel} (${pos}/${total} in ${wlName || 'Watchlist'})\nScroll mouse wheel to navigate · Click to search`;
                 } else {
@@ -8621,7 +8627,7 @@
             }
 
             // 6. Draw Subtle Watermark in Center
-            const sym = (window.currentChartSymbol || currentChartSymbol || 'STOCK').replace(/\.(NS|BO)$/i, '').toUpperCase();
+            const sym = cleanDisplaySymbol(window.currentChartSymbol || currentChartSymbol || 'STOCK').toUpperCase();
             const interval = (window.currentChartInterval || currentChartInterval || savedChartInterval || '1D').toUpperCase();
             const prices = (typeof stockPricesData !== 'undefined' && stockPricesData) ? stockPricesData : {};
             const stockInfo = prices[sym] || prices[sym + '.NS'] || prices[sym + '.BO'] || {};
@@ -8878,7 +8884,7 @@
                     return;
                 }
 
-                const sym = (window.currentChartSymbol || currentChartSymbol || 'CHART').replace(/\.(NS|BO)$/i, '').toUpperCase();
+                const sym = cleanDisplaySymbol(window.currentChartSymbol || currentChartSymbol || 'CHART').toUpperCase();
                 const interval = (window.currentChartInterval || currentChartInterval || savedChartInterval || '1D').toUpperCase();
                 const now = new Date();
                 const dateStr = now.toISOString().slice(0, 10);
