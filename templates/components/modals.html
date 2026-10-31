@@ -1311,7 +1311,16 @@
                     <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="clearAllNotifications()">Clear All Notifications</button>
                 </div>
                 <div id="notifications-list-mount" style="max-height: 380px; overflow-y: auto;">
-                    <div class="loading">Loading notifications...</div>
+                    <div class="cd-brand-loader" style="min-height: 220px;">
+                        <div class="chart-loader-brand-box">
+                            <div class="chart-loader-spinner-ring"></div>
+                            <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                        </div>
+                        <div class="cd-loader-text-box">
+                            <div class="cd-loader-title" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary);">Loading Alerts & Notifications...</div>
+                            <div class="cd-loader-subtitle" style="font-size: 11px; color: var(--text-secondary);">Fetching your latest price triggers & active alerts...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1323,7 +1332,18 @@
                         <span>+ Add Alert</span>
                     </button>
                 </div>
-                <div id="alerts-list-mount" style="max-height: 400px; overflow-y: auto;"></div>
+                <div id="alerts-list-mount" style="max-height: 400px; overflow-y: auto;">
+                    <div class="cd-brand-loader" style="min-height: 220px;">
+                        <div class="chart-loader-brand-box">
+                            <div class="chart-loader-spinner-ring"></div>
+                            <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                        </div>
+                        <div class="cd-loader-text-box">
+                            <div class="cd-loader-title" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary);">Loading Active Alerts...</div>
+                            <div class="cd-loader-subtitle" style="font-size: 11px; color: var(--text-secondary);">Fetching your latest target thresholds...</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -3,6 +3,28 @@
         // =========================================================
         let userAlertsData = { alerts: [], notifications: [] };
         let activeNotifTab = 'notifs';
+        let _isAlertsLoading = false;
+
+        function getBrandLogoLoaderHTML(title = 'Loading Alerts & Notifications...', subtitle = 'Fetching your latest price triggers & active alerts...') {
+            if (typeof window.createBrandLoaderHTML === 'function') {
+                return window.createBrandLoaderHTML({
+                    title: title,
+                    subtitle: subtitle,
+                    minHeight: '220px'
+                });
+            }
+            return `
+            <div class="cd-brand-loader" style="min-height: 220px;">
+                <div class="chart-loader-brand-box">
+                    <div class="chart-loader-spinner-ring"></div>
+                    <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                </div>
+                <div class="cd-loader-text-box">
+                    <div class="cd-loader-title" style="font-size: 13.5px; font-weight: 600; color: var(--text-primary);">${title}</div>
+                    ${subtitle ? `<div class="cd-loader-subtitle" style="font-size: 11px; color: var(--text-secondary);">${subtitle}</div>` : ''}
+                </div>
+            </div>`;
+        }
 
         async function fetchAlerts() {
             try {
@@ -202,11 +224,8 @@
             }
         }
 
-        async function openNotificationsModal() {
-            if (window.CapitalDeskPush) {
-                window.CapitalDeskPush.checkCurrentSubscription();
-            }
-            await fetchAlerts();
+        function openNotificationsModal() {
+            // 1. Open popup IMMEDIATELY - do not wait for API response
             const notifModal = document.getElementById('notificationsModal');
             if (notifModal) {
                 notifModal.style.display = 'block';
@@ -214,11 +233,30 @@
                     window.bringModalToFront('notificationsModal');
                 }
             }
+
+            // 2. Mark loading and show brand logo loader right away
+            _isAlertsLoading = true;
             switchNotifTab(activeNotifTab);
+
+            // 3. Asynchronous push subscription check
+            if (window.CapitalDeskPush) {
+                window.CapitalDeskPush.checkCurrentSubscription();
+            }
+
+            // 4. Load API in background without blocking popup opening
+            fetchAlerts().finally(() => {
+                _isAlertsLoading = false;
+                renderNotificationsModalContent();
+            });
+
+            // 5. Mark notifications read asynchronously
             fetch('/api/notifications/mark_read', { method: 'POST' }).then(r => r.json()).then(data => {
                 if (data.success) {
                     userAlertsData = data.alerts_data;
                     updateNotificationBadge();
+                    if (!_isAlertsLoading) {
+                        renderNotificationsModalContent();
+                    }
                 }
             }).catch(e => {});
         }
@@ -269,6 +307,17 @@
         }
 
         function renderNotificationsModalContent() {
+            const notifMount = document.getElementById('notifications-list-mount');
+            const alertsMount = document.getElementById('alerts-list-mount');
+
+            // If API is still loading, place our logo loader in the active mount
+            if (_isAlertsLoading) {
+                const loaderHtml = getBrandLogoLoaderHTML();
+                if (notifMount) notifMount.innerHTML = loaderHtml;
+                if (alertsMount) alertsMount.innerHTML = loaderHtml;
+                return;
+            }
+
             const notifs = userAlertsData.notifications || [];
             const alerts = userAlertsData.alerts || [];
 
@@ -289,7 +338,6 @@
             }
 
             // Render Notifications Tab
-            const notifMount = document.getElementById('notifications-list-mount');
             if (notifMount) {
                 if (notifs.length === 0) {
                     notifMount.innerHTML = `
@@ -338,7 +386,6 @@
             }
 
             // Render Active Alerts Tab
-            const alertsMount = document.getElementById('alerts-list-mount');
             if (alertsMount) {
                 if (alerts.length === 0) {
                     alertsMount.innerHTML = `
