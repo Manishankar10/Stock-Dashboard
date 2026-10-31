@@ -358,6 +358,24 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
   background: #3b82f6;
   color: #ffffff;
 }
+.concall-chip.concall-audio {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.concall-chip.concall-audio:hover, .concall-chip.concall-audio:active {
+  background: #f59e0b;
+  color: #ffffff;
+}
+.concall-chip.concall-audio-ai {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(139, 92, 246, 0.22) 100%);
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+.concall-chip.concall-audio-ai:hover, .concall-chip.concall-audio-ai:active {
+  background: linear-gradient(135deg, #f59e0b 0%, #8b5cf6 100%);
+  color: #ffffff;
+}
 .concall-chip.concall-ai {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(99, 102, 241, 0.22) 100%);
   color: #c4b5fd;
@@ -4108,6 +4126,8 @@ window.renderConcallsList = function(concalls, showAll) {
       <div class="concall-actions">
         ${c.transcript ? `<button type="button" class="concall-chip concall-ai" onclick="openConcallAiByIndex(${idx})">✨ Concall AI</button>` : ''}
         ${c.transcript ? `<a class="concall-chip concall-transcript" href="${esc(c.transcript)}" target="_blank" rel="noopener noreferrer">📄 Concall</a>` : ''}
+        ${(!c.transcript && (c.audio || c.rec)) ? `<button type="button" class="concall-chip concall-ai concall-audio-ai" onclick="openAudioAiByIndex(${idx})" title="AI Summary of Earnings Concall Audio Recording">✨ Concall AI</button>` : ''}
+        ${(!c.transcript && (c.audio || c.rec)) ? `<a class="concall-chip concall-audio" href="${esc(c.audio || c.rec)}" target="_blank" rel="noopener noreferrer" title="Listen to Earnings Concall Audio Recording">🎙️ Audio Concall</a>` : ''}
         ${c.presentation ? `<button type="button" class="concall-chip concall-ai" style="background: rgba(99, 102, 241, 0.12); color: #818cf8; border-color: rgba(99, 102, 241, 0.3);" onclick="openPresentationAiByIndex(${idx})">✨ PPT AI</button>` : ''}
         ${c.presentation ? `<a class="concall-chip concall-ppt" href="${esc(c.presentation)}" target="_blank" rel="noopener noreferrer">📊 Presentation</a>` : ''}
       </div>
@@ -4146,6 +4166,13 @@ function openPresentationAiByIndex(idx) {
   openConcallAiSummary(formatConcallQuarter(item.quarter), item.presentation, 'ppt');
 }
 
+function openAudioAiByIndex(idx) {
+  const item = window._visibleConcalls?.[idx];
+  const audioUrl = item ? (item.audio || item.rec) : null;
+  if (!item || !audioUrl) return;
+  openConcallAiSummary(formatConcallQuarter(item.quarter), audioUrl, 'audio');
+}
+
 async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall', refresh = false) {
   _currentAiQuarter = quarter;
   _currentAiTranscript = transcriptUrl;
@@ -4169,13 +4196,18 @@ async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall',
   if (subEl) {
     subEl.textContent = (docType === 'ppt') 
       ? `Investor Presentation (PPT) Research Report · ${symbol}` 
-      : (docType === 'annual_reports' ? `Annual Report Research Report · ${symbol}` : `Earnings Concall Research Report · ${symbol}`);
+      : (docType === 'annual_reports' 
+          ? `Annual Report Research Report · ${symbol}` 
+          : (docType === 'audio' 
+              ? `Earnings Concall Audio Recording Research Report · ${symbol}` 
+              : `Earnings Concall Research Report · ${symbol}`));
   }
 
   if (pdfBtn) {
     if (transcriptUrl) {
       pdfBtn.href = transcriptUrl;
       pdfBtn.style.display = 'inline-flex';
+      pdfBtn.innerHTML = (docType === 'audio') ? '🎙️ Open Recording' : '📄 Open Document';
     } else {
       pdfBtn.style.display = 'none';
     }
@@ -4186,6 +4218,7 @@ async function openConcallAiSummary(quarter, transcriptUrl, docType = 'concall',
     if (transcriptUrl) {
       mobPdfBtn.href = transcriptUrl;
       mobPdfBtn.style.display = 'flex';
+      mobPdfBtn.innerHTML = (docType === 'audio') ? '🎙️ Open Recording' : '📄 Open Document';
     } else {
       mobPdfBtn.style.display = 'none';
     }

@@ -289,6 +289,26 @@ _DETAILED_SUMMARY_CACHE = {}
 _DETAILED_SUMMARY_LOCK = Lock()
 
 
+def _extract_youtube_id(url):
+    m = re.search(r"(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", str(url or ""))
+    return m.group(1) if m else None
+
+
+def _upload_gemini_file(data_bytes, mime_type, api_key):
+    upload_url = f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={api_key}"
+    headers = {
+        "X-Goog-Upload-Command": "start, upload, finalize",
+        "X-Goog-Upload-Header-Content-Length": str(len(data_bytes)),
+        "X-Goog-Upload-Header-Content-Type": mime_type,
+        "Content-Type": mime_type,
+    }
+    resp = requests.post(upload_url, headers=headers, data=data_bytes, timeout=180)
+    if resp.status_code == 200:
+        file_info = resp.json().get("file", {})
+        return file_info.get("uri")
+    raise RuntimeError(f"Gemini file upload failed ({resp.status_code}): {resp.text[:200]}")
+
+
 def generate_document_analysis(url, company="Company", quarter="Quarter", year="", symbol="", industry="", doc_type="concall", refresh=False):
     url = str(url or "").strip()
     if not url.startswith("http"):
@@ -300,6 +320,7 @@ def generate_document_analysis(url, company="Company", quarter="Quarter", year="
     elif clean_type in ("annual_report", "annual_reports", "ar", "brsr", "integrated_report"):
         prompt_type = "annual_reports"
     else:
+        # Use the exact same prompt as earnings call transcripts for concall audio/recordings
         prompt_type = "concalls"
 
     # Always retrieve and format active prompt dynamically from system settings / DB
@@ -323,40 +344,101 @@ def generate_document_analysis(url, company="Company", quarter="Quarter", year="
             if cached and now - cached[0] < 86400:
                 return cached[1]
 
-    # Download document PDF
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "application/pdf,application/octet-stream,*/*",
-    }
-    try:
-        r = requests.get(url, headers=headers, timeout=30)
-        r.raise_for_status()
-        pdf_bytes = r.content
-    except Exception as exc:
-        raise RuntimeError(f"Could not download the official document: {exc}")
-
-    if not pdf_bytes:
-        raise RuntimeError("The document is empty.")
-
-    b64_pdf = base64.b64encode(pdf_bytes).decode("ascii")
-
     api_key = get_app_setting("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured in the application environment.")
 
-    payload = {
-        "contents": [{
-            "role": "user",
-            "parts": [
-                {"text": prompt},
-                {"inline_data": {"mime_type": "application/pdf", "data": b64_pdf}}
-            ]
-        }],
-        "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 6000
-        }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "*/*",
     }
+
+    payload = None
+    yt_id = _extract_youtube_id(url)
+
+    if yt_id:
+        # 1. YouTube Audio Recording: Fetch captions/transcript directly
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            api = YouTubeTranscriptApi()
+            transcript_items = api.fetch(yt_id)
+            transcript_text = " ".join(item.text for item in transcript_items).strip()
+        except Exception as yt_err:
+            raise RuntimeError(f"Could not retrieve transcript from YouTube concall recording: {yt_err}")
+
+        if not transcript_text:
+            raise RuntimeError("YouTube concall recording transcript returned empty text.")
+
+        full_prompt = (
+            f"{prompt}\n\n"
+            f"**OFFICIAL EARNINGS CONCALL AUDIO RECORDING TRANSCRIPTION ({company} — {quarter}):**\n\n"
+            f"{transcript_text}"
+        )
+        payload = {
+            "contents": [{
+                "role": "user",
+                "parts": [{"text": full_prompt}]
+            }],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 6000
+            }
+        }
+    else:
+        # 2. Download File (Direct Audio or PDF)
+        try:
+            r = requests.get(url, headers=headers, timeout=60)
+            r.raise_for_status()
+            doc_bytes = r.content
+        except Exception as exc:
+            raise RuntimeError(f"Could not download official document/audio: {exc}")
+
+        if not doc_bytes:
+            raise RuntimeError("The downloaded document/audio is empty.")
+
+        # Determine MIME type
+        is_audio = clean_type in ("audio", "rec", "recording", "webcast") or url.lower().endswith((".mp3", ".wav", ".m4a", ".aac", ".ogg"))
+        if is_audio:
+            if url.lower().endswith(".wav"):
+                mime_type = "audio/wav"
+            elif url.lower().endswith((".m4a", ".aac")):
+                mime_type = "audio/aac"
+            else:
+                mime_type = "audio/mp3"
+        else:
+            mime_type = "application/pdf"
+
+        # If payload <= 20MB, use inline_data; otherwise use Gemini Files API upload
+        if len(doc_bytes) <= 20 * 1024 * 1024:
+            b64_doc = base64.b64encode(doc_bytes).decode("ascii")
+            payload = {
+                "contents": [{
+                    "role": "user",
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": mime_type, "data": b64_doc}}
+                    ]
+                }],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": 6000
+                }
+            }
+        else:
+            file_uri = _upload_gemini_file(doc_bytes, mime_type, api_key)
+            payload = {
+                "contents": [{
+                    "role": "user",
+                    "parts": [
+                        {"text": prompt},
+                        {"file_data": {"mime_type": mime_type, "file_uri": file_uri}}
+                    ]
+                }],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": 6000
+                }
+            }
 
     last_err = None
     for model_name in GEMINI_MODELS:

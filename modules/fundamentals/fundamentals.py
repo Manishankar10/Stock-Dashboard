@@ -605,7 +605,7 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
             if company_website:
                 logo_url = f"https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url={company_website}&size=128"
 
-        # Clean concalls & presentations list from Screener
+        # Clean concalls, audio recordings & presentations list from Screener
         concalls_list = []
         seen_quarters = {}
         for li in soup.select(".documents.concalls li"):
@@ -613,27 +613,33 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
             quarter_str = q_el.text.strip() if q_el else ""
             transcript_url = None
             ppt_url = None
+            audio_url = None
             for a in li.find_all("a"):
                 txt = a.text.strip().lower()
                 href = a.get("href", "").strip()
                 if not href:
                     continue
-                if "transcript" in txt or "concall" in txt:
+                if "transcript" in txt or ("concall" in txt and not any(k in txt for k in ["rec", "audio", "recording"])):
                     transcript_url = href
                 elif "ppt" in txt or "presentation" in txt:
                     ppt_url = href
-            if quarter_str and (transcript_url or ppt_url):
+                elif any(k in txt for k in ["rec", "audio", "recording", "webcast", "listen"]) or "youtube.com" in href or "youtu.be" in href or href.lower().endswith((".mp3", ".wav", ".m4a", ".aac")):
+                    audio_url = href
+            if quarter_str and (transcript_url or ppt_url or audio_url):
                 if quarter_str not in seen_quarters:
                     seen_quarters[quarter_str] = {
                         "quarter": quarter_str,
                         "transcript": transcript_url,
-                        "presentation": ppt_url
+                        "presentation": ppt_url,
+                        "audio": audio_url
                     }
                 else:
-                    if transcript_url and not seen_quarters[quarter_str]["transcript"]:
+                    if transcript_url and not seen_quarters[quarter_str].get("transcript"):
                         seen_quarters[quarter_str]["transcript"] = transcript_url
-                    if ppt_url and not seen_quarters[quarter_str]["presentation"]:
+                    if ppt_url and not seen_quarters[quarter_str].get("presentation"):
                         seen_quarters[quarter_str]["presentation"] = ppt_url
+                    if audio_url and not seen_quarters[quarter_str].get("audio"):
+                        seen_quarters[quarter_str]["audio"] = audio_url
         concalls_list = list(seen_quarters.values())
 
         # Screener Price & DMA Chart data
