@@ -873,112 +873,90 @@
                     tr.className = 'pf-row';
                     tr.dataset.symbol = sym;
                     tr.dataset.companyName = compName;
-                    tr.tabIndex = 0;
-                    tr.setAttribute('role', 'row');
-                    tr.setAttribute('aria-label', `${cleanDisplaySymbol(sym)} row, double click or press Enter to open chart`);
-
-                    tr.onmouseenter = (e) => showWlRowTooltip(e, sym, tr.dataset.companyName || compName);
-                    tr.onmouseleave = () => hideWlRowTooltip();
-                    tr.onmousemove = (e) => updateWlRowTooltipPos(e);
-
-                    tr.ondblclick = (e) => {
-                        if (e.target.closest('button, input, select, a, .wl-row-menu-btn, .wl-row-menu-dropdown')) return;
-                        if (typeof window.openInHouseChart === 'function') {
-                            window.openInHouseChart(sym);
-                        }
+                    if (window.innerWidth <= 768) {
+                        tr.title = 'Click row to view interactive technical chart';
+                    }
+                    tr.onclick = (e) => {
+                        if (e.target.closest('.wl-row-menu-btn') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
+                        if (window._wlMenuJustClosed) return;
+                        if (typeof openInHouseChart === 'function') openInHouseChart(sym);
+                        else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
                     };
-
-                    tr.onkeydown = (e) => {
-                        if (e.key === 'Enter') {
-                            if (e.target.closest('button, input, select, a, .wl-row-menu-btn, .wl-row-menu-dropdown')) return;
-                            if (typeof window.openInHouseChart === 'function') {
-                                window.openInHouseChart(sym);
-                            }
-                        }
-                    };
+                    const nameHtml = (hasData && info.name) 
+                        ? escapeHtml(info.name) 
+                        : '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
+                    const priceVal = hasData 
+                        ? '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) 
+                        : '<span class="skeleton-box" style="width: 60px; height: 14px;"></span>';
+                    const priceCls = (hasData && info.change !== undefined) 
+                        ? (info.change >= 0 ? 'pos' : 'neg') 
+                        : '';
+                    const sign = (hasData && info.change !== undefined && info.change >= 0) ? '+' : '';
+                    const amtSign = (hasData && info.change !== undefined) ? (info.change >= 0 ? '+' : '-') : '';
+                    const changeAmtHtml = (hasData && info.change !== undefined)
+                        ? `${amtSign}₹${Math.abs(info.change).toFixed(2)}`
+                        : '<span class="skeleton-box" style="width: 50px; height: 14px;"></span>';
+                    const changePctHtml = (hasData && info.change_pct !== undefined)
+                        ? `${sign}${info.change_pct.toFixed(2)}%`
+                        : '<span class="skeleton-box" style="width: 45px; height: 14px;"></span>';
+                    const subChangeHtml = (hasData && info.change !== undefined && info.change_pct !== undefined)
+                        ? `${sign}₹${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`
+                        : '';
+                    const changeCls = (hasData && info.change !== undefined)
+                        ? (info.change >= 0 ? 'pos' : 'neg')
+                        : '';
 
                     const tdSymbol = document.createElement('td');
                     tdSymbol.className = 'wl-col-symbol';
-                    tdSymbol.innerHTML = `
-                        <div class="wl-symbol-container" style="display:flex; align-items:center; gap:6px;">
-                            <span class="symbol-name wl-symbol-link" style="cursor:pointer;" onclick="event.stopPropagation(); if (typeof window.openInHouseChart === 'function') { window.openInHouseChart('${sym}'); }">${cleanDisplaySymbol(sym)}</span>
-                            <span class="badge ${bInfo.class}">${bInfo.label}</span>
-                        </div>
-                        <div class="company-name" id="name-${sym}">${escapeHtml(compName)}</div>
-                    `;
+                    tdSymbol.innerHTML = `<div class="stock-symbol-row"><span class="stock-symbol">${cleanDisplaySymbol(sym)}</span><span class="badge ${bInfo.class}">${bInfo.label}</span></div><div class="company-name" id="name-${sym}">${nameHtml}</div>`;
 
                     const tdPrice = document.createElement('td');
                     tdPrice.className = 'wl-col-price';
                     tdPrice.style.textAlign = 'right';
-                    tdPrice.innerHTML = `<span class="price-val ${hasData ? (info.change >= 0 ? 'pos' : 'neg') : ''}" id="price-${sym}">${hasData ? '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) : 'Loading...'}</span>`;
+                    tdPrice.innerHTML = `
+                        <span class="wl-price-val ${priceCls}" id="price-${sym}">${priceVal}</span>
+                        <span class="wl-sub-change ${changeCls}" id="sub-change-${sym}">${subChangeHtml}</span>
+                    `;
 
                     const tdChangeAmt = document.createElement('td');
-                    tdChangeAmt.className = 'wl-col-change-amt';
+                    tdChangeAmt.className = `wl-col-change-amt ${changeCls}`;
                     tdChangeAmt.style.textAlign = 'right';
-                    const amtSign = hasData ? (info.change >= 0 ? '+' : '-') : '';
-                    tdChangeAmt.innerHTML = `<span class="change-amt-val ${hasData ? (info.change >= 0 ? 'pos' : 'neg') : ''}" id="change-amt-${sym}">${hasData ? amtSign + '₹' + Math.abs(info.change).toFixed(2) : '-'}</span>`;
+                    tdChangeAmt.id = `change-amt-${sym}`;
+                    tdChangeAmt.innerHTML = changeAmtHtml;
 
                     const tdChangePct = document.createElement('td');
-                    tdChangePct.className = 'wl-col-change-pct';
+                    tdChangePct.className = `wl-col-change-pct ${changeCls}`;
                     tdChangePct.style.textAlign = 'right';
-                    tdChangePct.innerHTML = `<span class="change-val ${hasData ? (info.change >= 0 ? 'pos' : 'neg') : ''}" id="change-pct-${sym}">${hasData ? (info.change >= 0 ? '+' : '') + info.change_pct.toFixed(2) + '%' : '-'}</span>`;
+                    tdChangePct.id = `change-pct-${sym}`;
+                    tdChangePct.innerHTML = changePctHtml;
 
                     const tdActions = document.createElement('td');
                     tdActions.className = 'wl-col-actions';
                     tdActions.style.textAlign = 'center';
+                    tdActions.style.position = 'relative';
 
-                    const menuContainer = document.createElement('div');
-                    menuContainer.className = 'wl-row-menu-container';
-                    menuContainer.id = `wl-row-menu-${sym}`;
+                    const menuWrapper = document.createElement('div');
+                    menuWrapper.style.position = 'relative';
+                    menuWrapper.style.display = 'inline-block';
 
                     const menuBtn = document.createElement('button');
-                    menuBtn.type = 'button';
-                    menuBtn.className = 'wl-row-menu-btn';
-                    menuBtn.setAttribute('aria-label', `Actions for ${cleanDisplaySymbol(sym)}`);
-                    menuBtn.title = 'Row actions';
-                    menuBtn.innerHTML = `
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="12" cy="5" r="2"/>
-                            <circle cx="12" cy="12" r="2"/>
-                            <circle cx="12" cy="19" r="2"/>
-                        </svg>
-                    `;
-                    menuBtn.onclick = (e) => toggleWlRowMenu(e, sym);
+                    menuBtn.className = 'btn-secondary wl-row-menu-btn';
+                    menuBtn.style.padding = '4px 8px';
+                    menuBtn.style.fontSize = '12px';
+                    menuBtn.style.fontWeight = '600';
+                    menuBtn.title = `Actions for ${sym}`;
+                    const isMob = window.innerWidth <= 768;
+                    menuBtn.innerHTML = isMob
+                        ? '<span class="wl-setting-icon">⚙️</span>'
+                        : '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
+                    menuBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleWlRowMenu(e, sym);
+                    };
 
-                    const dropdown = document.createElement('div');
-                    dropdown.className = 'wl-row-menu-dropdown';
-                    dropdown.setAttribute('role', 'menu');
-                    dropdown.innerHTML = `
-                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openInHouseChart === 'function') { window.openInHouseChart('${sym}'); }">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                            View Chart
-                        </button>
-                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openFundamentalsModal === 'function') { window.openFundamentalsModal('${sym}'); }">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                            Fundamentals
-                        </button>
-                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openShareholdingModal === 'function') { window.openShareholdingModal('${sym}'); }">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
-                            Shareholding
-                        </button>
-                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openBulkBlockDealsModal === 'function') { window.openBulkBlockDealsModal('${sym}'); }">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3"/><path d="M8 8h8v8H8z"/></svg>
-                            Bulk & Block Deals
-                        </button>
-                        <div class="wl-row-menu-divider"></div>
-                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openAlertModal === 'function') { window.openAlertModal('${sym}'); }">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                            Set Alert
-                        </button>
-                        <button type="button" role="menuitem" class="wl-row-menu-item danger" onclick="event.stopPropagation(); closeAllWlMenus(); removeWatchlistStock('${activeWatchlistName}', '${sym}');">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                            Delete Stock
-                        </button>
-                    `;
+                            menuWrapper.appendChild(menuBtn);
+                    tdActions.appendChild(menuWrapper);
 
-                    menuContainer.appendChild(menuBtn);
-                    menuContainer.appendChild(dropdown);
-                    tdActions.appendChild(menuContainer);
 
                     tr.appendChild(tdSymbol);
                     tr.appendChild(tdPrice);
