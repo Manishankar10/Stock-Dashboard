@@ -407,8 +407,6 @@ def register_device_token(token, username=None, user_agent="", topics=None, subs
             keys_to_remove.append(k)
         elif endpoint and v_ep and v_ep == endpoint:
             keys_to_remove.append(k)
-        elif v.get("username") == username and v.get("is_pwa") == bool(is_pwa) and v.get("device_name") == device_label:
-            keys_to_remove.append(k)
 
     for k in set(keys_to_remove):
         subs.pop(k, None)

@@ -840,8 +840,11 @@
 
             const elSub = document.getElementById('stat-notif-subscribers');
             const elActive = document.getElementById('stat-notif-active-devices');
-            if (elSub) elSub.innerText = data.total_subscribers || 0;
-            if (elActive) elActive.innerText = `${data.active_subscribers || 0} Active Web & PWA devices`;
+            if (elSub) elSub.innerText = (data.unique_subscribers !== undefined ? data.unique_subscribers : data.total_subscribers) || 0;
+            if (elActive) {
+                const devCount = (data.total_devices !== undefined ? data.total_devices : data.active_subscribers) || 0;
+                elActive.innerText = `${devCount} Active Web & PWA devices`;
+            }
 
             const fcmStatusEl = document.getElementById('stat-notif-fcm-status');
             const fcmSubtextEl = document.getElementById('stat-notif-fcm-subtext');

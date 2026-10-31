@@ -50,15 +50,21 @@ def api_notification_config():
     except Exception:
         registered_users = set()
 
-    active_keys = [s for s in subs.values() if s.get("is_active", True) and s.get("username") in registered_users]
-    unique_users = set(s.get("username") for s in active_keys)
+    active_keys = [
+        s for s in subs.values()
+        if s.get("is_active", True) and (s.get("username") in registered_users if registered_users else (s.get("username") and s.get("username") != "guest"))
+    ]
+    unique_users = set(s.get("username") for s in active_keys if s.get("username"))
 
     return jsonify({
         "success": True,
         "is_configured": config["is_configured"],
         "vapid_public_key": config["vapid_public_key"],
         "project_id": config["project_id"],
-        "active_subscribers": len(unique_users),
+        "total_subscribers": len(unique_users),
+        "active_subscribers": len(active_keys),
+        "unique_subscribers": len(unique_users),
+        "total_devices": len(active_keys),
         "total_active_keys": len(active_keys)
     })
 
@@ -245,8 +251,20 @@ def admin_notification_stats():
     history = get_notification_history(limit=500)
     config = get_fcm_config()
 
-    total_subscribers = len(subs)
-    active_subscribers = sum(1 for s in subs.values() if s.get("is_active", True))
+    try:
+        from modules.common.auth_utils import load_users
+        registered_users = set(load_users().keys())
+    except Exception:
+        registered_users = set()
+
+    active_device_list = [
+        s for s in subs.values()
+        if s.get("is_active", True) and (s.get("username") in registered_users if registered_users else (s.get("username") and s.get("username") != "guest"))
+    ]
+    unique_users = set(s.get("username") for s in active_device_list if s.get("username"))
+
+    total_subscribers = len(unique_users)          # Unique users count
+    active_subscribers = len(active_device_list)   # Total devices enrolled count
 
     for h in history:
         if not h.get("timestamp_display") and h.get("timestamp"):
@@ -260,6 +278,8 @@ def admin_notification_stats():
         "config": config,
         "total_subscribers": total_subscribers,
         "active_subscribers": active_subscribers,
+        "unique_subscribers": total_subscribers,
+        "total_devices": active_subscribers,
         "subscribers_list": list(subs.values())[:30],
         "history": history
     })
