@@ -1611,7 +1611,7 @@
                         btn.type = 'button';
                         btn.className = `chart-web-fav-btn ${currentDrawingTool === id ? 'active' : ''}`;
                         btn.setAttribute('data-tool-id', id);
-                        btn.title = meta.title;
+                        btn.title = `${meta.title} (drag to change position)`;
                         btn.innerHTML = meta.icon;
 
                         // Drag & Drop reordering: Web Only
