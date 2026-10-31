@@ -3111,6 +3111,7 @@
     }
 
     .chart-name-text {
+        display: inline-block !important;
         font-size: 12px !important;
         white-space: nowrap !important;
         overflow: hidden !important;

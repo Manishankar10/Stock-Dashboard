@@ -1608,6 +1608,36 @@
         .chart-symbol-text { font-weight: 800; font-size: 16px; color: #ffffff; letter-spacing: 0.5px; }
         .chart-name-text { font-size: 13px; color: #94a3b8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; cursor: pointer; transition: color 0.15s ease; }
         .chart-name-text:hover { color: #cbd5e1; }
+
+        /* Web: Remove company name from chart topbar and make symbol dropdown fixed size */
+        @media (min-width: 769px) {
+            #chartModal .chart-name-text,
+            .chart-topbar .chart-name-text {
+                display: none !important;
+            }
+            #chartModal .chart-symbol-pill-box,
+            .chart-topbar .chart-symbol-pill-box {
+                width: 150px !important;
+                min-width: 150px !important;
+                max-width: 150px !important;
+                box-sizing: border-box !important;
+                justify-content: center !important;
+                gap: 6px !important;
+                padding: 4px 10px !important;
+            }
+            #chartModal .chart-symbol-pill-text,
+            .chart-topbar .chart-symbol-pill-text {
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+                text-align: center !important;
+            }
+            #chartModal .chart-symbol-pill-arrow,
+            .chart-topbar .chart-symbol-pill-arrow {
+                flex-shrink: 0 !important;
+                margin-left: 2px !important;
+            }
+        }
         .chart-symbol-search-dropdown { position: absolute; top: calc(100% + 8px); right: 0; left: auto; width: 380px; max-width: 90vw; background: #1e222d; border: 1px solid #363a45; border-radius: 10px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05); z-index: 2000; overflow: hidden; display: flex; flex-direction: column; animation: chartSearchSlideDown 0.15s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes chartSearchSlideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
         .chart-search-input-wrapper { position: relative; display: flex; align-items: center; padding: 9px 12px; border-bottom: 1px solid #2a2e39; background: #141722; gap: 8px; }
