@@ -9,6 +9,8 @@ from modules.notifications.fcm_service import (
     is_token_registered,
     send_web_push,
     get_notification_history,
+    get_notification_history_paginated,
+    get_notification_history_count,
     load_subscriptions,
     get_user_tokens,
     get_active_tokens,
@@ -246,9 +248,8 @@ def render_watchlist_card_endpoint():
 @notifications_bp.route("/api/admin/notifications/stats", methods=["GET"])
 @admin_required
 def admin_notification_stats():
-    """Returns detailed notification statistics, subscriptions, and audit trail for Admin Panel."""
+    """Returns detailed notification statistics and subscriptions for Admin Panel (without dumping all history)."""
     subs = load_subscriptions()
-    history = get_notification_history(limit=500)
     config = get_fcm_config()
 
     try:
@@ -266,12 +267,14 @@ def admin_notification_stats():
     total_subscribers = len(unique_users)          # Unique users count
     active_subscribers = len(active_device_list)   # Total devices enrolled count
 
-    for h in history:
-        if not h.get("timestamp_display") and h.get("timestamp"):
-            try:
-                h["timestamp_display"] = format_ist_display(h["timestamp"], with_tz=True)
-            except Exception:
-                h["timestamp_display"] = h.get("timestamp")
+    total_dispatched = get_notification_history_count()
+    recent = get_notification_history(limit=1)
+    last_sent = recent[0] if recent else None
+    if last_sent and not last_sent.get("timestamp_display") and last_sent.get("timestamp"):
+        try:
+            last_sent["timestamp_display"] = format_ist_display(last_sent["timestamp"], with_tz=True)
+        except Exception:
+            last_sent["timestamp_display"] = last_sent.get("timestamp")
 
     return jsonify({
         "success": True,
@@ -280,8 +283,33 @@ def admin_notification_stats():
         "active_subscribers": active_subscribers,
         "unique_subscribers": total_subscribers,
         "total_devices": active_subscribers,
+        "total_dispatched": total_dispatched,
+        "last_sent": last_sent,
         "subscribers_list": list(subs.values())[:30],
-        "history": history
+        "history": []
+    })
+
+
+@notifications_bp.route("/api/admin/notifications/history", methods=["GET"])
+@admin_required
+def admin_notification_history():
+    """Returns paginated notification audit trail records based on page and limit."""
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 20, type=int)
+    result = get_notification_history_paginated(page=page, limit=limit)
+    for h in result.get("items", []):
+        if not h.get("timestamp_display") and h.get("timestamp"):
+            try:
+                h["timestamp_display"] = format_ist_display(h["timestamp"], with_tz=True)
+            except Exception:
+                h["timestamp_display"] = h.get("timestamp")
+
+    return jsonify({
+        "success": True,
+        "total": result["total"],
+        "page": result["page"],
+        "limit": result["limit"],
+        "items": result["items"]
     })
 
 

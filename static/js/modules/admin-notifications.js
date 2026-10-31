@@ -940,134 +940,150 @@
                 }
             }
 
-            // Audit Trail
-            const history = data.history || [];
+            // Audit Trail Stats
             const elSentCount = document.getElementById('stat-notif-sent-count');
             const elLastSent = document.getElementById('stat-notif-last-sent');
-            if (elSentCount) elSentCount.innerText = history.length;
-            if (elLastSent && history.length > 0) {
-                elLastSent.innerText = `Last sent: ${formatNotifDateTime(history[0].timestamp_display || history[0].timestamp)}`;
+            if (elSentCount && data.total_dispatched !== undefined) {
+                elSentCount.innerText = data.total_dispatched;
+            }
+            if (elLastSent && data.last_sent) {
+                elLastSent.innerText = `Last sent: ${formatNotifDateTime(data.last_sent.timestamp_display || data.last_sent.timestamp)}`;
             }
 
-            _notifHistoryAll = history;
-            window.renderNotifHistoryPage(_notifCurrentPage);
+            // Load first page of audit records with limit
+            window.loadNotifHistoryPage(1, _notifPageSize);
         } catch (err) {
             console.error('[Admin] Error loading notification stats:', err);
         }
     };
 
-    // 9. Audit Trail Client-Side Pagination Controller (20 items default)
-    let _notifHistoryAll = [];
+    // 9. Audit Trail Server-Side Pagination Controller
+    let _notifTotalRecords = 0;
     let _notifCurrentPage = 1;
     let _notifPageSize = 20;
 
-    window.renderNotifHistoryPage = function (page = 1) {
-        const totalItems = _notifHistoryAll.length;
-        const totalPages = Math.ceil(totalItems / _notifPageSize) || 1;
-        _notifCurrentPage = Math.max(1, Math.min(page, totalPages));
+    window.loadNotifHistoryPage = async function (page = 1, pageSize = _notifPageSize) {
+        _notifCurrentPage = Math.max(1, parseInt(page, 10) || 1);
+        _notifPageSize = parseInt(pageSize, 10) || 20;
 
         const tbody = document.getElementById('notif-history-table-body');
         if (tbody) {
-            if (totalItems === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: var(--text-secondary);">No notification dispatches recorded yet. Use the buttons above to test.</td></tr>';
-            } else {
-                const startIndex = (_notifCurrentPage - 1) * _notifPageSize;
-                const endIndex = Math.min(startIndex + _notifPageSize, totalItems);
-                const pageItems = _notifHistoryAll.slice(startIndex, endIndex);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: var(--text-secondary);">Loading notification audit trail...</td></tr>';
+        }
 
-                tbody.innerHTML = pageItems.map((item) => {
-                    const isSuccess = String(item.status).toLowerCase().includes('delivered') || String(item.status).toLowerCase().includes('sent');
-                    const badgeStyle = isSuccess ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid #ca8a04;';
-                    return `
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 10px 12px; white-space: nowrap; font-family: monospace; font-size: 11.5px;">${formatNotifDateTime(item.timestamp_display || item.timestamp)}</td>
-                            <td style="padding: 10px 12px; font-weight: 600;">${item.type || 'General'}</td>
-                            <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${item.title || '-'}</td>
-                            <td style="padding: 10px 12px; color: var(--text-secondary); max-width: 300px; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 11.5px;">${item.body || '-'}</td>
-                            <td style="padding: 10px 12px; text-align: center; font-weight: 700;">${item.recipient_count || 0}</td>
-                            <td style="padding: 10px 12px; text-align: center;">
-                                <span class="badge" style="padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; ${badgeStyle}">
-                                    ${item.status || 'Logged'}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+        try {
+            const res = await fetch(`/api/admin/notifications/history?page=${_notifCurrentPage}&limit=${_notifPageSize}`);
+            const data = await res.json();
+            if (!data.success) {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: #ef4444;">Failed to load notification audit trail.</td></tr>';
+                return;
             }
-        }
 
-        // Update pagination bar elements
-        const infoEl = document.getElementById('notif-history-pagination-info');
-        const pageIndEl = document.getElementById('notif-history-page-indicator');
-        const prevBtn = document.getElementById('btn-notif-prev');
-        const nextBtn = document.getElementById('btn-notif-next');
-        const sizeSelect = document.getElementById('notif-history-page-size');
+            _notifTotalRecords = data.total || 0;
+            const items = data.items || [];
+            const totalPages = Math.ceil(_notifTotalRecords / _notifPageSize) || 1;
+            _notifCurrentPage = Math.min(_notifCurrentPage, totalPages);
 
-        if (sizeSelect && sizeSelect.value !== String(_notifPageSize)) {
-            sizeSelect.value = String(_notifPageSize);
-        }
-
-        if (infoEl) {
-            if (totalItems === 0) {
-                infoEl.innerText = 'Showing 0–0 of 0';
-            } else {
-                const start = (_notifCurrentPage - 1) * _notifPageSize + 1;
-                const end = Math.min(_notifCurrentPage * _notifPageSize, totalItems);
-                infoEl.innerText = `Showing ${start}–${end} of ${totalItems}`;
+            if (tbody) {
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: var(--text-secondary);">No notification dispatches recorded yet. Use the buttons above to test.</td></tr>';
+                } else {
+                    tbody.innerHTML = items.map((item) => {
+                        const isSuccess = String(item.status).toLowerCase().includes('delivered') || String(item.status).toLowerCase().includes('sent');
+                        const badgeStyle = isSuccess ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid #ca8a04;';
+                        return `
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px 12px; white-space: nowrap; font-family: monospace; font-size: 11.5px;">${formatNotifDateTime(item.timestamp_display || item.timestamp)}</td>
+                                <td style="padding: 10px 12px; font-weight: 600;">${item.type || 'General'}</td>
+                                <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${item.title || '-'}</td>
+                                <td style="padding: 10px 12px; color: var(--text-secondary); max-width: 300px; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 11.5px;">${item.body || '-'}</td>
+                                <td style="padding: 10px 12px; text-align: center; font-weight: 700;">${item.recipient_count || 0}</td>
+                                <td style="padding: 10px 12px; text-align: center;">
+                                    <span class="badge" style="padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; ${badgeStyle}">
+                                        ${item.status || 'Logged'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
             }
-        }
 
-        if (pageIndEl) {
-            pageIndEl.innerText = `Page ${_notifCurrentPage} of ${totalPages}`;
-        }
+            // Update pagination bar elements
+            const infoEl = document.getElementById('notif-history-pagination-info');
+            const pageIndEl = document.getElementById('notif-history-page-indicator');
+            const prevBtn = document.getElementById('btn-notif-prev');
+            const nextBtn = document.getElementById('btn-notif-next');
+            const sizeSelect = document.getElementById('notif-history-page-size');
 
-        if (prevBtn) {
-            const disabled = _notifCurrentPage <= 1;
-            prevBtn.disabled = disabled;
-            prevBtn.style.opacity = disabled ? '0.5' : '1';
-            prevBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
-        }
+            if (sizeSelect && sizeSelect.value !== String(_notifPageSize)) {
+                sizeSelect.value = String(_notifPageSize);
+            }
 
-        if (nextBtn) {
-            const disabled = _notifCurrentPage >= totalPages;
-            nextBtn.disabled = disabled;
-            nextBtn.style.opacity = disabled ? '0.5' : '1';
-            nextBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+            if (infoEl) {
+                if (_notifTotalRecords === 0) {
+                    infoEl.innerText = 'Showing 0–0 of 0';
+                } else {
+                    const start = (_notifCurrentPage - 1) * _notifPageSize + 1;
+                    const end = Math.min(_notifCurrentPage * _notifPageSize, _notifTotalRecords);
+                    infoEl.innerText = `Showing ${start}–${end} of ${_notifTotalRecords}`;
+                }
+            }
+
+            if (pageIndEl) {
+                pageIndEl.innerText = `Page ${_notifCurrentPage} of ${totalPages}`;
+            }
+
+            if (prevBtn) {
+                const disabled = _notifCurrentPage <= 1;
+                prevBtn.disabled = disabled;
+                prevBtn.style.opacity = disabled ? '0.5' : '1';
+                prevBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+            }
+
+            if (nextBtn) {
+                const disabled = _notifCurrentPage >= totalPages;
+                nextBtn.disabled = disabled;
+                nextBtn.style.opacity = disabled ? '0.5' : '1';
+                nextBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+            }
+        } catch (err) {
+            console.error('[Admin] Error loading paginated notification history:', err);
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: #ef4444;">Error loading notification audit trail.</td></tr>';
         }
+    };
+
+    window.renderNotifHistoryPage = function (page = 1) {
+        window.loadNotifHistoryPage(page, _notifPageSize);
     };
 
     window.changeNotifHistoryPageSize = function (newSize) {
         _notifPageSize = parseInt(newSize, 10) || 20;
         _notifCurrentPage = 1;
-        window.renderNotifHistoryPage(1);
+        window.loadNotifHistoryPage(1, _notifPageSize);
     };
 
     window.prevNotifHistoryPage = function () {
         if (_notifCurrentPage > 1) {
-            window.renderNotifHistoryPage(_notifCurrentPage - 1);
+            window.loadNotifHistoryPage(_notifCurrentPage - 1, _notifPageSize);
         }
     };
 
     window.nextNotifHistoryPage = function () {
-        const totalPages = Math.ceil(_notifHistoryAll.length / _notifPageSize) || 1;
+        const totalPages = Math.ceil(_notifTotalRecords / _notifPageSize) || 1;
         if (_notifCurrentPage < totalPages) {
-            window.renderNotifHistoryPage(_notifCurrentPage + 1);
+            window.loadNotifHistoryPage(_notifCurrentPage + 1, _notifPageSize);
         }
     };
 
-    // Auto-fetch latest bullion rates, portfolio previews, and stats immediately on load
+    // Auto-fetch latest bullion rates, portfolio previews, and stats ONLY if notifications tab is active
     function initNotificationsController() {
-        if (typeof window.fetchLiveBullionRates === 'function') {
-            window.fetchLiveBullionRates(false);
-        }
-        if (typeof window.loadNotificationStats === 'function') {
-            window.loadNotificationStats();
-        }
-        if (typeof window.loadUsersPortfolioDigest === 'function') {
-            window.loadUsersPortfolioDigest();
-        }
-        if (typeof window.updateGoldRatePreview === 'function') {
-            window.updateGoldRatePreview();
+        const notifTab = document.getElementById('tab-notifications');
+        if (notifTab && notifTab.classList.contains('active')) {
+            if (typeof window.fetchLiveBullionRates === 'function') window.fetchLiveBullionRates(false);
+            if (typeof window.loadNotificationStats === 'function') window.loadNotificationStats();
+            if (typeof window.loadUsersPortfolioDigest === 'function') window.loadUsersPortfolioDigest();
+            if (typeof window.updateGoldRatePreview === 'function') window.updateGoldRatePreview();
         }
     }
 

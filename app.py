@@ -106,6 +106,7 @@ app.jinja_loader = jinja2.ChoiceLoader([
     jinja2.FileSystemLoader([
         os.path.join(os.path.dirname(__file__), "templates"),
         os.path.join(os.path.dirname(__file__), "modules"),
+        os.path.join(os.path.dirname(__file__), "modules", "admin"),
         os.path.join(os.path.dirname(__file__), "modules", "fundamentals"),
         os.path.dirname(__file__)
     ])

@@ -159,7 +159,7 @@ def logout():
 @auth_admin_bp.route("/admin")
 @admin_required
 def admin_page():
-    return render_template("admin.html")
+    return render_template("admin/admin.html")
 
 @auth_admin_bp.route("/api/admin/stats", methods=["GET"])
 @admin_required

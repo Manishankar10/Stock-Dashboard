@@ -604,6 +604,55 @@ def get_notification_history(limit=50):
     return []
 
 
+def get_notification_history_paginated(page=1, limit=20):
+    """Retrieves paginated notification logs along with total records count."""
+    page = max(1, int(page or 1))
+    limit = max(1, min(100, int(limit or 20)))
+    skip = (page - 1) * limit
+    total = 0
+    items = []
+
+    if db is not None:
+        try:
+            col = db["notification_history"]
+            total = col.count_documents({})
+            items = list(col.find({}, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit))
+            return {"total": total, "page": page, "limit": limit, "items": items}
+        except Exception as e:
+            logger.error(f"MongoDB get_notification_history_paginated error: {e}")
+
+    if os.path.exists(NOTIFICATION_HISTORY_FILE):
+        try:
+            with open(NOTIFICATION_HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if not isinstance(data, list):
+                    data = []
+                total = len(data)
+                items = data[skip : skip + limit]
+                return {"total": total, "page": page, "limit": limit, "items": items}
+        except Exception as e:
+            logger.error(f"Local get_notification_history_paginated error: {e}")
+
+    return {"total": 0, "page": page, "limit": limit, "items": []}
+
+
+def get_notification_history_count():
+    """Returns total number of notifications recorded in history."""
+    if db is not None:
+        try:
+            return db["notification_history"].count_documents({})
+        except Exception:
+            pass
+    if os.path.exists(NOTIFICATION_HISTORY_FILE):
+        try:
+            with open(NOTIFICATION_HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return len(data) if isinstance(data, list) else 0
+        except Exception:
+            return 0
+    return 0
+
+
 # =====================================================================
 # Push Dispatch Engine (FCM v1 / Web Push)
 # =====================================================================

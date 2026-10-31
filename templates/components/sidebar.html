@@ -758,11 +758,11 @@
 }
 
 .app-sidebar.collapsed .sidebar-header {
-    padding: 10px 4px;
+    padding: 12px 6px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .app-sidebar.collapsed .sidebar-brand-group {
@@ -771,11 +771,14 @@
 }
 
 .app-sidebar.collapsed .sidebar-brand-logo {
-    height: 32px;
-    width: 32px;
-    max-width: 32px;
+    height: 34px;
+    width: 44px;
+    max-width: 44px;
     object-fit: contain;
-    border-radius: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    padding: 2px 4px;
+    background: var(--bg-card);
     margin: 0 auto;
     flex-shrink: 0;
     display: block;
@@ -801,24 +804,37 @@ body.sidebar-collapsed #btn-pwa-install {
 }
 
 .app-sidebar.collapsed .sidebar-toggle-btn {
-    width: 20px;
-    height: 20px;
-    font-size: 8px;
-    border-radius: 4px;
-    margin: 0 auto;
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+    border-radius: 6px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    margin: 4px auto 0 auto;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+.app-sidebar.collapsed .sidebar-nav,
+body.sidebar-collapsed .sidebar-nav {
+    padding: 10px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
 .app-sidebar.collapsed .tools-menu-item,
 body.sidebar-collapsed .tools-menu-item,
 .app-sidebar.collapsed .market-pulse-menu-item,
 body.sidebar-collapsed .market-pulse-menu-item {
-    width: 100% !important;
+    width: 44px !important;
     display: flex !important;
     justify-content: center !important;
+    margin: 0 auto !important;
 }
 
 .app-sidebar.collapsed .sidebar-nav-item,
@@ -827,26 +843,77 @@ body.sidebar-collapsed .market-pulse-menu-item {
 body.sidebar-collapsed .sidebar-nav-item,
 body.sidebar-collapsed .tools-menu-trigger,
 body.sidebar-collapsed .sidebar-nav-item.tools-menu-trigger {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
     justify-content: center !important;
-    padding: 10px 0 !important;
-    gap: 0 !important;
     text-align: center !important;
-    width: 100% !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}
+
+.app-sidebar.collapsed .sidebar-nav-item.active,
+body.sidebar-collapsed .sidebar-nav-item.active {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
 }
 
 .app-sidebar.collapsed .sidebar-nav-icon,
 body.sidebar-collapsed .sidebar-nav-icon {
+    font-size: 18px !important;
+    width: auto !important;
+    height: auto !important;
     margin: 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .app-sidebar.collapsed .sidebar-tools-row {
-    flex-direction: column;
-    gap: 6px;
+    flex-direction: column !important;
+    gap: 6px !important;
+    align-items: center !important;
+}
+
+.app-sidebar.collapsed .sidebar-tool-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .app-sidebar.collapsed .sidebar-user-card {
-    justify-content: center;
-    padding: 7px 0;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(30, 41, 59, 0.7) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.app-sidebar.collapsed .sidebar-user-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 /* Desktop Workspace Margins */
@@ -1118,11 +1185,25 @@ body.sidebar-collapsed .sidebar-nav-icon {
         }
     });
 
-    // Restore saved collapse preference on load & bind submenu hover
+    // Handle admin page auto-collapse & other pages auto-expand
     document.addEventListener('DOMContentLoaded', function() {
-        const saved = localStorage.getItem('sidebarCollapsed');
-        if (saved === 'true' && window.innerWidth > 768) {
-            toggleSidebarCollapse(true);
+        const isAdminPage = window.location.pathname.startsWith('/admin') || document.body.classList.contains('admin-page');
+        if (isAdminPage) {
+            if (window.innerWidth > 768) {
+                toggleSidebarCollapse(true);
+            }
+            const adminNav = document.getElementById('sidebar-nav-admin');
+            if (adminNav) {
+                adminNav.style.display = 'flex';
+                adminNav.classList.add('active');
+            }
+            const watchlistsNav = document.getElementById('sidebar-nav-watchlists');
+            if (watchlistsNav) watchlistsNav.classList.remove('active');
+        } else {
+            // Other page should automatically expand to normal
+            if (window.innerWidth > 768) {
+                toggleSidebarCollapse(false);
+            }
         }
 
         const pulseItem = document.querySelector('.market-pulse-menu-item');
@@ -1189,4 +1270,41 @@ body.sidebar-collapsed .sidebar-nav-icon {
             if (a) prefetchTarget(a.getAttribute('href'));
         }, { passive: true });
     })();
+
+    // Universal Router Bridge for Sidebar Navigation from Admin or Standalone Views
+    (function() {
+        const origSwitchTab = window.switchTab;
+        window.switchTab = function(tabName, pushState = true) {
+            const isAdmin = window.location.pathname.startsWith('/admin') || document.body.classList.contains('admin-page');
+            const targetEl = document.getElementById('tab-' + tabName);
+            if (isAdmin && !targetEl) {
+                const pathMap = {
+                    'watchlists': '/',
+                    'portfolios': '/portfolios',
+                    'dashboard': '/portfolios',
+                    'insights': '/insights',
+                    'smallcases': '/smallcases',
+                    'ipos': '/#ipos',
+                    'corporate-actions': '/#corporate-actions',
+                    'quarterly-results': '/quarterly-results',
+                    'transactions': '/transactions',
+                    'sector-rotation': '/sector-rotation',
+                    'industries-overview': '/industries-overview',
+                    'shareholding': '/#shareholding',
+                    'peoples': '/#peoples',
+                    'mutual-funds': '/#mutual-funds',
+                    'plan-calculator': '/#plan-calculator',
+                    'technical-screener': '/technical-screener'
+                };
+                window.location.href = pathMap[tabName] || ('/' + tabName);
+                return;
+            }
+            if (typeof origSwitchTab === 'function') {
+                return origSwitchTab(tabName, pushState);
+            } else {
+                window.location.href = (tabName === 'watchlists' ? '/' : ('/' + tabName));
+            }
+        };
+    })();
+
 </script>
