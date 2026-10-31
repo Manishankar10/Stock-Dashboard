@@ -530,9 +530,7 @@ function switchTab(tabName, pushState = true) {
         if (!window.watchlistsLoaded && typeof fetchWatchlists === 'function') {
             fetchWatchlists();
         } else if (typeof refreshPrices === 'function') {
-            refreshPrices().then(() => {
-                if (typeof renderWatchlists === 'function') renderWatchlists();
-            });
+            refreshPrices();
         }
     } else if (tabName === 'portfolios') {
         if (!window.portfoliosLoaded && typeof fetchPortfolios === 'function') {

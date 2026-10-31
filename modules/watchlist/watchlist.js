@@ -632,7 +632,6 @@
             // 2. Render Active Watchlist View
             const viewMount = document.getElementById('watchlist-view-mount');
             if (!viewMount) return;
-            viewMount.innerHTML = '';
 
             if (!activeWatchlistName || !watchlistsData[activeWatchlistName]) {
                 viewMount.innerHTML = '<div class="card-container" style="text-align:center; padding:40px; color:var(--text-secondary);">No active watchlist selected. Create or select a watchlist above!</div>';
@@ -668,138 +667,153 @@
                 return wlSortDirection === 'asc' ? valA - valB : valB - valA;
             });
 
-            const div = document.createElement('div');
-            div.className = 'card-container';
+            // Check if existing controls and search input are already present for this active watchlist
+            const existingCard = viewMount.querySelector('.card-container');
+            const existingControls = existingCard ? existingCard.querySelector('.controls') : null;
+            const existingInput = document.getElementById('wl-search-input');
+            const existingTableContainer = existingCard ? existingCard.querySelector('.wl-table-container') : null;
 
-            // Controls & Autocomplete search bar for active watchlist (Direct selection adds stock)
-            const controlsDiv = document.createElement('div');
-            controlsDiv.className = 'controls';
-            controlsDiv.style.justifyContent = 'space-between';
-            controlsDiv.style.alignItems = 'center';
-            controlsDiv.style.flexWrap = 'wrap';
-            controlsDiv.style.gap = '12px';
-            controlsDiv.style.marginBottom = '20px';
+            const canKeepControls = !!(existingCard && existingControls && existingInput && (existingInput.getAttribute('data-wl-name') === activeWatchlistName));
 
-            // Search Row (autocomplete search bar + mobile menu trigger)
-            const searchRow = document.createElement('div');
-            searchRow.className = 'wl-search-row';
+            function createWatchlistControls() {
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'controls';
+                controlsDiv.style.justifyContent = 'space-between';
+                controlsDiv.style.alignItems = 'center';
+                controlsDiv.style.flexWrap = 'wrap';
+                controlsDiv.style.gap = '12px';
+                controlsDiv.style.marginBottom = '20px';
 
-            const wrapper = document.createElement('div');
-            wrapper.className = 'autocomplete-wrapper';
-            wrapper.style.width = '100%';
+                // Search Row (autocomplete search bar + mobile menu trigger)
+                const searchRow = document.createElement('div');
+                searchRow.className = 'wl-search-row';
 
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.id = 'wl-search-input';
-            input.className = 'wl-input';
-            input.setAttribute('data-wl-name', activeWatchlistName);
-            input.placeholder = 'Search & click company to add (e.g. Reliance, TCS, Polymed)...';
-            input.onkeyup = (e) => {
-                if (e.key === 'Enter') {
-                    const val = input.value.trim();
-                    if (val) addWatchlistStock(activeWatchlistName, val);
-                } else {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'autocomplete-wrapper';
+                wrapper.style.width = '100%';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'wl-search-input';
+                input.className = 'wl-input';
+                input.setAttribute('data-wl-name', activeWatchlistName);
+                input.placeholder = 'Search & click company to add (e.g. Reliance, TCS, Polymed)...';
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = input.value.trim();
+                        if (val) addWatchlistStock(activeWatchlistName, val);
+                    }
+                };
+                input.onkeyup = (e) => {
+                    if (e.key !== 'Enter') {
+                        handleSearchInput('wl', input, e);
+                    }
+                };
+                input.oninput = (e) => {
                     handleSearchInput('wl', input, e);
+                };
+                input.autocomplete = 'off';
+
+                const dropdown = document.createElement('div');
+                dropdown.className = 'autocomplete-dropdown';
+
+                wrapper.appendChild(input);
+                wrapper.appendChild(dropdown);
+                searchRow.appendChild(wrapper);
+
+                // Mobile Refresh Button (glassy button matching portfolio style)
+                const mobRefreshBtn = document.createElement('button');
+                mobRefreshBtn.type = 'button';
+                mobRefreshBtn.className = 'wl-refresh-btn wl-mobile-refresh-btn';
+                const isMobSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
+                if (isMobSpinning) {
+                    mobRefreshBtn.classList.add('refreshing');
+                    mobRefreshBtn.setAttribute('aria-busy', 'true');
                 }
-            };
-            input.autocomplete = 'off';
+                mobRefreshBtn.title = 'Refresh Watchlist Quotes';
+                mobRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
+                mobRefreshBtn.innerHTML = `
+                    <svg class="${isMobSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                `;
+                mobRefreshBtn.onclick = () => triggerWatchlistRefresh(mobRefreshBtn);
+                searchRow.appendChild(mobRefreshBtn);
 
-            const dropdown = document.createElement('div');
-            dropdown.className = 'autocomplete-dropdown';
+                // Responsive Mobile Menu Button (Placed at right end of search bar)
+                const mobileMenuBtn = document.createElement('button');
+                mobileMenuBtn.type = 'button';
+                mobileMenuBtn.className = 'wl-mobile-menu-btn';
+                mobileMenuBtn.id = 'wl-mobile-menu-btn';
+                mobileMenuBtn.title = 'Watchlist Options & Actions';
+                mobileMenuBtn.setAttribute('aria-label', 'Watchlist Menu');
+                mobileMenuBtn.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="4" y1="7" x2="20" y2="7"></line>
+                        <line x1="4" y1="12" x2="20" y2="12"></line>
+                        <line x1="4" y1="17" x2="20" y2="17"></line>
+                    </svg>
+                `;
+                mobileMenuBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openWlMobileMenuModal();
+                };
+                searchRow.appendChild(mobileMenuBtn);
+                controlsDiv.appendChild(searchRow);
 
-            wrapper.appendChild(input);
-            wrapper.appendChild(dropdown);
-            searchRow.appendChild(wrapper);
+                // Desktop file controls (kept intact for web version)
+                const watchlistFileControls = document.createElement('div');
+                watchlistFileControls.className = 'watchlist-file-controls';
+                watchlistFileControls.style.display = 'flex';
+                watchlistFileControls.style.gap = '8px';
+                watchlistFileControls.style.alignItems = 'center';
+                watchlistFileControls.style.flexWrap = 'wrap';
 
-            // Mobile Refresh Button (glassy button matching portfolio style)
-            const mobRefreshBtn = document.createElement('button');
-            mobRefreshBtn.type = 'button';
-            mobRefreshBtn.className = 'wl-refresh-btn wl-mobile-refresh-btn';
-            const isMobSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
-            if (isMobSpinning) {
-                mobRefreshBtn.classList.add('refreshing');
-                mobRefreshBtn.setAttribute('aria-busy', 'true');
+                const officialFeedsBtn = document.createElement('button');
+                officialFeedsBtn.className = 'btn-secondary';
+                officialFeedsBtn.style.padding = '8px 14px';
+                officialFeedsBtn.style.fontSize = '12px';
+                officialFeedsBtn.title = 'View official exchange company announcements for this watchlist';
+                officialFeedsBtn.innerHTML = '◉ Official Feeds';
+                officialFeedsBtn.onclick = () => openWatchlistOfficialFeeds(activeWatchlistName);
+                watchlistFileControls.appendChild(officialFeedsBtn);
+
+                // Watchlist Refresh Button (matching responsive portfolio style)
+                const wlRefreshBtn = document.createElement('button');
+                wlRefreshBtn.type = 'button';
+                wlRefreshBtn.className = 'wl-refresh-btn wl-desktop-refresh-btn';
+                const isWebSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
+                if (isWebSpinning) {
+                    wlRefreshBtn.classList.add('refreshing');
+                    wlRefreshBtn.setAttribute('aria-busy', 'true');
+                }
+                wlRefreshBtn.title = 'Refresh Watchlist Quotes';
+                wlRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
+                wlRefreshBtn.innerHTML = `
+                    <svg class="${isWebSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                `;
+                wlRefreshBtn.onclick = () => triggerWatchlistRefresh(wlRefreshBtn);
+                watchlistFileControls.appendChild(wlRefreshBtn);
+
+                const watchlistOverflow = document.createElement('div');
+                watchlistOverflow.className = 'wl-overflow';
+                watchlistOverflow.id = 'watchlist-overflow-menu';
+                watchlistOverflow.innerHTML = `
+                    <button type="button" class="wl-overflow-trigger" aria-label="More watchlist actions" title="More actions" onclick="toggleActionOverflow(event, 'watchlist-overflow-menu')">⋮</button>
+                    <div class="wl-overflow-menu" role="menu">
+                        <button type="button" role="menuitem" onclick="exportActiveWatchlistToTxt(); closeActionOverflow(event)">⇩ Export</button>
+                        <button type="button" role="menuitem" onclick="openWatchlistTxtImportModal(); closeActionOverflow(event)">⇧ Import</button>
+                        <div class="wl-overflow-divider"></div>
+                        <button type="button" class="danger" role="menuitem" onclick="deleteActiveWatchlist(); closeActionOverflow(event)">Delete Watchlist</button>
+                    </div>`;
+                watchlistFileControls.appendChild(watchlistOverflow);
+                controlsDiv.appendChild(watchlistFileControls);
+
+                return { controlsDiv, input };
             }
-            mobRefreshBtn.title = 'Refresh Watchlist Quotes';
-            mobRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
-            mobRefreshBtn.innerHTML = `
-                <svg class="${isMobSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                </svg>
-            `;
-            mobRefreshBtn.onclick = () => triggerWatchlistRefresh(mobRefreshBtn);
-            searchRow.appendChild(mobRefreshBtn);
-
-            // Responsive Mobile Menu Button (Placed at right end of search bar)
-            const mobileMenuBtn = document.createElement('button');
-            mobileMenuBtn.type = 'button';
-            mobileMenuBtn.className = 'wl-mobile-menu-btn';
-            mobileMenuBtn.id = 'wl-mobile-menu-btn';
-            mobileMenuBtn.title = 'Watchlist Options & Actions';
-            mobileMenuBtn.setAttribute('aria-label', 'Watchlist Menu');
-            mobileMenuBtn.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="4" y1="7" x2="20" y2="7"></line>
-                    <line x1="4" y1="12" x2="20" y2="12"></line>
-                    <line x1="4" y1="17" x2="20" y2="17"></line>
-                </svg>
-            `;
-            mobileMenuBtn.onclick = (e) => {
-                e.stopPropagation();
-                openWlMobileMenuModal();
-            };
-            searchRow.appendChild(mobileMenuBtn);
-            controlsDiv.appendChild(searchRow);
-
-            // Desktop file controls (kept intact for web version)
-            const watchlistFileControls = document.createElement('div');
-            watchlistFileControls.className = 'watchlist-file-controls';
-            watchlistFileControls.style.display = 'flex';
-            watchlistFileControls.style.gap = '8px';
-            watchlistFileControls.style.alignItems = 'center';
-            watchlistFileControls.style.flexWrap = 'wrap';
-
-            const officialFeedsBtn = document.createElement('button');
-            officialFeedsBtn.className = 'btn-secondary';
-            officialFeedsBtn.style.padding = '8px 14px';
-            officialFeedsBtn.style.fontSize = '12px';
-            officialFeedsBtn.title = 'View official exchange company announcements for this watchlist';
-            officialFeedsBtn.innerHTML = '◉ Official Feeds';
-            officialFeedsBtn.onclick = () => openWatchlistOfficialFeeds(activeWatchlistName);
-            watchlistFileControls.appendChild(officialFeedsBtn);
-
-            // Watchlist Refresh Button (matching responsive portfolio style)
-            const wlRefreshBtn = document.createElement('button');
-            wlRefreshBtn.type = 'button';
-            wlRefreshBtn.className = 'wl-refresh-btn';
-            const isWebSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
-            if (isWebSpinning) {
-                wlRefreshBtn.classList.add('refreshing');
-                wlRefreshBtn.setAttribute('aria-busy', 'true');
-            }
-            wlRefreshBtn.title = 'Refresh Watchlist Quotes';
-            wlRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
-            wlRefreshBtn.innerHTML = `
-                <svg class="${isWebSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                </svg>
-            `;
-            wlRefreshBtn.onclick = () => triggerWatchlistRefresh(wlRefreshBtn);
-            watchlistFileControls.appendChild(wlRefreshBtn);
-
-            const watchlistOverflow = document.createElement('div');
-            watchlistOverflow.className = 'wl-overflow';
-            watchlistOverflow.id = 'watchlist-overflow-menu';
-            watchlistOverflow.innerHTML = `
-                <button type="button" class="wl-overflow-trigger" aria-label="More watchlist actions" title="More actions" onclick="toggleActionOverflow(event, 'watchlist-overflow-menu')">⋮</button>
-                <div class="wl-overflow-menu" role="menu">
-                    <button type="button" role="menuitem" onclick="exportActiveWatchlistToTxt(); closeActionOverflow(event)">⇩ Export</button>
-                    <button type="button" role="menuitem" onclick="openWatchlistTxtImportModal(); closeActionOverflow(event)">⇧ Import</button>
-                    <div class="wl-overflow-divider"></div>
-                    <button type="button" class="danger" role="menuitem" onclick="deleteActiveWatchlist(); closeActionOverflow(event)">Delete Watchlist</button>
-                </div>`;
-            watchlistFileControls.appendChild(watchlistOverflow);
-            controlsDiv.appendChild(watchlistFileControls);
 
             // Table of stocks in active watchlist
             const scrollContainer = document.createElement('div');
@@ -859,90 +873,112 @@
                     tr.className = 'pf-row';
                     tr.dataset.symbol = sym;
                     tr.dataset.companyName = compName;
-                    if (window.innerWidth <= 768) {
-                        tr.title = 'Click row to view interactive technical chart';
-                    }
-                    tr.onclick = (e) => {
-                        if (e.target.closest('.wl-row-menu-btn') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
-                        if (window._wlMenuJustClosed) return;
-                        if (typeof openInHouseChart === 'function') openInHouseChart(sym);
-                        else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
+                    tr.tabIndex = 0;
+                    tr.setAttribute('role', 'row');
+                    tr.setAttribute('aria-label', `${cleanDisplaySymbol(sym)} row, double click or press Enter to open chart`);
+
+                    tr.onmouseenter = (e) => showWlRowTooltip(e, sym, tr.dataset.companyName || compName);
+                    tr.onmouseleave = () => hideWlRowTooltip();
+                    tr.onmousemove = (e) => updateWlRowTooltipPos(e);
+
+                    tr.ondblclick = (e) => {
+                        if (e.target.closest('button, input, select, a, .wl-row-menu-btn, .wl-row-menu-dropdown')) return;
+                        if (typeof window.openInHouseChart === 'function') {
+                            window.openInHouseChart(sym);
+                        }
                     };
-                    const nameHtml = (hasData && info.name) 
-                        ? escapeHtml(info.name) 
-                        : '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
-                    const priceVal = hasData 
-                        ? '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) 
-                        : '<span class="skeleton-box" style="width: 60px; height: 14px;"></span>';
-                    const priceCls = (hasData && info.change !== undefined) 
-                        ? (info.change >= 0 ? 'pos' : 'neg') 
-                        : '';
-                    const sign = (hasData && info.change !== undefined && info.change >= 0) ? '+' : '';
-                    const amtSign = (hasData && info.change !== undefined) ? (info.change >= 0 ? '+' : '-') : '';
-                    const changeAmtHtml = (hasData && info.change !== undefined)
-                        ? `${amtSign}₹${Math.abs(info.change).toFixed(2)}`
-                        : '<span class="skeleton-box" style="width: 50px; height: 14px;"></span>';
-                    const changePctHtml = (hasData && info.change_pct !== undefined)
-                        ? `${sign}${info.change_pct.toFixed(2)}%`
-                        : '<span class="skeleton-box" style="width: 45px; height: 14px;"></span>';
-                    const subChangeHtml = (hasData && info.change !== undefined && info.change_pct !== undefined)
-                        ? `${sign}₹${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`
-                        : '';
-                    const changeCls = (hasData && info.change !== undefined)
-                        ? (info.change >= 0 ? 'pos' : 'neg')
-                        : '';
+
+                    tr.onkeydown = (e) => {
+                        if (e.key === 'Enter') {
+                            if (e.target.closest('button, input, select, a, .wl-row-menu-btn, .wl-row-menu-dropdown')) return;
+                            if (typeof window.openInHouseChart === 'function') {
+                                window.openInHouseChart(sym);
+                            }
+                        }
+                    };
 
                     const tdSymbol = document.createElement('td');
                     tdSymbol.className = 'wl-col-symbol';
-                    tdSymbol.innerHTML = `<div class="stock-symbol-row"><span class="stock-symbol">${cleanDisplaySymbol(sym)}</span><span class="badge ${bInfo.class}">${bInfo.label}</span></div><div class="company-name" id="name-${sym}">${nameHtml}</div>`;
+                    tdSymbol.innerHTML = `
+                        <div class="wl-symbol-container" style="display:flex; align-items:center; gap:6px;">
+                            <span class="symbol-name wl-symbol-link" style="cursor:pointer;" onclick="event.stopPropagation(); if (typeof window.openInHouseChart === 'function') { window.openInHouseChart('${sym}'); }">${cleanDisplaySymbol(sym)}</span>
+                            <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                        </div>
+                        <div class="company-name" id="name-${sym}">${escapeHtml(compName)}</div>
+                    `;
 
                     const tdPrice = document.createElement('td');
                     tdPrice.className = 'wl-col-price';
                     tdPrice.style.textAlign = 'right';
-                    tdPrice.innerHTML = `
-                        <span class="wl-price-val ${priceCls}" id="price-${sym}">${priceVal}</span>
-                        <span class="wl-sub-change ${changeCls}" id="sub-change-${sym}">${subChangeHtml}</span>
-                    `;
+                    tdPrice.innerHTML = `<span class="price-val ${hasData ? (info.change >= 0 ? 'pos' : 'neg') : ''}" id="price-${sym}">${hasData ? '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) : 'Loading...'}</span>`;
 
                     const tdChangeAmt = document.createElement('td');
-                    tdChangeAmt.className = `wl-col-change-amt ${changeCls}`;
+                    tdChangeAmt.className = 'wl-col-change-amt';
                     tdChangeAmt.style.textAlign = 'right';
-                    tdChangeAmt.id = `change-amt-${sym}`;
-                    tdChangeAmt.innerHTML = changeAmtHtml;
+                    const amtSign = hasData ? (info.change >= 0 ? '+' : '-') : '';
+                    tdChangeAmt.innerHTML = `<span class="change-amt-val ${hasData ? (info.change >= 0 ? 'pos' : 'neg') : ''}" id="change-amt-${sym}">${hasData ? amtSign + '₹' + Math.abs(info.change).toFixed(2) : '-'}</span>`;
 
                     const tdChangePct = document.createElement('td');
-                    tdChangePct.className = `wl-col-change-pct ${changeCls}`;
+                    tdChangePct.className = 'wl-col-change-pct';
                     tdChangePct.style.textAlign = 'right';
-                    tdChangePct.id = `change-pct-${sym}`;
-                    tdChangePct.innerHTML = changePctHtml;
+                    tdChangePct.innerHTML = `<span class="change-val ${hasData ? (info.change >= 0 ? 'pos' : 'neg') : ''}" id="change-pct-${sym}">${hasData ? (info.change >= 0 ? '+' : '') + info.change_pct.toFixed(2) + '%' : '-'}</span>`;
 
                     const tdActions = document.createElement('td');
                     tdActions.className = 'wl-col-actions';
                     tdActions.style.textAlign = 'center';
-                    tdActions.style.position = 'relative';
 
-                    const menuWrapper = document.createElement('div');
-                    menuWrapper.style.position = 'relative';
-                    menuWrapper.style.display = 'inline-block';
+                    const menuContainer = document.createElement('div');
+                    menuContainer.className = 'wl-row-menu-container';
+                    menuContainer.id = `wl-row-menu-${sym}`;
 
                     const menuBtn = document.createElement('button');
-                    menuBtn.className = 'btn-secondary wl-row-menu-btn';
-                    menuBtn.style.padding = '4px 8px';
-                    menuBtn.style.fontSize = '12px';
-                    menuBtn.style.fontWeight = '600';
-                    menuBtn.title = `Actions for ${sym}`;
-                    const isMob = window.innerWidth <= 768;
-                    menuBtn.innerHTML = isMob
-                        ? '<span class="wl-setting-icon">⚙️</span>'
-                        : '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
-                    menuBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        toggleWlRowMenu(e, sym);
-                    };
+                    menuBtn.type = 'button';
+                    menuBtn.className = 'wl-row-menu-btn';
+                    menuBtn.setAttribute('aria-label', `Actions for ${cleanDisplaySymbol(sym)}`);
+                    menuBtn.title = 'Row actions';
+                    menuBtn.innerHTML = `
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="5" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="19" r="2"/>
+                        </svg>
+                    `;
+                    menuBtn.onclick = (e) => toggleWlRowMenu(e, sym);
 
-                            menuWrapper.appendChild(menuBtn);
-                    tdActions.appendChild(menuWrapper);
+                    const dropdown = document.createElement('div');
+                    dropdown.className = 'wl-row-menu-dropdown';
+                    dropdown.setAttribute('role', 'menu');
+                    dropdown.innerHTML = `
+                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openInHouseChart === 'function') { window.openInHouseChart('${sym}'); }">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                            View Chart
+                        </button>
+                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openFundamentalsModal === 'function') { window.openFundamentalsModal('${sym}'); }">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                            Fundamentals
+                        </button>
+                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openShareholdingModal === 'function') { window.openShareholdingModal('${sym}'); }">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                            Shareholding
+                        </button>
+                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openBulkBlockDealsModal === 'function') { window.openBulkBlockDealsModal('${sym}'); }">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3"/><path d="M8 8h8v8H8z"/></svg>
+                            Bulk & Block Deals
+                        </button>
+                        <div class="wl-row-menu-divider"></div>
+                        <button type="button" role="menuitem" class="wl-row-menu-item" onclick="event.stopPropagation(); closeAllWlMenus(); if (typeof window.openAlertModal === 'function') { window.openAlertModal('${sym}'); }">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            Set Alert
+                        </button>
+                        <button type="button" role="menuitem" class="wl-row-menu-item danger" onclick="event.stopPropagation(); closeAllWlMenus(); removeWatchlistStock('${activeWatchlistName}', '${sym}');">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            Delete Stock
+                        </button>
+                    `;
 
+                    menuContainer.appendChild(menuBtn);
+                    menuContainer.appendChild(dropdown);
+                    tdActions.appendChild(menuContainer);
 
                     tr.appendChild(tdSymbol);
                     tr.appendChild(tdPrice);
@@ -957,9 +993,61 @@
             table.appendChild(tbody);
             scrollContainer.appendChild(table);
 
-            div.appendChild(controlsDiv);
-            div.appendChild(scrollContainer);
-            viewMount.appendChild(div);
+            if (canKeepControls) {
+                // Update spinner state if refreshing
+                const isSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
+                const mobBtn = existingControls.querySelector('.wl-mobile-refresh-btn');
+                if (mobBtn) {
+                    mobBtn.classList.toggle('refreshing', isSpinning);
+                    mobBtn.setAttribute('aria-busy', isSpinning ? 'true' : 'false');
+                    const svg = mobBtn.querySelector('svg');
+                    if (svg) svg.classList.toggle('spinning', isSpinning);
+                }
+                const deskBtn = existingControls.querySelector('.wl-desktop-refresh-btn') || existingControls.querySelector('.wl-refresh-btn:not(.wl-mobile-refresh-btn)');
+                if (deskBtn) {
+                    deskBtn.classList.toggle('refreshing', isSpinning);
+                    deskBtn.setAttribute('aria-busy', isSpinning ? 'true' : 'false');
+                    const svg = deskBtn.querySelector('svg');
+                    if (svg) svg.classList.toggle('spinning', isSpinning);
+                }
+
+                // Seamlessly swap only the table container so active search typing, entered text, and focus are never lost
+                if (existingTableContainer) {
+                    existingCard.replaceChild(scrollContainer, existingTableContainer);
+                } else {
+                    existingCard.appendChild(scrollContainer);
+                }
+            } else {
+                // Full render for initial load or switching active watchlist
+                let preservedValue = '';
+                let preservedFocus = false;
+                let preservedSelStart = 0;
+                let preservedSelEnd = 0;
+                if (existingInput && existingInput.getAttribute('data-wl-name') === activeWatchlistName) {
+                    preservedValue = existingInput.value;
+                    preservedFocus = (document.activeElement === existingInput);
+                    try {
+                        preservedSelStart = existingInput.selectionStart;
+                        preservedSelEnd = existingInput.selectionEnd;
+                    } catch (_) {}
+                }
+
+                viewMount.innerHTML = '';
+                const { controlsDiv, input } = createWatchlistControls();
+                const div = document.createElement('div');
+                div.className = 'card-container';
+                div.appendChild(controlsDiv);
+                div.appendChild(scrollContainer);
+                viewMount.appendChild(div);
+
+                if (preservedValue && input) {
+                    input.value = preservedValue;
+                    if (preservedFocus) {
+                        input.focus();
+                        try { input.setSelectionRange(preservedSelStart, preservedSelEnd); } catch(_) {}
+                    }
+                }
+            }
 
             if (typeof initWatchlistMobileSwipe === 'function') {
                 initWatchlistMobileSwipe();
