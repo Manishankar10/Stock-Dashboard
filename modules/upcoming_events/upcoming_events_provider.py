@@ -59,7 +59,14 @@ def _parse_date(raw_date: Optional[str]) -> Optional[datetime]:
     return None
 
 
-def _format_date_header(dt: datetime) -> str:
+def _format_date_header(dt: datetime, today: Optional[date] = None) -> str:
+    if today is None:
+        today = date.today()
+    dt_date = dt.date() if isinstance(dt, datetime) else dt
+    if dt_date == today:
+        return "Today"
+    if dt_date == today + timedelta(days=1):
+        return "Tomorrow"
     weekday = dt.strftime("%a")
     day = str(dt.day)
     month = dt.strftime("%b")
@@ -296,13 +303,35 @@ class UpcomingEventsProvider:
                 grouped[d] = []
             grouped[d].append(ev)
 
+        today_date = date.today()
+        tomorrow_date = today_date + timedelta(days=1)
+        today_iso = today_date.strftime("%Y-%m-%d")
+        tomorrow_iso = tomorrow_date.strftime("%Y-%m-%d")
+
         date_groups = []
         for d in sorted(grouped.keys()):
             items = grouped[d]
-            header = items[0].get("date_header") or d
+            is_today = (d == today_iso)
+            is_tomorrow = (d == tomorrow_iso)
+            if is_today:
+                header = "Today"
+            elif is_tomorrow:
+                header = "Tomorrow"
+            else:
+                parsed_d = _parse_date(d)
+                if parsed_d:
+                    header = _format_date_header(parsed_d, today_date)
+                else:
+                    header = items[0].get("date_header") or d
+
+            for it in items:
+                it["date_header"] = header
+
             date_groups.append({
                 "date": d,
                 "date_header": header,
+                "is_today": is_today,
+                "is_tomorrow": is_tomorrow,
                 "events": items,
             })
 
@@ -313,6 +342,7 @@ class UpcomingEventsProvider:
             "market_total": len(future_events),
             "meta": {
                 "today": today_iso,
+                "tomorrow": tomorrow_iso,
                 "symbols_count": len(wl_clean) if wl_clean is not None else 0,
             },
         }

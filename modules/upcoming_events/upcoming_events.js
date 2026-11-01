@@ -98,6 +98,35 @@
         if (!dateGroups || !dateGroups.length) return '';
 
         return dateGroups.map(group => {
+            const groupDateStr = group.date || '';
+
+            // Compute local today and tomorrow (in ISO YYYY-MM-DD)
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const todayIso = `${y}-${m}-${d}`;
+
+            const tmrw = new Date(now);
+            tmrw.setDate(now.getDate() + 1);
+            const ty = tmrw.getFullYear();
+            const tm = String(tmrw.getMonth() + 1).padStart(2, '0');
+            const td = String(tmrw.getDate()).padStart(2, '0');
+            const tomorrowIso = `${ty}-${tm}-${td}`;
+
+            const isToday = (group.is_today === true) || (groupDateStr === todayIso) || (String(group.date_header || '').trim().toLowerCase() === 'today');
+            const isTomorrow = (group.is_tomorrow === true) || (groupDateStr === tomorrowIso) || (String(group.date_header || '').trim().toLowerCase() === 'tomorrow');
+
+            let headerText = group.date_header || group.date;
+            if (isToday) {
+                headerText = 'Today';
+            } else if (isTomorrow) {
+                headerText = 'Tomorrow';
+            }
+
+            const headerClass = isToday ? 'upcoming-date-header is-today' : (isTomorrow ? 'upcoming-date-header is-tomorrow' : 'upcoming-date-header');
+            const groupClass = isToday ? 'upcoming-date-group group-today' : (isTomorrow ? 'upcoming-date-group group-tomorrow' : 'upcoming-date-group');
+
             const rowsHtml = group.events.map(ev => {
                 const sym = escapeHtml(ev.symbol || '');
                 const comp = escapeHtml(ev.company || (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(ev.symbol) : ev.symbol) || 'Company');
@@ -128,8 +157,8 @@
             }).join('');
 
             return `
-                <div class="upcoming-date-group">
-                    <div class="upcoming-date-header">${escapeHtml(group.date_header || group.date)}</div>
+                <div class="${groupClass}">
+                    <div class="${headerClass}">${escapeHtml(headerText)}</div>
                     <div class="upcoming-group-items">
                         ${rowsHtml}
                     </div>

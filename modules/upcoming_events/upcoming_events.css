@@ -287,6 +287,24 @@
     letter-spacing: 0.01em;
 }
 
+.upcoming-date-header.is-today {
+    color: #10b981 !important;
+    font-weight: 700;
+}
+
+.upcoming-date-header.is-tomorrow {
+    color: var(--text-primary, #ffffff);
+    font-weight: 700;
+}
+
+:root:not([data-theme="dark"]) .upcoming-date-header.is-today {
+    color: #10b981 !important;
+}
+
+:root:not([data-theme="dark"]) .upcoming-date-header.is-tomorrow {
+    color: #0f172a;
+}
+
 .upcoming-group-items {
     background: rgba(255, 255, 255, 0.025);
     border: 1px solid rgba(255, 255, 255, 0.05);
