@@ -2245,9 +2245,14 @@
                 if (currentDrawingTool) return;
                 if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn'))) return;
 
+                const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
                 const pt = getChartPointFromEvent(e);
-                if (pt && (activeAddTextButtonBox || findShapeOrLineAtPoint(pt.x, pt.y))) {
-                    // Handled by handleChartPaneMouseDown for drawing drag & click
+                const hitObj = pt ? findShapeOrLineAtPoint(pt.x, pt.y) : null;
+                const existingPopup = document.getElementById('canvasObjectPopup');
+                const isHitObjSelected = Boolean(isMobile && hitObj && existingPopup && existingPopup.style.display !== 'none' && existingPopup.dataset.activeObjId === String(hitObj.id));
+
+                if (pt && (activeAddTextButtonBox || (hitObj && (!isMobile || isHitObjSelected)))) {
+                    // Handled by handleChartPaneMouseDown for drawing drag & click when selected
                     return;
                 }
 
@@ -2777,6 +2782,11 @@
         }
 
         function handleChartPaneMouseMove(e) {
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+            if (isMobile) {
+                if (drawingCanvas) drawingCanvas.style.pointerEvents = 'none';
+                return;
+            }
             if (e.target && e.target.closest && e.target.closest('#canvasObjectPopup')) {
                 if (drawingCanvas) {
                     drawingCanvas.style.pointerEvents = 'auto';
@@ -2845,15 +2855,18 @@
                 return;
             }
 
-            // Clicked or touched on an existing drawing object
-            if (e.cancelable) e.preventDefault();
-            e.stopPropagation();
-
-            const isMobile = window.innerWidth <= 768;
+            const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
             const existingPopup = document.getElementById('canvasObjectPopup');
             let wasPopupOpenForThis = false;
-            if (isMobile && existingPopup && existingPopup.style.display === 'flex' && existingPopup.dataset.activeObjId === String(clickedObj.id)) {
+            if (existingPopup && existingPopup.style.display !== 'none' && existingPopup.dataset.activeObjId === String(clickedObj.id)) {
                 wasPopupOpenForThis = true;
+            }
+
+            // Clicked or touched on an existing drawing object
+            // On mobile, only intercept touch if already selected (so default screen movement / panning works unhindered)
+            if (!isMobile || wasPopupOpenForThis) {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
             }
 
             const now = Date.now();
@@ -2869,8 +2882,10 @@
 
             let dragPart = clickedObj.subPart || 'body';
 
-            activeDrawingCrosshair = { x: pt.x, y: pt.y, price: pt.price, time: pt.time, logical: pt.logical, futureOffset: pt.futureOffset || 0 };
-            syncCrosshairToPoint(pt);
+            if (!isMobile || wasPopupOpenForThis) {
+                activeDrawingCrosshair = { x: pt.x, y: pt.y, price: pt.price, time: pt.time, logical: pt.logical, futureOffset: pt.futureOffset || 0 };
+                syncCrosshairToPoint(pt);
+            }
 
             activeDrawingDrag = {
                 target: clickedObj,
@@ -2881,7 +2896,9 @@
                 initialPrice: clickedObj.kind === 'line' ? (getSavedPriceLines(currentChartSymbol).find(l => l.id === clickedObj.id)?.price || pt.price) : null,
                 initialShape: clickedObj.kind === 'shape' ? JSON.parse(JSON.stringify(getSavedChartShapes(currentChartSymbol).find(s => s.id === clickedObj.id) || {})) : null
             };
-            redrawCanvasOverlay();
+            if (!isMobile || wasPopupOpenForThis) {
+                redrawCanvasOverlay();
+            }
 
             const onWindowDrawingMove = (moveEvt) => {
                 if (!activeDrawingDrag) return;
@@ -2891,10 +2908,25 @@
                 const curPt = getChartPointFromEvent(moveEvt);
                 if (!curPt) return;
 
+                const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+                const dist = Math.hypot(curPt.x - activeDrawingDrag.startPt.x, curPt.y - activeDrawingDrag.startPt.y);
+
+                // On mobile app: drawings cannot be dragged unless selected first!
+                // During default screen movement / panning, never change position of drawings.
+                if (isMobile && !activeDrawingDrag.wasPopupOpenForThis) {
+                    if (dist >= 6) {
+                        activeDrawingDrag.hasMoved = true;
+                    }
+                    return;
+                }
+
+                if (isMobile && moveEvt.cancelable) {
+                    moveEvt.preventDefault();
+                }
+
                 activeDrawingCrosshair = { x: curPt.x, y: curPt.y, price: curPt.price, time: curPt.time, logical: curPt.logical, futureOffset: curPt.futureOffset || 0 };
                 syncCrosshairToPoint(curPt);
 
-                const dist = Math.hypot(curPt.x - activeDrawingDrag.startPt.x, curPt.y - activeDrawingDrag.startPt.y);
                 if (dist >= 4) {
                     activeDrawingDrag.hasMoved = true;
                     hideCanvasObjectMenu();
@@ -3073,11 +3105,31 @@
                     return;
                 }
 
+                const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
+
+                // On mobile, if drawing was NOT already selected:
+                if (isMobile && !activeDrawingDrag.wasPopupOpenForThis) {
+                    if (activeDrawingDrag.hasMoved) {
+                        // User was performing default screen movement (panning/swiping the chart)
+                        // Do NOT move drawing, do NOT open popup
+                        activeDrawingDrag = null;
+                        if (drawingCanvas) drawingCanvas.style.cursor = 'default';
+                        redrawCanvasOverlay();
+                        return;
+                    }
+                    // User tapped on the drawing to select it!
+                    showCanvasObjectMenu(activeDrawingDrag.target, activeDrawingDrag.startPt.x, activeDrawingDrag.startPt.y);
+                    activeDrawingDrag = null;
+                    if (drawingCanvas) drawingCanvas.style.cursor = 'default';
+                    redrawCanvasOverlay();
+                    return;
+                }
+
                 if (activeDrawingDrag.hasMoved) {
                     lastDrawingClickTime = 0;
                     lastDrawingClickId = null;
+                    const finalPt = getChartPointFromEvent(upEvt) || activeDrawingDrag.startPt;
                     if (activeDrawingDrag.target.kind === 'line') {
-                        const finalPt = getChartPointFromEvent(upEvt) || activeDrawingDrag.startPt;
                         if (finalPt && finalPt.price !== null && !isNaN(finalPt.price)) {
                             const newPrice = parseFloat(finalPt.price.toFixed(2));
                             const lines = getSavedPriceLines(currentChartSymbol);
@@ -3099,9 +3151,11 @@
                         }
                     }
                     renderActiveDrawingsList();
+                    if (isMobile && finalPt) {
+                        showCanvasObjectMenu(activeDrawingDrag.target, finalPt.x, finalPt.y);
+                    }
                     redrawCanvasOverlay();
                 } else {
-                    const isMobile = window.innerWidth <= 768;
                     if (isMobile && activeDrawingDrag.wasPopupOpenForThis) {
                         hideCanvasObjectMenu();
                     } else {
@@ -8509,6 +8563,7 @@
         window.toggleFavoriteTool = toggleFavoriteTool;
         window.executeToolById = executeToolById;
         window.showCanvasObjectMenu = showCanvasObjectMenu;
+        window.addHorizontalLineAtPrice = addHorizontalLineAtPrice;
         window.hideCanvasObjectMenu = hideCanvasObjectMenu;
 
         // =========================================================
