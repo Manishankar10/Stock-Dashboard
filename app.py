@@ -93,7 +93,6 @@ def add_auth_cache_control(response):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
-    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
     return response
 
 try:

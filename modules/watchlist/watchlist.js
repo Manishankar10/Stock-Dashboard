@@ -581,21 +581,21 @@
                 } catch(_) {}
             }
 
-            // 2. If already opened, close older window and open new (per user instruction)
-            if (_tvAppWindow && !_tvAppWindow.closed) {
+            // 1. If already opened, close older window and open new (per user instruction: close older and open new)
+            if (_tvAppWindow) {
                 try {
                     _tvAppWindow.close();
                 } catch(_) {}
                 _tvAppWindow = null;
             }
 
-            // 3. Open dedicated single TradingView window (always opens in foreground)
-            const appUrl = `/tv-chart?symbol=${encodeURIComponent(tvSym)}`;
+            // 2. Open full TradingView site directly in dedicated window (NOT iframe)
+            const tvUrl = `https://in.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}`;
             try {
-                _tvAppWindow = window.open(appUrl, 'CapitalDesk_TV_Window', windowFeatures);
+                _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_Window', windowFeatures);
             } catch(err) {
                 console.warn('Popup blocked, falling back to window.open:', err);
-                _tvAppWindow = window.open(appUrl, 'CapitalDesk_TV_Window');
+                _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_Window');
             }
 
             if (_tvAppWindow) {
