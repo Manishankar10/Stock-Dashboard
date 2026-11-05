@@ -536,40 +536,9 @@
             return 'NSE:' + clean;
         }
 
-        function promptTradingViewLayoutConfig() {
-            const current = localStorage.getItem('capital_desk_tv_layout_id') || '';
-            const input = prompt(
-                'Configure TradingView Chart Layout:\n\n' +
-                'Paste your TradingView Layout ID or full chart URL (e.g. "https://in.tradingview.com/chart/abc123xy/" or "abc123xy").\n\n' +
-                'Tip: If your saved layout has the watchlist closed and your invite-only indicator added, TradingView will automatically open with that exact clean layout!\n\n' +
-                'Leave empty to use default chart URL:',
-                current
-            );
-            if (input !== null) {
-                let cleanId = input.trim();
-                if (cleanId) {
-                    cleanId = cleanId.replace(/^https?:\/\/[^\/]+\/chart\/?/i, '').replace(/\/.*$/, '').trim();
-                }
-                localStorage.setItem('capital_desk_tv_layout_id', cleanId);
-                if (typeof showToast === 'function') {
-                    if (cleanId) {
-                        showToast(`TradingView Layout ID saved: ${cleanId}`, 'success', 2500);
-                    } else {
-                        showToast('Using default TradingView chart URL', 'info', 2000);
-                    }
-                }
-            }
-        }
-        window.promptTradingViewLayoutConfig = promptTradingViewLayoutConfig;
-
         function openTradingViewAppWindow(sym) {
             const tvSym = formatTradingViewSymbol(sym);
-            let layoutId = (localStorage.getItem('capital_desk_tv_layout_id') || '').trim();
-            if (layoutId) {
-                layoutId = layoutId.replace(/^https?:\/\/[^\/]+\/chart\/?/i, '').replace(/\/.*$/, '').trim();
-            }
-            const layoutPath = layoutId ? `${encodeURIComponent(layoutId)}/` : '';
-            const tvUrl = `https://in.tradingview.com/chart/${layoutPath}?symbol=${encodeURIComponent(tvSym)}`;
+            const tvUrl = `https://in.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}`;
             
             // Clean App Popup Window sizing & positioning
             const screenW = window.screen.availWidth || 1920;
@@ -882,26 +851,7 @@
                     });
                 };
 
-                const tvSettingsBtn = document.createElement('button');
-                tvSettingsBtn.type = 'button';
-                tvSettingsBtn.className = 'wl-tv-settings-btn';
-                tvSettingsBtn.id = 'wl-tv-settings-btn';
-                tvSettingsBtn.title = 'Configure TradingView Layout ID (for auto-hidden watchlist and saved indicators)';
-                tvSettingsBtn.innerHTML = '⚙️';
-                tvSettingsBtn.style.display = savedChartMode === 'tradingview' ? 'inline-flex' : 'none';
-                tvSettingsBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    promptTradingViewLayoutConfig();
-                };
-
-                const origOnChange = chartModeSelect.onchange;
-                chartModeSelect.onchange = (e) => {
-                    if (origOnChange) origOnChange(e);
-                    tvSettingsBtn.style.display = e.target.value === 'tradingview' ? 'inline-flex' : 'none';
-                };
-
                 chartModeContainer.appendChild(chartModeSelect);
-                chartModeContainer.appendChild(tvSettingsBtn);
                 searchRow.appendChild(chartModeContainer);
 
                 // Mobile Refresh Button (glassy button matching portfolio style)

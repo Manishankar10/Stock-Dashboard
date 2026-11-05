@@ -729,27 +729,7 @@
                 box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.2);
             }
 
-            .wl-tv-settings-btn {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 32px;
-                height: 38px;
-                border-radius: 8px;
-                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
-                background: var(--bg-card, #1e222d);
-                color: var(--text-secondary, #94a3b8);
-                cursor: pointer;
-                font-size: 13px;
-                padding: 0;
-                margin-left: 4px;
-                transition: all 0.2s ease;
-            }
 
-            .wl-tv-settings-btn:hover {
-                border-color: var(--accent-primary, #2962ff);
-                color: var(--text-primary, #ffffff);
-            }
         }
         
         /* Touch & Mouse Inner-Scrollable Responsive Table Container */
