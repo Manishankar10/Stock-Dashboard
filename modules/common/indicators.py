@@ -1,5 +1,230 @@
 import math
 
+def calculate_iwrider(candles, times, closes, n):
+    """
+    IWRider 2.0 (InvestmentWorks Community by Ayyamuthu)
+    - Moving Averages: Fast EMA 20, Mid EMA 50, Slow EMA 200
+    - Stan Weinstein 4-Stage Analysis (Accumulation, Markup, Distribution, Markdown)
+    - Signals:
+        B: Buy (Stage 2 Breakout)
+        A: Add (Pyramiding in Stage 2)
+        C: Consolidation
+        RS: Reduce / Caution (Below EMA 20)
+        HS: Half Sell (Below EMA 50)
+        E: Full Exit (Below EMA 200)
+    - Current Stage & Duration Table Widget
+    """
+    if n < 5:
+        return {
+            'current_stage': 'Stage 1: Accumulation',
+            'current_stage_num': 1,
+            'duration': 1,
+            'stage_color': '#64748b',
+            'markers': [],
+            'ema20': [],
+            'ema50': [],
+            'ema200': []
+        }
+
+    # Robust EMA generator
+    def get_ema_series(period):
+        eff_period = min(period, max(2, n // 2))
+        k = 2.0 / (eff_period + 1)
+        ema = [0.0] * n
+        init_val = sum(closes[:eff_period]) / float(eff_period)
+        ema[eff_period - 1] = init_val
+        for j in range(eff_period, n):
+            ema[j] = (closes[j] * k) + (ema[j - 1] * (1.0 - k))
+        for j in range(eff_period - 1):
+            ema[j] = ema[eff_period - 1]
+        return ema
+
+    ema20_vals = get_ema_series(20)
+    ema50_vals = get_ema_series(50)
+    ema200_vals = get_ema_series(200 if n >= 60 else min(50, n))
+
+    # Lightweight Charts series data
+    ema20_series = [{'time': times[i], 'value': round(ema20_vals[i], 2)} for i in range(n) if i >= min(19, n-1)]
+    ema50_series = [{'time': times[i], 'value': round(ema50_vals[i], 2)} for i in range(n) if i >= min(49, n-1)]
+    ema200_series = [{'time': times[i], 'value': round(ema200_vals[i], 2)} for i in range(n) if i >= min(199, n-1)]
+
+    stages = [1] * n
+    stage_names = ["Stage 1: Accumulation"] * n
+
+    for i in range(n):
+        c = closes[i]
+        e20 = ema20_vals[i]
+        e50 = ema50_vals[i]
+        e200 = ema200_vals[i]
+        prev_st = stages[i-1] if i > 0 else 1
+        
+        slope50 = (e50 - ema50_vals[max(0, i-3)])
+
+        # Stage 2: Advancing / Markup (Strong uptrend)
+        is_markup = (c > e50 and e20 >= e50 and (c > e200 or e50 >= e200 * 0.97) and slope50 >= -0.01)
+
+        # Stage 4: Declining / Markdown (Downtrend)
+        is_markdown = (c < e50 and e20 <= e50 and (c < e200 or e50 < e200) and slope50 <= 0.01)
+
+        if is_markup:
+            stages[i] = 2
+            stage_names[i] = "Stage 2: Markup"
+        elif is_markdown:
+            stages[i] = 4
+            stage_names[i] = "Stage 4: Markdown"
+        else:
+            if prev_st == 2 or prev_st == 3:
+                if c < e200 and e50 < e200:
+                    stages[i] = 4
+                    stage_names[i] = "Stage 4: Markdown"
+                else:
+                    stages[i] = 3
+                    stage_names[i] = "Stage 3: Distribution"
+            else:
+                if c > e50 and e20 > e50:
+                    stages[i] = 2
+                    stage_names[i] = "Stage 2: Markup"
+                else:
+                    stages[i] = 1
+                    stage_names[i] = "Stage 1: Accumulation"
+
+    curr_stage_num = stages[-1]
+    curr_stage_name = stage_names[-1]
+
+    stage_start_idx = n - 1
+    while stage_start_idx > 0 and stages[stage_start_idx - 1] == curr_stage_num:
+        stage_start_idx -= 1
+
+    import datetime
+    def parse_dt(t):
+        if isinstance(t, str):
+            try: return datetime.datetime.strptime(t[:10], '%Y-%m-%d').date()
+            except Exception: return None
+        elif isinstance(t, (int, float)):
+            try: return datetime.datetime.fromtimestamp(t).date()
+            except Exception: return None
+        return None
+
+    d_start = parse_dt(times[stage_start_idx])
+    d_curr = parse_dt(times[-1])
+    if d_start and d_curr:
+        stage_duration = max(1, (d_curr - d_start).days)
+    else:
+        stage_duration = n - stage_start_idx
+
+    stage_colors = {
+        1: '#64748b', # Slate (Accumulation)
+        2: '#10b981', # Green (Markup)
+        3: '#f59e0b', # Amber / Orange (Distribution)
+        4: '#ef4444'  # Red (Markdown)
+    }
+    curr_stage_color = stage_colors.get(curr_stage_num, '#f59e0b')
+
+    markers = []
+    last_signal_idx = -10
+    last_signal_type = None
+
+    for i in range(1, n):
+        t = times[i]
+        c = closes[i]
+        prev_c = closes[i-1]
+        o = candles[i].get('open', c)
+        h = candles[i].get('high', c)
+        l = candles[i].get('low', c)
+        e20 = ema20_vals[i]
+        e50 = ema50_vals[i]
+        e200 = ema200_vals[i]
+        prev_e50 = ema50_vals[i-1]
+        prev_e200 = ema200_vals[i-1]
+        st = stages[i]
+        prev_st = stages[i-1]
+
+        # 1. FULL EXIT (E) — below EMA 200 or Stage 4 trigger
+        if (c < e200 and prev_c >= prev_e200) or (prev_st != 4 and st == 4 and last_signal_type != 'E'):
+            markers.append({
+                'time': t,
+                'position': 'aboveBar',
+                'color': '#a855f7',
+                'shape': 'arrowDown',
+                'text': 'E'
+            })
+            last_signal_idx = i
+            last_signal_type = 'E'
+            continue
+
+        # 2. HALF SELL (HS) — below EMA 50
+        if (c < e50 and prev_c >= prev_e50) and (prev_st in (2, 3) or st == 3) and last_signal_type not in ('HS', 'E'):
+            markers.append({
+                'time': t,
+                'position': 'aboveBar',
+                'color': '#ef4444',
+                'shape': 'arrowDown',
+                'text': 'HS'
+            })
+            last_signal_idx = i
+            last_signal_type = 'HS'
+            continue
+
+        # 3. BUY (B) — Initial Stage 2 Breakout
+        is_buy_trigger = (
+            (st == 2 and prev_st != 2) or
+            (st == 2 and c > e20 and c > e50 and prev_c <= e20 and c > o)
+        )
+        if is_buy_trigger and (i - last_signal_idx >= 6 or last_signal_type in ('E', 'HS')):
+            markers.append({
+                'time': t,
+                'position': 'belowBar',
+                'color': '#10b981',
+                'shape': 'arrowUp',
+                'text': 'B'
+            })
+            last_signal_idx = i
+            last_signal_type = 'B'
+            continue
+
+        # 4. ADD (A) — Pyramiding in Stage 2
+        if st == 2 and (i - last_signal_idx >= 3) and last_signal_type in ('B', 'A'):
+            bounced_20 = (l <= e20 * 1.015 and c > e20 and c > o)
+            prev_8_high = max([candles[k].get('high', closes[k]) for k in range(max(0, i-8), i)])
+            breakout_high = (c > prev_8_high and c > e20 and c > o)
+
+            if bounced_20 or breakout_high:
+                markers.append({
+                    'time': t,
+                    'position': 'belowBar',
+                    'color': '#10b981',
+                    'shape': 'arrowUp',
+                    'text': 'A'
+                })
+                last_signal_idx = i
+                last_signal_type = 'A'
+                continue
+
+        # 5. REDUCE / CAUTION (RS) — warning below 20 EMA in Stage 3
+        if st == 3 and c < e20 and prev_c >= e20 and c > e50 and (i - last_signal_idx >= 4):
+            markers.append({
+                'time': t,
+                'position': 'aboveBar',
+                'color': '#f59e0b',
+                'shape': 'arrowDown',
+                'text': 'RS'
+            })
+            last_signal_idx = i
+            last_signal_type = 'RS'
+            continue
+
+    return {
+        'current_stage': curr_stage_name,
+        'current_stage_num': curr_stage_num,
+        'duration': stage_duration,
+        'stage_color': curr_stage_color,
+        'markers': markers,
+        'ema20': ema20_series,
+        'ema50': ema50_series,
+        'ema200': ema200_series
+    }
+
+
 def calculate_indicators(candles):
     closes = [c['close'] for c in candles]
     times = [c['time'] for c in candles]
@@ -418,7 +643,11 @@ def calculate_indicators(candles):
             'mult': 2.5
         }
 
+    # IWRider 2.0 (Weinstein Stage Analysis + Trend Riding)
+    iwrider = calculate_iwrider(candles, times, closes, n)
+
     return {
+        'iwrider': iwrider,
         'sma20': sma20,
         'sma50': sma50,
         'sma200': sma200,

@@ -445,6 +445,7 @@ def get_chart_history():
         'bollinger_middle': ind['bollinger_middle'],
         'bollinger_lower': ind['bollinger_lower'],
         'gann_2day': ind.get('gann_2day', []),
+        'iwrider': ind.get('iwrider', {}),
         'cdrider': ind.get('cdrider', []),
         'cdrider_buy': ind.get('cdrider_buy', []),
         'cdrider_sell': ind.get('cdrider_sell', []),

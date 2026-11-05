@@ -36,6 +36,8 @@
         // Indicator Series
         var cdRiderSeries = null;
         var cachedCdRiderMarkers = [];
+        var cachedIwRiderMarkers = [];
+        var cachedIwRiderData = null;
         var stTriggerSeries = null;
         var stTriggerPriceLine = null;
         var cachedStTriggerMarkers = [];
@@ -149,7 +151,7 @@
                 const saved = localStorage.getItem('capital_desk_chart_indicators');
                 if (saved) {
                     const prefs = JSON.parse(saved);
-                    const keys = ['chkCdRider', 'chkStTrigger', 'chkBsDonchian', 'chkVolume', 'chkVolumeMa', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
+                    const keys = ['chkIwRider', 'chkCdRider', 'chkStTrigger', 'chkBsDonchian', 'chkVolume', 'chkVolumeMa', 'chkSma50', 'chkSma200', 'chkEma9', 'chkGann2Day', 'chkRsi', 'chkMacd'];
                     keys.forEach(k => {
                         const el = document.getElementById(k);
                         if (el && prefs[k] !== undefined) {
@@ -6663,6 +6665,19 @@
             }
 
             // Indicators
+            // IWRider 2.0 (Weinstein Stage Analysis + Signals)
+            if (data.iwrider) {
+                cachedIwRiderData = data.iwrider;
+                cachedIwRiderMarkers = (data.iwrider.markers || []).sort((a, b) => {
+                    const ta = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() || 0);
+                    const tb = typeof b.time === 'number' ? b.time : (new Date(b.time).getTime() || 0);
+                    return ta - tb;
+                });
+            } else {
+                cachedIwRiderData = null;
+                cachedIwRiderMarkers = [];
+            }
+
             cdRiderSeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'CDRider', visible: false, autoscaleInfoProvider: indicatorAutoscaleInfo });
             if (data.cdrider) cdRiderSeries.setData(data.cdrider);
 
@@ -7690,6 +7705,7 @@
         function toggleIndicators() {
             if (!volumeSeries) return;
 
+            const showIwRider = document.getElementById('chkIwRider') ? document.getElementById('chkIwRider').checked : true;
             const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false;
             const showStTrigger = document.getElementById('chkStTrigger') ? document.getElementById('chkStTrigger').checked : false;
             const showBsDonchian = document.getElementById('chkBsDonchian') ? document.getElementById('chkBsDonchian').checked : false;
@@ -7704,6 +7720,7 @@
 
             try {
                 localStorage.setItem('capital_desk_chart_indicators', JSON.stringify({
+                    chkIwRider: showIwRider,
                     chkCdRider: showCdRider,
                     chkStTrigger: showStTrigger,
                     chkBsDonchian: showBsDonchian,
@@ -7792,6 +7809,9 @@
 
             if (mainSeries) {
                 const combinedMarkers = [];
+                if (showIwRider && cachedIwRiderMarkers && cachedIwRiderMarkers.length > 0) {
+                    combinedMarkers.push(...cachedIwRiderMarkers);
+                }
                 if (showCdRider && cachedCdRiderMarkers && cachedCdRiderMarkers.length > 0) {
                     combinedMarkers.push(...cachedCdRiderMarkers);
                 }
@@ -7838,6 +7858,35 @@
             if (ema9Series) ema9Series.applyOptions({ visible: effectiveShowEma9 });
             if (ema21Series) ema21Series.applyOptions({ visible: effectiveShowEma21 });
             if (gann2DaySeries) gann2DaySeries.applyOptions({ visible: showGann2Day });
+
+            // Update IWRider 2.0 Floating Stage Table Widget
+            const stageBox = document.getElementById('iwRiderStageBox');
+            if (stageBox) {
+                if (showIwRider && cachedIwRiderData) {
+                    stageBox.style.display = 'block';
+                    const stageCell = document.getElementById('iwStageCell');
+                    const durCell = document.getElementById('iwDurationCell');
+                    if (stageCell) {
+                        stageCell.innerText = cachedIwRiderData.current_stage || 'Stage 1: Accumulation';
+                        stageCell.style.backgroundColor = cachedIwRiderData.stage_color || '#f59e0b';
+                    }
+                    if (durCell) {
+                        durCell.innerText = cachedIwRiderData.duration !== undefined ? cachedIwRiderData.duration : '-';
+                    }
+                } else {
+                    stageBox.style.display = 'none';
+                }
+            }
+
+            const elIwLeg = document.getElementById('legIwRiderGroup');
+            if (elIwLeg) {
+                elIwLeg.style.display = (showIwRider && cachedIwRiderData) ? 'inline' : 'none';
+                const legVal = document.getElementById('legIwRider');
+                if (legVal && cachedIwRiderData) {
+                    legVal.innerText = cachedIwRiderData.current_stage || '-';
+                    legVal.style.color = cachedIwRiderData.stage_color || '#10b981';
+                }
+            }
 
             if (document.getElementById('legCdRiderGroup')) {
                 document.getElementById('legCdRiderGroup').style.display = showCdRider ? 'inline' : 'none';

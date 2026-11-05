@@ -415,6 +415,7 @@
                             </button>
                             <div class="chart-popover-menu" id="popover-indicators">
                                 <div class="popover-menu-title">Indicators</div>
+                                <label class="popover-item-checkbox"><input type="checkbox" id="chkIwRider" checked onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 700;">IWRider 2.0 (Stage Analysis)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkCdRider" onchange="toggleIndicators()"> <span style="color:#10b981; font-weight: 600;">CDRider (Supertrend)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkStTrigger" onchange="toggleIndicators()"> <span style="color:#22c55e; font-weight: 600;">ST Trigger (1, 2.5)</span></label>
                                 <label class="popover-item-checkbox"><input type="checkbox" id="chkBsDonchian" onchange="toggleIndicators()"> <span style="color:#ffc300; font-weight: 600;">BS Donchian (20)</span></label>
@@ -682,6 +683,7 @@
                     <div class="legend-item" id="legVolGroup">VOL: <span class="legend-val" id="legVol">-</span></div>
                     <div class="legend-item" id="legVolMaGroup" style="display: none;">VOL MA: <span class="legend-val" style="color:#2962ff" id="legVolMa">-</span></div>
                     <div class="legend-item" id="legSmaGroup">
+                        <span id="legIwRiderGroup" style="display: inline;">IWRider: <span class="legend-val" style="color:#10b981; font-weight:700;" id="legIwRider">-</span> | </span>
                         <span id="legCdRiderGroup" style="display: none;">CDRider: <span class="legend-val" style="color:#10b981" id="legCdRider">-</span> | </span>
                         <span id="legStTriggerGroup" style="display: none;">ST Trig: <span class="legend-val" id="legStTrigger">-</span> | </span>
                         <span id="legBsDonchianGroup" style="display: none;">Donchian: <span class="legend-val" id="legBsDonchian">-</span> | </span>
@@ -754,6 +756,23 @@
                 </div>
 
                 <div id="mainChartPane" style="flex: 3; width: 100%; position: relative;">
+                    <!-- IWRider 2.0 Floating Stage Table Widget (TradingView Style, Bottom Left) -->
+                    <div id="iwRiderStageBox" class="iwrider-stage-box" style="display: none;">
+                        <table class="iwrider-stage-table">
+                            <thead>
+                                <tr>
+                                    <th class="iwrider-th-stage">Current Stage</th>
+                                    <th class="iwrider-th-duration">Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="iwrider-td-stage" id="iwStageCell">Stage 3: Distribution</td>
+                                    <td class="iwrider-td-duration" id="iwDurationCell">164</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                     <div id="chartWatermark" class="chart-watermark">
                         <img src="/static/capital_desk_icon.png" alt="Capital Desk" class="chart-watermark-icon">
                         <span class="chart-watermark-text">Capital Desk</span>
