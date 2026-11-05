@@ -512,6 +512,95 @@
         }
         window.triggerWatchlistRefresh = triggerWatchlistRefresh;
 
+        // =========================================================
+        // WATCHLIST TRADINGVIEW POPUP WINDOW & SYNC CONTROLLER
+        // =========================================================
+        let _tvAppWindow = null;
+
+        function formatTradingViewSymbol(sym) {
+            if (!sym) return 'NSE:NIFTY';
+            let s = String(sym).trim();
+            const upper = s.toUpperCase();
+            if (upper === '^NSEI' || upper === 'NIFTY' || upper === 'NIFTY 50') return 'NSE:NIFTY';
+            if (upper === '^NSEBANK' || upper === '^BANKNIFTY' || upper === 'BANKNIFTY' || upper === 'NIFTY BANK') return 'NSE:BANKNIFTY';
+            if (upper === '^CNXIT' || upper === 'NIFTY IT') return 'NSE:NIFTYIT';
+            
+            // Check BSE suffix
+            if (s.endsWith('.BO') || s.endsWith('.BS') || s.endsWith('.BSE') || s.startsWith('BSE:')) {
+                const clean = s.replace(/^(BSE:)/i, '').replace(/\.(BO|BS|BSE)$/i, '');
+                return 'BSE:' + clean;
+            }
+            
+            // Default to NSE for Indian stocks
+            const clean = s.replace(/^(NSE:)/i, '').replace(/\.(NS|NSE)$/i, '');
+            return 'NSE:' + clean;
+        }
+
+        function openTradingViewAppWindow(sym) {
+            const tvSym = formatTradingViewSymbol(sym);
+            const tvUrl = `https://in.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}`;
+            
+            // Clean App Popup Window sizing & positioning
+            const screenW = window.screen.availWidth || 1920;
+            const screenH = window.screen.availHeight || 1080;
+            
+            const width = Math.min(1300, Math.max(900, Math.floor(screenW * 0.65)));
+            const height = Math.min(920, Math.max(650, Math.floor(screenH * 0.88)));
+            
+            const left = Math.max(0, screenW - width - 20);
+            const top = Math.max(0, Math.floor((screenH - height) / 2));
+            
+            const windowFeatures = [
+                `width=${width}`,
+                `height=${height}`,
+                `left=${left}`,
+                `top=${top}`,
+                'menubar=no',
+                'toolbar=no',
+                'location=no',
+                'status=no',
+                'directories=no',
+                'scrollbars=yes',
+                'resizable=yes'
+            ].join(',');
+
+            const clean = (typeof cleanDisplaySymbol === 'function') ? cleanDisplaySymbol(sym) : sym;
+            if (typeof showToast === 'function') {
+                showToast(`Syncing ${clean} to TradingView App Window...`, 'info', 2200);
+            }
+
+            try {
+                if (!_tvAppWindow || _tvAppWindow.closed) {
+                    _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_AppWindow', windowFeatures);
+                } else {
+                    _tvAppWindow.location.href = tvUrl;
+                    _tvAppWindow.focus();
+                }
+            } catch(err) {
+                console.warn('Popup blocked, falling back to window.open:', err);
+                _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_AppWindow');
+            }
+
+            if (_tvAppWindow) {
+                try {
+                    _tvAppWindow.focus();
+                } catch(_) {}
+            }
+        }
+
+        function handleWatchlistStockClick(sym) {
+            const chartMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
+            if (chartMode === 'tradingview') {
+                openTradingViewAppWindow(sym);
+            } else {
+                if (typeof openInHouseChart === 'function') openInHouseChart(sym);
+                else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
+            }
+        }
+        window.openTradingViewAppWindow = openTradingViewAppWindow;
+        window.handleWatchlistStockClick = handleWatchlistStockClick;
+        window.formatTradingViewSymbol = formatTradingViewSymbol;
+
         function renderWatchlists() {
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
             // 1. Render Selector Bar
@@ -722,6 +811,43 @@
                 wrapper.appendChild(dropdown);
                 searchRow.appendChild(wrapper);
 
+                // Chart Engine Dropdown (along search bar row)
+                const chartModeContainer = document.createElement('div');
+                chartModeContainer.className = 'wl-chart-mode-container';
+                chartModeContainer.title = 'Select Chart Engine: Native Chart Modal vs TradingView App Window';
+
+                const chartModeSelect = document.createElement('select');
+                chartModeSelect.id = 'wl-chart-mode-select';
+                chartModeSelect.className = 'wl-chart-mode-select';
+                chartModeSelect.setAttribute('aria-label', 'Chart Engine Mode');
+                chartModeSelect.innerHTML = `
+                    <option value="native">📊 Native chart</option>
+                    <option value="tradingview">📈 Tradingview chart</option>
+                `;
+                const savedChartMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
+                chartModeSelect.value = savedChartMode;
+
+                chartModeSelect.onchange = (e) => {
+                    const mode = e.target.value;
+                    localStorage.setItem('capital_desk_watchlist_chart_mode', mode);
+                    if (typeof showToast === 'function') {
+                        if (mode === 'tradingview') {
+                            showToast('Tradingview chart active: Clicking any stock opens/syncs TradingView App Popup', 'info', 2800);
+                        } else {
+                            showToast('Native chart active: Clicking any stock opens Capital Desk in-house chart', 'info', 2000);
+                        }
+                    }
+                    const rows = document.querySelectorAll('.wl-table tr.pf-row');
+                    rows.forEach(r => {
+                        if (window.innerWidth <= 768) {
+                            r.title = mode === 'tradingview' ? 'Click row to sync TradingView chart' : 'Click row to view interactive technical chart';
+                        }
+                    });
+                };
+
+                chartModeContainer.appendChild(chartModeSelect);
+                searchRow.appendChild(chartModeContainer);
+
                 // Mobile Refresh Button (glassy button matching portfolio style)
                 const mobRefreshBtn = document.createElement('button');
                 mobRefreshBtn.type = 'button';
@@ -873,14 +999,14 @@
                     tr.className = 'pf-row';
                     tr.dataset.symbol = sym;
                     tr.dataset.companyName = compName;
+                    const currentMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
                     if (window.innerWidth <= 768) {
-                        tr.title = 'Click row to view interactive technical chart';
+                        tr.title = currentMode === 'tradingview' ? 'Click row to sync TradingView chart' : 'Click row to view interactive technical chart';
                     }
                     tr.onclick = (e) => {
                         if (e.target.closest('.wl-row-menu-btn') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
                         if (window._wlMenuJustClosed) return;
-                        if (typeof openInHouseChart === 'function') openInHouseChart(sym);
-                        else if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
+                        handleWatchlistStockClick(sym);
                     };
                     const nameHtml = (hasData && info.name) 
                         ? escapeHtml(info.name) 
@@ -972,6 +1098,10 @@
             scrollContainer.appendChild(table);
 
             if (canKeepControls) {
+                const chartModeSel = existingControls.querySelector('#wl-chart-mode-select');
+                if (chartModeSel) {
+                    chartModeSel.value = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
+                }
                 // Update spinner state if refreshing
                 const isSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
                 const mobBtn = existingControls.querySelector('.wl-mobile-refresh-btn');
@@ -1221,8 +1351,7 @@
 
             const menuItems = [
                 { label: '📊 Technical Chart', action: () => {
-                    if (typeof window.openInHouseChart === 'function') window.openInHouseChart(sym);
-                    else if (typeof openInHouseChart === 'function') openInHouseChart(sym);
+                    handleWatchlistStockClick(sym);
                 }},
                 { label: '📈 Fundamentals', action: () => {
                     if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
@@ -2379,7 +2508,12 @@
                 const sym = tr.dataset.symbol || (tr.id ? tr.id.replace('row-', '') : '');
                 const info = (typeof stockPricesData !== 'undefined' && stockPricesData[sym]) ? stockPricesData[sym] : {};
                 const compName = tr.dataset.companyName || info.name || cleanDisplaySymbol(sym);
-                wlTooltipEl.innerHTML = `Click to view <b>${escapeHtml(compName)}</b> technical chart`;
+                const currentMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
+                if (currentMode === 'tradingview') {
+                    wlTooltipEl.innerHTML = `Click to sync <b>${escapeHtml(compName)}</b> in TradingView App Window`;
+                } else {
+                    wlTooltipEl.innerHTML = `Click to view <b>${escapeHtml(compName)}</b> technical chart`;
+                }
                 wlTooltipEl.style.opacity = '1';
                 wlTooltipEl.style.transform = 'translateY(0)';
             });

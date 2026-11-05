@@ -678,24 +678,55 @@
                 text-overflow: ellipsis;
             }
 
-            /* Web / Desktop Watchlist Search Bar - 30% of table width */
+            /* Web / Desktop Watchlist Search Bar & Chart Mode Dropdown */
             .controls .wl-search-row {
-                width: 30% !important;
-                min-width: 280px;
-                flex: 0 0 30% !important;
+                width: auto !important;
+                min-width: 380px;
+                max-width: 58% !important;
+                flex: 0 1 auto !important;
                 display: flex;
                 align-items: center;
+                gap: 8px;
             }
 
             .controls .wl-search-row .autocomplete-wrapper {
-                width: 100% !important;
-                max-width: 100% !important;
-                flex: 1 1 100% !important;
+                width: auto !important;
+                min-width: 200px;
+                flex: 1 1 auto !important;
             }
 
             .controls .wl-search-row .wl-input {
                 width: 100% !important;
                 box-sizing: border-box !important;
+            }
+
+            .wl-chart-mode-container {
+                display: inline-flex;
+                align-items: center;
+                flex-shrink: 0;
+            }
+
+            .wl-chart-mode-select {
+                height: 38px;
+                padding: 6px 10px;
+                font-size: 12.5px;
+                font-weight: 600;
+                border-radius: 8px;
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+                background: var(--bg-card, #1e222d);
+                color: var(--text-primary, #ffffff);
+                cursor: pointer;
+                outline: none;
+                transition: all 0.2s ease;
+            }
+
+            .wl-chart-mode-select:hover {
+                border-color: var(--accent-primary, #2962ff);
+            }
+
+            .wl-chart-mode-select:focus {
+                border-color: var(--accent-primary, #2962ff);
+                box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.2);
             }
         }
         
