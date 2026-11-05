@@ -601,12 +601,13 @@
             }
 
             try {
-                if (!_tvAppWindow || _tvAppWindow.closed) {
-                    _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_AppWindow', windowFeatures);
-                } else {
-                    _tvAppWindow.location.href = tvUrl;
-                    _tvAppWindow.focus();
+                // If older window is already open, close it first before opening the new one
+                if (_tvAppWindow && !_tvAppWindow.closed) {
+                    try {
+                        _tvAppWindow.close();
+                    } catch (_) {}
                 }
+                _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_AppWindow', windowFeatures);
             } catch(err) {
                 console.warn('Popup blocked, falling back to window.open:', err);
                 _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_AppWindow');
@@ -629,6 +630,11 @@
             }
         }
         window.openTradingViewAppWindow = openTradingViewAppWindow;
+        window.addEventListener('beforeunload', () => {
+            if (_tvAppWindow && !_tvAppWindow.closed) {
+                try { _tvAppWindow.close(); } catch (_) {}
+            }
+        });
         window.handleWatchlistStockClick = handleWatchlistStockClick;
         window.formatTradingViewSymbol = formatTradingViewSymbol;
 
