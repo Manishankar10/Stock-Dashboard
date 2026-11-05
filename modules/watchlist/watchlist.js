@@ -516,12 +516,18 @@
         // WATCHLIST TRADINGVIEW POPUP WINDOW & SYNC CONTROLLER
         // =========================================================
         let _tvAppWindow = null;
+        let _tvBroadcastChannel = null;
+        try {
+            if ('BroadcastChannel' in window) {
+                _tvBroadcastChannel = new BroadcastChannel('capital_desk_tv_sync');
+            }
+        } catch(_) {}
 
         function formatTradingViewSymbol(sym) {
             if (!sym) return 'NSE:NIFTY';
             let s = String(sym).trim();
             const upper = s.toUpperCase();
-            if (upper === '^NSEI' || upper === 'NIFTY' || upper === 'NIFTY 50') return 'NSE:NIFTY';
+            if (upper === '^NSEI' || upper === 'NIFTY' || upper === 'NIFTY 50' || upper === 'NIFTY50') return 'NSE:NIFTY';
             if (upper === '^NSEBANK' || upper === '^BANKNIFTY' || upper === 'BANKNIFTY' || upper === 'NIFTY BANK') return 'NSE:BANKNIFTY';
             if (upper === '^CNXIT' || upper === 'NIFTY IT') return 'NSE:NIFTYIT';
             
@@ -538,9 +544,9 @@
 
         function openTradingViewAppWindow(sym) {
             const tvSym = formatTradingViewSymbol(sym);
-            const tvUrl = `https://in.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}`;
+            const clean = (typeof cleanDisplaySymbol === 'function') ? cleanDisplaySymbol(sym) : sym;
             
-            // Clean App Popup Window sizing & positioning
+            // App Popup Window sizing & positioning
             const screenW = window.screen.availWidth || 1920;
             const screenH = window.screen.availHeight || 1080;
             
@@ -564,22 +570,35 @@
                 'resizable=yes'
             ].join(',');
 
-            const clean = (typeof cleanDisplaySymbol === 'function') ? cleanDisplaySymbol(sym) : sym;
             if (typeof showToast === 'function') {
-                showToast(`Syncing ${clean} to TradingView App Window...`, 'info', 2200);
+                showToast(`Syncing ${clean} to TradingView Window...`, 'info', 1800);
             }
 
-            try {
-                // If older window is already open, close it first before opening the new one
-                if (_tvAppWindow && !_tvAppWindow.closed) {
-                    try {
-                        _tvAppWindow.close();
-                    } catch (_) {}
+            // 1. Broadcast to channel (all open TV windows instantly switch symbol)
+            if (_tvBroadcastChannel) {
+                try {
+                    _tvBroadcastChannel.postMessage({ type: 'LOAD_SYMBOL', symbol: tvSym });
+                } catch(_) {}
+            }
+
+            // 2. If single window is already open, send postMessage and bring to front
+            if (_tvAppWindow && !_tvAppWindow.closed) {
+                try {
+                    _tvAppWindow.postMessage({ type: 'LOAD_SYMBOL', symbol: tvSym }, '*');
+                    _tvAppWindow.focus();
+                    return; // Reused existing window, 0 extra windows opened!
+                } catch(_) {
+                    try { _tvAppWindow.close(); } catch(__) {}
                 }
-                _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_AppWindow', windowFeatures);
+            }
+
+            // 3. Otherwise, open a fresh dedicated single TradingView window
+            const appUrl = `/tv-chart?symbol=${encodeURIComponent(tvSym)}`;
+            try {
+                _tvAppWindow = window.open(appUrl, 'CapitalDesk_TV_Window', windowFeatures);
             } catch(err) {
                 console.warn('Popup blocked, falling back to window.open:', err);
-                _tvAppWindow = window.open(tvUrl, 'CapitalDesk_TV_AppWindow');
+                _tvAppWindow = window.open(appUrl, 'CapitalDesk_TV_Window');
             }
 
             if (_tvAppWindow) {

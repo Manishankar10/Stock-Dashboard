@@ -93,6 +93,7 @@ def add_auth_cache_control(response):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
     return response
 
 try:
@@ -252,6 +253,11 @@ def industries_overview_page():
 @login_required
 def technical_screener_page():
     return render_template("index.html", initial_tab="technical-screener")
+
+@app.route("/tv-chart")
+def tv_chart_page():
+    symbol = request.args.get("symbol", "NSE:NIFTY")
+    return render_template("tv_chart.html", symbol=symbol)
 
 @app.route("/login", endpoint="login_page")
 def login_page():
