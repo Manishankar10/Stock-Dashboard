@@ -644,7 +644,19 @@ def calculate_indicators(candles):
         }
 
     # IWRider 2.0 (Weinstein Stage Analysis + Trend Riding)
-    iwrider = calculate_iwrider(candles, times, closes, n)
+    try:
+        iwrider = calculate_iwrider(candles, times, closes, n)
+    except Exception as e:
+        iwrider = {
+            'current_stage': 'Stage 1: Accumulation',
+            'current_stage_num': 1,
+            'duration': 1,
+            'stage_color': '#64748b',
+            'markers': [],
+            'ema20': [],
+            'ema50': [],
+            'ema200': []
+        }
 
     return {
         'iwrider': iwrider,

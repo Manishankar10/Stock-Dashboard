@@ -581,18 +581,15 @@
                 } catch(_) {}
             }
 
-            // 2. If single window is already open, send postMessage and bring to front
+            // 2. If already opened, close older window and open new (per user instruction)
             if (_tvAppWindow && !_tvAppWindow.closed) {
                 try {
-                    _tvAppWindow.postMessage({ type: 'LOAD_SYMBOL', symbol: tvSym }, '*');
-                    _tvAppWindow.focus();
-                    return; // Reused existing window, 0 extra windows opened!
-                } catch(_) {
-                    try { _tvAppWindow.close(); } catch(__) {}
-                }
+                    _tvAppWindow.close();
+                } catch(_) {}
+                _tvAppWindow = null;
             }
 
-            // 3. Otherwise, open a fresh dedicated single TradingView window
+            // 3. Open dedicated single TradingView window (always opens in foreground)
             const appUrl = `/tv-chart?symbol=${encodeURIComponent(tvSym)}`;
             try {
                 _tvAppWindow = window.open(appUrl, 'CapitalDesk_TV_Window', windowFeatures);
