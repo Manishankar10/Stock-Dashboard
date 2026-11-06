@@ -206,6 +206,7 @@ def render_portfolio_card_endpoint():
     tl_chg = request.args.get("top_loser_pct", "-0.65%")
     uname = request.args.get("username", "")
     p_name = f"{uname.capitalize()}'s Portfolio" if uname else "Portfolio Digest"
+    badge = request.args.get("badge")
 
     buf = generate_portfolio_card(
         performance=perf,
@@ -214,7 +215,8 @@ def render_portfolio_card_endpoint():
         top_loser_symbol=tl_sym,
         top_loser_change=tl_chg,
         portfolio_name=p_name,
-        date_str=today_ist_str()
+        date_str=today_ist_str(),
+        badge_text=badge
     )
     return send_file(
         buf,
@@ -712,6 +714,9 @@ def admin_send_portfolio_notification():
     if not top_loser_pct.startswith("-"):
         top_loser_pct = f"-{top_loser_pct}"
 
+    from modules.common.ist_datetime import get_market_badge_text
+    badge_text, is_live = get_market_badge_text()
+
     gen_dir = os.path.join(current_app.root_path, "static", "notifications", "generated")
     os.makedirs(gen_dir, exist_ok=True)
     card_path = os.path.join(gen_dir, "portfolio_latest.png")
@@ -722,7 +727,8 @@ def admin_send_portfolio_notification():
         top_loser_symbol=top_loser,
         top_loser_change=top_loser_pct,
         date_str=today_ist_str(),
-        output_path=card_path
+        output_path=card_path,
+        badge_text=badge_text
     )
 
     base_url = request.url_root.rstrip("/")
@@ -730,7 +736,8 @@ def admin_send_portfolio_notification():
 
     g_display = "-" if top_gainer in ("-", "N/A") or top_gainer_pct in ("-", "N/A") else f"{top_gainer} ({top_gainer_pct})"
     l_display = "-" if top_loser in ("-", "N/A") or top_loser_pct in ("-", "N/A") else f"{top_loser} ({top_loser_pct})"
-    title = f"📈 Today's Portfolio: {perf}"
+    title_tag = badge_text if is_live else "EOD"
+    title = f"📈 Today's Portfolio ({title_tag}): {perf}"
     body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
     result = send_web_push(
@@ -742,7 +749,9 @@ def admin_send_portfolio_notification():
             "type": "portfolio_performance",
             "performance": perf,
             "top_gainer": top_gainer,
-            "top_loser": top_loser
+            "top_loser": top_loser,
+            "badge": badge_text,
+            "is_market_hours": is_live
         },
         target_topic="portfolio_performance"
     )

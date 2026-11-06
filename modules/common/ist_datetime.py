@@ -132,3 +132,37 @@ def format_ist_iso(
     """
     dt = now_ist() if dt_val is None else to_ist(dt_val)
     return dt.isoformat()
+
+
+
+def is_market_hours(
+    dt_val: Optional[Union[datetime.datetime, datetime.date, float, int, str]] = None
+) -> bool:
+    """
+    Returns True if the given datetime (or now in IST) falls within
+    Indian stock market (NSE/BSE) trading hours:
+    Monday - Friday, strictly between 09:15 AM and 03:30 PM IST (inclusive).
+    Returns False otherwise (after market hours, pre-market, or weekends).
+    """
+    dt = now_ist() if dt_val is None else to_ist(dt_val)
+    # Weekdays: Monday is 0, Friday is 4. Saturday is 5, Sunday is 6.
+    if dt.weekday() >= 5:
+        return False
+    minute_of_day = dt.hour * 60 + dt.minute
+    # 09:15 AM = 9 * 60 + 15 = 555
+    # 03:30 PM = 15 * 60 + 30 = 930
+    return 555 <= minute_of_day <= 930
+
+
+def get_market_badge_text(
+    dt_val: Optional[Union[datetime.datetime, datetime.date, float, int, str]] = None
+) -> tuple[str, bool]:
+    """
+    Returns (badge_text, is_live) where:
+    - If currently in market hours: badge_text is IST time in format '03:20 PM', is_live is True.
+    - If after market hours / weekend: badge_text is 'EOD SUMMARY', is_live is False.
+    """
+    dt = now_ist() if dt_val is None else to_ist(dt_val)
+    if is_market_hours(dt):
+        return dt.strftime("%I:%M %p"), True
+    return "EOD SUMMARY", False

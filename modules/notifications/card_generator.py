@@ -38,6 +38,24 @@ def _get_font(size, bold=False):
         return None
 
 
+def _measure_text_w(font, text):
+    """Safely measures text width across all Pillow versions."""
+    if not font or not text:
+        return 0
+    if hasattr(font, 'getlength'):
+        try:
+            return font.getlength(str(text))
+        except Exception:
+            pass
+    if hasattr(font, 'getbbox'):
+        try:
+            bbox = font.getbbox(str(text))
+            return bbox[2] - bbox[0]
+        except Exception:
+            pass
+    return len(str(text)) * 10
+
+
 def clean_stock_symbol(sym):
     """
     Strips exchange suffixes like .NS, .BS, .BO, .NSE, .BSE from stock symbols.
@@ -183,13 +201,24 @@ def generate_portfolio_card(
     top_loser_change="-0.65%",
     portfolio_name="Institutional Portfolio",
     date_str="Today",
-    output_path=None
+    output_path=None,
+    badge_text=None
 ):
     """
-    Renders a high-res 882x410 dark-themed card for End-of-Day Portfolio Performance.
+    Renders a high-res 882x410 dark-themed card for Portfolio Performance.
+    Displays 'EOD SUMMARY' badge only after market hours (or weekends);
+    displays live market time e.g. '03:20 PM' during active market trading hours.
     """
+    from modules.common.ist_datetime import get_market_badge_text
+
     top_gainer_symbol = clean_stock_symbol(top_gainer_symbol)
     top_loser_symbol = clean_stock_symbol(top_loser_symbol)
+
+    if not badge_text:
+        badge_text, is_live = get_market_badge_text()
+    else:
+        badge_text = str(badge_text).strip()
+        is_live = (badge_text.upper() != "EOD SUMMARY")
 
     width, height = 882, 410
     im = Image.new("RGBA", (width, height), (15, 23, 42, 255))
@@ -217,16 +246,22 @@ def generate_portfolio_card(
     draw.ellipse([32, sec_y + 7, 44, sec_y + 19], fill=(59, 130, 246, 255))
     draw.text((54, sec_y), "Portfolio Performance Digest", font=font_title, fill=(255, 255, 255, 255))
     
-    # EOD Badge
-    badge_text = "EOD SUMMARY"
-    badge_w = 150
+    # Dynamic Badge (Live IST Time e.g. '03:20 PM' during market hours, or 'EOD SUMMARY' after market close)
+    text_w = _measure_text_w(font_badge, badge_text)
+    badge_w = max(116, int(text_w + 28))
     badge_h = 32
     badge_x = width - 32 - badge_w
+    text_x = badge_x + int((badge_w - text_w) / 2)
+
     draw.rounded_rectangle([badge_x, sec_y, badge_x + badge_w, sec_y + badge_h], radius=7, fill=(16, 40, 32, 255), outline=(16, 185, 129, 255), width=2)
-    draw.text((badge_x + 18, sec_y + 6), badge_text, font=font_badge, fill=green_color)
+    draw.text((text_x, sec_y + 6), badge_text, font=font_badge, fill=green_color)
 
     # Sub-header info
-    draw.text((32, sec_y + 36), f"{portfolio_name} • Market Close {date_str}", font=font_sub, fill=text_muted)
+    if is_live:
+        sub_text = f"{portfolio_name} • Live Market {badge_text} IST"
+    else:
+        sub_text = f"{portfolio_name} • Market Close {date_str}"
+    draw.text((32, sec_y + 36), sub_text, font=font_sub, fill=text_muted)
 
     # 3 Metrics Layout:
     # Box 1: Today's Performance (Left large box)
@@ -533,22 +568,6 @@ def generate_watchlist_card(
     return buf
 
 
-def _measure_text_w(font, text):
-    """Safely measures text width across all Pillow versions."""
-    if not font or not text:
-        return 0
-    if hasattr(font, 'getlength'):
-        try:
-            return font.getlength(str(text))
-        except Exception:
-            pass
-    if hasattr(font, 'getbbox'):
-        try:
-            bbox = font.getbbox(str(text))
-            return bbox[2] - bbox[0]
-        except Exception:
-            pass
-    return len(str(text)) * 10
 
 
 def generate_quarterly_results_card(

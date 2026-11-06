@@ -10,7 +10,7 @@ from modules.notifications.fcm_service import (
     log_notification_event,
     get_user_tokens
 )
-from modules.common.ist_datetime import format_ist_standard, today_ist_str
+from modules.common.ist_datetime import format_ist_standard, today_ist_str, get_market_badge_text
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +156,7 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
 
     gen_dir = os.path.join(static_root, "notifications", "generated")
     os.makedirs(gen_dir, exist_ok=True)
+    badge_text, is_live = get_market_badge_text()
 
     for uname in users.keys():
         tokens = user_tokens.get(uname, [])
@@ -186,14 +187,16 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
             top_loser_change=l_chg,
             portfolio_name=f"{uname.capitalize()}'s Portfolio",
             date_str=today_ist_str(),
-            output_path=card_disk_path
+            output_path=card_disk_path,
+            badge_text=badge_text
         )
 
         image_url = f"{base_url}/static/notifications/generated/{card_filename}"
 
         g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
         l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
-        title = f"📈 Today's Portfolio: {perf_val}"
+        title_tag = badge_text if is_live else "EOD"
+        title = f"📈 Today's Portfolio ({title_tag}): {perf_val}"
         body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
         push_res = send_web_push(
@@ -206,7 +209,9 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
                 "username": uname,
                 "performance": perf_val,
                 "top_gainer": g_sym,
-                "top_loser": l_sym
+                "top_loser": l_sym,
+                "badge": badge_text,
+                "is_market_hours": is_live
             },
             target_topic=None,
             specific_tokens=tokens
@@ -272,6 +277,8 @@ def send_portfolio_digest_to_user(username, base_url=""):
     l_sym = clean_stock_symbol(perf["top_loser_symbol"])
     l_chg = perf["top_loser_change"]
 
+    badge_text, is_live = get_market_badge_text()
+
     gen_dir = os.path.join(BASE_DATA_DIR, "static", "notifications", "generated")
     os.makedirs(gen_dir, exist_ok=True)
     card_filename = f"portfolio_{username}.png"
@@ -285,13 +292,15 @@ def send_portfolio_digest_to_user(username, base_url=""):
         top_loser_change=l_chg,
         portfolio_name=f"{username.capitalize()}'s Portfolio",
         date_str=today_ist_str(),
-        output_path=card_disk_path
+        output_path=card_disk_path,
+        badge_text=badge_text
     )
 
     image_url = f"{base_url.rstrip('/')}/static/notifications/generated/{card_filename}" if base_url else f"/static/notifications/generated/{card_filename}"
     g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
     l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
-    title = f"📈 Today's Portfolio: {perf_val}"
+    title_tag = badge_text if is_live else "EOD"
+    title = f"📈 Today's Portfolio ({title_tag}): {perf_val}"
     body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
     res = send_web_push(
@@ -304,7 +313,9 @@ def send_portfolio_digest_to_user(username, base_url=""):
             "username": username,
             "performance": perf_val,
             "top_gainer": g_sym,
-            "top_loser": l_sym
+            "top_loser": l_sym,
+            "badge": badge_text,
+            "is_market_hours": is_live
         },
         specific_tokens=tokens
     )

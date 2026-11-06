@@ -444,6 +444,38 @@
     };
 
     // 4. Portfolio Performance Card Helpers
+    function getMarketBadgeInfo() {
+        // Indian Standard Time (UTC + 05:30)
+        const now = new Date();
+        const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const istDate = new Date(utcMs + (5.5 * 3600000));
+        const day = istDate.getDay(); // 0 is Sunday, 6 is Saturday
+        const hours = istDate.getHours();
+        const minutes = istDate.getMinutes();
+        const currentMins = hours * 60 + minutes;
+
+        // Monday(1) - Friday(5), strictly 09:15 (555) to 15:30 (930) IST
+        const isMarketHours = (day >= 1 && day <= 5) && (currentMins >= 555 && currentMins <= 930);
+
+        if (isMarketHours) {
+            let h = hours % 12 || 12;
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const hStr = h < 10 ? '0' + h : '' + h;
+            const mStr = minutes < 10 ? '0' + minutes : '' + minutes;
+            const timeStr = `${hStr}:${mStr} ${ampm}`;
+            return {
+                badge: timeStr,
+                isLive: true,
+                sub: `Live Market ${timeStr} IST`
+            };
+        }
+        return {
+            badge: 'EOD SUMMARY',
+            isLive: false,
+            sub: 'Market Close Summary'
+        };
+    }
+
     window.updatePortfolioPerfPreview = function () {
         const perf = document.getElementById('input-perf-val')?.value || '+0.50%';
         const gSym = cleanSymbol(document.getElementById('input-perf-gainer-sym')?.value || 'POCL');
@@ -467,9 +499,19 @@
         if (pLoserSym) pLoserSym.innerText = lSym;
         if (pLoserPct) pLoserPct.innerText = lPct.startsWith('-') ? lPct : '-' + lPct;
 
+        const badgeInfo = getMarketBadgeInfo();
+        const badgeEl = document.getElementById('preview-portfolio-badge');
+        const subEl = document.getElementById('preview-portfolio-sub');
+        if (badgeEl) {
+            badgeEl.innerText = badgeInfo.badge;
+        }
+        if (subEl) {
+            subEl.innerText = badgeInfo.sub;
+        }
+
         const previewLink = document.getElementById('btn-preview-perf-img');
         if (previewLink) {
-            previewLink.href = `/api/notifications/render-portfolio-card.png?perf=${encodeURIComponent(perf)}&top_gainer=${encodeURIComponent(gSym)}&top_gainer_pct=${encodeURIComponent(gPct)}&top_loser=${encodeURIComponent(lSym)}&top_loser_pct=${encodeURIComponent(lPct)}&t=${Date.now()}`;
+            previewLink.href = `/api/notifications/render-portfolio-card.png?perf=${encodeURIComponent(perf)}&top_gainer=${encodeURIComponent(gSym)}&top_gainer_pct=${encodeURIComponent(gPct)}&top_loser=${encodeURIComponent(lSym)}&top_loser_pct=${encodeURIComponent(lPct)}&badge=${encodeURIComponent(badgeInfo.badge)}&t=${Date.now()}`;
         }
     };
 
