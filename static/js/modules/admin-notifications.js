@@ -950,8 +950,11 @@
                 elLastSent.innerText = `Last sent: ${formatNotifDateTime(data.last_sent.timestamp_display || data.last_sent.timestamp)}`;
             }
 
-            // Load first page of audit records with limit
-            window.loadNotifHistoryPage(1, _notifPageSize);
+            // Load first page of audit records with limit ONLY if accordion is open
+            const historyAcc = document.getElementById('dispatched-notifications-accordion');
+            if (historyAcc && historyAcc.open) {
+                window.loadNotifHistoryPage(1, _notifPageSize);
+            }
         } catch (err) {
             console.error('[Admin] Error loading notification stats:', err);
         }
@@ -1082,10 +1085,30 @@
         if (notifTab && notifTab.classList.contains('active')) {
             if (typeof window.fetchLiveBullionRates === 'function') window.fetchLiveBullionRates(false);
             if (typeof window.loadNotificationStats === 'function') window.loadNotificationStats();
-            if (typeof window.loadUsersPortfolioDigest === 'function') window.loadUsersPortfolioDigest();
+            const digestAcc = document.getElementById('portfolio-digest-accordion');
+            if (digestAcc && digestAcc.open && typeof window.loadUsersPortfolioDigest === 'function') {
+                window.loadUsersPortfolioDigest();
+            }
             if (typeof window.updateGoldRatePreview === 'function') window.updateGoldRatePreview();
         }
     }
+
+    // Handlers for on-demand accordion expansion
+    window.onPortfolioDigestToggle = function (detailsEl) {
+        if (detailsEl && detailsEl.open) {
+            if (typeof window.loadUsersPortfolioDigest === 'function') {
+                window.loadUsersPortfolioDigest();
+            }
+        }
+    };
+
+    window.onDispatchedNotifToggle = function (detailsEl) {
+        if (detailsEl && detailsEl.open) {
+            if (typeof window.loadNotifHistoryPage === 'function') {
+                window.loadNotifHistoryPage(1, _notifPageSize || 20);
+            }
+        }
+    };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initNotificationsController);
