@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 import jinja2
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, session, redirect, url_for, send_from_directory
 
 from modules.app_config import load_local_environment
 load_local_environment()
@@ -10,40 +10,17 @@ from modules.common.external_api_logger import install_external_api_logger
 install_external_api_logger()
 
 # Core Data Paths & Utilities
-from modules.common.data_paths import (
-    BASE_DATA_DIR,
-    DATA_FILE,
-    PORTFOLIO_FILE,
-    USERS_FILE,
-    USERS_EXAMPLE_FILE,
-    USER_DATA_DIR,
-    LOGS_FILE
-)
-from modules.common.market_fetcher import (
-    fetcher,
-    StockFetcher,
-    stock_cache,
-    news_cache,
-    fiidii_cache,
-    POPULAR_INDIAN_STOCKS,
-    POPULAR_MARKET_INDEXES,
-    format_financial_symbol,
-    resolve_watchlist_symbol
-)
-from modules.common.indicators import calculate_indicators
+from modules.common.data_paths import BASE_DATA_DIR
+from modules.common.market_fetcher import fetcher
 from modules.common.auth_utils import (
     login_required,
-    admin_required,
-    load_users,
-    save_users,
-    log_login_event,
     ensure_default_admin
 )
 
 # Feature Module Route Handlers
-from modules.watchlist import watchlist_bp, load_data, save_data, find_watchlist_key, get_user_watchlist_file
-from modules.portfolio import portfolio_bp, load_portfolios, save_portfolios, load_user_transactions, save_user_transactions, get_user_portfolio_file
-from modules.alerts.alerts_routes import alerts_bp, load_user_alerts, save_user_alerts, get_user_alerts_file
+from modules.watchlist import watchlist_bp, load_data
+from modules.portfolio import portfolio_bp, load_portfolios
+from modules.alerts.alerts_routes import alerts_bp
 from modules.market_data.market_data_routes import market_data_bp
 from modules.news.news_routes import news_bp
 from modules.insights import insights_bp
@@ -53,7 +30,7 @@ from modules.auth_admin.auth_admin_routes import auth_admin_bp
 # Standalone Blueprints
 from modules.fundamentals import fundamentals_bp
 from modules.fundamentals_concalls import fundamentals_concalls_bp
-from modules.smallcases import smallcases_bp, init_smallcases, load_user_smallcases, save_user_smallcases
+from modules.smallcases import smallcases_bp, init_smallcases
 from modules.ipo_tracker import ipo_tracker_bp, init_ipo_tracker
 from modules.mutual_funds import mutual_funds_bp, init_mutual_funds
 from modules.plan_calculator import plan_calculator_bp, init_plan_calculator

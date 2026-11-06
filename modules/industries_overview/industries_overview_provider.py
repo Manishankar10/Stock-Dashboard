@@ -174,19 +174,9 @@ def _parse_stocks_table_rows(soup):
 
 
 class IndustriesOverviewProvider:
-    def __init__(self, data_dir="data"):
+    def __init__(self, data_dir="app_data"):
         self.data_dir = data_dir
-        # Resolve best overview file path
-        candidates = [
-            os.path.join("app_data", "industries_overview.json"),
-            os.path.join(data_dir, "app_data", "industries_overview.json"),
-            os.path.join(data_dir, "industries_overview.json"),
-        ]
-        self.overview_file = candidates[0]
-        for c in candidates:
-            if os.path.exists(c):
-                self.overview_file = c
-                break
+        self.overview_file = os.path.join("app_data", "industries_overview.json")
 
         self._overview_data = {}
         self._lock = threading.Lock()
