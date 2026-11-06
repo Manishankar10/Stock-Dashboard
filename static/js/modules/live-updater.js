@@ -451,12 +451,7 @@
         initApp();
         
         // Smart Adaptive Auto-Refresh Market Prices every 30 seconds (pauses when tab is hidden)
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const modal = document.getElementById('fundamentalsModal');
-                if (modal && modal.style.display === 'block') closeFundamentalsModal();
-            }
-        });
+        // Fundamentals Modal: persistent, do not exit on Escape until close button clicked
 
         setInterval(function() {
             if (document.visibilityState !== 'hidden') {

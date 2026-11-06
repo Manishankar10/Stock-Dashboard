@@ -516,7 +516,7 @@
             const notifModal = document.getElementById('notificationsModal');
             const stockNewsModal = document.getElementById('stockNewsModal');
 
-            if (event.target == modal) closeChartModal();
+            // Chart Modal: do not exit on backdrop click (remains open until close button clicked)
             if (event.target == editModal) closeEditModal();
             if (event.target == detailModal) closeHoldingDetailsModal();
             if (event.target == createWlModal) closeCreateWatchlistModal();
@@ -542,7 +542,7 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 hidePlusActionMenu();
-                closeChartModal();
+                // Chart Modal: do not exit on Escape
                 closeEditModal();
                 closeHoldingDetailsModal();
                 closeCreateWatchlistModal();

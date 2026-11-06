@@ -186,31 +186,9 @@ const AppRouter = {
             return true;
         }
 
-        // 8. Stock Detail Chart Modal
-        const chartModal = document.getElementById('chart-modal') || document.getElementById('chartModal');
-        if (chartModal && (chartModal.classList.contains('show') || isElVisible(chartModal))) {
-            if (typeof window.closeChartModal === 'function') {
-                window.closeChartModal();
-            } else {
-                chartModal.classList.remove('show');
-                chartModal.style.display = 'none';
-            }
-            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(chartModal);
-            return true;
-        }
-
-        // 9. Fundamentals Modal
-        const fundModal = document.getElementById('fundamentals-modal');
-        if (fundModal && (fundModal.classList.contains('show') || isElVisible(fundModal))) {
-            if (typeof window.closeFundamentalsModal === 'function') {
-                window.closeFundamentalsModal();
-            } else {
-                fundModal.classList.remove('show');
-                fundModal.style.display = 'none';
-            }
-            if (window.ModalHistoryManager) window.ModalHistoryManager.remove(fundModal);
-            return true;
-        }
+        // 8. Stock Detail Chart Modal & Fundamentals Modal
+        // NOTE: Chart and Fundamentals modals stay open until user explicitly clicks their close button
+        // (Do not auto-dismiss on popstate)
 
         // 10. Holding Details Modal
         const holdingModal = document.getElementById('holdingDetailModal') || document.getElementById('holding-details-modal');
