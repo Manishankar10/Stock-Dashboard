@@ -1,0 +1,814 @@
+{# =======================================================================
+   CAPITAL DESK - STANDALONE DEEPAVALI FESTIVAL THEME & FLOWER POT ANIMATION
+   =======================================================================
+   
+   FESTIVE ADD-ON FEATURES:
+   1. Elegant Rangoli/Mandala Watermark Motifs across Sidebar (inspired by Screener)
+   2. Earthen Diya with Animated Flickering Flame & Radiant Rays beside Brand Logo
+   3. Festive Marigold Toran Garland dividing Header and Navigation
+   4. High-Performance Flower Pot Cracker (Anar) Sparks on ALL Mouse Clicks
+   5. Special Celebratory Fireworks barrage when clicking the Diya
+   6. Zero-impact toggle in Settings menu ("🪔 Diwali Theme: ON/OFF")
+   
+   =======================================================================
+   HOW TO REMOVE AFTER FESTIVAL:
+   To completely remove this festive design after Deepavali:
+     1. In templates/components/sidebar.html:
+        Remove or comment out: {% include 'components/diwali_theme.html' %}
+     2. (Optional) Delete this file: templates/components/diwali_theme.html
+   That's it! Zero code changes needed anywhere else in the project.
+   ======================================================================= #}
+
+<!-- 1. STANDALONE DEEPAVALI THEME STYLES -->
+<style id="diwali-festive-styles">
+    /* =========================================================
+       SIDEBAR FESTIVE ACCENTS & RANGOLI WATERMARKS
+       ========================================================= */
+    .app-sidebar {
+        /* Subtle festive ambient warmth on sidebar edge */
+        box-shadow: 0 0 26px rgba(245, 158, 11, 0.10), var(--shadow-sm) !important;
+    }
+
+    /* Header Spacing & Toran Garland */
+    .sidebar-header {
+        position: relative !important;
+        z-index: 2 !important;
+        overflow: visible !important;
+    }
+    .sidebar-brand-group {
+        overflow: visible !important;
+        gap: 6px !important;
+        min-width: 0 !important;
+    }
+    .sidebar-brand-logo {
+        max-width: 68px !important;
+        height: 28px !important;
+    }
+    .sidebar-brand-text {
+        overflow: visible !important;
+        min-width: 0 !important;
+    }
+    .sidebar-brand-title {
+        display: inline-flex !important;
+        align-items: center !important;
+        white-space: nowrap !important;
+        font-size: 13.5px !important;
+        letter-spacing: -0.01em !important;
+    }
+
+    /* Traditional Marigold Garland / Toran Border along bottom of header */
+    .sidebar-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: repeating-linear-gradient(
+            90deg,
+            #f59e0b 0px,
+            #f59e0b 8px,
+            #ea580c 8px,
+            #ea580c 14px,
+            #10b981 14px,
+            #10b981 18px,
+            #f59e0b 18px,
+            #f59e0b 24px
+        );
+        box-shadow: 0 1px 5px rgba(245, 158, 11, 0.45);
+        pointer-events: none;
+        z-index: 5;
+    }
+
+    /* Rangoli Watermark Container inside Sidebar */
+    .diwali-sidebar-art-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 0;
+        user-select: none;
+    }
+
+    /* Individual Rangoli Mandala Motifs */
+    .diwali-rangoli {
+        position: absolute;
+        pointer-events: none;
+        opacity: 0.35;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.16));
+    }
+
+    /* Light mode opacity & contrast adjustment */
+    html[data-theme="light"] .diwali-rangoli {
+        opacity: 0.22;
+        filter: drop-shadow(0 2px 6px rgba(217, 119, 6, 0.12));
+    }
+
+    /* Slow ambient hypnotic rotation for rangolis */
+    @keyframes diwaliRangoliSlowSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @keyframes diwaliRangoliCounterSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(-360deg); }
+    }
+
+    /* Rangoli 1: Top Header Corner (peeking beside brand like Screener) */
+    .diwali-rangoli-top {
+        top: -32px;
+        right: -32px;
+        width: 135px;
+        height: 135px;
+        animation: diwaliRangoliSlowSpin 120s linear infinite;
+    }
+
+    /* Rangoli 2: Mid-Sidebar Floating Accent */
+    .diwali-rangoli-mid {
+        top: 48%;
+        right: -50px;
+        width: 130px;
+        height: 130px;
+        animation: diwaliRangoliCounterSpin 150s linear infinite;
+    }
+
+    /* Rangoli 3: Bottom Footer Corner */
+    .diwali-rangoli-bottom {
+        bottom: 110px;
+        left: -42px;
+        width: 120px;
+        height: 120px;
+        animation: diwaliRangoliSlowSpin 140s linear infinite;
+    }
+
+    /* When sidebar is collapsed, gently adapt rangolis */
+    .app-sidebar.collapsed .diwali-rangoli-top {
+        top: -24px;
+        right: -24px;
+        width: 85px;
+        height: 85px;
+    }
+    .app-sidebar.collapsed .diwali-rangoli-mid {
+        display: none;
+    }
+    .app-sidebar.collapsed .diwali-rangoli-bottom {
+        bottom: 75px;
+        left: -35px;
+        width: 80px;
+        height: 80px;
+    }
+
+    /* Ensure navigation links stay clearly on top of decorative rangolis */
+    .sidebar-nav,
+    .sidebar-footer {
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Active navigation item festive golden glow */
+    .sidebar-nav-item.active {
+        box-shadow: 0 2px 10px rgba(245, 158, 11, 0.28) !important;
+        border-left: 3px solid #f59e0b !important;
+    }
+
+    /* =========================================================
+       DIYĀ (OIL LAMP) AT BRAND LOGO & HEADER
+       ========================================================= */
+    .diwali-diya-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 5px;
+        vertical-align: middle;
+        cursor: pointer;
+        position: relative;
+        transform-origin: center bottom;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        flex-shrink: 0;
+    }
+    .diwali-diya-badge:hover {
+        transform: scale(1.22) translateY(-2px);
+    }
+    .diwali-diya-badge:active {
+        transform: scale(0.92);
+    }
+
+    /* Flame Organic Flicker Animation */
+    @keyframes diwaliFlameFlicker {
+        0% {
+            transform: scaleY(1) scaleX(1) rotate(-1deg);
+            filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 8px #ea580c);
+        }
+        25% {
+            transform: scaleY(1.15) scaleX(0.90) rotate(2deg);
+            filter: drop-shadow(0 0 5px #fde047) drop-shadow(0 0 10px #f97316);
+        }
+        50% {
+            transform: scaleY(0.94) scaleX(1.06) rotate(-2deg);
+            filter: drop-shadow(0 0 3px #fbbf24) drop-shadow(0 0 7px #ea580c);
+        }
+        75% {
+            transform: scaleY(1.10) scaleX(0.94) rotate(1deg);
+            filter: drop-shadow(0 0 6px #fde047) drop-shadow(0 0 11px #f97316);
+        }
+        100% {
+            transform: scaleY(1.02) scaleX(0.98) rotate(0deg);
+            filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 8px #ea580c);
+        }
+    }
+
+    .diwali-flame-group {
+        transform-origin: 19px 12px;
+        animation: diwaliFlameFlicker 0.85s ease-in-out infinite alternate;
+    }
+
+    /* Radiating Light Rays Pulse (matching Screener's rays) */
+    @keyframes diwaliRaysPulse {
+        0%, 100% {
+            opacity: 0.45;
+            transform: scale(0.92);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.18);
+        }
+    }
+    .diwali-diya-rays {
+        transform-origin: 19px 6px;
+        animation: diwaliRaysPulse 1.8s ease-in-out infinite;
+    }
+
+    /* Floating Festive Tag Banner below brand */
+    .diwali-festival-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 2px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: #f59e0b;
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.08));
+        padding: 1px 5px;
+        border-radius: 4px;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        width: fit-content;
+    }
+    .app-sidebar.collapsed .diwali-festival-tag {
+        display: none !important;
+    }
+
+    /* Collapsed Diya on top of Logo */
+    .diwali-collapsed-diya {
+        display: none;
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        z-index: 10;
+        cursor: pointer;
+    }
+    .app-sidebar.collapsed .diwali-collapsed-diya {
+        display: block !important;
+    }
+
+    /* When user temporarily turns off festival mode via toggle */
+    body.diwali-theme-disabled .diwali-sidebar-art-layer,
+    body.diwali-theme-disabled .sidebar-header::after,
+    body.diwali-theme-disabled .diwali-diya-badge,
+    body.diwali-theme-disabled .diwali-festival-tag,
+    body.diwali-theme-disabled #diwali-cracker-canvas {
+        display: none !important;
+    }
+
+    /* =========================================================
+       CANVAS OVERLAY FOR FLOWER POT CRACKER (ANAR)
+       ========================================================= */
+    #diwali-cracker-canvas {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        pointer-events: none !important;
+        z-index: 99999999 !important;
+    }
+</style>
+
+<!-- 2. SIDEBAR RANGOLI ARTWORK LAYER (STANDALONE SVG ASSETS) -->
+<div class="diwali-sidebar-art-layer" id="diwali-sidebar-art-layer" aria-hidden="true">
+    
+    <!-- Rangoli 1: Top Header Corner Mandala (Screener-style Pastel & Vibrant Flower) -->
+    <svg class="diwali-rangoli diwali-rangoli-top" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer Concentric Orbit -->
+        <circle cx="100" cy="100" r="92" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.6" />
+        <circle cx="100" cy="100" r="85" stroke="#f472b6" stroke-width="1.5" opacity="0.7" />
+        <circle cx="100" cy="100" r="76" stroke="#34d399" stroke-width="1.2" opacity="0.8" />
+        
+        <!-- Outer Scalloped Petals with Dots -->
+        <g stroke="#c084fc" stroke-width="1.4" opacity="0.85">
+            <path d="M 100 8 C 112 8, 120 18, 120 28 C 120 18, 128 8, 140 8" />
+            <path d="M 192 100 C 192 112, 182 120, 172 120 C 182 120, 192 128, 192 140" />
+            <path d="M 100 192 C 88 192, 80 182, 80 172 C 80 182, 72 192, 60 192" />
+            <path d="M 8 100 C 8 88, 18 80, 28 80 C 18 80, 8 72, 8 60" />
+            <circle cx="100" cy="12" r="3" fill="#fbbf24" stroke="none" />
+            <circle cx="188" cy="100" r="3" fill="#fbbf24" stroke="none" />
+            <circle cx="100" cy="188" r="3" fill="#fbbf24" stroke="none" />
+            <circle cx="12" cy="100" r="3" fill="#fbbf24" stroke="none" />
+            <circle cx="162" cy="38" r="2.5" fill="#f472b6" stroke="none" />
+            <circle cx="162" cy="162" r="2.5" fill="#f472b6" stroke="none" />
+            <circle cx="38" cy="162" r="2.5" fill="#f472b6" stroke="none" />
+            <circle cx="38" cy="38" r="2.5" fill="#f472b6" stroke="none" />
+        </g>
+        
+        <!-- 8-Fold Floral Petals in Festive Mint Green & Coral Pink -->
+        <g fill="#34d399" fill-opacity="0.25" stroke="#10b981" stroke-width="1.3">
+            <path d="M 100 32 C 112 55, 120 75, 100 95 C 80 75, 88 55, 100 32 Z" />
+            <path d="M 168 100 C 145 112, 125 120, 105 100 C 125 80, 145 88, 168 100 Z" />
+            <path d="M 100 168 C 88 145, 80 125, 100 105 C 120 125, 112 145, 100 168 Z" />
+            <path d="M 32 100 C 55 88, 75 80, 95 100 C 75 120, 55 112, 32 100 Z" />
+            <!-- Diagonal Petals -->
+            <path d="M 148 52 C 144 76, 132 90, 103 103 C 110 74, 124 56, 148 52 Z" />
+            <path d="M 148 148 C 124 144, 110 132, 103 103 C 132 110, 144 124, 148 148 Z" />
+            <path d="M 52 148 C 56 124, 68 110, 97 97 C 90 126, 76 144, 52 148 Z" />
+            <path d="M 52 52 C 76 56, 90 68, 97 97 C 68 90, 56 76, 52 52 Z" />
+        </g>
+
+        <!-- Inner Lotus Petals in Vibrant Festive Pink -->
+        <g fill="#f472b6" fill-opacity="0.32" stroke="#f43f5e" stroke-width="1.2">
+            <circle cx="100" cy="70" r="10" />
+            <circle cx="130" cy="100" r="10" />
+            <circle cx="100" cy="130" r="10" />
+            <circle cx="70" cy="100" r="10" />
+            <circle cx="121" cy="79" r="8" />
+            <circle cx="121" cy="121" r="8" />
+            <circle cx="79" cy="121" r="8" />
+            <circle cx="79" cy="79" r="8" />
+        </g>
+        
+        <!-- Center Golden Diya Star / Core -->
+        <circle cx="100" cy="100" r="18" fill="#fbbf24" fill-opacity="0.3" stroke="#f59e0b" stroke-width="1.5" />
+        <circle cx="100" cy="100" r="8" fill="#f59e0b" />
+        <circle cx="100" cy="100" r="3" fill="#ffffff" />
+    </svg>
+
+    <!-- Rangoli 2: Mid-Sidebar Sacred Geometrical Kolam / Wheel -->
+    <svg class="diwali-rangoli diwali-rangoli-mid" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="80" cy="80" r="72" stroke="#fb923c" stroke-width="1.4" stroke-dasharray="4 4" />
+        <circle cx="80" cy="80" r="62" stroke="#a855f7" stroke-width="1.2" />
+        <circle cx="80" cy="80" r="48" stroke="#34d399" stroke-width="1.4" stroke-dasharray="2 3" />
+        <!-- Radiating Star Spokes -->
+        <g stroke="#f59e0b" stroke-width="1.2" opacity="0.75">
+            <line x1="80" y1="18" x2="80" y2="142" />
+            <line x1="18" y1="80" x2="142" y2="80" />
+            <line x1="36" y1="36" x2="124" y2="124" />
+            <line x1="124" y1="36" x2="36" y2="124" />
+        </g>
+        <!-- Flower Petals -->
+        <g fill="#fbbf24" fill-opacity="0.22" stroke="#ea580c" stroke-width="1">
+            <circle cx="80" cy="50" r="10" />
+            <circle cx="110" cy="80" r="10" />
+            <circle cx="80" cy="110" r="10" />
+            <circle cx="50" cy="80" r="10" />
+        </g>
+        <circle cx="80" cy="80" r="14" fill="#f43f5e" fill-opacity="0.4" stroke="#e11d48" stroke-width="1.2" />
+        <circle cx="80" cy="5" r="5" fill="#facc15" />
+    </svg>
+
+    <!-- Rangoli 3: Lower Sidebar Corner Blossom -->
+    <svg class="diwali-rangoli diwali-rangoli-bottom" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="70" cy="70" r="64" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="3 3" />
+        <circle cx="70" cy="70" r="52" stroke="#34d399" stroke-width="1.3" />
+        <circle cx="70" cy="70" r="38" stroke="#f472b6" stroke-width="1.2" />
+        <g fill="#10b981" fill-opacity="0.25" stroke="#059669" stroke-width="1">
+            <path d="M 70 20 C 78 35, 78 45, 70 52 C 62 45, 62 35, 70 20 Z" />
+            <path d="M 120 70 C 105 78, 95 78, 88 70 C 95 62, 105 62, 120 70 Z" />
+            <path d="M 70 120 C 62 105, 62 95, 70 88 C 78 95, 78 105, 70 120 Z" />
+            <path d="M 20 70 C 35 62, 45 62, 52 70 C 45 78, 35 78, 20 70 Z" />
+        </g>
+        <circle cx="70" cy="70" r="10" fill="#f59e0b" fill-opacity="0.5" stroke="#d97706" stroke-width="1" />
+        <circle cx="70" cy="70" r="4" fill="#ffffff" />
+    </svg>
+</div>
+
+<!-- 3. STANDALONE DIYA SVG DEFINITIONS (In document root for reliable gradient rendering) -->
+<svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+    <defs>
+        <linearGradient id="globalDiyaBaseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f59e0b" />
+            <stop offset="50%" stop-color="#d97706" />
+            <stop offset="100%" stop-color="#78350f" />
+        </linearGradient>
+        <linearGradient id="globalDiyaFlameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#ea580c" />
+            <stop offset="35%" stop-color="#f97316" />
+            <stop offset="70%" stop-color="#facc15" />
+            <stop offset="100%" stop-color="#ffffff" />
+        </linearGradient>
+        <radialGradient id="globalDiyaCoreGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="65%" stop-color="#fef08a" />
+            <stop offset="100%" stop-color="transparent" />
+        </radialGradient>
+    </defs>
+</svg>
+
+<!-- Diya SVG HTML Markup Generator Template -->
+<template id="diwali-diya-template">
+    <span class="diwali-diya-badge" title="Shubh Deepavali! Click to celebrate with fireworks ✨">
+        <svg class="diwali-diya-svg" viewBox="0 0 32 24" width="20" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Radiating Light Spark Rays (matching Screener logo) -->
+            <g class="diwali-diya-rays">
+                <line x1="19" y1="2" x2="19" y2="0.5" stroke="#fbbf24" stroke-width="1.3" stroke-linecap="round" />
+                <line x1="23" y1="3.2" x2="25" y2="1.8" stroke="#fbbf24" stroke-width="1.3" stroke-linecap="round" />
+                <line x1="25.5" y1="6.8" x2="27.5" y2="6.5" stroke="#fbbf24" stroke-width="1.3" stroke-linecap="round" />
+                <line x1="15" y1="3.2" x2="13" y2="1.8" stroke="#fbbf24" stroke-width="1.3" stroke-linecap="round" />
+                <line x1="12.5" y1="6.8" x2="10.5" y2="6.5" stroke="#fbbf24" stroke-width="1.3" stroke-linecap="round" />
+            </g>
+
+            <!-- Terracotta/Gold Diya Base Body -->
+            <path d="M 3 13 C 3 19.5, 11 22.5, 17 22.5 C 23.5 22.5, 27.5 19, 28.5 15 C 28.5 13.5, 26.5 14, 24 14.5 C 18 15.5, 9.5 15, 3 13 Z" fill="url(#globalDiyaBaseGrad)" />
+            <ellipse cx="15.5" cy="14.5" rx="11" ry="2" fill="#451a03" opacity="0.4" />
+            
+            <!-- Traditional Carved Ornamentation Dots -->
+            <circle cx="7" cy="17" r="0.7" fill="#fef08a" />
+            <circle cx="11.5" cy="18.8" r="0.7" fill="#fef08a" />
+            <circle cx="16" cy="19.5" r="0.7" fill="#fef08a" />
+            <circle cx="20.5" cy="18.2" r="0.7" fill="#fef08a" />
+            <circle cx="24.5" cy="16.2" r="0.7" fill="#fef08a" />
+
+            <!-- Wick -->
+            <path d="M 19.5 14.5 Q 19.2 12 19 10" stroke="#291203" stroke-width="1.4" stroke-linecap="round" />
+
+            <!-- Animated Flickering Flame -->
+            <g class="diwali-flame-group">
+                <path d="M 19 11 C 16 9, 15 5.5, 19 1 C 23 5.5, 22 9, 19 11 Z" fill="url(#globalDiyaFlameGrad)" />
+                <ellipse cx="19" cy="7.8" rx="1.3" ry="2.6" fill="url(#globalDiyaCoreGlow)" />
+            </g>
+        </svg>
+    </span>
+</template>
+
+<!-- 4. STANDALONE ENGINE: FLOWER POT CRACKER (ANAR) & DIYA INTERACTIVITY -->
+<script id="diwali-festive-script">
+(function() {
+    'use strict';
+
+    if (window.CapitalDeskDiwaliActive) return;
+    window.CapitalDeskDiwaliActive = true;
+
+    // Check saved user preference if Diwali theme is temporarily toggled off
+    try {
+        if (localStorage.getItem('capital_desk_diwali_disabled') === 'true') {
+            document.body.classList.add('diwali-theme-disabled');
+        }
+    } catch(e) {}
+
+    /* =========================================================
+       A. INJECT DIYA BESIDE LOGO / BRAND IN SIDEBAR
+       ========================================================= */
+    function injectDiyaIntoBrand() {
+        const brandTitle = document.querySelector('.sidebar-brand-title');
+        const template = document.getElementById('diwali-diya-template');
+        if (brandTitle && template && !document.getElementById('diwali-brand-diya')) {
+            const clone = template.content.cloneNode(true);
+            const diyaBadge = clone.querySelector('.diwali-diya-badge');
+            if (diyaBadge) {
+                diyaBadge.id = 'diwali-brand-diya';
+                diyaBadge.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    launchGrandCelebration(e.clientX, e.clientY);
+                });
+                brandTitle.appendChild(diyaBadge);
+            }
+        }
+
+        // Miniature diya for collapsed sidebar mode on the logo
+        const brandGroup = document.querySelector('.sidebar-brand-group');
+        if (brandGroup && template && !document.getElementById('diwali-collapsed-diya-el')) {
+            const clone2 = template.content.cloneNode(true);
+            const collapsedBadge = clone2.querySelector('.diwali-diya-badge');
+            if (collapsedBadge) {
+                collapsedBadge.id = 'diwali-collapsed-diya-el';
+                collapsedBadge.classList.add('diwali-collapsed-diya');
+                collapsedBadge.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    launchGrandCelebration(e.clientX, e.clientY);
+                });
+                brandGroup.style.position = 'relative';
+                brandGroup.appendChild(collapsedBadge);
+            }
+        }
+
+        // Add subtle festive greeting tag under "Market Intelligence"
+        const brandText = document.querySelector('.sidebar-brand-text');
+        if (brandText && !document.getElementById('diwali-festive-tag')) {
+            const tag = document.createElement('div');
+            tag.id = 'diwali-festive-tag';
+            tag.className = 'diwali-festival-tag';
+            tag.innerHTML = '<span>🪔</span><span>Shubh Deepavali</span>';
+            brandText.appendChild(tag);
+        }
+
+        // Add optional toggle menu item in sidebar user settings dropdown
+        injectDiwaliToggleMenuItem();
+    }
+
+    function injectDiwaliToggleMenuItem() {
+        const menuDropdown = document.getElementById('settings-menu-dropdown');
+        if (menuDropdown && !document.getElementById('diwali-menu-toggle')) {
+            const item = document.createElement('div');
+            item.id = 'diwali-menu-toggle';
+            item.className = 'menu-item';
+            const isDisabled = document.body.classList.contains('diwali-theme-disabled');
+            item.innerHTML = `<span>🪔</span> Diwali Theme: <b style="margin-left:4px;color:${isDisabled ? '#94a3b8' : '#f59e0b'}">${isDisabled ? 'OFF' : 'ON'}</b>`;
+            item.onclick = function() {
+                toggleDiwaliFestival();
+                if (typeof window.closeSettingsMenu === 'function') window.closeSettingsMenu();
+            };
+            menuDropdown.insertBefore(item, menuDropdown.firstChild);
+        }
+    }
+
+    // Toggle festival mode on/off
+    window.toggleDiwaliFestival = function() {
+        const isCurrentlyDisabled = document.body.classList.contains('diwali-theme-disabled');
+        if (isCurrentlyDisabled) {
+            document.body.classList.remove('diwali-theme-disabled');
+            try { localStorage.removeItem('capital_desk_diwali_disabled'); } catch(e) {}
+        } else {
+            document.body.classList.add('diwali-theme-disabled');
+            try { localStorage.setItem('capital_desk_diwali_disabled', 'true'); } catch(e) {}
+        }
+        const toggleEl = document.getElementById('diwali-menu-toggle');
+        if (toggleEl) {
+            const nowDisabled = document.body.classList.contains('diwali-theme-disabled');
+            toggleEl.innerHTML = `<span>🪔</span> Diwali Theme: <b style="margin-left:4px;color:${nowDisabled ? '#94a3b8' : '#f59e0b'}">${nowDisabled ? 'OFF' : 'ON'}</b>`;
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', injectDiyaIntoBrand);
+    } else {
+        injectDiyaIntoBrand();
+    }
+    window.addEventListener('load', injectDiyaIntoBrand);
+    setTimeout(injectDiyaIntoBrand, 200);
+
+    /* =========================================================
+       B. HIGH-PERFORMANCE FLOWER POT CRACKER (ANAR) ENGINE
+       ========================================================= */
+    const canvas = document.createElement('canvas');
+    canvas.id = 'diwali-cracker-canvas';
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d', { alpha: true });
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    function resizeCanvas() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas, { passive: true });
+
+    // Active particle systems
+    const particles = [];
+    const flashes = [];
+    let isLoopRunning = false;
+
+    // Classic Flower Pot (Anar) Spark Color Spectrum
+    const SPARK_PALETTES = [
+        '#ffffff', // Incandescent White Core
+        '#fff9db', // Warm White
+        '#fef08a', // Lemon Gold
+        '#fde047', // Brilliant Gold
+        '#facc15', // Pure Gold
+        '#f59e0b', // Rich Amber
+        '#f97316', // Saffron Orange
+        '#ea580c', // Fiery Orange
+        '#f43f5e', // Ruby Sparkle
+        '#10b981', // Emerald Sparkle
+        '#c084fc'  // Lavender Sparkle
+    ];
+
+    /**
+     * Spawns an authentic Indian Flower Pot (Anar) cracker fountain at (x, y)
+     */
+    function spawnFlowerPotCracker(originX, originY, intensity = 1.0) {
+        if (document.body.classList.contains('diwali-theme-disabled')) return;
+
+        // 1. Base Ignition Flash at ground level
+        flashes.push({
+            x: originX,
+            y: originY,
+            radius: 2,
+            maxRadius: 30 * intensity,
+            alpha: 1.0,
+            decay: 0.15
+        });
+
+        // 2. Conical Fountain of Rising Sparks
+        const count = Math.floor((52 + Math.random() * 24) * intensity);
+        
+        for (let i = 0; i < count; i++) {
+            // In a real flower pot, sparks shoot upwards with a conical spread
+            // vy is strongly negative (upward thrust), vx is spread horizontally
+            const upwardPower = (Math.random() * 8.5 + 6.5) * intensity;
+            const spreadAngle = (Math.random() - 0.5) * 5.4; // Cone spread
+
+            // Weight towards dazzling golds and whites (traditional anar look)
+            let color;
+            const rand = Math.random();
+            if (rand < 0.40) color = '#ffffff'; // White sparks
+            else if (rand < 0.75) color = SPARK_PALETTES[Math.floor(Math.random() * 5) + 1]; // Gold/Amber
+            else color = SPARK_PALETTES[Math.floor(Math.random() * SPARK_PALETTES.length)]; // Festive accents
+
+            const isCrackler = Math.random() < 0.20; // 20% chorsa crackler sparks
+            const maxLife = Math.floor(Math.random() * 26 + 34);
+
+            particles.push({
+                x: originX + (Math.random() - 0.5) * 6,
+                y: originY + (Math.random() - 0.5) * 4,
+                prevX: originX,
+                prevY: originY,
+                vx: spreadAngle,
+                vy: -upwardPower,
+                gravity: 0.28 + Math.random() * 0.08, // Pulls down into weeping willow arc
+                drag: 0.982,
+                color: color,
+                size: Math.random() * 2.2 + 1.2,
+                life: maxLife,
+                maxLife: maxLife,
+                isCrackler: isCrackler,
+                hasCracked: false
+            });
+        }
+
+        // Keep active particle cap safe for 60fps locked performance
+        if (particles.length > 550) {
+            particles.splice(0, particles.length - 550);
+        }
+
+        startAnimationLoop();
+    }
+
+    /**
+     * Grand Diwali Celebration: Multi-fountain barrage for Diya click
+     */
+    function launchGrandCelebration(x, y) {
+        spawnFlowerPotCracker(x, y, 1.4);
+        setTimeout(() => spawnFlowerPotCracker(x - 45, y + 15, 1.1), 110);
+        setTimeout(() => spawnFlowerPotCracker(x + 45, y + 15, 1.1), 220);
+        setTimeout(() => spawnFlowerPotCracker(x, y - 20, 1.2), 330);
+    }
+
+    // Expose for external trigger if needed
+    window.triggerFlowerPotCracker = spawnFlowerPotCracker;
+
+    /**
+     * Animation Loop (Sleeping when idle to maintain 0% CPU footprint)
+     */
+    function startAnimationLoop() {
+        if (!isLoopRunning) {
+            isLoopRunning = true;
+            requestAnimationFrame(animateFrame);
+        }
+    }
+
+    function animateFrame() {
+        ctx.clearRect(0, 0, width, height);
+
+        // 1. Draw Ignition Flashes
+        for (let i = flashes.length - 1; i >= 0; i--) {
+            const f = flashes[i];
+            f.radius += (f.maxRadius - f.radius) * 0.35;
+            f.alpha -= f.decay;
+
+            if (f.alpha <= 0.02) {
+                flashes.splice(i, 1);
+                continue;
+            }
+
+            const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius);
+            grad.addColorStop(0, `rgba(255, 255, 255, ${f.alpha * 0.95})`);
+            grad.addColorStop(0.4, `rgba(251, 191, 36, ${f.alpha * 0.8})`);
+            grad.addColorStop(1, 'rgba(234, 88, 12, 0)');
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 2. Update and Render Flower Pot Sparks
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+
+            // Store previous position for streak rendering
+            p.prevX = p.x;
+            p.prevY = p.y;
+
+            // Physics step
+            p.vx += (Math.random() - 0.5) * 0.45; // Turbulent sizzling air jitter
+            p.vy += p.gravity;
+            p.vx *= p.drag;
+            p.vy *= p.drag;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life--;
+
+            // Micro-Crackler pop near peak of fountain
+            if (p.isCrackler && !p.hasCracked && p.life < p.maxLife * 0.55) {
+                p.hasCracked = true;
+                // Spawn 3 micro-sparks branching outwards
+                for (let k = 0; k < 3; k++) {
+                    particles.push({
+                        x: p.x,
+                        y: p.y,
+                        prevX: p.x,
+                        prevY: p.y,
+                        vx: (Math.random() - 0.5) * 4.5,
+                        vy: (Math.random() - 0.5) * 4.5,
+                        gravity: 0.15,
+                        drag: 0.94,
+                        color: '#ffffff',
+                        size: 1.2,
+                        life: 14,
+                        maxLife: 14,
+                        isCrackler: false,
+                        hasCracked: true
+                    });
+                }
+            }
+
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+                continue;
+            }
+
+            // Alpha calculation with twinkling flicker
+            let alpha = p.life / p.maxLife;
+            // Realistic sparkle jitter: random brightness twinkle
+            if (Math.random() > 0.3) {
+                alpha = Math.min(1.0, alpha * 1.35);
+            } else {
+                alpha = alpha * 0.65;
+            }
+
+            // Draw glowing spark streak (trail)
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = p.size;
+            ctx.lineCap = 'round';
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 6;
+
+            ctx.beginPath();
+            ctx.moveTo(p.prevX, p.prevY);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+
+            // Draw incandescent spark head
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Keep loop running while particles or flashes exist; otherwise sleep
+        if (particles.length > 0 || flashes.length > 0) {
+            requestAnimationFrame(animateFrame);
+        } else {
+            isLoopRunning = false;
+            ctx.clearRect(0, 0, width, height);
+        }
+    }
+
+    /* =========================================================
+       C. GLOBAL MOUSE & TOUCH CLICK LISTENER
+       ========================================================= */
+    // Using 'pointerdown' for zero-latency response on clicks and taps
+    window.addEventListener('pointerdown', function(e) {
+        // Skip right clicks or non-primary buttons
+        if (e.button !== undefined && e.button !== 0) return;
+        
+        // Spawn Flower Pot Cracker at exact mouse coordinates
+        spawnFlowerPotCracker(e.clientX, e.clientY, 1.0);
+    }, { passive: true });
+
+})();
+</script>
