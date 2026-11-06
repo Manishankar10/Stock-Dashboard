@@ -1391,12 +1391,36 @@
                     else if (typeof openCreateAlertModal === 'function') openCreateAlertModal(sym);
                 }},
                 { divider: true },
-                { isMove: true },
-                { label: '🗑️ Remove Stock', danger: true, action: () => {
-                    if (typeof window.removeWatchlistStock === 'function') window.removeWatchlistStock(null, sym);
-                    else if (typeof removeWatchlistStock === 'function') removeWatchlistStock(null, sym);
-                }}
+                { isMove: true }
             ];
+
+            const allWl = (typeof watchlistsData !== 'undefined' && watchlistsData) ? watchlistsData : {};
+            const curWl = (typeof activeWatchlistName !== 'undefined') ? activeWatchlistName : '';
+            const listForCur = (curWl && Array.isArray(allWl[curWl])) ? allWl[curWl] : [];
+            const cleanSymVal = (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : String(sym).replace(/\.(NS|BS|BO)$/i, '')).trim().toUpperCase();
+            const isInCurrentWl = listForCur.some(item => {
+                const itemStr = String(item).trim().toUpperCase();
+                return itemStr === String(sym).trim().toUpperCase() || (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(itemStr) : itemStr.replace(/\.(NS|BS|BO)$/i, '')) === cleanSymVal;
+            });
+
+            if (isInCurrentWl) {
+                menuItems.push({
+                    label: '🗑️ Remove Stock',
+                    danger: true,
+                    action: () => {
+                        if (typeof window.removeWatchlistStock === 'function') window.removeWatchlistStock(null, sym);
+                        else if (typeof removeWatchlistStock === 'function') removeWatchlistStock(null, sym);
+                    }
+                });
+            } else if (curWl) {
+                menuItems.push({
+                    label: `➕ Add to "${curWl}"`,
+                    action: () => {
+                        if (typeof window.addWatchlistStock === 'function') window.addWatchlistStock(curWl, sym);
+                        else if (typeof addWatchlistStock === 'function') addWatchlistStock(curWl, sym);
+                    }
+                });
+            }
 
             menuItems.forEach(item => {
                 if (item.divider) {
@@ -1759,6 +1783,9 @@
                     window._wlMenuJustClosed = true;
                     setTimeout(() => { window._wlMenuJustClosed = false; }, 400);
                     closeAllWlMenus();
+                    if (typeof window.closeMobileHeaderSearch === 'function') {
+                        window.closeMobileHeaderSearch();
+                    }
                     try {
                         if (typeof item.action === 'function') {
                             item.action();
@@ -1863,6 +1890,7 @@
                 setTimeout(() => { window._wlMenuJustClosed = false; }, 300);
             }
         }
+        window.closeAllWlMenus = closeAllWlMenus;
 
         if (!window._wlRowMenuOutsideBound) {
             const handleOutside = (e) => {

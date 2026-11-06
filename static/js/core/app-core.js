@@ -661,6 +661,7 @@
         function escapeHtml(str) {
             return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
+        window.escapeHtml = escapeHtml;
 
         // Calculate holding days integer for sorting/filtering
         function getHoldingDays(buyDateStr) {
@@ -803,6 +804,7 @@
             }
             return { label: 'NSE', class: 'badge-nse' };
         }
+        window.getSymbolBadge = getSymbolBadge;
 
 
 
@@ -1002,3 +1004,243 @@
             </div>`;
         };
 
+
+
+        // =========================================================
+        // MOBILE TOP HEADER SEARCH & TYPEAHEAD AUTOCOMPLETE
+        // =========================================================
+        let _mobileSearchTimeout = null;
+
+        function openMobileHeaderSearch() {
+            const defaultBar = document.getElementById('mobile-header-default');
+            const searchBar = document.getElementById('mobile-header-search-active');
+            const backdrop = document.getElementById('mobile-header-search-backdrop');
+            const dropdown = document.getElementById('mobile-header-search-dropdown');
+            const topBar = document.getElementById('mobile-top-bar');
+            const input = document.getElementById('mobile-header-search-input');
+
+            if (defaultBar) defaultBar.style.display = 'none';
+            if (searchBar) searchBar.style.display = 'flex';
+            if (backdrop) backdrop.style.display = 'block';
+            if (dropdown) {
+                dropdown.style.display = 'block';
+                if (topBar) {
+                    const rect = topBar.getBoundingClientRect();
+                    dropdown.style.top = `${Math.round(rect.bottom)}px`;
+                }
+            }
+            if (topBar) topBar.classList.add('search-active');
+
+            if (input) {
+                setTimeout(() => {
+                    input.focus();
+                    if (!input.value.trim()) {
+                        renderMobileSearchInitialState();
+                    } else {
+                        handleMobileHeaderSearchInput();
+                    }
+                }, 50);
+            }
+        }
+        window.openMobileHeaderSearch = openMobileHeaderSearch;
+
+        function closeMobileHeaderSearch() {
+            const defaultBar = document.getElementById('mobile-header-default');
+            const searchBar = document.getElementById('mobile-header-search-active');
+            const backdrop = document.getElementById('mobile-header-search-backdrop');
+            const dropdown = document.getElementById('mobile-header-search-dropdown');
+            const topBar = document.getElementById('mobile-top-bar');
+
+            if (defaultBar) defaultBar.style.display = 'flex';
+            if (searchBar) searchBar.style.display = 'none';
+            if (backdrop) backdrop.style.display = 'none';
+            if (dropdown) dropdown.style.display = 'none';
+            if (topBar) topBar.classList.remove('search-active');
+
+            if (typeof window.closeAllWlMenus === 'function') {
+                window.closeAllWlMenus();
+            } else {
+                const popover = document.getElementById('wl-global-stock-popover');
+                if (popover) popover.style.display = 'none';
+            }
+        }
+        window.closeMobileHeaderSearch = closeMobileHeaderSearch;
+
+        function clearMobileHeaderSearch() {
+            const input = document.getElementById('mobile-header-search-input');
+            const clearBtn = document.getElementById('mobile-header-search-clear');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            if (clearBtn) clearBtn.style.display = 'none';
+            renderMobileSearchInitialState();
+        }
+        window.clearMobileHeaderSearch = clearMobileHeaderSearch;
+
+        function renderMobileSearchInitialState() {
+            const list = document.getElementById('mobile-header-search-list');
+            if (!list) return;
+            list.innerHTML = `
+                <div class="mobile-search-placeholder">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5; margin-bottom:4px;">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 13.5px;">Search Stocks & Indices</div>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">Type 2 or more letters to suggest stocks</div>
+                </div>
+            `;
+        }
+
+        function handleMobileHeaderSearchInput(event) {
+            const input = document.getElementById('mobile-header-search-input');
+            const clearBtn = document.getElementById('mobile-header-search-clear');
+            const list = document.getElementById('mobile-header-search-list');
+            if (!input || !list) return;
+
+            const query = input.value.trim();
+            if (clearBtn) clearBtn.style.display = query ? 'inline-flex' : 'none';
+
+            if (_mobileSearchTimeout) {
+                clearTimeout(_mobileSearchTimeout);
+                _mobileSearchTimeout = null;
+            }
+
+            if (query.length < 2) {
+                renderMobileSearchInitialState();
+                return;
+            }
+
+            list.innerHTML = `
+                <div class="mobile-search-loading">
+                    <div style="width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--accent, #3b82f6); border-radius: 50%; animation: spin 0.7s linear infinite;"></div>
+                    <span style="font-size: 12px; margin-top: 6px;">Searching "${escapeHtml(query)}"...</span>
+                </div>
+            `;
+
+            _mobileSearchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                    const results = await res.json();
+
+                    if (input.value.trim() !== query) return;
+
+                    renderMobileSearchResults(results, query);
+                } catch (err) {
+                    console.error('Mobile stock search error:', err);
+                    list.innerHTML = `
+                        <div class="mobile-search-empty">
+                            <span style="color: #ef4444; font-size: 12px;">Failed to load suggestions. Please check connection.</span>
+                        </div>
+                    `;
+                }
+            }, 200);
+        }
+        window.handleMobileHeaderSearchInput = handleMobileHeaderSearchInput;
+
+        function handleMobileHeaderSearchKeydown(event) {
+            if (event.key === 'Escape') {
+                closeMobileHeaderSearch();
+            }
+        }
+        window.handleMobileHeaderSearchKeydown = handleMobileHeaderSearchKeydown;
+
+        function renderMobileSearchResults(results, query) {
+            const list = document.getElementById('mobile-header-search-list');
+            if (!list) return;
+
+            if (!Array.isArray(results) || results.length === 0) {
+                list.innerHTML = `
+                    <div class="mobile-search-empty">
+                        <span style="font-size: 20px; opacity: 0.6; margin-bottom: 2px;">🔍</span>
+                        <span style="font-weight: 600; color: var(--text-primary);">No stocks found</span>
+                        <span style="font-size: 11.5px; color: var(--text-muted);">No matching symbol or company for "${escapeHtml(query)}"</span>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = '';
+            const prices = (typeof window.stockPricesData !== 'undefined' && window.stockPricesData) ? window.stockPricesData : {};
+
+            results.forEach(item => {
+                const sym = item.symbol;
+                const bInfo = typeof window.getSymbolBadge === 'function' ? window.getSymbolBadge(sym, item.exchange) : { label: item.exchange || 'NSE', class: 'badge-nse' };
+                const cleanSym = typeof window.cleanDisplaySymbol === 'function' ? window.cleanDisplaySymbol(sym) : sym;
+                const info = prices[sym] || {};
+
+                let priceHtml = '';
+                if (info.price !== undefined) {
+                    const priceVal = '₹' + Number(info.price).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                    const sign = (info.change !== undefined && info.change >= 0) ? '+' : '';
+                    const changeCls = (info.change !== undefined && info.change >= 0) ? 'pos' : 'neg';
+                    const pctVal = (info.change_pct !== undefined) ? `${sign}${info.change_pct.toFixed(2)}%` : '';
+                    priceHtml = `
+                        <div style="margin-left: auto; text-align: right; font-size: 11px; line-height: 1.2;">
+                            <div style="font-weight: 600; color: var(--text-primary);">${priceVal}</div>
+                            ${pctVal ? `<div class="${changeCls}" style="font-size: 10px; font-weight: 500;">${pctVal}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                const itemEl = document.createElement('div');
+                itemEl.className = 'mobile-search-result-item';
+                itemEl.setAttribute('data-symbol', sym);
+                itemEl.innerHTML = `
+                    <div class="mobile-search-item-info">
+                        <div class="mobile-search-item-top">
+                            <span class="mobile-search-symbol">${escapeHtml(cleanSym)}</span>
+                            <span class="badge ${bInfo.class}">${escapeHtml(bInfo.label)}</span>
+                            ${priceHtml}
+                        </div>
+                        <div class="mobile-search-item-name">${escapeHtml(item.name || sym)}</div>
+                    </div>
+                    <div class="mobile-search-item-action">
+                        <button type="button" class="btn-secondary wl-row-menu-btn mobile-search-setting-btn" title="Actions for ${escapeHtml(cleanSym)}" aria-label="Stock settings">
+                            <span class="wl-setting-icon">⚙️</span>
+                        </button>
+                    </div>
+                `;
+
+                // Click directly on stock item -> go to chart
+                itemEl.onclick = (e) => {
+                    if (e.target.closest('.mobile-search-setting-btn') || e.target.closest('.wl-row-menu-btn')) {
+                        return;
+                    }
+                    handleMobileSearchResultClick(sym);
+                };
+
+                // Click on setting icon button -> open watchlist stock setting popover
+                const settingBtn = itemEl.querySelector('.mobile-search-setting-btn');
+                if (settingBtn) {
+                    settingBtn.onclick = (e) => {
+                        handleMobileSearchSettingClick(e, sym);
+                    };
+                }
+
+                list.appendChild(itemEl);
+            });
+        }
+
+        function handleMobileSearchResultClick(sym) {
+            if (window._wlMenuJustClosed) return;
+            closeMobileHeaderSearch();
+            if (typeof window.handleWatchlistStockClick === 'function') {
+                window.handleWatchlistStockClick(sym);
+            } else if (typeof window.openInHouseChart === 'function') {
+                window.openInHouseChart(sym);
+            }
+        }
+        window.handleMobileSearchResultClick = handleMobileSearchResultClick;
+
+        function handleMobileSearchSettingClick(event, sym) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (typeof window.toggleWlRowMenu === 'function') {
+                window.toggleWlRowMenu(event, sym);
+            }
+        }
+        window.handleMobileSearchSettingClick = handleMobileSearchSettingClick;
