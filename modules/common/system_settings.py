@@ -7,6 +7,7 @@ from db_store import load_system_settings_db, save_system_settings_db
 DEFAULT_SYSTEM_SETTINGS = {
     "max_watchlists_per_user": 10,
     "max_stocks_per_watchlist": 50,
+    "research_document_websites": "trendlyne.com, screener.in, bseindia.com",
     "ai_prompts": {},
     "fcm_vapid_public_key": "",
     "fcm_vapid_private_key": "",
@@ -85,6 +86,11 @@ def update_system_settings(new_settings):
     if "fcm_app_id" in new_settings:
         current["fcm_app_id"] = str(new_settings["fcm_app_id"]).strip()
 
+    if "research_document_websites" in new_settings:
+        raw_val = str(new_settings["research_document_websites"]).strip()
+        parts = [p.strip() for p in raw_val.split(",") if p.strip()]
+        current["research_document_websites"] = ", ".join(parts) if parts else "trendlyne.com, screener.in, bseindia.com"
+
     # Smart Auto-Correction: If VAPID Key and Web API Key were swapped
     v_val = current.get("fcm_vapid_public_key", "")
     a_val = current.get("fcm_api_key", "")
@@ -99,6 +105,7 @@ def update_system_settings(new_settings):
     clean_settings = {
         "max_watchlists_per_user": current.get("max_watchlists_per_user", 10),
         "max_stocks_per_watchlist": current.get("max_stocks_per_watchlist", 50),
+        "research_document_websites": current.get("research_document_websites", "trendlyne.com, screener.in, bseindia.com"),
         "ai_prompts": current.get("ai_prompts", {}),
         "fcm_vapid_public_key": current.get("fcm_vapid_public_key", ""),
         "fcm_vapid_private_key": current.get("fcm_vapid_private_key", ""),

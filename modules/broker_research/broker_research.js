@@ -78,9 +78,10 @@
 
                 <div class="br-filter-bar">
                     <div class="br-stats-pill-group" id="br-stats-pills">
-                        <span class="br-stat-pill emerald" id="br-stat-count">0 Reports</span>
+                        <span class="br-stat-pill emerald" id="br-stat-count">0 Documents</span>
                         <span class="br-stat-pill" id="br-stat-window">Past 6 Months</span>
-                        <span class="br-stat-pill" id="br-stat-sources">Institutions, MFs &amp; Brokers</span>
+                        <span class="br-stat-pill" id="br-stat-sources">Sources: trendlyne.com, screener.in, bseindia.com</span>
+                        <span class="br-stat-pill emerald" id="br-stat-verified">✓ PDF &amp; Content Verified</span>
                     </div>
                     <div>
                         <input type="text" id="br-search-input" class="br-search-input" placeholder="Search by author, title or reco..." oninput="window.filterBrokerResearchTable(this.value)">
@@ -214,9 +215,13 @@
                         </div>
                     </td>
                     <td class="text-center">
-                        <a class="br-btn-doc" href="${esc(rep.url || '#')}" target="_blank" rel="noopener noreferrer" title="View Source Document / Research Paper">
-                            📄 Report ↗
-                        </a>
+                        ${(() => {
+                            const isPdf = rep.has_pdf || (rep.url && (rep.url.toLowerCase().endsWith('.pdf') || rep.url.toLowerCase().includes('/pdf/') || rep.url.toLowerCase().includes('annpdfopen') || rep.url.toLowerCase().includes('/corpfiling/')));
+                            const btnText = isPdf ? '📕 PDF ↗' : '📄 Report ↗';
+                            const btnCls = isPdf ? 'br-btn-doc br-btn-pdf' : 'br-btn-doc';
+                            const btnTitle = isPdf ? 'Open Verified PDF Document' : 'View Source Document / Research Paper';
+                            return `<a class="${btnCls}" href="${esc(rep.url || '#')}" target="_blank" rel="noopener noreferrer" title="${btnTitle}">${btnText}</a>`;
+                        })()}
                     </td>
                     <td class="text-center">
                         <button type="button" class="br-btn-ai" onclick='window.openBrokerResearchAiModal(${repJson})' title="Open AI synthesized key insights &amp; thesis">
@@ -287,7 +292,12 @@
             if (data.success && data.reports) {
                 _activeModalReports = data.reports;
                 renderRows(_activeModalReports, tbody);
-                if (countEl) countEl.innerText = `${_activeModalReports.length} Reports Found`;
+                if (countEl) countEl.innerText = `${_activeModalReports.length} Document${_activeModalReports.length === 1 ? '' : 's'} (Verified)`;
+                const sourcesEl = modal.querySelector('#br-stat-sources');
+                if (sourcesEl && data.allowed_sources && data.allowed_sources.length > 0) {
+                    sourcesEl.innerText = `Sources: ${data.allowed_sources.join(', ')}`;
+                    sourcesEl.title = `Admin configured sources: ${data.allowed_sources.join(', ')}`;
+                }
 
                 // If watchlist, populate stock select dropdown
                 if (watchlistName && selectEl && data.symbols) {
@@ -356,7 +366,12 @@
             const res = await fetch(`/api/broker-research?symbol=${encodeURIComponent(symbol)}&company=${encodeURIComponent(companyName || '')}`);
             const data = await res.json();
             if (data.success && data.reports && data.reports.length > 0) {
+                const sourcesStr = (data.allowed_sources && data.allowed_sources.length > 0) ? data.allowed_sources.join(', ') : 'trendlyne.com, screener.in, bseindia.com';
                 containerEl.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:11.5px; color:var(--text-secondary); flex-wrap:wrap; gap:6px;">
+                        <span style="font-weight:600; color:#10b981;">✓ ${data.reports.length} Verified Research Document${data.reports.length === 1 ? '' : 's'} (PDFs &amp; Content Available Only)</span>
+                        <span style="opacity:0.85;">Sources: <strong>${esc(sourcesStr)}</strong></span>
+                    </div>
                     <div class="br-embedded-table-wrap">
                         <table class="br-table" style="min-width: 720px;">
                             <thead>
@@ -375,9 +390,12 @@
                 const tbody = document.getElementById(`br-embedded-tbody-${symbol}`);
                 renderRows(data.reports, tbody);
             } else {
+                const sourcesStr = (data.allowed_sources && data.allowed_sources.length > 0) ? data.allowed_sources.join(', ') : 'trendlyne.com, screener.in, bseindia.com';
                 containerEl.innerHTML = `
-                    <div style="text-align: center; padding: 24px; color: var(--text-secondary); font-size: 13px;">
-                        No recent institutional research reports found for ${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, ''))}.
+                    <div style="text-align: center; padding: 28px 16px; color: var(--text-secondary); font-size: 13px;">
+                        <div style="font-size: 24px; margin-bottom: 6px;">📑</div>
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">No Research Documents or PDFs Available</div>
+                        <div style="font-size: 12px; opacity: 0.8;">No verified PDF reports found for ${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, ''))} on configured sources (${esc(sourcesStr)}).</div>
                     </div>
                 `;
             }

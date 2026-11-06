@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, jsonify, request, send_from_directory
 
 from .broker_research_ai import summarize_research_report
-from .broker_research_provider import BrokerResearchProvider, clean_symbol
+from .broker_research_provider import BrokerResearchProvider, clean_symbol, get_allowed_research_websites
 
 broker_research_bp = Blueprint("broker_research", __name__, url_prefix="/api/broker-research")
 
@@ -46,6 +46,7 @@ def get_broker_research_reports():
             "type": "stock",
             "symbol": clean_sym,
             "company": company_name or clean_sym,
+            "allowed_sources": get_allowed_research_websites(),
             "count": len(reports),
             "reports": reports
         })
@@ -82,6 +83,7 @@ def get_broker_research_reports():
             "type": "watchlist",
             "watchlist": watchlist,
             "symbols": symbols,
+            "allowed_sources": get_allowed_research_websites(),
             "count": len(reports),
             "reports": reports
         })
@@ -94,6 +96,7 @@ def get_broker_research_reports():
         "type": "default",
         "watchlist": "Top Holdings",
         "symbols": default_symbols,
+        "allowed_sources": get_allowed_research_websites(),
         "count": len(reports),
         "reports": reports
     })

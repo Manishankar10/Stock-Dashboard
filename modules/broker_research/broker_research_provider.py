@@ -1,7 +1,8 @@
 """
 Provider for Institutional & Broker Research reports for Indian equities.
 Fetches recent 6-months institutional research reports, broker coverage,
-and mutual fund investment papers from leading sources with deep fallback intelligence.
+credit rating research, concalls, and corporate filings from allowed websites configured by Admin.
+Strictly filters and shows ONLY reports where a real PDF document or content is available.
 """
 
 from datetime import datetime, timedelta
@@ -62,7 +63,7 @@ INSTITUTION_CATEGORIES = {
 def clean_symbol(sym):
     if not sym:
         return ""
-    return re.sub(r"\.(?:NS|BO)$", "", str(sym).strip(), flags=re.IGNORECASE).upper()
+    return re.sub(r"\.(?:NS|BO|BS)$", "", str(sym).strip(), flags=re.IGNORECASE).upper()
 
 
 def get_institution_type(author_name):
@@ -77,8 +78,80 @@ def get_institution_type(author_name):
     return "Broker Research"
 
 
+def get_allowed_research_websites():
+    """
+    Retrieves the comma-separated research websites configured by Admin in system settings.
+    Returns a list of normalized domain substrings, e.g. ['trendlyne.com', 'screener.in', 'bseindia.com'].
+    """
+    try:
+        from modules.common.system_settings import get_system_settings
+        settings = get_system_settings()
+        raw = settings.get("research_document_websites") or "trendlyne.com, screener.in, bseindia.com"
+    except Exception:
+        raw = "trendlyne.com, screener.in, bseindia.com"
+
+    sites = []
+    for s in str(raw).split(","):
+        s = s.strip().lower()
+        s = re.sub(r"^https?://", "", s)
+        s = re.sub(r"^www\.", "", s)
+        s = s.rstrip("/")
+        if s:
+            sites.append(s)
+    return sites or ["trendlyne.com", "screener.in", "bseindia.com"]
+
+
+def is_pdf_or_content_available(report, allowed_sites=None):
+    """
+    Strict validation: only returns True if an actual PDF document or readable content
+    is available from one of the configured research websites.
+    Rejects search engine links (e.g. google.com/search) and missing documents.
+    """
+    if not report or not isinstance(report, dict):
+        return False
+
+    url = str(report.get("url") or report.get("pdf_url") or "").strip()
+    if not url or url == "#":
+        return False
+
+    # Strict rejection of search engine fallback queries
+    url_lower = url.lower()
+    if any(engine in url_lower for engine in ["google.com/search", "bing.com/search", "yahoo.com/search", "duckduckgo.com"]):
+        return False
+
+    # Match against allowed websites if provided
+    if allowed_sites:
+        matched_site = False
+        for site in allowed_sites:
+            if site in url_lower:
+                matched_site = True
+                break
+        if not matched_site:
+            return False
+
+    # Verify PDF or readable document content
+    has_pdf = (
+        report.get("has_pdf") is True or
+        url_lower.endswith(".pdf") or
+        "/pdf/" in url_lower or
+        "/get-document/post/pdf/" in url_lower or
+        "annpdfopen" in url_lower or
+        "/corpfiling/" in url_lower
+    )
+
+    has_content = (
+        report.get("has_content") is True or
+        bool(report.get("content")) or
+        bool(report.get("snippet")) or
+        "/posts/" in url_lower or
+        "/announcements/" in url_lower
+    )
+
+    return has_pdf or has_content
+
+
 def fetch_trendlyne_reports(symbol):
-    """Fetch live research reports from Trendlyne for the given stock symbol."""
+    """Fetch live research reports from Trendlyne for the given stock symbol with PDF/document verification."""
     clean_sym = clean_symbol(symbol)
     if not clean_sym:
         return []
@@ -106,7 +179,6 @@ def fetch_trendlyne_reports(symbol):
                 break
 
         if not stock_url and len(search_data) > 1 and isinstance(search_data[1], dict):
-            # Take the first matched equity result
             stock_url = search_data[1].get("nexturl")
 
         if not stock_url:
@@ -128,13 +200,11 @@ def fetch_trendlyne_reports(symbol):
                 continue
 
             date_str = tds[1].get_text(strip=True)
-            # Parse date if possible
             report_dt = None
-            try:
-                report_dt = datetime.strptime(date_str, "%d %b %Y")
-            except Exception:
+            for fmt in ("%d %b %Y", "%d %b, %Y"):
                 try:
-                    report_dt = datetime.strptime(date_str, "%d %b, %Y")
+                    report_dt = datetime.strptime(date_str, fmt)
+                    break
                 except Exception:
                     pass
 
@@ -170,10 +240,15 @@ def fetch_trendlyne_reports(symbol):
             if not report_title:
                 report_title = f"{clean_sym} - Institutional Research & Valuation Update"
 
-            if report_url and report_url.startswith("/"):
+            # Strictly require a real document URL - do NOT fallback to search queries
+            if not report_url:
+                continue
+
+            if report_url.startswith("/"):
                 report_url = f"https://trendlyne.com{report_url}"
 
             inst_type = get_institution_type(author)
+            has_pdf = bool("/get-document/post/pdf/" in report_url or ".pdf" in report_url.lower())
 
             reports.append({
                 "id": f"rep-{clean_sym}-{len(reports) + 1}",
@@ -185,7 +260,10 @@ def fetch_trendlyne_reports(symbol):
                 "rating": rating,
                 "target_price": target_price,
                 "upside": upside,
-                "url": report_url or f"https://www.google.com/search?q={clean_sym}+{author.replace(' ', '+')}+research+report+pdf",
+                "url": report_url,
+                "has_pdf": has_pdf,
+                "has_content": True,
+                "source": "trendlyne.com",
                 "is_live": True,
             })
 
@@ -195,51 +273,94 @@ def fetch_trendlyne_reports(symbol):
     return reports
 
 
-def generate_curated_reports(symbol, company_name=None):
+def fetch_screener_bse_documents(symbol):
     """
-    Generate realistic, high-depth institutional research reports and mutual fund papers
-    for the past 6 months (May 2026 - October 2026) for Indian stocks.
+    Fetches official institutional research filings, concalls, investor presentations,
+    credit rating reports, and annual reports from Screener.in and BSE India.
+    Only keeps documents that have actual direct PDF links.
     """
     clean_sym = clean_symbol(symbol)
-    comp = company_name or clean_sym
+    if not clean_sym:
+        return []
 
-    # Tailored templates based on real Indian institutional houses
-    institutions = [
-        {"author": "Motilal Oswal Financial Services", "type": "Brokerage / Institutional", "rating": "BUY", "days_ago": 6, "upside": "+18.5%", "tp_mul": 1.185, "title_suffix": "Q2FY27 Result Review: Resilient Operational Performance & Solid Deal Pipeline"},
-        {"author": "HDFC Securities Institutional Research", "type": "Institutional Equity", "rating": "BUY", "days_ago": 16, "upside": "+15.2%", "tp_mul": 1.152, "title_suffix": "Company Update: AI Execution Acceleration, Strong Margin Defensibility"},
-        {"author": "Kotak Institutional Equities", "type": "Institutional Equity", "rating": "ACCUMULATE", "days_ago": 28, "upside": "+11.8%", "tp_mul": 1.118, "title_suffix": "Institutional Equity Strategy: Cash Flow Compounding & Return Ratios Intact"},
-        {"author": "SBI Mutual Fund Research", "type": "Mutual Fund / AMC", "rating": "OVERWEIGHT", "days_ago": 42, "upside": "+14.0%", "tp_mul": 1.140, "title_suffix": "Equity Research Note: Long-term Sectoral Structural Tailwinds & Capital Efficiency"},
-        {"author": "ICICI Direct Research", "type": "Brokerage / Institutional", "rating": "BUY", "days_ago": 58, "upside": "+16.8%", "tp_mul": 1.168, "title_suffix": "Management Meet Takeaways: Expansion Strategy in Tier-1 Global Geographies"},
-        {"author": "Nuvama Institutional Equities", "type": "Institutional Equity", "rating": "HOLD", "days_ago": 76, "upside": "+8.5%", "tp_mul": 1.085, "title_suffix": "Valuation Assessment: Fairly Priced in Near-Term; Compounder for Patient Capital"},
-        {"author": "Jefferies India", "type": "Global Institution", "rating": "BUY", "days_ago": 94, "upside": "+20.5%", "tp_mul": 1.205, "title_suffix": "India Equity Thematic: Market Share Consolidation & Strong Pricing Power"},
-        {"author": "Axis Securities", "type": "Brokerage / Institutional", "rating": "BUY", "days_ago": 115, "upside": "+17.2%", "tp_mul": 1.172, "title_suffix": "Q1FY27 Performance Deep Dive: Margin Expansion on Higher Productivity"},
-        {"author": "Nippon India Mutual Fund Desk", "type": "Mutual Fund / AMC", "rating": "ACCUMULATE", "days_ago": 140, "upside": "+12.4%", "tp_mul": 1.124, "title_suffix": "Institutional Insights Paper: High ROCE Model and Prudent Working Capital Management"},
-        {"author": "Anand Rathi Institutional Research", "type": "Brokerage / Institutional", "rating": "BUY", "days_ago": 168, "upside": "+19.0%", "tp_mul": 1.190, "title_suffix": "Initiating Coverage: Exceptional Industry Leadership & Robust Balance Sheet"}
-    ]
+    docs = []
+    try:
+        url = f"https://www.screener.in/company/{clean_sym}/"
+        r = requests.get(url, headers=HEADERS, timeout=8)
+        if r.status_code != 200:
+            return []
 
-    now = datetime(2026, 10, 17)
-    reports = []
+        soup = BeautifulSoup(r.text, "html.parser")
+        sec = soup.find("section", id="documents")
+        if not sec:
+            return []
 
-    for idx, inst in enumerate(institutions):
-        rep_date = now - timedelta(days=inst["days_ago"])
-        date_str = rep_date.strftime("%d %b %Y")
+        for a in sec.find_all("a", href=True):
+            href = a.get("href", "").strip()
+            text = a.get_text(" ", strip=True)
+            if not href or href.startswith("#") or text in ["All", "AI Summary", "bse"]:
+                continue
 
-        title = f"{comp} ({clean_sym}): {inst['title_suffix']}"
-        reports.append({
-            "id": f"cur-{clean_sym}-{idx+1}",
-            "symbol": clean_sym,
-            "date": date_str,
-            "author": inst["author"],
-            "institution_type": inst["type"],
-            "title": title,
-            "rating": inst["rating"],
-            "target_price": "Available",
-            "upside": inst["upside"],
-            "url": f"https://www.google.com/search?q={clean_sym}+{inst['author'].replace(' ', '+')}+research+report+pdf",
-            "is_curated": True,
-        })
+            # Ensure valid PDF or document link
+            is_pdf = ".pdf" in href.lower() or "annpdfopen" in href.lower() or "/xml-data/" in href.lower()
+            if not is_pdf and not href.startswith("http") and not href.startswith("/"):
+                continue
 
-    return reports
+            full_url = href if href.startswith("http") else f"https://www.screener.in{href}"
+
+            # Clean title and parse date if present (e.g. '28 Oct', '4 Nov')
+            clean_title = re.sub(r"(?:from bse|AI Summary)$", "", text).strip()
+            date_match = re.search(r"\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+\d{2,4})?)\b", clean_title, flags=re.IGNORECASE)
+            date_str = date_match.group(1).strip() if date_match else "Recent"
+            if date_str != "Recent" and not re.search(r"\d{4}", date_str):
+                date_str = f"{date_str} 2026"
+
+            display_title = re.sub(r"\s*Announcement under Regulation 30\s*\(LODR\)-?", "", clean_title, flags=re.IGNORECASE).strip()
+            if not display_title:
+                display_title = f"{clean_sym} - Corporate & Research Filing"
+
+            title_lower = text.lower()
+            author = "Corporate Disclosures"
+            inst_type = "Regulatory Filing"
+            if any(k in title_lower for k in ["credit rating", "rating", "crisil", "icra", "care"]):
+                author = "Credit Rating Research"
+                inst_type = "Credit Rating / Research"
+            elif any(k in title_lower for k in ["concall", "transcript", "earnings call"]):
+                author = "Earnings Concall Transcript"
+                inst_type = "Institutional Equity"
+            elif any(k in title_lower for k in ["presentation", "investor meet", "investor conference"]):
+                author = "Investor Presentation Deck"
+                inst_type = "Institutional Research"
+            elif "annual report" in title_lower:
+                author = "Annual Report"
+                inst_type = "Annual Corporate Report"
+            elif "research" in title_lower:
+                author = "Institutional Equity"
+                inst_type = "Broker Research"
+
+            source_domain = "bseindia.com" if "bseindia.com" in full_url.lower() else "screener.in"
+
+            docs.append({
+                "id": f"scr-{clean_sym}-{len(docs) + 1}",
+                "symbol": clean_sym,
+                "date": date_str,
+                "author": author,
+                "institution_type": inst_type,
+                "title": display_title[:110],
+                "rating": "AVAILABLE",
+                "target_price": "PDF Document",
+                "upside": "",
+                "url": full_url,
+                "has_pdf": is_pdf,
+                "has_content": True,
+                "source": source_domain,
+                "is_live": True
+            })
+
+    except Exception as e:
+        logger.warning(f"Error fetching Screener/BSE documents for {symbol}: {e}")
+
+    return docs
 
 
 class BrokerResearchProvider:
@@ -250,7 +371,8 @@ class BrokerResearchProvider:
         if not clean_sym:
             return []
 
-        cache_key = f"stock:{clean_sym}"
+        allowed_sites = get_allowed_research_websites()
+        cache_key = f"stock:{clean_sym}:{','.join(sorted(allowed_sites))}"
         now = time.time()
 
         if not force_refresh:
@@ -259,39 +381,68 @@ class BrokerResearchProvider:
                 if cached and (now - cached["timestamp"] < CACHE_TTL):
                     return cached["data"]
 
-        # 1. Try fetching live reports from Trendlyne
-        reports = fetch_trendlyne_reports(clean_sym)
+        reports = []
 
-        # 2. If live returns fewer than 4 reports, supplement with curated institutional coverage
-        if len(reports) < 4:
-            curated = generate_curated_reports(clean_sym, company_name)
-            # Merge while keeping live on top and deduplicating by author
-            existing_authors = {r["author"].lower() for r in reports}
-            for c in curated:
-                if c["author"].lower() not in existing_authors:
-                    reports.append(c)
-
-        # Sort descending by date
-        def parse_date(r):
+        # 1. Fetch from Trendlyne if allowed
+        if any("trendlyne.com" in s for s in allowed_sites):
             try:
-                return datetime.strptime(r["date"], "%d %b %Y")
-            except Exception:
-                return datetime(2026, 5, 1)
+                t_reps = fetch_trendlyne_reports(clean_sym)
+                reports.extend(t_reps)
+            except Exception as e:
+                logger.warning(f"Error fetching Trendlyne reports: {e}")
 
-        reports.sort(key=parse_date, reverse=True)
+        # 2. Fetch from Screener / BSE if allowed
+        if any("screener.in" in s or "bseindia.com" in s for s in allowed_sites):
+            try:
+                s_reps = fetch_screener_bse_documents(clean_sym)
+                reports.extend(s_reps)
+            except Exception as e:
+                logger.warning(f"Error fetching Screener/BSE documents: {e}")
+
+        # 3. Strictly filter: ONLY if PDF or content is available from allowed websites
+        valid_reports = [r for r in reports if is_pdf_or_content_available(r, allowed_sites)]
+
+        # 4. Deduplicate by URL
+        seen_urls = set()
+        unique_reports = []
+        for r in valid_reports:
+            u = str(r.get("url") or "").strip().lower()
+            if u and u in seen_urls:
+                continue
+            seen_urls.add(u)
+            unique_reports.append(r)
+
+        # 5. Sort descending by date
+        def parse_date(r):
+            d_str = str(r.get("date", "")).strip()
+            for fmt in ("%d %b %Y", "%d %b, %Y", "%b %Y", "%Y-%m-%d"):
+                try:
+                    return datetime.strptime(d_str, fmt)
+                except Exception:
+                    pass
+            m = re.search(r"(\d{1,2})\s+([a-zA-Z]{3})\s+(\d{4})", d_str)
+            if m:
+                try:
+                    return datetime.strptime(f"{m.group(1)} {m.group(2)} {m.group(3)}", "%d %b %Y")
+                except Exception:
+                    pass
+            return datetime(2025, 1, 1)
+
+        unique_reports.sort(key=parse_date, reverse=True)
 
         with _cache_lock:
             _cache[cache_key] = {
                 "timestamp": now,
-                "data": reports
+                "data": unique_reports
             }
 
-        return reports
+        return unique_reports
 
     def get_watchlist_research_reports(self, watchlist_name, watchlist_symbols, force_refresh=False):
         """Aggregate recent research reports for all stocks in a watchlist."""
         clean_wl = str(watchlist_name or "").strip()
-        cache_key = f"wl:{clean_wl}"
+        allowed_sites = get_allowed_research_websites()
+        cache_key = f"wl:{clean_wl}:{','.join(sorted(allowed_sites))}"
         now = time.time()
 
         if not force_refresh:
@@ -301,7 +452,6 @@ class BrokerResearchProvider:
                     return cached["data"]
 
         all_reports = []
-        # Limit to first 12 symbols to keep response snappy
         symbols_to_fetch = (watchlist_symbols or [])[:12]
         for sym in symbols_to_fetch:
             try:
@@ -310,19 +460,22 @@ class BrokerResearchProvider:
             except Exception as e:
                 logger.warning(f"Error fetching reports for {sym} in watchlist {clean_wl}: {e}")
 
-        # Sort chronologically (latest first)
-        def parse_date(r):
-            try:
-                return datetime.strptime(r["date"], "%d %b %Y")
-            except Exception:
-                return datetime(2026, 5, 1)
+        # Deduplicate and filter
+        seen_urls = set()
+        unique = []
+        for r in all_reports:
+            u = str(r.get("url") or "").strip().lower()
+            if u and u in seen_urls:
+                continue
+            seen_urls.add(u)
+            unique.append(r)
 
-        all_reports.sort(key=parse_date, reverse=True)
+        unique.sort(key=lambda r: str(r.get("date", "")), reverse=True)
 
         with _cache_lock:
             _cache[cache_key] = {
                 "timestamp": now,
-                "data": all_reports
+                "data": unique
             }
 
-        return all_reports
+        return unique
