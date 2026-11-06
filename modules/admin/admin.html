@@ -1161,15 +1161,28 @@
 
         <!-- Navigation Tabs -->
         <div class="nav-tabs">
-            <button class="tab-btn active" id="tab-btn-users" onclick="switchAdminTab('users')">👥 User Accounts & Data</button>
-            <button class="tab-btn" id="tab-btn-logs" onclick="switchAdminTab('logs')">📜 Real-Time Login Audit Logs</button>
-            <button class="tab-btn" id="tab-btn-settings" onclick="switchAdminTab('settings')">⚙️ System Setting</button>
-            <button class="tab-btn" id="tab-btn-system" onclick="switchAdminTab('system')">🖥️ System Info & Backup</button>
             <button class="tab-btn" id="tab-btn-notifications" onclick="switchAdminTab('notifications')">🔔 Notifications</button>
+            <button class="tab-btn" id="tab-btn-settings" onclick="switchAdminTab('settings')">⚙️ System Setting</button>
+            <button class="tab-btn" id="tab-btn-users" onclick="switchAdminTab('users')">👥 User Accounts & Data</button>
+            <button class="tab-btn" id="tab-btn-logs" onclick="switchAdminTab('logs')">📜 Real-Time Login Audit Logs</button>
+            <button class="tab-btn" id="tab-btn-system" onclick="switchAdminTab('system')">🖥️ System Info & Backup</button>
+        </div>
+
+        <!-- Idle On-Demand State: Visible until any tab is clicked -->
+        <div id="tab-idle-placeholder" class="tab-content active" style="text-align: center; padding: 50px 20px; background: var(--bg-card); border-radius: 12px; border: 1px dashed var(--border-color); margin-top: 14px;">
+            <div style="font-size: 32px; margin-bottom: 12px;">👆</div>
+            <div style="font-size: 15.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Select an Admin Tab to Load Data</div>
+            <div style="font-size: 12.5px; color: var(--text-secondary); max-width: 480px; margin: 0 auto; line-height: 1.5;">
+                Data is loaded on-demand. Click on <b>🔔 Notifications</b>, <b>⚙️ System Setting</b>, or any menu above to load its live data.
+            </div>
+            <div style="margin-top: 18px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <button type="button" class="btn-primary" style="font-size: 12px; padding: 7px 16px; border-radius: 8px; cursor: pointer;" onclick="switchAdminTab('notifications')">🔔 Open Notifications</button>
+                <button type="button" class="btn-secondary" style="font-size: 12px; padding: 7px 16px; border-radius: 8px; cursor: pointer;" onclick="switchAdminTab('settings')">⚙️ Open System Setting</button>
+            </div>
         </div>
 
         <!-- TAB 1: User Management -->
-        <div id="tab-users" class="tab-content active">
+        <div id="tab-users" class="tab-content">
             <!-- Desktop Table View -->
             <div class="table-responsive-container desktop-only-view">
                 <table>
@@ -5294,10 +5307,8 @@
         async function initAdmin() {
             initTheme();
             await checkAdminAuth();
-            // Load KPI Summary Cards (Image 2) on admin page load
-            await loadAdminStats();
-            // Load initial active tab data only ('users')
-            await loadAdminUsers();
+            // On initial page load, no tab data is eagerly fetched.
+            // Appropriate APIs are called on-demand only when a tab is clicked.
         }
 
         initAdmin();

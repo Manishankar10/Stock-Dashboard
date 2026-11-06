@@ -136,6 +136,10 @@ class HighPerformanceCache:
                 ttl = min(ttl, 5)
             self.cache[key] = (time.time(), data, ttl)
 
+    def delete(self, key):
+        with self.lock:
+            self.cache.pop(key, None)
+
     def clear(self):
         with self.lock:
             self.cache.clear()

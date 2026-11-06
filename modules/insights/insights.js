@@ -1203,9 +1203,13 @@
         function renderInsightsFiiDiiUI(fd) {
             const fiiMount = document.getElementById('insights-fiidii-mount');
             const fiiDateTag = document.getElementById('fiidii-date-tag');
+            const sourceBadge = document.getElementById('fiidii-source-badge');
             if (!fiiMount || !fd) return;
 
             if (fiiDateTag && fd.date) fiiDateTag.innerText = window.formatAppDate ? window.formatAppDate(fd.date) : fd.date;
+            if (sourceBadge && fd.source) {
+                sourceBadge.innerText = fd.source.toUpperCase().includes('NSE') ? 'NSE DIRECT' : fd.source;
+            }
 
             const fiiPos = fd.fii_net >= 0;
             const diiPos = fd.dii_net >= 0;
@@ -1215,18 +1219,21 @@
             const diiSign = diiPos ? '+' : '-';
             const totSign = totPos ? '+' : '-';
 
+            const fiiGrossTooltip = (fd.fii_buy && fd.fii_sell) ? `Gross Buy: ₹${fd.fii_buy.toLocaleString('en-IN')} Cr | Gross Sell: ₹${fd.fii_sell.toLocaleString('en-IN')} Cr (NSE Official)` : '';
+            const diiGrossTooltip = (fd.dii_buy && fd.dii_sell) ? `Gross Buy: ₹${fd.dii_buy.toLocaleString('en-IN')} Cr | Gross Sell: ₹${fd.dii_sell.toLocaleString('en-IN')} Cr (NSE Official)` : '';
+
             fiiMount.innerHTML = `
-                <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;" ${fiiGrossTooltip ? `title="${escapeHtml(fiiGrossTooltip)}"` : ''}>
                     <div>
-                        <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">FII Flow</span>
-                        <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${fiiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.fii_action || (fiiPos ? 'BUY' : 'SELL')}</span>
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">FII / FPI Flow</span>
+                        <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${fiiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.fii_action || (fiiPos ? 'NET BUY' : 'NET SELL')}</span>
                     </div>
                     <span style="font-size: 13px; font-weight: 700; color: ${fiiPos ? '#10b981' : '#ef4444'};">${fiiSign}₹${Math.abs(fd.fii_net).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})} Cr</span>
                 </div>
-                <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;" ${diiGrossTooltip ? `title="${escapeHtml(diiGrossTooltip)}"` : ''}>
                     <div>
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">DII Flow</span>
-                        <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${diiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.dii_action || (diiPos ? 'BUY' : 'SELL')}</span>
+                        <span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; ${diiPos ? 'background: rgba(16,185,129,0.15); color: #10b981;' : 'background: rgba(239,68,68,0.15); color: #ef4444;'}">${fd.dii_action || (diiPos ? 'NET BUY' : 'NET SELL')}</span>
                     </div>
                     <span style="font-size: 13px; font-weight: 700; color: ${diiPos ? '#10b981' : '#ef4444'};">${diiSign}₹${Math.abs(fd.dii_net).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})} Cr</span>
                 </div>
