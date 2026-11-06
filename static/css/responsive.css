@@ -2179,6 +2179,26 @@
         display: flex !important;
     }
 
+    #fundamentalsModal .fundamentals-modal-breadcrumb {
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        color: var(--text-secondary) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        margin-bottom: 2px !important;
+        line-height: 1.2 !important;
+        letter-spacing: 0.2px !important;
+    }
+    #fundamentalsModal .fundamentals-modal-breadcrumb .fundamentals-breadcrumb-active {
+        color: var(--accent, #10b981) !important;
+        font-weight: 700 !important;
+    }
+    #fundamentalsModal .fundamentals-modal-breadcrumb .fundamentals-breadcrumb-sep {
+        opacity: 0.45 !important;
+        font-size: 9px !important;
+    }
+
     #fundamentalsModal #fundamentals-modal-company-name {
         font-size: 13.5px !important;
         font-weight: 700 !important;
