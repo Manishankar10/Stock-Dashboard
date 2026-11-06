@@ -706,8 +706,10 @@
     /**
      * Spawns an authentic Indian Flower Pot (Anar) cracker fountain at (x, y)
      */
-    function spawnFlowerPotCracker(originX, originY, intensity = 1.0) {
+    function spawnFlowerPotCracker(originX, originY, intensity = 1.0, isCorner = false) {
         if (document.body.classList.contains('diwali-theme-disabled')) return;
+        // Completely removed from mobile version
+        if (window.innerWidth <= 768) return;
 
         // 1. Base Ignition Flash at ground level
         flashes.push({
@@ -720,13 +722,16 @@
         });
 
         // 2. Conical Fountain of Rising Sparks
-        const count = Math.floor((52 + Math.random() * 24) * intensity);
+        const count = Math.floor((55 + Math.random() * 25) * intensity);
         
         for (let i = 0; i < count; i++) {
-            // In a real flower pot, sparks shoot upwards with a conical spread
-            // vy is strongly negative (upward thrust), vx is spread horizontally
-            const upwardPower = (Math.random() * 8.5 + 6.5) * intensity;
-            const spreadAngle = (Math.random() - 0.5) * 5.4; // Cone spread
+            // When in the left corner, shoot higher and angle sparks slightly inward into the screen
+            const upwardPower = isCorner
+                ? (Math.random() * 11 + 9.5) * intensity
+                : (Math.random() * 9.5 + 7.5) * intensity;
+            const spreadAngle = isCorner 
+                ? (Math.random() - 0.22) * 6.2 + 1.4  // Fan inward towards the right
+                : (Math.random() - 0.5) * 5.4;
 
             // Weight towards dazzling golds and whites (traditional anar look)
             let color;
@@ -736,7 +741,7 @@
             else color = SPARK_PALETTES[Math.floor(Math.random() * SPARK_PALETTES.length)]; // Festive accents
 
             const isCrackler = Math.random() < 0.20; // 20% chorsa crackler sparks
-            const maxLife = Math.floor(Math.random() * 26 + 34);
+            const maxLife = Math.floor(Math.random() * 28 + 36);
 
             particles.push({
                 x: originX + (Math.random() - 0.5) * 6,
@@ -768,6 +773,7 @@
      * Grand Diwali Celebration: Multi-fountain barrage for Diya click
      */
     function launchGrandCelebration(x, y) {
+        if (window.innerWidth <= 768) return;
         spawnFlowerPotCracker(x, y, 1.4);
         setTimeout(() => spawnFlowerPotCracker(x - 45, y + 15, 1.1), 110);
         setTimeout(() => spawnFlowerPotCracker(x + 45, y + 15, 1.1), 220);
@@ -900,16 +906,29 @@
     }
 
     /* =========================================================
-       C. GLOBAL MOUSE & TOUCH CLICK LISTENER
+       C. MOUSE CLICK LISTENER (DESKTOP ONLY -> LEFT CORNER ON SIDEBAR MENU CLICK)
        ========================================================= */
-    // Using 'pointerdown' for zero-latency response on clicks and taps
-    window.addEventListener('pointerdown', function(e) {
+    function handleGlobalClick(e) {
         // Skip right clicks or non-primary buttons
         if (e.button !== undefined && e.button !== 0) return;
         
-        // Spawn Flower Pot Cracker at exact mouse coordinates
-        spawnFlowerPotCracker(e.clientX, e.clientY, 1.0);
-    }, { passive: true });
+        // Completely removed from mobile version (<= 768px)
+        if (window.innerWidth <= 768) return;
+        
+        // Trigger Flower Pot Cracker ONLY when clicking a sidebar menu element
+        const isSidebarMenu = e.target && e.target.closest && e.target.closest(
+            '#app-sidebar, .sidebar-nav, .sidebar-nav-item, .market-pulse-submenu, .tools-submenu'
+        );
+        if (!isSidebarMenu) return;
+        
+        // Spawn Flower Pot Cracker at the bottom-left corner in web
+        const cornerX = Math.min(42, window.innerWidth * 0.05) + (Math.random() - 0.5) * 14;
+        const cornerY = window.innerHeight - 25;
+        spawnFlowerPotCracker(cornerX, cornerY, 1.35, true);
+    }
+
+    // Using capture phase to ensure every click anywhere on desktop triggers the corner cracker
+    window.addEventListener('pointerdown', handleGlobalClick, { capture: true, passive: true });
 
 })();
 </script>
