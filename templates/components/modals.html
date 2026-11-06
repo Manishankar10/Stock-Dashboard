@@ -608,7 +608,7 @@
                                 <button class="popover-menu-item" id="chart-action-wl-item" onclick="openStockActionWatchlist(currentChartSymbol); closeAllChartPopovers();">
                                     ➕ Add to Watchlist
                                 </button>
-                                <button class="popover-menu-item" onclick="openStockNewsModal(currentChartSymbol); closeAllChartPopovers();">
+                                <button class="popover-menu-item" onclick="openStockNewsModal(window.currentChartSymbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '')); closeAllChartPopovers();">
                                     📰 News
                                 </button>
                                 <button class="popover-menu-item" onclick="openStockActionBrokerResearch(currentChartSymbol); closeAllChartPopovers();">

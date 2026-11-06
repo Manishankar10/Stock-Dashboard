@@ -6054,6 +6054,7 @@
             if (!sym) return;
             clearTempMeasure();
             currentChartSymbol = sym;
+            window.currentChartSymbol = sym;
             currentChartRange = '3y';
             if (targetInterval) {
                 currentChartInterval = targetInterval;
@@ -8267,6 +8268,7 @@
 
         function openEmptyChart() {
             currentChartSymbol = '';
+            window.currentChartSymbol = '';
             const modal = document.getElementById('chartModal');
             if (modal) modal.style.display = 'block';
             const symDisplay = document.getElementById('chartSymbolDisplay');

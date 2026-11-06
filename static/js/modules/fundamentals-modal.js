@@ -2,6 +2,17 @@
         // FUNDAMENTALS MODAL
         // =========================================================
         let _fundamentalsMsgListenerAttached = false;
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function cleanDisplaySymbol(sym) {
             if (sym === null || sym === undefined) return '';
             const s = String(sym).trim();
@@ -298,10 +309,6 @@
         }
 
         function renderStockNewsCard(art) {
-            const escapeHtml = (str) => {
-                if (!str) return '';
-                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            };
 
             const card = document.createElement('div');
             card.className = 'stock-news-card';
@@ -483,7 +490,14 @@
             const subtitleEl = document.getElementById('news-modal-subtitle');
             const container = document.getElementById('news-articles-container');
 
-            const cleanSym = symbol ? symbol.trim() : '';
+            let rawSym = symbol ? String(symbol).trim() : '';
+            if (!rawSym && window.currentChartSymbol) {
+                rawSym = String(window.currentChartSymbol).trim();
+            }
+            if (!rawSym && typeof currentChartSymbol !== 'undefined' && currentChartSymbol) {
+                rawSym = String(currentChartSymbol).trim();
+            }
+            const cleanSym = rawSym.replace(/\.(NS|BO|NSE|BSE)$/i, '').toUpperCase();
             stockNewsState.symbol = cleanSym;
             stockNewsState.allArticles = [];
             stockNewsState.displayedCount = 0;
@@ -518,11 +532,6 @@
             if (typeof window.bringModalToFront === 'function') {
                 window.bringModalToFront(modal);
             }
-
-            const escapeHtml = (str) => {
-                if (!str) return '';
-                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            };
 
             try {
                 const insightsUrl = cleanSym 
