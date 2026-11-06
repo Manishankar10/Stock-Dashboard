@@ -282,7 +282,6 @@
     body.diwali-theme-disabled .mobile-top-bar::after,
     body.diwali-theme-disabled .diwali-mobile-art-layer,
     body.diwali-theme-disabled #diwali-mobile-diya,
-    body.diwali-theme-disabled #diwali-mobile-tag,
     body.diwali-theme-disabled .diwali-diya-badge,
     body.diwali-theme-disabled .diwali-festival-tag,
     body.diwali-theme-disabled #diwali-cracker-canvas {
@@ -342,26 +341,6 @@
     .mobile-top-bar > div {
         position: relative;
         z-index: 2;
-    }
-    .diwali-mobile-festive-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        font-size: 8.5px;
-        font-weight: 700;
-        color: #f59e0b;
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(234, 88, 12, 0.08));
-        padding: 2px 5px;
-        border-radius: 4px;
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        white-space: nowrap;
-        pointer-events: none;
-        margin-left: 2px;
-    }
-    @media (max-width: 380px) {
-        .diwali-mobile-festive-tag span:last-child {
-            display: none; /* Just show 🪔 on very narrow screens (<380px) */
-        }
     }
 
     /* =========================================================
@@ -627,14 +606,6 @@
                 } else {
                     leftGroup.appendChild(mobileDiya);
                 }
-            }
-
-            if (!document.getElementById('diwali-mobile-tag')) {
-                const mobileTag = document.createElement('div');
-                mobileTag.id = 'diwali-mobile-tag';
-                mobileTag.className = 'diwali-mobile-festive-tag';
-                mobileTag.innerHTML = '<span>🪔</span><span>தீபாவளி வாழ்த்துக்கள்</span>';
-                leftGroup.appendChild(mobileTag);
             }
         }
 
