@@ -195,7 +195,7 @@
 
 /* Refresh Button Styled Identically to Responsive Portfolio Refresh Button */
 .upcoming-refresh-btn {
-    display: inline-flex;
+    display: none !important; /* Temporarily hidden per request; change to inline-flex to restore later */
     align-items: center;
     justify-content: center;
     width: 28.5px;
