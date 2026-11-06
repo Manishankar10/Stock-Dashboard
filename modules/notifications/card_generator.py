@@ -531,3 +531,288 @@ def generate_watchlist_card(
     im.save(buf, format="PNG", optimize=True)
     buf.seek(0)
     return buf
+
+
+def _measure_text_w(font, text):
+    """Safely measures text width across all Pillow versions."""
+    if not font or not text:
+        return 0
+    if hasattr(font, 'getlength'):
+        try:
+            return font.getlength(str(text))
+        except Exception:
+            pass
+    if hasattr(font, 'getbbox'):
+        try:
+            bbox = font.getbbox(str(text))
+            return bbox[2] - bbox[0]
+        except Exception:
+            pass
+    return len(str(text)) * 10
+
+
+def generate_quarterly_results_card(
+    stocks,
+    username="",
+    quarter_label="Q2 Earnings Update",
+    output_path=None
+):
+    """
+    Renders high-resolution dark glassy card for Quarterly Results.
+    - If 1 stock: renders a 4-KPI scorecard layout (PAT, Revenue, EBIDT, EPS).
+    - If 2+ stocks: renders a consolidated table layout for portfolio holdings.
+    """
+    if not PIL_AVAILABLE or Image is None:
+        return None
+
+    if not stocks or not isinstance(stocks, list):
+        stocks = []
+
+    width = 882
+    color_purple = (147, 51, 234, 255)      # #9333ea
+    color_green = (16, 185, 129, 255)       # #10b981
+    color_red = (239, 68, 68, 255)          # #ef4444
+    color_muted = (148, 163, 184, 255)      # #94a3b8
+    color_white = (255, 255, 255, 255)
+    box_bg = (23, 34, 57, 255)
+    box_border = (37, 52, 78, 255)
+    tbl_bg = (19, 29, 49, 255)
+    tbl_border = (33, 47, 72, 255)
+    th_bg = (23, 34, 57, 255)
+
+    font_title = _get_font(23, bold=True)
+    font_badge = _get_font(14, bold=True)
+    font_sub = _get_font(14, bold=False)
+
+    if len(stocks) == 1:
+        # SINGLE STOCK: 4-KPI Scorecard
+        stock = stocks[0]
+        height = 430
+        im = Image.new("RGBA", (width, height), (13, 20, 36, 255))
+        draw = ImageDraw.Draw(im)
+
+        # Outer border & glassy background
+        draw.rounded_rectangle([6, 6, width - 6, height - 6], radius=20, fill=(17, 24, 43, 255), outline=(37, 52, 78, 255), width=2)
+
+        font_box_label = _get_font(12, bold=True)
+        font_box_val = _get_font(25, bold=True)
+        font_box_yoy = _get_font(14, bold=True)
+        font_sym = _get_font(24, bold=True)
+        font_exch = _get_font(12, bold=True)
+        font_comp = _get_font(15, bold=False)
+
+        sec_y = 24
+        draw.ellipse([30, sec_y + 5, 44, sec_y + 19], fill=color_purple)
+        draw.text((54, sec_y), "Quarterly Results Digest", font=font_title, fill=color_white)
+
+        q_name = stock.get("quarter") or quarter_label or "Latest Disclosures"
+        holder_prefix = f"{username.capitalize()}'s Portfolio" if username else "Portfolio Holding"
+        draw.text((32, sec_y + 36), f"{holder_prefix} • {q_name} Disclosures", font=font_sub, fill=color_muted)
+
+        # Top right badge
+        badge_text = "EARNINGS REPORT"
+        badge_w = 160
+        badge_h = 30
+        badge_x = width - 30 - badge_w
+        draw.rounded_rectangle([badge_x, sec_y - 2, badge_x + badge_w, sec_y + badge_h], radius=7, fill=(35, 24, 55, 255), outline=color_purple, width=1)
+        draw.text((badge_x + 16, sec_y + 4), badge_text, font=font_badge, fill=(192, 132, 252, 255))
+
+        # Company Banner Bar
+        banner_y = 78
+        banner_h = 58
+        draw.rounded_rectangle([30, banner_y, width - 30, banner_y + banner_h], radius=12, fill=(20, 30, 52, 255), outline=box_border, width=1)
+
+        sym_str = clean_stock_symbol(stock.get("symbol", "")).upper()
+        draw.text((46, banner_y + 14), sym_str, font=font_sym, fill=color_white)
+        sym_w = _measure_text_w(font_sym, sym_str)
+
+        bx = int(46 + sym_w + 10)
+        by = banner_y + 18
+        draw.rounded_rectangle([bx, by, bx + 38, by + 20], radius=4, fill=(30, 58, 138, 255))
+        draw.text((bx + 7, by + 3), str(stock.get("exchange", "NSE")).upper(), font=font_exch, fill=(147, 197, 253, 255))
+
+        comp_name = str(stock.get("company", ""))
+        draw.text((bx + 52, banner_y + 19), comp_name, font=font_comp, fill=color_muted)
+
+        # 4 KPI Blocks
+        grid_y = banner_y + banner_h + 16
+        grid_w = width - 60
+        box_w = (grid_w - 36) / 4
+        box_h = height - grid_y - 24
+
+        def _fmt_cr(val):
+            s = str(val).strip()
+            if not s or s == "-":
+                return "-"
+            if not s.startswith("₹"):
+                s = f"₹{s}"
+            if not s.endswith("Cr") and not s.endswith("cr"):
+                s = f"{s} Cr"
+            return s
+
+        def _fmt_eps(val):
+            s = str(val).strip()
+            if not s or s == "-":
+                return "-"
+            if not s.startswith("₹"):
+                s = f"₹{s}"
+            return s
+
+        kpis = [
+            {"label": "NET PROFIT (PAT)", "val": _fmt_cr(stock.get("net_profit_val", "-")), "yoy": stock.get("net_profit_yoy", 0)},
+            {"label": "REVENUE / SALES", "val": _fmt_cr(stock.get("sales_val", "-")), "yoy": stock.get("sales_yoy", 0)},
+            {"label": "OPERATING PROFIT", "val": _fmt_cr(stock.get("ebidt_val", "-")), "yoy": stock.get("ebidt_yoy", 0)},
+            {"label": "EPS", "val": _fmt_eps(stock.get("eps_val", "-")), "yoy": stock.get("eps_yoy", 0)},
+        ]
+
+        for idx, k in enumerate(kpis):
+            cur_bx = int(30 + idx * (box_w + 12))
+            draw.rounded_rectangle([cur_bx, grid_y, int(cur_bx + box_w), int(grid_y + box_h)], radius=14, fill=box_bg, outline=box_border, width=1)
+            draw.text((cur_bx + 16, grid_y + 20), k["label"], font=font_box_label, fill=color_muted)
+            draw.text((cur_bx + 16, grid_y + 54), k["val"], font=font_box_val, fill=color_white)
+
+            yoy = k["yoy"]
+            if isinstance(yoy, (int, float)):
+                yoy_color = color_green if yoy >= 0 else color_red
+                yoy_sign = "+" if yoy >= 0 else ""
+                yoy_text = f"{yoy_sign}{yoy:.1f}% YoY"
+            else:
+                yoy_color = color_muted
+                yoy_text = str(yoy)
+            draw.text((cur_bx + 16, grid_y + 104), yoy_text, font=font_box_yoy, fill=yoy_color)
+
+    else:
+        # MULTI-STOCK CONSOLIDATED TABLE (2+ stocks, up to 5 shown)
+        display_stocks = stocks[:5]
+        row_count = len(display_stocks)
+        height = max(440, 95 + 44 + (row_count * 64) + 24)
+
+        im = Image.new("RGBA", (width, height), (13, 20, 36, 255))
+        draw = ImageDraw.Draw(im)
+
+        # Outer border & glassy background
+        draw.rounded_rectangle([6, 6, width - 6, height - 6], radius=20, fill=(17, 24, 43, 255), outline=(37, 52, 78, 255), width=2)
+
+        font_th = _get_font(13, bold=True)
+        font_sym = _get_font(19, bold=True)
+        font_exch = _get_font(11, bold=True)
+        font_name = _get_font(12, bold=False)
+        font_val = _get_font(18, bold=True)
+        font_yoy = _get_font(13, bold=True)
+
+        sec_y = 24
+        draw.ellipse([30, sec_y + 5, 44, sec_y + 19], fill=color_purple)
+        draw.text((54, sec_y), "Quarterly Results Digest", font=font_title, fill=color_white)
+
+        holder_prefix = f"{username.capitalize()}'s Portfolio" if username else "Portfolio"
+        subtitle = f"{len(stocks)} Holdings • {quarter_label or 'Earnings Update'}"
+        draw.text((32, sec_y + 36), subtitle, font=font_sub, fill=color_muted)
+
+        # Top right badge
+        badge_text = "Q2 EARNINGS" if "Q2" in str(quarter_label).upper() else "EARNINGS SYNC"
+        badge_w = 140
+        badge_h = 30
+        badge_x = width - 30 - badge_w
+        draw.rounded_rectangle([badge_x, sec_y - 2, badge_x + badge_w, sec_y + badge_h], radius=7, fill=(35, 24, 55, 255), outline=color_purple, width=1)
+        draw.text((badge_x + 18, sec_y + 4), badge_text, font=font_badge, fill=(192, 132, 252, 255))
+
+        # Inner Table Frame
+        tbl_x = 30
+        tbl_y = 78
+        tbl_w = width - 60
+        tbl_h = height - tbl_y - 20
+        draw.rounded_rectangle([tbl_x, tbl_y, tbl_x + tbl_w, tbl_y + tbl_h], radius=12, fill=tbl_bg, outline=tbl_border, width=1)
+
+        # Table Header
+        th_h = 42
+        draw.rounded_rectangle([tbl_x, tbl_y, tbl_x + tbl_w, tbl_y + th_h], radius=12, fill=th_bg)
+        draw.rectangle([tbl_x, tbl_y + th_h - 10, tbl_x + tbl_w, tbl_y + th_h], fill=th_bg)
+        draw.line([(tbl_x, tbl_y + th_h), (tbl_x + tbl_w, tbl_y + th_h)], fill=tbl_border, width=1)
+
+        c1_x = tbl_x + 24   # COMPANY / SYMBOL
+        c2_x = tbl_x + 300  # NET PROFIT (PAT)
+        c3_x = tbl_x + 500  # SALES / REVENUE
+        c4_x = tbl_x + 690  # OPERATING PROFIT
+
+        th_y = tbl_y + 12
+        draw.text((c1_x, th_y), "PORTFOLIO STOCK", font=font_th, fill=color_muted)
+        draw.text((c2_x, th_y), "NET PROFIT (PAT)", font=font_th, fill=color_muted)
+        draw.text((c3_x, th_y), "SALES / REVENUE", font=font_th, fill=color_muted)
+        draw.text((c4_x, th_y), "OPERATING PROFIT", font=font_th, fill=color_muted)
+
+        # Table Rows
+        row_y = tbl_y + th_h
+        row_h = (tbl_h - th_h) / max(row_count, 1)
+
+        for i, item in enumerate(display_stocks):
+            curr_y = row_y + (i * row_h)
+            if i > 0:
+                draw.line([(tbl_x, curr_y), (tbl_x + tbl_w, curr_y)], fill=tbl_border, width=1)
+
+            mid_y = curr_y + (row_h / 2)
+            sym = clean_stock_symbol(item.get("symbol", "")).upper()
+            sym_w = _measure_text_w(font_sym, sym)
+
+            # Col 1: Symbol & Exchange & Name
+            draw.text((c1_x, mid_y - 18), sym, font=font_sym, fill=color_white)
+
+            bx = int(c1_x + sym_w + 8)
+            by = int(mid_y - 16)
+            draw.rounded_rectangle([bx, by, bx + 36, by + 18], radius=4, fill=(30, 58, 138, 255))
+            draw.text((bx + 6, by + 2), str(item.get("exchange", "NSE")).upper(), font=font_exch, fill=(147, 197, 253, 255))
+
+            comp = str(item.get("company", ""))
+            if len(comp) > 28:
+                comp = comp[:26] + ".."
+            draw.text((c1_x, mid_y + 4), comp, font=font_name, fill=color_muted)
+
+            # Col 2: Net Profit & YoY
+            pat_str = str(item.get("net_profit_val", "-"))
+            if not pat_str.startswith("₹") and pat_str != "-":
+                pat_str = f"₹{pat_str} Cr"
+            draw.text((c2_x, mid_y - 17), pat_str, font=font_val, fill=color_white)
+
+            pat_yoy = item.get("net_profit_yoy", 0.0)
+            if isinstance(pat_yoy, (int, float)):
+                pat_color = color_green if pat_yoy >= 0 else color_red
+                pat_sign = "+" if pat_yoy >= 0 else ""
+                draw.text((c2_x, mid_y + 4), f"{pat_sign}{pat_yoy:.1f}% YoY", font=font_yoy, fill=pat_color)
+            else:
+                draw.text((c2_x, mid_y + 4), str(pat_yoy), font=font_yoy, fill=color_muted)
+
+            # Col 3: Sales & YoY
+            sales_str = str(item.get("sales_val", "-"))
+            if not sales_str.startswith("₹") and sales_str != "-":
+                sales_str = f"₹{sales_str} Cr"
+            draw.text((c3_x, mid_y - 17), sales_str, font=font_val, fill=color_white)
+
+            sales_yoy = item.get("sales_yoy", 0.0)
+            if isinstance(sales_yoy, (int, float)):
+                sales_color = color_green if sales_yoy >= 0 else color_red
+                sales_sign = "+" if sales_yoy >= 0 else ""
+                draw.text((c3_x, mid_y + 4), f"{sales_sign}{sales_yoy:.1f}% YoY", font=font_yoy, fill=sales_color)
+            else:
+                draw.text((c3_x, mid_y + 4), str(sales_yoy), font=font_yoy, fill=color_muted)
+
+            # Col 4: EBIDT / Operating Profit & YoY
+            ebidt_str = str(item.get("ebidt_val", "-"))
+            if not ebidt_str.startswith("₹") and ebidt_str != "-":
+                ebidt_str = f"₹{ebidt_str} Cr"
+            draw.text((c4_x, mid_y - 17), ebidt_str, font=font_val, fill=color_white)
+
+            ebidt_yoy = item.get("ebidt_yoy", 0.0)
+            if isinstance(ebidt_yoy, (int, float)):
+                ebidt_color = color_green if ebidt_yoy >= 0 else color_red
+                ebidt_sign = "+" if ebidt_yoy >= 0 else ""
+                draw.text((c4_x, mid_y + 4), f"{ebidt_sign}{ebidt_yoy:.1f}% YoY", font=font_yoy, fill=ebidt_color)
+            else:
+                draw.text((c4_x, mid_y + 4), str(ebidt_yoy), font=font_yoy, fill=color_muted)
+
+    if output_path:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        im.save(output_path, "PNG", optimize=True)
+
+    buf = io.BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    buf.seek(0)
+    return buf

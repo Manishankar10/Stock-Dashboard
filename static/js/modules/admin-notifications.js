@@ -783,6 +783,73 @@
         }
     };
 
+    // 6C. Send Consolidated Quarterly Results to Appropriate Portfolio Users
+    window.sendQuarterlyResultsAllUsers = async function () {
+        const btn = document.getElementById('btn-send-quarterly-all');
+        const originalText = btn ? btn.innerHTML : '📊 Send Quarterly Results (Portfolio Users)';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Matching Portfolio Holdings & Dispatching...';
+        }
+
+        try {
+            const res = await fetch('/api/admin/notifications/send-quarterly-all-users', {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (data.success) {
+                const breakdown = (data.user_breakdown || []).map(u => `• ${u.username}: ${u.matched_stocks_count} reported stocks (${(u.symbols || []).join(', ') || 'None'}) -> ${u.status}`).join('\n');
+                if (data.total_users_matched === 0) {
+                    alert(`ℹ️ No Matching Portfolio Holdings:\n\nNone of the registered users currently hold stocks that reported quarterly results.\nPush notifications were zero-spam skipped.`);
+                } else {
+                    alert(`✅ Quarterly Results Push Completed!\n\n• Portfolio Users Targeted: ${data.total_users_matched}\n• Devices Delivered: ${data.total_devices_targeted}\n\nBreakdown:\n${breakdown}`);
+                }
+                await window.loadNotificationStats();
+            } else {
+                alert('⚠️ Error dispatching quarterly results notifications: ' + (data.error || data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            alert('❌ Network/Server Error: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    };
+
+    // 6D. Send Consolidated Quarterly Results to Specific User (e.g. Admin or Sampath)
+    window.sendQuarterlyResultsSampleUser = async function (username = 'admin') {
+        const btn = document.getElementById(`btn-send-quarterly-${username}`);
+        const originalText = btn ? btn.innerHTML : `👤 ${username}`;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Sending...';
+        }
+
+        try {
+            const res = await fetch('/api/admin/notifications/send-quarterly-sample-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ Quarterly Results Dispatched to ${data.username}!\n\n• Matching Stocks: ${data.matched_stocks_count}\n• Recipients: ${data.recipient_count || 1}\n• Status: ${data.status || 'Sent'}`);
+                await window.loadNotificationStats();
+            } else {
+                alert(`ℹ️ Notice for ${username}:\n\n${data.message || data.error || 'Failed to dispatch'}\nStatus: ${data.status || 'N/A'}`);
+            }
+        } catch (err) {
+            alert('❌ Network/Server Error: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    };
+
     // 6. Send Unique Personalized EOD to All Users
     window.sendPortfolioPersonalizedAllUsers = async function () {
         const btn = document.getElementById('btn-send-portfolio-all');

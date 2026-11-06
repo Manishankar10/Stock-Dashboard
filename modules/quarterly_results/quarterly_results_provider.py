@@ -667,6 +667,17 @@ class QuarterlyResultsProvider:
 
             if new_records:
                 logger.info(f"Found {len(new_records)} new company disclosures. Total database records: {len(all_records)}.")
+                try:
+                    # Automatically dispatch consolidated notifications to portfolio users who hold reporting companies
+                    from modules.notifications.user_quarterly_notifier import dispatch_quarterly_results_notifications
+                    threading.Thread(
+                        target=dispatch_quarterly_results_notifications,
+                        kwargs={"synced_records": new_records},
+                        daemon=True,
+                        name="QuarterlyResultsNotifDispatch"
+                    ).start()
+                except Exception as notif_err:
+                    logger.warning(f"Could not trigger quarterly results notifications dispatch: {notif_err}")
             else:
                 logger.info(f"All {len(all_records)} quarterly results are up-to-date in database.")
 

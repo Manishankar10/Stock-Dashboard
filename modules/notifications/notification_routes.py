@@ -21,7 +21,14 @@ from modules.notifications.card_generator import (
     generate_gold_silver_card,
     generate_portfolio_card,
     generate_watchlist_card,
+    generate_quarterly_results_card,
     clean_stock_symbol
+)
+from modules.notifications.user_quarterly_notifier import (
+    dispatch_quarterly_results_notifications,
+    send_quarterly_results_to_user,
+    get_portfolio_quarterly_results_for_user,
+    get_sample_quarterly_results
 )
 from modules.notifications.live_bullion import fetch_live_bullion_rates
 from modules.notifications.user_portfolio_notifier import (
@@ -238,6 +245,28 @@ def render_watchlist_card_endpoint():
         mimetype="image/png",
         as_attachment=False,
         download_name="watchlist_top_gainers.png"
+    )
+
+
+@notifications_bp.route("/api/notifications/render-quarterly-card.png", methods=["GET"])
+def render_quarterly_card_endpoint():
+    """Renders the custom Quarterly Results card image dynamically."""
+    uname = request.args.get("username", "") or session.get("username", "admin")
+    stocks = get_portfolio_quarterly_results_for_user(uname)
+    if not stocks:
+        stocks = get_sample_quarterly_results()
+
+    q_label = stocks[0].get("quarter") if stocks else "Q2 Earnings Update"
+    buf = generate_quarterly_results_card(
+        stocks=stocks,
+        username=uname,
+        quarter_label=q_label
+    )
+    return send_file(
+        buf,
+        mimetype="image/png",
+        as_attachment=False,
+        download_name="quarterly_results_card.png"
     )
 
 
@@ -608,6 +637,41 @@ def admin_send_watchlist_sample_user():
     base_url = request.url_root.rstrip("/")
 
     result = send_watchlist_digest_to_user(username=username, base_url=base_url, limit=limit)
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/send-quarterly-all-users", methods=["POST"])
+@admin_required
+def admin_send_quarterly_all_users():
+    """
+    DISPATCHES CONSOLIDATED QUARTERLY RESULTS NOTIFICATIONS TO APPROPRIATE PORTFOLIO USERS:
+    1. Reads each registered user's portfolio from the DB.
+    2. Identifies which users hold 1 or more stocks that reported quarterly results.
+    3. Strictly skips users with no matching portfolio stocks or no registered devices.
+    4. Generates a personalized dark glassy card (single or multi-stock layout).
+    5. Dispatches a single consolidated push notification per user.
+    """
+    base_url = request.url_root.rstrip("/")
+    static_root = os.path.join(current_app.root_path, "static")
+
+    result = dispatch_quarterly_results_notifications(base_url=base_url, static_root=static_root)
+    return jsonify(result)
+
+
+@notifications_bp.route("/api/admin/notifications/send-quarterly-sample-user", methods=["POST"])
+@admin_required
+def admin_send_quarterly_sample_user():
+    """Dispatches consolidated Quarterly Results specifically to a sample user (e.g. admin or sampath)."""
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    username = data.get("username", "admin").strip()
+    base_url = request.url_root.rstrip("/")
+    static_root = os.path.join(current_app.root_path, "static")
+
+    result = send_quarterly_results_to_user(
+        username=username,
+        base_url=base_url,
+        static_root=static_root
+    )
     return jsonify(result)
 
 

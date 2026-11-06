@@ -825,16 +825,27 @@
                 flex-wrap: wrap !important;
                 gap: 8px !important;
             }
-            .notif-watchlist-actions #btn-send-watchlist-all {
+            .notif-watchlist-actions #btn-send-watchlist-all,
+            .notif-quarterly-actions #btn-send-quarterly-all {
                 flex: 1 1 100% !important;
                 width: 100% !important;
                 min-width: 0 !important;
                 justify-content: center !important;
             }
-            .notif-watchlist-actions .btn-secondary {
+            .notif-watchlist-actions .btn-secondary,
+            .notif-quarterly-actions .btn-secondary {
                 flex: 1 1 auto !important;
                 text-align: center !important;
                 justify-content: center !important;
+            }
+            .notif-quarterly-grid-header {
+                font-size: 9.5px !important;
+                padding: 4px 6px 6px 6px !important;
+                gap: 2px !important;
+            }
+            .notif-quarterly-grid-row {
+                padding: 6px 8px !important;
+                gap: 2px !important;
             }
             .notif-watchlist-grid-header {
                 font-size: 9.5px !important;
@@ -944,6 +955,29 @@
         .notif-watchlist-grid-row {
             display: grid;
             grid-template-columns: 2fr 1.2fr 1.2fr 1.1fr;
+            align-items: center;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 7px 10px;
+            gap: 4px;
+            box-sizing: border-box;
+        }
+        .notif-quarterly-grid-header {
+            display: grid;
+            grid-template-columns: 1.8fr 1.3fr 1.3fr 1.3fr;
+            padding: 4px 10px 8px 10px;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #94a3b8;
+            border-bottom: 1px solid #1f293d;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+            gap: 4px;
+        }
+        .notif-quarterly-grid-row {
+            display: grid;
+            grid-template-columns: 1.8fr 1.3fr 1.3fr 1.3fr;
             align-items: center;
             background: #1e293b;
             border: 1px solid #334155;
@@ -2554,6 +2588,98 @@
                         </div>
                         <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">
                             Scans each user's watchlist from DB, filters out negative stocks, and delivers their Top <span id="watchlist-desc-count-num">5</span> positive gainers in a glassy table card.
+                        </p>
+                    </div>
+
+                    <!-- Quarterly Results Dispatcher Section (Portfolio Users) -->
+                    <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border-color);">
+                        <!-- Live Visual Preview Card for Quarterly Results Digest -->
+                        <div style="background: #111827; border: 1px solid #1f293d; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #9333ea;"></span>
+                                    <div>
+                                        <span style="font-size: 14px; font-weight: 700; color: #ffffff;">📊 Capital Desk Quarterly Results Digest</span>
+                                        <div style="font-size: 9.5px; color: #64748b;">Consolidated Portfolio Earnings Update</div>
+                                    </div>
+                                </div>
+                                <span style="font-size: 10px; font-weight: 700; background: #26163b; color: #c084fc; border: 1px solid #9333ea; padding: 2px 7px; border-radius: 5px;">Q2 EARNINGS</span>
+                            </div>
+
+                            <!-- Column Headers matching Quarterly table -->
+                            <div class="notif-quarterly-grid-header">
+                                <div>PORTFOLIO STOCK</div>
+                                <div style="text-align: right;">NET PROFIT (PAT)</div>
+                                <div style="text-align: right;">SALES / REVENUE</div>
+                                <div style="text-align: right;">OPERATING PROFIT</div>
+                            </div>
+
+                            <div id="preview-quarterly-table-mount" style="display: flex; flex-direction: column; gap: 6px;">
+                                <div class="notif-quarterly-grid-row">
+                                    <div style="display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="font-size: 12.5px; font-weight: 800; color: #ffffff;">INFY</span>
+                                            <span style="font-size: 9px; font-weight: 700; background: #1e3a8a; color: #93c5fd; padding: 1px 5px; border-radius: 4px;">NSE</span>
+                                        </div>
+                                        <span style="font-size: 10px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Infosys Ltd</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #ffffff;">₹7,838 Cr</div>
+                                        <div style="font-size: 10.5px; font-weight: 700; color: #10b981;">+6.0% YoY</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #ffffff;">₹49,244 Cr</div>
+                                        <div style="font-size: 10.5px; font-weight: 700; color: #10b981;">+11.0% YoY</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #ffffff;">₹11,689 Cr</div>
+                                        <div style="font-size: 10.5px; font-weight: 700; color: #10b981;">+11.0% YoY</div>
+                                    </div>
+                                </div>
+                                <div class="notif-quarterly-grid-row">
+                                    <div style="display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="font-size: 12.5px; font-weight: 800; color: #ffffff;">TCS</span>
+                                            <span style="font-size: 9px; font-weight: 700; background: #1e3a8a; color: #93c5fd; padding: 1px 5px; border-radius: 4px;">NSE</span>
+                                        </div>
+                                        <span style="font-size: 10px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tata Consultancy Services</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #ffffff;">₹13,934 Cr</div>
+                                        <div style="font-size: 10.5px; font-weight: 700; color: #10b981;">+0.0% YoY</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #ffffff;">₹73,188 Cr</div>
+                                        <div style="font-size: 10.5px; font-weight: 700; color: #10b981;">+11.0% YoY</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #ffffff;">₹18,815 Cr</div>
+                                        <div style="font-size: 10.5px; font-weight: 700; color: #10b981;">+5.0% YoY</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="notif-quarterly-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn" id="btn-send-quarterly-all" onclick="sendQuarterlyResultsAllUsers()" 
+                                style="flex: 1 1 auto; min-width: 170px; background: linear-gradient(135deg, #9333ea, #7c3aed); color: #ffffff; border: none; font-weight: 700; padding: 11px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                📊 Send Quarterly Results (Portfolio Users)
+                            </button>
+                            <button class="btn btn-secondary" id="btn-send-quarterly-admin" onclick="sendQuarterlyResultsSampleUser('admin')" 
+                                style="padding: 11px 14px; color: #c084fc; border-color: rgba(192, 132, 252, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample quarterly results digest directly to Admin (holds INFY & TCS)">
+                                👤 Admin (Holdings)
+                            </button>
+                            <button class="btn btn-secondary" id="btn-send-quarterly-sampath" onclick="sendQuarterlyResultsSampleUser('sampath')" 
+                                style="padding: 11px 14px; color: #c084fc; border-color: rgba(192, 132, 252, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send quarterly results notification to Sampath">
+                                👤 Sampath
+                            </button>
+                            <a id="btn-preview-quarterly-img" href="/api/notifications/render-quarterly-card.png?username=admin" target="_blank" class="btn btn-secondary" 
+                                style="padding: 11px 14px; text-decoration: none; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" title="Open full-resolution generated Quarterly Results PNG banner">
+                                🖼️ Card Image
+                            </a>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">
+                            Scans live quarterly disclosures against each user's portfolio holdings. Dispatches a single consolidated dark glassy card only to users holding reporting stocks.
                         </p>
                     </div>
                 </div>
