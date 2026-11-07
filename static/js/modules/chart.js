@@ -6069,20 +6069,63 @@
             return result;
         }
 
+        let _currentRightBarStays = true;
+        function updateZoomAnchor(range) {
+            if (!mainChart || !cachedChartData || !cachedChartData.candles) return;
+            const candles = cachedChartData.candles;
+            if (!candles || candles.length === 0) return;
+            const lastIdx = candles.length - 1;
+            const r = range || mainChart.timeScale().getVisibleLogicalRange();
+            if (!r) return;
+
+            // TradingView standard: at the latest price (live right edge), anchor to rightmost bar!
+            // When user has panned back into history, allow fluid zooming around cursor/view
+            const shouldStay = (r.to >= lastIdx - 2);
+            if (_currentRightBarStays !== shouldStay) {
+                _currentRightBarStays = shouldStay;
+                try {
+                    mainChart.timeScale().applyOptions({ rightBarStaysOnScroll: shouldStay });
+                    if (rsiChart) rsiChart.timeScale().applyOptions({ rightBarStaysOnScroll: shouldStay });
+                    if (macdChart) macdChart.timeScale().applyOptions({ rightBarStaysOnScroll: shouldStay });
+                } catch(e) {}
+            }
+        }
+
         function zoomChart(factor) {
             if (!mainChart) return;
             const timeScale = mainChart.timeScale();
             const range = timeScale.getVisibleLogicalRange();
             if (!range) return;
-            const center = (range.from + range.to) / 2;
-            const halfLength = ((range.to - range.from) / 2) / factor;
-            const newRange = {
-                from: center - halfLength,
-                to: center + halfLength
-            };
+
+            const candles = (cachedChartData && cachedChartData.candles) ? cachedChartData.candles : [];
+            const lastIdx = candles.length > 0 ? candles.length - 1 : null;
+            const isAtRightEdge = (lastIdx !== null && range.to >= lastIdx - 2);
+
+            let newFrom, newTo;
+            const currentSpan = range.to - range.from;
+            const newSpan = currentSpan / factor;
+
+            if (isAtRightEdge) {
+                // TradingView style: at the latest price, anchor to the right edge!
+                newTo = range.to;
+                newFrom = newTo - newSpan;
+            } else {
+                // Historical view: zoom centered on current screen view
+                const center = (range.from + range.to) / 2;
+                const halfLength = newSpan / 2;
+                newFrom = center - halfLength;
+                newTo = center + halfLength;
+                if (lastIdx !== null && newTo > lastIdx + 5) {
+                    newTo = lastIdx + 5;
+                    newFrom = newTo - newSpan;
+                }
+            }
+
+            const newRange = { from: newFrom, to: newTo };
             timeScale.setVisibleLogicalRange(newRange);
             if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(newRange); } catch(e){}
             if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(newRange); } catch(e){}
+            updateZoomAnchor(newRange);
             requestAnimationFrame(() => redrawCanvasOverlay());
         }
 
@@ -6151,6 +6194,7 @@ function getActiveChartIndicatorKeys() {
                 mainChart.timeScale().setVisibleLogicalRange({ from, to });
                 if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange({ from, to });
                 if (macdChart) macdChart.timeScale().setVisibleLogicalRange({ from, to });
+                updateZoomAnchor({ from, to });
                 redrawCanvasOverlay();
             } catch(e) {}
         }
@@ -6973,7 +7017,7 @@ function getActiveChartIndicatorKeys() {
                     fixLeftEdge: false,
                     fixRightEdge: false,
                     lockVisibleTimeRangeOnResize: true,
-                    rightBarStaysOnScroll: false,
+                    rightBarStaysOnScroll: true,
                     tickMarkFormatter: (time, tickMarkType, locale) => formatChartTickMark(time, tickMarkType, locale)
                 }
             });
@@ -7161,7 +7205,7 @@ function getActiveChartIndicatorKeys() {
                 fixLeftEdge: false,
                 fixRightEdge: false,
                 lockVisibleTimeRangeOnResize: true,
-                rightBarStaysOnScroll: false
+                rightBarStaysOnScroll: true
             };
 
             // RSI Sub-Pane Chart
@@ -7329,8 +7373,9 @@ function getActiveChartIndicatorKeys() {
 
             setupCanvasOverlay();
             if (mainChart) {
-                mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+                mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
                     if (hasOpenChartPopover()) closeAllChartPopovers();
+                    updateZoomAnchor(range);
                     redrawCanvasOverlay();
                 });
                 mainChart.subscribeCrosshairMove(() => redrawCanvasOverlay());
