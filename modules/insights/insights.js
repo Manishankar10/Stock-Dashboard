@@ -1706,18 +1706,37 @@
                 const data = await res.json();
                 if (data.success && Array.isArray(data.history) && data.history.length > 0) {
                     tbody.innerHTML = data.history.map(row => {
-                        const g24Chg = row.gold_24k_change_amt !== 0 ? `<div style="font-size: 10px; color: ${row.gold_24k_change_amt > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${row.gold_24k_change_amt > 0 ? '+' : ''}${row.gold_24k_change_amt} (${row.gold_24k_change_pct}%)</div>` : '';
-                        const g22Chg = row.gold_22k_change_amt !== 0 ? `<div style="font-size: 10px; color: ${row.gold_22k_change_amt > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${row.gold_22k_change_amt > 0 ? '+' : ''}${row.gold_22k_change_amt} (${row.gold_22k_change_pct}%)</div>` : '';
-                        const sChg = row.silver_change_amt !== 0 ? `<div style="font-size: 10px; color: ${row.silver_change_amt > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${row.silver_change_amt > 0 ? '+' : ''}${row.silver_change_amt} (${row.silver_change_pct}%)</div>` : '';
+                        const fmtChg = (amt, pct) => {
+                            if (amt === undefined || amt === null) return '';
+                            if (amt === 0) {
+                                return '<div style="font-size: 10px; color: var(--text-secondary); opacity: 0.75; font-weight: 500;">₹0 (0.00%)</div>';
+                            }
+                            const isPos = amt > 0;
+                            const sign = isPos ? '+' : '-';
+                            const color = isPos ? '#10b981' : '#ef4444';
+                            const formattedAmt = Math.abs(amt).toLocaleString('en-IN', {
+                                minimumFractionDigits: (amt % 1 !== 0 ? 2 : 0),
+                                maximumFractionDigits: 2
+                            });
+                            return `<div style="font-size: 10.5px; color: ${color}; font-weight: 600;">${sign}₹${formattedAmt} (${sign}${Math.abs(pct).toFixed(2)}%)</div>`;
+                        };
+
+                        const g24_1gChg = fmtChg(row.gold_24k_change_amt, row.gold_24k_change_pct);
+                        const g24_8gChg = fmtChg(row.gold_24k_change_amt ? row.gold_24k_change_amt * 8 : 0, row.gold_24k_change_pct);
+                        const g22_1gChg = fmtChg(row.gold_22k_change_amt, row.gold_22k_change_pct);
+                        const g22_8gChg = fmtChg(row.gold_22k_change_amt ? row.gold_22k_change_amt * 8 : 0, row.gold_22k_change_pct);
+                        const s_1gChg = fmtChg(row.silver_change_amt, row.silver_change_pct);
+                        const s_1kgChg = fmtChg(row.silver_change_amt ? row.silver_change_amt * 1000 : 0, row.silver_change_pct);
+
                         return `
                             <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 8px; font-weight: 600; color: var(--text-primary);">${row.date_display || row.date}</td>
-                                <td style="padding: 8px; text-align: right; font-weight: 600;">₹${Number(row.gold_24k_1g).toLocaleString('en-IN')}${g24Chg}</td>
-                                <td style="padding: 8px; text-align: right; color: var(--text-secondary);">₹${Number(row.gold_24k_8g).toLocaleString('en-IN')}</td>
-                                <td style="padding: 8px; text-align: right; font-weight: 600;">₹${Number(row.gold_22k_1g).toLocaleString('en-IN')}${g22Chg}</td>
-                                <td style="padding: 8px; text-align: right; color: var(--text-secondary);">₹${Number(row.gold_22k_8g).toLocaleString('en-IN')}</td>
-                                <td style="padding: 8px; text-align: right; font-weight: 600;">₹${Number(row.silver_1g).toLocaleString('en-IN', {minimumFractionDigits: 2})}${sChg}</td>
-                                <td style="padding: 8px; text-align: right; color: var(--text-secondary);">₹${Number(row.silver_1kg).toLocaleString('en-IN')}</td>
+                                <td style="padding: 8px 6px; font-weight: 600; color: var(--text-primary); white-space: nowrap;">${row.date_display || row.date}</td>
+                                <td style="padding: 8px 6px; text-align: right; font-weight: 600; white-space: nowrap;">₹${Number(row.gold_24k_1g).toLocaleString('en-IN')}${g24_1gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.gold_24k_8g).toLocaleString('en-IN')}${g24_8gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; font-weight: 600; white-space: nowrap;">₹${Number(row.gold_22k_1g).toLocaleString('en-IN')}${g22_1gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.gold_22k_8g).toLocaleString('en-IN')}${g22_8gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; font-weight: 600; white-space: nowrap;">₹${Number(row.silver_1g).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${s_1gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.silver_1kg).toLocaleString('en-IN')}${s_1kgChg}</td>
                             </tr>
                         `;
                     }).join('');

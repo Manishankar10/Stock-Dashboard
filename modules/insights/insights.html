@@ -510,9 +510,9 @@
                                     ⏱️ Updated: 16/10/2026 9:28 AM
                                 </span>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <button type="button" class="bullion-history-btn" onclick="openBullionHistoryModal()" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #f59e0b; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="View Historical Gold & Silver Rates">
+                                    <a href="javascript:void(0)" class="bullion-history-btn" onclick="openBullionHistoryModal()" style="background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); color: #f59e0b; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; text-decoration: none;" title="View Historical Gold & Silver Rates">
                                         📜 History
-                                    </button>
+                                    </a>
                                     <span class="bullion-source-tag">LiveChennai Feed</span>
                                 </div>
                             </div>
@@ -595,7 +595,7 @@
 
 <!-- Bullion Historical Rates Modal -->
 <div id="bullionHistoryModal" class="small-modal" style="display: none; position: fixed; z-index: 100050; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);">
-    <div class="small-modal-content" style="max-width: 760px; width: 92%; margin: 6vh auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="small-modal-content" style="max-width: 980px; width: 96%; margin: 5vh auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); max-height: 88vh; display: flex; flex-direction: column;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
             <div>
                 <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
@@ -609,13 +609,13 @@
             <table class="pf-table" style="width: 100%; font-size: 12px; border-collapse: collapse;">
                 <thead>
                     <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary);">
-                        <th style="text-align: left; padding: 8px;">Date</th>
-                        <th style="text-align: right; padding: 8px;">24K 1g</th>
-                        <th style="text-align: right; padding: 8px;">24K 8g</th>
-                        <th style="text-align: right; padding: 8px;">22K 1g</th>
-                        <th style="text-align: right; padding: 8px;">22K 8g</th>
-                        <th style="text-align: right; padding: 8px;">Silver 1g</th>
-                        <th style="text-align: right; padding: 8px;">Silver 1kg</th>
+                        <th style="text-align: left; padding: 8px 6px;">Date</th>
+                        <th style="text-align: right; padding: 8px 6px;">24K 1g</th>
+                        <th style="text-align: right; padding: 8px 6px;">24K 8g</th>
+                        <th style="text-align: right; padding: 8px 6px;">22K 1g</th>
+                        <th style="text-align: right; padding: 8px 6px;">22K 8g</th>
+                        <th style="text-align: right; padding: 8px 6px;">Silver 1g</th>
+                        <th style="text-align: right; padding: 8px 6px;">Silver 1kg</th>
                     </tr>
                 </thead>
                 <tbody id="bullion-history-tbody">
