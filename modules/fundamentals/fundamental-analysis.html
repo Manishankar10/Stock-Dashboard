@@ -3710,6 +3710,19 @@ function attachChartTooltipListener(box) {
   box.addEventListener('touchend', () => { if (tooltip) tooltip.style.display = 'none'; });
 }
 
+function scrollNavTabIntoView(linkEl, smooth = true) {
+  const container = document.querySelector('.web-nav-left');
+  if (!container || !linkEl) return;
+  const linkLeft = linkEl.offsetLeft;
+  const linkWidth = linkEl.offsetWidth;
+  const containerWidth = container.clientWidth;
+  const targetScrollLeft = linkLeft - (containerWidth / 2) + (linkWidth / 2);
+  container.scrollTo({
+    left: Math.max(0, targetScrollLeft),
+    behavior: smooth ? 'smooth' : 'auto'
+  });
+}
+
 function initWebNavScrollSpy() {
   const sections = [
     'overviewSection', 'chartSection', 'analysisSection', 'peersSection',
@@ -3718,6 +3731,37 @@ function initWebNavScrollSpy() {
   ];
 
   const links = document.querySelectorAll('.web-nav-link, .web-nav-brand');
+  let isNavClicking = false;
+  let navClickTimeout = null;
+
+  function updateActiveSectionFromScroll() {
+    if (isNavClicking) return;
+    const nav = document.getElementById('screenerWebNav');
+    const navBottom = nav ? nav.getBoundingClientRect().bottom : 50;
+
+    let activeId = sections[0];
+    for (let i = 0; i < sections.length; i++) {
+      const el = document.getElementById(sections[i]);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        if (r.top <= navBottom + 25) {
+          activeId = sections[i];
+        }
+      }
+    }
+
+    links.forEach(l => {
+      const isActive = (l.getAttribute('data-section') === activeId);
+      l.classList.toggle('active', isActive);
+      if (isActive) scrollNavTabIntoView(l, true);
+    });
+  }
+
+  window.removeEventListener('scroll', window.__spyScrollHandler);
+  window.__spyScrollHandler = () => {
+    requestAnimationFrame(updateActiveSectionFromScroll);
+  };
+  window.addEventListener('scroll', window.__spyScrollHandler, { passive: true });
 
   links.forEach(link => {
     link.onclick = (e) => {
@@ -3725,36 +3769,19 @@ function initWebNavScrollSpy() {
       const secId = link.getAttribute('data-section') || link.getAttribute('href')?.replace('#', '');
       const el = document.getElementById(secId);
       if (el) {
-        const navHeight = document.getElementById('screenerWebNav')?.offsetHeight || 50;
+        isNavClicking = true;
+        if (navClickTimeout) clearTimeout(navClickTimeout);
+        navClickTimeout = setTimeout(() => { isNavClicking = false; }, 950);
+
+        links.forEach(l => l.classList.toggle('active', l === link));
+        scrollNavTabIntoView(link, true);
+
+        const nav = document.getElementById('screenerWebNav');
+        const navHeight = nav ? nav.offsetHeight : 50;
         const top = el.getBoundingClientRect().top + window.pageYOffset - navHeight - 12;
-        window.scrollTo({ top, behavior: 'smooth' });
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
       }
     };
-  });
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const id = entry.target.id;
-        links.forEach(l => {
-          const isActive = (l.getAttribute('data-section') === id);
-          l.classList.toggle('active', isActive);
-          if (isActive) {
-            try {
-              l.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-            } catch(e) {}
-          }
-        });
-      }
-    });
-  }, {
-    rootMargin: '-70px 0px -65% 0px',
-    threshold: 0
-  });
-
-  sections.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) observer.observe(el);
   });
 }
 
