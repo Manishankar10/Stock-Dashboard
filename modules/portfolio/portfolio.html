@@ -17,9 +17,6 @@
                         </div>
                     </div>
                     <div class="portfolio-desktop-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <button type="button" class="btn-secondary admin-only-inline" id="adminPfIntervalBtn" onclick="openRefreshIntervalsModal('portfolio')" title="Configure {{ portfolio_label }} Auto-Refresh Interval (Admin)" style="display: none; padding: 6px 12px; font-size: 12px; border-radius: 6px; align-items: center; gap: 4px; border: 1px solid var(--border-color); cursor: pointer;">
-                            ⏱️ <span id="adminPfIntervalLabel">30s</span>
-                        </button>
                         <button type="button" class="btn-secondary pf-analysis-btn" id="pf-btn-analysis" onclick="switchTab('dashboard')" title="{{ portfolio_label }} Analysis">
                             <span class="pf-btn-icon">📊</span> Analysis
                         </button>
@@ -37,9 +34,6 @@
                         <div class="pf-mobile-menu-dropdown" id="pf-mobile-menu-dropdown" style="display: none;">
                             <button type="button" class="pf-mob-menu-item" onclick="switchTab('dashboard'); togglePfMobileMenu(false);">
                                 <span>📊 Analysis</span>
-                            </button>
-                            <button type="button" class="pf-mob-menu-item admin-only-item" id="adminPfMobIntervalBtn" style="display: none;" onclick="openRefreshIntervalsModal('portfolio'); togglePfMobileMenu(false);">
-                                <span>⏱️ Refresh Interval (<span id="adminPfMobIntervalLabel">30s</span>)</span>
                             </button>
                             <button type="button" class="pf-mob-menu-item" onclick="openAddHoldingModal(); togglePfMobileMenu(false);">
                                 <span>➕ Add Holding</span>

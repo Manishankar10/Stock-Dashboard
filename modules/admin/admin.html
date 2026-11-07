@@ -4025,6 +4025,19 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    if (!window.APP_SETTINGS) window.APP_SETTINGS = {};
+                    window.APP_SETTINGS.watchlist_refresh_interval_sec = wlRefresh;
+                    window.APP_SETTINGS.portfolio_refresh_interval_sec = pfRefresh;
+                    window.APP_SETTINGS.chart_refresh_interval_sec = chartRefresh;
+
+                    if (typeof window.scheduleNextLiveRefresh === 'function') {
+                        window.scheduleNextLiveRefresh();
+                    }
+                    const chartModal = document.getElementById('chartModal');
+                    if (chartModal && chartModal.style.display !== 'none' && typeof window.startChartLivePolling === 'function') {
+                        window.startChartLivePolling();
+                    }
+
                     const badge = document.getElementById('settings-status-badge');
                     if (badge) {
                         badge.style.display = 'inline-block';

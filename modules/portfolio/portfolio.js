@@ -1555,7 +1555,7 @@
                         <th class="pf-col-daypnl" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('day_pnl_desc', 'day_pnl_asc')" title="Sort by Day P&L">Day P&L ${getPfHeaderSortIcon('day_pnl_desc', 'day_pnl_asc')}</th>
                         <th class="pf-col-inv" style="text-align:right;">Invested (₹)</th>
                         <th class="pf-col-val" style="text-align:right; cursor: pointer;" onclick="togglePfSortHeader('val_desc')" title="Sort by Current Value">Current Val (₹) ${getPfHeaderSortIcon('val_desc')}</th>
-                        <th class="pf-col-details" style="text-align:center;">Details</th>
+                        <th class="pf-col-details" style="text-align:center;">Actions</th>
                     </tr>
                 `;
 
@@ -1659,22 +1659,12 @@
                         tdDetails.className = 'pf-col-details';
                         tdDetails.style.textAlign = 'center';
                         tdDetails.style.whiteSpace = 'nowrap';
-                        
-                        const detailBtn = document.createElement('button');
-                        detailBtn.className = 'btn-details';
-                        detailBtn.innerHTML = '🔍 Details';
-                        detailBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            openHoldingDetailsModal(item);
-                        };
-                        tdDetails.appendChild(detailBtn);
 
                         const menuBtn = document.createElement('button');
                         menuBtn.className = 'btn-secondary wl-row-menu-btn pf-row-menu-btn';
                         menuBtn.style.padding = '4px 8px';
                         menuBtn.style.fontSize = '12px';
                         menuBtn.style.fontWeight = '600';
-                        menuBtn.style.marginLeft = '4px';
                         menuBtn.title = `Actions for ${sym}`;
                         menuBtn.innerHTML = '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
                         menuBtn.onclick = (e) => {
