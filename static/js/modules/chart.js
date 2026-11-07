@@ -2228,6 +2228,79 @@
         }
         window.setupChartWatermark = setupChartWatermark;
 
+        function handleChartWheel(e) {
+            if (hasOpenChartPopover()) closeAllChartPopovers();
+
+            // Shift + Mouse Wheel for horizontal scrolling (TradingView standard)
+            if (e.shiftKey && mainChart) {
+                const ts = mainChart.timeScale();
+                const range = ts.getVisibleLogicalRange();
+                if (range) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const shiftBars = Math.sign(e.deltaY || e.deltaX) * 4;
+                    const newRange = {
+                        from: range.from + shiftBars,
+                        to: range.to + shiftBars
+                    };
+                    isSyncingTimeScale = true;
+                    try {
+                        ts.setVisibleLogicalRange(newRange);
+                        if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(newRange); } catch(err){}
+                        if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(newRange); } catch(err){}
+                    } finally {
+                        setTimeout(() => { isSyncingTimeScale = false; }, 30);
+                    }
+                    requestAnimationFrame(() => redrawCanvasOverlay());
+                    return;
+                }
+            }
+
+            // Web desktop only: scroll over right Y-axis price scale to adjust vertical scale smoothly
+            if (window.innerWidth > 768 && mainSeries && mainChart) {
+                const mainContainer = document.getElementById('mainChartPane');
+                const rect = e.currentTarget ? e.currentTarget.getBoundingClientRect() : (mainContainer ? mainContainer.getBoundingClientRect() : null);
+                // Right price scale width is 75px
+                const isOverRightAxis = rect && (e.clientX >= rect.right - 75);
+                if (isOverRightAxis) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Smooth, bounded step per scroll (3% per wheel tick) to prevent wild runaway expansion
+                    const scrollDir = Math.sign(e.deltaY);
+                    const zoomStep = scrollDir < 0 ? 0.97 : 1.03;
+                    yAxisScaleMultiplier *= zoomStep;
+                    // Limit price scale multiplier between 0.45 (max expansion, ~2.2x taller) and 2.2 (max compression)
+                    yAxisScaleMultiplier = Math.max(0.45, Math.min(2.2, yAxisScaleMultiplier));
+
+                    if (mainChart && isYScaleAuto) {
+                        mainChart.priceScale('right').applyOptions({ autoScale: false });
+                        isYScaleAuto = false;
+                        const btn = document.getElementById('btnToggleYScale');
+                        if (btn) { btn.innerText = '🔒 Auto Scale'; btn.style.color = '#10b981'; }
+                    }
+
+                    mainSeries.applyOptions({});
+                    requestAnimationFrame(() => redrawCanvasOverlay());
+                    return;
+                }
+            }
+
+            // Desktop zoom in/out with mouse wheel:
+            // TradingView style: anchor right side / latest candle statically, candles expand/shrink from left to right!
+            if (mainChart) {
+                e.preventDefault();
+                e.stopPropagation();
+                const rawDelta = e.deltaY;
+                const normalizedDelta = Math.max(-2.5, Math.min(2.5, -rawDelta / 100));
+                const factor = Math.pow(1.15, normalizedDelta);
+                zoomChart(factor);
+                return;
+            }
+
+            requestAnimationFrame(() => redrawCanvasOverlay());
+        }
+
         function setupCanvasOverlay() {
             const mainContainer = document.getElementById('mainChartPane');
             if (!mainContainer) return;
@@ -2257,6 +2330,7 @@
             mainContainer.removeEventListener('touchend', onChartTouchEnd);
             mainContainer.removeEventListener('touchcancel', onChartTouchCancel);
             mainContainer.removeEventListener('click', handleChartPaneClick);
+            mainContainer.removeEventListener('wheel', handleChartWheel);
 
             mainContainer.addEventListener('mousemove', handleChartPaneMouseMove);
             mainContainer.addEventListener('mousedown', handleChartPaneMouseDown);
@@ -2265,6 +2339,7 @@
             mainContainer.addEventListener('touchend', onChartTouchEnd, { passive: false });
             mainContainer.addEventListener('touchcancel', onChartTouchCancel, { passive: false });
             mainContainer.addEventListener('click', handleChartPaneClick);
+            mainContainer.addEventListener('wheel', handleChartWheel, { passive: false });
 
             // Listen for user scaling/dragging the price scale or panning the chart
             let isUserDraggingChart = false;
@@ -2323,73 +2398,6 @@
                 window.addEventListener('touchend', onWindowPointerUp);
             });
 
-            function handleChartWheel(e) {
-                if (hasOpenChartPopover()) closeAllChartPopovers();
-
-                // Shift + Mouse Wheel for horizontal scrolling (TradingView standard)
-                if (e.shiftKey && mainChart) {
-                    const ts = mainChart.timeScale();
-                    const range = ts.getVisibleLogicalRange();
-                    if (range) {
-                        e.preventDefault();
-                        const shiftBars = Math.sign(e.deltaY || e.deltaX) * 4;
-                        const newRange = {
-                            from: range.from + shiftBars,
-                            to: range.to + shiftBars
-                        };
-                        ts.setVisibleLogicalRange(newRange);
-                        if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(newRange); } catch(err){}
-                        if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(newRange); } catch(err){}
-                        requestAnimationFrame(() => redrawCanvasOverlay());
-                        return;
-                    }
-                }
-
-                // Web desktop only: scroll over right Y-axis price scale to adjust vertical scale smoothly
-                if (window.innerWidth > 768 && mainSeries && mainChart) {
-                    const rect = e.currentTarget ? e.currentTarget.getBoundingClientRect() : mainContainer.getBoundingClientRect();
-                    // Right price scale width is 75px
-                    const isOverRightAxis = (e.clientX >= rect.right - 75);
-                    if (isOverRightAxis) {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        // Smooth, bounded step per scroll (3% per wheel tick) to prevent wild runaway expansion
-                        const scrollDir = Math.sign(e.deltaY);
-                        const zoomStep = scrollDir < 0 ? 0.97 : 1.03;
-                        yAxisScaleMultiplier *= zoomStep;
-                        // Limit price scale multiplier between 0.45 (max expansion, ~2.2x taller) and 2.2 (max compression)
-                        yAxisScaleMultiplier = Math.max(0.45, Math.min(2.2, yAxisScaleMultiplier));
-
-                        if (mainChart && isYScaleAuto) {
-                            mainChart.priceScale('right').applyOptions({ autoScale: false });
-                            isYScaleAuto = false;
-                            const btn = document.getElementById('btnToggleYScale');
-                            if (btn) { btn.innerText = '🔒 Auto Scale'; btn.style.color = '#10b981'; }
-                        }
-
-                        mainSeries.applyOptions({});
-                        requestAnimationFrame(() => redrawCanvasOverlay());
-                        return;
-                    }
-                }
-
-                // Desktop zoom in/out with mouse wheel:
-                // TradingView style: anchor right side / latest candle statically, candles expand/shrink from left to right!
-                if (mainChart) {
-                    e.preventDefault();
-                    const rawDelta = e.deltaY;
-                    const normalizedDelta = Math.max(-2.5, Math.min(2.5, -rawDelta / 100));
-                    const factor = Math.pow(1.15, normalizedDelta);
-                    zoomChart(factor);
-                    return;
-                }
-
-                requestAnimationFrame(() => redrawCanvasOverlay());
-            }
-
-            mainContainer.removeEventListener('wheel', handleChartWheel);
-            mainContainer.addEventListener('wheel', handleChartWheel, { passive: false });
 
             const rsiPaneEl = document.getElementById('rsiChartPane');
             const macdPaneEl = document.getElementById('macdChartPane');
@@ -6165,15 +6173,17 @@
             if (!mainChart) return;
             const timeScale = mainChart.timeScale();
             const range = timeScale.getVisibleLogicalRange();
-            if (!range) return;
+            if (!range || !isFinite(range.from) || !isFinite(range.to)) return;
 
-            const candles = (cachedChartData && cachedChartData.candles) ? cachedChartData.candles : [];
+            const candles = (cachedChartData && cachedChartData.candles && cachedChartData.candles.length)
+                ? cachedChartData.candles
+                : (window.cachedChartData && window.cachedChartData.candles ? window.cachedChartData.candles : []);
             const lastIdx = candles.length > 0 ? candles.length - 1 : null;
 
             const currentSpan = range.to - range.from;
             if (currentSpan <= 0 || !isFinite(currentSpan)) return;
 
-            const MIN_SPAN = 12;
+            const MIN_SPAN = 10;
             const maxCandles = candles.length > 0 ? candles.length : 300;
             const MAX_SPAN = Math.max(300, maxCandles * 1.5);
 
@@ -6181,25 +6191,20 @@
             newSpan = Math.max(MIN_SPAN, Math.min(MAX_SPAN, newSpan));
             if (Math.abs(newSpan - currentSpan) < 0.0001) return;
 
-            // Target anchor coordinate:
-            // If viewing recent bars / live edge, anchor the latest candle (lastIdx)
-            // If historical view, anchor the rightmost visible candle
-            const isAtRecent = (lastIdx !== null && range.to >= lastIdx - 1);
-            const anchorIdx = isAtRecent ? lastIdx : Math.floor(range.to);
-            const targetX = timeScale.logicalToCoordinate(anchorIdx);
+            // Anchor logic (TradingView standard):
+            // If viewing recent bars / live edge (within 2 bars of latest candle, or scrolled past latest candle into margin):
+            // The latest candle (lastIdx) and right margin remain completely STATIC on screen.
+            // Zooming strictly expands/shrinks older candles from left to right.
+            const isAtRecent = (lastIdx !== null && range.to >= lastIdx - 2);
 
-            let newFrom, newTo;
+            let newTo, newFrom;
             if (isAtRecent) {
-                // TradingView standard: Anchor the latest candle (lastIdx) so its horizontal pixel coordinate
-                // on the screen remains 100% STATIC. Zooming expands/contracts older candles strictly from left to right.
-                const rightOffsetBars = Math.max(0, range.to - lastIdx);
-                const frac = currentSpan > 0 ? (rightOffsetBars / currentSpan) : 0.04;
-                const clampedFrac = Math.min(0.35, Math.max(0, frac));
-                newTo = lastIdx + clampedFrac * newSpan;
+                const rightOffsetBars = Math.max(1, Math.min(25, range.to - lastIdx));
+                newTo = lastIdx + rightOffsetBars;
                 newFrom = newTo - newSpan;
             } else {
                 // Historical view (panned back in time):
-                // Anchor the right edge of the visible screen view statically.
+                // Anchor the right edge of the visible view statically so zoom expands/shrinks from left to right.
                 newTo = range.to;
                 if (lastIdx !== null && newTo > lastIdx + 5) {
                     newTo = lastIdx + 5;
@@ -6207,27 +6212,27 @@
                 newFrom = newTo - newSpan;
             }
 
-            timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
-
-            // Pixel-perfect calibration: eliminate any fractional pixel error so anchor coordinate is 100% static
-            if (targetX !== null && targetX !== undefined) {
-                const actualX = timeScale.logicalToCoordinate(anchorIdx);
-                if (actualX !== null && actualX !== undefined) {
-                    const deltaX = actualX - targetX;
-                    const prevX = timeScale.logicalToCoordinate(anchorIdx - 1);
-                    const barSpacing = (prevX !== null) ? Math.abs(actualX - prevX) : (timeScale.width ? timeScale.width() / newSpan : 1);
-                    if (barSpacing > 0 && Math.abs(deltaX) > 0.001) {
-                        const shiftLogical = deltaX / barSpacing;
-                        newTo += shiftLogical;
-                        newFrom += shiftLogical;
-                        timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
-                    }
+            // Cap left margin so zooming out doesn't pan infinitely into empty space
+            const minAllowedFrom = -15;
+            if (newFrom < minAllowedFrom) {
+                newFrom = minAllowedFrom;
+                if (!isAtRecent) {
+                    newTo = newFrom + newSpan;
                 }
             }
 
-            const finalRange = { from: newFrom, to: newTo };
-            if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(finalRange); } catch(e){}
-            if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(finalRange); } catch(e){}
+            const targetRange = { from: newFrom, to: newTo };
+            isSyncingTimeScale = true;
+            try {
+                timeScale.setVisibleLogicalRange(targetRange);
+                if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(targetRange); } catch(e){}
+                if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(targetRange); } catch(e){}
+            } catch(e) {
+                console.error('zoomChart error setting range:', e);
+            } finally {
+                setTimeout(() => { isSyncingTimeScale = false; }, 30);
+            }
+
             requestAnimationFrame(() => redrawCanvasOverlay());
         }
         window.zoomChart = zoomChart;
