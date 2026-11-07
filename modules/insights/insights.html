@@ -457,9 +457,8 @@
                             <!-- Metal Filter Switcher Pills -->
                             <div class="bullion-pills-bar">
                                 <button type="button" class="bullion-pill active" id="bullion-pill-all" onclick="filterBullionCards('all')">✨ All</button>
-                                <button type="button" class="bullion-pill" id="bullion-pill-24k" onclick="filterBullionCards('24k')">🥇 24K</button>
-                                <button type="button" class="bullion-pill" id="bullion-pill-22k" onclick="filterBullionCards('22k')">👑 22K</button>
-                                <button type="button" class="bullion-pill" id="bullion-pill-silver" onclick="filterBullionCards('silver')">🥈 Silver</button>
+                                <button type="button" class="bullion-pill" id="bullion-pill-22k" onclick="filterBullionCards('22k')">👑 22K Gold</button>
+                                <button type="button" class="bullion-pill" id="bullion-pill-silver" onclick="filterBullionCards('silver')">🥈 Ready Silver</button>
                             </div>
 
                             <!-- Glassy Trendy Metal Cards Mount -->
@@ -610,16 +609,14 @@
                 <thead>
                     <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary);">
                         <th style="text-align: left; padding: 8px 6px;">Date</th>
-                        <th style="text-align: right; padding: 8px 6px;">24K 1g</th>
-                        <th style="text-align: right; padding: 8px 6px;">24K 8g</th>
-                        <th style="text-align: right; padding: 8px 6px;">22K 1g</th>
-                        <th style="text-align: right; padding: 8px 6px;">22K 8g</th>
-                        <th style="text-align: right; padding: 8px 6px;">Silver 1g</th>
-                        <th style="text-align: right; padding: 8px 6px;">Silver 1kg</th>
+                        <th style="text-align: right; padding: 8px 6px; color: var(--text-secondary);">22K 1g</th>
+                        <th style="text-align: right; padding: 8px 6px; color: var(--text-primary); font-weight: 700;">22K 8g (1 Sov)</th>
+                        <th style="text-align: right; padding: 8px 6px; color: var(--text-secondary);">Silver 1g</th>
+                        <th style="text-align: right; padding: 8px 6px; color: var(--text-secondary);">Silver 1kg</th>
                     </tr>
                 </thead>
                 <tbody id="bullion-history-tbody">
-                    <tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-secondary);">Loading historical bullion rates...</td></tr>
+                    <tr><td colspan="5" style="text-align: center; padding: 24px; color: var(--text-secondary);">Loading historical bullion rates...</td></tr>
                 </tbody>
             </table>
         </div>

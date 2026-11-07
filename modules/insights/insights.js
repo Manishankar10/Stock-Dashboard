@@ -1293,47 +1293,18 @@
             if (dateBadge && data.date) dateBadge.innerText = data.date;
             if (updateTime && data.update_time) updateTime.innerText = `⏱️ Updated: ${data.update_time}`;
 
-            const f24k_1g = data.gold_24k_1g ? '₹' + data.gold_24k_1g.toLocaleString('en-IN') : '₹14,744';
-            const f24k_8g = data.gold_24k_8g ? '₹' + data.gold_24k_8g.toLocaleString('en-IN') : '₹1,17,952';
             const f22k_1g = data.gold_22k_1g ? '₹' + data.gold_22k_1g.toLocaleString('en-IN') : '₹13,515';
             const f22k_8g = data.gold_22k_8g ? '₹' + data.gold_22k_8g.toLocaleString('en-IN') : '₹1,08,120';
             const fsilver_1g = data.silver_1g ? '₹' + data.silver_1g.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '₹240.00';
             const fsilver_8g = data.silver_8g ? '₹' + data.silver_8g.toLocaleString('en-IN') : '₹1,920';
             const fsilver_1kg = data.silver_1kg ? '₹' + data.silver_1kg.toLocaleString('en-IN') : '₹2,40,000';
 
-            const show24k = activeBullionFilter === 'all' || activeBullionFilter === '24k';
             const show22k = activeBullionFilter === 'all' || activeBullionFilter === '22k';
             const showSilver = activeBullionFilter === 'all' || activeBullionFilter === 'silver';
 
             let html = '';
 
-            // 1. Pure Gold 24K Card
-            if (show24k) {
-                html += `
-                    <div class="bullion-metal-card bullion-card-24k" title="24 Karat Pure Fine Gold (99.9% Purity)">
-                        <div class="bullion-metal-header">
-                            <span class="bullion-metal-title">
-                                <span>🥇</span> Pure Gold (24 Karat)
-                            </span>
-                            <span class="bullion-purity-tag bullion-purity-24k">99.9% PURE</span>
-                        </div>
-                        <div class="bullion-tiles-row">
-                            <div class="bullion-tile">
-                                <span class="bullion-tile-label">1 Gram</span>
-                                <span class="bullion-tile-value bullion-val-gold">${f24k_1g}</span>
-                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.gold_24k_change_amt, data.gold_24k_change_pct)}</span>
-                            </div>
-                            <div class="bullion-tile">
-                                <span class="bullion-tile-label">8 Gm (1 Sovereign)</span>
-                                <span class="bullion-tile-value bullion-val-gold">${f24k_8g}</span>
-                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.gold_24k_change_amt ? data.gold_24k_change_amt * 8 : 0, data.gold_24k_change_pct)}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // 2. Standard Gold 22K Card
+            // 1. Standard Gold 22K Card (24K hidden per user request)
             if (show22k) {
                 html += `
                     <div class="bullion-metal-card bullion-card-22k" title="22 Karat Standard Jewellery Gold (916 Hallmark)">
@@ -1700,7 +1671,7 @@
                 if (typeof window.bringModalToFront === 'function') window.bringModalToFront(modal);
             }
             const tbody = document.getElementById('bullion-history-tbody');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading historical bullion rates...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading historical bullion rates...</td></tr>';
             try {
                 const res = await fetch('/api/insights/bullion/history');
                 const data = await res.json();
@@ -1721,8 +1692,6 @@
                             return `<div style="font-size: 10.5px; color: ${color}; font-weight: 600;">${sign}₹${formattedAmt} (${sign}${Math.abs(pct).toFixed(2)}%)</div>`;
                         };
 
-                        const g24_1gChg = fmtChg(row.gold_24k_change_amt, row.gold_24k_change_pct);
-                        const g24_8gChg = fmtChg(row.gold_24k_change_amt ? row.gold_24k_change_amt * 8 : 0, row.gold_24k_change_pct);
                         const g22_1gChg = fmtChg(row.gold_22k_change_amt, row.gold_22k_change_pct);
                         const g22_8gChg = fmtChg(row.gold_22k_change_amt ? row.gold_22k_change_amt * 8 : 0, row.gold_22k_change_pct);
                         const s_1gChg = fmtChg(row.silver_change_amt, row.silver_change_pct);
@@ -1731,21 +1700,19 @@
                         return `
                             <tr style="border-bottom: 1px solid var(--border-color);">
                                 <td style="padding: 8px 6px; font-weight: 600; color: var(--text-primary); white-space: nowrap;">${row.date_display || row.date}</td>
-                                <td style="padding: 8px 6px; text-align: right; font-weight: 600; white-space: nowrap;">₹${Number(row.gold_24k_1g).toLocaleString('en-IN')}${g24_1gChg}</td>
-                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.gold_24k_8g).toLocaleString('en-IN')}${g24_8gChg}</td>
-                                <td style="padding: 8px 6px; text-align: right; font-weight: 600; white-space: nowrap;">₹${Number(row.gold_22k_1g).toLocaleString('en-IN')}${g22_1gChg}</td>
-                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.gold_22k_8g).toLocaleString('en-IN')}${g22_8gChg}</td>
-                                <td style="padding: 8px 6px; text-align: right; font-weight: 600; white-space: nowrap;">₹${Number(row.silver_1g).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${s_1gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.gold_22k_1g).toLocaleString('en-IN')}${g22_1gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; font-weight: 700; color: var(--text-primary); white-space: nowrap;">₹${Number(row.gold_22k_8g).toLocaleString('en-IN')}${g22_8gChg}</td>
+                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.silver_1g).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${s_1gChg}</td>
                                 <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.silver_1kg).toLocaleString('en-IN')}${s_1kgChg}</td>
                             </tr>
                         `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">No historical records recorded yet.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-secondary);">No historical records recorded yet.</td></tr>';
                 }
             } catch (err) {
                 console.error('Error fetching bullion history:', err);
-                if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">Failed to load history.</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">Failed to load history.</td></tr>';
             }
         }
 
