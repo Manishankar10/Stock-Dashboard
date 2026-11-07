@@ -1680,7 +1680,7 @@
                         const fmtChg = (amt, pct) => {
                             if (amt === undefined || amt === null) return '';
                             if (amt === 0) {
-                                return '<div style="font-size: 10px; color: var(--text-secondary); opacity: 0.75; font-weight: 500;">₹0 (0.00%)</div>';
+                                return '<div class="bullion-chg-line" style="color: var(--text-secondary); opacity: 0.75; font-weight: 500;"><span class="bullion-chg-amt">₹0</span><span class="bullion-chg-pct"> (0.00%)</span></div>';
                             }
                             const isPos = amt > 0;
                             const sign = isPos ? '+' : '-';
@@ -1689,7 +1689,7 @@
                                 minimumFractionDigits: (amt % 1 !== 0 ? 2 : 0),
                                 maximumFractionDigits: 2
                             });
-                            return `<div style="font-size: 10.5px; color: ${color}; font-weight: 600;">${sign}₹${formattedAmt} (${sign}${Math.abs(pct).toFixed(2)}%)</div>`;
+                            return `<div class="bullion-chg-line" style="color: ${color}; font-weight: 600;"><span class="bullion-chg-amt">${sign}₹${formattedAmt}</span><span class="bullion-chg-pct"> (${sign}${Math.abs(pct).toFixed(2)}%)</span></div>`;
                         };
 
                         const g22_1gChg = fmtChg(row.gold_22k_change_amt, row.gold_22k_change_pct);
@@ -1697,13 +1697,32 @@
                         const s_1gChg = fmtChg(row.silver_change_amt, row.silver_change_pct);
                         const s_1kgChg = fmtChg(row.silver_change_amt ? row.silver_change_amt * 1000 : 0, row.silver_change_pct);
 
+                        let dateText = row.date_display || row.date || '';
+                        if (dateText.includes('/')) {
+                            const p = dateText.split('/');
+                            if (p.length === 3) {
+                                dateText = `${p[0]} ${p[1]} '${p[2].slice(-2)}`;
+                            }
+                        } else if (dateText.includes('-')) {
+                            const p = dateText.split('-');
+                            if (p.length === 3 && p[0].length === 4) {
+                                const d = new Date(dateText);
+                                if (!isNaN(d.getTime())) {
+                                    const day = String(d.getDate()).padStart(2, '0');
+                                    const mon = d.toLocaleString('en-US', { month: 'short' });
+                                    const yr = String(d.getFullYear()).slice(-2);
+                                    dateText = `${day} ${mon} '${yr}`;
+                                }
+                            }
+                        }
+
                         return `
                             <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 8px 6px; font-weight: 600; color: var(--text-primary); white-space: nowrap;">${row.date_display || row.date}</td>
-                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.gold_22k_1g).toLocaleString('en-IN')}${g22_1gChg}</td>
-                                <td style="padding: 8px 6px; text-align: right; font-weight: 700; color: var(--text-primary); white-space: nowrap;">₹${Number(row.gold_22k_8g).toLocaleString('en-IN')}${g22_8gChg}</td>
-                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.silver_1g).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${s_1gChg}</td>
-                                <td style="padding: 8px 6px; text-align: right; color: var(--text-secondary); white-space: nowrap;">₹${Number(row.silver_1kg).toLocaleString('en-IN')}${s_1kgChg}</td>
+                                <td class="col-date">${dateText}</td>
+                                <td class="col-22k-1g" style="color: var(--text-secondary);"><span class="bullion-price-val">₹${Number(row.gold_22k_1g).toLocaleString('en-IN')}</span>${g22_1gChg}</td>
+                                <td class="col-22k-8g" style="color: var(--text-primary);"><span class="bullion-price-val">₹${Number(row.gold_22k_8g).toLocaleString('en-IN')}</span>${g22_8gChg}</td>
+                                <td class="col-sil-1g" style="color: var(--text-secondary);"><span class="bullion-price-val">₹${Number(row.silver_1g).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>${s_1gChg}</td>
+                                <td class="col-sil-1kg" style="color: var(--text-secondary);"><span class="bullion-price-val">₹${Number(row.silver_1kg).toLocaleString('en-IN')}</span>${s_1kgChg}</td>
                             </tr>
                         `;
                     }).join('');
