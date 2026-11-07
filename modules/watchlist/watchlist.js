@@ -977,11 +977,11 @@
 
             const colgroup = document.createElement('colgroup');
             colgroup.innerHTML = `
-                <col class="wl-cg-symbol" style="width: 30%;">
-                <col class="wl-cg-price" style="width: 22%;">
-                <col class="wl-cg-change-amt" style="width: 20%;">
+                <col class="wl-cg-symbol" style="width: 28%;">
+                <col class="wl-cg-price" style="width: 20%;">
+                <col class="wl-cg-change-amt" style="width: 18%;">
                 <col class="wl-cg-change-pct" style="width: 18%;">
-                <col class="wl-cg-actions" style="width: 10%;">
+                <col class="wl-cg-actions" style="width: 16%;">
             `;
             table.appendChild(colgroup);
 
@@ -1001,7 +1001,7 @@
                         <span class="col-lbl-full">Change (%)</span><span class="col-lbl-compact">Chg (%)</span> ${getSortIcon('change_pct')}
                     </th>
                     <th class="wl-col-actions" style="text-align:center;">
-                        <span class="col-lbl-full">Actions</span><span class="col-lbl-compact">Act</span>
+                        <span class="col-lbl-full">Details / Actions</span><span class="col-lbl-compact">Actions</span>
                     </th>
                 </tr>
             `;
@@ -1082,10 +1082,28 @@
                     tdActions.className = 'wl-col-actions';
                     tdActions.style.textAlign = 'center';
                     tdActions.style.position = 'relative';
+                    tdActions.style.whiteSpace = 'nowrap';
 
-                    const menuWrapper = document.createElement('div');
-                    menuWrapper.style.position = 'relative';
-                    menuWrapper.style.display = 'inline-block';
+                    const actionsWrapper = document.createElement('div');
+                    actionsWrapper.style.position = 'relative';
+                    actionsWrapper.style.display = 'inline-flex';
+                    actionsWrapper.style.alignItems = 'center';
+                    actionsWrapper.style.gap = '4px';
+
+                    const isMob = window.innerWidth <= 768;
+
+                    const detailBtn = document.createElement('button');
+                    detailBtn.className = 'btn-details wl-row-details-btn';
+                    detailBtn.style.padding = '4px 8px';
+                    detailBtn.style.fontSize = '12px';
+                    detailBtn.title = `Fundamentals & Details for ${cleanDisplaySymbol(sym)}`;
+                    detailBtn.innerHTML = isMob ? '🔍' : '🔍 Details';
+                    detailBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
+                        else if (typeof openFundamentalsModal === 'function') openFundamentalsModal(sym);
+                    };
+                    actionsWrapper.appendChild(detailBtn);
 
                     const menuBtn = document.createElement('button');
                     menuBtn.className = 'btn-secondary wl-row-menu-btn';
@@ -1093,7 +1111,6 @@
                     menuBtn.style.fontSize = '12px';
                     menuBtn.style.fontWeight = '600';
                     menuBtn.title = `Actions for ${sym}`;
-                    const isMob = window.innerWidth <= 768;
                     menuBtn.innerHTML = isMob
                         ? '<span class="wl-setting-icon">⚙️</span>'
                         : '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
@@ -1102,8 +1119,8 @@
                         toggleWlRowMenu(e, sym);
                     };
 
-                            menuWrapper.appendChild(menuBtn);
-                    tdActions.appendChild(menuWrapper);
+                    actionsWrapper.appendChild(menuBtn);
+                    tdActions.appendChild(actionsWrapper);
 
 
                     tr.appendChild(tdSymbol);
