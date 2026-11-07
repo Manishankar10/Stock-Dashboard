@@ -530,6 +530,10 @@
             if (upper === '^NSEI' || upper === 'NIFTY' || upper === 'NIFTY 50' || upper === 'NIFTY50') return 'NSE:NIFTY';
             if (upper === '^NSEBANK' || upper === '^BANKNIFTY' || upper === 'BANKNIFTY' || upper === 'NIFTY BANK') return 'NSE:BANKNIFTY';
             if (upper === '^CNXIT' || upper === 'NIFTY IT') return 'NSE:NIFTYIT';
+            if (upper === '^IXIC' || upper === 'NASDAQ' || upper === 'NASDAQ COMPOSITE') return 'NASDAQ:IXIC';
+            if (upper === '^GSPC' || upper === 'S&P 500' || upper === 'SP500') return 'SP:SPX';
+            if (upper === '^DJI' || upper === 'DOW JONES' || upper === 'DJI') return 'DJ:DJI';
+            if (upper === '^BSESN' || upper === 'SENSEX' || upper === 'BSE SENSEX') return 'BSE:SENSEX';
             
             // Check BSE suffix
             if (s.endsWith('.BO') || s.endsWith('.BS') || s.endsWith('.BSE') || s.startsWith('BSE:')) {
@@ -1030,9 +1034,22 @@
                         if (window._wlMenuJustClosed) return;
                         handleWatchlistStockClick(sym);
                     };
-                    const nameHtml = (hasData && info.name) 
-                        ? escapeHtml(info.name) 
-                        : '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
+                    const isIndex = (bInfo && bInfo.label === 'INDEX') || String(sym).startsWith('^') || sym === 'GIFTNIFTY';
+                    const displaySym = cleanDisplaySymbol(sym);
+
+                    let nameHtml = '';
+                    if (hasData && info.name) {
+                        if (isIndex && info.name.trim().toLowerCase() === displaySym.trim().toLowerCase()) {
+                            nameHtml = escapeHtml(sym.startsWith('^') ? `${info.name} Index` : info.name);
+                        } else {
+                            nameHtml = escapeHtml(info.name);
+                        }
+                    } else if (isIndex) {
+                        nameHtml = escapeHtml(sym);
+                    } else {
+                        nameHtml = '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
+                    }
+
                     const priceVal = hasData 
                         ? '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) 
                         : '<span class="skeleton-box" style="width: 60px; height: 14px;"></span>';
@@ -1056,7 +1073,7 @@
 
                     const tdSymbol = document.createElement('td');
                     tdSymbol.className = 'wl-col-symbol';
-                    tdSymbol.innerHTML = `<div class="stock-symbol-row"><span class="stock-symbol">${cleanDisplaySymbol(sym)}</span><span class="badge ${bInfo.class}">${bInfo.label}</span></div><div class="company-name" id="name-${sym}">${nameHtml}</div>`;
+                    tdSymbol.innerHTML = `<div class="stock-symbol-row"><span class="stock-symbol" id="sym-${sym}">${escapeHtml(displaySym)}</span><span class="badge ${bInfo.class}">${bInfo.label}</span></div><div class="company-name" id="name-${sym}">${nameHtml}</div>`;
 
                     const tdPrice = document.createElement('td');
                     tdPrice.className = 'wl-col-price';

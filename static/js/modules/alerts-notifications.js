@@ -6,9 +6,16 @@
         let _isAlertsLoading = false;
 
         function cleanDisplaySymbol(sym) {
+            if (typeof window !== 'undefined' && typeof window.cleanDisplaySymbol === 'function' && window.cleanDisplaySymbol !== cleanDisplaySymbol) {
+                return window.cleanDisplaySymbol(sym);
+            }
             if (sym === null || sym === undefined) return '';
             const s = String(sym).trim();
-            if (s.startsWith('^') || s.includes('=F')) return s;
+            const upper = s.toUpperCase();
+            const idxMap = (typeof window !== 'undefined' && window.INDEX_DISPLAY_NAMES) ? window.INDEX_DISPLAY_NAMES : {};
+            if (idxMap[upper]) return idxMap[upper];
+            if (s.startsWith('^')) return s.substring(1);
+            if (s.includes('=F')) return s;
             return s.replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
         }
 

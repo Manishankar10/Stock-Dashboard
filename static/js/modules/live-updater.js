@@ -89,7 +89,19 @@
                     continue;
                 }
                 
-                if (nameEl && info.name) nameEl.innerText = info.name;
+                const symEl = document.getElementById(`sym-${sym}`);
+                if (symEl && typeof cleanDisplaySymbol === 'function') {
+                    symEl.innerText = cleanDisplaySymbol(sym);
+                }
+                if (nameEl && info.name) {
+                    const isIdx = sym.startsWith('^') || sym === 'GIFTNIFTY';
+                    const curSymText = symEl ? symEl.innerText : (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym);
+                    if (isIdx && info.name.trim().toLowerCase() === curSymText.trim().toLowerCase()) {
+                        nameEl.innerText = sym.startsWith('^') ? `${info.name} Index` : info.name;
+                    } else {
+                        nameEl.innerText = info.name;
+                    }
+                }
                 const rowEl = document.getElementById(`row-${sym}`);
                 if (rowEl && info.name) rowEl.dataset.companyName = info.name;
                 if (priceEl && info.price !== undefined) {

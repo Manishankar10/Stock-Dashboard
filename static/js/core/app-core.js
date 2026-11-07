@@ -781,10 +781,61 @@
         }
         window.showCustomPrompt = showCustomPrompt;
 
+        const INDEX_DISPLAY_NAMES = {
+            '^IXIC': 'NASDAQ',
+            '^NSEI': 'NIFTY 50',
+            '^BSESN': 'SENSEX',
+            '^NSEBANK': 'NIFTY BANK',
+            '^CNXIT': 'NIFTY IT',
+            '^CRSMID': 'NIFTY MIDCAP 100',
+            'GIFTNIFTY': 'GIFT NIFTY',
+            '^GSPC': 'S&P 500',
+            '^DJI': 'DOW JONES',
+            '^FTSE': 'FTSE 100',
+            '^N225': 'NIKKEI 225',
+            '^HSI': 'HANG SENG',
+            '^VIX': 'INDIA VIX',
+            '^INDIAVIX': 'INDIA VIX',
+            '^RUT': 'RUSSELL 2000',
+            '^GDAXI': 'DAX',
+            '^FCHI': 'CAC 40',
+            '^STOXX50E': 'EURO STOXX 50',
+            '^KS11': 'KOSPI',
+            '^CNX100': 'NIFTY 100',
+            '^CNX200': 'NIFTY 200',
+            '^CNX500': 'NIFTY 500',
+            '^CNXAUTO': 'NIFTY AUTO',
+            '^CNXFMCG': 'NIFTY FMCG',
+            '^CNXMETAL': 'NIFTY METAL',
+            '^CNXPHARMA': 'NIFTY PHARMA',
+            '^CNXREALTY': 'NIFTY REALTY',
+            '^CNXENERGY': 'NIFTY ENERGY',
+            '^CNXINFRA': 'NIFTY INFRA',
+            '^CNXCOMMODITIES': 'NIFTY COMMODITIES',
+            '^CNXCONSUMPTION': 'NIFTY CONSUMPTION',
+            '^CNXFINANCE': 'NIFTY FINANCIAL SERVICES',
+            '^CNXMEDIA': 'NIFTY MEDIA',
+            '^CNXPSE': 'NIFTY PSE',
+            '^CNXPSUBANK': 'NIFTY PSU BANK',
+            '^CNXSERVICE': 'NIFTY SERVICES SECTOR'
+        };
+        window.INDEX_DISPLAY_NAMES = INDEX_DISPLAY_NAMES;
+
         function cleanDisplaySymbol(sym) {
             if (sym === null || sym === undefined) return '';
             const s = String(sym).trim();
-            if (s.startsWith('^') || s.includes('=F')) return s;
+            const upper = s.toUpperCase();
+            if (INDEX_DISPLAY_NAMES[upper]) {
+                return INDEX_DISPLAY_NAMES[upper];
+            }
+            if (s.startsWith('^')) {
+                const cachedInfo = (typeof stockPricesData !== 'undefined' && stockPricesData[s]) ? stockPricesData[s] : null;
+                if (cachedInfo && cachedInfo.name && cachedInfo.name !== s) {
+                    return cachedInfo.name.replace(/\s*Index\s*(\(US\))?/i, '').trim();
+                }
+                return s.substring(1);
+            }
+            if (s.includes('=F')) return s;
             // Hide .NS, .BS (and .BO, .NSE, .BSE) exchange suffixes only for display
             return s.replace(/\.(NS|BS|BO|NSE|BSE)$/i, '');
         }
