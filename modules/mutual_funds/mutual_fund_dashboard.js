@@ -144,7 +144,8 @@
         const body = document.getElementById('holding-rows');
         document.getElementById('holding-count').textContent = rows.length + (rows.length === 1 ? ' scheme' : ' schemes');
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">No investments yet. Select “Start SIP” or <button type="button" onclick="switchMfSubView(\'explore\')" style="background:none;border:none;color:var(--btn-primary-bg,#10b981);font-weight:600;cursor:pointer;text-decoration:underline;padding:0;font-size:inherit;">Explore Schemes</button> to add a fund to your ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'}.</td></tr>';
+            const pfLabel = (typeof window.PORTFOLIO_LABEL !== 'undefined') ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio';
+            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">No investments yet. Select “Start SIP” or <button type="button" onclick="switchMfSubView(\'explore\')" style="background:none;border:none;color:var(--btn-primary-bg,#10b981);font-weight:600;cursor:pointer;text-decoration:underline;padding:0;font-size:inherit;">Explore Schemes</button> to add a fund to your ' + pfLabel + '.</td></tr>';
             return;
         }
         body.innerHTML = rows.map(row => {
@@ -204,8 +205,9 @@
         if (button) setBusy(button, true, '↻ Refreshing…');
         const body = document.getElementById('holding-rows');
         if (!portfolio) {
+            const _mfPfLbl = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio');
             body.innerHTML = '<tr><td colspan="8">' + (typeof window.createBrandLoaderHTML === 'function' ? window.createBrandLoaderHTML({
-                const _mfPfLbl = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'); title: refresh ? 'Refreshing Official AMFI NAVs...' : `Loading Saved ${_mfPfLbl} Records...`,
+                title: refresh ? 'Refreshing Official AMFI NAVs...' : `Loading Saved ${_mfPfLbl} Records...`,
                 badge: (typeof window.PORTFOLIO_LABEL !== 'undefined' ? 'My ' + window.PORTFOLIO_LABEL + ' & SIPs' : 'My Portfolio & SIPs'),
                 subtitle: 'Fetching latest valuations and recorded purchases...',
                 minHeight: '160px'

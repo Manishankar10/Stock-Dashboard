@@ -6013,9 +6013,9 @@
             if (candles.length === 0) return;
             const lastIdx = candles.length - 1;
             const targetBars = 150;
-            const rightOffset = 8;
-            const from = Math.max(-5, lastIdx - targetBars + 1);
+            const rightOffset = 5;
             const to = lastIdx + rightOffset;
+            const from = to - targetBars;
             try {
                 mainChart.timeScale().setVisibleLogicalRange({ from, to });
                 if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange({ from, to });
@@ -6068,9 +6068,10 @@
                     });
                 } catch(e){}
             }
-            
-            
-            requestAnimationFrame(() => redrawCanvasOverlay());
+            requestAnimationFrame(() => {
+                setChart150BarsLogicalRange();
+                redrawCanvasOverlay();
+            });
         }
 
         function resizeChartPanes() {
@@ -6186,26 +6187,12 @@
             document.querySelectorAll('#popover-range .tf-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.id === `tf-${rangeStr}`);
             });
+            shouldApply150Bars = true;
             loadChartData();
             startChartLivePolling();
         }
 
-        let pendingTimeframeSwitchRange = null;
-
         function changeInterval(intervalStr) {
-            if (mainChart) {
-                try {
-                    const timeScale = mainChart.timeScale();
-                    const visRange = timeScale.getVisibleRange();
-                    if (visRange && visRange.from && visRange.to) {
-                        pendingTimeframeSwitchRange = {
-                            fromEpoch: timeToEpochSeconds(visRange.from),
-                            toEpoch: timeToEpochSeconds(visRange.to)
-                        };
-                    }
-                } catch(e) {}
-            }
-
             currentChartInterval = intervalStr;
             shouldApply150Bars = true;
             try {
@@ -7020,42 +7007,12 @@
             toggleIndicators();
             resizeChartPanes();
 
-            // Restore visible logical range if switching intervals
-            if (pendingTimeframeSwitchRange && data.candles && data.candles.length > 0) {
-                const { fromEpoch, toEpoch } = pendingTimeframeSwitchRange;
-                pendingTimeframeSwitchRange = null;
-
-                let fromIdx = -1;
-                let toIdx = -1;
-                for (let i = 0; i < data.candles.length; i++) {
-                    const cEpoch = timeToEpochSeconds(data.candles[i].time);
-                    if (fromIdx === -1 && cEpoch >= fromEpoch) {
-                        fromIdx = i;
-                    }
-                    if (cEpoch <= toEpoch) {
-                        toIdx = i;
-                    }
-                }
-                if (fromIdx !== -1 && toIdx !== -1 && toIdx >= fromIdx) {
-                    const paddedFrom = Math.max(-5, fromIdx - 2);
-                    const paddedTo = toIdx + 8;
-                    requestAnimationFrame(() => {
-                        try {
-                            if (mainChart) {
-                                mainChart.timeScale().setVisibleLogicalRange({
-                                    from: paddedFrom,
-                                    to: paddedTo
-                                });
-                                redrawCanvasOverlay();
-                            }
-                        } catch(e) {}
-                    });
-                }
-            }
-
             if (shouldApply150Bars) {
                 shouldApply150Bars = false;
                 setChart150BarsLogicalRange();
+                requestAnimationFrame(() => {
+                    setChart150BarsLogicalRange();
+                });
             }
             redrawCanvasOverlay();
             startCandleCountdownTimer();
@@ -8696,6 +8653,13 @@
         window.closeAllChartPopovers = closeAllChartPopovers;
         window.setActiveToolColor = setActiveToolColor;
         window.setChartInterval = setChartInterval;
+        window.setChart150BarsLogicalRange = setChart150BarsLogicalRange;
+        window.resetChartView = resetChartView;
+        window.getChartVisibleBars = () => {
+            if (!window.mainChart) return null;
+            const r = window.mainChart.timeScale().getVisibleLogicalRange();
+            return r ? Math.round(r.to - r.from) : null;
+        };
         window.startChartLivePolling = startChartLivePolling;
         window.stopChartLivePolling = stopChartLivePolling;
         window.isChartLivePollingActive = () => Boolean(chartLivePollingTimer);
