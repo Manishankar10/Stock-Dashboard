@@ -2291,21 +2291,28 @@
             mainContainer.addEventListener('wheel', (e) => {
                 if (hasOpenChartPopover()) closeAllChartPopovers();
 
-                // Web desktop only: scroll over right Y-axis price scale to expand price as much as possible
+                // Web desktop only: scroll over right Y-axis price scale to adjust vertical scale smoothly
                 if (window.innerWidth > 768 && mainSeries && mainChart) {
                     const rect = mainContainer.getBoundingClientRect();
-                    const isOverRightAxis = (e.clientX >= rect.right - 95);
+                    // Right price scale width is 75px
+                    const isOverRightAxis = (e.clientX >= rect.right - 75);
                     if (isOverRightAxis) {
                         e.preventDefault();
                         e.stopPropagation();
 
-                        // Scrolling UP (deltaY < 0) expands prices (taller candles, narrower visible price range)
-                        // Scrolling DOWN (deltaY > 0) compresses prices (shorter candles, wider visible price range)
-                        const zoomStep = e.deltaY < 0 ? 0.88 : 1.13;
+                        // Smooth, bounded step per scroll (3% per wheel tick) to prevent wild runaway expansion
+                        const scrollDir = Math.sign(e.deltaY);
+                        const zoomStep = scrollDir < 0 ? 0.97 : 1.03;
                         yAxisScaleMultiplier *= zoomStep;
+                        // Limit price scale multiplier between 0.45 (max expansion, ~2.2x taller) and 2.2 (max compression)
+                        yAxisScaleMultiplier = Math.max(0.45, Math.min(2.2, yAxisScaleMultiplier));
 
-                        // Expand as much as possible (down to 0.001 = 1000x expansion)
-                        yAxisScaleMultiplier = Math.max(0.001, Math.min(100.0, yAxisScaleMultiplier));
+                        if (mainChart && isYScaleAuto) {
+                            mainChart.priceScale('right').applyOptions({ autoScale: false });
+                            isYScaleAuto = false;
+                            const btn = document.getElementById('btnToggleYScale');
+                            if (btn) { btn.innerText = '🔒 Auto Scale'; btn.style.color = '#10b981'; }
+                        }
 
                         mainSeries.applyOptions({});
                         requestAnimationFrame(() => redrawCanvasOverlay());
@@ -7314,9 +7321,20 @@ function getActiveChartIndicatorKeys() {
             const min = res.priceRange.minValue;
             const max = res.priceRange.maxValue;
             if (min === null || max === null || isNaN(min) || isNaN(max)) return res;
-            const span = max - min;
+            
+            const baseSpan = Math.max(max - min, 0.01);
             const center = (min + max) / 2 + yAxisPanOffset;
-            const halfSpan = (span / 2) * yAxisScaleMultiplier;
+            const refPrice = Math.abs(center) > 0 ? Math.abs(center) : Math.abs(max);
+
+            // Limit the expand price based on the price of the stock for every scroll
+            // Minimum half-span: at least 0.45x natural span, and at least 0.4% of price (prevents huge single-line expansion)
+            const minHalfSpan = Math.max((baseSpan / 2) * 0.45, Math.max(refPrice * 0.004, 0.1));
+            // Maximum half-span: at most 2.2x natural span (prevents flattening candles into a single horizontal line)
+            const maxHalfSpan = Math.max((baseSpan / 2) * 2.2, minHalfSpan * 2);
+
+            let halfSpan = (baseSpan / 2) * yAxisScaleMultiplier;
+            halfSpan = Math.max(minHalfSpan, Math.min(maxHalfSpan, halfSpan));
+
             return {
                 priceRange: {
                     minValue: center - halfSpan,
@@ -7375,8 +7393,8 @@ function getActiveChartIndicatorKeys() {
                 const rect = mainContainer.getBoundingClientRect();
                 const y = e.clientY - rect.top;
 
-                // Right price axis zone spans rightmost ~95px (including + button and price numbers)
-                const isOverRightAxis = (e.clientX >= rect.right - 95);
+                // Right price axis zone spans rightmost 75px
+                const isOverRightAxis = (e.clientX >= rect.right - 75);
 
                 if (y < 0 || y > mainContainer.clientHeight || !isOverRightAxis) {
                     const badge = document.getElementById('rightPriceAxisPlusBadge');
@@ -7409,7 +7427,7 @@ function getActiveChartIndicatorKeys() {
                     }
                 }
                 const rect = mainContainer.getBoundingClientRect();
-                if (e.clientX >= rect.right - 95) {
+                if (e.clientX >= rect.right - 75) {
                     isDraggingPriceScale = true;
                     startDragPriceScaleY = e.clientY;
                     hasDraggedPriceScale = false;
@@ -7432,8 +7450,8 @@ function getActiveChartIndicatorKeys() {
                     const badge = document.getElementById('rightPriceAxisPlusBadge');
                     if (badge) badge.style.display = 'none';
                     // Dragging UP (dy < 0) expands prices; Dragging DOWN (dy > 0) compresses prices
-                    yAxisScaleMultiplier *= (dy < 0 ? 0.98 : 1.02);
-                    yAxisScaleMultiplier = Math.max(0.001, Math.min(100.0, yAxisScaleMultiplier));
+                    yAxisScaleMultiplier *= (dy < 0 ? 0.994 : 1.006);
+                    yAxisScaleMultiplier = Math.max(0.45, Math.min(2.2, yAxisScaleMultiplier));
                     startDragPriceScaleY = e.clientY;
                     if (mainSeries) mainSeries.applyOptions({});
                     requestAnimationFrame(() => redrawCanvasOverlay());
@@ -7469,7 +7487,7 @@ function getActiveChartIndicatorKeys() {
             mainContainer.ondblclick = (e) => {
                 if (window.innerWidth <= 768) return;
                 const rect = mainContainer.getBoundingClientRect();
-                if (e.clientX >= rect.right - 95) {
+                if (e.clientX >= rect.right - 75) {
                     yAxisScaleMultiplier = 1.0;
                     yAxisPanOffset = 0.0;
                     isYScaleAuto = true;
