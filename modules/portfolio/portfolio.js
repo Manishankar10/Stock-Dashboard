@@ -1584,7 +1584,7 @@
                         tr.setAttribute('data-buy-date', item.buy_date || '');
                         tr.title = 'Click row to view interactive technical chart';
                         tr.onclick = (e) => {
-                            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                            if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.closest('.pf-col-details')) return;
                             openInHouseChart(sym);
                         };
 
@@ -1664,12 +1664,28 @@
                         tdDetails.className = 'pf-col-details';
                         tdDetails.style.textAlign = 'center';
                         tdDetails.style.whiteSpace = 'nowrap';
+                        tdDetails.style.cursor = 'pointer';
+                        tdDetails.title = `Actions for ${sym}`;
+                        tdDetails.onclick = (e) => {
+                            e.stopPropagation();
+                            if (typeof window.toggleWlRowMenu === 'function') {
+                                window.toggleWlRowMenu(e, sym, { hideDelete: true, item: item, isPortfolio: true });
+                            }
+                        };
 
                         const menuBtn = document.createElement('button');
                         menuBtn.className = 'btn-secondary wl-row-menu-btn pf-row-menu-btn';
                         menuBtn.style.padding = '4px 8px';
                         menuBtn.style.fontSize = '12px';
                         menuBtn.style.fontWeight = '600';
+                        menuBtn.style.width = '100%';
+                        menuBtn.style.height = '100%';
+                        menuBtn.style.minHeight = '28px';
+                        menuBtn.style.display = 'inline-flex';
+                        menuBtn.style.alignItems = 'center';
+                        menuBtn.style.justifyContent = 'center';
+                        menuBtn.style.boxSizing = 'border-box';
+                        menuBtn.style.cursor = 'pointer';
                         menuBtn.title = `Actions for ${sym}`;
                         menuBtn.innerHTML = '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
                         menuBtn.onclick = (e) => {

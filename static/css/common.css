@@ -1054,6 +1054,23 @@
             text-align: center !important;
             overflow: visible !important;
         }
+        .pf-table tbody td.pf-col-details {
+            padding: 4px 6px !important;
+            cursor: pointer !important;
+        }
+        .pf-table tbody td.pf-col-details:hover {
+            background-color: var(--table-hover-bg, rgba(255, 255, 255, 0.04));
+        }
+        .pf-table tbody td.pf-col-details .pf-row-menu-btn {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 28px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            cursor: pointer !important;
+        }
         .pf-table tfoot tr td {
             font-weight: 700 !important;
             font-size: 13px !important;

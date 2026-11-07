@@ -1347,7 +1347,7 @@
                 e.preventDefault();
                 e.stopPropagation();
             }
-            const btn = e ? (e.currentTarget || (e.target && e.target.closest ? e.target.closest('button') : null)) : null;
+            const btn = e ? (e.currentTarget || (e.target && e.target.closest ? (e.target.closest('button') || e.target.closest('.pf-col-details') || e.target.closest('.wl-col-actions') || e.target.closest('td')) : null)) : null;
             if (!btn) return;
 
             let popover = document.getElementById('wl-global-stock-popover');
