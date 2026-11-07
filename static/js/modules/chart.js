@@ -1990,7 +1990,7 @@
                 if (mainChart) {
                     mainChart.applyOptions({
                         handleScroll: {
-                            mouseWheel: true,
+                            mouseWheel: false,
                             pressedMove: false,
                             horzTouchDrag: false,
                             vertTouchDrag: false
@@ -2169,7 +2169,7 @@
                 if (mainChart) {
                     mainChart.applyOptions({
                         handleScroll: {
-                            mouseWheel: true,
+                            mouseWheel: false,
                             pressedMove: true,
                             horzTouchDrag: true,
                             vertTouchDrag: true
@@ -2324,6 +2324,25 @@
 
             mainContainer.addEventListener('wheel', (e) => {
                 if (hasOpenChartPopover()) closeAllChartPopovers();
+
+                // Shift + Mouse Wheel for horizontal scrolling (TradingView standard)
+                if (e.shiftKey && mainChart) {
+                    const ts = mainChart.timeScale();
+                    const range = ts.getVisibleLogicalRange();
+                    if (range) {
+                        e.preventDefault();
+                        const shiftBars = Math.sign(e.deltaY || e.deltaX) * 4;
+                        const newRange = {
+                            from: range.from + shiftBars,
+                            to: range.to + shiftBars
+                        };
+                        ts.setVisibleLogicalRange(newRange);
+                        if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(newRange); } catch(err){}
+                        if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(newRange); } catch(err){}
+                        requestAnimationFrame(() => redrawCanvasOverlay());
+                        return;
+                    }
+                }
 
                 // Web desktop only: scroll over right Y-axis price scale to adjust vertical scale smoothly
                 if (window.innerWidth > 768 && mainSeries && mainChart) {
@@ -6057,10 +6076,14 @@
             if (!range) return;
             const center = (range.from + range.to) / 2;
             const halfLength = ((range.to - range.from) / 2) / factor;
-            timeScale.setVisibleLogicalRange({
+            const newRange = {
                 from: center - halfLength,
                 to: center + halfLength
-            });
+            };
+            timeScale.setVisibleLogicalRange(newRange);
+            if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(newRange); } catch(e){}
+            if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(newRange); } catch(e){}
+            requestAnimationFrame(() => redrawCanvasOverlay());
         }
 
         
@@ -6920,7 +6943,7 @@ function getActiveChartIndicatorKeys() {
                     vertLine: { width: 1, color: themeColors.crosshairLineColor, style: LightweightCharts.LineStyle.LargeDashed, labelBackgroundColor: themeColors.crosshairLabelBg },
                     horzLine: { width: 1, color: themeColors.crosshairLineColor, style: LightweightCharts.LineStyle.LargeDashed, labelBackgroundColor: themeColors.crosshairLabelBg }
                 },
-                handleScroll: { mouseWheel: true, pressedMove: true, horzTouchDrag: true, vertTouchDrag: true },
+                handleScroll: { mouseWheel: false, pressedMove: true, horzTouchDrag: true, vertTouchDrag: true },
                 handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
                 kineticScroll: { touch: true, mouse: false }
             };
@@ -6950,7 +6973,7 @@ function getActiveChartIndicatorKeys() {
                     fixLeftEdge: false,
                     fixRightEdge: false,
                     lockVisibleTimeRangeOnResize: true,
-                    rightBarStaysOnScroll: true,
+                    rightBarStaysOnScroll: false,
                     tickMarkFormatter: (time, tickMarkType, locale) => formatChartTickMark(time, tickMarkType, locale)
                 }
             });
@@ -7138,7 +7161,7 @@ function getActiveChartIndicatorKeys() {
                 fixLeftEdge: false,
                 fixRightEdge: false,
                 lockVisibleTimeRangeOnResize: true,
-                rightBarStaysOnScroll: true
+                rightBarStaysOnScroll: false
             };
 
             // RSI Sub-Pane Chart
