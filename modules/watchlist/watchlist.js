@@ -1620,7 +1620,7 @@
                         allWatchlists.forEach(targetWl => {
                             const count = Array.isArray(watchlistsData[targetWl]) ? watchlistsData[targetWl].length : 0;
                             const isPrechecked = isSymInWl(targetWl);
-                            const isCurrent = (targetWl === activeWatchlistName);
+                            const isCurrent = !isPortfolioMenu && isPrechecked && (targetWl === activeWatchlistName);
 
                             const targetItem = document.createElement('div');
                             targetItem.className = 'menu-item wl-move-target-item';
