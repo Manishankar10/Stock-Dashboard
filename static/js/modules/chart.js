@@ -6006,6 +6006,50 @@
         let shouldApply150Bars = true;
         let chartLivePollingTimer = null;
         let chartLiveAbortController = null;
+let lastFetchedIndicators = [];
+
+function getActiveChartIndicatorKeys() {
+    const keys = [];
+    const isChecked = (id, def = false) => {
+        const el = document.getElementById(id);
+        if (el) return el.checked;
+        try {
+            const saved = localStorage.getItem('capital_desk_chart_indicators');
+            if (saved) {
+                const prefs = JSON.parse(saved);
+                if (prefs[id] !== undefined) return !!prefs[id];
+            }
+        } catch(e){}
+        return def;
+    };
+
+    if (isChecked('chkIwRider', true)) keys.push('iwrider');
+    if (isChecked('chkCdRider', false)) keys.push('cdrider');
+    if (isChecked('chkStTrigger', false)) keys.push('st_trigger');
+    if (isChecked('chkBsDonchian', false)) keys.push('donchian');
+    if (isChecked('chkVolumeMa', true)) keys.push('volume_ma');
+    if (isChecked('chkSma50', false)) keys.push('sma50');
+    if (isChecked('chkSma200', false)) keys.push('sma200');
+    if (isChecked('chkEma9', false)) keys.push('ema9');
+    if (isChecked('chkGann2Day', false)) keys.push('gann_2day');
+    if (isChecked('chkRsi', true)) keys.push('rsi');
+    if (isChecked('chkMacd', false)) keys.push('macd');
+
+    if (window.activePatternIndicators) {
+        if (window.activePatternIndicators.showDmaCross) {
+            keys.push('sma50', 'sma200');
+        }
+        if (window.activePatternIndicators.showEmaCross) {
+            keys.push('ema9', 'ema21');
+        }
+        if (window.activePatternIndicators.showSma50) keys.push('sma50');
+        if (window.activePatternIndicators.showSma200) keys.push('sma200');
+        if (window.activePatternIndicators.showEma9) keys.push('ema9');
+        if (window.activePatternIndicators.showEma21) keys.push('ema21');
+    }
+
+    return Array.from(new Set(keys));
+}
 
         function setChart150BarsLogicalRange() {
             if (!mainChart || !cachedChartData || !cachedChartData.candles) return;
@@ -6025,7 +6069,7 @@
         }
 
         function startChartLivePolling() {
-            stopChartLivePolling();
+            stopChartLivePolling(false);
             const modal = document.getElementById('chartModal');
             if (!modal || modal.style.display === 'none') return;
             const intervalSec = (window.APP_SETTINGS && Number(window.APP_SETTINGS.chart_refresh_interval_sec)) || 10;
@@ -6033,7 +6077,7 @@
             chartLivePollingTimer = setInterval(() => {
                 const currentModal = document.getElementById('chartModal');
                 if (!currentModal || currentModal.style.display === 'none') {
-                    stopChartLivePolling();
+                    stopChartLivePolling(true);
                     return;
                 }
                 if (document.visibilityState === 'hidden') return;
@@ -6041,12 +6085,12 @@
             }, ms);
         }
 
-        function stopChartLivePolling() {
+        function stopChartLivePolling(abortInFlight = true) {
             if (chartLivePollingTimer) {
                 clearInterval(chartLivePollingTimer);
                 chartLivePollingTimer = null;
             }
-            if (chartLiveAbortController) {
+            if (abortInFlight && chartLiveAbortController) {
                 try { chartLiveAbortController.abort(); } catch(e){}
                 chartLiveAbortController = null;
             }
@@ -6170,6 +6214,7 @@
             renderFavoriteToolsShortcuts();
             initMobileFavBarDrag();
 
+            fetchSymbolDrawingsFromServer(sym);
             shouldApply150Bars = true;
             loadChartData();
             startChartLivePolling();
@@ -6278,12 +6323,16 @@
             chartLiveAbortController = new AbortController();
             const currentSignal = chartLiveAbortController.signal;
 
+            const activeIndicators = getActiveChartIndicatorKeys();
+            lastFetchedIndicators = [...activeIndicators];
+            const indParam = activeIndicators.length > 0 ? activeIndicators.join(',') : 'none';
+
             if (!isBackground) {
                 showChartLoader(reqSymbol, reqInterval, reqRange);
             }
             const prevLogicalRange = (isBackground && mainChart) ? mainChart.timeScale().getVisibleLogicalRange() : null;
             try {
-                const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(reqSymbol)}&range=${reqRange}&interval=${reqInterval}`, {
+                const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(reqSymbol)}&range=${reqRange}&interval=${reqInterval}&indicators=${encodeURIComponent(indParam)}`, {
                     signal: currentSignal
                 });
                 const data = await res.json();
@@ -6993,7 +7042,6 @@
 
             // Restore active drawing lines saved for this stock
             restoreSavedPriceLines(currentChartSymbol);
-            fetchSymbolDrawingsFromServer(currentChartSymbol);
 
             setupCanvasOverlay();
             if (mainChart) {
@@ -7756,6 +7804,13 @@
 
         function toggleIndicators() {
             if (!volumeSeries) return;
+
+            const currentActive = getActiveChartIndicatorKeys();
+            const missing = currentActive.filter(k => !lastFetchedIndicators.includes(k));
+            if (missing.length > 0 && currentChartSymbol) {
+                loadChartData(false);
+                return;
+            }
 
             const showIwRider = document.getElementById('chkIwRider') ? document.getElementById('chkIwRider').checked : true;
             const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false;

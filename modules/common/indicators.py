@@ -225,11 +225,44 @@ def calculate_iwrider(candles, times, closes, n):
     }
 
 
-def calculate_indicators(candles):
+def calculate_indicators(candles, enabled=None):
+    """
+    Calculate indicator values for the provided candles.
+    If enabled is None: calculates all indicators.
+    If enabled is a collection/set of indicator names: only calculates the specified indicators.
+    """
+    n = len(candles)
+    if n == 0:
+        return {
+            'iwrider': {'current_stage': '', 'current_stage_num': 1, 'duration': 0, 'stage_color': '#64748b', 'markers': [], 'ema20': [], 'ema50': [], 'ema200': []},
+            'sma20': [], 'sma50': [], 'sma200': [],
+            'ema9': [], 'ema21': [], 'ema50': [],
+            'bollinger_upper': [], 'bollinger_middle': [], 'bollinger_lower': [],
+            'gann_2day': [],
+            'cdrider': [], 'cdrider_buy': [], 'cdrider_sell': [],
+            'donchian_upper': [], 'donchian_middle': [], 'donchian_lower': [],
+            'donchian_buy': [], 'donchian_super_buy': [], 'donchian_sell': [], 'donchian_signals': [],
+            'st_trigger_series': [], 'st_trigger_buy': [], 'st_trigger_sell': [], 'st_trigger_info': {},
+            'macd_line': [], 'macd_signal': [], 'macd_hist': [],
+            'rsi': []
+        }
+
+    enabled_set = None
+    if enabled is not None:
+        enabled_set = {str(k).lower().strip() for k in enabled}
+        if 'all' in enabled_set:
+            enabled_set = None
+        elif 'none' in enabled_set and len(enabled_set) == 1:
+            enabled_set = set()
+
     closes = [c['close'] for c in candles]
     times = [c['time'] for c in candles]
-    n = len(candles)
     
+    need_sma20 = enabled_set is None or 'sma20' in enabled_set
+    need_sma50 = enabled_set is None or 'sma50' in enabled_set
+    need_sma200 = enabled_set is None or 'sma200' in enabled_set
+    need_bollinger = enabled_set is None or 'bollinger' in enabled_set
+
     sma20 = []
     sma50 = []
     sma200 = []
@@ -237,25 +270,27 @@ def calculate_indicators(candles):
     bollinger_lower = []
     bollinger_middle = []
     
-    for i in range(n):
-        if i >= 19:
-            window = closes[i-19:i+1]
-            avg_20 = sum(window) / 20.0
-            sma20.append({'time': times[i], 'value': round(avg_20, 2)})
-            
-            variance = sum((x - avg_20) ** 2 for x in window) / 20.0
-            std_dev = math.sqrt(variance)
-            bollinger_middle.append({'time': times[i], 'value': round(avg_20, 2)})
-            bollinger_upper.append({'time': times[i], 'value': round(avg_20 + 2 * std_dev, 2)})
-            bollinger_lower.append({'time': times[i], 'value': round(avg_20 - 2 * std_dev, 2)})
-            
-        if i >= 49:
-            avg_50 = sum(closes[i-49:i+1]) / 50.0
-            sma50.append({'time': times[i], 'value': round(avg_50, 2)})
-            
-        if i >= 199:
-            avg_200 = sum(closes[i-199:i+1]) / 200.0
-            sma200.append({'time': times[i], 'value': round(avg_200, 2)})
+    if need_sma20 or need_sma50 or need_sma200 or need_bollinger:
+        for i in range(n):
+            if i >= 19 and (need_sma20 or need_bollinger):
+                window = closes[i-19:i+1]
+                avg_20 = sum(window) / 20.0
+                if need_sma20:
+                    sma20.append({'time': times[i], 'value': round(avg_20, 2)})
+                if need_bollinger:
+                    variance = sum((x - avg_20) ** 2 for x in window) / 20.0
+                    std_dev = math.sqrt(variance)
+                    bollinger_middle.append({'time': times[i], 'value': round(avg_20, 2)})
+                    bollinger_upper.append({'time': times[i], 'value': round(avg_20 + 2 * std_dev, 2)})
+                    bollinger_lower.append({'time': times[i], 'value': round(avg_20 - 2 * std_dev, 2)})
+                
+            if i >= 49 and need_sma50:
+                avg_50 = sum(closes[i-49:i+1]) / 50.0
+                sma50.append({'time': times[i], 'value': round(avg_50, 2)})
+                
+            if i >= 199 and need_sma200:
+                avg_200 = sum(closes[i-199:i+1]) / 200.0
+                sma200.append({'time': times[i], 'value': round(avg_200, 2)})
 
     def calc_ema(period):
         if n < period:
@@ -270,14 +305,19 @@ def calculate_indicators(candles):
             ema_list.append({'time': times[j], 'value': round(curr_ema, 2)})
         return ema_list
 
-    ema9 = calc_ema(9)
-    ema21 = calc_ema(21)
-    ema50 = calc_ema(50)
+    need_ema9 = enabled_set is None or 'ema9' in enabled_set
+    need_ema21 = enabled_set is None or 'ema21' in enabled_set
+    need_ema50 = enabled_set is None or 'ema50' in enabled_set
+
+    ema9 = calc_ema(9) if need_ema9 else []
+    ema21 = calc_ema(21) if need_ema21 else []
+    ema50 = calc_ema(50) if need_ema50 else []
 
     macd_line = []
     macd_signal = []
     macd_hist = []
-    if n >= 26:
+    need_macd = enabled_set is None or 'macd' in enabled_set
+    if need_macd and n >= 26:
         k12 = 2.0 / 13.0
         k26 = 2.0 / 27.0
         ema12_val = sum(closes[:12]) / 12.0
@@ -317,44 +357,49 @@ def calculate_indicators(candles):
                 })
 
     rsi = []
-    gains = []
-    losses = []
-    for i in range(1, len(closes)):
-        diff = closes[i] - closes[i-1]
-        gains.append(max(diff, 0))
-        losses.append(max(-diff, 0))
-        
-    if len(gains) >= 14:
-        avg_gain = sum(gains[:14]) / 14.0
-        avg_loss = sum(losses[:14]) / 14.0
-        
-        for i in range(13, len(gains)):
-            if i > 13:
-                avg_gain = (avg_gain * 13 + gains[i]) / 14.0
-                avg_loss = (avg_loss * 13 + losses[i]) / 14.0
+    need_rsi = enabled_set is None or 'rsi' in enabled_set
+    if need_rsi and n >= 15:
+        gains = []
+        losses = []
+        for i in range(1, len(closes)):
+            diff = closes[i] - closes[i-1]
+            gains.append(max(diff, 0))
+            losses.append(max(-diff, 0))
             
-            rs = avg_gain / avg_loss if avg_loss != 0 else 100
-            rsi_val = 100 - (100 / (1 + rs)) if avg_loss != 0 else 100
-            rsi.append({'time': candles[i+1]['time'], 'value': round(rsi_val, 2)})
+        if len(gains) >= 14:
+            avg_gain = sum(gains[:14]) / 14.0
+            avg_loss = sum(losses[:14]) / 14.0
+            
+            for i in range(13, len(gains)):
+                if i > 13:
+                    avg_gain = (avg_gain * 13 + gains[i]) / 14.0
+                    avg_loss = (avg_loss * 13 + losses[i]) / 14.0
+                
+                rs = avg_gain / avg_loss if avg_loss != 0 else 100
+                rsi_val = 100 - (100 / (1 + rs)) if avg_loss != 0 else 100
+                rsi.append({'time': candles[i+1]['time'], 'value': round(rsi_val, 2)})
             
     # Gann 2-Day Swing Low (Trailing Stop)
     gann_2day = []
-    trailing_stop = None
-    for i in range(n):
-        if i >= 2:
-            high0 = candles[i]['high']
-            high1 = candles[i-1]['high']
-            high2 = candles[i-2]['high']
-            if high2 < high1 and high1 < high0:
-                trailing_stop = candles[i-2]['low']
-        if trailing_stop is not None:
-            gann_2day.append({'time': times[i], 'value': round(trailing_stop, 2)})
+    need_gann = enabled_set is None or 'gann_2day' in enabled_set or 'gann' in enabled_set
+    if need_gann and n >= 3:
+        trailing_stop = None
+        for i in range(n):
+            if i >= 2:
+                high0 = candles[i]['high']
+                high1 = candles[i-1]['high']
+                high2 = candles[i-2]['high']
+                if high2 < high1 and high1 < high0:
+                    trailing_stop = candles[i-2]['low']
+            if trailing_stop is not None:
+                gann_2day.append({'time': times[i], 'value': round(trailing_stop, 2)})
 
     # CDRider Indicator (Supertrend 10, 3.0 ATR)
     cdrider = []
     cdrider_buy = []
     cdrider_sell = []
-    if n >= 10:
+    need_cdrider = enabled_set is None or 'cdrider' in enabled_set
+    if need_cdrider and n >= 10:
         tr = [0.0] * n
         tr[0] = candles[0]['high'] - candles[0]['low']
         for i in range(1, n):
@@ -436,8 +481,9 @@ def calculate_indicators(candles):
 
     donchian_length = 20
     vol_avg_length = 20
+    need_donchian = enabled_set is None or 'donchian' in enabled_set or 'bs_donchian' in enabled_set
 
-    if n >= donchian_length:
+    if need_donchian and n >= donchian_length:
         eligible_for_super_b = False
         highs = [c['high'] for c in candles]
         lows = [c['low'] for c in candles]
@@ -541,8 +587,9 @@ def calculate_indicators(candles):
     st_trigger_buy = []
     st_trigger_sell = []
     st_trigger_info = {}
+    need_st_trigger = enabled_set is None or 'st_trigger' in enabled_set
 
-    if n >= 2:
+    if need_st_trigger and n >= 2:
         st_atr_len = 1
         st_mult = 2.5
 
@@ -644,13 +691,26 @@ def calculate_indicators(candles):
         }
 
     # IWRider 2.0 (Weinstein Stage Analysis + Trend Riding)
-    try:
-        iwrider = calculate_iwrider(candles, times, closes, n)
-    except Exception as e:
+    need_iwrider = enabled_set is None or 'iwrider' in enabled_set
+    if need_iwrider:
+        try:
+            iwrider = calculate_iwrider(candles, times, closes, n)
+        except Exception as e:
+            iwrider = {
+                'current_stage': 'Stage 1: Accumulation',
+                'current_stage_num': 1,
+                'duration': 1,
+                'stage_color': '#64748b',
+                'markers': [],
+                'ema20': [],
+                'ema50': [],
+                'ema200': []
+            }
+    else:
         iwrider = {
-            'current_stage': 'Stage 1: Accumulation',
+            'current_stage': '',
             'current_stage_num': 1,
-            'duration': 1,
+            'duration': 0,
             'stage_color': '#64748b',
             'markers': [],
             'ema20': [],
