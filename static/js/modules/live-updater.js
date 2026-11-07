@@ -468,4 +468,7 @@
                 scheduleNextLiveRefresh();
             }, intervalMs);
         }
+        window.scheduleNextLiveRefresh = scheduleNextLiveRefresh;
+        window.getWlInterval = getWlInterval;
+        window.getPfInterval = getPfInterval;
         scheduleNextLiveRefresh();

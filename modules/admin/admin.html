@@ -1358,10 +1358,17 @@
                             <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 14px 0; line-height: 1.4;">
                                 Auto-refresh frequency in seconds for active watchlist stock prices.
                             </p>
-                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px;">
+                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                                 <input type="number" id="setting-watchlist-refresh" min="3" max="3600" step="1" required
                                     style="width: 130px; padding: 10px 14px; font-size: 15px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
                                 <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">seconds</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-watchlist-refresh').value = 5">5s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-watchlist-refresh').value = 10">10s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-watchlist-refresh').value = 15">15s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-watchlist-refresh').value = 30">30s (Default)</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-watchlist-refresh').value = 60">60s</button>
                             </div>
                         </div>
 
@@ -1373,10 +1380,17 @@
                             <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 14px 0; line-height: 1.4;">
                                 Auto-refresh frequency in seconds for portfolio holdings and live valuations.
                             </p>
-                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px;">
+                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                                 <input type="number" id="setting-portfolio-refresh" min="3" max="3600" step="1" required
                                     style="width: 130px; padding: 10px 14px; font-size: 15px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
                                 <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">seconds</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-portfolio-refresh').value = 5">5s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-portfolio-refresh').value = 10">10s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-portfolio-refresh').value = 15">15s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-portfolio-refresh').value = 30">30s (Default)</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-portfolio-refresh').value = 60">60s</button>
                             </div>
                         </div>
 
@@ -1388,10 +1402,16 @@
                             <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 14px 0; line-height: 1.4;">
                                 Auto-refresh frequency in seconds while the interactive chart modal is open.
                             </p>
-                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px;">
+                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                                 <input type="number" id="setting-chart-refresh" min="3" max="3600" step="1" required
                                     style="width: 130px; padding: 10px 14px; font-size: 15px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
                                 <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">seconds</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-chart-refresh').value = 5">5s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-chart-refresh').value = 10">10s (Default)</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-chart-refresh').value = 15">15s</button>
+                                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer;" onclick="document.getElementById('setting-chart-refresh').value = 30">30s</button>
                             </div>
                         </div>
 
