@@ -631,7 +631,7 @@
             const menuText = document.getElementById('privacy-menu-text');
 
             const icon = isPrivacyMode ? '🙈' : '👁️';
-            const titleStr = isPrivacyMode ? 'Click to show portfolio amounts' : 'Click to hide portfolio amounts (Privacy Mode)';
+            const _pfPrivLbl = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'); const titleStr = isPrivacyMode ? `Click to show ${_pfPrivLbl} amounts` : `Click to hide ${_pfPrivLbl} amounts (Privacy Mode)`;
 
             if (btnHeader) {
                 btnHeader.innerHTML = `${icon}`;
@@ -832,7 +832,7 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        alert('✅ Data restored successfully! Watchlists & Portfolios updated.');
+                        const _pfsRestLbl = (typeof window.PORTFOLIOS_LABEL !== 'undefined' ? window.PORTFOLIOS_LABEL : 'Portfolios'); alert(`✅ Data restored successfully! Watchlists & ${_pfsRestLbl} updated.`);
                         watchlistsData = data.watchlists || watchlistsData;
                         portfoliosData = data.portfolios || portfoliosData;
                         renderWatchlists();
@@ -1254,11 +1254,26 @@
         // PAPERFOLIO UI ADAPTER (Non-admin User Experience)
         // Dynamically reflects "Paperfolio" / "Paperfolios" across UI text
         // =========================================================
+        function replacePaperfolioString(str) {
+            if (!str || typeof str !== 'string') return str;
+            return str.replace(/\bPortfolios\b/g, 'Paperfolios')
+                      .replace(/\bPortfolio\b/g, 'Paperfolio')
+                      .replace(/\bPORTFOLIOS\b/g, 'PAPERFOLIOS')
+                      .replace(/\bPORTFOLIO\b/g, 'PAPERFOLIO')
+                      .replace(/\bportfolios\b/g, 'paperfolios')
+                      .replace(/\bportfolio\b/g, 'paperfolio');
+        }
+
         window.applyPaperfolioText = function(root = document.body) {
             if (window.IS_ADMIN) return;
             if (!root) return;
             
             try {
+                // Update document title if applicable
+                if (document.title && /portfolio/i.test(document.title)) {
+                    document.title = replacePaperfolioString(document.title);
+                }
+
                 const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
                     acceptNode(node) {
                         const p = node.parentElement;
@@ -1280,54 +1295,102 @@
                 }
 
                 nodes.forEach(node => {
-                    let text = node.nodeValue;
-                    text = text.replace(/\bPortfolios\b/g, 'Paperfolios');
-                    text = text.replace(/\bPortfolio\b/g, 'Paperfolio');
-                    text = text.replace(/\bPORTFOLIOS\b/g, 'PAPERFOLIOS');
-                    text = text.replace(/\bPORTFOLIO\b/g, 'PAPERFOLIO');
-                    text = text.replace(/\bportfolios\b/g, 'paperfolios');
-                    text = text.replace(/\bportfolio\b/g, 'paperfolio');
-                    if (node.nodeValue !== text) {
+                    const orig = node.nodeValue;
+                    const text = replacePaperfolioString(orig);
+                    if (orig !== text) {
                         node.nodeValue = text;
                     }
                 });
 
-                const query = '[title*="ortfolio" i], [aria-label*="ortfolio" i], [placeholder*="ortfolio" i]';
+                const query = '[title*="ortfolio" i], [aria-label*="ortfolio" i], [placeholder*="ortfolio" i], [alt*="ortfolio" i], option';
                 const els = root.querySelectorAll ? root.querySelectorAll(query) : [];
                 els.forEach(el => {
                     if (el.title && /portfolio/i.test(el.title)) {
-                        el.title = el.title.replace(/\bPortfolios\b/g, 'Paperfolios')
-                                           .replace(/\bPortfolio\b/g, 'Paperfolio')
-                                           .replace(/\bPORTFOLIOS\b/g, 'PAPERFOLIOS')
-                                           .replace(/\bPORTFOLIO\b/g, 'PAPERFOLIO');
+                        el.title = replacePaperfolioString(el.title);
                     }
                     if (el.getAttribute('aria-label') && /portfolio/i.test(el.getAttribute('aria-label'))) {
-                        el.setAttribute('aria-label', el.getAttribute('aria-label')
-                            .replace(/\bPortfolios\b/g, 'Paperfolios')
-                            .replace(/\bPortfolio\b/g, 'Paperfolio')
-                            .replace(/\bPORTFOLIOS\b/g, 'PAPERFOLIOS')
-                            .replace(/\bPORTFOLIO\b/g, 'PAPERFOLIO'));
+                        el.setAttribute('aria-label', replacePaperfolioString(el.getAttribute('aria-label')));
                     }
                     if (el.placeholder && /portfolio/i.test(el.placeholder)) {
-                        el.placeholder = el.placeholder.replace(/\bPortfolios\b/g, 'Paperfolios')
-                                                       .replace(/\bPortfolio\b/g, 'Paperfolio');
+                        el.placeholder = replacePaperfolioString(el.placeholder);
+                    }
+                    if (el.tagName === 'OPTION' && el.textContent && /portfolio/i.test(el.textContent)) {
+                        el.textContent = replacePaperfolioString(el.textContent);
                     }
                 });
             } catch(e) {}
         };
 
-        if (typeof window.IS_ADMIN !== 'undefined' && !window.IS_ADMIN) {
-            document.addEventListener('DOMContentLoaded', () => {
-                window.applyPaperfolioText();
-                if (window.MutationObserver) {
-                    let _pfDebounce = null;
-                    const obs = new MutationObserver(() => {
-                        clearTimeout(_pfDebounce);
-                        _pfDebounce = setTimeout(() => {
-                            window.applyPaperfolioText();
-                        }, 60);
-                    });
-                    obs.observe(document.body, { childList: true, subtree: true });
+        // Initialize Paperfolio UI patcher & universal Observer
+        let _paperfolioObserverStarted = false;
+        function initPaperfolioObserver() {
+            if (window.IS_ADMIN) return;
+            if (_paperfolioObserverStarted) return;
+            _paperfolioObserverStarted = true;
+
+            // Intercept window.alert & window.confirm for non-admin to transform messages
+            if (typeof window.nativeAlert === 'undefined') {
+                window.nativeAlert = window.alert;
+                window.alert = function(msg) {
+                    if (!window.IS_ADMIN && typeof msg === 'string') {
+                        msg = replacePaperfolioString(msg);
+                    }
+                    return window.nativeAlert(msg);
+                };
+            }
+            if (typeof window.nativeConfirm === 'undefined') {
+                window.nativeConfirm = window.confirm;
+                window.confirm = function(msg) {
+                    if (!window.IS_ADMIN && typeof msg === 'string') {
+                        msg = replacePaperfolioString(msg);
+                    }
+                    return window.nativeConfirm(msg);
+                };
+            }
+
+            // Wrap showCustomConfirm if present
+            if (typeof window.showCustomConfirm === 'function' && !window._origShowCustomConfirm) {
+                window._origShowCustomConfirm = window.showCustomConfirm;
+                window.showCustomConfirm = function(opts) {
+                    if (!window.IS_ADMIN && opts && typeof opts === 'object') {
+                        if (opts.title) opts.title = replacePaperfolioString(opts.title);
+                        if (opts.message) opts.message = replacePaperfolioString(opts.message);
+                    }
+                    return window._origShowCustomConfirm(opts);
+                };
+            }
+
+            const runTransform = () => {
+                if (document.body) {
+                    window.applyPaperfolioText(document.body);
                 }
-            });
+            };
+
+            runTransform();
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', runTransform);
+            }
+            window.addEventListener('load', runTransform);
+
+            if (window.MutationObserver) {
+                let _pfDebounce = null;
+                const obs = new MutationObserver((mutations) => {
+                    if (window.IS_ADMIN) return;
+                    clearTimeout(_pfDebounce);
+                    _pfDebounce = setTimeout(() => {
+                        window.applyPaperfolioText(document.body);
+                    }, 50);
+                });
+                obs.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
+            }
+        }
+        window.initPaperfolioObserver = initPaperfolioObserver;
+
+        if (typeof window.IS_ADMIN === 'undefined' || !window.IS_ADMIN) {
+            initPaperfolioObserver();
         }

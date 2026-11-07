@@ -24,7 +24,7 @@
                     </div>
                     <!-- Mobile Right-Side Menu Trigger & Dropdown -->
                     <div class="portfolio-mobile-menu-wrapper">
-                        <button type="button" class="pf-mobile-menu-btn" id="pf-mobile-menu-btn" onclick="togglePfMobileMenu(event)" title="Portfolio Menu" aria-label="Portfolio Menu">
+                        <button type="button" class="pf-mobile-menu-btn" id="pf-mobile-menu-btn" onclick="togglePfMobileMenu(event)" title="{{ portfolio_label }} Menu" aria-label="{{ portfolio_label }} Menu">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="4" y1="7" x2="20" y2="7"></line>
                                 <line x1="4" y1="12" x2="20" y2="12"></line>
@@ -39,14 +39,14 @@
                                 <span>➕ Add Holding</span>
                             </button>
                             <button type="button" class="pf-mob-menu-item" onclick="openCreatePortfolioModal(); togglePfMobileMenu(false);">
-                                <span>📁 Add Portfolio</span>
+                                <span>📁 Add {{ portfolio_label }}</span>
                             </button>
                             <button type="button" class="pf-mob-menu-item" onclick="exportActivePortfolioToExcel(); togglePfMobileMenu(false);">
                                 <span>📥 Export Excel</span>
                             </button>
                             <div class="pf-mob-menu-divider" id="pf-mob-delete-divider" style="display: none;"></div>
                             <button type="button" class="pf-mob-menu-item danger" id="pf-mob-delete-btn" style="display: none;" onclick="deleteActivePortfolio(); togglePfMobileMenu(false);">
-                                <span>🗑️ Delete Portfolio</span>
+                                <span>🗑️ Delete {{ portfolio_label }}</span>
                             </button>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
                 </div>
                 <div class="card-container" style="padding: 24px; text-align: center; color: var(--text-secondary); margin-top: 15px;">
                     <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
-                    Loading portfolio details...
+                    Loading {{ portfolio_label|lower }} details...
                 </div>
             </div>
         </div>

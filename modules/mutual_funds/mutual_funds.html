@@ -12,7 +12,7 @@
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <span class="tools-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">MUTUAL FUNDS:</span>
                     <div class="portfolio-selector-bar" style="margin-bottom: 0;">
-                        <button type="button" class="pf-select-btn active" id="mf-subtab-portfolio-btn" onclick="switchMfSubView('portfolio')">💼 My Portfolio &amp; SIPs</button>
+                        <button type="button" class="pf-select-btn active" id="mf-subtab-portfolio-btn" onclick="switchMfSubView('portfolio')">💼 My {{ portfolio_label }} &amp; SIPs</button>
                         <button type="button" class="pf-select-btn" id="mf-subtab-explore-btn" onclick="switchMfSubView('explore')">📊 Explore Schemes</button>
                     </div>
                 </div>
@@ -40,22 +40,22 @@
         <div id="mf-subview-portfolio">
             <div id="portfolio-feed-notice" class="mf-notice" hidden></div>
 
-            <section class="mf-summary-grid mf-portfolio-summary" aria-label="Portfolio summary">
+            <section class="mf-summary-grid mf-portfolio-summary" aria-label="{{ portfolio_label }} summary">
                 <article class="mf-summary-card"><span>Total invested</span><strong id="portfolio-invested">—</strong><small>Recorded purchases</small></article>
                 <article class="mf-summary-card"><span>Current value</span><strong id="portfolio-value">—</strong><small id="portfolio-nav-date">Latest published NAV</small></article>
                 <article class="mf-summary-card"><span>Unrealized gain / loss</span><strong id="portfolio-pnl">—</strong><small id="portfolio-return">—</small></article>
-                <article class="mf-summary-card"><span>Annualized return</span><strong id="portfolio-xirr">—</strong><small>Portfolio XIRR estimate</small></article>
+                <article class="mf-summary-card"><span>Annualized return</span><strong id="portfolio-xirr">—</strong><small>{{ portfolio_label }} XIRR estimate</small></article>
             </section>
 
             <section class="mf-panel mf-performance-panel">
-                <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Portfolio performance</h2><p id="performance-subtitle" style="color: var(--text-secondary); font-size: 12px; margin: 0;">NAV history for your portfolio or a selected scheme.</p></div><div class="mf-panel-tools"><select id="performance-range" aria-label="Performance period"><option value="all">All history</option><option value="1y">1 year</option><option value="6m">6 months</option><option value="1m">1 month</option></select><button class="mf-secondary-button mf-small-button" id="load-performance" type="button">Load history</button></div></div>
+                <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">{{ portfolio_label }} performance</h2><p id="performance-subtitle" style="color: var(--text-secondary); font-size: 12px; margin: 0;">NAV history for your {{ portfolio_label|lower }} or a selected scheme.</p></div><div class="mf-panel-tools"><select id="performance-range" aria-label="Performance period"><option value="all">All history</option><option value="1y">1 year</option><option value="6m">6 months</option><option value="1m">1 month</option></select><button class="mf-secondary-button mf-small-button" id="load-performance" type="button">Load history</button></div></div>
                 <div id="performance-message" class="mf-chart-message">Start a SIP or One-Time investment to build your performance history.</div>
                 <div id="performance-chart" class="mf-chart" style="position: relative;" hidden>
                     <div class="mf-chart-legend">
-                        <span><i class="mf-legend-value"></i> Portfolio value</span>
+                        <span><i class="mf-legend-value"></i> {{ portfolio_label }} value</span>
                         <span><i class="mf-legend-invested"></i> Invested</span>
                     </div>
-                    <svg id="performance-svg" viewBox="0 0 960 300" role="img" aria-label="Mutual fund portfolio value and invested amount over time" preserveAspectRatio="none" style="cursor: crosshair; touch-action: none;"></svg>
+                    <svg id="performance-svg" viewBox="0 0 960 300" role="img" aria-label="Mutual fund {{ portfolio_label|lower }} value and invested amount over time" preserveAspectRatio="none" style="cursor: crosshair; touch-action: none;"></svg>
                     <div class="mf-chart-dates" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 4px 0; font-size: 11px; color: var(--text-secondary);">
                         <span id="chart-start-date"></span>
                         <span id="chart-mid-date" style="display: none;"></span>
@@ -87,7 +87,7 @@
 
             <section class="mf-panel">
                 <div class="mf-panel-heading"><div><h2 style="font-size: 18px; margin: 0 0 4px 0;">Holdings</h2><p style="color: var(--text-secondary); font-size: 12px; margin: 0;">Units are valued using the latest published NAV available from AMFI.</p></div><span id="holding-count" class="mf-count-pill">0 schemes</span></div>
-                <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Units</th><th class="mf-right">Invested</th><th class="mf-right">Latest NAV</th><th>NAV date</th><th class="mf-right">Current value</th><th class="mf-right">Gain / loss</th><th></th></tr></thead><tbody id="holding-rows"><tr><td colspan="8" class="mf-table-message">Loading portfolio…</td></tr></tbody></table></div>
+                <div class="mf-table-scroll"><table class="mf-table"><thead><tr><th>Scheme</th><th>Units</th><th class="mf-right">Invested</th><th class="mf-right">Latest NAV</th><th>NAV date</th><th class="mf-right">Current value</th><th class="mf-right">Gain / loss</th><th></th></tr></thead><tbody id="holding-rows"><tr><td colspan="8" class="mf-table-message">Loading {{ portfolio_label|lower }}…</td></tr></tbody></table></div>
             </section>
 
             <section class="mf-panel mf-missed-panel">

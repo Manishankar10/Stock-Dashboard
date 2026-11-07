@@ -100,7 +100,7 @@
         renderMissed(missed);
         renderPlans(plans);
         renderTransactions(transactions);
-        document.getElementById('performance-subtitle').textContent = schemeCode ? 'NAV history for ' + allFundsName(schemeCode) + '.' : 'NAV history for your portfolio.';
+        const _mfNavSub = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'); document.getElementById('performance-subtitle').textContent = schemeCode ? 'NAV history for ' + allFundsName(schemeCode) + '.' : `NAV history for your ${_mfNavSub}.`;
     }
 
     function allFundsName(schemeCode) {
@@ -144,7 +144,7 @@
         const body = document.getElementById('holding-rows');
         document.getElementById('holding-count').textContent = rows.length + (rows.length === 1 ? ' scheme' : ' schemes');
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">No investments yet. Select “Start SIP” or <button type="button" onclick="switchMfSubView(\'explore\')" style="background:none;border:none;color:var(--btn-primary-bg,#10b981);font-weight:600;cursor:pointer;text-decoration:underline;padding:0;font-size:inherit;">Explore Schemes</button> to add a fund to your portfolio.</td></tr>';
+            body.innerHTML = '<tr><td colspan="8" class="mf-table-message">No investments yet. Select “Start SIP” or <button type="button" onclick="switchMfSubView(\'explore\')" style="background:none;border:none;color:var(--btn-primary-bg,#10b981);font-weight:600;cursor:pointer;text-decoration:underline;padding:0;font-size:inherit;">Explore Schemes</button> to add a fund to your ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'}.</td></tr>';
             return;
         }
         body.innerHTML = rows.map(row => {
@@ -205,8 +205,8 @@
         const body = document.getElementById('holding-rows');
         if (!portfolio) {
             body.innerHTML = '<tr><td colspan="8">' + (typeof window.createBrandLoaderHTML === 'function' ? window.createBrandLoaderHTML({
-                title: refresh ? 'Refreshing Official AMFI NAVs...' : 'Loading Saved Portfolio Records...',
-                badge: 'My Portfolio & SIPs',
+                const _mfPfLbl = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'); title: refresh ? 'Refreshing Official AMFI NAVs...' : `Loading Saved ${_mfPfLbl} Records...`,
+                badge: (typeof window.PORTFOLIO_LABEL !== 'undefined' ? 'My ' + window.PORTFOLIO_LABEL + ' & SIPs' : 'My Portfolio & SIPs'),
                 subtitle: 'Fetching latest valuations and recorded purchases...',
                 minHeight: '160px'
             }) : '<div class="mf-table-message">' + (refresh ? 'Refreshing official AMFI NAVs and loading your saved records…' : 'Loading saved portfolio records…') + '</div>') + '</td></tr>';
@@ -460,11 +460,11 @@
         const schemeCode = document.getElementById('dashboard-scheme').value;
         message.hidden = false;
         message.innerHTML = (typeof window.createBrandLoaderHTML === 'function') ? window.createBrandLoaderHTML({
-            title: schemeCode ? 'Loading Fund Performance History...' : 'Loading Portfolio Performance History...',
-            badge: schemeCode ? 'Selected Fund Analysis' : 'Aggregated Portfolio Analysis',
+            title: schemeCode ? 'Loading Fund Performance History...' : (typeof window.PORTFOLIO_LABEL !== 'undefined' ? 'Loading ' + window.PORTFOLIO_LABEL + ' Performance History...' : 'Loading Portfolio Performance History...'),
+            badge: schemeCode ? 'Selected Fund Analysis' : (typeof window.PORTFOLIO_LABEL !== 'undefined' ? 'Aggregated ' + window.PORTFOLIO_LABEL + ' Analysis' : 'Aggregated Portfolio Analysis'),
             subtitle: 'Calculating NAV growth and contributions over time...',
             minHeight: '180px'
-        }) : (schemeCode ? 'Loading NAV history for the selected fund…' : 'Loading saved NAV history for your portfolio. This can take a moment.');
+        }) : (schemeCode ? 'Loading NAV history for the selected fund…' : `Loading saved NAV history for your ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'}. This can take a moment.`);
         document.getElementById('performance-chart').hidden = true;
         setBusy(button, true, 'Loading…');
         try {

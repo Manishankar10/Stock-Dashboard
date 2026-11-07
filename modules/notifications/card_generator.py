@@ -723,7 +723,11 @@ def generate_quarterly_results_card(
         draw.ellipse([30, sec_y + 5, 44, sec_y + 19], fill=color_purple)
         draw.text((54, sec_y), "Quarterly Results Digest", font=font_title, fill=color_white)
 
-        holder_prefix = f"{username.capitalize()}'s Portfolio" if username else "Portfolio"
+        from modules.common.auth_utils import load_users
+        _u_map = load_users()
+        _is_adm = bool(_u_map.get(username, {}).get("is_admin") or _u_map.get(username, {}).get("role") == "admin")
+        _pf_lbl = "Portfolio" if _is_adm else "Paperfolio"
+        holder_prefix = f"{username.capitalize()}'s {_pf_lbl}" if username else _pf_lbl
         subtitle = f"{len(stocks)} Holdings • {quarter_label or 'Earnings Update'}"
         draw.text((32, sec_y + 36), subtitle, font=font_sub, fill=color_muted)
 
@@ -754,7 +758,7 @@ def generate_quarterly_results_card(
         c4_x = tbl_x + 690  # OPERATING PROFIT
 
         th_y = tbl_y + 12
-        draw.text((c1_x, th_y), "PORTFOLIO STOCK", font=font_th, fill=color_muted)
+        draw.text((c1_x, th_y), f"{_pf_lbl.upper()} STOCK", font=font_th, fill=color_muted)
         draw.text((c2_x, th_y), "NET PROFIT (PAT)", font=font_th, fill=color_muted)
         draw.text((c3_x, th_y), "SALES / REVENUE", font=font_th, fill=color_muted)
         draw.text((c4_x, th_y), "OPERATING PROFIT", font=font_th, fill=color_muted)

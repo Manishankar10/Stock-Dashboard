@@ -27,11 +27,11 @@
             <!-- Scope Segmented Control, Timeframe & Actions -->
             <div class="ts-hero-controls">
                 <div class="ts-scope-segmented-bar" role="group" aria-label="Screener Scope Filter">
-                    <button type="button" class="ts-scope-btn active" id="ts-scope-all" onclick="setTechnicalScreenerScope('all')" title="All tracked stocks across Portfolio and Watchlists">
+                    <button type="button" class="ts-scope-btn active" id="ts-scope-all" onclick="setTechnicalScreenerScope('all')" title="All tracked stocks across {{ portfolio_label }} and Watchlists">
                         <span>🌐</span><span>All Stocks</span>
                     </button>
-                    <button type="button" class="ts-scope-btn" id="ts-scope-portfolio" onclick="setTechnicalScreenerScope('portfolio')" title="Portfolio holdings only">
-                        <span>💼</span><span>Portfolio</span>
+                    <button type="button" class="ts-scope-btn" id="ts-scope-portfolio" onclick="setTechnicalScreenerScope('portfolio')" title="{{ portfolio_label }} holdings only">
+                        <span>💼</span><span>{{ portfolio_label }}</span>
                     </button>
                     <button type="button" class="ts-scope-btn" id="ts-scope-watchlist" onclick="setTechnicalScreenerScope('watchlist')" title="Watchlist stocks only">
                         <span>⭐</span><span>Watchlist</span>

@@ -216,7 +216,7 @@
             }
 
             let csvRows = [];
-            csvRows.push(['Date', 'Portfolio', 'Symbol', 'Type', 'Quantity', 'Price (INR)', 'Total Value (INR)', 'Realized P&L (INR)', 'Realized P&L (%)', 'Notes']);
+            csvRows.push(['Date', (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'), 'Symbol', 'Type', 'Quantity', 'Price (INR)', 'Total Value (INR)', 'Realized P&L (INR)', 'Realized P&L (%)', 'Notes']);
 
             userTransactionsData.forEach(t => {
                 csvRows.push([
@@ -238,7 +238,7 @@
             const link = document.createElement('a');
             const dateStr = new Date().toISOString().split('T')[0];
             link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `portfolio_transactions_${dateStr}.csv`);
+            const _pfCsvPrefix = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'); link.setAttribute('download', `${_pfCsvPrefix}_transactions_${dateStr}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -493,7 +493,7 @@
                     </div>
                     <div class="card-container" style="padding: 24px; text-align: center; color: var(--text-secondary); margin-top: 15px;">
                         <span class="spinning" style="display: inline-block; font-size: 20px; margin-bottom: 8px;">⏳</span><br>
-                        Loading portfolio details...
+                        Loading ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} details...
                     </div>
                 `;
             }
@@ -572,7 +572,7 @@
             const input = document.getElementById('modal-new-portfolio-name');
             const name = input.value.trim();
             if (!name) {
-                alert('Please enter a portfolio name!');
+                alert(`Please enter a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} name!`);
                 return;
             }
             const res = await fetch('/api/portfolios', {
@@ -588,14 +588,14 @@
                 renderPortfolios();
                 refreshPrices();
             } else {
-                alert(data.error || 'Failed to create portfolio');
+                alert(data.error || `Failed to create ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'}`);
             }
         }
 
         function openAddHoldingModal() {
             const pfNames = Object.keys(portfoliosData);
             if (pfNames.length === 0) {
-                alert('Please create a portfolio first!');
+                alert(`Please create a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} first!`);
                 return;
             }
             const isAll = activePortfolioName === 'All' && pfNames.length > 1;
@@ -647,7 +647,7 @@
                 targetPf = pfSelect ? pfSelect.value : (pfNames[0] || '');
             }
             if (!targetPf) {
-                alert('Please select or create a portfolio first!');
+                alert(`Please select or create a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} first!`);
                 return;
             }
 
@@ -696,7 +696,7 @@
             const pfNames = Object.keys(portfoliosData);
             const isAll = activePortfolioName === 'All' && pfNames.length > 1;
             if (!activePortfolioName || (!portfoliosData[activePortfolioName] && !isAll)) {
-                alert('No active portfolio selected to export!');
+                alert(`No active ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} selected to export!`);
                 return;
             }
 
@@ -712,7 +712,7 @@
             }
 
             if (holdings.length === 0) {
-                alert('Active portfolio is empty!');
+                alert(`Active ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} is empty!`);
                 return;
             }
 
@@ -843,17 +843,17 @@
         async function deleteActivePortfolio(targetName = null) {
             const nameToDelete = (typeof targetName === 'string' && targetName.trim() !== '') ? targetName.trim() : activePortfolioName;
             if (!nameToDelete) {
-                (window.nativeAlert || alert)('No active portfolio selected to delete. Please select or create a portfolio first.');
+                (window.nativeAlert || alert)(`No active ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} selected to delete. Please select or create a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} first.`);
                 return;
             }
 
             if (nameToDelete === 'All') {
-                (window.nativeAlert || alert)('Cannot delete the aggregated "All" view. Please select an individual portfolio to delete.');
+                (window.nativeAlert || alert)(`Cannot delete the aggregated "All" view. Please select an individual ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} to delete.`);
                 return;
             }
 
             const confirmFn = window.nativeConfirm || confirm;
-            const confirmed = confirmFn(`Are you sure you want to permanently delete portfolio "${nameToDelete}"?\n\nAll holdings, transaction history, and analytics in this portfolio will be removed.`);
+            const confirmed = confirmFn(`Are you sure you want to permanently delete ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} "${nameToDelete}"?\n\nAll holdings, transaction history, and analytics in this ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} will be removed.`);
 
             if (!confirmed) return;
 
@@ -861,7 +861,7 @@
                 const res = await fetch(`/api/portfolios/${encodeURIComponent(nameToDelete)}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
-                    (window.nativeAlert || alert)(`Portfolio "${nameToDelete}" deleted successfully.`);
+                    (window.nativeAlert || alert)(`${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} "${nameToDelete}" deleted successfully.`);
                     portfoliosData = data.portfolios;
                     const names = Object.keys(portfoliosData);
                     if (activePortfolioName === nameToDelete) {
@@ -870,11 +870,11 @@
                     renderPortfolios();
                     refreshPrices();
                 } else {
-                    (window.nativeAlert || alert)(data.error || 'Failed to delete portfolio.');
+                    (window.nativeAlert || alert)(data.error || `Failed to delete ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'}.`);
                 }
             } catch (err) {
                 console.error('Delete portfolio error:', err);
-                (window.nativeAlert || alert)('Error deleting portfolio. Please check network connection.');
+                (window.nativeAlert || alert)(`Error deleting ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'}. Please check network connection.`);
             }
         }
 
@@ -1183,7 +1183,7 @@
 
             const pfNames = Object.keys(portfoliosData);
             if (pfNames.length === 0) {
-                selectorMount.innerHTML = '<span style="color:#95a5a6; font-size:13px;">No portfolios created yet..</span>';
+                const _pfsEmptyLbl = (typeof window.PORTFOLIOS_LABEL !== 'undefined' ? window.PORTFOLIOS_LABEL.toLowerCase() : 'portfolios'); selectorMount.innerHTML = `<span style="color:#95a5a6; font-size:13px;">No ${_pfsEmptyLbl} created yet..</span>`;
             } else {
                 if (pfNames.length > 1) {
                     const allBtn = document.createElement('button');
@@ -1209,8 +1209,8 @@
             if (!activePortfolioName || (!portfoliosData[activePortfolioName] && !isAll)) {
                 viewMount.innerHTML = `
                     <div class="card-container" style="text-align: center; padding: 40px;">
-                        <h3 style="color: #7f8c8d;">No Active Portfolio Selected</h3>
-                        <p style="color: #95a5a6;">Create a portfolio above to start tracking your investments!</p>
+                        <h3 style="color: #7f8c8d;">No Active ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} Selected</h3>
+                        <p style="color: #95a5a6;">Create a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} above to start tracking your investments!</p>
                     </div>
                 `;
                 return;
@@ -1233,14 +1233,14 @@
             const headerBar = document.createElement('div');
             headerBar.className = 'header-bar';
             headerBar.innerHTML = `
-                <h2>${isAll ? 'All Portfolios' : escapeHtml(activePortfolioName)}</h2>
+                <h2>${isAll ? (typeof window.PORTFOLIOS_LABEL !== 'undefined' ? 'All ' + window.PORTFOLIOS_LABEL : 'All Portfolios') : escapeHtml(activePortfolioName)}</h2>
                 <div class="actions">
                     <button onclick="openAddHoldingModal()">+ Add Holding</button>
                     ${!isAll ? `
                     <div class="wl-overflow" id="portfolio-overflow-menu">
-                        <button type="button" class="wl-overflow-trigger" aria-label="More portfolio actions" title="More actions" onclick="toggleActionOverflow(event, 'portfolio-overflow-menu')">⋮</button>
+                        <button type="button" class="wl-overflow-trigger" aria-label="More ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} actions" title="More actions" onclick="toggleActionOverflow(event, 'portfolio-overflow-menu')">⋮</button>
                         <div class="wl-overflow-menu" role="menu">
-                            <button type="button" class="danger" role="menuitem" onclick="deleteActivePortfolio(); closeActionOverflow(event)">Delete Portfolio</button>
+                            <button type="button" class="danger" role="menuitem" onclick="deleteActivePortfolio(); closeActionOverflow(event)">Delete ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'}</button>
                         </div>
                     </div>` : ''}
                 </div>
@@ -1290,7 +1290,7 @@
                 <div class="metric-card">
                     <div class="title"><span class="kpi-lbl-full">Current Value</span><span class="kpi-lbl-compact">Current Val</span></div>
                     <div class="value" id="pf-summary-value">${initialTotInvested > 0 ? initValStr : '<span class="skeleton-box" style="width: 85px; height: 18px;"></span>'}</div>
-                    <div class="sub-value" style="color:var(--text-secondary);">Live Portfolio Value</div>
+                    <div class="sub-value" style="color:var(--text-secondary);">Live ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} Value</div>
                 </div>
                 <div class="metric-card">
                     <div class="title"><span class="kpi-lbl-full">Overall Return (P&L)</span><span class="kpi-lbl-compact">Overall P&L</span></div>
@@ -1338,12 +1338,12 @@
                     </div>
                 </div>
                 <div class="pf-controls-right">
-                    <button class="pf-refresh-btn" onclick="triggerPortfolioRefresh(this);" title="Refresh Portfolio Quotes" aria-label="Refresh Quotes">
+                    <button class="pf-refresh-btn" onclick="triggerPortfolioRefresh(this);" title="Refresh ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} Quotes" aria-label="Refresh Quotes">
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                     </button>
-                    <button class="btn-secondary pf-export-btn" style="font-size: 12px; padding: 6px 14px;" onclick="exportActivePortfolioToExcel()" title="Export current filtered & sorted portfolio table data to Excel">📥 Export Excel</button>
+                    <button class="btn-secondary pf-export-btn" style="font-size: 12px; padding: 6px 14px;" onclick="exportActivePortfolioToExcel()" title="Export current filtered & sorted ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} table data to Excel">📥 Export Excel</button>
                 </div>
             `;
 
@@ -1695,7 +1695,7 @@
 
                 tfoot.innerHTML = `
                     <tr>
-                        <td colspan="4" class="pf-col-total" style="text-align:left;">PORTFOLIO TOTAL:</td>
+                        <td colspan="4" class="pf-col-total" style="text-align:left;">${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toUpperCase() : 'PORTFOLIO'} TOTAL:</td>
                         <td id="pf-foot-pnl" class="${initialTotPnL >= 0 ? 'pos' : 'neg'} pf-col-pnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initPnlPctStr})` : `${initPnlStr} (${initPnlPctStr})`) : '₹0.00'}</td>
                         <td id="pf-foot-daypnl" class="${initialTotDayPnL >= 0 ? 'pos' : 'neg'} pf-col-daypnl" style="text-align:right;">${initialTotInvested > 0 ? (isPrivacyMode ? `₹ •••••• (${initDayPnlPctStr})` : `${initDayPnlStr} (${initDayPnlPctStr})`) : '₹0.00'}</td>
                         <td id="pf-foot-inv" class="pf-col-inv" style="text-align:right;">${initialTotInvested > 0 ? initInvStr : '₹0.00'}</td>
@@ -1754,7 +1754,7 @@
                         <thead>
                             <tr>
                                 <th>Execution Date</th>
-                                <th>Portfolio</th>
+                                <th>${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'}</th>
                                 <th>Stock Symbol</th>
                                 <th style="text-align:center;">Type</th>
                                 <th style="text-align:right;">Qty</th>

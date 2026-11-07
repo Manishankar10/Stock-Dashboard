@@ -450,8 +450,8 @@
                 mountEl.innerHTML = `
                     <div class="pa-empty-state">
                         <div class="pa-empty-icon">📁</div>
-                        <div class="pa-empty-title">No Portfolios Found</div>
-                        <div class="pa-empty-desc">Create a portfolio and add stock holdings in the Portfolios tab to view in-depth market, sector, and holdings intelligence.</div>
+                        <div class="pa-empty-title">No ${typeof window.PORTFOLIOS_LABEL !== 'undefined' ? window.PORTFOLIOS_LABEL : 'Portfolios'} Found</div>
+                        <div class="pa-empty-desc">Create a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} and add stock holdings in the ${typeof window.PORTFOLIOS_LABEL !== 'undefined' ? window.PORTFOLIOS_LABEL : 'Portfolios'} tab to view in-depth market, sector, and holdings intelligence.</div>
                     </div>
                 `;
                 return;
@@ -460,14 +460,14 @@
             // Sync selector container (dropdown if > 1 portfolio, single badge if 1 portfolio)
             if (selectorContainer) {
                 if (allPfNames.length > 1) {
-                    let optionsHtml = `<option value="ALL" ${paState.activePortfolio === 'ALL' ? 'selected' : ''}>All Portfolios (${allPfNames.length})</option>`;
+                    const _pfsAllOpt = (typeof window.PORTFOLIOS_LABEL !== 'undefined' ? window.PORTFOLIOS_LABEL : 'Portfolios'); let optionsHtml = `<option value="ALL" ${paState.activePortfolio === 'ALL' ? 'selected' : ''}>All ${_pfsAllOpt} (${allPfNames.length})</option>`;
                     allPfNames.forEach(name => {
                         const isSel = paState.activePortfolio === name ? 'selected' : '';
                         optionsHtml += `<option value="${escapeHtml(name)}" ${isSel}>${escapeHtml(name)}</option>`;
                     });
 
                     selectorContainer.innerHTML = `
-                        <select class="pa-portfolio-select" id="pa-portfolio-select" onchange="window.setPaPortfolio(this.value)" aria-label="Select Portfolio">
+                        <select class="pa-portfolio-select" id="pa-portfolio-select" onchange="window.setPaPortfolio(this.value)" aria-label="Select ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'}">
                             ${optionsHtml}
                         </select>
                     `;
@@ -475,7 +475,7 @@
                     const singleName = allPfNames[0];
                     paState.activePortfolio = singleName;
                     selectorContainer.innerHTML = `
-                        <span class="pa-single-pf-badge">📁 Portfolio: <strong>${escapeHtml(singleName)}</strong></span>
+                        <span class="pa-single-pf-badge">📁 ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'}: <strong>${escapeHtml(singleName)}</strong></span>
                     `;
                 }
             }
@@ -500,8 +500,8 @@
                 mountEl.innerHTML = `
                     <div class="pa-empty-state">
                         <div class="pa-empty-icon">📊</div>
-                        <div class="pa-empty-title">Portfolio is Empty</div>
-                        <div class="pa-empty-desc">Add stock holdings to "${escapeHtml(paState.activePortfolio)}" to generate comprehensive portfolio analytics.</div>
+                        <div class="pa-empty-title">${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} is Empty</div>
+                        <div class="pa-empty-desc">Add stock holdings to "${escapeHtml(paState.activePortfolio)}" to generate comprehensive ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} analytics.</div>
                     </div>
                 `;
                 return;
@@ -863,7 +863,7 @@
 
             titleEl.innerText = category.name;
             if (subEl) {
-                subEl.innerText = `${category.items.length} ${category.items.length === 1 ? 'Stock' : 'Stocks'} · ₹${Math.round(category.marketValue).toLocaleString('en-IN')} (${category.weightage.toFixed(1)}% of Portfolio)`;
+                subEl.innerText = `${category.items.length} ${category.items.length === 1 ? 'Stock' : 'Stocks'} · ₹${Math.round(category.marketValue).toLocaleString('en-IN')} (${category.weightage.toFixed(1)}% of ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'})`;
             }
 
             // Sort stocks in category by market value descending

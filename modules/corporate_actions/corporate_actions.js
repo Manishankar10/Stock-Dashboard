@@ -356,7 +356,7 @@
         // Portfolio has 1st preference over Watchlist
         let tagHtml = '';
         if (item.in_portfolio) {
-            tagHtml = '<span class="corp-holding-badge portfolio" title="Stock in your Portfolio">Portfolio</span>';
+            const _corpPfLbl = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'); tagHtml = `<span class="corp-holding-badge portfolio" title="Stock in your ${_corpPfLbl}">${_corpPfLbl}</span>`;
         } else if (item.in_watchlist) {
             tagHtml = '<span class="corp-holding-badge watchlist" title="Stock in your Watchlist">Watchlist</span>';
         }
@@ -491,7 +491,7 @@
                 emptyEl.style.display = 'block';
                 let emptyMsg = `No upcoming ${tabConfig.title} actions`;
                 if (filter === 'portfolio') {
-                    emptyMsg = `No upcoming ${tabConfig.title} actions for your Portfolio stocks`;
+                    const _corpPfEmptyLbl = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'); emptyMsg = `No upcoming ${tabConfig.title} actions for your ${_corpPfEmptyLbl} stocks`;
                 } else if (filter === 'watchlist') {
                     emptyMsg = `No upcoming ${tabConfig.title} actions for your Watchlist stocks`;
                 }

@@ -180,7 +180,7 @@
         } else if (upcomingScope === 'all_watchlists') {
             displayTitle = 'All Watchlists';
         } else if (upcomingScope === 'all_portfolios' || upcomingScope === 'portfolio') {
-            displayTitle = 'All Portfolio';
+            displayTitle = (typeof window.PORTFOLIO_LABEL !== 'undefined' ? 'All ' + window.PORTFOLIO_LABEL : 'All Portfolio');
         }
 
         // 1. Update Subtitles

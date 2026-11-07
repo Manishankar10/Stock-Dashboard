@@ -179,13 +179,16 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
         card_filename = f"portfolio_{uname}.png"
         card_disk_path = os.path.join(gen_dir, card_filename)
 
+        u_admin = bool(users.get(uname, {}).get("is_admin") or users.get(uname, {}).get("role") == "admin")
+        pf_lbl = "Portfolio" if u_admin else "Paperfolio"
+
         generate_portfolio_card(
             performance=perf_val,
             top_gainer_symbol=g_sym,
             top_gainer_change=g_chg,
             top_loser_symbol=l_sym,
             top_loser_change=l_chg,
-            portfolio_name=f"{uname.capitalize()}'s Portfolio",
+            portfolio_name=f"{uname.capitalize()}'s {pf_lbl}",
             date_str=today_ist_str(),
             output_path=card_disk_path,
             badge_text=badge_text
@@ -196,7 +199,7 @@ def dispatch_unique_portfolio_notifications(base_url, static_root):
         g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
         l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
         title_tag = badge_text if is_live else "EOD"
-        title = f"📈 Today's Portfolio ({title_tag}): {perf_val}"
+        title = f"📈 Today's {pf_lbl} ({title_tag}): {perf_val}"
         body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
         push_res = send_web_push(
@@ -284,13 +287,18 @@ def send_portfolio_digest_to_user(username, base_url=""):
     card_filename = f"portfolio_{username}.png"
     card_disk_path = os.path.join(gen_dir, card_filename)
 
+    from modules.common.auth_utils import load_users
+    u_map = load_users()
+    u_admin = bool(u_map.get(username, {}).get("is_admin") or u_map.get(username, {}).get("role") == "admin")
+    pf_lbl = "Portfolio" if u_admin else "Paperfolio"
+
     generate_portfolio_card(
         performance=perf_val,
         top_gainer_symbol=g_sym,
         top_gainer_change=g_chg,
         top_loser_symbol=l_sym,
         top_loser_change=l_chg,
-        portfolio_name=f"{username.capitalize()}'s Portfolio",
+        portfolio_name=f"{username.capitalize()}'s {pf_lbl}",
         date_str=today_ist_str(),
         output_path=card_disk_path,
         badge_text=badge_text
@@ -300,7 +308,7 @@ def send_portfolio_digest_to_user(username, base_url=""):
     g_display = "-" if g_sym in ("-", "N/A") or g_chg in ("-", "N/A") else f"{g_sym} ({g_chg})"
     l_display = "-" if l_sym in ("-", "N/A") or l_chg in ("-", "N/A") else f"{l_sym} ({l_chg})"
     title_tag = badge_text if is_live else "EOD"
-    title = f"📈 Today's Portfolio ({title_tag}): {perf_val}"
+    title = f"📈 Today's {pf_lbl} ({title_tag}): {perf_val}"
     body = f"🚀 Gainer: {g_display} • 🔻 Loser: {l_display}"
 
     res = send_web_push(

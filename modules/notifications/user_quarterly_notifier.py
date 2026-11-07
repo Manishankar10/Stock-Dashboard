@@ -248,7 +248,11 @@ def send_quarterly_results_to_user(username, matched_results=None, base_url="", 
         title = f"📊 Q2 Results: {sym} ({pat_sign}{pat_y:.1f}% YoY PAT)"
         body = f"{st.get('company', sym)}: Net Profit ₹{st.get('net_profit_val', '-')} Cr ({pat_sign}{pat_y:.1f}%) • Sales ₹{st.get('sales_val', '-')} Cr ({sales_sign}{sales_y:.1f}%)"
     else:
-        title = f"📊 Quarterly Results: {len(matched_results)} Portfolio Stocks Reported"
+        from modules.common.auth_utils import load_users
+        _u_map = load_users()
+        _is_adm = bool(_u_map.get(username, {}).get("is_admin") or _u_map.get(username, {}).get("role") == "admin")
+        _pf_lbl = "Portfolio" if _is_adm else "Paperfolio"
+        title = f"📊 Quarterly Results: {len(matched_results)} {_pf_lbl} Stocks Reported"
         parts = []
         for st in matched_results[:3]:
             pat_y = st.get("net_profit_yoy", 0.0)

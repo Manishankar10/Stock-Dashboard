@@ -187,7 +187,7 @@
                 <!-- 1. By watchlist/portfolio -->
                 <div class="qr-filter-section open">
                     <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
-                        <span>By watchlist/portfolio</span>
+                        <span>By watchlist/{{ portfolio_label|lower }}</span>
                         <span class="qr-accordion-arrow">▾</span>
                     </div>
                     <div class="qr-filter-section-content">
@@ -199,7 +199,7 @@
                             </label>
                             <label class="qr-radio-item active">
                                 <input type="radio" name="qr-watchlist-desktop" value="portfolio" checked onchange="window.setQrWatchlistScope('portfolio')">
-                                <span class="qr-radio-label">In portfolio</span>
+                                <span class="qr-radio-label">In {{ portfolio_label|lower }}</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
                             <label class="qr-radio-item">
@@ -405,7 +405,7 @@
                 <!-- 1. By watchlist/portfolio -->
             <div class="qr-filter-section open">
                 <div class="qr-filter-section-title" onclick="window.toggleQrAccordion(this)">
-                    <span>By watchlist/portfolio</span>
+                    <span>By watchlist/{{ portfolio_label|lower }}</span>
                     <span class="qr-accordion-arrow">▾</span>
                 </div>
                 <div class="qr-filter-section-content">
@@ -417,7 +417,7 @@
                         </label>
                         <label class="qr-radio-item active">
                             <input type="radio" name="qr-watchlist-mobile" value="portfolio" checked onchange="window.setQrWatchlistScope('portfolio')">
-                            <span class="qr-radio-label">In portfolio</span>
+                            <span class="qr-radio-label">In {{ portfolio_label|lower }}</span>
                             <span class="qr-check-icon">✓</span>
                         </label>
                         <label class="qr-radio-item">
