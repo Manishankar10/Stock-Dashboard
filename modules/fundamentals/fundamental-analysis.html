@@ -2614,7 +2614,11 @@ h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
         </button>
       </div>
       <div id="brokerResearchContainer">
-        <div class="empty-state">Loading recent research documents...</div>
+        <div class="br-loading-state" style="text-align:center; padding:28px 16px; color:var(--text-secondary);">
+          <div class="spinner" style="width:24px; height:24px; margin:0 auto 10px; border-width:2.5px; border-color:rgba(59,130,246,0.2); border-top-color:#3b82f6;"></div>
+          <div style="font-weight:600; font-size:13px; color:var(--text-primary); margin-bottom:4px;">Research Documents</div>
+          <div style="font-size:11.5px; opacity:0.8;">Loading separately in the background...</div>
+        </div>
       </div>
     </div>
 
@@ -4145,16 +4149,12 @@ function render(d) {
   window._allConcalls = concalls;
   renderConcallsList(concalls, false);
 
-  // Render Institutional & Broker Research
-  if (typeof window.renderBrokerResearchSection === 'function') {
-    const researchContainer = document.getElementById('brokerResearchContainer');
-    if (researchContainer) {
-      window.renderBrokerResearchSection(researchContainer, symbol, c.name || symbol);
-    }
-  }
-
+  // Immediately display Screener fundamentals so KPIs, financial statements, and ratios render without delay
   document.getElementById('content').style.display = 'flex';
   window._lastFundamentalsData = d;
+
+  // Load institutional & broker research documents separately in the background
+  loadResearchDocumentsSeparately(symbol, c.name || symbol);
 
   // Focus the latest column in both web and responsive (scroll content to latest data)
   initTableDragToScroll();
@@ -4996,14 +4996,64 @@ function setTheme() {
 }
 setTheme();
 
-window.refreshBrokerResearchSection = function() {
-  if (typeof window.renderBrokerResearchSection === 'function') {
-    const researchContainer = document.getElementById('brokerResearchContainer');
-    if (researchContainer) {
-      const cName = window._lastFundamentalsData?.company?.name || symbol;
-      window.renderBrokerResearchSection(researchContainer, symbol, cName);
+let _lastResearchSymbol = null;
+let _isResearchLoading = false;
+
+function loadResearchDocumentsSeparately(sym, compName, forceRefresh = false) {
+  const container = document.getElementById('brokerResearchContainer');
+  if (!container || !sym) return;
+
+  // Avoid redundant fetching if documents for this symbol are already rendered and not forced
+  if (!forceRefresh && _lastResearchSymbol === sym && container.querySelector('.br-table, .empty-state:not(.br-loading-state)')) {
+    return;
+  }
+
+  _lastResearchSymbol = sym;
+  _isResearchLoading = true;
+
+  const cleanSym = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym.replace(/\.(NS|BS|BO)$/i, '');
+  container.innerHTML = `
+    <div class="br-loading-state" style="text-align: center; padding: 28px 16px; color: var(--text-secondary);">
+      <div class="spinner" style="width: 24px; height: 24px; margin: 0 auto 10px; border-width: 2.5px; border-color: rgba(59,130,246,0.2); border-top-color: #3b82f6;"></div>
+      <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 4px;">Loading Research Documents &amp; Reports...</div>
+      <div style="font-size: 11.5px; opacity: 0.8;">Fetching recent verified institutional coverage &amp; papers separately in background for ${esc(cleanSym)}</div>
+    </div>
+  `;
+
+  function executeRender() {
+    if (typeof window.renderBrokerResearchSection === 'function') {
+      window.renderBrokerResearchSection(container, sym, compName, forceRefresh)
+        .catch(err => {
+          console.error('[BrokerResearch] Error loading documents:', err);
+          container.innerHTML = `<div class="empty-state" style="padding: 20px; color: #ef4444;">Failed to load research documents: ${esc(err.message || 'Network error')}</div>`;
+        })
+        .finally(() => {
+          _isResearchLoading = false;
+        });
+    } else {
+      let retries = 0;
+      const poll = setInterval(() => {
+        retries++;
+        if (typeof window.renderBrokerResearchSection === 'function') {
+          clearInterval(poll);
+          window.renderBrokerResearchSection(container, sym, compName, forceRefresh)
+            .finally(() => { _isResearchLoading = false; });
+        } else if (retries >= 30) {
+          clearInterval(poll);
+          _isResearchLoading = false;
+          container.innerHTML = `<div class="empty-state">Unable to initialize broker research component.</div>`;
+        }
+      }, 100);
     }
   }
+
+  // Defer execution so Screener layout and paint finish first
+  setTimeout(executeRender, 50);
+}
+
+window.refreshBrokerResearchSection = function() {
+  const cName = window._lastFundamentalsData?.company?.name || symbol;
+  loadResearchDocumentsSeparately(symbol, cName, true);
 };
 
 loadFundamentals();

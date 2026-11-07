@@ -6,6 +6,7 @@ Strictly filters and shows ONLY reports where a real PDF document or content is 
 """
 
 from datetime import datetime, timedelta
+import concurrent.futures
 import json
 import logging
 import re
@@ -383,21 +384,28 @@ class BrokerResearchProvider:
 
         reports = []
 
-        # 1. Fetch from Trendlyne if allowed
-        if any("trendlyne.com" in s for s in allowed_sites):
-            try:
-                t_reps = fetch_trendlyne_reports(clean_sym)
-                reports.extend(t_reps)
-            except Exception as e:
-                logger.warning(f"Error fetching Trendlyne reports: {e}")
+        # 1 & 2. Concurrent fetch from Trendlyne & Screener/BSE to drastically reduce latency
+        def _get_trendlyne():
+            if any("trendlyne.com" in s for s in allowed_sites):
+                try:
+                    return fetch_trendlyne_reports(clean_sym)
+                except Exception as e:
+                    logger.warning(f"Error fetching Trendlyne reports: {e}")
+            return []
 
-        # 2. Fetch from Screener / BSE if allowed
-        if any("screener.in" in s or "bseindia.com" in s for s in allowed_sites):
-            try:
-                s_reps = fetch_screener_bse_documents(clean_sym)
-                reports.extend(s_reps)
-            except Exception as e:
-                logger.warning(f"Error fetching Screener/BSE documents: {e}")
+        def _get_screener_bse():
+            if any("screener.in" in s or "bseindia.com" in s for s in allowed_sites):
+                try:
+                    return fetch_screener_bse_documents(clean_sym)
+                except Exception as e:
+                    logger.warning(f"Error fetching Screener/BSE documents: {e}")
+            return []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            f_trend = executor.submit(_get_trendlyne)
+            f_scr = executor.submit(_get_screener_bse)
+            reports.extend(f_trend.result() or [])
+            reports.extend(f_scr.result() or [])
 
         # 3. Strictly filter: ONLY if PDF or content is available from allowed websites
         valid_reports = [r for r in reports if is_pdf_or_content_available(r, allowed_sites)]

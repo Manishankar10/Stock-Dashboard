@@ -16,6 +16,7 @@ from flask import Blueprint, request, jsonify, render_template
 import datetime as dt
 import math
 import threading
+import concurrent.futures
 try:
     from curl_cffi import requests as yahoo_requests
     _YAHOO_HTTP = "curl_cffi"
@@ -423,6 +424,15 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
         company_id = c_info.get("data-company-id")
         warehouse_id = c_info.get("data-warehouse-id")
 
+        # Parallel background fetches for peers and DMA chart to speed up initial fundamentals
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        future_peers = None
+        future_chart = None
+        if warehouse_id:
+            future_peers = executor.submit(requests.get, f"https://www.screener.in/api/company/{warehouse_id}/peers/", headers=headers, timeout=6)
+        if company_id:
+            future_chart = executor.submit(requests.get, f"https://www.screener.in/api/company/{company_id}/chart/?q=Price-DMA50-DMA200-Volume&days=1825", headers=headers, timeout=6)
+
         # Top ratios
         ratios = {}
         for li in soup.find_all("li", class_=re.compile(r"flex.*space")):
@@ -563,7 +573,29 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
 
         # Peer comparison table from Screener API
         peers_data = {"columns": [], "rows": []}
-        if warehouse_id:
+        if future_peers:
+            try:
+                p_res = future_peers.result()
+                if p_res and p_res.status_code == 200:
+                    p_soup = BeautifulSoup(p_res.text, "html.parser")
+                    p_tbl = p_soup.find("table")
+                    if p_tbl:
+                        trs = p_tbl.find_all("tr")
+                        if trs:
+                            raw_cols = [c.text.strip() for c in trs[0].find_all(["th", "td"])]
+                            peers_cols = [re.sub(r"\s+", " ", c).strip() for c in raw_cols[1:]]
+                            peers_rows = []
+                            for r_tr in trs[1:]:
+                                cells = [c.text.strip() for c in r_tr.find_all(["th", "td"])]
+                                if not cells:
+                                    continue
+                                r_name = cells[1] if len(cells) > 1 else cells[0]
+                                r_vals = [c.replace("\u20b9", "").strip() for c in cells[1:]]
+                                peers_rows.append({"name": r_name, "values": r_vals})
+                            peers_data = {"columns": peers_cols, "rows": peers_rows}
+            except Exception:
+                pass
+        elif warehouse_id:
             try:
                 p_res = requests.get(f"https://www.screener.in/api/company/{warehouse_id}/peers/", headers=headers, timeout=6)
                 if p_res.status_code == 200:
@@ -644,13 +676,24 @@ def fetch_screener_fundamentals(symbol, mode="consolidated"):
 
         # Screener Price & DMA Chart data
         chart_data = []
-        if company_id:
+        if future_chart:
+            try:
+                ch_res = future_chart.result()
+                if ch_res and ch_res.status_code == 200:
+                    chart_data = ch_res.json().get("datasets", [])
+            except Exception:
+                pass
+        elif company_id:
             try:
                 ch_res = requests.get(f"https://www.screener.in/api/company/{company_id}/chart/?q=Price-DMA50-DMA200-Volume&days=1825", headers=headers, timeout=6)
                 if ch_res.status_code == 200:
                     chart_data = ch_res.json().get("datasets", [])
             except Exception:
                 pass
+        try:
+            executor.shutdown(wait=False)
+        except Exception:
+            pass
 
         return {
             "symbol": symbol,

@@ -348,18 +348,24 @@
     };
 
     // Public API: Render Embedded Section inside Fundamentals Popup
-    window.renderBrokerResearchSection = async function (containerEl, symbol, companyName) {
+    window.renderBrokerResearchSection = async function (containerEl, symbol, companyName, forceRefresh = false) {
         if (!containerEl || !symbol) return;
 
-        containerEl.innerHTML = `
-            <div style="text-align: center; padding: 24px; color: var(--text-secondary);">
-                <div style="font-size: 20px; margin-bottom: 6px;">⏳</div>
-                <div>Fetching recent 6 months institutional &amp; broker research papers for ${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, ''))}...</div>
-            </div>
-        `;
+        const cleanSym = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, '');
+
+        if (!containerEl.querySelector('.br-loading-state')) {
+            containerEl.innerHTML = `
+                <div class="br-loading-state" style="text-align: center; padding: 26px 16px; color: var(--text-secondary);">
+                    <div class="spinner" style="width: 24px; height: 24px; margin: 0 auto 10px; border-width: 2.5px; border-color: rgba(59,130,246,0.2); border-top-color: #3b82f6;"></div>
+                    <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 4px;">Loading Research Documents &amp; Reports...</div>
+                    <div style="font-size: 11.5px; opacity: 0.8;">Sourcing recent verified research reports &amp; broker coverage for ${esc(cleanSym)}</div>
+                </div>
+            `;
+        }
 
         try {
-            const res = await fetch(`/api/broker-research?symbol=${encodeURIComponent(symbol)}&company=${encodeURIComponent(companyName || '')}`);
+            const refreshParam = forceRefresh ? '&refresh=1' : '';
+            const res = await fetch(`/api/broker-research?symbol=${encodeURIComponent(symbol)}&company=${encodeURIComponent(companyName || '')}${refreshParam}`);
             const data = await res.json();
             if (data.success && data.reports && data.reports.length > 0) {
                 const sourcesStr = (data.allowed_sources && data.allowed_sources.length > 0) ? data.allowed_sources.join(', ') : 'trendlyne.com, screener.in, bseindia.com';
@@ -388,17 +394,17 @@
             } else {
                 const sourcesStr = (data.allowed_sources && data.allowed_sources.length > 0) ? data.allowed_sources.join(', ') : 'trendlyne.com, screener.in, bseindia.com';
                 containerEl.innerHTML = `
-                    <div style="text-align: center; padding: 28px 16px; color: var(--text-secondary); font-size: 13px;">
+                    <div class="empty-state" style="text-align: center; padding: 28px 16px; color: var(--text-secondary); font-size: 13px;">
                         <div style="font-size: 24px; margin-bottom: 6px;">📑</div>
                         <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">No Research Documents or PDFs Available</div>
-                        <div style="font-size: 12px; opacity: 0.8;">No verified PDF reports found for ${esc(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(symbol) : symbol.replace(/\.(NS|BS|BO)$/i, ''))} on configured sources (${esc(sourcesStr)}).</div>
+                        <div style="font-size: 12px; opacity: 0.8;">No verified PDF reports found for ${esc(cleanSym)} on configured sources (${esc(sourcesStr)}).</div>
                     </div>
                 `;
             }
         } catch (e) {
             console.error('Error rendering embedded broker research:', e);
             containerEl.innerHTML = `
-                <div style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">
+                <div class="empty-state" style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">
                     Failed to load research papers.
                 </div>
             `;
