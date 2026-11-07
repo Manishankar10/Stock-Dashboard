@@ -7,6 +7,9 @@ from db_store import load_system_settings_db, save_system_settings_db
 DEFAULT_SYSTEM_SETTINGS = {
     "max_watchlists_per_user": 10,
     "max_stocks_per_watchlist": 50,
+    "watchlist_refresh_interval_sec": 30,
+    "portfolio_refresh_interval_sec": 30,
+    "chart_refresh_interval_sec": 10,
     "research_document_websites": "trendlyne.com, screener.in, bseindia.com",
     "ai_prompts": {},
     "fcm_vapid_public_key": "",
@@ -57,6 +60,33 @@ def update_system_settings(new_settings):
         except (ValueError, TypeError) as e:
             raise ValueError("Total number of watchlists per user must be a positive integer (minimum 1).") from e
 
+    if "watchlist_refresh_interval_sec" in new_settings:
+        try:
+            val = int(new_settings["watchlist_refresh_interval_sec"])
+            if val < 3:
+                raise ValueError("Watchlist refresh interval must be at least 3 seconds.")
+            current["watchlist_refresh_interval_sec"] = val
+        except (ValueError, TypeError) as e:
+            raise ValueError("Watchlist refresh interval must be a positive integer (minimum 3 seconds).") from e
+
+    if "portfolio_refresh_interval_sec" in new_settings:
+        try:
+            val = int(new_settings["portfolio_refresh_interval_sec"])
+            if val < 3:
+                raise ValueError("Portfolio refresh interval must be at least 3 seconds.")
+            current["portfolio_refresh_interval_sec"] = val
+        except (ValueError, TypeError) as e:
+            raise ValueError("Portfolio refresh interval must be a positive integer (minimum 3 seconds).") from e
+
+    if "chart_refresh_interval_sec" in new_settings:
+        try:
+            val = int(new_settings["chart_refresh_interval_sec"])
+            if val < 3:
+                raise ValueError("Chart refresh interval must be at least 3 seconds.")
+            current["chart_refresh_interval_sec"] = val
+        except (ValueError, TypeError) as e:
+            raise ValueError("Chart refresh interval must be a positive integer (minimum 3 seconds).") from e
+
     if "max_stocks_per_watchlist" in new_settings:
         try:
             val = int(new_settings["max_stocks_per_watchlist"])
@@ -105,6 +135,9 @@ def update_system_settings(new_settings):
     clean_settings = {
         "max_watchlists_per_user": current.get("max_watchlists_per_user", 10),
         "max_stocks_per_watchlist": current.get("max_stocks_per_watchlist", 50),
+        "watchlist_refresh_interval_sec": current.get("watchlist_refresh_interval_sec", 30),
+        "portfolio_refresh_interval_sec": current.get("portfolio_refresh_interval_sec", 30),
+        "chart_refresh_interval_sec": current.get("chart_refresh_interval_sec", 10),
         "research_document_websites": current.get("research_document_websites", "trendlyne.com, screener.in, bseindia.com"),
         "ai_prompts": current.get("ai_prompts", {}),
         "fcm_vapid_public_key": current.get("fcm_vapid_public_key", ""),

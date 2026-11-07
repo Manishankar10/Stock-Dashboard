@@ -956,6 +956,10 @@
                     if (userEl) userEl.innerText = data.username;
                     if (mobileUserEl) mobileUserEl.innerText = data.username;
                     if (roleBadge) roleBadge.innerText = data.is_admin ? 'Administrator' : 'Member';
+                    window.IS_ADMIN = Boolean(data.is_admin);
+                    window.PORTFOLIO_LABEL = window.IS_ADMIN ? 'Portfolio' : 'Paperfolio';
+                    window.PORTFOLIOS_LABEL = window.IS_ADMIN ? 'Portfolios' : 'Paperfolios';
+                    if (!window.IS_ADMIN && typeof window.applyPaperfolioText === 'function') window.applyPaperfolioText();
 
                     if (data.is_admin) {
                         if (adminLink) adminLink.style.display = 'flex';
@@ -1244,3 +1248,86 @@
             }
         }
         window.handleMobileSearchSettingClick = handleMobileSearchSettingClick;
+
+
+        // =========================================================
+        // PAPERFOLIO UI ADAPTER (Non-admin User Experience)
+        // Dynamically reflects "Paperfolio" / "Paperfolios" across UI text
+        // =========================================================
+        window.applyPaperfolioText = function(root = document.body) {
+            if (window.IS_ADMIN) return;
+            if (!root) return;
+            
+            try {
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                    acceptNode(node) {
+                        const p = node.parentElement;
+                        if (!p) return NodeFilter.FILTER_SKIP;
+                        const tag = p.tagName;
+                        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || p.isContentEditable) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        if (/portfolio/i.test(node.nodeValue)) {
+                            return NodeFilter.FILTER_ACCEPT;
+                        }
+                        return NodeFilter.FILTER_SKIP;
+                    }
+                });
+
+                const nodes = [];
+                while (walker.nextNode()) {
+                    nodes.push(walker.currentNode);
+                }
+
+                nodes.forEach(node => {
+                    let text = node.nodeValue;
+                    text = text.replace(/\bPortfolios\b/g, 'Paperfolios');
+                    text = text.replace(/\bPortfolio\b/g, 'Paperfolio');
+                    text = text.replace(/\bPORTFOLIOS\b/g, 'PAPERFOLIOS');
+                    text = text.replace(/\bPORTFOLIO\b/g, 'PAPERFOLIO');
+                    text = text.replace(/\bportfolios\b/g, 'paperfolios');
+                    text = text.replace(/\bportfolio\b/g, 'paperfolio');
+                    if (node.nodeValue !== text) {
+                        node.nodeValue = text;
+                    }
+                });
+
+                const query = '[title*="ortfolio" i], [aria-label*="ortfolio" i], [placeholder*="ortfolio" i]';
+                const els = root.querySelectorAll ? root.querySelectorAll(query) : [];
+                els.forEach(el => {
+                    if (el.title && /portfolio/i.test(el.title)) {
+                        el.title = el.title.replace(/\bPortfolios\b/g, 'Paperfolios')
+                                           .replace(/\bPortfolio\b/g, 'Paperfolio')
+                                           .replace(/\bPORTFOLIOS\b/g, 'PAPERFOLIOS')
+                                           .replace(/\bPORTFOLIO\b/g, 'PAPERFOLIO');
+                    }
+                    if (el.getAttribute('aria-label') && /portfolio/i.test(el.getAttribute('aria-label'))) {
+                        el.setAttribute('aria-label', el.getAttribute('aria-label')
+                            .replace(/\bPortfolios\b/g, 'Paperfolios')
+                            .replace(/\bPortfolio\b/g, 'Paperfolio')
+                            .replace(/\bPORTFOLIOS\b/g, 'PAPERFOLIOS')
+                            .replace(/\bPORTFOLIO\b/g, 'PAPERFOLIO'));
+                    }
+                    if (el.placeholder && /portfolio/i.test(el.placeholder)) {
+                        el.placeholder = el.placeholder.replace(/\bPortfolios\b/g, 'Paperfolios')
+                                                       .replace(/\bPortfolio\b/g, 'Paperfolio');
+                    }
+                });
+            } catch(e) {}
+        };
+
+        if (typeof window.IS_ADMIN !== 'undefined' && !window.IS_ADMIN) {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.applyPaperfolioText();
+                if (window.MutationObserver) {
+                    let _pfDebounce = null;
+                    const obs = new MutationObserver(() => {
+                        clearTimeout(_pfDebounce);
+                        _pfDebounce = setTimeout(() => {
+                            window.applyPaperfolioText();
+                        }, 60);
+                    });
+                    obs.observe(document.body, { childList: true, subtree: true });
+                }
+            });
+        }

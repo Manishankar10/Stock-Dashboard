@@ -1424,8 +1424,9 @@
                             <!-- Row 1: Symbol & Badges (Left) | Total P&L & Overall % (Right) -->
                             <div class="pf-mob-card-header">
                                 <div class="pf-mob-sym-group" title="Tap to view holding details">
-                                    <div class="pf-mob-sym-row">
+                                    <div class="pf-mob-sym-row" style="display: flex; align-items: center; gap: 6px;">
                                         <span class="pf-mob-sym">${cleanDisplaySymbol(sym)}</span>
+                                        <button type="button" class="btn-secondary wl-row-menu-btn pf-row-menu-btn" style="padding: 2px 6px; font-size: 11px; line-height: 1; border-radius: 4px;" onclick="event.stopPropagation(); if (typeof window.toggleWlRowMenu === 'function') window.toggleWlRowMenu(event, '${escapeHtml(sym)}', { hideDelete: true });" title="Actions for ${cleanDisplaySymbol(sym)}">⚙️</button>
                                         ${isAll ? `<span class="badge pf-badge">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}
                                     </div>
                                 </div>
@@ -1648,6 +1649,8 @@
                         const tdDetails = document.createElement('td');
                         tdDetails.className = 'pf-col-details';
                         tdDetails.style.textAlign = 'center';
+                        tdDetails.style.whiteSpace = 'nowrap';
+                        
                         const detailBtn = document.createElement('button');
                         detailBtn.className = 'btn-details';
                         detailBtn.innerHTML = '🔍 Details';
@@ -1656,6 +1659,22 @@
                             openHoldingDetailsModal(item);
                         };
                         tdDetails.appendChild(detailBtn);
+
+                        const menuBtn = document.createElement('button');
+                        menuBtn.className = 'btn-secondary wl-row-menu-btn pf-row-menu-btn';
+                        menuBtn.style.padding = '4px 8px';
+                        menuBtn.style.fontSize = '12px';
+                        menuBtn.style.fontWeight = '600';
+                        menuBtn.style.marginLeft = '4px';
+                        menuBtn.title = `Actions for ${sym}`;
+                        menuBtn.innerHTML = '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
+                        menuBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            if (typeof window.toggleWlRowMenu === 'function') {
+                                window.toggleWlRowMenu(e, sym, { hideDelete: true, item: item });
+                            }
+                        };
+                        tdDetails.appendChild(menuBtn);
 
                         tr.appendChild(tdStock);
                         tr.appendChild(tdQty);

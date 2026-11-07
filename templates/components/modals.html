@@ -866,14 +866,14 @@
     ========================================================= -->
     <div id="createPortfolioModal" class="small-modal">
         <div class="small-modal-content">
-            <h3>Create New Portfolio</h3>
+            <h3>Create New {{ portfolio_label }}</h3>
             <div class="form-group">
-                <label>Portfolio Name</label>
+                <label>{{ portfolio_label }} Name</label>
                 <input type="text" id="modal-new-portfolio-name" placeholder="e.g. Core Wealth, Trading, High Growth..." onkeydown="if(event.key==='Enter') submitCreatePortfolio()">
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button type="button" class="btn-secondary" onclick="closeCreatePortfolioModal()">Cancel</button>
-                <button type="button" class="btn-primary" onclick="submitCreatePortfolio()">Create Portfolio</button>
+                <button type="button" class="btn-primary" onclick="submitCreatePortfolio()">Create {{ portfolio_label }}</button>
             </div>
         </div>
     </div>
@@ -883,9 +883,9 @@
     ========================================================= -->
     <div id="addHoldingModal" class="small-modal">
         <div class="small-modal-content">
-            <h3 id="addHoldingModalTitle">Add Holding to Portfolio</h3>
+            <h3 id="addHoldingModalTitle">Add Holding to {{ portfolio_label }}</h3>
             <div class="form-group" id="modal-pf-add-portfolio-group" style="display: none;">
-                <label>Target Portfolio</label>
+                <label>Target {{ portfolio_label }}</label>
                 <select id="modal-pf-add-portfolio" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); font-size: 13px;"></select>
             </div>
             <div class="form-group" style="position: relative;">
@@ -935,7 +935,7 @@
                 <div><span style="color: var(--text-secondary);">Current Holding:</span> <strong id="sell-info-qty" style="color: var(--text-primary);">-</strong></div>
                 <div><span style="color: var(--text-secondary);">Avg Cost Basis:</span> <strong id="sell-info-avgprice" style="color: var(--text-primary);">-</strong></div>
                 <div><span style="color: var(--text-secondary);">Live LTP:</span> <strong id="sell-info-ltp" style="color: var(--text-primary);">-</strong></div>
-                <div><span style="color: var(--text-secondary);">Portfolio:</span> <strong id="sell-info-portfolio" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">{{ portfolio_label }}:</span> <strong id="sell-info-portfolio" style="color: var(--text-primary);">-</strong></div>
             </div>
 
             <div class="form-group">
@@ -984,7 +984,7 @@
                 <div><span style="color: var(--text-secondary);">Existing Holding:</span> <strong id="buymore-info-qty" style="color: var(--text-primary);">-</strong></div>
                 <div><span style="color: var(--text-secondary);">Current Avg Price:</span> <strong id="buymore-info-avgprice" style="color: var(--text-primary);">-</strong></div>
                 <div><span style="color: var(--text-secondary);">Live LTP:</span> <strong id="buymore-info-ltp" style="color: var(--text-primary);">-</strong></div>
-                <div><span style="color: var(--text-secondary);">Portfolio:</span> <strong id="buymore-info-portfolio" style="color: var(--text-primary);">-</strong></div>
+                <div><span style="color: var(--text-secondary);">{{ portfolio_label }}:</span> <strong id="buymore-info-portfolio" style="color: var(--text-primary);">-</strong></div>
             </div>
 
             <div class="form-group">

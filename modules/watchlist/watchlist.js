@@ -1342,7 +1342,7 @@
 
         let _wlMenuOpenScrollY = 0;
 
-        function toggleWlRowMenu(e, sym) {
+        function toggleWlRowMenu(e, sym, options = {}) {
             if (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1403,16 +1403,27 @@
                 return itemStr === String(sym).trim().toUpperCase() || (typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(itemStr) : itemStr.replace(/\.(NS|BS|BO)$/i, '')) === cleanSymVal;
             });
 
-            if (isInCurrentWl) {
-                menuItems.push({
-                    label: '🗑️ Remove Stock',
-                    danger: true,
+            if (options && options.item) {
+                menuItems.unshift({
+                    label: '🔍 Holding Details',
                     action: () => {
-                        if (typeof window.removeWatchlistStock === 'function') window.removeWatchlistStock(null, sym);
-                        else if (typeof removeWatchlistStock === 'function') removeWatchlistStock(null, sym);
+                        if (typeof openHoldingDetailsModal === 'function') openHoldingDetailsModal(options.item);
+                        else if (typeof window.openHoldingDetailsModal === 'function') window.openHoldingDetailsModal(options.item);
                     }
                 });
-            } else if (curWl) {
+            }
+
+            if (!options || !options.hideDelete) {
+                if (isInCurrentWl) {
+                    menuItems.push({
+                        label: '🗑️ Remove Stock',
+                        danger: true,
+                        action: () => {
+                            if (typeof window.removeWatchlistStock === 'function') window.removeWatchlistStock(null, sym);
+                            else if (typeof removeWatchlistStock === 'function') removeWatchlistStock(null, sym);
+                        }
+                    });
+                } else if (curWl) {
                 menuItems.push({
                     label: `➕ Add to "${curWl}"`,
                     action: () => {
@@ -1420,6 +1431,7 @@
                         else if (typeof addWatchlistStock === 'function') addWatchlistStock(curWl, sym);
                     }
                 });
+                }
             }
 
             menuItems.forEach(item => {

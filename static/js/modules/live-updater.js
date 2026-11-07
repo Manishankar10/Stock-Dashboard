@@ -453,8 +453,19 @@
         // Smart Adaptive Auto-Refresh Market Prices every 30 seconds (pauses when tab is hidden)
         // Fundamentals Modal: persistent, do not exit on Escape until close button clicked
 
-        setInterval(function() {
-            if (document.visibilityState !== 'hidden') {
-                refreshPrices();
-            }
-        }, 30000);
+        const getWlInterval = () => Math.max(3, (window.APP_SETTINGS && window.APP_SETTINGS.watchlist_refresh_interval_sec) || 30) * 1000;
+        const getPfInterval = () => Math.max(3, (window.APP_SETTINGS && window.APP_SETTINGS.portfolio_refresh_interval_sec) || 30) * 1000;
+
+        let liveUpdaterTimer = null;
+        function scheduleNextLiveRefresh() {
+            clearTimeout(liveUpdaterTimer);
+            const isWl = (typeof currentTab !== 'undefined' && currentTab === 'watchlists');
+            const intervalMs = isWl ? getWlInterval() : getPfInterval();
+            liveUpdaterTimer = setTimeout(() => {
+                if (document.visibilityState !== 'hidden') {
+                    refreshPrices();
+                }
+                scheduleNextLiveRefresh();
+            }, intervalMs);
+        }
+        scheduleNextLiveRefresh();

@@ -8,7 +8,7 @@
 
 (function () {
     const state = {
-        frequency: '1M',          // '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD'
+        frequency: '1D',          // '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD'
         view: 'rrg',              // 'rrg' | 'leaderboard' | 'matrix' | 'cycle'
         quadrantFilter: 'all',    // 'all' | 'leading' | 'weakening' | 'lagging' | 'improving'
         searchQuery: '',
@@ -23,7 +23,7 @@
         lastUpdatedText: 'Just now',
         isLoading: false,
         selectedSectorId: null,
-        matrixSortField: '1M',    // 'name' | 'quadrant' | '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'breadth' | 'pe'
+        matrixSortField: '1D',    // 'name' | 'quadrant' | '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'breadth' | 'pe'
         matrixSortDir: 'desc'     // 'asc' | 'desc'
     };
 

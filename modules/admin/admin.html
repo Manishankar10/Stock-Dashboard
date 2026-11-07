@@ -1350,6 +1350,51 @@
                             </div>
                         </div>
 
+                        <!-- Setting: Watchlist Refresh Interval -->
+                        <div class="settings-card-item" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
+                            <label for="setting-watchlist-refresh" style="display: block; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; color: var(--text-primary);">
+                                ⏱️ Watchlist Refresh Interval
+                            </label>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 14px 0; line-height: 1.4;">
+                                Auto-refresh frequency in seconds for active watchlist stock prices.
+                            </p>
+                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px;">
+                                <input type="number" id="setting-watchlist-refresh" min="3" max="3600" step="1" required
+                                    style="width: 130px; padding: 10px 14px; font-size: 15px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
+                                <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">seconds</span>
+                            </div>
+                        </div>
+
+                        <!-- Setting: Portfolio Refresh Interval -->
+                        <div class="settings-card-item" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
+                            <label for="setting-portfolio-refresh" style="display: block; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; color: var(--text-primary);">
+                                ⏱️ Portfolio Refresh Interval
+                            </label>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 14px 0; line-height: 1.4;">
+                                Auto-refresh frequency in seconds for portfolio holdings and live valuations.
+                            </p>
+                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px;">
+                                <input type="number" id="setting-portfolio-refresh" min="3" max="3600" step="1" required
+                                    style="width: 130px; padding: 10px 14px; font-size: 15px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
+                                <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">seconds</span>
+                            </div>
+                        </div>
+
+                        <!-- Setting: Chart Refresh Interval -->
+                        <div class="settings-card-item" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
+                            <label for="setting-chart-refresh" style="display: block; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; color: var(--text-primary);">
+                                ⏱️ Chart Refresh Interval
+                            </label>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 14px 0; line-height: 1.4;">
+                                Auto-refresh frequency in seconds while the interactive chart modal is open.
+                            </p>
+                            <div class="settings-input-group" style="display: flex; align-items: center; gap: 10px;">
+                                <input type="number" id="setting-chart-refresh" min="3" max="3600" step="1" required
+                                    style="width: 130px; padding: 10px 14px; font-size: 15px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary);">
+                                <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">seconds</span>
+                            </div>
+                        </div>
+
                         <!-- Setting 3: Research Document Websites -->
                         <div class="settings-card-item" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px; grid-column: 1 / -1;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
@@ -3885,9 +3930,15 @@
                 if (data.success && data.settings) {
                     const maxWlInput = document.getElementById('setting-max-watchlists');
                     const maxStkInput = document.getElementById('setting-max-stocks');
+                    const wlRefreshInput = document.getElementById('setting-watchlist-refresh');
+                    const pfRefreshInput = document.getElementById('setting-portfolio-refresh');
+                    const chartRefreshInput = document.getElementById('setting-chart-refresh');
                     const resWebInput = document.getElementById('setting-research-websites');
                     if (maxWlInput) maxWlInput.value = data.settings.max_watchlists_per_user || 10;
                     if (maxStkInput) maxStkInput.value = data.settings.max_stocks_per_watchlist || 50;
+                    if (wlRefreshInput) wlRefreshInput.value = data.settings.watchlist_refresh_interval_sec || 30;
+                    if (pfRefreshInput) pfRefreshInput.value = data.settings.portfolio_refresh_interval_sec || 30;
+                    if (chartRefreshInput) chartRefreshInput.value = data.settings.chart_refresh_interval_sec || 10;
                     if (resWebInput) resWebInput.value = data.settings.research_document_websites || 'trendlyne.com, screener.in, bseindia.com';
                 }
             } catch (e) {
@@ -3899,9 +3950,16 @@
             if (e) e.preventDefault();
             const maxWlInput = document.getElementById('setting-max-watchlists');
             const maxStkInput = document.getElementById('setting-max-stocks');
+            const wlRefreshInput = document.getElementById('setting-watchlist-refresh');
+            const pfRefreshInput = document.getElementById('setting-portfolio-refresh');
+            const chartRefreshInput = document.getElementById('setting-chart-refresh');
             const resWebInput = document.getElementById('setting-research-websites');
-            const maxWl = parseInt(maxWlInput.value, 10);
-            const maxStk = parseInt(maxStkInput.value, 10);
+
+            const maxWl = parseInt(maxWlInput ? maxWlInput.value : '10', 10);
+            const maxStk = parseInt(maxStkInput ? maxStkInput.value : '50', 10);
+            const wlRefresh = parseInt(wlRefreshInput ? wlRefreshInput.value : '30', 10);
+            const pfRefresh = parseInt(pfRefreshInput ? pfRefreshInput.value : '30', 10);
+            const chartRefresh = parseInt(chartRefreshInput ? chartRefreshInput.value : '10', 10);
             const resWebsites = resWebInput ? resWebInput.value.trim() : 'trendlyne.com, screener.in, bseindia.com';
 
             if (isNaN(maxWl) || maxWl < 1) {
@@ -3910,6 +3968,18 @@
             }
             if (isNaN(maxStk) || maxStk < 1) {
                 alert('❌ Total number of stocks per watchlist must be a positive integer (minimum 1).');
+                return;
+            }
+            if (isNaN(wlRefresh) || wlRefresh < 3) {
+                alert('❌ Watchlist refresh interval must be a positive integer (minimum 3 seconds).');
+                return;
+            }
+            if (isNaN(pfRefresh) || pfRefresh < 3) {
+                alert('❌ Portfolio refresh interval must be a positive integer (minimum 3 seconds).');
+                return;
+            }
+            if (isNaN(chartRefresh) || chartRefresh < 3) {
+                alert('❌ Chart refresh interval must be a positive integer (minimum 3 seconds).');
                 return;
             }
 
@@ -3927,6 +3997,9 @@
                     body: JSON.stringify({
                         max_watchlists_per_user: maxWl,
                         max_stocks_per_watchlist: maxStk,
+                        watchlist_refresh_interval_sec: wlRefresh,
+                        portfolio_refresh_interval_sec: pfRefresh,
+                        chart_refresh_interval_sec: chartRefresh,
                         research_document_websites: resWebsites
                     })
                 });

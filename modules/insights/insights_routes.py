@@ -26,6 +26,11 @@ from modules.common.market_fetcher import (
 from modules.common.indicators import calculate_indicators
 from modules.news.news_routes import get_stock_keywords
 
+from modules.insights.bullion_store import (
+    upsert_bullion_rate,
+    get_bullion_history,
+    get_latest_bullion_with_changes
+)
 insights_bp = Blueprint("insights_api", __name__)
 
 
@@ -565,7 +570,39 @@ def fetch_live_gold_silver_rates(force_refresh=False):
                         result["silver_8g"] = round(s_1g * 8, 2)
                         break
 
-        if result["gold_24k_1g"] > 0:
+        # Store and backfill all dates parsed from tables into DB (no duplicates)
+        silver_map = {}
+        if silver_table:
+            s_rows = silver_table.find('tbody').find_all('tr') if silver_table.find('tbody') else silver_table.find_all('tr')
+            for sr in s_rows:
+                s_cols = sr.find_all(['td', 'th'])
+                if len(s_cols) >= 2:
+                    d_txt = s_cols[0].text.strip()
+                    if not re.search(r'\d', d_txt): continue
+                    v1g = re.sub(r'[^\d.]', '', s_cols[1].text.strip())
+                    if v1g:
+                        try: silver_map[d_txt] = float(v1g)
+                        except: pass
+
+        if gold_table:
+            g_rows = gold_table.find('tbody').find_all('tr') if gold_table.find('tbody') else gold_table.find_all('tr')
+            for gr in g_rows:
+                g_cols = gr.find_all(['td', 'th'])
+                if len(g_cols) >= 5:
+                    d_txt = g_cols[0].text.strip()
+                    if not re.search(r'\d', d_txt): continue
+                    def _c_val(td):
+                        val_str = re.sub(r'[^\d.]', '', td.text.strip())
+                        return float(val_str) if val_str else 0.0
+                    g24_1 = _c_val(g_cols[1])
+                    g22_1 = _c_val(g_cols[3])
+                    s_1 = silver_map.get(d_txt, 0.0)
+                    if g24_1 > 0:
+                        upsert_bullion_rate(d_txt, g24_1, g22_1, s_1)
+
+        latest_rec = get_latest_bullion_with_changes()
+        if latest_rec:
+            result.update(latest_rec)
             _BULLION_CACHE["data"] = result
             _BULLION_CACHE["timestamp"] = now
             return result
@@ -575,6 +612,17 @@ def fetch_live_gold_silver_rates(force_refresh=False):
     if _BULLION_CACHE["data"]:
         return _BULLION_CACHE["data"]
     return FALLBACK_BULLION_RATES
+
+
+@insights_bp.route("/api/insights/bullion/history", methods=["GET"])
+@login_required
+def get_insights_bullion_history_api():
+    try:
+        from modules.insights.bullion_store import get_bullion_history
+        history = get_bullion_history()
+        return jsonify({"success": True, "history": history})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "history": []})
 
 @insights_bp.route("/api/insights/bullion", methods=["GET"])
 @login_required

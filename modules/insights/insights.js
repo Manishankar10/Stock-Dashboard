@@ -1321,12 +1321,12 @@
                             <div class="bullion-tile">
                                 <span class="bullion-tile-label">1 Gram</span>
                                 <span class="bullion-tile-value bullion-val-gold">${f24k_1g}</span>
-                                <span class="bullion-tile-sub">Daily Benchmark</span>
+                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.gold_24k_change_amt, data.gold_24k_change_pct)}</span>
                             </div>
                             <div class="bullion-tile">
                                 <span class="bullion-tile-label">8 Gm (1 Sovereign)</span>
                                 <span class="bullion-tile-value bullion-val-gold">${f24k_8g}</span>
-                                <span class="bullion-tile-sub">1 Pavan / Coin</span>
+                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.gold_24k_change_amt ? data.gold_24k_change_amt * 8 : 0, data.gold_24k_change_pct)}</span>
                             </div>
                         </div>
                     </div>
@@ -1347,12 +1347,12 @@
                             <div class="bullion-tile">
                                 <span class="bullion-tile-label">1 Gram</span>
                                 <span class="bullion-tile-value bullion-val-22k">${f22k_1g}</span>
-                                <span class="bullion-tile-sub">Jewellery Rate</span>
+                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.gold_22k_change_amt, data.gold_22k_change_pct)}</span>
                             </div>
                             <div class="bullion-tile">
                                 <span class="bullion-tile-label">8 Gm (1 Sovereign)</span>
                                 <span class="bullion-tile-value bullion-val-22k">${f22k_8g}</span>
-                                <span class="bullion-tile-sub">1 Pavan / Sovereign</span>
+                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.gold_22k_change_amt ? data.gold_22k_change_amt * 8 : 0, data.gold_22k_change_pct)}</span>
                             </div>
                         </div>
                     </div>
@@ -1373,18 +1373,18 @@
                             <div class="bullion-tile">
                                 <span class="bullion-tile-label">1 Gram</span>
                                 <span class="bullion-tile-value bullion-val-silver">${fsilver_1g}</span>
-                                <span class="bullion-tile-sub">Retail Rate</span>
+                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.silver_change_amt, data.silver_change_pct)}</span>
                             </div>
                             <div class="bullion-tile">
                                 <span class="bullion-tile-label">8 Grams</span>
                                 <span class="bullion-tile-value bullion-val-silver">${fsilver_8g}</span>
-                                <span class="bullion-tile-sub">Coin Rate</span>
+                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.silver_change_amt ? data.silver_change_amt * 8 : 0, data.silver_change_pct)}</span>
                             </div>
                         </div>
                         <div class="bullion-tile bullion-tile-full">
                             <div style="display: flex; flex-direction: column; min-width: 0;">
                                 <span class="bullion-tile-label">1 Kg (Ready Silver)</span>
-                                <span class="bullion-tile-sub">Wholesale Bar Benchmark</span>
+                                <span class="bullion-tile-sub">${formatBullionChangeBadge(data.silver_change_amt ? data.silver_change_amt * 1000 : 0, data.silver_change_pct)}</span>
                             </div>
                             <span class="bullion-tile-value bullion-val-silver" style="font-size: 14.5px; flex-shrink: 0;">${fsilver_1kg}</span>
                         </div>
@@ -1680,3 +1680,60 @@
                 }
             }
         }
+
+
+        function formatBullionChangeBadge(amt, pct) {
+            if (amt === undefined || amt === null || (amt === 0 && pct === 0)) {
+                return '<span style="font-size: 10.5px; opacity: 0.7; color: var(--text-secondary);">Daily Benchmark</span>';
+            }
+            const isPos = amt >= 0;
+            const sign = isPos ? '+' : '-';
+            const color = isPos ? '#10b981' : '#ef4444';
+            const icon = isPos ? '▲' : '▼';
+            return `<span style="font-size: 11px; font-weight: 700; color: ${color};">${icon} ${sign}₹${Math.abs(amt).toLocaleString('en-IN', {minimumFractionDigits: 1, maximumFractionDigits: 2})} (${sign}${Math.abs(pct).toFixed(2)}%)</span>`;
+        }
+
+        async function openBullionHistoryModal() {
+            const modal = document.getElementById('bullionHistoryModal');
+            if (modal) {
+                modal.style.display = 'block';
+                if (typeof window.bringModalToFront === 'function') window.bringModalToFront(modal);
+            }
+            const tbody = document.getElementById('bullion-history-tbody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading historical bullion rates...</td></tr>';
+            try {
+                const res = await fetch('/api/insights/bullion/history');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.history) && data.history.length > 0) {
+                    tbody.innerHTML = data.history.map(row => {
+                        const g24Chg = row.gold_24k_change_amt !== 0 ? `<div style="font-size: 10px; color: ${row.gold_24k_change_amt > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${row.gold_24k_change_amt > 0 ? '+' : ''}${row.gold_24k_change_amt} (${row.gold_24k_change_pct}%)</div>` : '';
+                        const g22Chg = row.gold_22k_change_amt !== 0 ? `<div style="font-size: 10px; color: ${row.gold_22k_change_amt > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${row.gold_22k_change_amt > 0 ? '+' : ''}${row.gold_22k_change_amt} (${row.gold_22k_change_pct}%)</div>` : '';
+                        const sChg = row.silver_change_amt !== 0 ? `<div style="font-size: 10px; color: ${row.silver_change_amt > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${row.silver_change_amt > 0 ? '+' : ''}${row.silver_change_amt} (${row.silver_change_pct}%)</div>` : '';
+                        return `
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 8px; font-weight: 600; color: var(--text-primary);">${row.date_display || row.date}</td>
+                                <td style="padding: 8px; text-align: right; font-weight: 600;">₹${Number(row.gold_24k_1g).toLocaleString('en-IN')}${g24Chg}</td>
+                                <td style="padding: 8px; text-align: right; color: var(--text-secondary);">₹${Number(row.gold_24k_8g).toLocaleString('en-IN')}</td>
+                                <td style="padding: 8px; text-align: right; font-weight: 600;">₹${Number(row.gold_22k_1g).toLocaleString('en-IN')}${g22Chg}</td>
+                                <td style="padding: 8px; text-align: right; color: var(--text-secondary);">₹${Number(row.gold_22k_8g).toLocaleString('en-IN')}</td>
+                                <td style="padding: 8px; text-align: right; font-weight: 600;">₹${Number(row.silver_1g).toLocaleString('en-IN', {minimumFractionDigits: 2})}${sChg}</td>
+                                <td style="padding: 8px; text-align: right; color: var(--text-secondary);">₹${Number(row.silver_1kg).toLocaleString('en-IN')}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">No historical records recorded yet.</td></tr>';
+                }
+            } catch (err) {
+                console.error('Error fetching bullion history:', err);
+                if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">Failed to load history.</td></tr>';
+            }
+        }
+
+        function closeBullionHistoryModal() {
+            const modal = document.getElementById('bullionHistoryModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        window.openBullionHistoryModal = openBullionHistoryModal;
+        window.closeBullionHistoryModal = closeBullionHistoryModal;

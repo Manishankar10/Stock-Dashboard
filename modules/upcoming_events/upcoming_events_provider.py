@@ -20,6 +20,7 @@ _SEED_FILE = Path("app_data/seed_upcoming_events.json") if Path("app_data/seed_u
 NSE_HOME = "https://www.nseindia.com/"
 NSE_CALENDAR_API = "https://www.nseindia.com/api/event-calendar"
 NSE_BOARD_MEETINGS_API = "https://www.nseindia.com/api/corporate-board-meetings"
+NSE_ANNOUNCEMENTS_API = "https://www.nseindia.com/api/corporate-announcements"
 
 HTTP_HEADERS = {
     "User-Agent": (
@@ -79,6 +80,50 @@ def _simplify_company_name(name: str) -> str:
     cleaned = re.sub(r"\b(Limited|Ltd\.?|Corporation|Corp\.?)\b", "", name, flags=re.IGNORECASE).strip()
     return cleaned or name
 
+
+
+def _parse_concall_date_and_time(text: str):
+    """Extract scheduled date and time for upcoming earnings concall."""
+    if not text:
+        return None, ""
+    clean = re.sub(r'&#\d+;', ' ', str(text))
+    # Pattern 1: '13 November 2026', '13th Nov, 2026'
+    p1 = re.search(r'\b(?:on\s+)?(?:[A-Za-z]+,\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})[\s,]+(202\d)\b', clean, re.IGNORECASE)
+    # Pattern 2: 'November 13, 2026'
+    p2 = re.search(r'\b(?:on\s+)?(?:[A-Za-z]+,\s+)?([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?[\s,]+(202\d)\b', clean, re.IGNORECASE)
+    # Pattern 3: '13.11.2026', '13/11/2026', '13-11-2026'
+    p3 = re.search(r'\b(?:on\s+)?(?:[A-Za-z]+,\s+)?(\d{1,2})[\.\/-](\d{1,2})[\.\/-](202\d)\b', clean, re.IGNORECASE)
+
+    dt = None
+    if p1:
+        d_str = f"{p1.group(1)} {p1.group(2)} {p1.group(3)}"
+        for f in ('%d %B %Y', '%d %b %Y'):
+            try:
+                dt = datetime.strptime(d_str, f)
+                break
+            except Exception: pass
+    elif p2:
+        d_str = f"{p2.group(1)} {p2.group(2)} {p2.group(3)}"
+        for f in ('%B %d %Y', '%b %d %Y'):
+            try:
+                dt = datetime.strptime(d_str, f)
+                break
+            except Exception: pass
+    elif p3:
+        d_str = f"{p3.group(1)}-{p3.group(2)}-{p3.group(3)}"
+        for f in ('%d-%m-%Y', '%m-%d-%Y'):
+            try:
+                dt = datetime.strptime(d_str, f)
+                break
+            except Exception: pass
+
+    time_m = re.search(r'\b(\d{1,2}[:\.]\d{2})\s*([ap]\.?m\.?|hrs|hours|ist)\b', clean, re.IGNORECASE)
+    time_str = ""
+    if time_m:
+        raw_t = time_m.group(1).replace('.', ':')
+        raw_s = time_m.group(2).replace('.', '').upper()
+        time_str = f"{raw_t} {raw_s}"
+    return dt, time_str
 
 class UpcomingEventsProvider:
     def __init__(self, data_dir: str = "."):
@@ -216,6 +261,54 @@ class UpcomingEventsProvider:
                             "badge_icon": badge_icon,
                             "details": item.get("bm_desc") or purpose,
                         })
+
+            # 3. NSE Concall & Earnings Call Schedules
+            try:
+                past_d = (today - timedelta(days=7)).strftime("%d-%m-%Y")
+                r_ann = self._session.get(
+                    f"{NSE_ANNOUNCEMENTS_API}?index=equities&from_date={past_d}&to_date={from_d}",
+                    timeout=7,
+                )
+                if r_ann.status_code == 200:
+                    ann_data = r_ann.json()
+                    if isinstance(ann_data, list):
+                        for item in ann_data:
+                            desc = str(item.get("desc") or "")
+                            att = str(item.get("attchmntText") or "")
+                            voice = str(item.get("voiceSummary") or "")
+                            combined = f"{desc} {att} {voice}".lower()
+
+                            # Exclude past recordings, transcripts, or cancellations
+                            if any(bad in combined for bad in ["transcript", "audio recording", "link of audio", "recording of", "cancellation", "cancelled"]):
+                                continue
+                            if not any(k in combined for k in ["concall", "conference call", "earnings call", "schedule of", "schedule for", "analyst meet", "investors meet"]):
+                                continue
+
+                            full_text = f"{att} {voice}"
+                            c_dt, time_str = _parse_concall_date_and_time(full_text)
+                            if not c_dt or c_dt.date() < today:
+                                continue
+
+                            sym = clean_symbol(item.get("symbol"))
+                            if not sym:
+                                continue
+
+                            comp = _simplify_company_name(item.get("sm_name") or sym)
+                            live_items.append({
+                                "symbol": sym,
+                                "company": comp,
+                                "date": c_dt.strftime("%Y-%m-%d"),
+                                "date_header": _format_date_header(c_dt),
+                                "type": "concall",
+                                "type_label": "Concall",
+                                "badge_text": time_str or "Concall",
+                                "time": time_str,
+                                "badge_icon": "📞",
+                                "details": att or desc or "Earnings Conference Call",
+                            })
+            except Exception as e:
+                logger.info(f"Concall announcements fetch: {e}")
+
         except Exception as e:
             logger.info(f"Live upcoming events fetch: {e}")
 

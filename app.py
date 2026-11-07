@@ -14,8 +14,10 @@ from modules.common.data_paths import BASE_DATA_DIR
 from modules.common.market_fetcher import fetcher
 from modules.common.auth_utils import (
     login_required,
-    ensure_default_admin
+    ensure_default_admin,
+    load_users
 )
+from modules.common.system_settings import get_system_settings
 
 # Feature Module Route Handlers
 from modules.watchlist import watchlist_bp, load_data
@@ -152,6 +154,31 @@ def serve_module_asset(filename):
 # PWA (PROGRESSIVE WEB APP) ROUTES
 # Web App Manifest, Service Worker, and Offline Fallback
 # =========================================================
+
+# Template Context Processor for Role-based UI & Global Settings
+@app.context_processor
+def inject_user_context():
+    uname = str(session.get("username", "")).lower()
+    is_admin = False
+    if uname:
+        try:
+            users = load_users()
+            u = users.get(uname, {})
+            is_admin = bool(u.get("is_admin") or u.get("role") == "admin")
+        except Exception:
+            is_admin = False
+    sys_settings = get_system_settings()
+    return {
+        "is_admin": is_admin,
+        "is_non_admin": not is_admin,
+        "portfolio_label": "Portfolio" if is_admin else "Paperfolio",
+        "portfolios_label": "Portfolios" if is_admin else "Paperfolios",
+        "system_settings": sys_settings,
+        "watchlist_refresh_interval_sec": sys_settings.get("watchlist_refresh_interval_sec", 30),
+        "portfolio_refresh_interval_sec": sys_settings.get("portfolio_refresh_interval_sec", 30),
+        "chart_refresh_interval_sec": sys_settings.get("chart_refresh_interval_sec", 10),
+    }
+
 @app.route("/manifest.json")
 @app.route("/manifest.webmanifest")
 def serve_manifest():

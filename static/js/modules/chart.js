@@ -5999,6 +5999,52 @@
             });
         }
 
+        
+        // =========================================================
+        // 150 BARS LOGICAL RANGE & 10s LIVE AUTO-REFRESH CONTROLLERS
+        // =========================================================
+        let shouldApply150Bars = true;
+        let chartLivePollingTimer = null;
+
+        function setChart150BarsLogicalRange() {
+            if (!mainChart || !cachedChartData || !cachedChartData.candles) return;
+            const candles = cachedChartData.candles;
+            if (candles.length === 0) return;
+            const lastIdx = candles.length - 1;
+            const targetBars = 150;
+            const rightOffset = 8;
+            const from = Math.max(-5, lastIdx - targetBars + 1);
+            const to = lastIdx + rightOffset;
+            try {
+                mainChart.timeScale().setVisibleLogicalRange({ from, to });
+                if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange({ from, to });
+                if (macdChart) macdChart.timeScale().setVisibleLogicalRange({ from, to });
+                redrawCanvasOverlay();
+            } catch(e) {}
+        }
+
+        function startChartLivePolling() {
+            stopChartLivePolling();
+            const intervalSec = (window.APP_SETTINGS && window.APP_SETTINGS.chart_refresh_interval_sec) || 10;
+            const ms = Math.max(3, intervalSec) * 1000;
+            chartLivePollingTimer = setInterval(() => {
+                const modal = document.getElementById('chartModal');
+                if (!modal || modal.style.display === 'none') {
+                    stopChartLivePolling();
+                    return;
+                }
+                if (document.visibilityState === 'hidden') return;
+                loadChartData(true);
+            }, ms);
+        }
+
+        function stopChartLivePolling() {
+            if (chartLivePollingTimer) {
+                clearInterval(chartLivePollingTimer);
+                chartLivePollingTimer = null;
+            }
+        }
+
         function resetChartView() {
             yAxisScaleMultiplier = 1.0;
             yAxisPanOffset = 0.0;
@@ -6006,7 +6052,7 @@
                 try { mainSeries.applyOptions({}); } catch(e){}
             }
             if (mainChart) {
-                mainChart.timeScale().fitContent();
+                setChart150BarsLogicalRange();
                 mainChart.priceScale('right').applyOptions({ autoScale: true });
                 try {
                     mainChart.priceScale('').applyOptions({
@@ -6015,12 +6061,8 @@
                     });
                 } catch(e){}
             }
-            if (rsiChart) {
-                rsiChart.timeScale().fitContent();
-            }
-            if (macdChart) {
-                macdChart.timeScale().fitContent();
-            }
+            
+            
             requestAnimationFrame(() => redrawCanvasOverlay());
         }
 
@@ -6120,7 +6162,9 @@
             renderFavoriteToolsShortcuts();
             initMobileFavBarDrag();
 
+            shouldApply150Bars = true;
             loadChartData();
+            startChartLivePolling();
         }
 
         function openChart(sym, targetInterval, patternMarkers, patternDrawings, patternIndicators) {
@@ -6155,6 +6199,7 @@
             }
 
             currentChartInterval = intervalStr;
+            shouldApply150Bars = true;
             try {
                 localStorage.setItem('capital_desk_chart_interval', intervalStr);
             } catch(e) {}
@@ -6220,23 +6265,27 @@
             }
         }
 
-        async function loadChartData() {
+        async function loadChartData(isBackground = false) {
             const reqSymbol = currentChartSymbol;
             const reqRange = currentChartRange;
             const reqInterval = currentChartInterval;
-            showChartLoader(reqSymbol, reqInterval, reqRange);
+            if (!isBackground) {
+                showChartLoader(reqSymbol, reqInterval, reqRange);
+            }
+            const prevLogicalRange = (isBackground && mainChart) ? mainChart.timeScale().getVisibleLogicalRange() : null;
             try {
                 const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(reqSymbol)}&range=${reqRange}&interval=${reqInterval}`);
                 const data = await res.json();
 
-                // Ignore stale in-flight response if user navigated to a different symbol/interval/range
                 if (reqSymbol !== currentChartSymbol || reqRange !== currentChartRange || reqInterval !== currentChartInterval) {
                     return;
                 }
 
                 if (data.error) {
-                    hideChartLoader();
-                    showEmptyChartState(data.error);
+                    if (!isBackground) {
+                        hideChartLoader();
+                        showEmptyChartState(data.error);
+                    }
                     return;
                 }
 
@@ -6253,13 +6302,23 @@
                 if (emptyOverlay) emptyOverlay.remove();
 
                 renderInHouseCharts(data);
+
+                if (prevLogicalRange && mainChart) {
+                    try {
+                        mainChart.timeScale().setVisibleLogicalRange(prevLogicalRange);
+                        if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange(prevLogicalRange);
+                        if (macdChart) macdChart.timeScale().setVisibleLogicalRange(prevLogicalRange);
+                    } catch(e) {}
+                }
             } catch (err) {
                 if (reqSymbol !== currentChartSymbol) return;
                 console.error('Chart fetch error:', err);
-                hideChartLoader();
-                showEmptyChartState(err.message || 'Error loading chart data');
+                if (!isBackground) {
+                    hideChartLoader();
+                    showEmptyChartState(err.message || 'Error loading chart data');
+                }
             } finally {
-                if (reqSymbol === currentChartSymbol) {
+                if (!isBackground && reqSymbol === currentChartSymbol) {
                     hideChartLoader();
                 }
             }
@@ -6963,6 +7022,10 @@
                 }
             }
 
+            if (shouldApply150Bars) {
+                shouldApply150Bars = false;
+                setChart150BarsLogicalRange();
+            }
             redrawCanvasOverlay();
             startCandleCountdownTimer();
         }
@@ -7923,6 +7986,7 @@
         }
 
         function closeChartModal() {
+            stopChartLivePolling();
             closeChartSymbolSearch();
             window.activePatternMarkers = [];
             window.activePatternShapes = [];
