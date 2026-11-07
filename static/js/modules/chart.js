@@ -6005,6 +6005,7 @@
         // =========================================================
         let shouldApply150Bars = true;
         let chartLivePollingTimer = null;
+        let chartLiveAbortController = null;
 
         function setChart150BarsLogicalRange() {
             if (!mainChart || !cachedChartData || !cachedChartData.candles) return;
@@ -6025,11 +6026,13 @@
 
         function startChartLivePolling() {
             stopChartLivePolling();
-            const intervalSec = (window.APP_SETTINGS && window.APP_SETTINGS.chart_refresh_interval_sec) || 10;
+            const modal = document.getElementById('chartModal');
+            if (!modal || modal.style.display === 'none') return;
+            const intervalSec = (window.APP_SETTINGS && Number(window.APP_SETTINGS.chart_refresh_interval_sec)) || 10;
             const ms = Math.max(3, intervalSec) * 1000;
             chartLivePollingTimer = setInterval(() => {
-                const modal = document.getElementById('chartModal');
-                if (!modal || modal.style.display === 'none') {
+                const currentModal = document.getElementById('chartModal');
+                if (!currentModal || currentModal.style.display === 'none') {
                     stopChartLivePolling();
                     return;
                 }
@@ -6042,6 +6045,10 @@
             if (chartLivePollingTimer) {
                 clearInterval(chartLivePollingTimer);
                 chartLivePollingTimer = null;
+            }
+            if (chartLiveAbortController) {
+                try { chartLiveAbortController.abort(); } catch(e){}
+                chartLiveAbortController = null;
             }
         }
 
@@ -6180,6 +6187,7 @@
                 btn.classList.toggle('active', btn.id === `tf-${rangeStr}`);
             });
             loadChartData();
+            startChartLivePolling();
         }
 
         let pendingTimeframeSwitchRange = null;
@@ -6210,6 +6218,7 @@
                 btn.classList.toggle('active', btn.id === `int-${intervalStr}`);
             });
             loadChartData();
+            startChartLivePolling();
         }
 
         function setChartInterval(intervalStr) {
@@ -6266,16 +6275,37 @@
         }
 
         async function loadChartData(isBackground = false) {
+            const modal = document.getElementById('chartModal');
+            if (!modal || modal.style.display === 'none') {
+                stopChartLivePolling();
+                return;
+            }
+
             const reqSymbol = currentChartSymbol;
             const reqRange = currentChartRange;
             const reqInterval = currentChartInterval;
+
+            if (chartLiveAbortController) {
+                try { chartLiveAbortController.abort(); } catch(e){}
+            }
+            chartLiveAbortController = new AbortController();
+            const currentSignal = chartLiveAbortController.signal;
+
             if (!isBackground) {
                 showChartLoader(reqSymbol, reqInterval, reqRange);
             }
             const prevLogicalRange = (isBackground && mainChart) ? mainChart.timeScale().getVisibleLogicalRange() : null;
             try {
-                const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(reqSymbol)}&range=${reqRange}&interval=${reqInterval}`);
+                const res = await fetch(`/api/chart_history?symbol=${encodeURIComponent(reqSymbol)}&range=${reqRange}&interval=${reqInterval}`, {
+                    signal: currentSignal
+                });
                 const data = await res.json();
+
+                const currentModal = document.getElementById('chartModal');
+                if (!currentModal || currentModal.style.display === 'none') {
+                    stopChartLivePolling();
+                    return;
+                }
 
                 if (reqSymbol !== currentChartSymbol || reqRange !== currentChartRange || reqInterval !== currentChartInterval) {
                     return;
@@ -6311,6 +6341,7 @@
                     } catch(e) {}
                 }
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 if (reqSymbol !== currentChartSymbol) return;
                 console.error('Chart fetch error:', err);
                 if (!isBackground) {
@@ -8665,6 +8696,9 @@
         window.closeAllChartPopovers = closeAllChartPopovers;
         window.setActiveToolColor = setActiveToolColor;
         window.setChartInterval = setChartInterval;
+        window.startChartLivePolling = startChartLivePolling;
+        window.stopChartLivePolling = stopChartLivePolling;
+        window.isChartLivePollingActive = () => Boolean(chartLivePollingTimer);
         window.setChartType = setChartType;
         window.setChartRange = changeRange;
         window.getCurrentChartRange = () => currentChartRange;
