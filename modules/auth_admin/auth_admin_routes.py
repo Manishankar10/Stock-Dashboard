@@ -574,11 +574,13 @@ def get_user_info():
         display_name = user_record.get("username", session.get("username", ""))
         is_admin = bool(user_record.get("is_admin", False) or user_record.get("role") == "admin")
         favorite_tools = user_record.get("favorite_tools", ["trendline", "support", "rectangle", "pricerange"])
+        chart_indicators = user_record.get("chart_indicators", None)
         return jsonify({
             "logged_in": True,
             "username": display_name,
             "is_admin": is_admin,
-            "favorite_tools": favorite_tools
+            "favorite_tools": favorite_tools,
+            "chart_indicators": chart_indicators
         })
     return jsonify({"logged_in": False}), 401
 
@@ -597,6 +599,34 @@ def save_favorite_tools():
     users[uname]["favorite_tools"] = favorite_tools
     save_users(users)
     return jsonify({"success": True, "favorite_tools": favorite_tools})
+
+
+@auth_admin_bp.route("/api/user/chart_indicators", methods=["GET"])
+@login_required
+def get_user_chart_indicators():
+    uname = str(session.get("username", "")).lower()
+    users = load_users()
+    user_record = users.get(uname, {})
+    return jsonify({
+        "success": True,
+        "indicators": user_record.get("chart_indicators", None)
+    })
+
+
+@auth_admin_bp.route("/api/user/chart_indicators", methods=["POST"])
+@login_required
+def save_user_chart_indicators():
+    uname = str(session.get("username", "")).lower()
+    users = load_users()
+    if uname not in users:
+        return jsonify({"error": "User not found"}), 404
+    data = request.json or {}
+    indicators = data.get("indicators")
+    if not isinstance(indicators, dict):
+        return jsonify({"error": "Invalid format"}), 400
+    users[uname]["chart_indicators"] = indicators
+    save_users(users)
+    return jsonify({"success": True, "chart_indicators": indicators})
 
 
 @auth_admin_bp.route("/api/admin/industries_overview/status", methods=["GET"])

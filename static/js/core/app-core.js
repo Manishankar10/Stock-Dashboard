@@ -1286,6 +1286,29 @@
                             window.renderFavoriteToolsShortcuts();
                         }
                     }
+
+                    if (data.chart_indicators && typeof data.chart_indicators === 'object') {
+                        try {
+                            localStorage.setItem('capital_desk_chart_indicators', JSON.stringify(data.chart_indicators));
+                        } catch(e) {}
+                        if (typeof window.loadSavedChartIndicators === 'function') {
+                            window.loadSavedChartIndicators();
+                        }
+                    } else {
+                        try {
+                            const localSaved = localStorage.getItem('capital_desk_chart_indicators');
+                            if (localSaved) {
+                                const parsed = JSON.parse(localSaved);
+                                if (parsed && typeof parsed === 'object') {
+                                    fetch('/api/user/chart_indicators', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ indicators: parsed })
+                                    }).catch(() => {});
+                                }
+                            }
+                        } catch(e) {}
+                    }
                 } else if (data && data.logged_in === false) {
                     window.location.replace('/login');
                 }

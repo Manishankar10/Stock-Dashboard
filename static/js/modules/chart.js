@@ -155,6 +155,40 @@
             }
         }, { capture: true, passive: true });
 
+        function getIndicatorPreferencesFromDom() {
+            return {
+                chkIwRider: document.getElementById('chkIwRider') ? document.getElementById('chkIwRider').checked : true,
+                chkCdRider: document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false,
+                chkStTrigger: document.getElementById('chkStTrigger') ? document.getElementById('chkStTrigger').checked : false,
+                chkBsDonchian: document.getElementById('chkBsDonchian') ? document.getElementById('chkBsDonchian').checked : false,
+                chkVolume: document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true,
+                chkVolumeMa: document.getElementById('chkVolumeMa') ? document.getElementById('chkVolumeMa').checked : true,
+                chkSma50: document.getElementById('chkSma50') ? document.getElementById('chkSma50').checked : false,
+                chkSma200: document.getElementById('chkSma200') ? document.getElementById('chkSma200').checked : false,
+                chkEma9: document.getElementById('chkEma9') ? document.getElementById('chkEma9').checked : false,
+                chkGann2Day: document.getElementById('chkGann2Day') ? document.getElementById('chkGann2Day').checked : false,
+                chkRsi: document.getElementById('chkRsi') ? document.getElementById('chkRsi').checked : true,
+                chkMacd: document.getElementById('chkMacd') ? document.getElementById('chkMacd').checked : false
+            };
+        }
+
+        let _saveIndicatorsDebounceTimer = null;
+        function saveChartIndicatorPreferences(prefs) {
+            if (!prefs || typeof prefs !== 'object') return;
+            try {
+                localStorage.setItem('capital_desk_chart_indicators', JSON.stringify(prefs));
+            } catch(e) {}
+
+            if (_saveIndicatorsDebounceTimer) clearTimeout(_saveIndicatorsDebounceTimer);
+            _saveIndicatorsDebounceTimer = setTimeout(() => {
+                fetch('/api/user/chart_indicators', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ indicators: prefs })
+                }).catch(e => console.warn('Failed to save chart indicators to server:', e));
+            }, 250);
+        }
+
         function loadSavedChartIndicators() {
             try {
                 const saved = localStorage.getItem('capital_desk_chart_indicators');
@@ -164,7 +198,7 @@
                     keys.forEach(k => {
                         const el = document.getElementById(k);
                         if (el && prefs[k] !== undefined) {
-                            el.checked = prefs[k];
+                            el.checked = !!prefs[k];
                         }
                     });
                 }
@@ -6192,6 +6226,9 @@ function getActiveChartIndicatorKeys() {
             }
             if (!currentChartInterval) currentChartInterval = '1d';
 
+            // Ensure indicator checkboxes reflect saved preferences for ALL stocks!
+            loadSavedChartIndicators();
+
             window.activePatternMarkers = (Array.isArray(patternMarkers) && patternMarkers.length > 0) ? patternMarkers : [];
             window.activePatternShapes = (Array.isArray(patternDrawings) && patternDrawings.length > 0) ? patternDrawings : [];
             window.activePatternIndicators = patternIndicators || null;
@@ -8051,6 +8088,10 @@ function getActiveChartIndicatorKeys() {
         }
 
         function toggleIndicators() {
+            // First: capture DOM state and save immediately so it persists across all stocks and to server DB
+            const prefs = getIndicatorPreferencesFromDom();
+            saveChartIndicatorPreferences(prefs);
+
             if (!volumeSeries) return;
 
             const currentActive = getActiveChartIndicatorKeys();
@@ -8060,35 +8101,18 @@ function getActiveChartIndicatorKeys() {
                 return;
             }
 
-            const showIwRider = document.getElementById('chkIwRider') ? document.getElementById('chkIwRider').checked : true;
-            const showCdRider = document.getElementById('chkCdRider') ? document.getElementById('chkCdRider').checked : false;
-            const showStTrigger = document.getElementById('chkStTrigger') ? document.getElementById('chkStTrigger').checked : false;
-            const showBsDonchian = document.getElementById('chkBsDonchian') ? document.getElementById('chkBsDonchian').checked : false;
-            const showVol = document.getElementById('chkVolume') ? document.getElementById('chkVolume').checked : true;
-            const showVolMa = document.getElementById('chkVolumeMa') ? document.getElementById('chkVolumeMa').checked : true;
-            const showSma50 = document.getElementById('chkSma50') ? document.getElementById('chkSma50').checked : false;
-            const showSma200 = document.getElementById('chkSma200') ? document.getElementById('chkSma200').checked : false;
-            const showEma9 = document.getElementById('chkEma9') ? document.getElementById('chkEma9').checked : false;
-            const showGann2Day = document.getElementById('chkGann2Day') ? document.getElementById('chkGann2Day').checked : false;
-            const showRsi = document.getElementById('chkRsi') ? document.getElementById('chkRsi').checked : true;
-            const showMacd = document.getElementById('chkMacd') ? document.getElementById('chkMacd').checked : false;
-
-            try {
-                localStorage.setItem('capital_desk_chart_indicators', JSON.stringify({
-                    chkIwRider: showIwRider,
-                    chkCdRider: showCdRider,
-                    chkStTrigger: showStTrigger,
-                    chkBsDonchian: showBsDonchian,
-                    chkVolume: showVol,
-                    chkVolumeMa: showVolMa,
-                    chkSma50: showSma50,
-                    chkSma200: showSma200,
-                    chkEma9: showEma9,
-                    chkGann2Day: showGann2Day,
-                    chkRsi: showRsi,
-                    chkMacd: showMacd
-                }));
-            } catch(e){}
+            const showIwRider = prefs.chkIwRider;
+            const showCdRider = prefs.chkCdRider;
+            const showStTrigger = prefs.chkStTrigger;
+            const showBsDonchian = prefs.chkBsDonchian;
+            const showVol = prefs.chkVolume;
+            const showVolMa = prefs.chkVolumeMa;
+            const showSma50 = prefs.chkSma50;
+            const showSma200 = prefs.chkSma200;
+            const showEma9 = prefs.chkEma9;
+            const showGann2Day = prefs.chkGann2Day;
+            const showRsi = prefs.chkRsi;
+            const showMacd = prefs.chkMacd;
 
             if (cdRiderSeries) cdRiderSeries.applyOptions({ visible: showCdRider });
             if (stTriggerSeries) stTriggerSeries.applyOptions({ visible: showStTrigger });
@@ -8923,10 +8947,19 @@ function getActiveChartIndicatorKeys() {
         }
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', setupChartSymbolSearchEvents);
+            document.addEventListener('DOMContentLoaded', () => {
+                setupChartSymbolSearchEvents();
+                loadSavedChartIndicators();
+            });
         } else {
             setupChartSymbolSearchEvents();
+            loadSavedChartIndicators();
         }
+
+        window.loadSavedChartIndicators = loadSavedChartIndicators;
+        window.saveChartIndicatorPreferences = saveChartIndicatorPreferences;
+        window.getIndicatorPreferencesFromDom = getIndicatorPreferencesFromDom;
+        window.toggleIndicators = toggleIndicators;
 
         window.navigateChartWatchlist = navigateChartWatchlist;
         window.getActiveChartWatchlist = getActiveChartWatchlist;
