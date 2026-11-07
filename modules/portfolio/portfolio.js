@@ -1503,7 +1503,7 @@
                             mobMenuBtn.onclick = (e) => {
                                 e.stopPropagation();
                                 if (typeof window.toggleWlRowMenu === 'function') {
-                                    window.toggleWlRowMenu(e, sym, { hideDelete: true, item: item });
+                                    window.toggleWlRowMenu(e, sym, { hideDelete: true, item: item, isPortfolio: true });
                                 }
                             };
                         }
@@ -1670,7 +1670,7 @@
                         menuBtn.onclick = (e) => {
                             e.stopPropagation();
                             if (typeof window.toggleWlRowMenu === 'function') {
-                                window.toggleWlRowMenu(e, sym, { hideDelete: true, item: item });
+                                window.toggleWlRowMenu(e, sym, { hideDelete: true, item: item, isPortfolio: true });
                             }
                         };
                         tdDetails.appendChild(menuBtn);

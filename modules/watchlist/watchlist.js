@@ -1450,7 +1450,9 @@
 
                     const labelSpan = document.createElement('span');
                     labelSpan.style.cssText = 'display: inline-flex; align-items: center; gap: 8px;';
-                    labelSpan.innerHTML = '<span>📁</span><span>Move</span>';
+                    const isPortfolioMenu = !!(options && (options.isPortfolio || options.item));
+                    const moveLabelText = isPortfolioMenu ? 'Add to Watchlist' : 'Move';
+                    labelSpan.innerHTML = `<span>📁</span><span>${moveLabelText}</span>`;
 
                     const arrowSpan = document.createElement('span');
                     arrowSpan.className = 'wl-move-arrow';
