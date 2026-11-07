@@ -76,4 +76,5 @@
         function closeHoldingDetailsModal() {
             document.getElementById('holdingDetailsModal').style.display = 'none';
         }
+        window.closeHoldingDetailsModal = closeHoldingDetailsModal;
 

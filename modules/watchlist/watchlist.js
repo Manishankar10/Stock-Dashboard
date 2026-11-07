@@ -1197,7 +1197,7 @@
                 modal = document.createElement('div');
                 modal.id = 'wlMobileMenuModal';
                 modal.className = 'small-modal wl-mobile-menu-sheet';
-                modal.onclick = (e) => { if (e.target === modal) closeWlMobileMenuModal(); };
+                // modal closes ONLY via Escape or close button
                 document.body.appendChild(modal);
             }
 
@@ -2019,6 +2019,8 @@
             const modal = document.getElementById('createWatchlistModal');
             if (modal) modal.style.display = 'none';
         }
+        window.openCreateWatchlistModal = openCreateWatchlistModal;
+        window.closeCreateWatchlistModal = closeCreateWatchlistModal;
 
         async function submitCreateWatchlist() {
             const input = document.getElementById('modal-new-watchlist-name');
@@ -2234,7 +2236,7 @@
                 modal = document.createElement('div');
                 modal.id = 'wlMobileSortModal';
                 modal.className = 'small-modal wl-mobile-sort-sheet';
-                modal.onclick = (e) => { if (e.target === modal) closeWlMobileSortModal(); };
+                // modal closes ONLY via Escape or close button
                 modal.innerHTML = `
                     <div class="small-modal-content wl-sort-sheet-content">
                         <div class="wl-sort-sheet-handle"></div>

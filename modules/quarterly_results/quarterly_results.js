@@ -1607,13 +1607,7 @@
             });
         }
 
-        // Modal backdrop click to close
-        const modal = document.getElementById('qr-custom-modal');
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeQrCustomModal();
-            });
-        }
+        // Modals close ONLY via Escape or close button (backdrop clicks disabled)
     }
 
     // Expose global methods

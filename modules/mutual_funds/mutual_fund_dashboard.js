@@ -883,7 +883,7 @@
     });
     document.getElementById('clear-due').addEventListener('click', function () { clearDue(this); });
     document.querySelectorAll('[data-close-modal]').forEach(button => button.addEventListener('click', closeModals));
-    document.querySelectorAll('.mf-modal-backdrop').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) closeModals(); }));
+    // Modals close ONLY via Escape or close button (backdrop clicks disabled)
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModals(); });
     bindPicker('investment');
     bindPicker('sip');

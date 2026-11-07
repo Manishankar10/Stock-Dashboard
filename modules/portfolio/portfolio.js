@@ -918,7 +918,12 @@
         }
         window.togglePfMobileMenu = togglePfMobileMenu;
         window.openAddHoldingModal = openAddHoldingModal;
+        window.closeAddHoldingModal = closeAddHoldingModal;
         window.openCreatePortfolioModal = openCreatePortfolioModal;
+        window.closeCreatePortfolioModal = closeCreatePortfolioModal;
+        window.closeEditModal = closeEditModal;
+        window.closeSellHoldingModal = closeSellHoldingModal;
+        window.closeBuyMoreModal = closeBuyMoreModal;
         window.deleteActivePortfolio = deleteActivePortfolio;
 
         document.addEventListener('click', function(e) {

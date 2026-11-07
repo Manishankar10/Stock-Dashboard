@@ -789,7 +789,10 @@
     ========================================================= -->
     <div id="editHoldingModal" class="small-modal">
         <div class="small-modal-content">
-            <h3 id="editHoldingTitle">Edit Holding</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 id="editHoldingTitle" style="margin: 0;">Edit Holding</h3>
+                <span class="close-btn" onclick="closeEditModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1;" title="Close Modal">&times;</span>
+            </div>
             <input type="hidden" id="editHoldingSymbol">
             <div class="form-group">
                 <label>Avg Buy Price (₹)</label>
@@ -819,7 +822,10 @@
     ========================================================= -->
     <div id="createWatchlistModal" class="small-modal">
         <div class="small-modal-content">
-            <h3>Create New Watchlist</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Create New Watchlist</h3>
+                <span class="close-btn" onclick="closeCreateWatchlistModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1;" title="Close Modal">&times;</span>
+            </div>
             <div class="form-group">
                 <label>Watchlist Name</label>
                 <input type="text" id="modal-new-watchlist-name" placeholder="e.g. IT Sector, Dividend Picks..." onkeydown="if(event.key==='Enter') submitCreateWatchlist()">
@@ -866,7 +872,10 @@
     ========================================================= -->
     <div id="createPortfolioModal" class="small-modal">
         <div class="small-modal-content">
-            <h3>Create New {{ portfolio_label }}</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Create New {{ portfolio_label }}</h3>
+                <span class="close-btn" onclick="closeCreatePortfolioModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1;" title="Close Modal">&times;</span>
+            </div>
             <div class="form-group">
                 <label>{{ portfolio_label }} Name</label>
                 <input type="text" id="modal-new-portfolio-name" placeholder="e.g. Core Wealth, Trading, High Growth..." onkeydown="if(event.key==='Enter') submitCreatePortfolio()">
@@ -883,7 +892,10 @@
     ========================================================= -->
     <div id="addHoldingModal" class="small-modal">
         <div class="small-modal-content">
-            <h3 id="addHoldingModalTitle">Add Holding to {{ portfolio_label }}</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 id="addHoldingModalTitle" style="margin: 0;">Add Holding to {{ portfolio_label }}</h3>
+                <span class="close-btn" onclick="closeAddHoldingModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1;" title="Close Modal">&times;</span>
+            </div>
             <div class="form-group" id="modal-pf-add-portfolio-group" style="display: none;">
                 <label>Target {{ portfolio_label }}</label>
                 <select id="modal-pf-add-portfolio" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); font-size: 13px;"></select>
@@ -1604,7 +1616,8 @@
 
 <!-- System Modal Dialog / Prompt Overlay -->
     <div id="customModalOverlay" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; inset: 0; z-index: 100050; background: rgba(15,23,42,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">
-        <div id="customModalBox" class="small-modal-content" style="width: 440px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); transform: scale(0.95); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); margin: auto;">
+        <div id="customModalBox" class="small-modal-content" style="position: relative; width: 440px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); transform: scale(0.95); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); margin: auto;">
+            <button type="button" class="close-btn" onclick="if(window.__systemModalCancel) window.__systemModalCancel();" style="position: absolute; top: 14px; right: 16px; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-secondary, #94a3b8); line-height: 1;" title="Close">&times;</button>
             <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px;">
                 <div class="modal-icon-badge" style="font-size: 26px; flex-shrink: 0; line-height: 1; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.06);">
                     <span id="customModalIcon">❓</span>
@@ -1628,7 +1641,8 @@
          CUSTOM QUERY SAVE / UPDATE CHOICE MODAL
     ========================================================= -->
     <div id="customQueryChoiceModal" class="modal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 100060; background: rgba(15,23,42,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center;">
-        <div class="small-modal-content" style="width: 480px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
+        <div class="small-modal-content" style="position: relative; width: 480px; max-width: 92vw; padding: 24px; border-radius: 14px; background: var(--modal-bg, #1e222d); border: 1px solid var(--border-color, #363a45); box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: auto;">
+            <button type="button" class="close-btn" onclick="document.getElementById('customQueryChoiceModal').style.display='none'" style="position: absolute; top: 14px; right: 16px; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-secondary, #94a3b8); line-height: 1;" title="Close">&times;</button>
             <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
                 <div style="font-size: 26px; line-height: 1; padding: 10px; border-radius: 10px; background: rgba(59, 130, 246, 0.15); color: var(--accent, #3b82f6); flex-shrink: 0;">
                     💾

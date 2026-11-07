@@ -809,11 +809,7 @@
     // Close Custom Modal
     if (customCancelBtn) customCancelBtn.addEventListener('click', closeCustomModal);
     if (customModalClose) customModalClose.addEventListener('click', closeCustomModal);
-    if (customModal) {
-        customModal.addEventListener('click', function (e) {
-            if (e.target === customModal) closeCustomModal();
-        });
-    }
+    // Modals close ONLY via Escape or close button (backdrop clicks disabled)
 
     // Search Input with Debounce
     if (searchInput) {
@@ -871,11 +867,7 @@
     // Modal Close
     if (remarksModalClose) remarksModalClose.addEventListener('click', closeRemarksModal);
     if (remarksModalOk) remarksModalOk.addEventListener('click', closeRemarksModal);
-    if (remarksModal) {
-        remarksModal.addEventListener('click', function (e) {
-            if (e.target === remarksModal) closeRemarksModal();
-        });
-    }
+    // Modals close ONLY via Escape or close button (backdrop clicks disabled)
 
     // Global Export
     window.loadShareholding = loadShareholding;

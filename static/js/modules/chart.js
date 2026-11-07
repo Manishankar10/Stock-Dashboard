@@ -2139,11 +2139,25 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                const chartModalEl = document.getElementById('chartModal');
+                const isChartOpen = chartModalEl && (chartModalEl.style.display === 'block' || chartModalEl.classList.contains('show'));
+                if (!isChartOpen) return;
+
+                const searchDropdown = document.getElementById('chartSymbolSearchDropdown');
+                if (searchDropdown && searchDropdown.style.display === 'flex') return;
+
+                const hadTool = !!currentDrawingTool || !!tempMeasureData;
                 cancelDrawingTool();
                 hideCanvasObjectMenu();
                 if (tempMeasureData) {
                     clearTempMeasure();
                     redrawCanvasOverlay();
+                }
+
+                // If drawing tool or measure was active, first Escape cancels it.
+                // Next Escape closes the chart modal cleanly!
+                if (!hadTool) {
+                    closeChartModal();
                 }
             }
         });

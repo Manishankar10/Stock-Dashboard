@@ -51,9 +51,7 @@
         modal = document.createElement('div');
         modal.id = 'brokerResearchModal';
         modal.className = 'br-modal-overlay';
-        modal.onclick = function (e) {
-            if (e.target === modal) window.closeBrokerResearchModal();
-        };
+        // Modals close ONLY via Escape or close button (backdrop clicks disabled)
 
         modal.innerHTML = `
             <div class="br-modal-content" onclick="event.stopPropagation()">
@@ -119,9 +117,7 @@
         aiModal = document.createElement('div');
         aiModal.id = 'brokerResearchAiModal';
         aiModal.className = 'br-ai-modal-overlay';
-        aiModal.onclick = function (e) {
-            if (e.target === aiModal) window.closeBrokerResearchAiModal();
-        };
+        // Modals close ONLY via Escape or close button (backdrop clicks disabled)
 
         aiModal.innerHTML = `
             <div class="br-ai-modal-content" onclick="event.stopPropagation()">

@@ -516,16 +516,7 @@
             const notifModal = document.getElementById('notificationsModal');
             const stockNewsModal = document.getElementById('stockNewsModal');
 
-            // Chart Modal: do not exit on backdrop click (remains open until close button clicked)
-            if (event.target == editModal) closeEditModal();
-            if (event.target == detailModal) closeHoldingDetailsModal();
-            if (event.target == createWlModal) closeCreateWatchlistModal();
-            if (event.target == createPfModal) closeCreatePortfolioModal();
-            if (event.target == addHoldingModal) closeAddHoldingModal();
-            if (event.target == createAlertModal) closeCreateAlertModal();
-            if (event.target == notifModal) closeNotificationsModal();
-            if (event.target == stockNewsModal && window.closeStockNewsModal) closeStockNewsModal();
-
+            // Modals close ONLY via Escape or close button (backdrop clicks removed)
             if (!event.target.closest('.wl-overflow')) closeActionOverflow();
 
             const menuDropdown = document.querySelector('.menu-dropdown-content.show');
@@ -542,16 +533,10 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 hidePlusActionMenu();
-                // Chart Modal: do not exit on Escape
-                closeEditModal();
-                closeHoldingDetailsModal();
-                closeCreateWatchlistModal();
-                closeCreatePortfolioModal();
-                closeAddHoldingModal();
-                closeCreateAlertModal();
-                closeNotificationsModal();
-                if (window.closeStockNewsModal) closeStockNewsModal();
                 closeSettingsMenu();
+                if (typeof window.closeTopmostActiveModal === 'function') {
+                    window.closeTopmostActiveModal();
+                }
             }
         });
 

@@ -588,13 +588,7 @@
             document.body.style.overflow = '';
         }
 
-        // Close stock news modal on backdrop click
-        document.addEventListener('click', function(event) {
-            const modal = document.getElementById('stockNewsModal');
-            if (modal && event.target === modal) {
-                closeStockNewsModal();
-            }
-        });
+        // Stock news modal closes ONLY via close icon or Escape key (backdrop clicks disabled)
 
         // Close stock news modal on Escape key
         document.addEventListener('keydown', function(event) {
@@ -917,10 +911,7 @@
                 closeAllStockNewsPopovers();
             }
 
-            const wlModal = document.getElementById('stockWatchlistActionModal');
-            if (wlModal && e.target === wlModal) {
-                closeStockWatchlistActionModal();
-            }
+            // stockWatchlistActionModal closes via close icon or Escape key
         });
 
         document.addEventListener('keydown', function(e) {

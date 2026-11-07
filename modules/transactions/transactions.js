@@ -977,10 +977,7 @@
             return;
         }
 
-        // Close on modal backdrop click
-        if (e.target && e.target.classList && e.target.classList.contains('tx-custom-modal-backdrop')) {
-            closeTxCustomModal();
-        }
+        // Modals close ONLY via Escape or close button (backdrop clicks disabled)
     });
 
     // Support Ctrl+Enter in modal query textarea

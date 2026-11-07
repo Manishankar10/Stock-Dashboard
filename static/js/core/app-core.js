@@ -265,6 +265,254 @@
             initGlobalModalObserver();
         }
 
+        // =========================================================
+        // UNIVERSAL MODAL MANAGER - CLOSE TOPMOST ACTIVE MODAL
+        // Allows Escape key to dismiss whichever modal is active on top.
+        // Stacked modals close in reverse z-index order (topmost first).
+        // =========================================================
+        function closeTopmostActiveModal() {
+            // 1. System alert / confirmation modal
+            const customOverlay = document.getElementById('customModalOverlay');
+            if (customOverlay && isModalElementVisible(customOverlay)) {
+                if (typeof window.__systemModalCancel === 'function') {
+                    window.__systemModalCancel();
+                    return true;
+                }
+                const cancelBtn = document.getElementById('customModalCancelBtn');
+                if (cancelBtn) { cancelBtn.click(); return true; }
+                customOverlay.style.display = 'none';
+                return true;
+            }
+
+            // 2. Explicit ID to close function mapping
+            const modalCloseMap = {
+                'chartModal': () => {
+                    if (typeof window.closeChartModal === 'function') window.closeChartModal();
+                },
+                'fundamentalsModal': () => {
+                    if (typeof window.closeFundamentalsModal === 'function') window.closeFundamentalsModal();
+                },
+                'stockNewsModal': () => {
+                    if (typeof window.closeStockNewsModal === 'function') window.closeStockNewsModal();
+                },
+                'editHoldingModal': () => {
+                    if (typeof window.closeEditModal === 'function') window.closeEditModal();
+                },
+                'holdingDetailsModal': () => {
+                    if (typeof window.closeHoldingDetailsModal === 'function') window.closeHoldingDetailsModal();
+                },
+                'createWatchlistModal': () => {
+                    if (typeof window.closeCreateWatchlistModal === 'function') window.closeCreateWatchlistModal();
+                },
+                'createPortfolioModal': () => {
+                    if (typeof window.closeCreatePortfolioModal === 'function') window.closeCreatePortfolioModal();
+                },
+                'addHoldingModal': () => {
+                    if (typeof window.closeAddHoldingModal === 'function') window.closeAddHoldingModal();
+                },
+                'sellHoldingModal': () => {
+                    if (typeof window.closeSellHoldingModal === 'function') window.closeSellHoldingModal();
+                },
+                'buyMoreModal': () => {
+                    if (typeof window.closeBuyMoreModal === 'function') window.closeBuyMoreModal();
+                },
+                'createAlertModal': () => {
+                    if (typeof window.closeCreateAlertModal === 'function') window.closeCreateAlertModal();
+                },
+                'notificationsModal': () => {
+                    if (typeof window.closeNotificationsModal === 'function') window.closeNotificationsModal();
+                },
+                'editDrawingModal': () => {
+                    if (typeof window.closeEditDrawingModal === 'function') window.closeEditDrawingModal();
+                },
+                'stockWatchlistActionModal': () => {
+                    if (typeof window.closeStockWatchlistActionModal === 'function') window.closeStockWatchlistActionModal();
+                },
+                'bullionHistoryModal': () => {
+                    if (typeof window.closeBullionHistoryModal === 'function') window.closeBullionHistoryModal();
+                },
+                'upcomingEventsModal': () => {
+                    if (typeof window.closeUpcomingEventsModal === 'function') window.closeUpcomingEventsModal();
+                },
+                'qrMobileFilterModal': () => {
+                    if (typeof window.closeQrMobileFilter === 'function') window.closeQrMobileFilter();
+                },
+                'qr-custom-modal': () => {
+                    if (typeof window.closeQrCustomModal === 'function') window.closeQrCustomModal();
+                },
+                'shp-custom-modal': () => {
+                    if (typeof window.closeShpCustomModal === 'function') window.closeShpCustomModal();
+                },
+                'shp-remarks-modal': () => {
+                    if (typeof window.closeRemarksModal === 'function') window.closeRemarksModal();
+                },
+                'tx-custom-modal': () => {
+                    if (typeof window.closeTxCustomModal === 'function') window.closeTxCustomModal();
+                },
+                'pa-details-modal': () => {
+                    if (typeof window.closePaModal === 'function') window.closePaModal();
+                },
+                'analyserDetailModal': () => {
+                    if (typeof window.closeAnalyserModal === 'function') window.closeAnalyserModal();
+                },
+                'sr-constituents-modal': () => {
+                    if (typeof window.closeSectorConstituentsModal === 'function') window.closeSectorConstituentsModal();
+                },
+                'createSmallcaseModal': () => {
+                    if (typeof window.closeSmallcaseModal === 'function') window.closeSmallcaseModal('createSmallcaseModal');
+                },
+                'editSmallcaseModal': () => {
+                    if (typeof window.closeSmallcaseModal === 'function') window.closeSmallcaseModal('editSmallcaseModal');
+                },
+                'txSmallcaseModal': () => {
+                    if (typeof window.closeSmallcaseModal === 'function') window.closeSmallcaseModal('txSmallcaseModal');
+                },
+                'exitSmallcaseModal': () => {
+                    if (typeof window.closeSmallcaseModal === 'function') window.closeSmallcaseModal('exitSmallcaseModal');
+                },
+                'bulkStockSmallcaseModal': () => {
+                    if (typeof window.closeSmallcaseModal === 'function') window.closeSmallcaseModal('bulkStockSmallcaseModal');
+                },
+                'detailSmallcaseModal': () => {
+                    if (typeof window.closeSmallcaseModal === 'function') window.closeSmallcaseModal('detailSmallcaseModal');
+                },
+                'importSmallcaseModal': () => {
+                    if (typeof window.closeSmallcaseModal === 'function') window.closeSmallcaseModal('importSmallcaseModal');
+                },
+                'importWatchlistTxtModal': () => {
+                    if (typeof window.closeWatchlistTxtImportModal === 'function') window.closeWatchlistTxtImportModal();
+                },
+                'customQueryChoiceModal': () => {
+                    const m = document.getElementById('customQueryChoiceModal');
+                    if (m) m.style.display = 'none';
+                },
+                'customQueryNameModal': () => {
+                    const m = document.getElementById('customQueryNameModal');
+                    if (m) m.style.display = 'none';
+                },
+                'inspectUserModal': () => {
+                    if (typeof window.closeInspectModal === 'function') window.closeInspectModal();
+                },
+                'resetPassModal': () => {
+                    if (typeof window.closeResetPassModal === 'function') window.closeResetPassModal();
+                },
+                'externalApiLogsModal': () => {
+                    if (typeof window.closeExternalApiLogsModal === 'function') window.closeExternalApiLogsModal();
+                },
+                'externalApiLogDetailModal': () => {
+                    if (typeof window.closeExternalApiLogDetail === 'function') window.closeExternalApiLogDetail();
+                },
+                'transcriptShareModal': () => {
+                    if (typeof window.closeTranscriptShareModal === 'function') window.closeTranscriptShareModal();
+                },
+                'tradesModal': () => {
+                    if (typeof window.closeTradesModal === 'function') window.closeTradesModal();
+                },
+                'brokerResearchModal': () => {
+                    if (typeof window.closeBrokerResearchModal === 'function') window.closeBrokerResearchModal();
+                },
+                'brokerResearchAiModal': () => {
+                    if (typeof window.closeBrokerResearchAiModal === 'function') window.closeBrokerResearchAiModal();
+                },
+                'wlMobileMenuModal': () => {
+                    if (typeof window.closeWlMobileMenuModal === 'function') window.closeWlMobileMenuModal();
+                },
+                'wlMobileSortModal': () => {
+                    if (typeof window.closeWlMobileSortModal === 'function') window.closeWlMobileSortModal();
+                }
+            };
+
+            // Collect all visible modals matching GLOBAL_MODAL_SELECTOR
+            const modalCandidates = Array.from(document.querySelectorAll(
+                GLOBAL_MODAL_SELECTOR
+            )).filter(m => {
+                if (!m || m.id === 'customModalOverlay' || m.id === 'mobile-sidebar') return false;
+                if (m.matches && m.matches('#tx-deal-fields-popover, .tx-deal-fields-popover, .popover, [role="tooltip"], .chart-popover-menu, .menu-dropdown-content, .autocomplete-dropdown')) return false;
+                return isModalElementVisible(m);
+            });
+
+            if (modalCandidates.length === 0) {
+                return false;
+            }
+
+            modalCandidates.sort((a, b) => {
+                const zA = parseInt(window.getComputedStyle(a).zIndex, 10) || 0;
+                const zB = parseInt(window.getComputedStyle(b).zIndex, 10) || 0;
+                if (zB !== zA) return zB - zA;
+                const idxA = window.ModalHistoryManager ? window.ModalHistoryManager.stack.indexOf(a) : -1;
+                const idxB = window.ModalHistoryManager ? window.ModalHistoryManager.stack.indexOf(b) : -1;
+                return idxB - idxA;
+            });
+
+            const topModal = modalCandidates[0];
+
+            if (topModal.id && modalCloseMap[topModal.id]) {
+                try {
+                    modalCloseMap[topModal.id]();
+                } catch(e) {}
+            }
+
+            // If modal is still visible after mapped handler, click its close icon / button
+            if (isModalElementVisible(topModal)) {
+                const closeBtn = topModal.querySelector('.close-btn, .modal-close-btn, .pa-modal-close-btn, .br-close-btn, .of-modal-close, .sr-modal-close, button.close, [data-dismiss="modal"], [data-close-modal]');
+                if (closeBtn && typeof closeBtn.click === 'function') {
+                    try {
+                        closeBtn.click();
+                    } catch(e) {}
+                }
+            }
+
+            // Final fallback: if STILL visible, set display: none directly
+            if (isModalElementVisible(topModal)) {
+                topModal.style.display = 'none';
+                topModal.classList.remove('show', 'open');
+            }
+
+            if (window.ModalHistoryManager) window.ModalHistoryManager.onModalClosed(topModal);
+            return true;
+        }
+        window.closeTopmostActiveModal = closeTopmostActiveModal;
+
+        // Capture-phase Keydown listener: Escape dismisses the topmost active modal
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                // If chart symbol search dropdown is open, let that close first
+                const searchDropdown = document.getElementById('chartSymbolSearchDropdown');
+                if (searchDropdown && searchDropdown.style.display === 'flex') return;
+
+                // If drawing tool is active on open chart, let chart.js cancel the tool first
+                if (typeof window.getCurrentDrawingTool === 'function' && window.getCurrentDrawingTool()) {
+                    const chartModalEl = document.getElementById('chartModal');
+                    if (chartModalEl && chartModalEl.style.display !== 'none' && !chartModalEl.hasAttribute('hidden')) {
+                        return;
+                    }
+                }
+
+                const closed = closeTopmostActiveModal();
+                if (closed) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }
+        }, true);
+
+        // Capture-phase Click listener: Prevent ANY backdrop click from closing modals
+        // Modals must ONLY be dismissed via the Escape key or the close button
+        document.addEventListener('click', function (e) {
+            const target = e.target;
+            if (!target || !(target instanceof HTMLElement)) return;
+
+            if (target.matches && target.matches(GLOBAL_MODAL_SELECTOR)) {
+                const contentBox = target.closest('.modal-content, .small-modal-content, .pa-modal-sheet, .sr-modal-content, .upcoming-modal-sheet, .qr-modal-sheet, .shp-custom-modal-box, .tx-custom-modal-box, .share-modal-container, .trades-modal-container, .modal-dialog, .dialog-box, .mf-modal-content, .br-modal-content, .br-ai-modal-content, .of-modal-content');
+                if (!contentBox) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            }
+        }, true);
+
 
         // Core System Modal Function for all Alerts, Confirms, Prompts, Warnings, and Success Popups
         function showSystemModal(options = {}) {
@@ -379,15 +627,17 @@
                     resolve(false);
                 };
 
+                // Modals must NOT close on backdrop click (only Escape or close/cancel buttons)
                 overlay.onclick = (e) => {
                     if (e.target === overlay) {
-                        cleanup();
-                        resolve(isPrompt ? null : false);
+                        e.stopPropagation();
                     }
                 };
 
                 const handleKey = (e) => {
-                    if (e.key === 'Escape' && isConfirmOrPrompt) {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
                         cleanup();
                         resolve(isPrompt ? null : false);
                     } else if (e.key === 'Enter' && !isPrompt) {

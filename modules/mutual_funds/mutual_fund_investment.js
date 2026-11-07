@@ -122,7 +122,7 @@
 
     document.querySelectorAll('[data-investment-mode]').forEach(button => button.addEventListener('click', () => setMode(button.dataset.investmentMode)));
     document.querySelectorAll('[data-close-modal]').forEach(button => button.addEventListener('click', close));
-    modal.addEventListener('click', event => { if (event.target === modal) close(); });
+    // Modals close ONLY via Escape or close button (backdrop clicks disabled)
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !modal.hidden) close(); });
     document.getElementById('sip-form').addEventListener('submit', event => submit(event, true));
     document.getElementById('investment-form').addEventListener('submit', event => submit(event, false));

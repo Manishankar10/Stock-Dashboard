@@ -124,9 +124,7 @@
         document.body.appendChild(overlay);
         populateWatchlistSelect(overlay, currentWatchlist);
 
-        overlay.addEventListener('click', event => {
-            if (event.target === overlay) closeWatchlistOfficialFeeds();
-        });
+        // Modals close ONLY via Escape or close button (backdrop clicks disabled)
         overlay.querySelector('#of-close').addEventListener('click', closeWatchlistOfficialFeeds);
         overlay.querySelector('#of-refresh').addEventListener('click', () => {
             currentPage = 1;
