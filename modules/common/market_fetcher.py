@@ -326,6 +326,14 @@ class StockFetcher:
                 url = f'https://{host}/v8/finance/chart/{symbol}?interval=1d&range=5d&_={t_now}'
                 r = self.session.get(url, timeout=3.5)
                 if r.status_code == 404:
+                    formatted_sym = format_financial_symbol(symbol)
+                    if formatted_sym and formatted_sym != symbol:
+                        sub_data = self.fetch_stock(formatted_sym, use_cache=use_cache)
+                        if sub_data and not sub_data.get('error'):
+                            if use_cache:
+                                stock_cache.set(symbol, sub_data, ttl=30)
+                            return sub_data
+
                     err_data = {'error': 'No Data Available'}
                     if use_cache:
                         stock_cache.set(symbol, err_data, ttl=60)
@@ -344,7 +352,8 @@ class StockFetcher:
                             if closes:
                                 price = closes[-1]
 
-                        name = meta.get('shortName') or meta.get('longName') or symbol
+                        clean_sym_key = symbol.replace('.NS', '').replace('.BO', '')
+                        name = meta.get('shortName') or meta.get('longName') or POPULAR_INDIAN_STOCKS.get(clean_sym_key) or symbol
                         
                         if price is not None:
                             change_pct = meta.get('regularMarketChangePercent')
@@ -402,7 +411,8 @@ class StockFetcher:
                             if closes:
                                 price = closes[-1]
                             
-                        name = meta.get('shortName') or meta.get('longName') or symbol
+                        clean_sym_key = symbol.replace('.NS', '').replace('.BO', '')
+                        name = meta.get('shortName') or meta.get('longName') or POPULAR_INDIAN_STOCKS.get(clean_sym_key) or symbol
                         
                         if price is not None:
                             change_pct = meta.get('regularMarketChangePercent')

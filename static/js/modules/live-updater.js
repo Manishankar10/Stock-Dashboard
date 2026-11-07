@@ -60,6 +60,11 @@
             for (const [sym, info] of Object.entries(newPrices)) {
                 if (info && (!info.error || !stockPricesData[sym])) {
                     stockPricesData[sym] = info;
+                    const cleanS = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym;
+                    stockPricesData[cleanS] = info;
+                    if (!sym.endsWith('.NS') && !sym.endsWith('.BO')) {
+                        stockPricesData[sym + '.NS'] = info;
+                    }
                 }
             }
             try {
@@ -181,7 +186,18 @@
                     const pfDayPctEl = document.getElementById(`pf-day-pct-${rowKey}`);
                     const pfDayLblEl = document.getElementById(`pf-day-lbl-${rowKey}`);
 
-                    if (pfNameEl && info.name) pfNameEl.innerText = info.name;
+                    const cleanS = typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(sym) : sym;
+                    let companyName = (info && info.name) || (h && h.name) || '';
+                    if (!companyName && window.POPULAR_INDIAN_STOCKS && window.POPULAR_INDIAN_STOCKS[cleanS]) {
+                        companyName = window.POPULAR_INDIAN_STOCKS[cleanS];
+                    }
+                    if (!companyName) {
+                        companyName = cleanS;
+                    }
+
+                    if (pfNameEl) {
+                        pfNameEl.innerText = companyName;
+                    }
                     if (pfLtpEl) pfLtpEl.innerText = ltp > 0 ? (isPrivacyMode ? '••••••' : `₹${ltp.toLocaleString('en-IN', {minimumFractionDigits: 2})}`) : '-';
                     if (pfValEl) pfValEl.innerText = isPrivacyMode ? '₹ ••••••' : `₹${Math.round(curVal).toLocaleString('en-IN')}`;
 

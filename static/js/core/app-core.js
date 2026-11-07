@@ -8,6 +8,54 @@
         window.nativeAlert = __originalNativeAlert;
         window.nativeConfirm = __originalNativeConfirm;
 
+        // Popular Indian Stocks Dictionary for instant local name resolution
+        window.POPULAR_INDIAN_STOCKS = {
+            "POLYMED": "Poly Medicure Ltd",
+            "RELIANCE": "Reliance Industries Ltd",
+            "TCS": "Tata Consultancy Services Ltd",
+            "INFY": "Infosys Ltd",
+            "HDFCBANK": "HDFC Bank Ltd",
+            "ICICIBANK": "ICICI Bank Ltd",
+            "ROLEXRINGS": "Rolex Rings Ltd",
+            "KRISHNADEF": "Krishna Defence Ltd",
+            "GOLDIAM": "Goldiam International Ltd",
+            "TEXRAIL": "Texmaco Rail & Engineering Ltd",
+            "TATAMOTORS": "Tata Motors Ltd",
+            "TATASTEEL": "Tata Steel Ltd",
+            "SBIN": "State Bank of India",
+            "BHARTIARTL": "Bharti Airtel Ltd",
+            "ITC": "ITC Ltd",
+            "LTIM": "LTIMindtree Ltd",
+            "WIPRO": "Wipro Ltd",
+            "AXISBANK": "Axis Bank Ltd",
+            "KOTAKBANK": "Kotak Mahindra Bank Ltd",
+            "LT": "Larsen & Toubro Ltd",
+            "BAJFINANCE": "Bajaj Finance Ltd",
+            "MARUTI": "Maruti Suzuki India Ltd",
+            "SUNPHARMA": "Sun Pharmaceutical Industries Ltd",
+            "TITAN": "Titan Company Ltd",
+            "ASIANPAINT": "Asian Paints Ltd",
+            "ULTRACEMCO": "UltraTech Cement Ltd",
+            "NTPC": "NTPC Ltd",
+            "POWERGRID": "Power Grid Corporation of India Ltd",
+            "ONGC": "Oil & Natural Gas Corporation Ltd",
+            "COALINDIA": "Coal India Ltd",
+            "HAL": "Hindustan Aeronautics Ltd",
+            "BEL": "Bharat Electronics Ltd",
+            "TATAELXSI": "Tata Elxsi Ltd",
+            "DIXON": "Dixon Technologies India Ltd",
+            "IRFC": "Indian Railway Finance Corporation Ltd",
+            "RVNL": "Rail Vikas Nigam Ltd",
+            "CDSL": "Central Depository Services (India) Ltd",
+            "BSE": "BSE Ltd",
+            "SUZLON": "Suzlon Energy Ltd",
+            "ZOMATO": "Zomato Ltd",
+            "JIOFIN": "Jio Financial Services Ltd",
+            "TATACHEM": "Tata Chemicals Ltd",
+            "TATAPOWER": "Tata Power Company Ltd",
+            "POLYCAB": "Polycab India Ltd"
+        };
+
         // =========================================================
         // UNIVERSAL DYNAMIC MODAL STACKING MANAGER
         // Brings whichever modal is opened or clicked (latest) to top

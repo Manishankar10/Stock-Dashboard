@@ -4,17 +4,7 @@
         // Global Transactions State
         let userTransactionsData = [];
 
-        async function fetchTransactions() {
-            try {
-                const res = await fetch('/api/transactions');
-                if (res.ok) {
-                    userTransactionsData = await res.json();
-                    renderTransactionsTable();
-                }
-            } catch(e) {
-                console.error('Error fetching transactions:', e);
-            }
-        }
+// fetchTransactions managed in portfolio lifecycle
 
         async function deleteTransaction(txId) {
             if (!await showCustomConfirm({ title: 'Delete Transaction Record', message: 'Are you sure you want to delete this transaction record?', isDanger: true })) return;
@@ -500,37 +490,62 @@
         }
         window.renderPortfolioSkeletons = renderPortfolioSkeletons;
 
+        let isFetchingTransactions = false;
+        async function fetchTransactions() {
+            if (isFetchingTransactions) return;
+            isFetchingTransactions = true;
+            try {
+                const res = await fetch('/api/transactions');
+                if (res.ok) {
+                    userTransactionsData = await res.json();
+                    window.userTransactionsLoaded = true;
+                    renderTransactionsTable();
+                }
+            } catch(e) {
+                console.error('Error fetching transactions:', e);
+            } finally {
+                isFetchingTransactions = false;
+            }
+        }
+
         async function fetchPortfolios() {
             if (!window.portfoliosLoaded) {
                 renderPortfolioSkeletons();
             }
-            const res = await fetch('/api/portfolios');
-            portfoliosData = await res.json();
-            window.portfoliosLoaded = true;
-            
-            await fetchTransactions();
+            try {
+                // 1. First load portfolio data
+                const res = await fetch('/api/portfolios');
+                portfoliosData = await res.json();
+                window.portfoliosLoaded = true;
 
-            const names = Object.keys(portfoliosData);
-            if (names.length > 1) {
-                if (!activePortfolioName || (!portfoliosData[activePortfolioName] && activePortfolioName !== 'All')) {
-                    activePortfolioName = 'All';
+                const names = Object.keys(portfoliosData || {});
+                if (names.length > 1) {
+                    if (!activePortfolioName || (!portfoliosData[activePortfolioName] && activePortfolioName !== 'All')) {
+                        activePortfolioName = 'All';
+                    }
+                } else if (names.length === 1) {
+                    if (!activePortfolioName || !portfoliosData[activePortfolioName] || activePortfolioName === 'All') {
+                        activePortfolioName = names[0];
+                    }
+                } else {
+                    activePortfolioName = '';
                 }
-            } else if (names.length === 1) {
-                if (!activePortfolioName || !portfoliosData[activePortfolioName] || activePortfolioName === 'All') {
-                    activePortfolioName = names[0];
+
+                // Immediately render portfolio holdings & summaries
+                renderPortfolios();
+
+                // 2. Fetch live prices in background to calculate live P&L and company names
+                if (typeof refreshPrices === 'function') {
+                    refreshPrices().then(() => {
+                        renderPortfolios();
+                    });
                 }
-            } else {
-                activePortfolioName = '';
-            }
 
-            // Initial render with placeholders / cached state
-            renderPortfolios();
-
-            // Fetch live prices and re-render so Day P&L High to Low sort is fully applied initially
-            if (typeof refreshPrices === 'function') {
-                await refreshPrices();
+                // 3. Then load transaction data separately without blocking portfolio display
+                fetchTransactions();
+            } catch(e) {
+                console.error('Error fetching portfolios:', e);
             }
-            renderPortfolios();
         }
         window.fetchPortfolios = fetchPortfolios;
 
@@ -1588,9 +1603,23 @@
                             openInHouseChart(sym);
                         };
 
+                        const cleanSym = cleanDisplaySymbol(sym);
+                        const info = stockPricesData[sym] || stockPricesData[sym + '.NS'] || stockPricesData[cleanSym] || stockPricesData[cleanSym + '.NS'] || {};
+                        let companyName = item.name || (info && info.name) || '';
+                        if (!companyName && window.POPULAR_INDIAN_STOCKS && window.POPULAR_INDIAN_STOCKS[cleanSym]) {
+                            companyName = window.POPULAR_INDIAN_STOCKS[cleanSym];
+                        }
+                        if (!companyName && info && info.error) {
+                            companyName = cleanSym;
+                        }
+
+                        const nameHtml = companyName 
+                            ? escapeHtml(companyName) 
+                            : '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
+
                         const tdStock = document.createElement('td');
                         tdStock.className = 'pf-col-stock';
-                        tdStock.innerHTML = `<span class="stock-symbol">${cleanDisplaySymbol(sym)}</span>${isAll ? ` <span class="badge pf-badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}<div class="company-name" id="pf-name-${rowKey}"><span class="skeleton-box" style="width: 100px; height: 11px;"></span></div>`;
+                        tdStock.innerHTML = `<span class="stock-symbol">${cleanSym}</span>${isAll ? ` <span class="badge pf-badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}<div class="company-name" id="pf-name-${rowKey}">${nameHtml}</div>`;
 
                         const tdQty = document.createElement('td');
                         tdQty.className = 'pf-col-qty';
@@ -1601,8 +1630,6 @@
                         tdBuy.className = 'pf-col-buy';
                         tdBuy.style.textAlign = 'right';
                         tdBuy.innerText = formatMoney(item.buy_price);
-
-                        const info = stockPricesData[sym] || {};
                         const ltp = info.price || 0;
                         const dayChange = info.change || 0;
                         const invAmt = item.buy_price * item.quantity;
