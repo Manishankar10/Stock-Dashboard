@@ -808,7 +808,7 @@
                 input.id = 'wl-search-input';
                 input.className = 'wl-input';
                 input.setAttribute('data-wl-name', activeWatchlistName);
-                input.placeholder = 'Search & click company to add (e.g. Reliance, TCS, Polymed)...';
+                input.placeholder = '🔍 Search & click company to add (e.g. Reliance, TCS, Polymed)...';
                 input.onkeydown = (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
