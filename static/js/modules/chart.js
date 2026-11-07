@@ -2294,6 +2294,7 @@
             };
 
             mainContainer.addEventListener('pointerdown', (e) => {
+                if (window._chartJustPinched) return;
                 if (hasOpenChartPopover()) closeAllChartPopovers();
                 const menu = document.getElementById('plusActionMenu');
                 if (menu && menu.style.display === 'block') {
@@ -2322,7 +2323,7 @@
                 window.addEventListener('touchend', onWindowPointerUp);
             });
 
-            mainContainer.addEventListener('wheel', (e) => {
+            function handleChartWheel(e) {
                 if (hasOpenChartPopover()) closeAllChartPopovers();
 
                 // Shift + Mouse Wheel for horizontal scrolling (TradingView standard)
@@ -2346,7 +2347,7 @@
 
                 // Web desktop only: scroll over right Y-axis price scale to adjust vertical scale smoothly
                 if (window.innerWidth > 768 && mainSeries && mainChart) {
-                    const rect = mainContainer.getBoundingClientRect();
+                    const rect = e.currentTarget ? e.currentTarget.getBoundingClientRect() : mainContainer.getBoundingClientRect();
                     // Right price scale width is 75px
                     const isOverRightAxis = (e.clientX >= rect.right - 75);
                     if (isOverRightAxis) {
@@ -2373,8 +2374,38 @@
                     }
                 }
 
+                // Desktop zoom in/out with mouse wheel:
+                // TradingView style: anchor right side / latest candle statically, candles expand/shrink from left to right!
+                if (mainChart) {
+                    e.preventDefault();
+                    const rawDelta = e.deltaY;
+                    const normalizedDelta = Math.max(-2.5, Math.min(2.5, -rawDelta / 100));
+                    const factor = Math.pow(1.15, normalizedDelta);
+                    zoomChart(factor);
+                    return;
+                }
+
                 requestAnimationFrame(() => redrawCanvasOverlay());
-            }, { passive: false });
+            }
+
+            mainContainer.removeEventListener('wheel', handleChartWheel);
+            mainContainer.addEventListener('wheel', handleChartWheel, { passive: false });
+
+            const rsiPaneEl = document.getElementById('rsiChartPane');
+            const macdPaneEl = document.getElementById('macdChartPane');
+            [rsiPaneEl, macdPaneEl].forEach(pane => {
+                if (!pane) return;
+                pane.removeEventListener('wheel', handleChartWheel);
+                pane.addEventListener('wheel', handleChartWheel, { passive: false });
+                pane.removeEventListener('touchstart', onChartTouchStart);
+                pane.removeEventListener('touchmove', onChartTouchMove);
+                pane.removeEventListener('touchend', onChartTouchEnd);
+                pane.removeEventListener('touchcancel', onChartTouchCancel);
+                pane.addEventListener('touchstart', onChartTouchStart, { passive: false });
+                pane.addEventListener('touchmove', onChartTouchMove, { passive: false });
+                pane.addEventListener('touchend', onChartTouchEnd, { passive: false });
+                pane.addEventListener('touchcancel', onChartTouchCancel, { passive: false });
+            });
 
             mainContainer.addEventListener('dblclick', () => {
                 setTimeout(() => redrawCanvasOverlay(), 50);
@@ -2915,6 +2946,7 @@
         }
 
         function handleChartPaneMouseDown(e) {
+            if (window._chartJustPinched) return;
             if (e.target && e.target.closest && (e.target.closest('#canvasObjectPopup') || e.target.closest('.chart-popover-wrapper') || e.target.closest('.chart-popover-menu') || e.target.closest('#plusActionMenu') || e.target.closest('.chart-close-btn') || e.target.closest('#drawingToolBanner') || e.target.closest('#chartMobileToolHint') || e.target.closest('.tool-cancel-btn'))) {
                 return;
             }
@@ -3576,7 +3608,28 @@
             }
         }
 
+        let chartPinchLastDist = null;
+        let isChartPinching = false;
+        let chartPinchJustEndedTimer = null;
+
+        function getTouchDistance(t1, t2) {
+            const dx = t1.clientX - t2.clientX;
+            const dy = t1.clientY - t2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
         function onChartTouchStart(e) {
+            if (e.touches && e.touches.length >= 2) {
+                isChartPinching = true;
+                chartPinchLastDist = getTouchDistance(e.touches[0], e.touches[1]);
+                activeDrawingDrag = null;
+                if (mobileDrawSession) {
+                    if (mobileDrawSession.dragRaf) cancelAnimationFrame(mobileDrawSession.dragRaf);
+                    mobileDrawSession = null;
+                }
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
             const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
             if (isMobile && currentDrawingTool) {
                 const handled = handleMobileDrawingTouchStart(e);
@@ -3586,6 +3639,25 @@
         }
 
         function onChartTouchMove(e) {
+            if (isChartPinching && e.touches && e.touches.length >= 2) {
+                const currentDist = getTouchDistance(e.touches[0], e.touches[1]);
+                if (chartPinchLastDist && chartPinchLastDist > 0) {
+                    const factor = currentDist / chartPinchLastDist;
+                    if (Math.abs(factor - 1.0) > 0.008) {
+                        const clampedFactor = Math.max(0.75, Math.min(1.35, factor));
+                        zoomChart(clampedFactor);
+                        chartPinchLastDist = currentDist;
+                    }
+                } else {
+                    chartPinchLastDist = currentDist;
+                }
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
+            if (isChartPinching) {
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
             const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
             if (isMobile && currentDrawingTool && mobileDrawSession) {
                 handleMobileDrawingTouchMove(e);
@@ -3593,6 +3665,19 @@
         }
 
         function onChartTouchEnd(e) {
+            if (isChartPinching) {
+                if (!e.touches || e.touches.length < 2) {
+                    isChartPinching = false;
+                    chartPinchLastDist = null;
+                    if (chartPinchJustEndedTimer) clearTimeout(chartPinchJustEndedTimer);
+                    window._chartJustPinched = true;
+                    chartPinchJustEndedTimer = setTimeout(() => {
+                        window._chartJustPinched = false;
+                    }, 250);
+                }
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
             const isMobile = window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth <= 1024);
             if (isMobile && currentDrawingTool && mobileDrawSession) {
                 const handled = handleMobileDrawingTouchEnd(e);
@@ -3602,10 +3687,15 @@
         }
 
         function onChartTouchCancel(e) {
+            if (isChartPinching) {
+                isChartPinching = false;
+                chartPinchLastDist = null;
+            }
             handleMobileDrawingTouchCancel(e);
         }
 
         function handleChartPaneClick(e) {
+            if (window._chartJustPinched) return;
             if (e.target && e.target.closest && (e.target.closest('#drawingToolBanner') || e.target.closest('#chartMobileToolHint') || e.target.closest('.tool-cancel-btn') || e.target.closest('button'))) {
                 return;
             }
@@ -6069,27 +6159,7 @@
             return result;
         }
 
-        let _currentRightBarStays = true;
-        function updateZoomAnchor(range) {
-            if (!mainChart || !cachedChartData || !cachedChartData.candles) return;
-            const candles = cachedChartData.candles;
-            if (!candles || candles.length === 0) return;
-            const lastIdx = candles.length - 1;
-            const r = range || mainChart.timeScale().getVisibleLogicalRange();
-            if (!r) return;
-
-            // TradingView standard: at the latest price (live right edge), anchor to rightmost bar!
-            // When user has panned back into history, allow fluid zooming around cursor/view
-            const shouldStay = (r.to >= lastIdx - 2);
-            if (_currentRightBarStays !== shouldStay) {
-                _currentRightBarStays = shouldStay;
-                try {
-                    mainChart.timeScale().applyOptions({ rightBarStaysOnScroll: shouldStay });
-                    if (rsiChart) rsiChart.timeScale().applyOptions({ rightBarStaysOnScroll: shouldStay });
-                    if (macdChart) macdChart.timeScale().applyOptions({ rightBarStaysOnScroll: shouldStay });
-                } catch(e) {}
-            }
-        }
+        function updateZoomAnchor() {}
 
         function zoomChart(factor) {
             if (!mainChart) return;
@@ -6099,35 +6169,68 @@
 
             const candles = (cachedChartData && cachedChartData.candles) ? cachedChartData.candles : [];
             const lastIdx = candles.length > 0 ? candles.length - 1 : null;
-            const isAtRightEdge = (lastIdx !== null && range.to >= lastIdx - 2);
+
+            const currentSpan = range.to - range.from;
+            if (currentSpan <= 0 || !isFinite(currentSpan)) return;
+
+            const MIN_SPAN = 12;
+            const maxCandles = candles.length > 0 ? candles.length : 300;
+            const MAX_SPAN = Math.max(300, maxCandles * 1.5);
+
+            let newSpan = currentSpan / factor;
+            newSpan = Math.max(MIN_SPAN, Math.min(MAX_SPAN, newSpan));
+            if (Math.abs(newSpan - currentSpan) < 0.0001) return;
+
+            // Target anchor coordinate:
+            // If viewing recent bars / live edge, anchor the latest candle (lastIdx)
+            // If historical view, anchor the rightmost visible candle
+            const isAtRecent = (lastIdx !== null && range.to >= lastIdx - 1);
+            const anchorIdx = isAtRecent ? lastIdx : Math.floor(range.to);
+            const targetX = timeScale.logicalToCoordinate(anchorIdx);
 
             let newFrom, newTo;
-            const currentSpan = range.to - range.from;
-            const newSpan = currentSpan / factor;
-
-            if (isAtRightEdge) {
-                // TradingView style: at the latest price, anchor to the right edge!
-                newTo = range.to;
+            if (isAtRecent) {
+                // TradingView standard: Anchor the latest candle (lastIdx) so its horizontal pixel coordinate
+                // on the screen remains 100% STATIC. Zooming expands/contracts older candles strictly from left to right.
+                const rightOffsetBars = Math.max(0, range.to - lastIdx);
+                const frac = currentSpan > 0 ? (rightOffsetBars / currentSpan) : 0.04;
+                const clampedFrac = Math.min(0.35, Math.max(0, frac));
+                newTo = lastIdx + clampedFrac * newSpan;
                 newFrom = newTo - newSpan;
             } else {
-                // Historical view: zoom centered on current screen view
-                const center = (range.from + range.to) / 2;
-                const halfLength = newSpan / 2;
-                newFrom = center - halfLength;
-                newTo = center + halfLength;
+                // Historical view (panned back in time):
+                // Anchor the right edge of the visible screen view statically.
+                newTo = range.to;
                 if (lastIdx !== null && newTo > lastIdx + 5) {
                     newTo = lastIdx + 5;
-                    newFrom = newTo - newSpan;
+                }
+                newFrom = newTo - newSpan;
+            }
+
+            timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
+
+            // Pixel-perfect calibration: eliminate any fractional pixel error so anchor coordinate is 100% static
+            if (targetX !== null && targetX !== undefined) {
+                const actualX = timeScale.logicalToCoordinate(anchorIdx);
+                if (actualX !== null && actualX !== undefined) {
+                    const deltaX = actualX - targetX;
+                    const prevX = timeScale.logicalToCoordinate(anchorIdx - 1);
+                    const barSpacing = (prevX !== null) ? Math.abs(actualX - prevX) : (timeScale.width ? timeScale.width() / newSpan : 1);
+                    if (barSpacing > 0 && Math.abs(deltaX) > 0.001) {
+                        const shiftLogical = deltaX / barSpacing;
+                        newTo += shiftLogical;
+                        newFrom += shiftLogical;
+                        timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
+                    }
                 }
             }
 
-            const newRange = { from: newFrom, to: newTo };
-            timeScale.setVisibleLogicalRange(newRange);
-            if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(newRange); } catch(e){}
-            if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(newRange); } catch(e){}
-            updateZoomAnchor(newRange);
+            const finalRange = { from: newFrom, to: newTo };
+            if (rsiChart) try { rsiChart.timeScale().setVisibleLogicalRange(finalRange); } catch(e){}
+            if (macdChart) try { macdChart.timeScale().setVisibleLogicalRange(finalRange); } catch(e){}
             requestAnimationFrame(() => redrawCanvasOverlay());
         }
+        window.zoomChart = zoomChart;
 
         
         // =========================================================
@@ -6988,7 +7091,7 @@ function getActiveChartIndicatorKeys() {
                     horzLine: { width: 1, color: themeColors.crosshairLineColor, style: LightweightCharts.LineStyle.LargeDashed, labelBackgroundColor: themeColors.crosshairLabelBg }
                 },
                 handleScroll: { mouseWheel: false, pressedMove: true, horzTouchDrag: true, vertTouchDrag: true },
-                handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
+                handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: false, pinch: false },
                 kineticScroll: { touch: true, mouse: false }
             };
 
@@ -9078,7 +9181,7 @@ function getActiveChartIndicatorKeys() {
         window.deleteSelectedDrawing = deleteCurrentEditDrawing;
         window.clearAllChartDrawings = clearDrawings;
         initServerDrawingsSync();
-        window.resetChartZoom = () => zoomChart(1);
+        window.resetChartZoom = () => setChart150BarsLogicalRange();
         window.renderFavoriteToolsShortcuts = renderFavoriteToolsShortcuts;
         window.toggleFavoriteTool = toggleFavoriteTool;
         window.executeToolById = executeToolById;
