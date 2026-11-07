@@ -22,7 +22,7 @@
         <div class="sr-freq-left">
             <span class="sr-freq-label">FREQUENCY</span>
             <div class="sr-freq-pills" role="group" aria-label="Frequency Range">
-                <button type="button" class="sr-freq-btn active" data-freq="1D" onclick="setSectorFrequency('1D')" title="Daily intraday rotation">1D</button>
+                <button type="button" class="sr-freq-btn active" data-freq="D" onclick="setSectorFrequency('D')" title="Daily rotation">D</button>
                 <button type="button" class="sr-freq-btn" data-freq="1W" onclick="setSectorFrequency('1W')" title="1 Week (5 trading days)">1W</button>
                 <button type="button" class="sr-freq-btn" data-freq="1M" onclick="setSectorFrequency('1M')" title="1 Month (30 days)">1M</button>
                 <button type="button" class="sr-freq-btn" data-freq="3M" onclick="setSectorFrequency('3M')" title="3 Months (Quarterly cycle)">3M</button>
@@ -207,8 +207,8 @@
                             <th class="text-center sr-sortable-th" onclick="handleMatrixSort('quadrant')">
                                 QUADRANT <span class="sr-sort-icon" id="sr-sort-icon-quadrant"></span>
                             </th>
-                            <th class="text-center sr-sortable-th" id="sr-th-1D" onclick="handleMatrixSort('1D')">
-                                1 DAY <span class="sr-sort-icon" id="sr-sort-icon-1D"></span>
+                            <th class="text-center sr-sortable-th" id="sr-th-D" onclick="handleMatrixSort('D')">
+                                DAILY (D) <span class="sr-sort-icon" id="sr-sort-icon-D"></span>
                             </th>
                             <th class="text-center sr-sortable-th" id="sr-th-1W" onclick="handleMatrixSort('1W')">
                                 1 WEEK <span class="sr-sort-icon" id="sr-sort-icon-1W"></span>

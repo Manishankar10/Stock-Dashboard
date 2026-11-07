@@ -491,6 +491,7 @@ class SectorRotationProvider:
         bench_2y = round((math.sqrt(max(0.01, 1 + bench_1y / 100) * max(0.01, 1 + bench_3y / 100)) - 1) * 100, 2)
 
         benchmark_returns = {
+            "D": round(bench_1d, 2),
             "1D": round(bench_1d, 2),
             "1W": round(bench_1w, 2),
             "1M": round(bench_1m, 2),
@@ -589,6 +590,7 @@ class SectorRotationProvider:
             dy = float(nse_item.get("dy") or 0.0)
 
             returns_by_freq = {
+                "D": round(r_1d, 2),
                 "1D": round(r_1d, 2),
                 "1W": round(r_1w, 2),
                 "1M": round(r_1m, 2),
@@ -664,17 +666,17 @@ class SectorRotationProvider:
 
     def get_sector_rotation(
         self,
-        frequency: str = "1M",
+        frequency: str = "D",
         force_refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Calculates RRG Cartesian coordinates (RS-Ratio, RS-Momentum) and
-        quadrant assignments for the given frequency (1D, 1W, 1M, 3M, 6M, 1Y, YTD).
+        quadrant assignments for the given frequency (D, 1D, 1W, 1M, 3M, 6M, 1Y, YTD).
         """
-        valid_freqs = ["1D", "1W", "1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "10Y", "ALL", "YTD"]
-        freq = frequency.upper().strip()
+        valid_freqs = ["D", "1D", "1W", "1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "10Y", "ALL", "YTD"]
+        freq = frequency.upper().strip() if frequency else "D"
         if freq not in valid_freqs:
-            freq = "1M"
+            freq = "D"
 
         now = time.time()
         need_fetch = force_refresh or not self._cached_data or (now - self._last_fetch_time > CACHE_TTL)
@@ -716,9 +718,9 @@ class SectorRotationProvider:
                 st_ret = s["returns"].get("1W", 0.0)
                 st_bench = bench_returns.get("1W", 0.0)
             elif freq == "1W":
-                st_ret = s["returns"].get("1D", 0.0)
-                st_bench = bench_returns.get("1D", 0.0)
-            else:  # 1D: compare against 1D alpha
+                st_ret = s["returns"].get("D", s["returns"].get("1D", 0.0))
+                st_bench = bench_returns.get("D", bench_returns.get("1D", 0.0))
+            else:  # D / 1D: compare against D alpha
                 st_ret = s_ret
                 st_bench = bench_ret
 

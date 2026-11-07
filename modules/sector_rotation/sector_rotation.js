@@ -8,7 +8,7 @@
 
 (function () {
     const state = {
-        frequency: '1D',          // '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD'
+        frequency: 'D',           // 'D' | '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD'
         view: 'rrg',              // 'rrg' | 'leaderboard' | 'matrix' | 'cycle'
         quadrantFilter: 'all',    // 'all' | 'leading' | 'weakening' | 'lagging' | 'improving'
         searchQuery: '',
@@ -23,7 +23,7 @@
         lastUpdatedText: 'Just now',
         isLoading: false,
         selectedSectorId: null,
-        matrixSortField: '1D',    // 'name' | 'quadrant' | '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'breadth' | 'pe'
+        matrixSortField: 'D',     // 'name' | 'quadrant' | 'D' | '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'breadth' | 'pe'
         matrixSortDir: 'desc'     // 'asc' | 'desc'
     };
 
@@ -503,7 +503,7 @@
         }
 
         // 2. Update Column Sort Icons & Highlight Active Benchmark Column Header
-        const freqs = ['1D', '1W', '1M', '3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y', 'ALL', 'YTD'];
+        const freqs = ['D', '1W', '1M', '3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y', 'ALL', 'YTD'];
         const allFields = ['name', 'quadrant', ...freqs, 'breadth', 'pe'];
 
         allFields.forEach(f => {
@@ -525,7 +525,7 @@
         freqs.forEach(f => {
             const th = document.getElementById(`sr-th-${f}`);
             if (th) {
-                th.classList.toggle('sr-th-active-freq', f === state.frequency);
+                th.classList.toggle('sr-th-active-freq', f === state.frequency || ((f === 'D' || f === '1D') && (state.frequency === 'D' || state.frequency === '1D')));
             }
         });
 
@@ -591,7 +591,7 @@
                 const val = (typeof rets[f] === 'number') ? rets[f] : 0.0;
                 const sign = val > 0 ? '+' : '';
                 const hClass = getHeatClass(val);
-                const isActiveFreq = (f === state.frequency);
+                const isActiveFreq = (f === state.frequency) || ((f === 'D' || f === '1D') && (state.frequency === 'D' || state.frequency === '1D'));
                 freqCells += `
                 <td class="text-center sr-matrix-cell ${isActiveFreq ? 'sr-cell-active-freq' : ''}">
                     <span class="sr-matrix-pill ${hClass}" title="${escapeHtml(sec.name)} ${f} Return: ${sign}${val.toFixed(2)}%">
@@ -869,10 +869,11 @@
 
     // --- 8. Global Interaction Methods ---
     window.setSectorFrequency = function (freq) {
-        if (state.frequency === freq) return;
+        if (!freq) freq = 'D';
         state.frequency = freq;
         document.querySelectorAll('.sr-freq-btn').forEach(btn => {
-            const isActive = btn.getAttribute('data-freq') === freq;
+            const bFreq = btn.getAttribute('data-freq');
+            const isActive = (bFreq === freq) || (freq === 'D' && (bFreq === 'D' || bFreq === '1D')) || (freq === '1D' && (bFreq === 'D' || bFreq === '1D'));
             btn.classList.toggle('active', isActive);
             if (isActive && window.innerWidth <= 768) {
                 try {

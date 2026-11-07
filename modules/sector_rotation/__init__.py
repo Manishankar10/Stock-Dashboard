@@ -57,7 +57,7 @@ def get_sector_rotation_data():
     if _PROVIDER is None:
         return jsonify({"error": "Sector Rotation provider is not initialized."}), 500
 
-    frequency = request.args.get("frequency", "1M").strip().upper()
+    frequency = request.args.get("frequency", "D").strip().upper()
     force_refresh = str(request.args.get("refresh", "")).lower() in ("1", "true", "yes")
 
     try:
@@ -73,7 +73,7 @@ def refresh_sector_rotation():
     if _PROVIDER is None:
         return jsonify({"error": "Sector Rotation provider is not initialized."}), 500
     try:
-        data = _PROVIDER.get_sector_rotation(frequency="1M", force_refresh=True)
+        data = _PROVIDER.get_sector_rotation(frequency=request.args.get("frequency", "D").strip().upper(), force_refresh=True)
         return jsonify({"success": True, "message": "Official sector rotation and RRG metrics refreshed."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
