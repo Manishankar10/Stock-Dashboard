@@ -2,33 +2,68 @@
    WATCHLIST MODULE STYLES
    Location: modules/watchlist/watchlist.css
    ========================================================= */
+
+/* Keep watchlist name scrolls as previous (horizontal scroll, no wrap) */
 .watchlist-selector-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 14px;
+    width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap !important;
+}
+
+#watchlist-selector-mount {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+}
+
+#watchlist-selector-mount::-webkit-scrollbar {
+    display: none;
+}
+
+#watchlist-selector-mount .pf-select-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
 }
 
 /* =========================================================
    Web Only (min-width: 993px): 
-   - Same height for Watchlist & Upcoming section
+   - Remove vertical scroll only on watchlist page
+   - Same height for Watchlist & Upcoming sections
    - Max height fits screen size
-   - No horizontal scroll for overall watchlist page
-   - Internal vertical scrolling for watchlist table
+   - Internal vertical scrolling for watchlist table & events list
    ========================================================= */
 @media (min-width: 993px) {
+    /* Remove vertical scroll only on watchlist page */
+    html:has(#tab-watchlists.active),
+    body:has(#tab-watchlists.active) {
+        overflow-y: hidden !important;
+        height: 100vh !important;
+    }
+
+    body:has(#tab-watchlists.active) .app-layout-wrapper {
+        min-height: calc(100vh - 36px) !important;
+        max-height: calc(100vh - 36px) !important;
+    }
+
     #tab-watchlists {
-        overflow-x: hidden !important;
-        max-width: 100% !important;
+        overflow-y: hidden !important;
         box-sizing: border-box;
     }
 
     #tab-watchlists .watchlist-top-card {
         max-width: 100% !important;
         box-sizing: border-box;
-        overflow-x: hidden !important;
     }
 
+    /* Equal height and max height = screen size */
     #tab-watchlists .watchlist-split-container {
         display: flex;
         gap: 20px;
@@ -39,9 +74,9 @@
         width: 100%;
         max-width: 100% !important;
         box-sizing: border-box;
-        overflow-x: hidden !important;
     }
 
+    /* 70% Left Main: Watchlist Table Section */
     #tab-watchlists .watchlist-split-main {
         flex: 0 0 calc(70% - 10px);
         max-width: calc(70% - 10px);
@@ -83,6 +118,7 @@
         z-index: 2;
     }
 
+    /* 30% Right Sidebar: Upcoming Events Section */
     #tab-watchlists .watchlist-split-sidebar {
         flex: 0 0 calc(30% - 10px);
         max-width: calc(30% - 10px);

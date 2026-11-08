@@ -6,17 +6,26 @@
 /* 70% / 30% Split Screen Layout on Watchlist Page (Web Only) */
 /* ======================================================== */
 @media (min-width: 993px) {
-    /* Watchlist page only: No horizontal scroll for overall page */
+    /* Remove vertical scroll only on watchlist page */
+    html:has(#tab-watchlists.active),
+    body:has(#tab-watchlists.active) {
+        overflow-y: hidden !important;
+        height: 100vh !important;
+    }
+
+    body:has(#tab-watchlists.active) .app-layout-wrapper {
+        min-height: calc(100vh - 36px) !important;
+        max-height: calc(100vh - 36px) !important;
+    }
+
     #tab-watchlists {
-        overflow-x: hidden !important;
-        max-width: 100% !important;
+        overflow-y: hidden !important;
         box-sizing: border-box;
     }
 
     #tab-watchlists .watchlist-top-card {
         max-width: 100% !important;
         box-sizing: border-box;
-        overflow-x: hidden !important;
     }
 
     /* Equal height and max height = screen size */
@@ -30,7 +39,6 @@
         width: 100%;
         max-width: 100% !important;
         box-sizing: border-box;
-        overflow-x: hidden !important;
     }
 
     /* 70% Left Main: Watchlist Table Section */
