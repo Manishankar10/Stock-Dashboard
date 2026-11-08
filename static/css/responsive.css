@@ -1396,6 +1396,13 @@
         min-height: 20px !important;
     }
 
+    /* Remove setting icon from portfolio only in mobile */
+    .pf-mob-sym-row .pf-row-menu-btn,
+    .pf-mob-card .pf-row-menu-btn,
+    .pf-mobile-list .pf-row-menu-btn {
+        display: none !important;
+    }
+
     .pf-mob-sym {
         font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
         font-size: 14.5px !important;

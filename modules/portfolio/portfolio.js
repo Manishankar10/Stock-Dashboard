@@ -1446,7 +1446,6 @@
                                 <div class="pf-mob-sym-group" title="Tap to view holding details">
                                     <div class="pf-mob-sym-row" style="display: flex; align-items: center; gap: 6px;">
                                         <span class="pf-mob-sym">${cleanDisplaySymbol(sym)}</span>
-                                        <button type="button" class="btn-secondary wl-row-menu-btn pf-row-menu-btn" style="padding: 2px 6px; font-size: 11px; line-height: 1; border-radius: 4px;" title="Actions for ${cleanDisplaySymbol(sym)}">⚙️</button>
                                         ${isAll ? `<span class="badge pf-badge">📁 ${escapeHtml(item.portfolioName)}</span>` : ''}
                                     </div>
                                 </div>
@@ -1516,15 +1515,6 @@
                             symGroup.onclick = (e) => {
                                 e.stopPropagation();
                                 openHoldingDetailsModal(item);
-                            };
-                        }
-                        const mobMenuBtn = itemEl.querySelector('.pf-row-menu-btn');
-                        if (mobMenuBtn) {
-                            mobMenuBtn.onclick = (e) => {
-                                e.stopPropagation();
-                                if (typeof window.toggleWlRowMenu === 'function') {
-                                    window.toggleWlRowMenu(e, sym, { hideDelete: true, item: item, isPortfolio: true });
-                                }
                             };
                         }
 

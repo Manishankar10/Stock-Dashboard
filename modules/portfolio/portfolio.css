@@ -36,3 +36,12 @@
     font-size: 14px;
     line-height: 1;
 }
+
+/* Remove setting icon from portfolio only in mobile */
+@media (max-width: 768px) {
+    .pf-mob-sym-row .pf-row-menu-btn,
+    .pf-mob-card .pf-row-menu-btn,
+    .pf-mobile-list .pf-row-menu-btn {
+        display: none !important;
+    }
+}
