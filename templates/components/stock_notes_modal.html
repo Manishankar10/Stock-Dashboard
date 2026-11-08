@@ -1,0 +1,69 @@
+<!-- templates/components/stock_notes_modal.html -->
+<!-- Standalone Stock Notes, Buy & Sell Comments Modal -->
+
+<div id="stockNotesModal" class="modal stock-notes-modal" style="display: none; z-index: 100050;" onclick="if(event.target === this) closeStockNotesModal();">
+    <div class="modal-content stock-notes-modal-content" onclick="event.stopPropagation();">
+        <!-- Header -->
+        <div class="stock-notes-header">
+            <div class="stock-notes-title-group">
+                <span class="stock-notes-icon" aria-hidden="true">📝</span>
+                <div>
+                    <div class="stock-notes-title">
+                        <span id="stockNotesSymbol">STOCK</span>
+                        <span id="stockNotesCompanyName" class="stock-notes-company-name">Company Name</span>
+                    </div>
+                    <div class="stock-notes-subtitle">Notes, Buy &amp; Sell Comments (Ordered by Date Desc)</div>
+                </div>
+            </div>
+            <button type="button" class="stock-notes-close-btn" onclick="closeStockNotesModal()" title="Close">&times;</button>
+        </div>
+
+        <!-- Add Note Box -->
+        <div class="stock-notes-add-box">
+            <div class="stock-notes-add-header">
+                <span>➕ Add New Note / Trade Comment</span>
+            </div>
+            <div class="stock-notes-form-row">
+                <div class="stock-notes-input-group" style="flex: 0 0 160px;">
+                    <label for="stockNoteDate">Date</label>
+                    <input type="date" id="stockNoteDate" class="stock-notes-input" aria-label="Note Date">
+                </div>
+                <div class="stock-notes-input-group" style="flex: 1 1 200px;">
+                    <label for="stockNoteType">Type / Tag</label>
+                    <select id="stockNoteType" class="stock-notes-select" aria-label="Note Type">
+                        <option value="NOTE">📝 Note / Observation</option>
+                        <option value="BUY">🟢 Buy Thesis / Comment</option>
+                        <option value="SELL">🔴 Sell Strategy / Comment</option>
+                        <option value="ANALYSIS">📊 Analysis / Valuation</option>
+                        <option value="TARGET">🎯 Target / Stop Loss</option>
+                    </select>
+                </div>
+            </div>
+            <div class="stock-notes-form-row">
+                <textarea id="stockNoteText" class="stock-notes-textarea" placeholder="Write your stock analysis, trade reasoning, buy/sell plan, or observations..."></textarea>
+            </div>
+            <div class="stock-notes-form-actions">
+                <button type="button" class="btn-primary stock-notes-submit-btn" id="btnSaveStockNote" onclick="submitStockNote()">Save Note</button>
+            </div>
+        </div>
+
+        <!-- Filter / Counter Bar -->
+        <div class="stock-notes-filter-bar">
+            <span id="stockNotesCountText">Showing 0 notes</span>
+            <div class="stock-notes-filter-tags">
+                <button type="button" class="stock-notes-filter-pill active" onclick="filterStockNotes('ALL', this)">All</button>
+                <button type="button" class="stock-notes-filter-pill" onclick="filterStockNotes('NOTE', this)">Notes 📝</button>
+                <button type="button" class="stock-notes-filter-pill" onclick="filterStockNotes('BUY', this)">Buys 🟢</button>
+                <button type="button" class="stock-notes-filter-pill" onclick="filterStockNotes('SELL', this)">Sells 🔴</button>
+            </div>
+        </div>
+
+        <!-- Scrollable Notes Feed (Date Desc) -->
+        <div class="stock-notes-list" id="stockNotesList">
+            <div class="stock-notes-empty">
+                <div class="stock-notes-empty-icon">📝</div>
+                <div class="stock-notes-empty-title">Loading notes...</div>
+            </div>
+        </div>
+    </div>
+</div>

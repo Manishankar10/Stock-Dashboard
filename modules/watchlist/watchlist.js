@@ -1396,6 +1396,11 @@
                     if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
                     else if (typeof openFundamentalsModal === 'function') openFundamentalsModal(sym);
                 }},
+                { label: '📝 Stock Notes', action: () => {
+                    const compName = (options && options.item && (options.item.name || options.item.company)) || info.name || sym;
+                    if (typeof window.openStockNotesModal === 'function') window.openStockNotesModal(sym, compName);
+                    else if (typeof openStockNotesModal === 'function') openStockNotesModal(sym, compName);
+                }},
                 { label: '🏛️ Institutional & Broker Research', action: () => {
                     if (typeof window.openBrokerResearchModal === 'function') window.openBrokerResearchModal(sym, info.name || sym);
                 }},

@@ -1,0 +1,459 @@
+/* =========================================================
+   STOCK NOTES & TRADE COMMENTS MODULE STYLES
+   Location: modules/stock_notes/stock_notes.css
+   ========================================================= */
+
+.stock-notes-modal-content {
+    background: var(--bg-card, #1e293b) !important;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+    max-width: 650px;
+    width: 95%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+    margin: 5vh auto;
+}
+
+[data-theme="light"] .stock-notes-modal-content {
+    background: #ffffff !important;
+    border-color: rgba(226, 232, 240, 0.9);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12);
+}
+
+/* Modal Header */
+.stock-notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    background: rgba(15, 23, 42, 0.35);
+}
+
+[data-theme="light"] .stock-notes-header {
+    background: rgba(248, 250, 252, 0.85);
+}
+
+.stock-notes-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stock-notes-icon {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.stock-notes-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.stock-notes-company-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.stock-notes-subtitle {
+    font-size: 11.5px;
+    color: var(--text-secondary, #94a3b8);
+    margin-top: 2px;
+}
+
+.stock-notes-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 24px;
+    font-weight: 300;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.18s ease;
+}
+
+.stock-notes-close-btn:hover {
+    color: var(--text-primary, #ffffff);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Add Note Box */
+.stock-notes-add-box {
+    padding: 16px 20px;
+    background: rgba(15, 23, 42, 0.2);
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+}
+
+[data-theme="light"] .stock-notes-add-box {
+    background: #f8fafc;
+}
+
+.stock-notes-add-header {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stock-notes-form-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.stock-notes-input-group {
+    flex: 1 1 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stock-notes-input-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stock-notes-input,
+.stock-notes-select {
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-input, rgba(255, 255, 255, 0.15));
+    background: var(--bg-card, #1e293b);
+    color: var(--text-primary, #ffffff);
+    font-size: 12.5px;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+[data-theme="light"] .stock-notes-input,
+[data-theme="light"] .stock-notes-select {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.stock-notes-input:focus,
+.stock-notes-select:focus {
+    border-color: #3b82f6;
+}
+
+.stock-notes-textarea {
+    width: 100%;
+    min-height: 64px;
+    max-height: 120px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-input, rgba(255, 255, 255, 0.15));
+    background: var(--bg-card, #1e293b);
+    color: var(--text-primary, #ffffff);
+    font-size: 13px;
+    font-family: inherit;
+    line-height: 1.45;
+    outline: none;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.2s ease;
+}
+
+[data-theme="light"] .stock-notes-textarea {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.stock-notes-textarea:focus {
+    border-color: #3b82f6;
+}
+
+.stock-notes-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.stock-notes-submit-btn {
+    padding: 6px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 7px;
+    cursor: pointer;
+    background: #10b981;
+    color: #ffffff;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.stock-notes-submit-btn:hover {
+    background: #059669;
+}
+
+/* Filter / Counter Bar */
+.stock-notes-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: rgba(15, 23, 42, 0.25);
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+[data-theme="light"] .stock-notes-filter-bar {
+    background: #f1f5f9;
+}
+
+#stockNotesCountText {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.stock-notes-filter-tags {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.stock-notes-filter-pill {
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+[data-theme="light"] .stock-notes-filter-pill {
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+.stock-notes-filter-pill.active {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+}
+
+/* Scrollable Notes Feed */
+.stock-notes-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 180px;
+    max-height: 480px;
+}
+
+/* Individual Note Card */
+.stock-note-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+[data-theme="light"] .stock-note-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Color Coding by Type */
+.stock-note-card.type-buy {
+    border-left: 3.5px solid #10b981;
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.stock-note-card.type-sell {
+    border-left: 3.5px solid #ef4444;
+    background: rgba(239, 68, 68, 0.06);
+}
+
+.stock-note-card.type-note {
+    border-left: 3.5px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.stock-note-card.type-analysis {
+    border-left: 3.5px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+}
+
+.stock-note-card.type-target {
+    border-left: 3.5px solid #a855f7;
+    background: rgba(168, 85, 247, 0.06);
+}
+
+/* Note Header */
+.stock-note-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.stock-note-badge-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stock-note-type-badge {
+    padding: 2px 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.stock-note-type-badge.badge-buy {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.stock-note-type-badge.badge-sell {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.stock-note-type-badge.badge-note {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+}
+
+.stock-note-type-badge.badge-analysis {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.stock-note-type-badge.badge-target {
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+}
+
+.stock-note-source-badge {
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary, #94a3b8);
+}
+
+[data-theme="light"] .stock-note-source-badge {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.stock-note-date-text {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stock-note-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.stock-note-delete-btn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+/* Note Content Text */
+.stock-note-content-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-primary, #ffffff);
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+[data-theme="light"] .stock-note-content-text {
+    color: #1e293b;
+}
+
+/* Note Details / Transaction context */
+.stock-note-details-text {
+    font-size: 11.5px;
+    color: var(--text-secondary, #94a3b8);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+/* Empty State */
+.stock-notes-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.stock-notes-empty-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+    opacity: 0.6;
+}
+
+.stock-notes-empty-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-primary, #ffffff);
+}
+
+[data-theme="light"] .stock-notes-empty-title {
+    color: #0f172a;
+}
+
+.stock-notes-empty-desc {
+    font-size: 12px;
+    line-height: 1.4;
+}

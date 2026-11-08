@@ -602,6 +602,9 @@
                                 <button class="popover-menu-item" onclick="openStockActionFundamentals(currentChartSymbol); closeAllChartPopovers();">
                                     📊 Fundamentals
                                 </button>
+                                <button class="popover-menu-item" onclick="openStockNotesModal(window.currentChartSymbol || (typeof currentChartSymbol !== 'undefined' ? currentChartSymbol : '')); closeAllChartPopovers();">
+                                    📝 Stock Notes
+                                </button>
                                 <button class="popover-menu-item" onclick="openStockActionAlert(currentChartSymbol); closeAllChartPopovers();">
                                     🔔 Set Price Alert
                                 </button>
@@ -1092,6 +1095,7 @@
                 <button id="btn-detail-buymore" class="btn-primary" style="font-size: 12px; background: #10b981;">🟢 Buy More</button>
                 <button id="btn-detail-sell" class="btn-danger" style="font-size: 12px; background: #ef4444;">🔴 Sell</button>
                 <button id="btn-detail-chart" class="btn-primary" style="font-size: 12px;">📊 Chart</button>
+                <button id="btn-detail-notes" class="btn-secondary" style="font-size: 12px;">📝 Notes</button>
                 <button id="btn-detail-news" class="btn-secondary" style="font-size: 12px;">📰 News</button>
                 <button id="btn-detail-alert" class="btn-secondary" style="font-size: 12px;">🔔 Alert</button>
                 <button id="btn-detail-edit" class="btn-secondary" style="font-size: 12px;">✏️ Edit</button>

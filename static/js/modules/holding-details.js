@@ -67,6 +67,15 @@
             }
             document.getElementById('btn-detail-alert').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openCreateAlertModal(sym); };
             document.getElementById('btn-detail-chart').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openInHouseChart(sym); };
+            const btnNotes = document.getElementById('btn-detail-notes');
+            if (btnNotes) {
+                btnNotes.onclick = (e) => {
+                    e.stopPropagation();
+                    closeHoldingDetailsModal();
+                    if (typeof openStockNotesModal === 'function') openStockNotesModal(sym, item.name || sym);
+                    else if (typeof window.openStockNotesModal === 'function') window.openStockNotesModal(sym, item.name || sym);
+                };
+            }
             document.getElementById('btn-detail-edit').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openEditModal(sym, item.buy_price, item.quantity, item.buy_date, item.buy_reason || item.notes || '', item.portfolioName); };
             document.getElementById('btn-detail-delete').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); removePortfolioStock(sym, item.portfolioName); };
 
