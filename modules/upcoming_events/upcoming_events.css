@@ -5,6 +5,136 @@
 /* ======================================================== */
 /* 70% / 30% Split Screen Layout on Watchlist Page (Web Only) */
 /* ======================================================== */
+@media (min-width: 993px) {
+    /* Watchlist page only: No horizontal scroll for overall page */
+    #tab-watchlists {
+        overflow-x: hidden !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    #tab-watchlists .watchlist-top-card {
+        max-width: 100% !important;
+        box-sizing: border-box;
+        overflow-x: hidden !important;
+    }
+
+    /* Equal height and max height = screen size */
+    #tab-watchlists .watchlist-split-container {
+        display: flex;
+        gap: 20px;
+        align-items: stretch !important;
+        height: calc(100vh - 145px);
+        max-height: calc(100vh - 145px);
+        min-height: 420px;
+        width: 100%;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        overflow-x: hidden !important;
+    }
+
+    /* 70% Left Main: Watchlist Table Section */
+    #tab-watchlists .watchlist-split-main {
+        flex: 0 0 calc(70% - 10px);
+        max-width: calc(70% - 10px);
+        width: calc(70% - 10px);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        box-sizing: border-box;
+    }
+
+    #tab-watchlists .watchlist-split-main > .card-container {
+        height: 100% !important;
+        max-height: 100% !important;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        box-sizing: border-box;
+        margin-bottom: 0 !important;
+    }
+
+    #tab-watchlists .watchlist-split-main .controls {
+        flex: 0 0 auto;
+        margin-bottom: 14px;
+    }
+
+    #tab-watchlists .watchlist-split-main .wl-table-container {
+        flex: 1 1 auto;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        min-height: 0;
+        max-height: none !important;
+    }
+
+    #tab-watchlists .wl-table thead th {
+        position: sticky;
+        top: 0;
+        background: var(--bg-card);
+        z-index: 2;
+    }
+
+    /* 30% Right Sidebar: Upcoming Events Section */
+    #tab-watchlists .watchlist-split-sidebar {
+        flex: 0 0 calc(30% - 10px);
+        max-width: calc(30% - 10px);
+        width: calc(30% - 10px);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        position: static !important;
+        top: auto !important;
+        max-height: none !important;
+        box-sizing: border-box;
+    }
+
+    #tab-watchlists .upcoming-events-card {
+        height: 100% !important;
+        max-height: 100% !important;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        box-sizing: border-box;
+        margin-bottom: 0 !important;
+    }
+
+    #tab-watchlists .upcoming-header-wrapper {
+        flex: 0 0 auto;
+    }
+
+    #tab-watchlists .upcoming-header-top {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    #tab-watchlists .upcoming-header-actions {
+        flex-shrink: 1;
+        min-width: 0;
+    }
+
+    #tab-watchlists .upcoming-scope-select {
+        max-width: 100%;
+    }
+
+    #tab-watchlists .upcoming-events-list {
+        flex: 1 1 auto;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        min-height: 0;
+    }
+
+    #tab-watchlists .upcoming-empty-container {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 0;
+    }
+}
+
 .watchlist-split-container {
     display: flex;
     gap: 20px;
