@@ -1182,7 +1182,13 @@
                     <td style="text-align:right; font-weight: 700; color: ${isSell ? pnlColor : 'var(--text-secondary)'};">
                         ${isSell ? (isPrivacyMode ? '₹ ••••••' : `${pnlSign}₹${Math.abs(pnlAmt).toLocaleString('en-IN', {minimumFractionDigits:2})} (${pnlSign}${pnlPct.toFixed(2)}%)`) : '-'}
                     </td>
-                    <td style="font-style: italic; font-size: 11px; color: var(--text-secondary);">${escapeHtml(t.notes || '-')}</td>
+                    <td class="tx-col-notes">
+                        ${(t.notes && t.notes.trim() && t.notes.trim() !== '-') ? `
+                            <div class="tx-notes-cell" title="${escapeHtml(t.notes)} (Click to expand/collapse)" onclick="this.classList.toggle('expanded');">
+                                ${escapeHtml(t.notes)}
+                            </div>
+                        ` : `<span style="color: var(--text-secondary); opacity: 0.6; font-style: italic; font-size: 11px;">—</span>`}
+                    </td>
                     <td style="text-align:center;">
                         <button class="btn-danger" style="font-size: 10px; padding: 2px 6px;" onclick="deleteTransaction('${t.id}')" title="Delete transaction record">🗑️</button>
                     </td>
@@ -1798,7 +1804,7 @@
                                 <th style="text-align:right;">Price (₹)</th>
                                 <th style="text-align:right;">Total Value (₹)</th>
                                 <th style="text-align:right;">Realized P&L</th>
-                                <th>Notes / Thesis</th>
+                                <th class="tx-col-notes">Notes / Thesis</th>
                                 <th style="text-align:center; width: 60px;">Action</th>
                             </tr>
                         </thead>

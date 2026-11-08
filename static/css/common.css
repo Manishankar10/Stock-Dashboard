@@ -1166,6 +1166,14 @@
         .tx-ledger-table th:nth-child(6), .tx-ledger-table td:nth-child(6) { text-align: right; font-variant-numeric: tabular-nums; }
         .tx-ledger-table th:nth-child(7), .tx-ledger-table td:nth-child(7) { text-align: right; font-variant-numeric: tabular-nums; }
         .tx-ledger-table th:nth-child(8), .tx-ledger-table td:nth-child(8) { text-align: right; font-variant-numeric: tabular-nums; }
+        .tx-ledger-table th:nth-child(9), .tx-ledger-table td:nth-child(9), .tx-col-notes {
+            width: 260px !important;
+            min-width: 200px !important;
+            max-width: 320px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+        }
         .tx-ledger-table th:nth-child(10), .tx-ledger-table td:nth-child(10) { text-align: center; width: 60px; }
 
         /* Note: Mobile and Tablet responsive rules for .wl-table are managed in static/css/responsive.css */

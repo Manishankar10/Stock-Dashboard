@@ -45,3 +45,105 @@
         display: none !important;
     }
 }
+
+/* =========================================================
+   COMPACT PORTFOLIO HEADER, CARDS & REASON WRAPPING
+   ========================================================= */
+
+#tab-portfolios .portfolio-top-card {
+    padding: 10px 18px !important;
+    margin-bottom: 12px !important;
+}
+
+#tab-portfolios #portfolio-view-mount > .card-container {
+    padding: 14px 18px !important;
+    margin-bottom: 14px !important;
+}
+
+#tab-portfolios #portfolio-view-mount .header-bar {
+    padding-bottom: 8px !important;
+    margin-bottom: 10px !important;
+}
+
+#tab-portfolios #portfolio-view-mount .header-bar h2 {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+}
+
+#tab-portfolios #portfolio-view-mount .header-bar .actions button {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+#tab-portfolios #portfolio-view-mount .pf-summary-grid {
+    gap: 10px !important;
+    margin-bottom: 12px !important;
+}
+
+#tab-portfolios #portfolio-view-mount .pf-summary-grid .metric-card {
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+}
+
+#tab-portfolios #portfolio-view-mount .pf-summary-grid .metric-card .title {
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
+    letter-spacing: 0.03em !important;
+}
+
+#tab-portfolios #portfolio-view-mount .pf-summary-grid .metric-card .value {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+}
+
+#tab-portfolios #portfolio-view-mount .pf-summary-grid .metric-card .sub-value {
+    font-size: 11px !important;
+    margin-top: 2px !important;
+}
+
+#tab-portfolios #portfolio-view-mount .filter-sort-bar {
+    margin-bottom: 10px !important;
+    padding: 4px 0 !important;
+}
+
+/* Realized P&L & Transaction Log Table: Specific Width & Wrap for Notes/Reason */
+.tx-ledger-table th:nth-child(9),
+.tx-ledger-table td:nth-child(9),
+.tx-col-notes {
+    width: 260px !important;
+    min-width: 200px !important;
+    max-width: 320px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+}
+
+.tx-notes-cell {
+    max-width: 280px;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    font-style: italic;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.tx-notes-cell:hover {
+    color: var(--text-primary);
+}
+
+.tx-notes-cell.expanded {
+    -webkit-line-clamp: unset !important;
+    display: block !important;
+    max-height: none !important;
+}

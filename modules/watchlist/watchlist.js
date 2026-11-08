@@ -646,6 +646,9 @@
                         existingButtons.forEach(btn => {
                             btn.classList.toggle('active', btn.dataset.watchlistName === activeWatchlistName);
                         });
+                        if (typeof updateWatchlistScrollArrows === 'function') {
+                            requestAnimationFrame(updateWatchlistScrollArrows);
+                        }
                     } else {
                         selectorMount.innerHTML = '';
                         if (!selectorMount.dataset.wheelBound) {
@@ -742,6 +745,13 @@
                         }
                     }
                 }
+                if (typeof initWatchlistScrollArrows === 'function') {
+                    initWatchlistScrollArrows();
+                }
+                if (typeof updateWatchlistScrollArrows === 'function') {
+                    requestAnimationFrame(updateWatchlistScrollArrows);
+                    setTimeout(updateWatchlistScrollArrows, 80);
+                }
             }
 
             // 2. Render Active Watchlist View
@@ -814,14 +824,57 @@
                 input.setAttribute('data-wl-name', activeWatchlistName);
                 input.placeholder = '🔍 Search & click company to add (e.g. Reliance, TCS, Polymed)...';
                 input.onkeydown = (e) => {
+                    const dropdown = input.nextElementSibling;
+                    const isOpen = dropdown && dropdown.style.display === 'block';
+                    const items = dropdown ? dropdown.querySelectorAll('.autocomplete-item') : [];
+
+                    if (e.key === 'ArrowDown') {
+                        if (isOpen && items.length > 0) {
+                            e.preventDefault();
+                            const currIdx = (dropdown._selectedIndex !== undefined ? dropdown._selectedIndex : -1);
+                            const nextIdx = (currIdx + 1) >= items.length ? 0 : currIdx + 1;
+                            updateAutocompleteSelection(dropdown, nextIdx);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'ArrowUp') {
+                        if (isOpen && items.length > 0) {
+                            e.preventDefault();
+                            const currIdx = (dropdown._selectedIndex !== undefined ? dropdown._selectedIndex : -1);
+                            const prevIdx = currIdx <= 0 ? items.length - 1 : currIdx - 1;
+                            updateAutocompleteSelection(dropdown, prevIdx);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'Escape') {
+                        if (isOpen) {
+                            e.preventDefault();
+                            dropdown.style.display = 'none';
+                            dropdown._selectedIndex = -1;
+                        }
+                        return;
+                    }
+
                     if (e.key === 'Enter') {
                         e.preventDefault();
+                        if (isOpen && items.length > 0) {
+                            const selIdx = dropdown._selectedIndex;
+                            if (selIdx >= 0 && items[selIdx]) {
+                                items[selIdx].click();
+                                return;
+                            } else if (items.length > 0) {
+                                items[0].click();
+                                return;
+                            }
+                        }
                         const val = input.value.trim();
                         if (val) addWatchlistStock(activeWatchlistName, val);
                     }
                 };
                 input.onkeyup = (e) => {
-                    if (e.key !== 'Enter') {
+                    if (!['Enter', 'ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) {
                         handleSearchInput('wl', input, e);
                     }
                 };
@@ -1955,6 +2008,27 @@
             window._wlRowMenuOutsideBound = true;
         }
 
+        function updateAutocompleteSelection(dropdown, index) {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            if (!items.length) {
+                dropdown._selectedIndex = -1;
+                return;
+            }
+            if (index < 0) index = -1;
+            if (index >= items.length) index = items.length - 1;
+            dropdown._selectedIndex = index;
+            items.forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('active');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+        window.updateAutocompleteSelection = updateAutocompleteSelection;
+
         // Search Autocomplete Handler
         function handleSearchInput(type, inputElement, event) {
             const query = inputElement.value.trim();
@@ -1972,7 +2046,10 @@
             if (searchTimeout) clearTimeout(searchTimeout);
             
             if (query.length < 2) {
-                if (dropdown) dropdown.style.display = 'none';
+                if (dropdown) {
+                    dropdown.style.display = 'none';
+                    dropdown._selectedIndex = -1;
+                }
                 return;
             }
 
@@ -1982,10 +2059,13 @@
                 
                 if (!dropdown) return;
                 dropdown.innerHTML = '';
+                dropdown._selectedIndex = -1;
                 if (results.length > 0) {
-                    results.forEach(item => {
+                    results.forEach((item, itemIdx) => {
                         const div = document.createElement('div');
                         div.className = 'autocomplete-item';
+                        div.dataset.index = itemIdx;
+                        div.onmouseenter = () => updateAutocompleteSelection(dropdown, itemIdx);
                         const bInfo = getSymbolBadge(item.symbol, item.exchange);
                         div.innerHTML = `
                             <div>
@@ -2019,12 +2099,14 @@
                                 if (symInput) symInput.value = item.symbol;
                             }
                             dropdown.style.display = 'none';
+                            dropdown._selectedIndex = -1;
                         };
                         dropdown.appendChild(div);
                     });
                     dropdown.style.display = 'block';
                 } else {
                     dropdown.style.display = 'none';
+                    dropdown._selectedIndex = -1;
                 }
             }, 250);
         }
@@ -2328,6 +2410,57 @@
         let _wlSwipeIsVertical = false;
         let _wlSwipeCard = null;
         let _isWlTransitioning = false;
+
+        function updateWatchlistScrollArrows() {
+            const mount = document.getElementById('watchlist-selector-mount');
+            const leftBtn = document.getElementById('wl-scroll-left-btn');
+            const rightBtn = document.getElementById('wl-scroll-right-btn');
+            if (!mount || !leftBtn || !rightBtn) return;
+
+            const maxScroll = mount.scrollWidth - mount.clientWidth;
+            const canScrollRight = maxScroll > 4 && (mount.scrollLeft < maxScroll - 4);
+            const canScrollLeft = mount.scrollLeft > 4;
+
+            rightBtn.style.display = canScrollRight ? 'flex' : 'none';
+            leftBtn.style.display = canScrollLeft ? 'flex' : 'none';
+        }
+        window.updateWatchlistScrollArrows = updateWatchlistScrollArrows;
+
+        function initWatchlistScrollArrows() {
+            const mount = document.getElementById('watchlist-selector-mount');
+            const leftBtn = document.getElementById('wl-scroll-left-btn');
+            const rightBtn = document.getElementById('wl-scroll-right-btn');
+            if (!mount || !leftBtn || !rightBtn) return;
+
+            if (!leftBtn.dataset.bound) {
+                leftBtn.onclick = () => {
+                    mount.scrollBy({ left: -220, behavior: 'smooth' });
+                    setTimeout(updateWatchlistScrollArrows, 260);
+                };
+                leftBtn.dataset.bound = 'true';
+            }
+
+            if (!rightBtn.dataset.bound) {
+                rightBtn.onclick = () => {
+                    mount.scrollBy({ left: 220, behavior: 'smooth' });
+                    setTimeout(updateWatchlistScrollArrows, 260);
+                };
+                rightBtn.dataset.bound = 'true';
+            }
+
+            if (!mount.dataset.scrollArrowBound) {
+                mount.addEventListener('scroll', updateWatchlistScrollArrows, { passive: true });
+                window.addEventListener('resize', updateWatchlistScrollArrows);
+                if (window.ResizeObserver) {
+                    try {
+                        new ResizeObserver(updateWatchlistScrollArrows).observe(mount);
+                    } catch(e) {}
+                }
+                mount.dataset.scrollArrowBound = 'true';
+            }
+            updateWatchlistScrollArrows();
+        }
+        window.initWatchlistScrollArrows = initWatchlistScrollArrows;
 
         function scrollActiveWatchlistTabIntoView(name, smooth = true) {
             const targetName = name || activeWatchlistName;

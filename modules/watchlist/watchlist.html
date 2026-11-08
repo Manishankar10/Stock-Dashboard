@@ -4,7 +4,15 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div class="watchlist-selector-row">
                         <span class="watchlist-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">WATCHLISTS:</span>
-                        <div class="portfolio-selector-bar watchlist-tabs-nav" id="watchlist-selector-mount" style="margin-bottom: 0;"></div>
+                        <div class="watchlist-tabs-scroll-wrapper">
+                            <button type="button" class="wl-scroll-arrow wl-scroll-arrow-left" id="wl-scroll-left-btn" aria-label="Scroll watchlists left" title="Scroll left" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            </button>
+                            <div class="portfolio-selector-bar watchlist-tabs-nav" id="watchlist-selector-mount" style="margin-bottom: 0;"></div>
+                            <button type="button" class="wl-scroll-arrow wl-scroll-arrow-right" id="wl-scroll-right-btn" aria-label="Scroll watchlists right" title="Scroll right" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </button>
+                        </div>
                         <div class="watchlist-create-action" style="display: flex; align-items: center; gap: 8px;">
                             <button onclick="openCreateWatchlistModal()">+ Create Watchlist</button>
                         </div>
