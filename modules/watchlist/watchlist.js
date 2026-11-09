@@ -187,6 +187,9 @@
 
         function selectWatchlist(name) {
             const isSame = (activeWatchlistName === name);
+            if (!isSame) {
+                selectedWatchlistStocks.clear();
+            }
             activeWatchlistName = name;
 
             // Strict Rule (Web & Responsive): moving to any watchlist must load only that watchlist's upcoming events
@@ -627,6 +630,165 @@
         window.handleWatchlistStockClick = handleWatchlistStockClick;
         window.formatTradingViewSymbol = formatTradingViewSymbol;
 
+        let selectedWatchlistStocks = new Set();
+
+        function toggleWatchlistStocksDropdown(event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const menu = document.getElementById('wl-stocks-dropdown-menu');
+            const btn = document.getElementById('wl-stocks-dropdown-btn');
+            if (!menu) return;
+            const isShown = menu.style.display !== 'none';
+            if (isShown) {
+                menu.style.display = 'none';
+                if (btn) btn.classList.remove('open');
+            } else {
+                menu.style.display = 'flex';
+                if (btn) btn.classList.add('open');
+                const searchInput = document.getElementById('wl-stocks-search-input');
+                if (searchInput) {
+                    searchInput.value = '';
+                    filterStocksDropdownList('');
+                    setTimeout(() => searchInput.focus(), 50);
+                }
+            }
+        }
+        window.toggleWatchlistStocksDropdown = toggleWatchlistStocksDropdown;
+
+        function filterStocksDropdownList(query) {
+            const q = (query || '').trim().toLowerCase();
+            const items = document.querySelectorAll('.wl-stock-menu-item');
+            items.forEach(it => {
+                const sym = (it.dataset.symbol || '').toLowerCase();
+                const name = (it.dataset.companyName || '').toLowerCase();
+                const matches = !q || sym.includes(q) || name.includes(q);
+                it.style.display = matches ? 'flex' : 'none';
+            });
+        }
+        window.filterStocksDropdownList = filterStocksDropdownList;
+
+        function onWatchlistStockCheckboxChange(chk, event) {
+            if (event) event.stopPropagation();
+            const sym = chk.value;
+            const rawList = watchlistsData[activeWatchlistName] || [];
+            
+            // If currently showing all (empty set), initialize with all stocks before unchecking
+            if (selectedWatchlistStocks.size === 0) {
+                rawList.forEach(s => selectedWatchlistStocks.add(s));
+            }
+
+            if (chk.checked) {
+                selectedWatchlistStocks.add(sym);
+            } else {
+                selectedWatchlistStocks.delete(sym);
+            }
+
+            // If all stocks ended up checked, reset to empty set (clean default = show all)
+            if (selectedWatchlistStocks.size === rawList.length) {
+                selectedWatchlistStocks.clear();
+            }
+
+            applyWatchlistStockFilter();
+        }
+        window.onWatchlistStockCheckboxChange = onWatchlistStockCheckboxChange;
+
+        function selectAllWatchlistStocks(event) {
+            if (event) event.stopPropagation();
+            selectedWatchlistStocks.clear();
+            const checkboxes = document.querySelectorAll('.wl-stock-checkbox');
+            checkboxes.forEach(chk => { chk.checked = true; });
+            applyWatchlistStockFilter();
+        }
+        window.selectAllWatchlistStocks = selectAllWatchlistStocks;
+
+        function clearAllWatchlistStocks(event) {
+            if (event) event.stopPropagation();
+            selectedWatchlistStocks.clear();
+            const checkboxes = document.querySelectorAll('.wl-stock-checkbox');
+            checkboxes.forEach(chk => { chk.checked = true; });
+            applyWatchlistStockFilter();
+        }
+        window.clearAllWatchlistStocks = clearAllWatchlistStocks;
+
+        function applyWatchlistStockFilter() {
+            const rawList = watchlistsData[activeWatchlistName] || [];
+            const totalCount = rawList.length;
+            const isFiltered = (selectedWatchlistStocks.size > 0) && (selectedWatchlistStocks.size < totalCount);
+
+            const rows = document.querySelectorAll('.wl-table tbody tr.pf-row');
+            let visibleCount = 0;
+
+            rows.forEach(r => {
+                const sym = r.dataset.symbol || (r.id ? r.id.replace('row-', '') : '');
+                const isVisible = !isFiltered || selectedWatchlistStocks.has(sym);
+                r.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            // Handle no match state
+            let noMatchRow = document.getElementById('wl-filter-no-match-row');
+            if (visibleCount === 0 && totalCount > 0) {
+                const tbody = document.querySelector('.wl-table tbody');
+                if (tbody) {
+                    if (!noMatchRow) {
+                        noMatchRow = document.createElement('tr');
+                        noMatchRow.id = 'wl-filter-no-match-row';
+                        tbody.appendChild(noMatchRow);
+                    }
+                    noMatchRow.style.display = '';
+                    noMatchRow.innerHTML = `<td colspan="5" style="text-align:center; padding:28px 16px; color:var(--text-secondary); font-size:13px;">
+                        No stocks selected in filter. <button type="button" class="btn-secondary" style="padding:3px 8px; font-size:11px; margin-left:6px;" onclick="selectAllWatchlistStocks(event)">Select All</button>
+                    </td>`;
+                }
+            } else if (noMatchRow) {
+                noMatchRow.style.display = 'none';
+            }
+
+            // Update Dropdown button text
+            const btnText = document.getElementById('wl-stocks-btn-text');
+            if (btnText) {
+                if (isFiltered) {
+                    btnText.textContent = `Stocks (${selectedWatchlistStocks.size} of ${totalCount})`;
+                } else {
+                    btnText.textContent = `All Stocks (${totalCount})`;
+                }
+            }
+
+        }
+        window.applyWatchlistStockFilter = applyWatchlistStockFilter;
+
+        function setWatchlistChartMode(mode, event) {
+            if (event) {
+                event.stopPropagation();
+                if (typeof closeActionOverflow === 'function') closeActionOverflow(event);
+            }
+            localStorage.setItem('capital_desk_watchlist_chart_mode', mode);
+            if (typeof showToast === 'function') {
+                if (mode === 'tradingview') {
+                    showToast('Tradingview chart active: Clicking any stock opens/syncs TradingView App Popup', 'info', 2800);
+                } else {
+                    showToast('Native chart active: Clicking any stock opens Capital Desk in-house chart', 'info', 2000);
+                }
+            }
+            const rows = document.querySelectorAll('.wl-table tr.pf-row');
+            rows.forEach(r => {
+                if (window.innerWidth <= 768) {
+                    r.title = mode === 'tradingview' ? 'Click row to sync TradingView chart' : 'Click row to view interactive technical chart';
+                }
+            });
+            renderWatchlists();
+        }
+        window.setWatchlistChartMode = setWatchlistChartMode;
+
+        function toggleWlMobileChartMode() {
+            const currentMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
+            const nextMode = currentMode === 'native' ? 'tradingview' : 'native';
+            setWatchlistChartMode(nextMode);
+        }
+        window.toggleWlMobileChartMode = toggleWlMobileChartMode;
+
         function renderWatchlists() {
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
             // 1. Render Selector Bar
@@ -822,7 +984,7 @@
                 input.id = 'wl-search-input';
                 input.className = 'wl-input';
                 input.setAttribute('data-wl-name', activeWatchlistName);
-                input.placeholder = '🔍 Search & click company to add (e.g. Reliance, TCS, Polymed)...';
+                input.placeholder = '➕ Add stock to watchlist (e.g. Tata, Reliance)...';
                 input.onkeydown = (e) => {
                     const dropdown = input.nextElementSibling;
                     const isOpen = dropdown && dropdown.style.display === 'block';
@@ -890,42 +1052,60 @@
                 wrapper.appendChild(dropdown);
                 searchRow.appendChild(wrapper);
 
-                // Chart Engine Dropdown (along search bar row)
-                const chartModeContainer = document.createElement('div');
-                chartModeContainer.className = 'wl-chart-mode-container';
-                chartModeContainer.title = 'Select Chart Engine: Native Chart Modal vs TradingView App Window';
+                // Multi-Select Stocks Filter Dropdown (View all names & filter by checkbox)
+                const stocksDropdownWrapper = document.createElement('div');
+                stocksDropdownWrapper.className = 'wl-stocks-dropdown-wrapper';
+                stocksDropdownWrapper.id = 'wl-stocks-dropdown-wrapper';
 
-                const chartModeSelect = document.createElement('select');
-                chartModeSelect.id = 'wl-chart-mode-select';
-                chartModeSelect.className = 'wl-chart-mode-select';
-                chartModeSelect.setAttribute('aria-label', 'Chart Engine Mode');
-                chartModeSelect.innerHTML = `
-                    <option value="native">📊 Native chart</option>
-                    <option value="tradingview">📈 Tradingview chart</option>
+                const totalWlCount = symbols.length;
+                const isFilteredNow = (selectedWatchlistStocks.size > 0) && (selectedWatchlistStocks.size < totalWlCount);
+                const btnLabel = isFilteredNow ? `Stocks (${selectedWatchlistStocks.size} of ${totalWlCount})` : `All Stocks (${totalWlCount})`;
+
+                let stockItemsHtml = '';
+                symbols.forEach(sym => {
+                    const bInfo = getSymbolBadge(sym);
+                    const info = stockPricesData[sym] || {};
+                    const compName = (info && info.name) ? info.name : cleanDisplaySymbol(sym);
+                    const isChecked = (selectedWatchlistStocks.size === 0) || selectedWatchlistStocks.has(sym);
+                    stockItemsHtml += `
+                        <label class="wl-stock-menu-item" data-symbol="${escapeHtml(sym)}" data-company-name="${escapeHtml(compName)}">
+                            <input type="checkbox" class="wl-stock-checkbox" value="${escapeHtml(sym)}" ${isChecked ? 'checked' : ''} onchange="onWatchlistStockCheckboxChange(this, event)">
+                            <div class="wl-stock-item-info">
+                                <div class="wl-stock-item-top">
+                                    <span class="wl-stock-item-sym">${cleanDisplaySymbol(sym)}</span>
+                                    <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                                </div>
+                                <div class="wl-stock-item-name">${escapeHtml(compName)}</div>
+                            </div>
+                        </label>
+                    `;
+                });
+
+                stocksDropdownWrapper.innerHTML = `
+                    <button type="button" class="wl-stocks-dropdown-btn" id="wl-stocks-dropdown-btn" onclick="toggleWatchlistStocksDropdown(event)" title="View all stock names & multi-select filter">
+                        <span class="wl-stocks-btn-icon">📋</span>
+                        <span class="wl-stocks-btn-text" id="wl-stocks-btn-text">${btnLabel}</span>
+                        <span class="wl-stocks-btn-arrow">▾</span>
+                    </button>
+                    <div class="wl-stocks-dropdown-menu" id="wl-stocks-dropdown-menu" style="display: none;">
+                        <div class="wl-stocks-menu-header">
+                            <span class="wl-stocks-menu-title">${escapeHtml(activeWatchlistName)} Stocks</span>
+                            <div class="wl-stocks-menu-actions">
+                                <button type="button" class="wl-stocks-action-btn" onclick="selectAllWatchlistStocks(event)">Select All</button>
+                                <span class="wl-stocks-sep">|</span>
+                                <button type="button" class="wl-stocks-action-btn" onclick="clearAllWatchlistStocks(event)">Reset</button>
+                            </div>
+                        </div>
+                        <div class="wl-stocks-search-box">
+                            <input type="text" id="wl-stocks-search-input" class="wl-stocks-search-input" placeholder="Find stock name..." oninput="filterStocksDropdownList(this.value)" autocomplete="off">
+                        </div>
+                        <div class="wl-stocks-menu-list" id="wl-stocks-menu-list">
+                            ${stockItemsHtml || '<div style="padding:15px; text-align:center; color:var(--text-secondary); font-size:12px;">No stocks in this watchlist</div>'}
+                        </div>
+                    </div>
                 `;
-                const savedChartMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
-                chartModeSelect.value = savedChartMode;
 
-                chartModeSelect.onchange = (e) => {
-                    const mode = e.target.value;
-                    localStorage.setItem('capital_desk_watchlist_chart_mode', mode);
-                    if (typeof showToast === 'function') {
-                        if (mode === 'tradingview') {
-                            showToast('Tradingview chart active: Clicking any stock opens/syncs TradingView App Popup', 'info', 2800);
-                        } else {
-                            showToast('Native chart active: Clicking any stock opens Capital Desk in-house chart', 'info', 2000);
-                        }
-                    }
-                    const rows = document.querySelectorAll('.wl-table tr.pf-row');
-                    rows.forEach(r => {
-                        if (window.innerWidth <= 768) {
-                            r.title = mode === 'tradingview' ? 'Click row to sync TradingView chart' : 'Click row to view interactive technical chart';
-                        }
-                    });
-                };
-
-                chartModeContainer.appendChild(chartModeSelect);
-                searchRow.appendChild(chartModeContainer);
+                searchRow.appendChild(stocksDropdownWrapper);
 
                 // Mobile Refresh Button (glassy button matching portfolio style)
                 const mobRefreshBtn = document.createElement('button');
@@ -975,15 +1155,6 @@
                 watchlistFileControls.style.alignItems = 'center';
                 watchlistFileControls.style.flexWrap = 'wrap';
 
-                const officialFeedsBtn = document.createElement('button');
-                officialFeedsBtn.className = 'btn-secondary';
-                officialFeedsBtn.style.padding = '8px 14px';
-                officialFeedsBtn.style.fontSize = '12px';
-                officialFeedsBtn.title = 'View official exchange company announcements for this watchlist';
-                officialFeedsBtn.innerHTML = '◉ Official Feeds';
-                officialFeedsBtn.onclick = () => openWatchlistOfficialFeeds(activeWatchlistName);
-                watchlistFileControls.appendChild(officialFeedsBtn);
-
                 // Watchlist Refresh Button (matching responsive portfolio style)
                 const wlRefreshBtn = document.createElement('button');
                 wlRefreshBtn.type = 'button';
@@ -1003,14 +1174,29 @@
                 wlRefreshBtn.onclick = () => triggerWatchlistRefresh(wlRefreshBtn);
                 watchlistFileControls.appendChild(wlRefreshBtn);
 
+                const savedChartMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
                 const watchlistOverflow = document.createElement('div');
                 watchlistOverflow.className = 'wl-overflow';
                 watchlistOverflow.id = 'watchlist-overflow-menu';
                 watchlistOverflow.innerHTML = `
                     <button type="button" class="wl-overflow-trigger" aria-label="More watchlist actions" title="More actions" onclick="toggleActionOverflow(event, 'watchlist-overflow-menu')">⋮</button>
                     <div class="wl-overflow-menu" role="menu">
-                        <button type="button" role="menuitem" onclick="exportActiveWatchlistToTxt(); closeActionOverflow(event)">⇩ Export</button>
-                        <button type="button" role="menuitem" onclick="openWatchlistTxtImportModal(); closeActionOverflow(event)">⇧ Import</button>
+                        <div class="wl-menu-section-title">Chart Engine</div>
+                        <button type="button" role="menuitem" onclick="setWatchlistChartMode('native', event)">
+                            <span>📊 Native chart</span>
+                            ${savedChartMode === 'native' ? '<span style="margin-left:auto; color:#10b981; font-weight:700;">✓</span>' : ''}
+                        </button>
+                        <button type="button" role="menuitem" onclick="setWatchlistChartMode('tradingview', event)">
+                            <span>📈 Tradingview chart</span>
+                            ${savedChartMode === 'tradingview' ? '<span style="margin-left:auto; color:#10b981; font-weight:700;">✓</span>' : ''}
+                        </button>
+                        <div class="wl-overflow-divider"></div>
+                        <button type="button" role="menuitem" onclick="openWatchlistOfficialFeeds('${escapeHtml(activeWatchlistName)}'); closeActionOverflow(event)">
+                            <span>◉ Official Feeds</span>
+                        </button>
+                        <div class="wl-overflow-divider"></div>
+                        <button type="button" role="menuitem" onclick="exportActiveWatchlistToTxt(); closeActionOverflow(event)">⇩ Export Watchlist</button>
+                        <button type="button" role="menuitem" onclick="openWatchlistTxtImportModal(); closeActionOverflow(event)">⇧ Import Watchlist</button>
                         <div class="wl-overflow-divider"></div>
                         <button type="button" class="danger" role="menuitem" onclick="deleteActiveWatchlist(); closeActionOverflow(event)">Delete Watchlist</button>
                     </div>`;
@@ -1078,6 +1264,7 @@
                     tr.className = 'pf-row';
                     tr.dataset.symbol = sym;
                     tr.dataset.companyName = compName;
+                    tr.dataset.changePct = (hasData && info.change_pct !== undefined) ? String(info.change_pct) : '0';
                     const currentMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
                     if (window.innerWidth <= 768) {
                         tr.title = currentMode === 'tradingview' ? 'Click row to sync TradingView chart' : 'Click row to view interactive technical chart';
@@ -1190,9 +1377,29 @@
             scrollContainer.appendChild(table);
 
             if (canKeepControls) {
-                const chartModeSel = existingControls.querySelector('#wl-chart-mode-select');
-                if (chartModeSel) {
-                    chartModeSel.value = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
+                // Update dropdown list items if symbols changed
+                const menuList = existingControls.querySelector('#wl-stocks-menu-list');
+                if (menuList) {
+                    let updatedItemsHtml = '';
+                    symbols.forEach(sym => {
+                        const bInfo = getSymbolBadge(sym);
+                        const info = stockPricesData[sym] || {};
+                        const compName = (info && info.name) ? info.name : cleanDisplaySymbol(sym);
+                        const isChecked = (selectedWatchlistStocks.size === 0) || selectedWatchlistStocks.has(sym);
+                        updatedItemsHtml += `
+                            <label class="wl-stock-menu-item" data-symbol="${escapeHtml(sym)}" data-company-name="${escapeHtml(compName)}">
+                                <input type="checkbox" class="wl-stock-checkbox" value="${escapeHtml(sym)}" ${isChecked ? 'checked' : ''} onchange="onWatchlistStockCheckboxChange(this, event)">
+                                <div class="wl-stock-item-info">
+                                    <div class="wl-stock-item-top">
+                                        <span class="wl-stock-item-sym">${cleanDisplaySymbol(sym)}</span>
+                                        <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                                    </div>
+                                    <div class="wl-stock-item-name">${escapeHtml(compName)}</div>
+                                </div>
+                            </label>
+                        `;
+                    });
+                    menuList.innerHTML = updatedItemsHtml || '<div style="padding:15px; text-align:center; color:var(--text-secondary); font-size:12px;">No stocks in this watchlist</div>';
                 }
                 // Update spinner state if refreshing
                 const isSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
@@ -1217,6 +1424,7 @@
                 } else {
                     existingCard.appendChild(scrollContainer);
                 }
+                applyWatchlistStockFilter();
             } else {
                 // Full render for initial load or switching active watchlist
                 let preservedValue = '';
@@ -1239,6 +1447,7 @@
                 div.appendChild(controlsDiv);
                 div.appendChild(scrollContainer);
                 viewMount.appendChild(div);
+                applyWatchlistStockFilter();
 
                 if (preservedValue && input) {
                     input.value = preservedValue;
@@ -1286,6 +1495,18 @@
                     </div>
 
                     <div class="wl-action-sheet-list">
+                        <!-- 0. Chart Engine Mode (Mobile) -->
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); toggleWlMobileChartMode();">
+                            <div class="wl-sheet-item-left">
+                                <span class="wl-sheet-icon">📊</span>
+                                <div>
+                                    <div class="wl-sheet-title">Chart: ${localStorage.getItem('capital_desk_watchlist_chart_mode') === 'tradingview' ? 'Tradingview Chart' : 'Native Chart'}</div>
+                                    <div class="wl-sheet-sub">Tap to switch chart modal engine</div>
+                                </div>
+                            </div>
+                            <span class="wl-sheet-chevron">⇄</span>
+                        </div>
+
                         <!-- 1. Sort & Filter -->
                         <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWlMobileSortModal();">
                             <div class="wl-sheet-item-left">
@@ -2067,16 +2288,43 @@
                         div.dataset.index = itemIdx;
                         div.onmouseenter = () => updateAutocompleteSelection(dropdown, itemIdx);
                         const bInfo = getSymbolBadge(item.symbol, item.exchange);
+                        let alreadyInBadge = '';
+                        if (type === 'wl') {
+                            const targetName = inputElement.getAttribute('data-wl-name') || activeWatchlistName;
+                            const currentStocks = (watchlistsData && watchlistsData[targetName]) || [];
+                            if (currentStocks.includes(item.symbol)) {
+                                alreadyInBadge = '<span class="wl-already-in-badge">✓ In Watchlist</span>';
+                            }
+                        }
                         div.innerHTML = `
                             <div>
                                 <span class="autocomplete-symbol">${cleanDisplaySymbol(item.symbol)}</span>
                                 <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                                ${alreadyInBadge}
                                 <div class="autocomplete-name">${escapeHtml(item.name)}</div>
                             </div>
                         `;
                         div.onclick = () => {
                             if (type === 'wl') {
-                                const targetName = inputElement.getAttribute('data-wl-name');
+                                const targetName = inputElement.getAttribute('data-wl-name') || activeWatchlistName;
+                                const currentStocks = (watchlistsData && watchlistsData[targetName]) || [];
+                                if (currentStocks.includes(item.symbol)) {
+                                    if (typeof showToast === 'function') {
+                                        showToast(`${cleanDisplaySymbol(item.symbol)} is already in ${targetName}`, 'info', 2500);
+                                    }
+                                    if (dropdown) {
+                                        dropdown.style.display = 'none';
+                                        dropdown._selectedIndex = -1;
+                                    }
+                                    inputElement.value = '';
+                                    const targetRow = document.getElementById(`row-${item.symbol}`);
+                                    if (targetRow) {
+                                        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        targetRow.classList.add('row-highlight');
+                                        setTimeout(() => targetRow.classList.remove('row-highlight'), 2000);
+                                    }
+                                    return;
+                                }
                                 addWatchlistStock(targetName, item.symbol);
                             } else if (type === 'modal-pf') {
                                 const symInput = document.getElementById('modal-pf-add-symbol');
@@ -2772,3 +3020,15 @@
             });
         })();
 
+
+        // Close multi-select stocks dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#wl-stocks-dropdown-wrapper')) {
+                const menu = document.getElementById('wl-stocks-dropdown-menu');
+                if (menu && menu.style.display !== 'none') {
+                    menu.style.display = 'none';
+                    const btn = document.getElementById('wl-stocks-dropdown-btn');
+                    if (btn) btn.classList.remove('open');
+                }
+            }
+        });

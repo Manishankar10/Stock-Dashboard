@@ -290,14 +290,14 @@
     .market-pulse-submenu {
         display: none;
         position: fixed;
-        left: 240px;
+        left: 220px;
         min-width: 210px;
         padding: 6px;
         border: 1px solid var(--border-color);
         border-radius: 9px;
         background: var(--bg-card);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-        z-index: 10005;
+        z-index: 100050 !important;
         flex-direction: column;
         gap: 3px;
         margin: 0;
@@ -305,7 +305,7 @@
 
     .app-sidebar.collapsed .tools-submenu,
     .app-sidebar.collapsed .market-pulse-submenu {
-        left: 66px;
+        left: 58px;
     }
 
     /* Invisible hover bridge to eliminate gap jitter when moving mouse into flyout */
@@ -313,17 +313,19 @@
     .market-pulse-submenu::before {
         content: "";
         position: absolute;
-        top: -8px;
-        bottom: -8px;
-        left: -16px;
-        width: 18px;
+        top: -24px;
+        bottom: -24px;
+        left: -32px;
+        width: 38px;
         background: transparent;
     }
 
     /* Open submenu to the right on hover or when open class is active */
     .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
+    .tools-menu-item.hover-active > .tools-submenu:not(.force-hidden),
     .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
+    .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
     .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
         display: flex !important;
     }
@@ -376,7 +378,7 @@
     body.sidebar-collapsed .tools-submenu,
     body.sidebar-collapsed .market-pulse-submenu {
         position: fixed !important;
-        left: 66px !important;
+        left: 58px !important;
         min-width: 220px !important;
         width: max-content !important;
         padding: 8px 6px !important;
@@ -387,16 +389,20 @@
         border: 1px solid var(--border-color) !important;
         border-radius: 10px !important;
         box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28) !important;
-        z-index: 10005 !important;
+        z-index: 100050 !important;
     }
 
     .app-sidebar.collapsed .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .tools-menu-item.hover-active > .tools-submenu:not(.force-hidden),
     .app-sidebar.collapsed .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
+    body.sidebar-collapsed .tools-menu-item.hover-active > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
+    body.sidebar-collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
         display: flex !important;
     }
@@ -536,7 +542,7 @@
     body.sidebar-collapsed .tools-submenu,
     body.sidebar-collapsed .market-pulse-submenu {
         position: fixed !important;
-        left: 66px !important;
+        left: 58px !important;
         min-width: 220px !important;
         width: max-content !important;
         padding: 8px 6px !important;
@@ -547,16 +553,20 @@
         border: 1px solid var(--border-color) !important;
         border-radius: 10px !important;
         box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28) !important;
-        z-index: 10005 !important;
+        z-index: 100050 !important;
     }
 
     .app-sidebar.collapsed .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .tools-menu-item.hover-active > .tools-submenu:not(.force-hidden),
     .app-sidebar.collapsed .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
+    body.sidebar-collapsed .tools-menu-item.hover-active > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
+    body.sidebar-collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
         display: flex !important;
     }
@@ -674,7 +684,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    z-index: 1000;
+    z-index: 10005;
     transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: visible;
     user-select: none;
@@ -774,6 +784,17 @@
     flex-direction: column;
     gap: 4px;
     scrollbar-width: thin;
+    position: relative;
+    z-index: 50;
+}
+
+.sidebar-nav:has(.tools-menu-item:hover),
+.sidebar-nav:has(.tools-menu-item.hover-active),
+.sidebar-nav:has(.tools-menu-item.open),
+.sidebar-nav:has(.market-pulse-menu-item:hover),
+.sidebar-nav:has(.market-pulse-menu-item.hover-active),
+.sidebar-nav:has(.market-pulse-menu-item.open) {
+    z-index: 10020;
 }
 
 .sidebar-section-label {
@@ -857,6 +878,12 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative;
+    z-index: 20;
+}
+
+.sidebar-footer:has(.menu-dropdown-content.show) {
+    z-index: 10030;
 }
 
 .sidebar-tools-row {
@@ -960,7 +987,7 @@
     right: 0 !important;
     width: 100% !important;
     min-width: 210px !important;
-    z-index: 10005 !important;
+    z-index: 100050 !important;
 }
 
 .app-sidebar.collapsed .sidebar-user-dropdown {
@@ -1310,14 +1337,22 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
         
         const submenuHeight = submenu.offsetHeight || 220;
         const maxTop = window.innerHeight - submenuHeight - 10;
-        submenu.style.top = Math.max(10, Math.min(bounds.top, maxTop)) + 'px';
-        submenu.style.left = (isCollapsed ? 66 : 240) + 'px';
+        submenu.style.top = Math.max(10, Math.min(bounds.top - 4, maxTop)) + 'px';
+        submenu.style.left = (isCollapsed ? 58 : 220) + 'px';
+        submenu.style.zIndex = '100050';
+        const nav = document.querySelector('.sidebar-nav');
+        if (nav) nav.style.zIndex = '10020';
     }
 
     function closeMarketPulseSubmenu() {
+        if (window.marketPulseCloseTimer) {
+            clearTimeout(window.marketPulseCloseTimer);
+            window.marketPulseCloseTimer = null;
+        }
         const item = document.querySelector('.market-pulse-menu-item');
         if (item) {
             item.classList.remove('open');
+            item.classList.remove('hover-active');
             const submenu = item.querySelector('.market-pulse-submenu');
             if (submenu) {
                 submenu.classList.add('force-hidden');
@@ -1325,6 +1360,11 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
         }
         const trigger = document.getElementById('sidebar-nav-market-pulse');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        const toolsItem = document.querySelector('.tools-menu-item');
+        if (!toolsItem || (!toolsItem.classList.contains('open') && !toolsItem.classList.contains('hover-active'))) {
+            const nav = document.querySelector('.sidebar-nav');
+            if (nav) nav.style.zIndex = '';
+        }
     }
 
     function toggleToolsSubmenu(event) {
@@ -1357,14 +1397,22 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
         
         const submenuHeight = submenu.offsetHeight || 135;
         const maxTop = window.innerHeight - submenuHeight - 10;
-        submenu.style.top = Math.max(10, Math.min(bounds.top, maxTop)) + 'px';
-        submenu.style.left = (isCollapsed ? 66 : 240) + 'px';
+        submenu.style.top = Math.max(10, Math.min(bounds.top - 4, maxTop)) + 'px';
+        submenu.style.left = (isCollapsed ? 58 : 220) + 'px';
+        submenu.style.zIndex = '100050';
+        const nav = document.querySelector('.sidebar-nav');
+        if (nav) nav.style.zIndex = '10020';
     }
 
     function closeToolsSubmenu() {
+        if (window.toolsCloseTimer) {
+            clearTimeout(window.toolsCloseTimer);
+            window.toolsCloseTimer = null;
+        }
         const item = document.querySelector('.tools-menu-item');
         if (item) {
             item.classList.remove('open');
+            item.classList.remove('hover-active');
             const submenu = item.querySelector('.tools-submenu');
             if (submenu) {
                 submenu.classList.add('force-hidden');
@@ -1372,6 +1420,11 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
         }
         const trigger = document.getElementById('sidebar-nav-tools');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        const pulseItem = document.querySelector('.market-pulse-menu-item');
+        if (!pulseItem || (!pulseItem.classList.contains('open') && !pulseItem.classList.contains('hover-active'))) {
+            const nav = document.querySelector('.sidebar-nav');
+            if (nav) nav.style.zIndex = '';
+        }
     }
 
     // Expose submenu functions to global scope
@@ -1441,9 +1494,26 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
             }
         }
 
+        window.marketPulseCloseTimer = null;
+        window.toolsCloseTimer = null;
+
         const pulseItem = document.querySelector('.market-pulse-menu-item');
         if (pulseItem) {
             pulseItem.addEventListener('mouseenter', function() {
+                if (window.marketPulseCloseTimer) {
+                    clearTimeout(window.marketPulseCloseTimer);
+                    window.marketPulseCloseTimer = null;
+                }
+                if (window.toolsCloseTimer) {
+                    clearTimeout(window.toolsCloseTimer);
+                    window.toolsCloseTimer = null;
+                }
+                const toolsMenu = document.querySelector('.tools-menu-item');
+                if (toolsMenu && !toolsMenu.classList.contains('open')) {
+                    toolsMenu.classList.remove('hover-active');
+                }
+
+                pulseItem.classList.add('hover-active');
                 if (window.innerWidth > 768) {
                     positionMarketPulseSubmenu();
                     const submenu = pulseItem.querySelector('.market-pulse-submenu');
@@ -1451,14 +1521,30 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
                 }
             });
             pulseItem.addEventListener('mouseleave', function() {
-                const submenu = pulseItem.querySelector('.market-pulse-submenu');
-                if (submenu) submenu.classList.remove('force-hidden');
+                if (window.marketPulseCloseTimer) clearTimeout(window.marketPulseCloseTimer);
+                window.marketPulseCloseTimer = setTimeout(function() {
+                    pulseItem.classList.remove('hover-active');
+                }, 240);
             });
         }
 
         const toolsItem = document.querySelector('.tools-menu-item');
         if (toolsItem) {
             toolsItem.addEventListener('mouseenter', function() {
+                if (window.toolsCloseTimer) {
+                    clearTimeout(window.toolsCloseTimer);
+                    window.toolsCloseTimer = null;
+                }
+                if (window.marketPulseCloseTimer) {
+                    clearTimeout(window.marketPulseCloseTimer);
+                    window.marketPulseCloseTimer = null;
+                }
+                const pulseMenu = document.querySelector('.market-pulse-menu-item');
+                if (pulseMenu && !pulseMenu.classList.contains('open')) {
+                    pulseMenu.classList.remove('hover-active');
+                }
+
+                toolsItem.classList.add('hover-active');
                 if (window.innerWidth > 768) {
                     positionToolsSubmenu();
                     const submenu = toolsItem.querySelector('.tools-submenu');
@@ -1466,10 +1552,32 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
                 }
             });
             toolsItem.addEventListener('mouseleave', function() {
-                const submenu = toolsItem.querySelector('.tools-submenu');
-                if (submenu) submenu.classList.remove('force-hidden');
+                if (window.toolsCloseTimer) clearTimeout(window.toolsCloseTimer);
+                window.toolsCloseTimer = setTimeout(function() {
+                    toolsItem.classList.remove('hover-active');
+                }, 240);
             });
         }
+
+        // Instantly close open hover menus when moving cursor over any other primary nav item
+        document.querySelectorAll('.sidebar-nav > .sidebar-nav-item').forEach(function(navBtn) {
+            navBtn.addEventListener('mouseenter', function() {
+                if (window.marketPulseCloseTimer) {
+                    clearTimeout(window.marketPulseCloseTimer);
+                    window.marketPulseCloseTimer = null;
+                }
+                if (window.toolsCloseTimer) {
+                    clearTimeout(window.toolsCloseTimer);
+                    window.toolsCloseTimer = null;
+                }
+                if (pulseItem && !pulseItem.classList.contains('open')) {
+                    pulseItem.classList.remove('hover-active');
+                }
+                if (toolsItem && !toolsItem.classList.contains('open')) {
+                    toolsItem.classList.remove('hover-active');
+                }
+            });
+        });
 
         const sidebarNav = document.querySelector('.sidebar-nav');
         if (sidebarNav) {
