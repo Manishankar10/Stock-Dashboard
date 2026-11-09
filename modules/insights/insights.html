@@ -530,32 +530,43 @@
                         </div>
                     </div>
 
-                    <!-- Asset Distribution Card -->
-                    <div class="card-container" style="padding: 20px;">
-                        <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 13.5px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">
-                            📊 Asset Concentration
-                        </h3>
-                        <div id="insights-distribution-mount" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Market Mood Index (MMI) Card for Indian Market -->
+                    <div class="card-container insights-mmi-card" id="insights-mmi-card">
+                        <!-- MMI Card Header -->
+                        <div class="mmi-header">
                             <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                    <span class="skeleton-box" style="width: 85px; height: 12px;"></span>
-                                    <span class="skeleton-box" style="width: 40px; height: 12px;"></span>
+                                <h3 class="mmi-title">
+                                    <span class="mmi-title-icon">🧭</span>
+                                    <span>Market Mood Index</span>
+                                </h3>
+                                <div class="mmi-subtitle">
+                                    Indian Market Sentiment • Nifty 50
                                 </div>
-                                <div class="skeleton-box" style="width: 100%; height: 8px;"></div>
                             </div>
-                            <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                    <span class="skeleton-box" style="width: 95px; height: 12px;"></span>
-                                    <span class="skeleton-box" style="width: 40px; height: 12px;"></span>
-                                </div>
-                                <div class="skeleton-box" style="width: 100%; height: 8px;"></div>
+                            <div class="mmi-header-actions">
+                                <span class="mmi-live-pill" id="mmi-live-pill">
+                                    <span class="mmi-pulsing-dot"></span> LIVE
+                                </span>
+                                <button type="button" class="mmi-refresh-btn" id="mmi-refresh-btn" onclick="loadMarketMoodIndex(true)" title="Refresh Market Mood Index" aria-label="Refresh Market Mood Index">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                                    </svg>
+                                </button>
                             </div>
-                            <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                    <span class="skeleton-box" style="width: 75px; height: 12px;"></span>
-                                    <span class="skeleton-box" style="width: 40px; height: 12px;"></span>
+                        </div>
+
+                        <!-- MMI Content Mount -->
+                        <div id="insights-mmi-mount">
+                            <div class="mmi-skeleton-wrap">
+                                <div class="skeleton-box" style="width: 180px; height: 95px; border-radius: 95px 95px 0 0; margin: 10px auto;"></div>
+                                <div class="skeleton-box" style="width: 110px; height: 26px; border-radius: 6px; margin: 8px auto;"></div>
+                                <div class="skeleton-box" style="width: 85%; height: 12px; margin: 8px auto;"></div>
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 14px;">
+                                    <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
+                                    <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
+                                    <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
+                                    <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
                                 </div>
-                                <div class="skeleton-box" style="width: 100%; height: 8px;"></div>
                             </div>
                         </div>
                     </div>

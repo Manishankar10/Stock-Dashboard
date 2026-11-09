@@ -91,7 +91,7 @@
         box-shadow: none !important;
         position: -webkit-sticky !important;
         position: sticky !important;
-        top: 48px !important;
+        top: calc(48px + var(--safe-area-top, 0px)) !important;
         z-index: 100 !important;
     }
 
@@ -108,6 +108,21 @@
     }
 
     .watchlist-create-action {
+        display: none !important;
+    }
+
+    .watchlist-tabs-scroll-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .wl-scroll-arrow {
         display: none !important;
     }
 
@@ -220,33 +235,37 @@
         width: 100% !important;
         padding: 2px 2px 8px 2px !important;
         margin-bottom: 8px !important;
-        gap: 6px !important;
+        gap: 8px !important;
         flex-direction: column !important;
         box-sizing: border-box !important;
     }
 
-    /* Responsive Search Row: Search Bar resized to 90% and Menu Button at right end */
-    /* Responsive Search Row: Search Bar occupies 90% space and Menu occupies 10% space */
+    /* Responsive Search Row on Mobile:
+       Row 1: Search Bar (100% width)
+       Row 2: Multi-Select Stocks Filter Dropdown + Refresh Button + Menu Button */
     .controls .wl-search-row,
     #watchlist-view-mount .controls .wl-search-row,
     .wl-search-row {
         display: flex !important;
+        flex-wrap: wrap !important;
         align-items: center !important;
-        justify-content: space-between !important;
+        justify-content: flex-start !important;
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
         flex: 1 1 100% !important;
-        gap: 6px !important;
+        gap: 8px !important;
     }
 
     .controls .wl-search-row .autocomplete-wrapper,
     #watchlist-view-mount .controls .wl-search-row .autocomplete-wrapper,
     .wl-search-row .autocomplete-wrapper {
-        flex: 1 1 auto !important;
-        width: auto !important;
-        max-width: none !important;
-        min-width: 0 !important;
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
     }
 
     .controls .wl-search-row .wl-input,
@@ -257,6 +276,44 @@
         font-size: 13.5px !important;
         border-radius: 10px !important;
         padding: 8px 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    .autocomplete-dropdown {
+        z-index: 100055 !important;
+        border-radius: 0 0 10px 10px !important;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    /* Stocks Multi-Select Dropdown Button on Mobile */
+    .controls .wl-search-row .wl-stocks-dropdown-wrapper,
+    #watchlist-view-mount .controls .wl-search-row .wl-stocks-dropdown-wrapper,
+    .wl-stocks-dropdown-wrapper {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        max-width: calc(100% - 96px) !important;
+        display: flex !important;
+    }
+
+    .wl-stocks-dropdown-btn {
+        width: 100% !important;
+        height: 42px !important;
+        border-radius: 10px !important;
+        padding: 0 12px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    .wl-stocks-dropdown-btn .wl-stocks-btn-text {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        max-width: calc(100vw - 165px) !important;
     }
 
     .wl-chart-mode-container {
@@ -277,10 +334,10 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        flex: 0 0 38px !important;
-        width: 38px !important;
-        max-width: 38px !important;
-        min-width: 38px !important;
+        flex: 0 0 42px !important;
+        width: 42px !important;
+        max-width: 42px !important;
+        min-width: 42px !important;
         height: 42px !important;
         border-radius: 10px !important;
         background: rgba(16, 185, 129, 0.12) !important;
@@ -330,10 +387,10 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        flex: 0 0 38px !important;
-        width: 38px !important;
-        max-width: 38px !important;
-        min-width: 38px !important;
+        flex: 0 0 42px !important;
+        width: 42px !important;
+        max-width: 42px !important;
+        min-width: 42px !important;
         height: 42px !important;
         border-radius: 10px !important;
         background: var(--bg-card) !important;

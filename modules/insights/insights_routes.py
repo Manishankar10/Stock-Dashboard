@@ -634,6 +634,18 @@ def get_insights_bullion_api():
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "bullion": FALLBACK_BULLION_RATES})
 
+@insights_bp.route("/api/insights/mmi", methods=["GET"])
+def get_insights_mmi_api():
+    try:
+        force_refresh = request.args.get("refresh", "").lower() in ("1", "true", "yes")
+        from modules.insights.mmi_store import fetch_market_mood_index
+        data = fetch_market_mood_index(force_refresh=force_refresh)
+        return jsonify({"success": True, "mmi": data})
+    except Exception as e:
+        logger.error(f"Error fetching MMI API: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+
 @insights_bp.route("/api/insights/indexes", methods=["GET"])
 @login_required
 def get_insights_indexes_api():

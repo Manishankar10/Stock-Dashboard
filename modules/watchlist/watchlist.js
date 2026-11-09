@@ -641,17 +641,34 @@
             const btn = document.getElementById('wl-stocks-dropdown-btn');
             if (!menu) return;
             const isShown = menu.style.display !== 'none';
+            let backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
+
             if (isShown) {
                 menu.style.display = 'none';
                 if (btn) btn.classList.remove('open');
+                if (backdrop) backdrop.style.display = 'none';
             } else {
                 menu.style.display = 'flex';
                 if (btn) btn.classList.add('open');
+
+                if (window.innerWidth <= 768) {
+                    if (!backdrop) {
+                        backdrop = document.createElement('div');
+                        backdrop.id = 'wl-stocks-dropdown-backdrop';
+                        backdrop.className = 'wl-stocks-dropdown-backdrop';
+                        backdrop.onclick = (e) => toggleWatchlistStocksDropdown(e);
+                        document.body.appendChild(backdrop);
+                    }
+                    backdrop.style.display = 'block';
+                }
+
                 const searchInput = document.getElementById('wl-stocks-search-input');
                 if (searchInput) {
                     searchInput.value = '';
                     filterStocksDropdownList('');
-                    setTimeout(() => searchInput.focus(), 50);
+                    if (window.innerWidth > 768) {
+                        setTimeout(() => searchInput.focus(), 50);
+                    }
                 }
             }
         }
@@ -1088,12 +1105,14 @@
                         <span class="wl-stocks-btn-arrow">▾</span>
                     </button>
                     <div class="wl-stocks-dropdown-menu" id="wl-stocks-dropdown-menu" style="display: none;">
+                        <div class="wl-stocks-sheet-handle"></div>
                         <div class="wl-stocks-menu-header">
                             <span class="wl-stocks-menu-title">${escapeHtml(activeWatchlistName)} Stocks</span>
                             <div class="wl-stocks-menu-actions">
                                 <button type="button" class="wl-stocks-action-btn" onclick="selectAllWatchlistStocks(event)">Select All</button>
                                 <span class="wl-stocks-sep">|</span>
                                 <button type="button" class="wl-stocks-action-btn" onclick="clearAllWatchlistStocks(event)">Reset</button>
+                                <button type="button" class="wl-stocks-close-btn" onclick="toggleWatchlistStocksDropdown(event)" aria-label="Close" title="Close">&times;</button>
                             </div>
                         </div>
                         <div class="wl-stocks-search-box">
@@ -1101,6 +1120,9 @@
                         </div>
                         <div class="wl-stocks-menu-list" id="wl-stocks-menu-list">
                             ${stockItemsHtml || '<div style="padding:15px; text-align:center; color:var(--text-secondary); font-size:12px;">No stocks in this watchlist</div>'}
+                        </div>
+                        <div class="wl-stocks-done-row">
+                            <button type="button" class="wl-stocks-done-btn" onclick="toggleWatchlistStocksDropdown(event)">Done</button>
                         </div>
                     </div>
                 `;
@@ -2664,6 +2686,11 @@
             const leftBtn = document.getElementById('wl-scroll-left-btn');
             const rightBtn = document.getElementById('wl-scroll-right-btn');
             if (!mount || !leftBtn || !rightBtn) return;
+            if (window.innerWidth <= 768) {
+                leftBtn.style.display = 'none';
+                rightBtn.style.display = 'none';
+                return;
+            }
 
             const maxScroll = mount.scrollWidth - mount.clientWidth;
             const canScrollRight = maxScroll > 4 && (mount.scrollLeft < maxScroll - 4);
@@ -3023,12 +3050,27 @@
 
         // Close multi-select stocks dropdown when clicking outside
         document.addEventListener('click', function(e) {
-            if (!e.target.closest('#wl-stocks-dropdown-wrapper')) {
+            if (!e.target.closest('#wl-stocks-dropdown-wrapper') && !e.target.closest('#wl-stocks-dropdown-backdrop')) {
                 const menu = document.getElementById('wl-stocks-dropdown-menu');
                 if (menu && menu.style.display !== 'none') {
                     menu.style.display = 'none';
                     const btn = document.getElementById('wl-stocks-dropdown-btn');
                     if (btn) btn.classList.remove('open');
+                    const backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
+                    if (backdrop) backdrop.style.display = 'none';
+                }
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const menu = document.getElementById('wl-stocks-dropdown-menu');
+                if (menu && menu.style.display !== 'none') {
+                    menu.style.display = 'none';
+                    const btn = document.getElementById('wl-stocks-dropdown-btn');
+                    if (btn) btn.classList.remove('open');
+                    const backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
+                    if (backdrop) backdrop.style.display = 'none';
                 }
             }
         });

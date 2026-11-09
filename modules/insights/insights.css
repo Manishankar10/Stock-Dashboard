@@ -901,3 +901,409 @@
         display: none !important;
     }
 }
+
+
+/* =========================================================
+   MARKET MOOD INDEX (MMI) - INDIAN MARKET SENTIMENT
+   ========================================================= */
+.insights-mmi-card {
+    padding: 16px 18px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mmi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.mmi-title {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.mmi-title-icon {
+    font-size: 15px;
+}
+
+.mmi-subtitle {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.mmi-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.mmi-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.mmi-pulsing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: mmi-dot-pulse 2s infinite ease-in-out;
+}
+
+@keyframes mmi-dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.mmi-refresh-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.mmi-refresh-btn:hover {
+    color: var(--accent-color, #10b981);
+    border-color: var(--accent-color, #10b981);
+    transform: rotate(180deg);
+}
+
+.mmi-refresh-btn.spinning svg {
+    animation: mmi-spin 0.8s linear infinite;
+}
+
+@keyframes mmi-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Segmented View Navigation (Speedometer | 30D Trend | Drivers) */
+.mmi-view-nav {
+    display: flex;
+    align-items: center;
+    background: var(--bg-subtle, rgba(255, 255, 255, 0.04));
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    gap: 3px;
+    margin-bottom: 2px;
+}
+
+.mmi-nav-btn {
+    flex: 1;
+    padding: 5px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.mmi-nav-btn:hover {
+    color: var(--text-primary);
+}
+
+.mmi-nav-btn.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Speedometer Gauge View */
+.mmi-gauge-view {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mmi-gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 2px 0 0 0;
+}
+
+.mmi-svg-chart {
+    width: 100%;
+    max-width: 230px;
+    height: auto;
+    overflow: visible;
+}
+
+.mmi-score-box {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+}
+
+.mmi-score-num {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.5px;
+}
+
+.mmi-zone-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.mmi-action-text {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 6px 10px;
+    background: var(--bg-subtle, rgba(255, 255, 255, 0.025));
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-top: 6px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Comparison Timeline Grid (Yesterday, Week, Month, Year) */
+.mmi-comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.mmi-compare-card {
+    background: var(--bg-subtle, rgba(255, 255, 255, 0.025));
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 2px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.mmi-compare-card:hover {
+    background: var(--table-hover-bg, rgba(255, 255, 255, 0.06));
+    transform: translateY(-1px);
+}
+
+.mmi-compare-lbl {
+    font-size: 8.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.mmi-compare-val {
+    font-size: 13.5px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.mmi-compare-zone {
+    font-size: 8.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Context stats row (Nifty & VIX) */
+.mmi-context-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--bg-subtle, rgba(255, 255, 255, 0.025));
+    border: 1px dashed var(--border-color);
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.mmi-context-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mmi-context-val {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* 30-Day Trend View */
+.mmi-trend-view {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mmi-trend-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.mmi-trend-stat-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 4px;
+    border-radius: 6px;
+    background: var(--bg-subtle, rgba(255, 255, 255, 0.025));
+    border: 1px solid var(--border-color);
+    text-align: center;
+    gap: 2px;
+}
+
+.mmi-stat-chip-lbl {
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+}
+
+.mmi-stat-chip-val {
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.mmi-chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 175px;
+}
+
+/* Drivers / Factors View */
+.mmi-factors-view {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mmi-factors-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 230px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.mmi-factor-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 9px;
+    border-radius: 6px;
+    background: var(--bg-subtle, rgba(255, 255, 255, 0.025));
+    border: 1px solid var(--border-color);
+}
+
+.mmi-factor-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.mmi-factor-desc {
+    font-size: 9.5px;
+    color: var(--text-muted);
+}
+
+.mmi-factor-status {
+    font-weight: 700;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.mmi-skeleton-wrap {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 0;
+}
+
+@media (max-width: 600px) {
+    .insights-mmi-card {
+        padding: 14px 14px !important;
+    }
+    .mmi-svg-chart {
+        max-width: 210px;
+    }
+    .mmi-score-num {
+        font-size: 28px;
+    }
+    .mmi-compare-card {
+        padding: 4px 1px;
+    }
+    .mmi-compare-lbl {
+        font-size: 7.5px;
+    }
+    .mmi-compare-val {
+        font-size: 12px;
+    }
+    .mmi-compare-zone {
+        font-size: 7.5px;
+    }
+    .mmi-context-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}

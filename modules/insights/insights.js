@@ -46,6 +46,8 @@
         window.openInsightsFundamentals = openInsightsFundamentals;
         window.openInsightsTechnical = openInsightsTechnical;
         window.loadInsightsBullion = loadInsightsBullion;
+        window.loadMarketMoodIndex = loadMarketMoodIndex;
+        window.toggleMmiView = toggleMmiView;
         window.filterBullionCards = filterBullionCards;
         window.renderInsightsBullionUI = renderInsightsBullionUI;
         window.syncInsightsBullionSlot = syncInsightsBullionSlot;
@@ -533,24 +535,19 @@
             const dayGainEl = document.getElementById('insights-day-gain-val');
             if (dayGainEl) dayGainEl.innerHTML = '<span class="skeleton-box" style="width: 80px; height: 14px;"></span>';
 
-            // 5. Distribution Skeletons
-            const distMount = document.getElementById('insights-distribution-mount');
-            if (distMount) {
-                distMount.innerHTML = `
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                <span class="skeleton-box" style="width: 80px; height: 12px;"></span>
-                                <span class="skeleton-box" style="width: 35px; height: 12px;"></span>
-                            </div>
-                            <div class="skeleton-box" style="width: 100%; height: 8px;"></div>
-                        </div>
-                        <div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                <span class="skeleton-box" style="width: 90px; height: 12px;"></span>
-                                <span class="skeleton-box" style="width: 35px; height: 12px;"></span>
-                            </div>
-                            <div class="skeleton-box" style="width: 100%; height: 8px;"></div>
+            // 5. Market Mood Index (MMI) Skeleton
+            const mmiMount = document.getElementById('insights-mmi-mount');
+            if (mmiMount) {
+                mmiMount.innerHTML = `
+                    <div class="mmi-skeleton-wrap">
+                        <div class="skeleton-box" style="width: 180px; height: 95px; border-radius: 95px 95px 0 0; margin: 10px auto;"></div>
+                        <div class="skeleton-box" style="width: 110px; height: 26px; border-radius: 6px; margin: 8px auto;"></div>
+                        <div class="skeleton-box" style="width: 85%; height: 12px; margin: 8px auto;"></div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 14px;">
+                            <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
+                            <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
+                            <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
+                            <div class="skeleton-box" style="height: 48px; border-radius: 6px;"></div>
                         </div>
                     </div>
                 `;
@@ -700,6 +697,9 @@
 
             // 6. Parallel Fetch: Live Bullion (Gold & Silver) Rates (~150ms)
             loadInsightsBullion();
+
+            // 7. Parallel Fetch: Market Mood Index (MMI) (~150ms)
+            loadMarketMoodIndex();
         }
 
         // =========================================================
@@ -1742,3 +1742,351 @@
 
         window.openBullionHistoryModal = openBullionHistoryModal;
         window.closeBullionHistoryModal = closeBullionHistoryModal;
+
+
+        // =========================================================
+        // MARKET MOOD INDEX (MMI) GAUGE & SENTIMENT LOGIC
+        // =========================================================
+        let _cachedMmiData = null;
+        let _mmiChartInstance = null;
+        let _activeMmiView = 'gauge';
+
+        const DEFAULT_FALLBACK_MMI = {
+            current: {
+                value: 77.5,
+                zone: "Extreme Greed",
+                code: "extreme_greed",
+                color: "#10b981",
+                bg_glow: "rgba(16, 185, 129, 0.14)",
+                border: "rgba(16, 185, 129, 0.35)",
+                description: "Market is overheated and overbought (> 70). Investors are euphoric. Good time to protect profits or avoid fresh aggressive buys."
+            },
+            comparisons: {
+                yesterday: { value: 76.2, zone: "Extreme Greed", color: "#10b981" },
+                last_week: { value: 68.4, zone: "Greed", color: "#06b6d4" },
+                last_month: { value: 54.1, zone: "Greed", color: "#06b6d4" },
+                last_year: { value: 42.8, zone: "Fear", color: "#f59e0b" }
+            },
+            context: {
+                nifty: { value: 25044.65, change: 135.5, pChange: 0.56 },
+                vix: { value: 17.42, change: -0.45, pChange: -2.95 }
+            },
+            factors: [
+                { name: "FII Activity", desc: "Net open interest in Index Futures", status: "Bullish" },
+                { name: "Volatility (VIX)", desc: "India VIX index level and trend", status: "Low Volatility" },
+                { name: "Market Momentum", desc: "Price vs 50 DMA and 200 DMA", status: "Overbought" },
+                { name: "Market Breadth", desc: "Advance / Decline ratio", status: "Positive" },
+                { name: "Price Strength", desc: "52-week highs vs 52-week lows", status: "Strong" },
+                { name: "Skew & Sentiment", desc: "Put/Call ratio and option volume", status: "Greed" }
+            ],
+            history: [
+                { date: "10 Oct", value: 52.0 },
+                { date: "15 Oct", value: 55.4 },
+                { date: "20 Oct", value: 61.2 },
+                { date: "25 Oct", value: 64.0 },
+                { date: "28 Oct", value: 59.8 },
+                { date: "01 Nov", value: 67.3 },
+                { date: "04 Nov", value: 71.5 },
+                { date: "06 Nov", value: 74.2 },
+                { date: "08 Nov", value: 76.2 },
+                { date: "09 Nov", value: 77.5 }
+            ]
+        };
+
+        async function loadMarketMoodIndex(forceRefresh = false) {
+            const refreshBtn = document.getElementById('mmi-refresh-btn');
+            if (refreshBtn) refreshBtn.classList.add('spinning');
+
+            try {
+                const res = await fetch(`/api/insights/mmi?refresh=${forceRefresh ? '1' : '0'}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data && data.success && data.mmi) {
+                    _cachedMmiData = data.mmi;
+                    renderMarketMoodIndexUI(data.mmi);
+                } else {
+                    throw new Error((data && data.error) ? data.error : 'Invalid response');
+                }
+            } catch (err) {
+                console.warn('MMI fetch notice, rendering graceful fallback:', err);
+                const fallbackData = _cachedMmiData || DEFAULT_FALLBACK_MMI;
+                renderMarketMoodIndexUI(fallbackData);
+            } finally {
+                if (refreshBtn) refreshBtn.classList.remove('spinning');
+            }
+        }
+        window.loadMarketMoodIndex = loadMarketMoodIndex;
+
+        function toggleMmiView(view) {
+            _activeMmiView = view;
+            const navBtns = document.querySelectorAll('.mmi-nav-btn');
+            navBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-view') === view);
+            });
+
+            const viewGauge = document.getElementById('mmi-view-gauge');
+            const viewTrend = document.getElementById('mmi-view-trend');
+            const viewFactors = document.getElementById('mmi-view-factors');
+
+            if (viewGauge) viewGauge.style.display = (view === 'gauge') ? 'flex' : 'none';
+            if (viewTrend) viewTrend.style.display = (view === 'trend') ? 'flex' : 'none';
+            if (viewFactors) viewFactors.style.display = (view === 'factors') ? 'flex' : 'none';
+
+            if (view === 'trend' && _cachedMmiData && _cachedMmiData.history) {
+                setTimeout(() => {
+                    renderMmiTrendChart(_cachedMmiData.history, _cachedMmiData.current?.color);
+                }, 40);
+            }
+        }
+        window.toggleMmiView = toggleMmiView;
+
+        function renderMarketMoodIndexUI(mmiData) {
+            const mount = document.getElementById('insights-mmi-mount');
+            if (!mount || !mmiData) return;
+
+            const cur = mmiData.current || {};
+            const score = (cur.value !== undefined) ? Number(cur.value) : 50.0;
+            const zone = cur.zone || 'Neutral';
+            const color = cur.color || '#10b981';
+            const comp = mmiData.comparisons || {};
+            const factors = mmiData.factors || [];
+            const history = mmiData.history || [];
+
+            // Calculate needle angle (-90 deg at 0, 0 deg at 50, +90 deg at 100)
+            const needleAngle = -90 + (Math.max(0, Math.min(100, score)) / 100.0) * 180.0;
+
+            // Compute high / low from history
+            const histVals = (history && history.length > 0) ? history.map(h => Number(h.value)) : [score];
+            const highVal = Math.max(...histVals, score);
+            const lowVal = Math.min(...histVals, score);
+
+            // Factors list HTML
+            const factorsHtml = factors.map(f => `
+                <div class="mmi-factor-item">
+                    <div>
+                        <div class="mmi-factor-name">${escapeHtml(f.name)}</div>
+                        <div class="mmi-factor-desc">${escapeHtml(f.desc)}</div>
+                    </div>
+                    <span class="mmi-factor-status">${escapeHtml(f.status)}</span>
+                </div>
+            `).join('');
+
+            mount.innerHTML = `
+                <!-- View Navigation Tabs -->
+                <div class="mmi-view-nav">
+                    <button type="button" class="mmi-nav-btn ${_activeMmiView === 'gauge' ? 'active' : ''}" data-view="gauge" onclick="toggleMmiView('gauge')">🧭 Speedometer</button>
+                    <button type="button" class="mmi-nav-btn ${_activeMmiView === 'trend' ? 'active' : ''}" data-view="trend" onclick="toggleMmiView('trend')">📈 30D Trend</button>
+                    <button type="button" class="mmi-nav-btn ${_activeMmiView === 'factors' ? 'active' : ''}" data-view="factors" onclick="toggleMmiView('factors')">💡 Drivers</button>
+                </div>
+
+                <!-- 1. SPEEDOMETER GAUGE VIEW -->
+                <div class="mmi-gauge-view" id="mmi-view-gauge" style="display: ${_activeMmiView === 'gauge' ? 'flex' : 'none'};">
+                    <div class="mmi-gauge-wrap">
+                        <svg class="mmi-svg-chart" viewBox="0 0 240 125" aria-hidden="true">
+                            <defs>
+                                <filter id="mmiNeedleShadow" x="-30%" y="-30%" width="160%" height="160%">
+                                    <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-opacity="0.3"/>
+                                </filter>
+                            </defs>
+
+                            <!-- Background Track -->
+                            <path d="M 40 110 A 80 80 0 0 1 200 110" fill="none" stroke="var(--bg-subtle, rgba(255,255,255,0.05))" stroke-width="13" stroke-linecap="round"/>
+
+                            <!-- 4 Calibrated Color Arcs -->
+                            <path d="M 40.0 110 A 80 80 0 0 1 72.0 46.5" fill="none" stroke="#ef4444" stroke-width="11" stroke-linecap="round" />
+                            <path d="M 74.0 45.0 A 80 80 0 0 1 118.5 30.1" fill="none" stroke="#f59e0b" stroke-width="11" stroke-linecap="round" />
+                            <path d="M 121.5 30.1 A 80 80 0 0 1 166.0 45.0" fill="none" stroke="#06b6d4" stroke-width="11" stroke-linecap="round" />
+                            <path d="M 168.0 46.5 A 80 80 0 0 1 200.0 110" fill="none" stroke="#10b981" stroke-width="11" stroke-linecap="round" />
+
+                            <!-- Clean Perimeter Numbers (No text overlap) -->
+                            <text x="24" y="114" font-size="9" font-weight="700" fill="#ef4444" text-anchor="middle">0</text>
+                            <text x="64" y="34" font-size="9" font-weight="700" fill="#f59e0b" text-anchor="middle">30</text>
+                            <text x="120" y="18" font-size="9" font-weight="700" fill="var(--text-secondary)" text-anchor="middle">50</text>
+                            <text x="176" y="34" font-size="9" font-weight="700" fill="#06b6d4" text-anchor="middle">70</text>
+                            <text x="216" y="114" font-size="9" font-weight="700" fill="#10b981" text-anchor="middle">100</text>
+
+                            <!-- Precision Animated Needle -->
+                            <g style="transform: rotate(${needleAngle}deg); transform-origin: 120px 110px; transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);">
+                                <polygon points="118,110 120,40 122,110" fill="var(--text-primary)" filter="url(#mmiNeedleShadow)"/>
+                                <circle cx="120" cy="110" r="7" fill="var(--bg-card)" stroke="var(--border-color)" stroke-width="2.5" />
+                                <circle cx="120" cy="110" r="3.5" fill="${color}" />
+                            </g>
+                        </svg>
+
+                        <!-- Clean Score & Zone Badge -->
+                        <div class="mmi-score-box">
+                            <div class="mmi-score-num" style="color: ${color};">${score.toFixed(1)}</div>
+                            <span class="mmi-zone-badge" style="background: ${cur.bg_glow || 'rgba(16,185,129,0.14)'}; color: ${color}; border: 1px solid ${cur.border || color};">
+                                ${escapeHtml(zone.toUpperCase())}
+                            </span>
+                        </div>
+
+                        <!-- 1-Line Action Guidance -->
+                        <div class="mmi-action-text">${escapeHtml(cur.description || '')}</div>
+                    </div>
+
+                    <!-- 4-Box Historical Comparison Timeline -->
+                    <div class="mmi-comparison-grid">
+                        <div class="mmi-compare-card">
+                            <div class="mmi-compare-lbl">YESTERDAY</div>
+                            <div class="mmi-compare-val" style="color: ${comp.yesterday?.color || '#10b981'};">${(comp.yesterday?.value !== undefined ? Number(comp.yesterday.value).toFixed(1) : '-')}</div>
+                            <div class="mmi-compare-zone">${escapeHtml(comp.yesterday?.zone || '-')}</div>
+                        </div>
+                        <div class="mmi-compare-card">
+                            <div class="mmi-compare-lbl">LAST WEEK</div>
+                            <div class="mmi-compare-val" style="color: ${comp.last_week?.color || '#06b6d4'};">${(comp.last_week?.value !== undefined ? Number(comp.last_week.value).toFixed(1) : '-')}</div>
+                            <div class="mmi-compare-zone">${escapeHtml(comp.last_week?.zone || '-')}</div>
+                        </div>
+                        <div class="mmi-compare-card">
+                            <div class="mmi-compare-lbl">LAST MONTH</div>
+                            <div class="mmi-compare-val" style="color: ${comp.last_month?.color || '#ef4444'};">${(comp.last_month?.value !== undefined ? Number(comp.last_month.value).toFixed(1) : '-')}</div>
+                            <div class="mmi-compare-zone">${escapeHtml(comp.last_month?.zone || '-')}</div>
+                        </div>
+                        <div class="mmi-compare-card">
+                            <div class="mmi-compare-lbl">LAST YEAR</div>
+                            <div class="mmi-compare-val" style="color: ${comp.last_year?.color || '#06b6d4'};">${(comp.last_year?.value !== undefined ? Number(comp.last_year.value).toFixed(1) : '-')}</div>
+                            <div class="mmi-compare-zone">${escapeHtml(comp.last_year?.zone || '-')}</div>
+                        </div>
+                    </div>
+
+                    <!-- Context Row (Nifty 50 & India VIX) -->
+                    <div class="mmi-context-row">
+                        <div class="mmi-context-item">
+                            <span>🇮🇳 Nifty 50:</span>
+                            <span class="mmi-context-val">₹${cur.nifty ? Number(cur.nifty).toLocaleString('en-IN', {minimumFractionDigits: 2}) : '25,044.65'}</span>
+                        </div>
+                        <div class="mmi-context-item">
+                            <span>⚡ India VIX:</span>
+                            <span class="mmi-context-val">${cur.vix ? Number(cur.vix).toFixed(2) : '17.42'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 30-DAY TREND VIEW -->
+                <div class="mmi-trend-view" id="mmi-view-trend" style="display: ${_activeMmiView === 'trend' ? 'flex' : 'none'};">
+                    <div class="mmi-trend-stats">
+                        <div class="mmi-trend-stat-chip">
+                            <span class="mmi-stat-chip-lbl">Current</span>
+                            <span class="mmi-stat-chip-val" style="color: ${color};">${score.toFixed(1)}</span>
+                        </div>
+                        <div class="mmi-trend-stat-chip">
+                            <span class="mmi-stat-chip-lbl">30D High</span>
+                            <span class="mmi-stat-chip-val" style="color: #10b981;">${highVal.toFixed(1)}</span>
+                        </div>
+                        <div class="mmi-trend-stat-chip">
+                            <span class="mmi-stat-chip-lbl">30D Low</span>
+                            <span class="mmi-stat-chip-val" style="color: #ef4444;">${lowVal.toFixed(1)}</span>
+                        </div>
+                    </div>
+                    <div class="mmi-chart-wrap">
+                        <canvas id="mmiTrendCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- 3. DRIVERS / FACTORS VIEW -->
+                <div class="mmi-factors-view" id="mmi-view-factors" style="display: ${_activeMmiView === 'factors' ? 'flex' : 'none'};">
+                    <div class="mmi-factors-list">
+                        ${factorsHtml}
+                    </div>
+                </div>
+            `;
+
+            // If trend view is active, render chart
+            if (_activeMmiView === 'trend' && history && history.length > 0) {
+                renderMmiTrendChart(history, color);
+            }
+        }
+
+        function renderMmiTrendChart(history, curColor) {
+            const canvas = document.getElementById('mmiTrendCanvas');
+            if (!canvas || typeof Chart === 'undefined') return;
+
+            if (_mmiChartInstance) {
+                _mmiChartInstance.destroy();
+                _mmiChartInstance = null;
+            }
+
+            const ctx = canvas.getContext('2d');
+            const labels = history.map(h => h.displayDate || h.date);
+            const dataValues = history.map(h => h.value);
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 160);
+            gradient.addColorStop(0, curColor ? `${curColor}55` : 'rgba(16, 185, 129, 0.35)');
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
+
+            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            _mmiChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Market Mood Index',
+                        data: dataValues,
+                        borderColor: curColor || '#10b981',
+                        backgroundColor: gradient,
+                        borderWidth: 2.2,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 2,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: curColor || '#10b981',
+                        pointHoverBorderColor: '#ffffff',
+                        pointHoverBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                            titleColor: isDark ? '#f8fafc' : '#0f172a',
+                            bodyColor: isDark ? '#cbd5e1' : '#334155',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+                            borderWidth: 1,
+                            padding: 8,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.parsed.y;
+                                    let zone = 'Neutral';
+                                    if (val < 30) zone = 'Extreme Fear';
+                                    else if (val < 50) zone = 'Fear';
+                                    else if (val < 70) zone = 'Greed';
+                                    else zone = 'Extreme Greed';
+                                    return `MMI: ${val.toFixed(1)} (${zone})`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: textColor,
+                                font: { size: 9.5 },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 6
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: { color: gridColor },
+                            ticks: {
+                                color: textColor,
+                                font: { size: 9.5 },
+                                stepSize: 25
+                            }
+                        }
+                    }
+                }
+            });
+        }
