@@ -3,6 +3,30 @@
    Location: modules/market_depth/market_depth.css
    ========================================================= */
 
+.market-depth-modal {
+    display: none;
+    position: fixed;
+    z-index: 100060;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+}
+
+.market-depth-modal[style*="display: block"],
+.market-depth-modal[style*="display: flex"],
+.market-depth-modal[style*="block"],
+.market-depth-modal[style*="flex"] {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
 .market-depth-modal-content {
     background: var(--bg-card, #131722) !important;
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
@@ -12,7 +36,7 @@
     width: 95%;
     height: auto !important;
     min-height: unset !important;
-    margin: 2vh auto;
+    margin: auto !important;
     max-height: calc(100vh - 30px);
     overflow-y: auto;
     position: relative;

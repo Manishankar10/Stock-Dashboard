@@ -52,7 +52,7 @@
 
         // Open modal
         const modal = document.getElementById('marketDepthModal');
-        if (modal) modal.style.display = 'block';
+        if (modal) modal.style.display = 'flex';
 
         // Start real-time parent price listener while modal is open
         startParentPriceSync();
@@ -289,7 +289,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             const modal = document.getElementById('marketDepthModal');
-            if (modal && modal.style.display === 'block') {
+            if (modal && (modal.style.display === 'flex' || modal.style.display === 'block')) {
                 closeMarketDepthModal();
             }
         }
