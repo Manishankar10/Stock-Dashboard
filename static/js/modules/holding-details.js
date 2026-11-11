@@ -67,6 +67,15 @@
             }
             document.getElementById('btn-detail-alert').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openCreateAlertModal(sym); };
             document.getElementById('btn-detail-chart').onclick = (e) => { e.stopPropagation(); closeHoldingDetailsModal(); openInHouseChart(sym); };
+            const btnDepth = document.getElementById('btn-detail-depth');
+            if (btnDepth) {
+                btnDepth.onclick = (e) => {
+                    e.stopPropagation();
+                    closeHoldingDetailsModal();
+                    if (typeof openMarketDepthModal === 'function') openMarketDepthModal(sym, item.name || sym);
+                    else if (typeof window.openMarketDepthModal === 'function') window.openMarketDepthModal(sym, item.name || sym);
+                };
+            }
             const btnNotes = document.getElementById('btn-detail-notes');
             if (btnNotes) {
                 btnNotes.onclick = (e) => {

@@ -1,0 +1,103 @@
+<!-- templates/components/market_depth_modal.html -->
+<!-- Standalone Real-Time Market Depth (L2 5-Depth Order Book) Modal -->
+
+<div id="marketDepthModal" class="modal market-depth-modal" style="display: none; z-index: 100060;" onclick="if(event.target === this) closeMarketDepthModal();">
+    <div class="modal-content market-depth-modal-content" onclick="event.stopPropagation();">
+        <!-- Modal Top Bar / Header -->
+        <div class="market-depth-header">
+            <div class="market-depth-title-group">
+                <span class="market-depth-badge-icon" aria-hidden="true">⚡</span>
+                <div>
+                    <div class="market-depth-title">
+                        <span id="marketDepthSymbol">STOCK</span>
+                        <span class="market-depth-tag">NSE 5-DEPTH</span>
+                    </div>
+                    <div id="marketDepthCompanyName" class="market-depth-company-name">Company Name Ltd</div>
+                </div>
+            </div>
+
+            <!-- Header Right: Live LTP & Controls -->
+            <div class="market-depth-header-right">
+                <div class="market-depth-price-box">
+                    <span id="marketDepthLTP" class="market-depth-ltp">₹0.00</span>
+                    <span id="marketDepthChange" class="market-depth-change">+0.00 (0.00%)</span>
+                </div>
+                <button type="button" id="marketDepthRefreshBtn" class="market-depth-refresh-btn" onclick="refreshMarketDepthModal()" title="Refresh Market Depth">
+                    <span class="market-depth-refresh-icon">🔄</span>
+                </button>
+                <button type="button" class="market-depth-close-btn" onclick="closeMarketDepthModal()" title="Close">&times;</button>
+            </div>
+        </div>
+
+        <!-- Body / Content Container -->
+        <div class="market-depth-body">
+            <!-- Loading Indicator -->
+            <div id="marketDepthLoader" class="market-depth-loader" style="display: none;">
+                <div class="market-depth-spinner"></div>
+                <span>Fetching live order book...</span>
+            </div>
+
+            <!-- Error State -->
+            <div id="marketDepthError" class="market-depth-error" style="display: none;">
+                <span class="market-depth-error-icon">⚠️</span>
+                <span id="marketDepthErrorText">Market depth temporarily unavailable.</span>
+                <button type="button" class="market-depth-retry-btn" onclick="refreshMarketDepthModal()">Retry</button>
+            </div>
+
+            <!-- Market Depth Table (Top 5 Bids & Asks) -->
+            <div id="marketDepthTableWrap" class="market-depth-table-wrap">
+                <div class="market-depth-grid-header">
+                    <div class="depth-col-head buy-side">Qty.</div>
+                    <div class="depth-col-head buy-side">Orders</div>
+                    <div class="depth-col-head buy-side">Buy Price</div>
+                    <div class="depth-col-head sell-side">Sell Price</div>
+                    <div class="depth-col-head sell-side">Orders</div>
+                    <div class="depth-col-head sell-side">Qty.</div>
+                </div>
+
+                <div id="marketDepthRows" class="market-depth-rows">
+                    <!-- 5 Rows populated dynamically -->
+                </div>
+
+                <!-- Total Quantity Imbalance Bar -->
+                <div class="market-depth-imbalance-wrap">
+                    <div class="market-depth-bar">
+                        <div id="marketDepthBuyBar" class="market-depth-bar-buy" style="width: 50%;"></div>
+                        <div id="marketDepthSellBar" class="market-depth-bar-sell" style="width: 50%;"></div>
+                    </div>
+                    <div class="market-depth-total-row">
+                        <div id="marketDepthTotalBuy" class="market-depth-total-buy">0</div>
+                        <div class="market-depth-total-label">Total Quantity</div>
+                        <div id="marketDepthTotalSell" class="market-depth-total-sell">0</div>
+                    </div>
+                </div>
+
+                <!-- Statistics Footer (Open, High, Low, Close) -->
+                <div class="market-depth-stats-grid">
+                    <div class="market-depth-stat-box">
+                        <div class="stat-label">Open</div>
+                        <div id="marketDepthOpen" class="stat-value">₹0.00</div>
+                    </div>
+                    <div class="market-depth-stat-box">
+                        <div class="stat-label">High</div>
+                        <div id="marketDepthHigh" class="stat-value val-high">₹0.00</div>
+                    </div>
+                    <div class="market-depth-stat-box">
+                        <div class="stat-label">Low</div>
+                        <div id="marketDepthLow" class="stat-value val-low">₹0.00</div>
+                    </div>
+                    <div class="market-depth-stat-box">
+                        <div class="stat-label">Close</div>
+                        <div id="marketDepthClose" class="stat-value">₹0.00</div>
+                    </div>
+                </div>
+
+                <!-- Live Timestamp / Status Footer -->
+                <div class="market-depth-footer-bar">
+                    <span id="marketDepthTimestamp" class="market-depth-timestamp">Updated: --:--:--</span>
+                    <span class="market-depth-live-dot">● Live Exchange Feed</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

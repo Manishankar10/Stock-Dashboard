@@ -1692,6 +1692,11 @@
                     if (typeof window.openFundamentalsModal === 'function') window.openFundamentalsModal(sym);
                     else if (typeof openFundamentalsModal === 'function') openFundamentalsModal(sym);
                 }},
+                { label: '⚡ Market Depth', action: () => {
+                    const compName = (options && options.item && (options.item.name || options.item.company)) || info.name || sym;
+                    if (typeof window.openMarketDepthModal === 'function') window.openMarketDepthModal(sym, compName);
+                    else if (typeof openMarketDepthModal === 'function') openMarketDepthModal(sym, compName);
+                }},
                 { label: '📝 Stock Notes', action: () => {
                     const compName = (options && options.item && (options.item.name || options.item.company)) || info.name || sym;
                     if (typeof window.openStockNotesModal === 'function') window.openStockNotesModal(sym, compName);

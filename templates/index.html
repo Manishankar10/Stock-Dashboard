@@ -83,6 +83,7 @@
     <link rel="stylesheet" href="/peoples.css?v=1.0">
     <link rel="stylesheet" href="/modules/technical_screener/technical_screener.css?v=1.0">
     <link rel="stylesheet" href="/modules/stock_notes/stock_notes.css?v=1.0">
+    <link rel="stylesheet" href="/modules/market_depth/market_depth.css?v=1.0">
 
     <!-- Institutional Financial Typography (Inter & Plus Jakarta Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -128,6 +129,7 @@
     {% include 'components/modals.html' %}
     {% include 'components/mf_modal.html' %}
     {% include 'components/stock_notes_modal.html' %}
+    {% include 'components/market_depth_modal.html' %}
 
     <script>
         window.INITIAL_TAB = "{{ initial_tab|default('watchlists') }}";
@@ -177,5 +179,6 @@
     <script src="/static/js/modules/alerts-notifications.js?v=3.0"></script>
     <script src="/static/js/modules/live-updater.js?v=3.6"></script>
     <script src="/modules/stock_notes/stock_notes.js?v=1.0"></script>
+    <script src="/modules/market_depth/market_depth.js?v=1.0"></script>
 </body>
 </html>

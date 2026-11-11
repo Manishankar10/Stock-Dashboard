@@ -48,6 +48,7 @@ from modules.shareholding import shareholding_bp, init_shareholding
 from modules.peoples import peoples_bp, init_peoples
 from modules.drawings import drawings_bp
 from modules.stock_notes import stock_notes_bp
+from modules.market_depth import market_depth_bp
 from modules.common.custom_queries_routes import custom_queries_bp
 from modules.technical_screener import technical_screener_bp
 from modules.notifications import notifications_bp
@@ -142,6 +143,7 @@ app.register_blueprint(drawings_bp)
 app.register_blueprint(technical_screener_bp)
 app.register_blueprint(custom_queries_bp)
 app.register_blueprint(stock_notes_bp)
+app.register_blueprint(market_depth_bp)
 
 # Static Asset Serving for Modules
 @app.route("/modules/<path:filename>")
