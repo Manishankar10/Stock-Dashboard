@@ -108,21 +108,21 @@ def normalize_domain(s):
 def get_allowed_research_websites():
     """
     Retrieves the comma-separated research websites configured by Admin in system settings.
-    Returns a list of normalized domain substrings, e.g. ['trendlyne.com', 'screener.in', 'bseindia.com', 'hdfcsec.com'].
+    Returns a list of normalized domain substrings, e.g. ['trendlyne.com', 'screener.in', 'bseindia.com', 'hdfcsec.com', 'sbisecurities.in'].
     """
     try:
         from modules.common.system_settings import get_system_settings
         settings = get_system_settings()
-        raw = settings.get("research_document_websites") or "trendlyne.com, screener.in, bseindia.com, hdfcsec.com"
+        raw = settings.get("research_document_websites") or "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in"
     except Exception:
-        raw = "trendlyne.com, screener.in, bseindia.com, hdfcsec.com"
+        raw = "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in"
 
     sites = []
     for s in str(raw).split(","):
         norm = normalize_domain(s)
         if norm and norm not in sites:
             sites.append(norm)
-    return sites or ["trendlyne.com", "screener.in", "bseindia.com", "hdfcsec.com"]
+    return sites or ["trendlyne.com", "screener.in", "bseindia.com", "hdfcsec.com", "sbisecurities.in"]
 
 
 def is_pdf_or_content_available(report, allowed_sites=None):
@@ -148,7 +148,7 @@ def is_pdf_or_content_available(report, allowed_sites=None):
         report_source = (report.get("source") or "").lower()
         matched_site = False
         for site in allowed_sites:
-            # Matches if site is the report source (e.g. screener.in, trendlyne.com, hdfcsec.com) or site domain is in URL
+            # Matches if site is the report source (e.g. screener.in, trendlyne.com, hdfcsec.com, sbisecurities.in) or site domain is in URL
             if site in report_source or site in url_lower:
                 matched_site = True
                 break
@@ -163,7 +163,9 @@ def is_pdf_or_content_available(report, allowed_sites=None):
         "/get-document/post/pdf/" in url_lower or
         "annpdfopen" in url_lower or
         "/corpfiling/" in url_lower or
-        "/hsl.docs/" in url_lower
+        "/hsl.docs/" in url_lower or
+        "/fileserver/" in url_lower or
+        "sbisecurities.in" in url_lower
     )
 
     has_content = (
@@ -646,6 +648,204 @@ def fetch_hdfcsec_reports(symbol):
     return reports
 
 
+SBI_KEY = b"12345678901234567890123456789012"
+SBI_IV = b"1234567890123456"
+SBI_SUBCATEGORIES = [
+    "Pick Of the Day",
+    "Pick Of the Week",
+    "Weekly Report",
+    "Thematic Reports",
+    "IPO notes",
+    "Daily Morning Update"
+]
+
+_sbi_catalog_cache = {"timestamp": 0, "items": []}
+_sbi_cache_lock = Lock()
+
+
+def _decrypt_sbi_payload(ciphertext_b64):
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.primitives import padding
+        import base64
+        raw = base64.b64decode(ciphertext_b64)
+        cipher = Cipher(algorithms.AES(SBI_KEY), modes.CBC(SBI_IV))
+        decryptor = cipher.decryptor()
+        padded = decryptor.update(raw) + decryptor.finalize()
+        unpadder = padding.PKCS7(128).unpadder()
+        data = unpadder.update(padded) + unpadder.finalize()
+        return data.decode("utf-8")
+    except Exception as e:
+        logger.debug(f"Failed to decrypt SBI payload: {e}")
+        return ""
+
+
+def _encrypt_sbi_payload(plaintext_str):
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.primitives import padding
+        import base64
+        padder = padding.PKCS7(128).padder()
+        padded = padder.update(plaintext_str.encode("utf-8")) + padder.finalize()
+        cipher = Cipher(algorithms.AES(SBI_KEY), modes.CBC(SBI_IV))
+        encryptor = cipher.encryptor()
+        encrypted = encryptor.update(padded) + encryptor.finalize()
+        return base64.b64encode(encrypted).decode("utf-8")
+    except Exception as e:
+        logger.debug(f"Failed to encrypt SBI payload: {e}")
+        return ""
+
+
+def _get_sbi_catalog(force_refresh=False):
+    """
+    Fetches and caches the full SBI Securities research reports catalog across all fundamental tabs:
+    Pick Of the Day, Pick Of the Week, Weekly Report, Thematic Reports, IPO notes, Daily Morning Update.
+    Cached in memory for 30 minutes.
+    """
+    global _sbi_catalog_cache
+    now = time.time()
+    if not force_refresh:
+        with _sbi_cache_lock:
+            if _sbi_catalog_cache["items"] and (now - _sbi_catalog_cache["timestamp"] < 1800):
+                return _sbi_catalog_cache["items"]
+
+    url = "https://www.sbisecurities.in/apiconnect/research/getreports"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Content-Type": "text/plain",
+        "Origin": "https://www.sbisecurities.in",
+        "Referer": "https://www.sbisecurities.in/research/fundamental"
+    }
+
+    def _fetch_subcat(subcat):
+        body = _encrypt_sbi_payload(json.dumps({"category_name": "fundamental", "sub_category_name": subcat}))
+        if not body:
+            return []
+        try:
+            try:
+                from curl_cffi import requests as cffi_requests
+                r = cffi_requests.post(url, data=body, headers=headers, impersonate="chrome", timeout=12)
+            except Exception:
+                r = requests.post(url, data=body, headers=headers, timeout=12)
+
+            if r and r.status_code == 200:
+                data = r.json()
+                if "response" in data:
+                    dec = _decrypt_sbi_payload(data["response"])
+                    if dec:
+                        obj = json.loads(dec)
+                        return obj.get("data") or []
+        except Exception as e:
+            logger.debug(f"Error fetching SBI Securities subcategory '{subcat}': {e}")
+        return []
+
+    all_items = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+        futures = [ex.submit(_fetch_subcat, sc) for sc in SBI_SUBCATEGORIES]
+        for f in futures:
+            all_items.extend(f.result() or [])
+
+    with _sbi_cache_lock:
+        _sbi_catalog_cache = {
+            "timestamp": now,
+            "items": all_items
+        }
+
+    return all_items
+
+
+def fetch_sbisec_reports(symbol, company_name=None, force_refresh=False):
+    """
+    Fetches official research reports from SBI Securities across all fundamental tabs:
+    - Pick Of the Day (e.g. Marico, ITC Hotels, Force Motors)
+    - Pick Of the Week
+    - Thematic Reports / Special Situation Reports
+    - IPO Notes
+    - Daily Morning Update & Weekly Reports
+    Directly returns verified report cards with direct PDF links.
+    """
+    clean_sym = clean_symbol(symbol)
+    if not clean_sym:
+        return []
+
+    catalog = _get_sbi_catalog(force_refresh=force_refresh)
+    if not catalog:
+        return []
+
+    import urllib.parse
+
+    escaped_sym = re.escape(clean_sym)
+    pattern_sym = re.compile(rf'(?:^|[\s_(\[-]){escaped_sym}(?:$|[\s_)\].-])', re.IGNORECASE)
+
+    pattern_comp = None
+    if company_name:
+        comp_clean = re.sub(r'\b(ltd|limited|india|industries|corp|corporation)\b', '', str(company_name), flags=re.IGNORECASE).strip()
+        if comp_clean and len(comp_clean) >= 3:
+            pattern_comp = re.compile(rf'(?:^|[\s_(\[-]){re.escape(comp_clean)}(?:$|[\s_)\].-])', re.IGNORECASE)
+
+    reports = []
+    for item in catalog:
+        desc = item.get("report_desc") or ""
+        raw_link = item.get("report_link") or ""
+        subcat = item.get("sub_category_name") or ""
+        text = f"{desc} {raw_link}"
+
+        is_match = False
+        if pattern_sym.search(text):
+            is_match = True
+        elif pattern_comp and pattern_comp.search(text):
+            is_match = True
+
+        if not is_match:
+            continue
+
+        if not raw_link or not raw_link.lower().endswith(".pdf"):
+            continue
+
+        clean_url = urllib.parse.quote(raw_link, safe=":/%._-")
+        date_str = item.get("disp_date") or "Recent"
+
+        # Rating determination
+        desc_lower = desc.lower()
+        subcat_lower = subcat.lower()
+        if "pick of the day" in subcat_lower or "pick of the week" in subcat_lower or "delivery call" in desc_lower:
+            rating = "BUY"
+        elif "ipo" in subcat_lower or "ipo note" in desc_lower:
+            rating = "IPO"
+        elif "result update" in desc_lower or "thematic" in subcat_lower:
+            rating = "UPDATE"
+        else:
+            m_reco = re.search(r"\b(BUY|ADD|HOLD|SELL|ACCUMULATE|REDUCE)\b", desc, flags=re.IGNORECASE)
+            rating = m_reco.group(1).upper() if m_reco else "RESEARCH"
+
+        author = f"SBI Securities ({subcat})" if subcat else "SBI Securities"
+
+        # Target price if mentioned in title/desc
+        m_tp = re.search(r"(?:target price:?|target:?|TP:?)\s*(?:INR|Rs\.?|₹)?\s*([0-9,]+(?:\.[0-9]+)?)", desc, flags=re.IGNORECASE)
+        tp = m_tp.group(1).replace(",", "") if m_tp else ""
+
+        reports.append({
+            "id": f"sbi-{item.get('id', len(reports) + 1)}",
+            "symbol": clean_sym,
+            "date": date_str,
+            "author": author,
+            "institution_type": "Brokerage / Institutional",
+            "title": desc or f"{clean_sym} - SBI Securities Research Report",
+            "rating": rating,
+            "target_price": tp,
+            "upside": "",
+            "url": clean_url,
+            "has_pdf": True,
+            "has_content": True,
+            "source": "sbisecurities.in",
+            "category": "broker_research",
+            "tab_name": "Broker Research",
+            "is_live": True
+        })
+
+    return reports
+
+
 def parse_doc_date(date_str):
     """Robust parser for document dates (e.g. '28 Oct 2026', 'Oct 2026', 'FY 2026', '2026-10-28')."""
     if not date_str:
@@ -700,7 +900,7 @@ class BrokerResearchProvider:
 
         reports = []
 
-        # 1 & 2. Concurrent fetch from Trendlyne & Screener/BSE to drastically reduce latency
+        # Concurrent fetch from Trendlyne, Screener/BSE, HDFC Securities & SBI Securities
         def _get_trendlyne():
             if any("trendlyne.com" in s for s in allowed_sites):
                 try:
@@ -725,13 +925,23 @@ class BrokerResearchProvider:
                     logger.warning(f"Error fetching HDFC Securities reports: {e}")
             return []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        def _get_sbisec():
+            if any("sbisecurities.in" in s for s in allowed_sites):
+                try:
+                    return fetch_sbisec_reports(clean_sym, company_name=company_name, force_refresh=force_refresh)
+                except Exception as e:
+                    logger.warning(f"Error fetching SBI Securities reports: {e}")
+            return []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             f_trend = executor.submit(_get_trendlyne)
             f_scr = executor.submit(_get_screener_bse)
             f_hdfc = executor.submit(_get_hdfcsec)
+            f_sbi = executor.submit(_get_sbisec)
             reports.extend(f_trend.result() or [])
             reports.extend(f_scr.result() or [])
             reports.extend(f_hdfc.result() or [])
+            reports.extend(f_sbi.result() or [])
 
         # 3. Strictly filter: ONLY if PDF or content is available from allowed websites
         valid_reports = [r for r in reports if is_pdf_or_content_available(r, allowed_sites)]

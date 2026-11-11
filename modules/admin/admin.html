@@ -1427,9 +1427,9 @@
                                 Websites to refer and source research documents, broker coverage, concalls, and institutional papers. Only research documents with a verified PDF or readable content from these websites will be displayed to users.
                             </p>
                             <div class="settings-input-group" style="display: flex; flex-direction: column; gap: 6px;">
-                                <input type="text" id="setting-research-websites" placeholder="trendlyne.com, screener.in, bseindia.com"
+                                <input type="text" id="setting-research-websites" placeholder="trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in"
                                     style="width: 100%; padding: 10px 14px; font-size: 14px; font-weight: 500; border-radius: 8px; border: 1px solid var(--border-input); background: var(--bg-card); color: var(--text-primary); box-sizing: border-box;">
-                                <span style="font-size: 11.5px; color: var(--text-secondary);">e.g. <code>trendlyne.com, screener.in, bseindia.com, nseindia.com</code></span>
+                                <span style="font-size: 11.5px; color: var(--text-secondary);">e.g. <code>trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in</code></span>
                             </div>
                         </div>
 
@@ -3959,7 +3959,7 @@
                     if (wlRefreshInput) wlRefreshInput.value = data.settings.watchlist_refresh_interval_sec || 30;
                     if (pfRefreshInput) pfRefreshInput.value = data.settings.portfolio_refresh_interval_sec || 30;
                     if (chartRefreshInput) chartRefreshInput.value = data.settings.chart_refresh_interval_sec || 10;
-                    if (resWebInput) resWebInput.value = data.settings.research_document_websites || 'trendlyne.com, screener.in, bseindia.com';
+                    if (resWebInput) resWebInput.value = data.settings.research_document_websites || 'trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in';
                 }
             } catch (e) {
                 console.error('Error loading system settings:', e);

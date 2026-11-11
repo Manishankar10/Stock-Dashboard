@@ -10,7 +10,7 @@ DEFAULT_SYSTEM_SETTINGS = {
     "watchlist_refresh_interval_sec": 30,
     "portfolio_refresh_interval_sec": 30,
     "chart_refresh_interval_sec": 10,
-    "research_document_websites": "trendlyne.com, screener.in, bseindia.com, hdfcsec.com",
+    "research_document_websites": "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in",
     "ai_prompts": {},
     "fcm_vapid_public_key": "",
     "fcm_vapid_private_key": "",
@@ -119,7 +119,7 @@ def update_system_settings(new_settings):
     if "research_document_websites" in new_settings:
         raw_val = str(new_settings["research_document_websites"]).strip()
         parts = [p.strip() for p in raw_val.split(",") if p.strip()]
-        current["research_document_websites"] = ", ".join(parts) if parts else "trendlyne.com, screener.in, bseindia.com, hdfcsec.com"
+        current["research_document_websites"] = ", ".join(parts) if parts else "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in"
 
     # Smart Auto-Correction: If VAPID Key and Web API Key were swapped
     v_val = current.get("fcm_vapid_public_key", "")
@@ -138,7 +138,7 @@ def update_system_settings(new_settings):
         "watchlist_refresh_interval_sec": current.get("watchlist_refresh_interval_sec", 30),
         "portfolio_refresh_interval_sec": current.get("portfolio_refresh_interval_sec", 30),
         "chart_refresh_interval_sec": current.get("chart_refresh_interval_sec", 10),
-        "research_document_websites": current.get("research_document_websites", "trendlyne.com, screener.in, bseindia.com, hdfcsec.com"),
+        "research_document_websites": current.get("research_document_websites", "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in"),
         "ai_prompts": current.get("ai_prompts", {}),
         "fcm_vapid_public_key": current.get("fcm_vapid_public_key", ""),
         "fcm_vapid_private_key": current.get("fcm_vapid_private_key", ""),
