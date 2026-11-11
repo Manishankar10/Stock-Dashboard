@@ -1103,15 +1103,22 @@ def fetch_icicidirect_reports(symbol, company_name=None, force_refresh=False):
 
 
 def parse_doc_date(date_str):
-    """Robust parser for document dates (e.g. '28 Oct 2026', 'Oct 2026', 'FY 2026', '2026-10-28')."""
+    """Robust parser for document dates (e.g. '28 Oct 2026', 'Oct 2026', 'FY 2026', '2026-10-28', '08-06-2026')."""
     if not date_str:
-        return datetime(2020, 1, 1)
+        return datetime(1970, 1, 1)
     s = str(date_str).strip()
-    for fmt in ("%d %b %Y", "%d %b, %Y", "%d %B %Y", "%b %Y", "%B %Y", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(s, fmt)
-        except Exception:
-            pass
+    if s.lower() == "recent":
+        return datetime.now()
+    first_part = s.split()[0] if " " in s else s
+    for fmt in (
+        "%d %b %Y", "%d %b, %Y", "%d %B %Y", "%b %Y", "%B %Y",
+        "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"
+    ):
+        for cand in (s, first_part):
+            try:
+                return datetime.strptime(cand, fmt)
+            except Exception:
+                pass
     # Match '12 Oct 2026'
     m1 = re.search(r"(\d{1,2})\s+([a-zA-Z]{3,9})\s+(\d{4})", s)
     if m1:
@@ -1133,7 +1140,7 @@ def parse_doc_date(date_str):
             return datetime(int(m3.group(1)), 3, 31)
         except Exception:
             pass
-    return datetime(2020, 1, 1)
+    return datetime(1970, 1, 1)
 
 
 class BrokerResearchProvider:
@@ -1212,17 +1219,26 @@ class BrokerResearchProvider:
         # 3. Strictly filter: ONLY if PDF or content is available from allowed websites
         valid_reports = [r for r in reports if is_pdf_or_content_available(r, allowed_sites)]
 
-        # 4. Deduplicate by URL
+        # 4. Filter out reports older than 3 years (36 calendar months)
+        now_dt = datetime.now()
+        try:
+            cutoff_date = now_dt.replace(year=now_dt.year - 3)
+        except ValueError:
+            cutoff_date = now_dt - timedelta(days=3 * 365)
+
+        recent_reports = [r for r in valid_reports if parse_doc_date(r.get("date", "")) >= cutoff_date]
+
+        # 5. Deduplicate by URL
         seen_urls = set()
         unique_reports = []
-        for r in valid_reports:
+        for r in recent_reports:
             u = str(r.get("url") or "").strip().lower()
             if u and u in seen_urls:
                 continue
             seen_urls.add(u)
             unique_reports.append(r)
 
-        # 5. Sort descending by date
+        # 6. Sort descending by date
         unique_reports.sort(key=lambda r: parse_doc_date(r.get("date", "")), reverse=True)
 
         with _cache_lock:

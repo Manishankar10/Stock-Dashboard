@@ -1203,13 +1203,9 @@
         function renderInsightsFiiDiiUI(fd) {
             const fiiMount = document.getElementById('insights-fiidii-mount');
             const fiiDateTag = document.getElementById('fiidii-date-tag');
-            const sourceBadge = document.getElementById('fiidii-source-badge');
             if (!fiiMount || !fd) return;
 
             if (fiiDateTag && fd.date) fiiDateTag.innerText = window.formatAppDate ? window.formatAppDate(fd.date) : fd.date;
-            if (sourceBadge && fd.source) {
-                sourceBadge.innerText = fd.source.toUpperCase().includes('NSE') ? 'NSE DIRECT' : fd.source;
-            }
 
             const fiiPos = fd.fii_net >= 0;
             const diiPos = fd.dii_net >= 0;
@@ -1219,8 +1215,8 @@
             const diiSign = diiPos ? '+' : '-';
             const totSign = totPos ? '+' : '-';
 
-            const fiiGrossTooltip = (fd.fii_buy && fd.fii_sell) ? `Gross Buy: ₹${fd.fii_buy.toLocaleString('en-IN')} Cr | Gross Sell: ₹${fd.fii_sell.toLocaleString('en-IN')} Cr (NSE Official)` : '';
-            const diiGrossTooltip = (fd.dii_buy && fd.dii_sell) ? `Gross Buy: ₹${fd.dii_buy.toLocaleString('en-IN')} Cr | Gross Sell: ₹${fd.dii_sell.toLocaleString('en-IN')} Cr (NSE Official)` : '';
+            const fiiGrossTooltip = (fd.fii_buy && fd.fii_sell) ? `Gross Buy: ₹${fd.fii_buy.toLocaleString('en-IN')} Cr | Gross Sell: ₹${fd.fii_sell.toLocaleString('en-IN')} Cr` : '';
+            const diiGrossTooltip = (fd.dii_buy && fd.dii_sell) ? `Gross Buy: ₹${fd.dii_buy.toLocaleString('en-IN')} Cr | Gross Sell: ₹${fd.dii_sell.toLocaleString('en-IN')} Cr` : '';
 
             fiiMount.innerHTML = `
                 <div style="background: var(--bg-subtle); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;" ${fiiGrossTooltip ? `title="${escapeHtml(fiiGrossTooltip)}"` : ''}>

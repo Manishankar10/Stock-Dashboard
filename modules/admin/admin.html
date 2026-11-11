@@ -798,14 +798,12 @@
                 grid-template-columns: 1fr !important;
                 gap: 8px !important;
             }
-            .notif-actions-bar,
             .notif-portfolio-actions,
             .notif-welcome-actions {
                 display: flex !important;
                 flex-wrap: wrap !important;
                 gap: 8px !important;
             }
-            .notif-actions-bar #btn-send-gold,
             .notif-portfolio-actions #btn-send-portfolio-all,
             .notif-welcome-actions #btn-send-welcome {
                 flex: 1 1 100% !important;
@@ -813,26 +811,18 @@
                 justify-content: center !important;
                 text-align: center !important;
             }
-            .notif-actions-bar .btn-secondary,
             .notif-portfolio-actions a.btn-secondary,
             .notif-welcome-actions .btn-secondary {
                 flex: 1 1 auto !important;
                 text-align: center !important;
                 justify-content: center !important;
             }
-            .notif-watchlist-actions {
-                display: flex !important;
-                flex-wrap: wrap !important;
-                gap: 8px !important;
-            }
-            .notif-watchlist-actions #btn-send-watchlist-all,
             .notif-quarterly-actions #btn-send-quarterly-all {
                 flex: 1 1 100% !important;
                 width: 100% !important;
                 min-width: 0 !important;
                 justify-content: center !important;
             }
-            .notif-watchlist-actions .btn-secondary,
             .notif-quarterly-actions .btn-secondary {
                 flex: 1 1 auto !important;
                 text-align: center !important;
@@ -1143,6 +1133,150 @@
             pointer-events: none;
             opacity: 0.95;
             animation: none !important;
+        }
+
+        /* Keep Gold & Silver and Watchlist dispatch controls aligned on a single horizontal row */
+        .notif-actions-bar,
+        .notif-watchlist-actions {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 6px;
+            width: 100%;
+            container-type: inline-size;
+        }
+        .notif-actions-bar > .btn,
+        .notif-actions-bar > a.btn,
+        .notif-watchlist-actions > .btn,
+        .notif-watchlist-actions > a.btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            height: 36px;
+            box-sizing: border-box;
+            padding: 8px 11px;
+            font-size: 12px;
+            line-height: 1;
+            min-width: 0;
+        }
+        .notif-actions-bar #btn-send-gold,
+        .notif-watchlist-actions #btn-send-watchlist-all {
+            flex: 1 1 auto;
+            width: auto;
+            border: 1px solid transparent;
+            font-weight: 700;
+            border-radius: 8px;
+            color: #ffffff;
+        }
+        .notif-actions-bar #btn-send-gold {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        .notif-watchlist-actions #btn-send-watchlist-all {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+        .notif-actions-bar #btn-send-gold:hover,
+        .notif-watchlist-actions #btn-send-watchlist-all:hover {
+            filter: brightness(1.06);
+        }
+        .notif-actions-bar .btn-secondary,
+        .notif-watchlist-actions .btn-secondary {
+            flex: 0 0 auto;
+        }
+        .notif-wl-count-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 36px;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0 8px;
+            flex: 0 0 auto;
+        }
+        .notif-wl-count-box label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            margin: 0;
+        }
+        #watchlist-gainers-count {
+            width: 38px;
+            height: 26px;
+            box-sizing: border-box;
+            padding: 2px 4px;
+            font-size: 12.5px;
+            font-weight: 700;
+            text-align: center;
+            border-radius: 6px;
+            border: 1px solid var(--border-input);
+            background: var(--bg-body);
+            color: var(--text-primary);
+        }
+        @container (max-width: 525px) {
+            .notif-watchlist-actions .notif-wl-ext {
+                display: none;
+            }
+        }
+        @container (max-width: 484px) {
+            .notif-actions-bar .notif-btn-ext,
+            .notif-watchlist-actions .notif-btn-ext {
+                display: none;
+            }
+            .notif-actions-bar > .btn,
+            .notif-actions-bar > a.btn,
+            .notif-watchlist-actions > .btn,
+            .notif-watchlist-actions > a.btn {
+                padding: 8px 9px;
+                font-size: 11.5px;
+            }
+        }
+        @container (max-width: 415px) {
+            .notif-watchlist-actions .notif-wl-gainers-ext {
+                display: none;
+            }
+        }
+        @container (max-width: 375px) {
+            .notif-actions-bar .notif-gold-silver-ext {
+                display: none;
+            }
+            .notif-actions-bar > .btn,
+            .notif-actions-bar > a.btn,
+            .notif-watchlist-actions > .btn,
+            .notif-watchlist-actions > a.btn {
+                padding: 7px 7px;
+                font-size: 11px;
+                height: 34px;
+                gap: 3px;
+            }
+            .notif-wl-count-box {
+                height: 34px;
+                padding: 0 5px;
+                gap: 3px;
+            }
+            .notif-wl-count-box label {
+                font-size: 10.5px;
+            }
+            #watchlist-gainers-count {
+                width: 32px;
+                height: 24px;
+                font-size: 11px;
+                padding: 2px;
+            }
+        }
+        @container (max-width: 340px) {
+            .notif-watchlist-actions .notif-wl-send-word {
+                display: none;
+            }
+        }
+        @media (max-width: 480px) {
+            .notif-actions-bar,
+            .notif-watchlist-actions {
+                gap: 4px;
+            }
         }
     </style>
 </head>
@@ -2560,20 +2694,19 @@
                     </div>
 
                     <!-- Dispatch Buttons -->
-                    <div class="notif-actions-bar" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn" id="btn-send-gold" onclick="sendGoldRatesNotification()" 
-                            style="flex: 1 1 auto; min-width: 140px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; border: none; font-weight: 700; padding: 10px 16px; border-radius: 8px;">
-                            🚀 Send Gold & Silver Notification
+                    <div class="notif-actions-bar">
+                        <button class="btn" id="btn-send-gold" onclick="sendGoldRatesNotification()" title="Send Gold &amp; Silver Notification">
+                            <span>🚀 Send Gold<span class="notif-gold-silver-ext"> &amp; Silver</span></span>
                         </button>
-                        <button class="btn btn-secondary" id="btn-send-gold-sampath" onclick="sendSampleGoldToUser('sampath')" 
-                            style="padding: 10px 14px; color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample gold & silver notification directly to Sampath">
+                        <button class="btn btn-secondary" id="btn-send-gold-sampath" onclick="sendSampleGoldToUser('sampath')"
+                            style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); font-weight: 600;" title="Send sample gold &amp; silver notification directly to Sampath">
                             👤 Sampath
                         </button>
-                        <button class="btn btn-secondary" onclick="autoCalculate8gRates()" style="padding: 10px 14px;" title="Auto-multiply 1g by 8">
-                            ⚡ 8x Multiplier
+                        <button class="btn btn-secondary" onclick="autoCalculate8gRates()" title="Auto-multiply 1g by 8">
+                            <span>⚡ 8x<span class="notif-btn-ext"> Multiplier</span></span>
                         </button>
-                        <a id="btn-preview-gold-img" href="/api/notifications/render-gold-card.png" target="_blank" class="btn btn-secondary" style="padding: 10px 14px; text-decoration: none;" title="Open full-resolution generated PNG banner">
-                            🖼️ Card Image
+                        <a id="btn-preview-gold-img" href="/api/notifications/render-gold-card.png" target="_blank" class="btn btn-secondary" style="text-decoration: none;" title="Open full-resolution generated PNG banner">
+                            <span>🖼️ Card<span class="notif-btn-ext"> Image</span></span>
                         </a>
                     </div>
 
@@ -2702,26 +2835,24 @@
                             </div>
                         </div>
 
-                        <div class="notif-watchlist-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <div class="notif-watchlist-actions">
                             <!-- Dynamic Top Gainers Count Selector (Default: 5) -->
-                            <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 10px; flex-shrink: 0;" title="Set number of top positive gainers to send (Default: 5)">
-                                <label for="watchlist-gainers-count" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">Top:</label>
-                                <input type="number" id="watchlist-gainers-count" min="1" max="15" value="5" 
-                                    oninput="updateWatchlistBtnCount(this.value)" 
-                                    style="width: 46px; padding: 5px 6px; font-size: 13px; font-weight: 700; text-align: center; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-body); color: var(--text-primary);" title="Change top gainers count">
+                            <div class="notif-wl-count-box" title="Set number of top positive gainers to send (Default: 5)">
+                                <label for="watchlist-gainers-count">Top:</label>
+                                <input type="number" id="watchlist-gainers-count" min="1" max="15" value="5"
+                                    oninput="updateWatchlistBtnCount(this.value)" title="Change top gainers count">
                             </div>
 
-                            <button class="btn" id="btn-send-watchlist-all" onclick="sendWatchlistGainersAllUsers()" 
-                                style="flex: 1 1 auto; min-width: 140px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; font-weight: 700; padding: 11px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                ⭐ Send top <span id="watchlist-btn-count-num">5</span> watchlist gainers
+                            <button class="btn" id="btn-send-watchlist-all" onclick="sendWatchlistGainersAllUsers()" title="Send top positive watchlist gainers notification to all users">
+                                <span>⭐ <span class="notif-wl-send-word">Send </span>Top <span id="watchlist-btn-count-num">5</span><span class="notif-wl-ext"> watchlist</span><span class="notif-wl-gainers-ext"> gainers</span></span>
                             </button>
-                            <button class="btn btn-secondary" id="btn-send-watchlist-sampath" onclick="sendWatchlistGainersSampleUser('sampath')" 
-                                style="padding: 11px 14px; color: #34d399; border-color: rgba(52, 211, 153, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample watchlist digest directly to Sampath">
+                            <button class="btn btn-secondary" id="btn-send-watchlist-sampath" onclick="sendWatchlistGainersSampleUser('sampath')"
+                                style="color: #34d399; border-color: rgba(52, 211, 153, 0.4); font-weight: 600;" title="Send sample watchlist digest directly to Sampath">
                                 👤 Sampath
                             </button>
-                            <a id="btn-preview-watchlist-img" href="/api/notifications/render-watchlist-card.png?limit=5" target="_blank" class="btn btn-secondary" 
-                                style="padding: 11px 14px; text-decoration: none; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" title="Open full-resolution generated Watchlist PNG banner">
-                                🖼️ Card Image
+                            <a id="btn-preview-watchlist-img" href="/api/notifications/render-watchlist-card.png?limit=5" target="_blank" class="btn btn-secondary"
+                                style="text-decoration: none; font-weight: 600;" title="Open full-resolution generated Watchlist PNG banner">
+                                <span>🖼️ Card<span class="notif-btn-ext"> Image</span></span>
                             </a>
                         </div>
                         <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">

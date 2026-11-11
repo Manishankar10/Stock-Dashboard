@@ -160,7 +160,7 @@
                 <div class="br-filter-bar">
                     <div class="br-stats-pill-group" id="br-stats-pills">
                         <span class="br-stat-pill emerald" id="br-stat-count">0 Documents</span>
-                        <span class="br-stat-pill" id="br-stat-window">Past 6 Months</span>
+                        <span class="br-stat-pill" id="br-stat-window">Past 3 Years</span>
                         <span class="br-stat-pill" id="br-stat-sources">Sources: trendlyne.com, screener.in, bseindia.com</span>
                         <span class="br-stat-pill emerald" id="br-stat-verified">✓ PDF &amp; Content Verified</span>
                     </div>

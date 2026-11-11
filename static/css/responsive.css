@@ -289,9 +289,9 @@
     .controls .wl-search-row .wl-stocks-dropdown-wrapper,
     #watchlist-view-mount .controls .wl-search-row .wl-stocks-dropdown-wrapper,
     .wl-stocks-dropdown-wrapper {
-        flex: 1 1 auto !important;
+        flex: 1 1 0% !important;
         min-width: 0 !important;
-        max-width: calc(100% - 96px) !important;
+        max-width: calc(100% - 100px) !important;
         display: flex !important;
     }
 
@@ -299,21 +299,24 @@
         width: 100% !important;
         height: 42px !important;
         border-radius: 10px !important;
-        padding: 0 12px !important;
+        padding: 0 14px !important;
         font-size: 13px !important;
         font-weight: 600 !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: space-between !important;
+        justify-content: flex-start !important;
         gap: 8px !important;
         box-sizing: border-box !important;
     }
 
     .wl-stocks-dropdown-btn .wl-stocks-btn-text {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        text-align: left !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
-        max-width: calc(100vw - 165px) !important;
+        max-width: none !important;
     }
 
     .wl-chart-mode-container {

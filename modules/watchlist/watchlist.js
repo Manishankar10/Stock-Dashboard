@@ -632,44 +632,121 @@
 
         let selectedWatchlistStocks = new Set();
 
+        function buildWatchlistStocksMenuItemsHtml(symbols) {
+            if (!symbols || symbols.length === 0) {
+                return '<div class="wl-stocks-empty-msg">No stocks in this watchlist</div>';
+            }
+            let itemsHtml = '';
+            symbols.forEach(sym => {
+                const bInfo = getSymbolBadge(sym);
+                const info = stockPricesData[sym] || {};
+                const compName = (info && info.name) ? info.name : cleanDisplaySymbol(sym);
+                const isChecked = (selectedWatchlistStocks.size === 0) || selectedWatchlistStocks.has(sym);
+                itemsHtml += `
+                    <label class="wl-stock-menu-item" data-symbol="${escapeHtml(sym)}" data-company-name="${escapeHtml(compName)}">
+                        <input type="checkbox" class="wl-stock-checkbox" value="${escapeHtml(sym)}" ${isChecked ? 'checked' : ''} onchange="onWatchlistStockCheckboxChange(this, event)">
+                        <div class="wl-stock-item-info">
+                            <div class="wl-stock-item-top">
+                                <span class="wl-stock-item-sym">${cleanDisplaySymbol(sym)}</span>
+                                <span class="badge ${bInfo.class}">${bInfo.label}</span>
+                            </div>
+                            <div class="wl-stock-item-name">${escapeHtml(compName)}</div>
+                        </div>
+                    </label>
+                `;
+            });
+            itemsHtml += '<div id="wl-stocks-no-match-msg" class="wl-stocks-empty-msg" style="display: none;">No matching stocks found</div>';
+            return itemsHtml;
+        }
+
+        function closeWatchlistStocksDropdown() {
+            const menu = document.getElementById('wl-stocks-dropdown-menu');
+            const btn = document.getElementById('wl-stocks-dropdown-btn');
+            const backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
+            const wrapper = document.getElementById('wl-stocks-dropdown-wrapper');
+
+            if (menu) {
+                menu.style.display = 'none';
+                // Restore menu back inside wrapper so desktop dropdown stays anchored
+                if (wrapper && menu.parentElement !== wrapper) {
+                    wrapper.appendChild(menu);
+                }
+            }
+            if (btn) btn.classList.remove('open');
+            if (backdrop) backdrop.style.display = 'none';
+
+            if (document.body.dataset.wlStocksScrollLocked === '1') {
+                document.body.style.overflow = document.body.dataset.wlStocksPrevOverflow || '';
+                delete document.body.dataset.wlStocksScrollLocked;
+                delete document.body.dataset.wlStocksPrevOverflow;
+            }
+        }
+        window.closeWatchlistStocksDropdown = closeWatchlistStocksDropdown;
+
+        function openWatchlistStocksDropdown() {
+            const menu = document.getElementById('wl-stocks-dropdown-menu');
+            const btn = document.getElementById('wl-stocks-dropdown-btn');
+            const wrapper = document.getElementById('wl-stocks-dropdown-wrapper');
+            if (!menu) return;
+
+            const isMobile = window.innerWidth <= 768;
+            let backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
+
+            if (isMobile) {
+                if (!backdrop) {
+                    backdrop = document.createElement('div');
+                    backdrop.id = 'wl-stocks-dropdown-backdrop';
+                    backdrop.className = 'wl-stocks-dropdown-backdrop';
+                    backdrop.onclick = (e) => {
+                        if (e.target === backdrop) {
+                            closeWatchlistStocksDropdown();
+                        }
+                    };
+                    document.body.appendChild(backdrop);
+                }
+                // Portal sheet inside the body-level backdrop so card-container stacking context cannot trap it
+                if (menu.parentElement !== backdrop) {
+                    backdrop.appendChild(menu);
+                }
+                backdrop.style.display = 'flex';
+                if (document.body.dataset.wlStocksScrollLocked !== '1') {
+                    document.body.dataset.wlStocksPrevOverflow = document.body.style.overflow || '';
+                    document.body.dataset.wlStocksScrollLocked = '1';
+                    document.body.style.overflow = 'hidden';
+                }
+            } else {
+                if (wrapper && menu.parentElement !== wrapper) {
+                    wrapper.appendChild(menu);
+                }
+                if (backdrop) backdrop.style.display = 'none';
+            }
+
+            menu.style.display = 'flex';
+            if (btn) btn.classList.add('open');
+
+            const searchInput = document.getElementById('wl-stocks-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+                filterStocksDropdownList('');
+                if (!isMobile) {
+                    setTimeout(() => searchInput.focus(), 50);
+                }
+            }
+        }
+
         function toggleWatchlistStocksDropdown(event) {
             if (event) {
                 event.stopPropagation();
                 event.preventDefault();
             }
             const menu = document.getElementById('wl-stocks-dropdown-menu');
-            const btn = document.getElementById('wl-stocks-dropdown-btn');
             if (!menu) return;
             const isShown = menu.style.display !== 'none';
-            let backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
 
             if (isShown) {
-                menu.style.display = 'none';
-                if (btn) btn.classList.remove('open');
-                if (backdrop) backdrop.style.display = 'none';
+                closeWatchlistStocksDropdown();
             } else {
-                menu.style.display = 'flex';
-                if (btn) btn.classList.add('open');
-
-                if (window.innerWidth <= 768) {
-                    if (!backdrop) {
-                        backdrop = document.createElement('div');
-                        backdrop.id = 'wl-stocks-dropdown-backdrop';
-                        backdrop.className = 'wl-stocks-dropdown-backdrop';
-                        backdrop.onclick = (e) => toggleWatchlistStocksDropdown(e);
-                        document.body.appendChild(backdrop);
-                    }
-                    backdrop.style.display = 'block';
-                }
-
-                const searchInput = document.getElementById('wl-stocks-search-input');
-                if (searchInput) {
-                    searchInput.value = '';
-                    filterStocksDropdownList('');
-                    if (window.innerWidth > 768) {
-                        setTimeout(() => searchInput.focus(), 50);
-                    }
-                }
+                openWatchlistStocksDropdown();
             }
         }
         window.toggleWatchlistStocksDropdown = toggleWatchlistStocksDropdown;
@@ -677,12 +754,22 @@
         function filterStocksDropdownList(query) {
             const q = (query || '').trim().toLowerCase();
             const items = document.querySelectorAll('.wl-stock-menu-item');
+            let matchCount = 0;
             items.forEach(it => {
                 const sym = (it.dataset.symbol || '').toLowerCase();
                 const name = (it.dataset.companyName || '').toLowerCase();
                 const matches = !q || sym.includes(q) || name.includes(q);
                 it.style.display = matches ? 'flex' : 'none';
+                if (matches) matchCount++;
             });
+            const noMatchMsg = document.getElementById('wl-stocks-no-match-msg');
+            if (noMatchMsg) {
+                noMatchMsg.style.display = (items.length > 0 && matchCount === 0) ? 'block' : 'none';
+            }
+            const clearBtn = document.getElementById('wl-stocks-search-clear');
+            if (clearBtn) {
+                clearBtn.style.display = q ? 'inline-flex' : 'none';
+            }
         }
         window.filterStocksDropdownList = filterStocksDropdownList;
 
@@ -740,8 +827,14 @@
             rows.forEach(r => {
                 const sym = r.dataset.symbol || (r.id ? r.id.replace('row-', '') : '');
                 const isVisible = !isFiltered || selectedWatchlistStocks.has(sym);
-                r.style.display = isVisible ? '' : 'none';
-                if (isVisible) visibleCount++;
+                if (isVisible) {
+                    r.classList.remove('wl-filtered-hidden');
+                    r.style.removeProperty('display');
+                    visibleCount++;
+                } else {
+                    r.classList.add('wl-filtered-hidden');
+                    r.style.setProperty('display', 'none', 'important');
+                }
             });
 
             // Handle no match state
@@ -763,13 +856,21 @@
                 noMatchRow.style.display = 'none';
             }
 
-            // Update Dropdown button text
+            // Update Dropdown button & Done button text
             const btnText = document.getElementById('wl-stocks-btn-text');
             if (btnText) {
                 if (isFiltered) {
                     btnText.textContent = `Stocks (${selectedWatchlistStocks.size} of ${totalCount})`;
                 } else {
                     btnText.textContent = `All Stocks (${totalCount})`;
+                }
+            }
+            const doneBtn = document.getElementById('wl-stocks-done-btn');
+            if (doneBtn) {
+                if (isFiltered) {
+                    doneBtn.textContent = `Done (${selectedWatchlistStocks.size} of ${totalCount} Selected)`;
+                } else {
+                    doneBtn.textContent = totalCount > 0 ? `Done (All ${totalCount})` : 'Done';
                 }
             }
 
@@ -1077,26 +1178,7 @@
                 const totalWlCount = symbols.length;
                 const isFilteredNow = (selectedWatchlistStocks.size > 0) && (selectedWatchlistStocks.size < totalWlCount);
                 const btnLabel = isFilteredNow ? `Stocks (${selectedWatchlistStocks.size} of ${totalWlCount})` : `All Stocks (${totalWlCount})`;
-
-                let stockItemsHtml = '';
-                symbols.forEach(sym => {
-                    const bInfo = getSymbolBadge(sym);
-                    const info = stockPricesData[sym] || {};
-                    const compName = (info && info.name) ? info.name : cleanDisplaySymbol(sym);
-                    const isChecked = (selectedWatchlistStocks.size === 0) || selectedWatchlistStocks.has(sym);
-                    stockItemsHtml += `
-                        <label class="wl-stock-menu-item" data-symbol="${escapeHtml(sym)}" data-company-name="${escapeHtml(compName)}">
-                            <input type="checkbox" class="wl-stock-checkbox" value="${escapeHtml(sym)}" ${isChecked ? 'checked' : ''} onchange="onWatchlistStockCheckboxChange(this, event)">
-                            <div class="wl-stock-item-info">
-                                <div class="wl-stock-item-top">
-                                    <span class="wl-stock-item-sym">${cleanDisplaySymbol(sym)}</span>
-                                    <span class="badge ${bInfo.class}">${bInfo.label}</span>
-                                </div>
-                                <div class="wl-stock-item-name">${escapeHtml(compName)}</div>
-                            </div>
-                        </label>
-                    `;
-                });
+                const stockItemsHtml = buildWatchlistStocksMenuItemsHtml(symbols);
 
                 stocksDropdownWrapper.innerHTML = `
                     <button type="button" class="wl-stocks-dropdown-btn" id="wl-stocks-dropdown-btn" onclick="toggleWatchlistStocksDropdown(event)" title="View all stock names & multi-select filter">
@@ -1112,17 +1194,24 @@
                                 <button type="button" class="wl-stocks-action-btn" onclick="selectAllWatchlistStocks(event)">Select All</button>
                                 <span class="wl-stocks-sep">|</span>
                                 <button type="button" class="wl-stocks-action-btn" onclick="clearAllWatchlistStocks(event)">Reset</button>
-                                <button type="button" class="wl-stocks-close-btn" onclick="toggleWatchlistStocksDropdown(event)" aria-label="Close" title="Close">&times;</button>
+                                <button type="button" class="wl-stocks-close-btn" onclick="closeWatchlistStocksDropdown()" aria-label="Close" title="Close">&times;</button>
                             </div>
                         </div>
                         <div class="wl-stocks-search-box">
-                            <input type="text" id="wl-stocks-search-input" class="wl-stocks-search-input" placeholder="Find stock name..." oninput="filterStocksDropdownList(this.value)" autocomplete="off">
+                            <div class="wl-stocks-search-input-wrap">
+                                <svg class="wl-stocks-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="text" id="wl-stocks-search-input" class="wl-stocks-search-input" placeholder="Find stock name..." oninput="filterStocksDropdownList(this.value)" autocomplete="off">
+                                <button type="button" id="wl-stocks-search-clear" class="wl-stocks-search-clear" style="display: none;" aria-label="Clear search" onclick="const i = document.getElementById('wl-stocks-search-input'); if (i) { i.value = ''; filterStocksDropdownList(''); i.focus(); }">&times;</button>
+                            </div>
                         </div>
                         <div class="wl-stocks-menu-list" id="wl-stocks-menu-list">
-                            ${stockItemsHtml || '<div style="padding:15px; text-align:center; color:var(--text-secondary); font-size:12px;">No stocks in this watchlist</div>'}
+                            ${stockItemsHtml}
                         </div>
                         <div class="wl-stocks-done-row">
-                            <button type="button" class="wl-stocks-done-btn" onclick="toggleWatchlistStocksDropdown(event)">Done</button>
+                            <button type="button" id="wl-stocks-done-btn" class="wl-stocks-done-btn" onclick="closeWatchlistStocksDropdown()">Done</button>
                         </div>
                     </div>
                 `;
@@ -1399,29 +1488,14 @@
             scrollContainer.appendChild(table);
 
             if (canKeepControls) {
-                // Update dropdown list items if symbols changed
-                const menuList = existingControls.querySelector('#wl-stocks-menu-list');
+                // Update dropdown list items using document.getElementById so mobile portal updates live as well
+                const menuList = document.getElementById('wl-stocks-menu-list');
                 if (menuList) {
-                    let updatedItemsHtml = '';
-                    symbols.forEach(sym => {
-                        const bInfo = getSymbolBadge(sym);
-                        const info = stockPricesData[sym] || {};
-                        const compName = (info && info.name) ? info.name : cleanDisplaySymbol(sym);
-                        const isChecked = (selectedWatchlistStocks.size === 0) || selectedWatchlistStocks.has(sym);
-                        updatedItemsHtml += `
-                            <label class="wl-stock-menu-item" data-symbol="${escapeHtml(sym)}" data-company-name="${escapeHtml(compName)}">
-                                <input type="checkbox" class="wl-stock-checkbox" value="${escapeHtml(sym)}" ${isChecked ? 'checked' : ''} onchange="onWatchlistStockCheckboxChange(this, event)">
-                                <div class="wl-stock-item-info">
-                                    <div class="wl-stock-item-top">
-                                        <span class="wl-stock-item-sym">${cleanDisplaySymbol(sym)}</span>
-                                        <span class="badge ${bInfo.class}">${bInfo.label}</span>
-                                    </div>
-                                    <div class="wl-stock-item-name">${escapeHtml(compName)}</div>
-                                </div>
-                            </label>
-                        `;
-                    });
-                    menuList.innerHTML = updatedItemsHtml || '<div style="padding:15px; text-align:center; color:var(--text-secondary); font-size:12px;">No stocks in this watchlist</div>';
+                    menuList.innerHTML = buildWatchlistStocksMenuItemsHtml(symbols);
+                    const searchInput = document.getElementById('wl-stocks-search-input');
+                    if (searchInput && searchInput.value) {
+                        filterStocksDropdownList(searchInput.value);
+                    }
                 }
                 // Update spinner state if refreshing
                 const isSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
@@ -1460,6 +1534,12 @@
                         preservedSelStart = existingInput.selectionStart;
                         preservedSelEnd = existingInput.selectionEnd;
                     } catch (_) {}
+                }
+
+                closeWatchlistStocksDropdown();
+                const staleBackdrop = document.getElementById('wl-stocks-dropdown-backdrop');
+                if (staleBackdrop) {
+                    staleBackdrop.innerHTML = '';
                 }
 
                 viewMount.innerHTML = '';
@@ -1861,15 +1941,24 @@
                         }
                         positionSubmenu();
                         submenu.style.display = 'block';
+                        mMove.classList.add('active');
                     };
 
-                    const delayHideSubmenu = () => {
-                        if (window._wlSubmenuHideTimer) clearTimeout(window._wlSubmenuHideTimer);
-                        window._wlSubmenuHideTimer = setTimeout(() => {
-                            submenu.style.display = 'none';
-                            mMove.classList.remove('active');
+                    const hideSubmenu = () => {
+                        if (window._wlSubmenuHideTimer) {
+                            clearTimeout(window._wlSubmenuHideTimer);
                             window._wlSubmenuHideTimer = null;
-                        }, 1200);
+                        }
+                        submenu.style.display = 'none';
+                        mMove.classList.remove('active');
+                    };
+
+                    const toggleSubmenu = () => {
+                        if (submenu.style.display === 'block') {
+                            hideSubmenu();
+                        } else {
+                            showSubmenu();
+                        }
                     };
 
                     if (allWatchlists.length === 0) {
@@ -2069,32 +2158,12 @@
                         doneBtn.addEventListener('touchend', handleDoneClick);
                     }
 
-                    // Hover behavior: immediate open, wait before hiding when mouse leaves
-                    mMove.addEventListener('mouseenter', showSubmenu);
-                    mMove.addEventListener('mouseleave', (ev) => {
-                        const rel = ev.relatedTarget;
-                        if (rel && (rel === submenu || submenu.contains(rel))) return;
-                        if (!mMove.classList.contains('active')) {
-                            delayHideSubmenu();
-                        }
-                    });
-
-                    submenu.addEventListener('mouseenter', showSubmenu);
-                    submenu.addEventListener('mouseleave', (ev) => {
-                        const rel = ev.relatedTarget;
-                        if (rel && (rel === mMove || mMove.contains(rel))) return;
-                        if (!mMove.classList.contains('active')) {
-                            delayHideSubmenu();
-                        }
-                    });
-
-                    // Mobile tap / click toggle: ensure submenu stays open
+                    // Click-only behavior: open or toggle submenu only on click (no hover)
                     mMove.addEventListener('click', (ev) => {
-                        if (ev.target.closest('.wl-move-target-item') || ev.target.closest('.wl-move-done-btn') || ev.target.closest('.wl-move-heading-row')) return;
+                        if (ev.target.closest('.wl-move-submenu')) return;
                         ev.preventDefault();
                         ev.stopPropagation();
-                        showSubmenu();
-                        mMove.classList.add('active');
+                        toggleSubmenu();
                     });
 
                     mMove.appendChild(submenu);
@@ -3053,16 +3122,12 @@
         })();
 
 
-        // Close multi-select stocks dropdown when clicking outside
+        // Close multi-select stocks dropdown when clicking outside (or pressing Escape)
         document.addEventListener('click', function(e) {
-            if (!e.target.closest('#wl-stocks-dropdown-wrapper') && !e.target.closest('#wl-stocks-dropdown-backdrop')) {
+            if (!e.target.closest('#wl-stocks-dropdown-wrapper') && !e.target.closest('#wl-stocks-dropdown-menu')) {
                 const menu = document.getElementById('wl-stocks-dropdown-menu');
                 if (menu && menu.style.display !== 'none') {
-                    menu.style.display = 'none';
-                    const btn = document.getElementById('wl-stocks-dropdown-btn');
-                    if (btn) btn.classList.remove('open');
-                    const backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
-                    if (backdrop) backdrop.style.display = 'none';
+                    closeWatchlistStocksDropdown();
                 }
             }
         });
@@ -3071,11 +3136,27 @@
             if (e.key === 'Escape') {
                 const menu = document.getElementById('wl-stocks-dropdown-menu');
                 if (menu && menu.style.display !== 'none') {
-                    menu.style.display = 'none';
-                    const btn = document.getElementById('wl-stocks-dropdown-btn');
-                    if (btn) btn.classList.remove('open');
-                    const backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
-                    if (backdrop) backdrop.style.display = 'none';
+                    closeWatchlistStocksDropdown();
                 }
+            }
+        });
+
+        window.addEventListener('resize', function() {
+            const menu = document.getElementById('wl-stocks-dropdown-menu');
+            if (!menu || menu.style.display === 'none') return;
+            const backdrop = document.getElementById('wl-stocks-dropdown-backdrop');
+            const wrapper = document.getElementById('wl-stocks-dropdown-wrapper');
+            if (window.innerWidth > 768) {
+                if (wrapper && menu.parentElement !== wrapper) {
+                    wrapper.appendChild(menu);
+                }
+                if (backdrop) backdrop.style.display = 'none';
+                if (document.body.dataset.wlStocksScrollLocked === '1') {
+                    document.body.style.overflow = document.body.dataset.wlStocksPrevOverflow || '';
+                    delete document.body.dataset.wlStocksScrollLocked;
+                    delete document.body.dataset.wlStocksPrevOverflow;
+                }
+            } else if (menu.parentElement && menu.parentElement.id !== 'wl-stocks-dropdown-backdrop') {
+                openWatchlistStocksDropdown();
             }
         });
