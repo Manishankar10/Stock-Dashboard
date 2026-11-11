@@ -108,21 +108,21 @@ def normalize_domain(s):
 def get_allowed_research_websites():
     """
     Retrieves the comma-separated research websites configured by Admin in system settings.
-    Returns a list of normalized domain substrings, e.g. ['trendlyne.com', 'screener.in', 'bseindia.com'].
+    Returns a list of normalized domain substrings, e.g. ['trendlyne.com', 'screener.in', 'bseindia.com', 'hdfcsec.com'].
     """
     try:
         from modules.common.system_settings import get_system_settings
         settings = get_system_settings()
-        raw = settings.get("research_document_websites") or "trendlyne.com, screener.in, bseindia.com"
+        raw = settings.get("research_document_websites") or "trendlyne.com, screener.in, bseindia.com, hdfcsec.com"
     except Exception:
-        raw = "trendlyne.com, screener.in, bseindia.com"
+        raw = "trendlyne.com, screener.in, bseindia.com, hdfcsec.com"
 
     sites = []
     for s in str(raw).split(","):
         norm = normalize_domain(s)
         if norm and norm not in sites:
             sites.append(norm)
-    return sites or ["trendlyne.com", "screener.in", "bseindia.com"]
+    return sites or ["trendlyne.com", "screener.in", "bseindia.com", "hdfcsec.com"]
 
 
 def is_pdf_or_content_available(report, allowed_sites=None):
@@ -148,7 +148,7 @@ def is_pdf_or_content_available(report, allowed_sites=None):
         report_source = (report.get("source") or "").lower()
         matched_site = False
         for site in allowed_sites:
-            # Matches if site is the report source (e.g. screener.in or trendlyne.com) or site domain is in URL
+            # Matches if site is the report source (e.g. screener.in, trendlyne.com, hdfcsec.com) or site domain is in URL
             if site in report_source or site in url_lower:
                 matched_site = True
                 break
@@ -162,7 +162,8 @@ def is_pdf_or_content_available(report, allowed_sites=None):
         "/pdf/" in url_lower or
         "/get-document/post/pdf/" in url_lower or
         "annpdfopen" in url_lower or
-        "/corpfiling/" in url_lower
+        "/corpfiling/" in url_lower or
+        "/hsl.docs/" in url_lower
     )
 
     has_content = (
@@ -518,6 +519,133 @@ def fetch_screener_bse_documents(symbol):
     return docs
 
 
+def fetch_hdfcsec_reports(symbol):
+    """
+    Fetches official institutional research reports from HDFC Securities (HSIE).
+    Queries HDFC Securities internal APIs, looks up the company's CO_CODE,
+    and extracts verified research reports with direct PDF links.
+    """
+    clean_sym = clean_symbol(symbol)
+    if not clean_sym:
+        return []
+
+    reports = []
+    try:
+        import urllib.parse
+        import xml.etree.ElementTree as ET
+
+        # Step 1: Lookup company code (CO_CODE) via POST
+        payload = {
+            "Method": "COMPANYLIST",
+            "param": [{"Key": "p_string", "Value": clean_sym}]
+        }
+        try:
+            from curl_cffi import requests as cffi_requests
+            r1 = cffi_requests.post("https://www.hdfcsec.com/api/EquityAPI/GetData", json=payload, impersonate="chrome", timeout=10)
+        except Exception:
+            r1 = requests.post("https://www.hdfcsec.com/api/EquityAPI/GetData", json=payload, headers=HEADERS, timeout=10)
+
+        if not r1 or r1.status_code != 200:
+            return []
+
+        root1 = ET.fromstring(r1.text)
+        companies_data = json.loads(root1.text)
+        if not companies_data or not isinstance(companies_data, list):
+            return []
+
+        companies = companies_data[0].get("data", [])
+        co_code = None
+        for c in companies:
+            cname = c.get("COMPNAME", "").upper()
+            if cname == clean_sym or cname == f"{clean_sym} LTD" or cname == f"{clean_sym} LIMITED":
+                co_code = c.get("CO_CODE")
+                break
+        if not co_code and companies:
+            co_code = companies[0].get("CO_CODE")
+
+        if not co_code:
+            return []
+
+        # Step 2: Fetch institutional reports (bucketId 1913 = Institutional Reports)
+        url = f"https://www.hdfcsec.com/api/cmsapi/GetNonCallResearch?schemeId=&compCode={co_code}&bucketId=1913&pageNo=1&pageSize=15&fromDate=&toDate="
+        r2 = _fetch_url(url, timeout=10)
+        if not r2 or r2.status_code != 200:
+            return []
+
+        root2 = ET.fromstring(r2.text)
+        res_data = json.loads(root2.text)
+        articles = res_data[0].get("data", []) if len(res_data) > 0 else []
+        metadata = res_data[2].get("data", []) if len(res_data) > 2 else []
+
+        pdf_map = {}
+        summary_map = {}
+        for m in metadata:
+            aid = m.get("ARTICLE_ID")
+            pred = m.get("PREDICATE")
+            val = m.get("OBJECT1") or ""
+            if pred == "UploadPdf":
+                pdf_map[aid] = val.strip()
+            elif pred == "Summary":
+                summary_map[aid] = urllib.parse.unquote(val)
+
+        for art in articles:
+            aid = art.get("ARTICLE_ID")
+            pdf_filename = pdf_map.get(aid)
+            if not pdf_filename:
+                continue
+
+            raw_title = art.get("TITLE") or f"{clean_sym} - Institutional Research Report"
+            summary = summary_map.get(aid, "")
+
+            # Date
+            pub_date_str = art.get("PUBLISHED_ON", "")
+            date_str = "Recent"
+            if pub_date_str:
+                try:
+                    dt = datetime.strptime(pub_date_str.split()[0], "%d-%m-%Y")
+                    date_str = dt.strftime("%d %b %Y")
+                except Exception:
+                    date_str = pub_date_str.split()[0]
+
+            # Reco & Target price
+            m_reco = re.search(r"\b(BUY|ADD|HOLD|REDUCE|SELL|NEUTRAL|ACCUMULATE)\b", raw_title + " " + summary, flags=re.IGNORECASE)
+            reco = m_reco.group(1).upper() if m_reco else "AVAILABLE"
+
+            m_tp = re.search(r"(?:target price of|TP of|target of|target price:?)\s*(?:INR|Rs\.?|₹)?\s*([0-9,]+(?:\.[0-9]+)?)", summary, flags=re.IGNORECASE)
+            target_price = m_tp.group(1).replace(",", "") if m_tp else ""
+
+            # Author
+            author = art.get("AU_NAME") or "HDFC Securities"
+            if "hdfc" not in author.lower():
+                author = f"HDFC Securities ({author})"
+
+            pdf_url = f"https://www.hdfcsec.com/hsl.docs//{urllib.parse.quote(pdf_filename)}"
+
+            reports.append({
+                "id": f"hdfc-{clean_sym}-{aid}",
+                "symbol": clean_sym,
+                "date": date_str,
+                "author": author,
+                "institution_type": "Institutional Equity",
+                "title": raw_title,
+                "rating": reco,
+                "target_price": target_price,
+                "upside": "",
+                "url": pdf_url,
+                "has_pdf": True,
+                "has_content": True,
+                "source": "hdfcsec.com",
+                "category": "broker_research",
+                "tab_name": "Broker Research",
+                "is_live": True
+            })
+
+    except Exception as e:
+        logger.warning(f"Error fetching HDFC Securities reports for {symbol}: {e}")
+
+    return reports
+
+
 def parse_doc_date(date_str):
     """Robust parser for document dates (e.g. '28 Oct 2026', 'Oct 2026', 'FY 2026', '2026-10-28')."""
     if not date_str:
@@ -589,11 +717,21 @@ class BrokerResearchProvider:
                     logger.warning(f"Error fetching Screener/BSE documents: {e}")
             return []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        def _get_hdfcsec():
+            if any("hdfcsec.com" in s for s in allowed_sites):
+                try:
+                    return fetch_hdfcsec_reports(clean_sym)
+                except Exception as e:
+                    logger.warning(f"Error fetching HDFC Securities reports: {e}")
+            return []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             f_trend = executor.submit(_get_trendlyne)
             f_scr = executor.submit(_get_screener_bse)
+            f_hdfc = executor.submit(_get_hdfcsec)
             reports.extend(f_trend.result() or [])
             reports.extend(f_scr.result() or [])
+            reports.extend(f_hdfc.result() or [])
 
         # 3. Strictly filter: ONLY if PDF or content is available from allowed websites
         valid_reports = [r for r in reports if is_pdf_or_content_available(r, allowed_sites)]
