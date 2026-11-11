@@ -523,10 +523,78 @@ def fetch_screener_bse_documents(symbol):
     return docs
 
 
-def fetch_hdfcsec_reports(symbol):
+def _normalize_name_tokens(name):
+    if not name:
+        return set()
+    cleaned = re.sub(r"[^A-Za-z0-9\s]", " ", str(name).upper())
+    stopwords = {"LTD", "LIMITED", "CORP", "CORPORATION", "INC", "HOLDINGS", "HOLDING", "INDIA", "PVT", "CO"}
+    tokens = [t for t in cleaned.split() if t and t not in stopwords]
+    return set(tokens)
+
+
+def _pick_best_hdfc_company(companies, symbol, company_name=None):
+    if not companies:
+        return None
+
+    clean_sym = symbol.upper().strip()
+    norm_comp_tokens = _normalize_name_tokens(company_name) if company_name else set()
+
+    # 1. If full company_name is provided, match by token similarity
+    if norm_comp_tokens:
+        best_score = -1
+        best_c = None
+        for c in companies:
+            cname = c.get("COMPNAME", "")
+            c_tokens = _normalize_name_tokens(cname)
+            if not c_tokens:
+                continue
+            common = len(norm_comp_tokens.intersection(c_tokens))
+            score = common / max(len(norm_comp_tokens.union(c_tokens)), 1)
+            if norm_comp_tokens.issubset(c_tokens) or c_tokens.issubset(norm_comp_tokens):
+                score += 0.5
+            if score > best_score and common > 0:
+                best_score = score
+                best_c = c
+        if best_c and best_score >= 0.4:
+            return best_c.get("CO_CODE")
+
+    # 2. Exact symbol matches
+    for c in companies:
+        cname = c.get("COMPNAME", "").upper().strip()
+        if cname in [clean_sym, f"{clean_sym} LTD", f"{clean_sym} LIMITED"]:
+            return c.get("CO_CODE")
+
+    # 3. Common conglomerate extensions: COMPANY LTD, INDUSTRIES LTD, ENTERPRISES LTD
+    for c in companies:
+        cname = c.get("COMPNAME", "").upper().strip()
+        if cname in [
+            f"{clean_sym} COMPANY LTD", f"{clean_sym} COMPANY LIMITED",
+            f"{clean_sym} INDUSTRIES LTD", f"{clean_sym} INDUSTRIES LIMITED",
+            f"{clean_sym} ENTERPRISES LTD", f"{clean_sym} ENTERPRISES LIMITED"
+        ]:
+            return c.get("CO_CODE")
+
+    # 4. Starts with symbol + space + COMPANY / INDUSTRIES
+    for c in companies:
+        cname = c.get("COMPNAME", "").upper().strip()
+        if cname.startswith(f"{clean_sym} COMPANY") or cname.startswith(f"{clean_sym} INDUSTRIES"):
+            return c.get("CO_CODE")
+
+    # 5. First company where first word is clean_sym
+    for c in companies:
+        cname = c.get("COMPNAME", "").upper().strip()
+        words = cname.split()
+        if words and words[0] == clean_sym:
+            return c.get("CO_CODE")
+
+    # 6. Fallback to first
+    return companies[0].get("CO_CODE")
+
+
+def fetch_hdfcsec_reports(symbol, company_name=None):
     """
     Fetches official institutional research reports from HDFC Securities (HSIE).
-    Queries HDFC Securities internal APIs, looks up the company's CO_CODE,
+    Queries HDFC Securities internal APIs, looks up the company's CO_CODE using symbol and company_name,
     and extracts verified research reports with direct PDF links.
     """
     clean_sym = clean_symbol(symbol)
@@ -552,32 +620,50 @@ def fetch_hdfcsec_reports(symbol):
         if not r1 or r1.status_code != 200:
             return []
 
-        root1 = ET.fromstring(r1.text)
-        companies_data = json.loads(root1.text)
+        raw_text1 = r1.text.strip()
+        if raw_text1.startswith("<"):
+            try:
+                root1 = ET.fromstring(raw_text1)
+                raw_text1 = root1.text or ""
+            except Exception:
+                pass
+        if raw_text1.startswith('"') and raw_text1.endswith('"'):
+            try:
+                raw_text1 = json.loads(raw_text1)
+            except Exception:
+                pass
+        try:
+            companies_data = json.loads(raw_text1)
+        except Exception:
+            companies_data = None
+
         if not companies_data or not isinstance(companies_data, list):
             return []
 
         companies = companies_data[0].get("data", [])
-        co_code = None
-        for c in companies:
-            cname = c.get("COMPNAME", "").upper()
-            if cname == clean_sym or cname == f"{clean_sym} LTD" or cname == f"{clean_sym} LIMITED":
-                co_code = c.get("CO_CODE")
-                break
-        if not co_code and companies:
-            co_code = companies[0].get("CO_CODE")
+        co_code = _pick_best_hdfc_company(companies, clean_sym, company_name=company_name)
 
         if not co_code:
             return []
 
         # Step 2: Fetch institutional reports (bucketId 1913 = Institutional Reports)
-        url = f"https://www.hdfcsec.com/api/cmsapi/GetNonCallResearch?schemeId=&compCode={co_code}&bucketId=1913&pageNo=1&pageSize=15&fromDate=&toDate="
+        url = f"https://www.hdfcsec.com/api/cmsapi/GetNonCallResearch?schemeId=&compCode={co_code}&bucketId=1913&pageNo=1&pageSize=20&fromDate=&toDate="
         r2 = _fetch_url(url, timeout=10)
         if not r2 or r2.status_code != 200:
             return []
 
-        root2 = ET.fromstring(r2.text)
-        res_data = json.loads(root2.text)
+        raw_text2 = r2.text.strip()
+        if raw_text2.startswith("<"):
+            try:
+                root2 = ET.fromstring(raw_text2)
+                raw_text2 = root2.text or ""
+            except Exception:
+                pass
+        try:
+            res_data = json.loads(raw_text2)
+        except Exception:
+            res_data = []
+
         articles = res_data[0].get("data", []) if len(res_data) > 0 else []
         metadata = res_data[2].get("data", []) if len(res_data) > 2 else []
 
@@ -623,7 +709,7 @@ def fetch_hdfcsec_reports(symbol):
             if "hdfc" not in author.lower():
                 author = f"HDFC Securities ({author})"
 
-            pdf_url = f"https://www.hdfcsec.com/hsl.docs//{urllib.parse.quote(pdf_filename)}"
+            pdf_url = f"https://www.hdfcsec.com/hsl.docs/{urllib.parse.quote(pdf_filename)}"
 
             reports.append({
                 "id": f"hdfc-{clean_sym}-{aid}",
@@ -1090,7 +1176,7 @@ class BrokerResearchProvider:
         def _get_hdfcsec():
             if any("hdfcsec.com" in s for s in allowed_sites):
                 try:
-                    return fetch_hdfcsec_reports(clean_sym)
+                    return fetch_hdfcsec_reports(clean_sym, company_name=company_name)
                 except Exception as e:
                     logger.warning(f"Error fetching HDFC Securities reports: {e}")
             return []
