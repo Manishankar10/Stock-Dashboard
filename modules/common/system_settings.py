@@ -120,6 +120,11 @@ def update_system_settings(new_settings):
         raw_val = str(new_settings["research_document_websites"]).strip()
         parts = [p.strip() for p in raw_val.split(",") if p.strip()]
         current["research_document_websites"] = ", ".join(parts) if parts else "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in, icicidirect.com"
+        try:
+            from modules.broker_research.broker_research_provider import clear_broker_research_cache
+            clear_broker_research_cache()
+        except Exception:
+            pass
 
     # Smart Auto-Correction: If VAPID Key and Web API Key were swapped
     v_val = current.get("fcm_vapid_public_key", "")

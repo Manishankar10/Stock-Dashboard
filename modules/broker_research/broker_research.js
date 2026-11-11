@@ -83,6 +83,11 @@
                         <select id="br-stock-select" class="br-stock-select" style="display:none;" onchange="window.onBrokerResearchStockChange(this.value)">
                             <option value="">All Watchlist Stocks</option>
                         </select>
+                        <button type="button" id="br-refresh-btn" class="br-refresh-btn" onclick="window.refreshBrokerResearchModal()" title="Refresh research documents" aria-label="Refresh research documents">
+                            <svg class="br-refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                            </svg>
+                        </button>
                         <button type="button" class="br-close-btn" onclick="window.closeBrokerResearchModal()" title="Close dialog">✕</button>
                     </div>
                 </div>
@@ -323,7 +328,7 @@
     };
 
     // Public API: Open Standalone Modal
-    window.openBrokerResearchModal = async function (symbol, companyName, watchlistName) {
+    window.openBrokerResearchModal = async function (symbol, companyName, watchlistName, forceRefresh = false) {
         _currentSymbol = symbol || null;
         _currentCompanyName = companyName || null;
         _currentWatchlist = watchlistName || null;
@@ -377,6 +382,9 @@
             if (companyName) params.set('company', companyName);
         } else if (watchlistName) {
             params.set('watchlist', watchlistName);
+        }
+        if (forceRefresh) {
+            params.set('refresh', '1');
         }
         if (params.toString()) url += `?${params.toString()}`;
 
@@ -433,6 +441,23 @@
         document.body.style.overflow = '';
     };
 
+    // Public API: Force Refresh Modal Data (bypasses backend cache)
+    window.refreshBrokerResearchModal = async function () {
+        const btn = document.getElementById('br-refresh-btn');
+        const icon = btn ? btn.querySelector('.br-refresh-icon') : null;
+        if (icon) icon.classList.add('is-spinning');
+        if (btn) btn.disabled = true;
+
+        try {
+            await window.openBrokerResearchModal(_currentSymbol, _currentCompanyName, _currentWatchlist, true);
+        } catch (e) {
+            console.error('Error refreshing broker research modal:', e);
+        } finally {
+            if (icon) icon.classList.remove('is-spinning');
+            if (btn) btn.disabled = false;
+        }
+    };
+
     // Filter Table by Stock Dropdown inside Watchlist view
     window.onBrokerResearchStockChange = function (selectedStock) {
         _selectedStock = selectedStock || '';
@@ -474,7 +499,14 @@
                 containerEl.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:11.5px; color:var(--text-secondary); flex-wrap:wrap; gap:8px;">
                         <span style="font-weight:600; color:#10b981;" id="br-emb-count-${esc(cleanSym)}">✓ ${allReports.length} Verified Research Documents (PDFs &amp; Content Available)</span>
-                        <span style="opacity:0.85;">Sources: <strong>${esc(sourcesStr)}</strong></span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="opacity:0.85;">Sources: <strong>${esc(sourcesStr)}</strong></span>
+                            <button type="button" class="br-refresh-btn" id="br-emb-refresh-${esc(cleanSym)}" onclick="window.renderBrokerResearchSection(document.getElementById('brokerResearchSection') ? document.getElementById('brokerResearchContent') : this.closest('.broker-research-card').querySelector('#brokerResearchContent'), '${esc(symbol)}', '${esc(companyName || '')}', true)" title="Refresh research documents" aria-label="Refresh research documents" style="width:26px; height:26px;">
+                                <svg class="br-refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Category Tabs Bar for Embedded Section -->

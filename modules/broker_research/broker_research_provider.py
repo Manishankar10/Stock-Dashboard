@@ -1188,3 +1188,16 @@ class BrokerResearchProvider:
             }
 
         return unique
+
+
+def clear_broker_research_cache():
+    """Clear all broker research in-memory caches and catalog caches."""
+    global _cache, _sbi_catalog_cache, _icici_catalog_cache
+    with _cache_lock:
+        _cache.clear()
+    with _sbi_cache_lock:
+        _sbi_catalog_cache = {"timestamp": 0, "items": []}
+    with _icici_cache_lock:
+        _icici_catalog_cache = {"timestamp": 0, "items": []}
+    logger.info("Cleared broker research in-memory cache and catalogs.")
+

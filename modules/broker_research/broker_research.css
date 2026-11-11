@@ -152,6 +152,51 @@
     border-color: var(--br-accent-emerald);
 }
 
+.br-refresh-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--br-glass-border);
+    color: var(--br-text-primary);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.br-refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    transform: translateY(-1px);
+}
+
+[data-theme="light"] .br-refresh-btn {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+[data-theme="light"] .br-refresh-btn:hover {
+    background: #e2e8f0;
+}
+
+.br-refresh-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    transform-origin: center;
+}
+
+.br-refresh-icon.is-spinning {
+    animation: brSpin 0.75s linear infinite;
+}
+
+@keyframes brSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 .br-close-btn {
     background: transparent;
     border: none;
