@@ -124,8 +124,10 @@ def summarize_report():
     if not data:
         return jsonify({"success": False, "error": "Missing report payload"}), 400
 
+    force_refresh = bool(data.get("refresh") or request.args.get("refresh") == "1")
+
     try:
-        summary_md = summarize_research_report(data)
+        summary_md = summarize_research_report(data, force_refresh=force_refresh)
         return jsonify({
             "success": True,
             "summary": summary_md,

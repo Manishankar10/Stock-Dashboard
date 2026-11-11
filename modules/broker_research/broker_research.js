@@ -33,26 +33,87 @@
             .replace(/"/g, '&quot;');
     }
 
-    // Helper: Convert Markdown to HTML for AI modal
+    // Helper: Convert Markdown to HTML for AI modal with full table & formatting support
+    function parseMarkdownTables(text) {
+        if (!text) return '';
+        const lines = text.split('\n');
+        let inTable = false;
+        let tableLines = [];
+        let output = [];
+
+        function renderTable(tLines) {
+            if (tLines.length < 2) return tLines.join('\n');
+            const cleanRows = tLines.map(l => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim()));
+            if (cleanRows.length < 2) return tLines.join('\n');
+            const isSep = cleanRows[1] && cleanRows[1].every(c => /^:?-+:?$/.test(c));
+            if (!isSep) return tLines.join('\n');
+
+            let ths = cleanRows[0].map(c => `<th>${c}</th>`).join('');
+            let thead = `<thead><tr>${ths}</tr></thead>`;
+            let tbodyRows = cleanRows.slice(2).map(row => {
+                let tds = row.map(c => `<td>${c}</td>`).join('');
+                return `<tr>${tds}</tr>`;
+            }).join('');
+            let tbody = `<tbody>${tbodyRows}</tbody>`;
+            return `<div class="br-ai-table-wrap"><table class="br-ai-table">${thead}${tbody}</table></div>`;
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line.startsWith('|') && line.endsWith('|')) {
+                inTable = true;
+                tableLines.push(lines[i]);
+            } else {
+                if (inTable) {
+                    output.push(renderTable(tableLines));
+                    tableLines = [];
+                    inTable = false;
+                }
+                output.push(lines[i]);
+            }
+        }
+        if (inTable) {
+            output.push(renderTable(tableLines));
+        }
+        return output.join('\n');
+    }
+
     function renderMarkdown(md) {
         if (!md) return '';
         let html = esc(md);
-        // Headers
+
+        // 1. Process Markdown Tables
+        html = parseMarkdownTables(html);
+
+        // 2. Headers
+        html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
         html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
         html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-        // Bold
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+        // 3. Bold & Italics
         html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
-        // Italics
         html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
-        // Unordered lists
-        html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+
+        // 4. Links [text](url)
+        html = html.replace(/\[(.*?)\]\((https?:\/\/[^\s\)]+)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer" class="br-ai-link">$1 ↗</a>');
+
+        // 5. Unordered Lists
+        html = html.replace(/^[\-\*]\s+(.*$)/gim, '<li>$1</li>');
         html = html.replace(/(<li>.*<\/li>)/gims, '<ul>$1</ul>');
-        // Fix multiple consecutive uls
         html = html.replace(/<\/ul>\s*<ul>/g, '');
-        // Horizontal rule
-        html = html.replace(/^---$/gim, '<hr>');
-        // Line breaks
-        html = html.replace(/\n\n/g, '<br><br>');
+
+        // 6. Horizontal Rules & Blockquotes
+        html = html.replace(/^---$/gim, '<hr class="br-ai-divider">');
+        html = html.replace(/^&gt;\s*(.*$)/gim, '<blockquote class="br-ai-quote">$1</blockquote>');
+
+        // 7. Auto-highlight Recommendation and Risk Tags
+        html = html.replace(/\b(STRONG BUY|BUY|ADD|ACCUMULATE)\b/g, '<span class="br-badge-reco-buy">$1</span>');
+        html = html.replace(/\b(HOLD|NEUTRAL)\b/g, '<span class="br-badge-reco-hold">$1</span>');
+        html = html.replace(/\b(SELL|REDUCE|UNDERPERFORM)\b/g, '<span class="br-badge-reco-sell">$1</span>');
+
+        // 8. Line breaks
+        html = html.replace(/\n\n+/g, '<br><br>');
         return html;
     }
 
@@ -166,6 +227,7 @@
                         <span id="br-ai-report-author"></span> • <span id="br-ai-report-date"></span>
                     </div>
                     <div style="display:flex; gap:8px;">
+                        <button type="button" class="br-btn-regen" id="br-ai-regen-btn" onclick="window.regenerateBrokerResearchAiSummary()" title="Re-run AI analysis with current prompt settings">🔄 Re-Analyze</button>
                         <button type="button" class="br-btn-copy" onclick="window.copyBrokerResearchAiSummary()">📋 Copy Summary</button>
                         <a id="br-ai-source-link" class="br-btn-doc" href="#" target="_blank" rel="noopener noreferrer">📄 View Report ↗</a>
                     </div>
@@ -594,8 +656,9 @@
     };
 
     // Public API: Open Separate AI Summary Popup Modal
-    window.openBrokerResearchAiModal = async function (reportData) {
+    window.openBrokerResearchAiModal = async function (reportData, forceRefresh = false) {
         if (!reportData) return;
+        window._currentReportForAi = reportData;
 
         const aiModal = ensureAiModal();
         const titleEl = aiModal.querySelector('#br-ai-title');
@@ -605,7 +668,7 @@
         const sourceLinkEl = aiModal.querySelector('#br-ai-source-link');
         const contentEl = aiModal.querySelector('#br-ai-content');
 
-        if (titleEl) titleEl.innerText = `${(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(reportData.symbol) : reportData.symbol) || 'Stock'} - AI Research Briefing`;
+        if (titleEl) titleEl.innerText = `${(typeof cleanDisplaySymbol === 'function' ? cleanDisplaySymbol(reportData.symbol) : reportData.symbol) || 'Stock'} - Senior Equity Research Analyst Analysis`;
         if (subEl) subEl.innerText = reportData.title || 'Institutional Equity Research & Valuation Report';
         if (authorEl) authorEl.innerText = reportData.author || 'Institutional Research';
         if (dateEl) dateEl.innerText = reportData.date || 'Recent';
@@ -617,9 +680,11 @@
         if (contentEl) {
             contentEl.innerHTML = `
                 <div style="text-align:center; padding: 48px; color: var(--br-text-secondary);">
-                    <div style="font-size:28px; margin-bottom:12px; animation: br-pulse 1.4s infinite;">✨</div>
-                    <div style="font-weight:700; font-size:14px; color:var(--br-text-primary);">Synthesizing Institutional Equity Research...</div>
-                    <div style="font-size:12px; opacity:0.8; margin-top:4px;">Analyzing investment thesis, financial growth estimates, catalysts and key risks</div>
+                    <div style="font-size:32px; margin-bottom:14px; animation: br-pulse 1.4s infinite;">✨</div>
+                    <div style="font-weight:700; font-size:15px; color:var(--br-text-primary); margin-bottom: 6px;">Conducting Senior Equity Analyst Deep Audit...</div>
+                    <div style="font-size:12px; opacity:0.85; max-width: 480px; margin: 0 auto; line-height: 1.5;">
+                        Extracting institutional rating, price targets, valuation methodology, growth catalysts, financial performance metrics, and risk factors with Gemini AI.
+                    </div>
                 </div>
             `;
         }
@@ -629,10 +694,13 @@
 
         // Request backend AI summary
         try {
+            const reqBody = { ...reportData };
+            if (forceRefresh) reqBody.refresh = 1;
+
             const res = await fetch('/api/broker-research/summarize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(reportData)
+                body: JSON.stringify(reqBody)
             });
             const data = await res.json();
             if (data.success && data.summary) {
@@ -644,6 +712,23 @@
         } catch (e) {
             console.error('Error in AI summary:', e);
             if (contentEl) contentEl.innerHTML = `<div style="padding:24px; color:#ef4444;">Network error while generating AI research summary.</div>`;
+        }
+    };
+
+    window.regenerateBrokerResearchAiSummary = async function () {
+        if (!window._currentReportForAi) return;
+        const btn = document.getElementById('br-ai-regen-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = '⏳ Analyzing...';
+        }
+        try {
+            await window.openBrokerResearchAiModal(window._currentReportForAi, true);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = '🔄 Re-Analyze';
+            }
         }
     };
 

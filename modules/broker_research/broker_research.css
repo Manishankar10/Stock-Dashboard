@@ -698,9 +698,9 @@
     background: var(--br-glass-bg);
     border: 1px solid var(--br-glass-border);
     border-radius: 20px;
-    width: 780px;
+    width: 900px;
     max-width: 95vw;
-    max-height: 85vh;
+    max-height: 88vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 35px 80px -20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -754,15 +754,176 @@
     -webkit-overflow-scrolling: touch;
 }
 
-.br-ai-body h3 {
-    font-size: 14.5px;
+.br-ai-body h1 {
+    font-size: 17px;
     font-weight: 800;
-    margin: 16px 0 8px 0;
+    margin: 0 0 14px 0;
+    color: var(--br-text-primary);
+    border-bottom: 2px solid rgba(16, 185, 129, 0.35);
+    padding-bottom: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.br-ai-body h2 {
+    font-size: 15px;
+    font-weight: 800;
+    margin: 20px 0 10px 0;
     color: #10b981;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.br-ai-body h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 16px 0 8px 0;
+    color: var(--br-text-primary);
     display: flex;
     align-items: center;
     gap: 6px;
     font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.br-ai-body h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 12px 0 6px 0;
+    color: var(--br-text-secondary);
+}
+
+/* Markdown Tables in AI Summary */
+.br-ai-table-wrap {
+    overflow-x: auto;
+    margin: 12px 0 16px 0;
+    border-radius: 8px;
+    border: 1px solid var(--br-glass-border);
+    background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .br-ai-table-wrap {
+    background: #f8fafc;
+}
+
+.br-ai-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.br-ai-table th {
+    background: rgba(148, 163, 184, 0.12);
+    font-weight: 700;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--br-glass-border);
+    color: var(--br-text-primary);
+    white-space: nowrap;
+}
+
+.br-ai-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    color: var(--br-text-primary);
+}
+
+.br-ai-table tr:last-child td {
+    border-bottom: none;
+}
+
+.br-ai-table tr:hover {
+    background: rgba(16, 185, 129, 0.04);
+}
+
+/* Recommendation & Risk Badges in AI Summary */
+.br-badge-reco-buy {
+    background: rgba(16, 185, 129, 0.14);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.br-badge-reco-hold {
+    background: rgba(245, 158, 11, 0.14);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.br-badge-reco-sell {
+    background: rgba(239, 68, 68, 0.14);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.br-badge-risk-high {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+.br-badge-risk-med {
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+.br-badge-risk-low {
+    color: #10b981;
+    font-weight: 700;
+}
+
+.br-ai-divider {
+    border: none;
+    height: 1px;
+    background: var(--br-glass-border);
+    margin: 18px 0;
+}
+
+.br-ai-quote {
+    border-left: 3px solid #10b981;
+    margin: 10px 0;
+    padding: 6px 14px;
+    background: rgba(16, 185, 129, 0.06);
+    border-radius: 0 6px 6px 0;
+    color: var(--br-text-secondary);
+}
+
+.br-ai-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.br-ai-link:hover {
+    text-decoration: underline;
+}
+
+.br-btn-regen {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.br-btn-regen:hover {
+    background: rgba(16, 185, 129, 0.22);
+    transform: translateY(-1px);
 }
 
 .br-ai-body h3:first-child {

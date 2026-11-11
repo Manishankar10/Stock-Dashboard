@@ -1494,6 +1494,9 @@
                     <button type="button" class="tab-btn" id="ai-prompt-tab-btn-ppt" onclick="switchAiPromptCategory('ppt')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer;">
                         📊 Investor Presentations / PPT (Brief Summary)
                     </button>
+                    <button type="button" class="tab-btn" id="ai-prompt-tab-btn-broker_research" onclick="switchAiPromptCategory('broker_research')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        🏛️ Broker Research (Senior Analyst Analysis)
+                    </button>
                 </div>
 
                 <!-- PANELS CONTAINER -->
@@ -1703,6 +1706,58 @@
                         <div id="ai-verify-box-ppt" style="display: none; margin-top: 12px;"></div>
                     </div>
 
+                    <!-- PANEL 5: BROKER RESEARCH (SENIOR ANALYST ANALYSIS) -->
+                    <div id="ai-prompt-panel-broker_research" class="ai-prompt-panel" style="display: none;">
+                        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    <span>🏛️</span> Institutional &amp; Broker Research Analysis
+                                </div>
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                                    Target: Senior Equity Research Analyst Analysis
+                                </span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.45;">
+                                Used when analyzing institutional brokerage reports, target prices, financial models, valuation benchmarks, and investment recommendations. Converts raw broker PDFs into actionable evidence-based equity research.
+                            </p>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
+                                Supported dynamic variables (click to insert into prompt):
+                            </div>
+                            <div class="ai-variables-bar" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('broker_research', '{company}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{company}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('broker_research', '{symbol}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{symbol}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('broker_research', '{author}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{author}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('broker_research', '{title}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{title}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('broker_research', '{date}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{date}</button>
+                                <button type="button" class="btn btn-secondary" onclick="insertAiPlaceholder('broker_research', '{source_url}')" style="font-size: 11px; padding: 3px 8px; font-family: monospace; border-radius: 4px;">{source_url}</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <textarea id="ai-prompt-broker_research" rows="16" 
+                                style="width: 100%; box-sizing: border-box; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input); border-radius: 8px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12.5px; line-height: 1.55; padding: 12px 14px; min-height: 320px; resize: vertical;"
+                                placeholder="Enter prompt instructions for institutional broker research analysis..."></textarea>
+                        </div>
+
+                        <!-- Actions Bar -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button type="button" id="btn-verify-broker_research" class="btn btn-primary" onclick="verifyAiPrompt('broker_research')" style="font-size: 12.5px; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <span>✨</span> Verify with Gemini AI
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetAiPromptToDefault('broker_research')" style="font-size: 12.5px; padding: 8px 14px; border-radius: 6px;">
+                                    🔄 Reset to Default
+                                </button>
+                            </div>
+                            <button type="button" class="btn" onclick="saveSingleAiPrompt('broker_research')" style="font-size: 12.5px; padding: 8px 18px; border-radius: 6px;">
+                                💾 Save Broker Research Prompt
+                            </button>
+                        </div>
+
+                        <!-- Verification Feedback Container -->
+                        <div id="ai-verify-box-broker_research" style="display: none; margin-top: 12px;"></div>
+                    </div>
+
                 </div>
 
                 <!-- Master Global Actions Bar -->
@@ -1712,7 +1767,7 @@
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <button type="button" class="btn btn-secondary" onclick="resetAllAiPrompts()" style="font-size: 12.5px; padding: 8px 14px; border-radius: 6px;">
-                            🔄 Reset All 4 Prompts
+                            🔄 Reset All 5 Prompts
                         </button>
                         <button type="button" id="btn-save-all-ai-prompts" class="btn" onclick="saveAllAiPrompts()" style="font-size: 13px; padding: 10px 22px; border-radius: 6px; font-weight: 700;">
                             💾 Save All AI Prompts
@@ -3620,7 +3675,7 @@
                     _aiDefaultsData = data.defaults || {};
                     _aiMetadata = data.metadata || {};
 
-                    ['feeds', 'concalls', 'annual_reports', 'ppt'].forEach(cat => {
+                    ['feeds', 'concalls', 'annual_reports', 'ppt', 'broker_research'].forEach(cat => {
                         const el = document.getElementById(`ai-prompt-${cat}`);
                         if (el && _aiPromptsData[cat]) {
                             el.value = _aiPromptsData[cat];
@@ -3633,7 +3688,7 @@
         }
 
         function switchAiPromptCategory(category) {
-            ['feeds', 'concalls', 'annual_reports', 'ppt'].forEach(cat => {
+            ['feeds', 'concalls', 'annual_reports', 'ppt', 'broker_research'].forEach(cat => {
                 const btn = document.getElementById(`ai-prompt-tab-btn-${cat}`);
                 const panel = document.getElementById(`ai-prompt-panel-${cat}`);
                 if (btn) btn.classList.toggle('active', cat === category);
@@ -3886,7 +3941,7 @@
             }
 
             const prompts = {};
-            ['feeds', 'concalls', 'annual_reports', 'ppt'].forEach(cat => {
+            ['feeds', 'concalls', 'annual_reports', 'ppt', 'broker_research'].forEach(cat => {
                 const el = document.getElementById(`ai-prompt-${cat}`);
                 if (el) prompts[cat] = el.value.trim();
             });
@@ -3900,7 +3955,7 @@
                 const data = await res.json();
                 if (data.success) {
                     _aiPromptsData = prompts;
-                    showAiPromptSavedBadge('All 4 AI prompts saved successfully!');
+                    showAiPromptSavedBadge('All 5 AI prompts saved successfully!');
                 } else {
                     alert('❌ Failed to save AI prompts: ' + (data.error || 'Unknown error'));
                 }
@@ -3915,7 +3970,7 @@
         }
 
         async function resetAllAiPrompts() {
-            if (!confirm('Are you sure you want to reset ALL 4 prompts back to recommended factory defaults?')) {
+            if (!confirm('Are you sure you want to reset ALL 5 prompts back to recommended factory defaults?')) {
                 return;
             }
             try {
@@ -3927,7 +3982,7 @@
                 const data = await res.json();
                 if (data.success) {
                     await loadAdminAiPrompts();
-                    showAiPromptSavedBadge('All 4 prompts reset to recommended defaults!');
+                    showAiPromptSavedBadge('All 5 prompts reset to recommended defaults!');
                 }
             } catch (err) {
                 alert('❌ Error resetting prompts: ' + err.message);
