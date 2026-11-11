@@ -28,6 +28,21 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
+
+def _fetch_url(url, headers=None, timeout=10):
+    """
+    Fetch URL using curl_cffi Chrome impersonation to bypass Cloudflare TLS fingerprinting.
+    Gracefully falls back to standard requests.
+    """
+    hdrs = headers or HEADERS
+    try:
+        from curl_cffi import requests as cffi_requests
+        return cffi_requests.get(url, headers=hdrs, impersonate="chrome", timeout=timeout)
+    except Exception as e:
+        logger.debug(f"curl_cffi fetch fallback to requests for {url}: {e}")
+        return requests.get(url, headers=hdrs, timeout=timeout)
+
+
 # Recognized Institutions & Research Houses
 INSTITUTION_CATEGORIES = {
     "SBI Mutual Fund": "Mutual Fund / AMC",
@@ -79,6 +94,17 @@ def get_institution_type(author_name):
     return "Broker Research"
 
 
+def normalize_domain(s):
+    """Normalize input URL or domain string to root domain (e.g. 'https://www.screener.in/company/' -> 'screener.in')."""
+    if not s:
+        return ""
+    s = s.strip().lower()
+    s = re.sub(r"^https?://", "", s)
+    s = re.sub(r"^www\.", "", s)
+    s = s.split("/")[0].split(":")[0].strip()
+    return s
+
+
 def get_allowed_research_websites():
     """
     Retrieves the comma-separated research websites configured by Admin in system settings.
@@ -93,12 +119,9 @@ def get_allowed_research_websites():
 
     sites = []
     for s in str(raw).split(","):
-        s = s.strip().lower()
-        s = re.sub(r"^https?://", "", s)
-        s = re.sub(r"^www\.", "", s)
-        s = s.rstrip("/")
-        if s:
-            sites.append(s)
+        norm = normalize_domain(s)
+        if norm and norm not in sites:
+            sites.append(norm)
     return sites or ["trendlyne.com", "screener.in", "bseindia.com"]
 
 
@@ -115,22 +138,24 @@ def is_pdf_or_content_available(report, allowed_sites=None):
     if not url or url == "#":
         return False
 
-    # Strict rejection of search engine fallback queries
     url_lower = url.lower()
+    # Strict rejection of search engine fallback queries
     if any(engine in url_lower for engine in ["google.com/search", "bing.com/search", "yahoo.com/search", "duckduckgo.com"]):
         return False
 
     # Match against allowed websites if provided
     if allowed_sites:
+        report_source = (report.get("source") or "").lower()
         matched_site = False
         for site in allowed_sites:
-            if site in url_lower:
+            # Matches if site is the report source (e.g. screener.in or trendlyne.com) or site domain is in URL
+            if site in report_source or site in url_lower:
                 matched_site = True
                 break
         if not matched_site:
             return False
 
-    # Verify PDF or readable document content
+    # Verify PDF or readable document / audio recording content
     has_pdf = (
         report.get("has_pdf") is True or
         url_lower.endswith(".pdf") or
@@ -145,7 +170,12 @@ def is_pdf_or_content_available(report, allowed_sites=None):
         bool(report.get("content")) or
         bool(report.get("snippet")) or
         "/posts/" in url_lower or
-        "/announcements/" in url_lower
+        "/announcements/" in url_lower or
+        "/rationale/" in url_lower or
+        "ratingdocs" in url_lower or
+        "youtube.com" in url_lower or
+        "youtu.be" in url_lower or
+        report.get("category") in ["concalls", "credit_ratings", "annual_reports", "announcements", "broker_research"]
     )
 
     return has_pdf or has_content
@@ -165,8 +195,8 @@ def fetch_trendlyne_reports(symbol):
             "X-Requested-With": "XMLHttpRequest"
         }
         search_url = f"https://trendlyne.com/research-reports/search/?term={clean_sym}"
-        r_search = requests.get(search_url, headers=search_headers, timeout=6)
-        if r_search.status_code != 200:
+        r_search = _fetch_url(search_url, headers=search_headers, timeout=10)
+        if not r_search or r_search.status_code != 200:
             return []
 
         search_data = r_search.json()
@@ -186,14 +216,14 @@ def fetch_trendlyne_reports(symbol):
             return []
 
         # Step 2: Fetch stock research reports table
-        r_page = requests.get(stock_url, headers=HEADERS, timeout=8)
-        if r_page.status_code != 200:
+        r_page = _fetch_url(stock_url, headers=HEADERS, timeout=10)
+        if not r_page or r_page.status_code != 200:
             return []
 
         soup = BeautifulSoup(r_page.text, "html.parser")
         rows = soup.find_all("tr")
 
-        cutoff_date = datetime.now() - timedelta(days=210)  # ~7 months filter
+        cutoff_date = datetime.now() - timedelta(days=240)  # ~8 months filter
 
         for tr in rows[1:]:
             tds = tr.find_all(["td", "th"])
@@ -265,6 +295,8 @@ def fetch_trendlyne_reports(symbol):
                 "has_pdf": has_pdf,
                 "has_content": True,
                 "source": "trendlyne.com",
+                "category": "broker_research",
+                "tab_name": "Broker Research",
                 "is_live": True,
             })
 
@@ -276,9 +308,8 @@ def fetch_trendlyne_reports(symbol):
 
 def fetch_screener_bse_documents(symbol):
     """
-    Fetches official institutional research filings, concalls, investor presentations,
-    credit rating reports, and annual reports from Screener.in and BSE India.
-    Only keeps documents that have actual direct PDF links.
+    Fetches official institutional research filings, concalls (transcripts, PPTs, recordings),
+    credit rating reports, and annual reports from Screener.in and BSE India across all document tabs.
     """
     clean_sym = clean_symbol(symbol)
     if not clean_sym:
@@ -287,8 +318,8 @@ def fetch_screener_bse_documents(symbol):
     docs = []
     try:
         url = f"https://www.screener.in/company/{clean_sym}/"
-        r = requests.get(url, headers=HEADERS, timeout=8)
-        if r.status_code != 200:
+        r = _fetch_url(url, headers=HEADERS, timeout=10)
+        if not r or r.status_code != 200:
             return []
 
         soup = BeautifulSoup(r.text, "html.parser")
@@ -296,72 +327,229 @@ def fetch_screener_bse_documents(symbol):
         if not sec:
             return []
 
-        for a in sec.find_all("a", href=True):
-            href = a.get("href", "").strip()
-            text = a.get_text(" ", strip=True)
-            if not href or href.startswith("#") or text in ["All", "AI Summary", "bse"]:
-                continue
+        current_year = datetime.now().year
 
-            # Ensure valid PDF or document link
-            is_pdf = ".pdf" in href.lower() or "annpdfopen" in href.lower() or "/xml-data/" in href.lower()
-            if not is_pdf and not href.startswith("http") and not href.startswith("/"):
-                continue
+        # 1. Announcements Tab
+        # Screener has div.documents flex-column (excluding annual-reports, credit-ratings, concalls)
+        ann_boxes = []
+        for d in sec.find_all("div", class_="documents"):
+            classes = d.get("class", [])
+            if not any(c in classes for c in ["annual-reports", "credit-ratings", "concalls"]):
+                ann_boxes.append(d)
 
-            full_url = href if href.startswith("http") else f"https://www.screener.in{href}"
+        for ann_box in ann_boxes:
+            for a in ann_box.find_all("a", href=True):
+                href = a.get("href", "").strip()
+                text = a.get_text(" ", strip=True)
+                if not href or href.startswith("#") or text.strip() in ["All", "AI Summary", "bse"]:
+                    continue
 
-            # Clean title and parse date if present (e.g. '28 Oct', '4 Nov')
-            clean_title = re.sub(r"(?:from bse|AI Summary)$", "", text).strip()
-            date_match = re.search(r"\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+\d{2,4})?)\b", clean_title, flags=re.IGNORECASE)
-            date_str = date_match.group(1).strip() if date_match else "Recent"
-            if date_str != "Recent" and not re.search(r"\d{4}", date_str):
-                date_str = f"{date_str} 2026"
+                full_url = href if href.startswith("http") else f"https://www.screener.in{href}"
 
-            display_title = re.sub(r"\s*Announcement under Regulation 30\s*\(LODR\)-?", "", clean_title, flags=re.IGNORECASE).strip()
-            if not display_title:
-                display_title = f"{clean_sym} - Corporate & Research Filing"
+                # Date extraction
+                date_match = re.search(r"\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+\d{2,4})?)\b", text, flags=re.IGNORECASE)
+                date_str = date_match.group(1).strip() if date_match else "Recent"
+                if date_str != "Recent" and not re.search(r"\d{4}", date_str):
+                    date_str = f"{date_str} {current_year}"
 
-            title_lower = text.lower()
-            author = "Corporate Disclosures"
-            inst_type = "Regulatory Filing"
-            if any(k in title_lower for k in ["credit rating", "rating", "crisil", "icra", "care"]):
-                author = "Credit Rating Research"
-                inst_type = "Credit Rating / Research"
-            elif any(k in title_lower for k in ["concall", "transcript", "earnings call"]):
-                author = "Earnings Concall Transcript"
-                inst_type = "Institutional Equity"
-            elif any(k in title_lower for k in ["presentation", "investor meet", "investor conference"]):
-                author = "Investor Presentation Deck"
-                inst_type = "Institutional Research"
-            elif "annual report" in title_lower:
-                author = "Annual Report"
-                inst_type = "Annual Corporate Report"
-            elif "research" in title_lower:
-                author = "Institutional Equity"
-                inst_type = "Broker Research"
+                clean_title = re.sub(r"(?:from bse|AI Summary)$", "", text, flags=re.IGNORECASE).strip()
+                display_title = re.sub(r"\s*Announcement under Regulation 30\s*\(LODR\)-?", "", clean_title, flags=re.IGNORECASE).strip()
+                if not display_title:
+                    display_title = f"{clean_sym} - Corporate & Regulatory Announcement"
 
-            source_domain = "bseindia.com" if "bseindia.com" in full_url.lower() else "screener.in"
+                is_pdf = ".pdf" in full_url.lower() or "annpdfopen" in full_url.lower() or "/xml-data/" in full_url.lower()
 
-            docs.append({
-                "id": f"scr-{clean_sym}-{len(docs) + 1}",
-                "symbol": clean_sym,
-                "date": date_str,
-                "author": author,
-                "institution_type": inst_type,
-                "title": display_title[:110],
-                "rating": "AVAILABLE",
-                "target_price": "PDF Document",
-                "upside": "",
-                "url": full_url,
-                "has_pdf": is_pdf,
-                "has_content": True,
-                "source": source_domain,
-                "is_live": True
-            })
+                docs.append({
+                    "id": f"scr-ann-{clean_sym}-{len(docs) + 1}",
+                    "symbol": clean_sym,
+                    "date": date_str,
+                    "author": "Exchange Announcement",
+                    "institution_type": "Regulatory Filing (LODR)",
+                    "title": display_title[:120],
+                    "rating": "FILING",
+                    "target_price": "",
+                    "upside": "",
+                    "url": full_url,
+                    "has_pdf": is_pdf,
+                    "has_content": True,
+                    "source": "screener.in",
+                    "category": "announcements",
+                    "tab_name": "Announcements",
+                    "is_live": True
+                })
+
+        # 2. Annual Reports Tab
+        ar_box = sec.find("div", class_="annual-reports")
+        if ar_box:
+            for a in ar_box.find_all("a", href=True):
+                href = a.get("href", "").strip()
+                text = a.get_text(" ", strip=True)
+                if not href or href.startswith("#") or text.strip() in ["All", "AI Summary"]:
+                    continue
+
+                full_url = href if href.startswith("http") else f"https://www.screener.in{href}"
+                year_match = re.search(r"\b(20\d{2})\b", text)
+                year_str = year_match.group(1) if year_match else str(current_year)
+
+                docs.append({
+                    "id": f"scr-ar-{clean_sym}-{len(docs) + 1}",
+                    "symbol": clean_sym,
+                    "date": f"FY {year_str}",
+                    "author": "Annual Report",
+                    "institution_type": "Annual Corporate Report",
+                    "title": f"{clean_sym} - Annual Report FY {year_str}",
+                    "rating": "REPORT",
+                    "target_price": "",
+                    "upside": "",
+                    "url": full_url,
+                    "has_pdf": True,
+                    "has_content": True,
+                    "source": "screener.in",
+                    "category": "annual_reports",
+                    "tab_name": "Annual Reports",
+                    "is_live": True
+                })
+
+        # 3. Credit Ratings Tab
+        cr_box = sec.find("div", class_="credit-ratings")
+        if cr_box:
+            for a in cr_box.find_all("a", href=True):
+                href = a.get("href", "").strip()
+                text = a.get_text(" ", strip=True)
+                if not href or href.startswith("#") or text.strip() in ["All", "AI Summary"]:
+                    continue
+
+                full_url = href if href.startswith("http") else f"https://www.screener.in{href}"
+
+                agency = "Credit Rating"
+                if "crisil" in text.lower() or "crisil" in full_url.lower():
+                    agency = "CRISIL"
+                elif "icra" in text.lower() or "icra" in full_url.lower():
+                    agency = "ICRA"
+                elif "care" in text.lower() or "care" in full_url.lower():
+                    agency = "CARE Ratings"
+                elif "india ratings" in text.lower() or "indiaratings" in full_url.lower():
+                    agency = "India Ratings"
+
+                date_match = re.search(r"\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+\d{2,4})?)\b", text, flags=re.IGNORECASE)
+                date_str = date_match.group(1).strip() if date_match else "Recent"
+                if date_str != "Recent" and not re.search(r"\d{4}", date_str):
+                    date_str = f"{date_str} {current_year}"
+
+                clean_title = re.sub(r"(?:from bse|from icra|from crisil|from care)$", "", text, flags=re.IGNORECASE).strip()
+                display_title = f"{clean_sym} - {agency} Credit Rating Rationale & Update"
+                if clean_title and len(clean_title) > 10:
+                    display_title = f"{clean_sym} - {clean_title}"
+
+                is_pdf = ".pdf" in full_url.lower() or "annpdfopen" in full_url.lower()
+
+                docs.append({
+                    "id": f"scr-cr-{clean_sym}-{len(docs) + 1}",
+                    "symbol": clean_sym,
+                    "date": date_str,
+                    "author": agency,
+                    "institution_type": "Credit Rating Agency",
+                    "title": display_title[:120],
+                    "rating": "RATING",
+                    "target_price": "",
+                    "upside": "",
+                    "url": full_url,
+                    "has_pdf": is_pdf,
+                    "has_content": True,
+                    "source": "screener.in",
+                    "category": "credit_ratings",
+                    "tab_name": "Credit Ratings",
+                    "is_live": True
+                })
+
+        # 4. Concalls Tab (Transcripts, Investor Presentation PPTs, Audio Recordings)
+        cc_box = sec.find("div", class_="concalls")
+        if cc_box:
+            for li in cc_box.find_all("li"):
+                li_text = li.get_text(" ", strip=True)
+                q_match = re.search(r"\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\b", li_text, flags=re.IGNORECASE)
+                q_str = q_match.group(1) if q_match else f"{current_year}"
+
+                for a in li.find_all("a", href=True):
+                    a_type = a.get_text(strip=True).upper()
+                    href = a.get("href", "").strip()
+                    if not href or href.startswith("#") or a_type in ["ADD MISSING", "AI SUMMARY"]:
+                        continue
+
+                    full_url = href if href.startswith("http") else f"https://www.screener.in{href}"
+
+                    label = "Concall Transcript"
+                    inst_type = "Earnings Concall"
+                    is_pdf = True
+                    rating_code = "TRANSCRIPT"
+
+                    if "PPT" in a_type:
+                        label = "Investor Presentation Deck (PPT)"
+                        inst_type = "Investor Presentation"
+                        rating_code = "PPT"
+                    elif "REC" in a_type or "audio" in full_url.lower() or "youtube" in full_url.lower() or "youtu.be" in full_url.lower():
+                        label = "Concall Audio / Webcast Recording"
+                        inst_type = "Audio Webcast"
+                        is_pdf = False
+                        rating_code = "AUDIO"
+
+                    docs.append({
+                        "id": f"scr-cc-{clean_sym}-{len(docs) + 1}",
+                        "symbol": clean_sym,
+                        "date": q_str,
+                        "author": label,
+                        "institution_type": inst_type,
+                        "title": f"{clean_sym} - {q_str} {label}",
+                        "rating": rating_code,
+                        "target_price": "",
+                        "upside": "",
+                        "url": full_url,
+                        "has_pdf": is_pdf,
+                        "has_content": True,
+                        "source": "screener.in",
+                        "category": "concalls",
+                        "tab_name": "Concalls & PPTs",
+                        "is_live": True
+                    })
 
     except Exception as e:
         logger.warning(f"Error fetching Screener/BSE documents for {symbol}: {e}")
 
     return docs
+
+
+def parse_doc_date(date_str):
+    """Robust parser for document dates (e.g. '28 Oct 2026', 'Oct 2026', 'FY 2026', '2026-10-28')."""
+    if not date_str:
+        return datetime(2020, 1, 1)
+    s = str(date_str).strip()
+    for fmt in ("%d %b %Y", "%d %b, %Y", "%d %B %Y", "%b %Y", "%B %Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(s, fmt)
+        except Exception:
+            pass
+    # Match '12 Oct 2026'
+    m1 = re.search(r"(\d{1,2})\s+([a-zA-Z]{3,9})\s+(\d{4})", s)
+    if m1:
+        try:
+            return datetime.strptime(f"{m1.group(1)} {m1.group(2)[:3]} {m1.group(3)}", "%d %b %Y")
+        except Exception:
+            pass
+    # Match 'Oct 2026'
+    m2 = re.search(r"([a-zA-Z]{3,9})\s+(\d{4})", s)
+    if m2:
+        try:
+            return datetime.strptime(f"01 {m2.group(1)[:3]} {m2.group(2)}", "%d %b %Y")
+        except Exception:
+            pass
+    # Match 'FY 2026' or '2026'
+    m3 = re.search(r"(?:FY\s*)?(\d{4})", s)
+    if m3:
+        try:
+            return datetime(int(m3.group(1)), 3, 31)
+        except Exception:
+            pass
+    return datetime(2020, 1, 1)
 
 
 class BrokerResearchProvider:
@@ -421,22 +609,7 @@ class BrokerResearchProvider:
             unique_reports.append(r)
 
         # 5. Sort descending by date
-        def parse_date(r):
-            d_str = str(r.get("date", "")).strip()
-            for fmt in ("%d %b %Y", "%d %b, %Y", "%b %Y", "%Y-%m-%d"):
-                try:
-                    return datetime.strptime(d_str, fmt)
-                except Exception:
-                    pass
-            m = re.search(r"(\d{1,2})\s+([a-zA-Z]{3})\s+(\d{4})", d_str)
-            if m:
-                try:
-                    return datetime.strptime(f"{m.group(1)} {m.group(2)} {m.group(3)}", "%d %b %Y")
-                except Exception:
-                    pass
-            return datetime(2025, 1, 1)
-
-        unique_reports.sort(key=parse_date, reverse=True)
+        unique_reports.sort(key=lambda r: parse_doc_date(r.get("date", "")), reverse=True)
 
         with _cache_lock:
             _cache[cache_key] = {

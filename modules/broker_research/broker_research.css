@@ -169,6 +169,88 @@
     background: rgba(148, 163, 184, 0.15);
 }
 
+/* 3.5 Category Tabs Navigation */
+.br-tabs-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: var(--br-glass-header);
+    border-bottom: 1px solid var(--br-glass-border);
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+}
+
+.br-tabs-nav::-webkit-scrollbar {
+    height: 3px;
+}
+.br-tabs-nav::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.25);
+    border-radius: 9999px;
+}
+
+.br-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 13px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    border: 1px solid var(--br-glass-border);
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--br-text-secondary);
+    white-space: nowrap;
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    outline: none;
+}
+
+.br-tab-btn:hover {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--br-text-primary);
+    border-color: rgba(59, 130, 246, 0.35);
+    transform: translateY(-1px);
+}
+
+.br-tab-btn.active {
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: #ffffff !important;
+    border-color: #2563eb;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.35);
+    font-weight: 700;
+}
+
+.br-tab-btn .br-tab-icon {
+    font-size: 13px;
+    line-height: 1;
+}
+
+.br-tab-btn .br-tab-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 1.5px 6.5px;
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--br-text-primary);
+    margin-left: 2px;
+    transition: all 0.15s ease;
+}
+
+.br-tab-btn.active .br-tab-badge {
+    background: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+}
+
+.br-embedded-tabs {
+    padding: 4px 0 10px 0 !important;
+    background: transparent !important;
+    border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, 0.15)) !important;
+}
+
 /* 4. Controls & Stats Filter Bar */
 .br-filter-bar {
     display: flex;
@@ -335,6 +417,30 @@
     border: 1px solid var(--br-glass-border);
 }
 
+.br-inst-rating {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.br-inst-concall {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a855f7;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.br-inst-annual {
+    background: rgba(6, 182, 212, 0.15);
+    color: #06b6d4;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.br-inst-filing {
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--br-text-secondary);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
 /* Report Column (Title + Rating Tag + Target) */
 .br-report-cell {
     display: flex;
@@ -389,6 +495,42 @@
     background: rgba(239, 68, 68, 0.15);
     color: #ef4444;
     border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.br-rating-transcript {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.br-rating-ppt {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.br-rating-audio {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.br-rating-report {
+    background: rgba(6, 182, 212, 0.15);
+    color: #06b6d4;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.br-rating-credit {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.br-rating-filing {
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--br-text-secondary);
+    border: 1px solid rgba(100, 116, 139, 0.3);
 }
 
 .br-target-tag {
@@ -709,5 +851,18 @@
     background: rgba(239, 68, 68, 0.22);
     border-color: rgba(239, 68, 68, 0.5);
     color: #f87171;
+    transform: translateY(-1px);
+}
+
+.br-btn-doc.br-btn-audio {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.35);
+    color: #8b5cf6;
+    font-weight: 700;
+}
+.br-btn-doc.br-btn-audio:hover {
+    background: rgba(139, 92, 246, 0.22);
+    border-color: rgba(139, 92, 246, 0.55);
+    color: #a78bfa;
     transform: translateY(-1px);
 }

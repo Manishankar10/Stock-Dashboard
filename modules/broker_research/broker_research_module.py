@@ -23,10 +23,22 @@ def broker_research_asset(filename):
     return send_from_directory(os.path.dirname(__file__), filename)
 
 
+def _compute_tab_counts(reports):
+    reps = reports or []
+    return {
+        "all": len(reps),
+        "broker_research": sum(1 for r in reps if r.get("category") == "broker_research"),
+        "concalls": sum(1 for r in reps if r.get("category") == "concalls"),
+        "annual_reports": sum(1 for r in reps if r.get("category") == "annual_reports"),
+        "credit_ratings": sum(1 for r in reps if r.get("category") == "credit_ratings"),
+        "announcements": sum(1 for r in reps if r.get("category") == "announcements"),
+    }
+
+
 @broker_research_bp.get("")
 def get_broker_research_reports():
     """
-    Retrieve recent 6 months institutional research reports and mutual fund papers.
+    Retrieve recent 6 months institutional research reports, concalls, annual reports and filings.
     Query params:
       - symbol: single stock symbol (e.g. TCS)
       - watchlist: watchlist name to aggregate reports for
@@ -48,6 +60,7 @@ def get_broker_research_reports():
             "company": company_name or clean_sym,
             "allowed_sources": get_allowed_research_websites(),
             "count": len(reports),
+            "tab_counts": _compute_tab_counts(reports),
             "reports": reports
         })
 
@@ -85,6 +98,7 @@ def get_broker_research_reports():
             "symbols": symbols,
             "allowed_sources": get_allowed_research_websites(),
             "count": len(reports),
+            "tab_counts": _compute_tab_counts(reports),
             "reports": reports
         })
 
@@ -98,6 +112,7 @@ def get_broker_research_reports():
         "symbols": default_symbols,
         "allowed_sources": get_allowed_research_websites(),
         "count": len(reports),
+        "tab_counts": _compute_tab_counts(reports),
         "reports": reports
     })
 
