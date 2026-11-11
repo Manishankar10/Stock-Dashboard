@@ -266,10 +266,24 @@
         await fetchMarketDepth(_activeDepthSymbol);
     }
 
+    function openMarketDepthChart() {
+        if (!_activeDepthSymbol) return;
+        const sym = _activeDepthSymbol;
+        closeMarketDepthModal();
+        if (typeof window.openInHouseChart === 'function') {
+            window.openInHouseChart(sym);
+        } else if (typeof openInHouseChart === 'function') {
+            openInHouseChart(sym);
+        } else if (typeof handleWatchlistStockClick === 'function') {
+            handleWatchlistStockClick(sym);
+        }
+    }
+
     // Expose global methods
     window.openMarketDepthModal = openMarketDepthModal;
     window.closeMarketDepthModal = closeMarketDepthModal;
     window.refreshMarketDepthModal = refreshMarketDepthModal;
+    window.openMarketDepthChart = openMarketDepthChart;
 
     // ESC key closes modal
     document.addEventListener('keydown', (e) => {
