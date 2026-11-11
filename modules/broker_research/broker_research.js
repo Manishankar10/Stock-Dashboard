@@ -153,10 +153,6 @@
                     </div>
                 </div>
 
-                <div class="br-tabs-nav" id="br-modal-tabs">
-                    <!-- Populated dynamically with category buttons -->
-                </div>
-
                 <div class="br-filter-bar">
                     <div class="br-stats-pill-group" id="br-stats-pills">
                         <span class="br-stat-pill emerald" id="br-stat-count">0 Documents</span>
@@ -248,7 +244,7 @@
                     <td colspan="5" class="text-center" style="padding: 48px 16px; color: var(--br-text-secondary);">
                         <div style="font-size: 26px; margin-bottom: 8px;">📑</div>
                         <div style="font-weight: 700; font-size: 14px;">No Research Documents Found</div>
-                        <div style="font-size: 12px; opacity: 0.8; margin-top: 4px;">No documents in this category match the query. Try switching tabs.</div>
+                        <div style="font-size: 12px; opacity: 0.8; margin-top: 4px;">No research documents match the current search or filter criteria.</div>
                     </td>
                 </tr>
             `;
@@ -367,25 +363,13 @@
         renderRows(filtered, tbody);
 
         if (countEl) {
-            const catObj = CATEGORY_DEFS.find(c => c.id === _activeCategory);
-            const catLabel = catObj && catObj.id !== 'all' ? catObj.label : 'All';
-            countEl.innerText = `${filtered.length} Document${filtered.length === 1 ? '' : 's'} (${catLabel})`;
+            countEl.innerText = `${filtered.length} Document${filtered.length === 1 ? '' : 's'}`;
         }
     }
 
     // Modal Category Switcher
     window.setBrokerResearchCategory = function (catId) {
         _activeCategory = catId || 'all';
-        const modal = document.getElementById('brokerResearchModal');
-        if (modal) {
-            modal.querySelectorAll('.br-tab-btn').forEach(btn => {
-                if (btn.getAttribute('data-category') === _activeCategory) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-        }
         applyModalFilters();
     };
 
@@ -403,7 +387,6 @@
         const selectEl = modal.querySelector('#br-stock-select');
         const countEl = modal.querySelector('#br-stat-count');
         const searchInput = modal.querySelector('#br-search-input');
-        const tabsEl = modal.querySelector('#br-modal-tabs');
         const tbody = modal.querySelector('#br-table-tbody');
 
         if (searchInput) searchInput.value = '';
@@ -455,22 +438,6 @@
             const data = await res.json();
             if (data.success && data.reports) {
                 _activeModalReports = data.reports;
-                const tabCounts = data.tab_counts || {};
-
-                // Render Category Tabs Nav
-                if (tabsEl) {
-                    tabsEl.innerHTML = CATEGORY_DEFS.map(cat => {
-                        const count = tabCounts[cat.id] !== undefined ? tabCounts[cat.id] : (cat.id === 'all' ? _activeModalReports.length : _activeModalReports.filter(r => r.category === cat.id).length);
-                        const isActive = _activeCategory === cat.id ? 'active' : '';
-                        return `
-                            <button type="button" class="br-tab-btn ${isActive}" data-category="${cat.id}" onclick="window.setBrokerResearchCategory('${cat.id}')">
-                                <span class="br-tab-icon">${cat.icon}</span>
-                                <span class="br-tab-label">${cat.label}</span>
-                                <span class="br-tab-badge">${count}</span>
-                            </button>
-                        `;
-                    }).join('');
-                }
 
                 applyModalFilters();
 

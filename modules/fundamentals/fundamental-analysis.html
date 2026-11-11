@@ -3993,6 +3993,18 @@ async function loadFundamentals(mode = currentFundamentalMode) {
     } else {
       alert(`Could not load ${mode} data: ${e.message}`);
     }
+    if (window.parent && window.parent !== window) {
+      const cachedComp = window._lastFundamentalsData?.company || {};
+      const fallbackBase = symbol.replace(/\.(NS|BO)$/i, '');
+      window.parent.postMessage({
+        type: 'FUNDAMENTALS_ERROR',
+        symbol: symbol,
+        name: cachedComp.name || cleanDisplaySymbol(symbol),
+        logo: cachedComp.logo || null,
+        error: e.message || 'Unable to fetch fundamentals',
+        screenerUrl: `https://www.screener.in/company/${encodeURIComponent(fallbackBase)}/`
+      }, '*');
+    }
   } finally {
     if (isInitial) {
       document.getElementById('loading').style.display = 'none';
@@ -5065,6 +5077,6 @@ window.refreshBrokerResearchSection = function() {
 
 loadFundamentals();
 </script>
-<script src="/api/broker-research/assets/broker_research.js?v=1.0"></script>
+<script src="/api/broker-research/assets/broker_research.js?v=1.1"></script>
 </body>
 </html>

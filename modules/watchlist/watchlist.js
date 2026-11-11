@@ -1889,30 +1889,33 @@
 
                     const positionSubmenu = () => {
                         submenu.style.display = 'block';
-                        const smWidth = submenu.offsetWidth || 205;
-                        const smHeight = submenu.offsetHeight || 230;
-                        const popRect = popover.getBoundingClientRect();
+                        submenu.style.transform = 'none';
+                        const vw = window.innerWidth || document.documentElement.clientWidth;
                         const vh = window.innerHeight || document.documentElement.clientHeight;
+                        submenu.style.maxWidth = `${Math.min(260, vw - 16)}px`;
+                        const smWidth = Math.min(submenu.offsetWidth || 205, vw - 16);
+                        const smHeight = submenu.offsetHeight || 230;
+                        const mRect = mMove.getBoundingClientRect();
 
-                        // Check horizontal clearance: if flyout to left fits, go left, else flyout right
-                        if (popRect.left - smWidth - 6 < 8) {
-                            submenu.style.right = 'auto';
-                            submenu.style.left = '100%';
-                            submenu.style.marginRight = '0';
-                            submenu.style.marginLeft = '4px';
-                            submenu.classList.remove('bridge-right');
-                            submenu.classList.add('bridge-left');
-                        } else {
+                        // Always open Move / Add-to-Watchlist submenu on the left side within viewport bounds
+                        const idealLeft = mRect.left - 4 - smWidth;
+                        if (idealLeft >= 8) {
                             submenu.style.right = '100%';
                             submenu.style.left = 'auto';
                             submenu.style.marginRight = '4px';
                             submenu.style.marginLeft = '0';
-                            submenu.classList.remove('bridge-left');
-                            submenu.classList.add('bridge-right');
+                        } else {
+                            // On narrow/mobile screens, keep anchored on the left side inside viewport without clipping right
+                            const clampedLeft = Math.max(8, Math.min(vw - smWidth - 8, idealLeft));
+                            submenu.style.right = 'auto';
+                            submenu.style.left = `${Math.round(clampedLeft - mRect.left)}px`;
+                            submenu.style.marginRight = '0';
+                            submenu.style.marginLeft = '0';
                         }
+                        submenu.classList.remove('bridge-left');
+                        submenu.classList.add('bridge-right');
 
                         // Check vertical positioning relative to Move item
-                        const mRect = mMove.getBoundingClientRect();
                         if (vh - mRect.top < smHeight + 10) {
                             submenu.style.top = 'auto';
                             submenu.style.bottom = '0';
@@ -1929,8 +1932,6 @@
                         } else if (smRect.top < 10) {
                             const diff = 10 - smRect.top;
                             submenu.style.transform = `translateY(${Math.round(diff)}px)`;
-                        } else {
-                            submenu.style.transform = 'none';
                         }
                     };
 
@@ -2214,8 +2215,23 @@
             popover.style.display = 'block';
             popover.style.position = 'fixed';
             popover.style.zIndex = '999999';
+            popover.style.left = '0';
+            popover.style.top = '0';
+            popover.style.right = 'auto';
+            popover.style.bottom = 'auto';
+            popover.style.maxWidth = `${Math.min(260, viewportWidth - 16)}px`;
 
-            const popoverWidth = popover.offsetWidth || 215;
+            const initialWidth = popover.offsetWidth || 215;
+
+            // Precise horizontal positioning: align right edge of popover with right edge of button
+            let desiredLeft = btnRect.right - initialWidth;
+            if (desiredLeft < 8) desiredLeft = 8;
+            if (desiredLeft + initialWidth > viewportWidth - 8) {
+                desiredLeft = viewportWidth - initialWidth - 8;
+            }
+            popover.style.left = `${Math.round(desiredLeft)}px`;
+
+            // Measure height after horizontal placement so any wrapping is reflected before vertical clamping
             const popoverHeight = popover.offsetHeight || 260;
 
             // Detect sticky header in table container to prevent upward collisions
@@ -2247,19 +2263,9 @@
                 }
             }
 
-            const clampedTop = Math.max(topBoundary, Math.min(viewportHeight - popoverHeight - 10, desiredTop));
+            const maxTop = Math.max(10, viewportHeight - popoverHeight - 10);
+            const clampedTop = Math.min(maxTop, Math.max(Math.min(topBoundary, maxTop), desiredTop));
             popover.style.top = `${Math.round(clampedTop)}px`;
-            popover.style.bottom = 'auto';
-
-            // Precise horizontal positioning: align right edge of popover with right edge of button
-            let desiredLeft = btnRect.right - popoverWidth;
-            if (desiredLeft < 8) desiredLeft = 8;
-            if (desiredLeft + popoverWidth > viewportWidth - 8) {
-                desiredLeft = viewportWidth - popoverWidth - 8;
-            }
-            popover.style.left = `${Math.round(desiredLeft)}px`;
-            popover.style.right = 'auto';
-            popover.style.maxWidth = `${Math.min(260, viewportWidth - 16)}px`;
 
             const parentTr = btn.closest('tr');
             if (parentTr) parentTr.classList.add('wl-row-menu-open');
@@ -2457,6 +2463,9 @@
 
         // Modal Handler Functions for Watchlist, Portfolio, and Add Holding Popups
         function openCreateWatchlistModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('createWatchlistModal', false);
+            }
             const input = document.getElementById('modal-new-watchlist-name');
             if (input) input.value = '';
             const modal = document.getElementById('createWatchlistModal');
@@ -2464,6 +2473,9 @@
         }
 
         function closeCreateWatchlistModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('createWatchlistModal', false);
+            }
             const modal = document.getElementById('createWatchlistModal');
             if (modal) modal.style.display = 'none';
         }
@@ -2471,30 +2483,48 @@
         window.closeCreateWatchlistModal = closeCreateWatchlistModal;
 
         async function submitCreateWatchlist() {
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('createWatchlistModal')) return;
             const input = document.getElementById('modal-new-watchlist-name');
-            const name = input.value.trim();
+            const name = input ? input.value.trim() : '';
             if (!name) {
                 alert('Please enter a watchlist name!');
+                if (input) input.focus();
                 return;
             }
-            const res = await fetch('/api/watchlists', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            const data = await res.json();
-            if (data.success) {
-                closeCreateWatchlistModal();
-                showToast(`Created watchlist "${name}"`, 'success');
-                watchlistsData = data.watchlists;
-                try {
-                    localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
-                } catch(e) {}
-                activeWatchlistName = name;
-                renderWatchlists();
-                refreshPrices();
-            } else {
-                showToast(data.error || 'Failed to create watchlist', 'error');
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('createWatchlistModal', true, {
+                    title: 'Creating Watchlist...',
+                    badge: 'Watchlist',
+                    subtitle: `Setting up "${name}"...`
+                });
+            }
+            try {
+                const res = await fetch('/api/watchlists', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    watchlistsData = data.watchlists;
+                    try {
+                        localStorage.setItem('cd_cached_watchlists', JSON.stringify(watchlistsData));
+                    } catch(e) {}
+                    activeWatchlistName = name;
+                    renderWatchlists();
+                    closeCreateWatchlistModal();
+                    showToast(`Created watchlist "${name}"`, 'success');
+                    refreshPrices();
+                } else {
+                    showToast(data.error || 'Failed to create watchlist', 'error');
+                }
+            } catch (err) {
+                console.error('Create watchlist error:', err);
+                showToast('Failed to create watchlist. Please check your connection.', 'error');
+            } finally {
+                if (typeof window.setModalBrandLoader === 'function') {
+                    window.setModalBrandLoader('createWatchlistModal', false);
+                }
             }
         }
 

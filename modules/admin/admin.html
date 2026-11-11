@@ -817,17 +817,6 @@
                 text-align: center !important;
                 justify-content: center !important;
             }
-            .notif-quarterly-actions #btn-send-quarterly-all {
-                flex: 1 1 100% !important;
-                width: 100% !important;
-                min-width: 0 !important;
-                justify-content: center !important;
-            }
-            .notif-quarterly-actions .btn-secondary {
-                flex: 1 1 auto !important;
-                text-align: center !important;
-                justify-content: center !important;
-            }
             .notif-quarterly-grid-header {
                 font-size: 9.5px !important;
                 padding: 4px 6px 6px 6px !important;
@@ -1135,9 +1124,10 @@
             animation: none !important;
         }
 
-        /* Keep Gold & Silver and Watchlist dispatch controls aligned on a single horizontal row */
+        /* Keep Gold & Silver, Watchlist, and Quarterly dispatch controls aligned on a single horizontal row */
         .notif-actions-bar,
-        .notif-watchlist-actions {
+        .notif-watchlist-actions,
+        .notif-quarterly-actions {
             display: flex;
             align-items: center;
             flex-wrap: nowrap;
@@ -1148,7 +1138,9 @@
         .notif-actions-bar > .btn,
         .notif-actions-bar > a.btn,
         .notif-watchlist-actions > .btn,
-        .notif-watchlist-actions > a.btn {
+        .notif-watchlist-actions > a.btn,
+        .notif-quarterly-actions > .btn,
+        .notif-quarterly-actions > a.btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -1161,7 +1153,8 @@
             min-width: 0;
         }
         .notif-actions-bar #btn-send-gold,
-        .notif-watchlist-actions #btn-send-watchlist-all {
+        .notif-watchlist-actions #btn-send-watchlist-all,
+        .notif-quarterly-actions #btn-send-quarterly-all {
             flex: 1 1 auto;
             width: auto;
             border: 1px solid transparent;
@@ -1176,12 +1169,18 @@
             background: linear-gradient(135deg, #10b981, #059669);
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
         }
+        .notif-quarterly-actions #btn-send-quarterly-all {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            box-shadow: 0 4px 12px rgba(147, 51, 234, 0.25);
+        }
         .notif-actions-bar #btn-send-gold:hover,
-        .notif-watchlist-actions #btn-send-watchlist-all:hover {
+        .notif-watchlist-actions #btn-send-watchlist-all:hover,
+        .notif-quarterly-actions #btn-send-quarterly-all:hover {
             filter: brightness(1.06);
         }
         .notif-actions-bar .btn-secondary,
-        .notif-watchlist-actions .btn-secondary {
+        .notif-watchlist-actions .btn-secondary,
+        .notif-quarterly-actions .btn-secondary {
             flex: 0 0 auto;
         }
         .notif-wl-count-box {
@@ -1221,15 +1220,23 @@
                 display: none;
             }
         }
+        @container (max-width: 515px) {
+            .notif-quarterly-actions .notif-qr-ext {
+                display: none;
+            }
+        }
         @container (max-width: 484px) {
             .notif-actions-bar .notif-btn-ext,
-            .notif-watchlist-actions .notif-btn-ext {
+            .notif-watchlist-actions .notif-btn-ext,
+            .notif-quarterly-actions .notif-btn-ext {
                 display: none;
             }
             .notif-actions-bar > .btn,
             .notif-actions-bar > a.btn,
             .notif-watchlist-actions > .btn,
-            .notif-watchlist-actions > a.btn {
+            .notif-watchlist-actions > a.btn,
+            .notif-quarterly-actions > .btn,
+            .notif-quarterly-actions > a.btn {
                 padding: 8px 9px;
                 font-size: 11.5px;
             }
@@ -1246,7 +1253,9 @@
             .notif-actions-bar > .btn,
             .notif-actions-bar > a.btn,
             .notif-watchlist-actions > .btn,
-            .notif-watchlist-actions > a.btn {
+            .notif-watchlist-actions > a.btn,
+            .notif-quarterly-actions > .btn,
+            .notif-quarterly-actions > a.btn {
                 padding: 7px 7px;
                 font-size: 11px;
                 height: 34px;
@@ -1268,13 +1277,15 @@
             }
         }
         @container (max-width: 340px) {
-            .notif-watchlist-actions .notif-wl-send-word {
+            .notif-watchlist-actions .notif-wl-send-word,
+            .notif-quarterly-actions .notif-qr-send-word {
                 display: none;
             }
         }
         @media (max-width: 480px) {
             .notif-actions-bar,
-            .notif-watchlist-actions {
+            .notif-watchlist-actions,
+            .notif-quarterly-actions {
                 gap: 4px;
             }
         }
@@ -2929,22 +2940,17 @@
                             </div>
                         </div>
 
-                        <div class="notif-quarterly-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <button class="btn" id="btn-send-quarterly-all" onclick="sendQuarterlyResultsAllUsers()" 
-                                style="flex: 1 1 auto; min-width: 170px; background: linear-gradient(135deg, #9333ea, #7c3aed); color: #ffffff; border: none; font-weight: 700; padding: 11px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                📊 Send Quarterly Results (Portfolio Users)
+                        <div class="notif-quarterly-actions">
+                            <button class="btn" id="btn-send-quarterly-all" onclick="sendQuarterlyResultsAllUsers()" title="Send consolidated quarterly results notification to portfolio users">
+                                <span>📊 <span class="notif-qr-send-word">Send </span>Quarterly Results<span class="notif-qr-ext"> (Portfolio Users)</span></span>
                             </button>
-                            <button class="btn btn-secondary" id="btn-send-quarterly-admin" onclick="sendQuarterlyResultsSampleUser('admin')" 
-                                style="padding: 11px 14px; color: #c084fc; border-color: rgba(192, 132, 252, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send sample quarterly results digest directly to Admin (holds INFY & TCS)">
-                                👤 Admin (Holdings)
-                            </button>
-                            <button class="btn btn-secondary" id="btn-send-quarterly-sampath" onclick="sendQuarterlyResultsSampleUser('sampath')" 
-                                style="padding: 11px 14px; color: #c084fc; border-color: rgba(192, 132, 252, 0.4); font-size: 12px; font-weight: 600; white-space: nowrap;" title="Send quarterly results notification to Sampath">
+                            <button class="btn btn-secondary" id="btn-send-quarterly-sampath" onclick="sendQuarterlyResultsSampleUser('sampath')"
+                                style="color: #c084fc; border-color: rgba(192, 132, 252, 0.4); font-weight: 600;" title="Send quarterly results notification to Sampath">
                                 👤 Sampath
                             </button>
-                            <a id="btn-preview-quarterly-img" href="/api/notifications/render-quarterly-card.png?username=admin" target="_blank" class="btn btn-secondary" 
-                                style="padding: 11px 14px; text-decoration: none; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" title="Open full-resolution generated Quarterly Results PNG banner">
-                                🖼️ Card Image
+                            <a id="btn-preview-quarterly-img" href="/api/notifications/render-quarterly-card.png?username=admin" target="_blank" class="btn btn-secondary"
+                                style="text-decoration: none; font-weight: 600;" title="Open full-resolution generated Quarterly Results PNG banner">
+                                <span>🖼️ Card<span class="notif-btn-ext"> Image</span></span>
                             </a>
                         </div>
                         <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--text-secondary); text-align: center;">

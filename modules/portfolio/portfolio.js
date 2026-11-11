@@ -27,7 +27,28 @@
         let currentSellHolding = null;
         let currentBuyMoreHolding = null;
 
+        function getPortfolioDisplayLabel() {
+            return (typeof window.PORTFOLIO_LABEL !== 'undefined' && window.PORTFOLIO_LABEL)
+                ? window.PORTFOLIO_LABEL
+                : 'Portfolio';
+        }
+
+        function formatPfLoaderSymbol(symbol) {
+            return (typeof cleanDisplaySymbol === 'function') ? cleanDisplaySymbol(symbol) : symbol;
+        }
+
+        function notifyPortfolioMessage(msg, type = 'error') {
+            if (typeof showToast === 'function') {
+                showToast(msg, type);
+            } else {
+                alert(msg);
+            }
+        }
+
         function openSellHoldingModal(symbol, curQty, curAvgPrice, targetPortfolio = null) {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('sellHoldingModal', false);
+            }
             const pfNames = Object.keys(portfoliosData);
             const pfName = targetPortfolio || (currentDetailHolding && currentDetailHolding.portfolioName) || (activePortfolioName !== 'All' ? activePortfolioName : pfNames[0]);
             if (!pfName) return;
@@ -56,6 +77,9 @@
         }
 
         function closeSellHoldingModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('sellHoldingModal', false);
+            }
             document.getElementById('sellHoldingModal').style.display = 'none';
         }
 
@@ -80,6 +104,7 @@
         }
 
         async function submitSellHolding() {
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('sellHoldingModal')) return;
             const pfName = (currentSellHolding && currentSellHolding.portfolioName) || (activePortfolioName !== 'All' ? activePortfolioName : '');
             if (!pfName || !currentSellHolding) return;
             const symbol = document.getElementById('modal-sell-symbol').value;
@@ -101,24 +126,46 @@
                 return;
             }
 
-            const res = await fetch(`/api/portfolios/${encodeURIComponent(pfName)}/stocks/sell`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, quantity, sell_price, sell_date, notes })
-            });
-            const data = await res.json();
-            if (data.success) {
-                closeSellHoldingModal();
-                portfoliosData = data.portfolios;
-                if (data.transactions) userTransactionsData = data.transactions;
-                renderPortfolios();
-                refreshPrices();
-            } else {
-                alert(data.error || 'Failed to submit sell order');
+            const symLabel = formatPfLoaderSymbol(symbol);
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('sellHoldingModal', true, {
+                    title: `Selling ${symLabel}...`,
+                    badge: `${getPortfolioDisplayLabel()} Sell`,
+                    subtitle: `Recording sale order for ${symLabel} in "${pfName}"...`
+                });
+            }
+
+            try {
+                const res = await fetch(`/api/portfolios/${encodeURIComponent(pfName)}/stocks/sell`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, quantity, sell_price, sell_date, notes })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    portfoliosData = data.portfolios;
+                    if (data.transactions) userTransactionsData = data.transactions;
+                    renderPortfolios();
+                    closeSellHoldingModal();
+                    notifyPortfolioMessage(`Sold ${symLabel} from ${pfName}`, 'success');
+                    refreshPrices();
+                } else {
+                    notifyPortfolioMessage(data.error || 'Failed to submit sell order', 'error');
+                }
+            } catch (err) {
+                console.error('Sell holding error:', err);
+                notifyPortfolioMessage('Failed to submit sell order. Please check your connection.', 'error');
+            } finally {
+                if (typeof window.setModalBrandLoader === 'function') {
+                    window.setModalBrandLoader('sellHoldingModal', false);
+                }
             }
         }
 
         function openBuyMoreModal(symbol, curAvgPrice, targetPortfolio = null) {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('buyMoreModal', false);
+            }
             const pfNames = Object.keys(portfoliosData);
             const pfName = targetPortfolio || (currentDetailHolding && currentDetailHolding.portfolioName) || (activePortfolioName !== 'All' ? activePortfolioName : pfNames[0]);
             if (!pfName) return;
@@ -146,6 +193,9 @@
         }
 
         function closeBuyMoreModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('buyMoreModal', false);
+            }
             document.getElementById('buyMoreModal').style.display = 'none';
         }
 
@@ -165,6 +215,7 @@
         }
 
         async function submitBuyMoreHolding() {
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('buyMoreModal')) return;
             const pfName = (currentBuyMoreHolding && currentBuyMoreHolding.portfolioName) || (activePortfolioName !== 'All' ? activePortfolioName : '');
             if (!pfName || !currentBuyMoreHolding) return;
             const symbol = document.getElementById('modal-buymore-symbol').value;
@@ -182,20 +233,39 @@
                 return;
             }
 
-            const res = await fetch(`/api/portfolios/${encodeURIComponent(pfName)}/stocks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, quantity, buy_price, buy_date, buy_reason, mode: 'buy_more' })
-            });
-            const data = await res.json();
-            if (data.success) {
-                closeBuyMoreModal();
-                portfoliosData = data.portfolios;
-                if (data.transactions) userTransactionsData = data.transactions;
-                renderPortfolios();
-                refreshPrices();
-            } else {
-                alert(data.error || 'Failed to submit buy order');
+            const symLabel = formatPfLoaderSymbol(symbol);
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('buyMoreModal', true, {
+                    title: `Buying ${symLabel}...`,
+                    badge: `${getPortfolioDisplayLabel()} Buy`,
+                    subtitle: `Adding shares to "${pfName}" & updating average cost...`
+                });
+            }
+
+            try {
+                const res = await fetch(`/api/portfolios/${encodeURIComponent(pfName)}/stocks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, quantity, buy_price, buy_date, buy_reason, mode: 'buy_more' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    portfoliosData = data.portfolios;
+                    if (data.transactions) userTransactionsData = data.transactions;
+                    renderPortfolios();
+                    closeBuyMoreModal();
+                    notifyPortfolioMessage(`Bought additional ${symLabel} in ${pfName}`, 'success');
+                    refreshPrices();
+                } else {
+                    notifyPortfolioMessage(data.error || 'Failed to submit buy order', 'error');
+                }
+            } catch (err) {
+                console.error('Buy more holding error:', err);
+                notifyPortfolioMessage('Failed to submit buy order. Please check your connection.', 'error');
+            } finally {
+                if (typeof window.setModalBrandLoader === 'function') {
+                    window.setModalBrandLoader('buyMoreModal', false);
+                }
             }
         }
 
@@ -572,6 +642,9 @@
         }
 
         function openCreatePortfolioModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('createPortfolioModal', false);
+            }
             const input = document.getElementById('modal-new-portfolio-name');
             if (input) input.value = '';
             const modal = document.getElementById('createPortfolioModal');
@@ -579,44 +652,70 @@
         }
 
         function closeCreatePortfolioModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('createPortfolioModal', false);
+            }
             const modal = document.getElementById('createPortfolioModal');
             if (modal) modal.style.display = 'none';
         }
 
         async function submitCreatePortfolio() {
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('createPortfolioModal')) return;
             const input = document.getElementById('modal-new-portfolio-name');
-            const name = input.value.trim();
+            const name = input ? input.value.trim() : '';
+            const pfLabel = getPortfolioDisplayLabel();
             if (!name) {
-                alert(`Please enter a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} name!`);
+                alert(`Please enter a ${pfLabel.toLowerCase()} name!`);
+                if (input) input.focus();
                 return;
             }
-            const res = await fetch('/api/portfolios', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            const data = await res.json();
-            if (data.success) {
-                closeCreatePortfolioModal();
-                portfoliosData = data.portfolios;
-                activePortfolioName = name;
-                renderPortfolios();
-                refreshPrices();
-            } else {
-                alert(data.error || `Failed to create ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'}`);
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('createPortfolioModal', true, {
+                    title: `Creating ${pfLabel}...`,
+                    badge: pfLabel,
+                    subtitle: `Setting up "${name}"...`
+                });
+            }
+            try {
+                const res = await fetch('/api/portfolios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    portfoliosData = data.portfolios;
+                    activePortfolioName = name;
+                    renderPortfolios();
+                    closeCreatePortfolioModal();
+                    notifyPortfolioMessage(`Created ${pfLabel.toLowerCase()} "${name}"`, 'success');
+                    refreshPrices();
+                } else {
+                    notifyPortfolioMessage(data.error || `Failed to create ${pfLabel.toLowerCase()}`, 'error');
+                }
+            } catch (err) {
+                console.error('Create portfolio error:', err);
+                notifyPortfolioMessage(`Failed to create ${pfLabel.toLowerCase()}. Please check your connection.`, 'error');
+            } finally {
+                if (typeof window.setModalBrandLoader === 'function') {
+                    window.setModalBrandLoader('createPortfolioModal', false);
+                }
             }
         }
 
         function openAddHoldingModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('addHoldingModal', false);
+            }
             const pfNames = Object.keys(portfoliosData);
             if (pfNames.length === 0) {
-                alert(`Please create a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} first!`);
+                alert(`Please create a ${getPortfolioDisplayLabel().toLowerCase()} first!`);
                 return;
             }
             const isAll = activePortfolioName === 'All' && pfNames.length > 1;
             const titleEl = document.getElementById('addHoldingModalTitle');
             if (titleEl) {
-                titleEl.innerText = isAll ? 'Add Holding to Portfolio' : `Add Holding to ${activePortfolioName}`;
+                titleEl.innerText = isAll ? `Add Holding to ${getPortfolioDisplayLabel()}` : `Add Holding to ${activePortfolioName}`;
             }
 
             const pfGroup = document.getElementById('modal-pf-add-portfolio-group');
@@ -649,11 +748,15 @@
         }
 
         function closeAddHoldingModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('addHoldingModal', false);
+            }
             const modal = document.getElementById('addHoldingModal');
             if (modal) modal.style.display = 'none';
         }
 
         async function submitAddHolding() {
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('addHoldingModal')) return;
             const pfNames = Object.keys(portfoliosData);
             const isAll = activePortfolioName === 'All' && pfNames.length > 1;
             let targetPf = activePortfolioName;
@@ -662,7 +765,7 @@
                 targetPf = pfSelect ? pfSelect.value : (pfNames[0] || '');
             }
             if (!targetPf) {
-                alert(`Please select or create a ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} first!`);
+                alert(`Please select or create a ${getPortfolioDisplayLabel().toLowerCase()} first!`);
                 return;
             }
 
@@ -683,26 +786,38 @@
                 return;
             }
 
-            const res = await fetch(`/api/portfolios/${encodeURIComponent(targetPf)}/stocks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason })
-            });
-            const data = await res.json();
-            if (data.success) {
-                closeAddHoldingModal();
-                portfoliosData = data.portfolios;
-                if (data.transactions) userTransactionsData = data.transactions;
-                if (typeof showToast === 'function') {
-                    showToast(`Added ${symbol} to ${targetPf}`, 'success');
-                }
-                renderPortfolios();
-                refreshPrices();
-            } else {
-                if (typeof showToast === 'function') {
-                    showToast(data.error || 'Failed to add holding', 'error');
+            const symLabel = formatPfLoaderSymbol(symbol);
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('addHoldingModal', true, {
+                    title: `Buying ${symLabel}...`,
+                    badge: `${getPortfolioDisplayLabel()} Buy`,
+                    subtitle: `Adding ${symLabel} to "${targetPf}" & updating holdings...`
+                });
+            }
+
+            try {
+                const res = await fetch(`/api/portfolios/${encodeURIComponent(targetPf)}/stocks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    portfoliosData = data.portfolios;
+                    if (data.transactions) userTransactionsData = data.transactions;
+                    renderPortfolios();
+                    closeAddHoldingModal();
+                    notifyPortfolioMessage(`Added ${symLabel} to ${targetPf}`, 'success');
+                    refreshPrices();
                 } else {
-                    alert(data.error || 'Failed to add holding');
+                    notifyPortfolioMessage(data.error || 'Failed to add holding', 'error');
+                }
+            } catch (err) {
+                console.error('Add holding error:', err);
+                notifyPortfolioMessage('Failed to add holding. Please check your connection.', 'error');
+            } finally {
+                if (typeof window.setModalBrandLoader === 'function') {
+                    window.setModalBrandLoader('addHoldingModal', false);
                 }
             }
         }
@@ -1027,6 +1142,9 @@
         let currentEditHoldingPortfolio = '';
 
         function openEditModal(symbol, curPrice, curQty, curDate, curReason, targetPortfolio = null) {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('editHoldingModal', false);
+            }
             const pfNames = Object.keys(portfoliosData);
             currentEditHoldingPortfolio = targetPortfolio || (currentDetailHolding && currentDetailHolding.portfolioName) || (activePortfolioName !== 'All' ? activePortfolioName : pfNames[0]);
             document.getElementById('editHoldingSymbol').value = symbol;
@@ -1040,10 +1158,14 @@
         }
 
         function closeEditModal() {
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('editHoldingModal', false);
+            }
             document.getElementById('editHoldingModal').style.display = 'none';
         }
 
         async function saveEditHolding() {
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('editHoldingModal')) return;
             const pfName = currentEditHoldingPortfolio || (activePortfolioName !== 'All' ? activePortfolioName : '');
             if (!pfName) return;
             const symbol = document.getElementById('editHoldingSymbol').value;
@@ -1058,19 +1180,38 @@
                 return;
             }
 
-            const res = await fetch(`/api/portfolios/${encodeURIComponent(pfName)}/stocks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason, mode: 'edit' })
-            });
-            const data = await res.json();
-            if (data.success) {
-                closeEditModal();
-                portfoliosData = data.portfolios;
-                renderPortfolios();
-                refreshPrices();
-            } else {
-                alert(data.error);
+            const symLabel = formatPfLoaderSymbol(symbol);
+            if (typeof window.setModalBrandLoader === 'function') {
+                window.setModalBrandLoader('editHoldingModal', true, {
+                    title: `Updating ${symLabel}...`,
+                    badge: getPortfolioDisplayLabel(),
+                    subtitle: `Saving holding updates in "${pfName}"...`
+                });
+            }
+
+            try {
+                const res = await fetch(`/api/portfolios/${encodeURIComponent(pfName)}/stocks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, buy_price, quantity, buy_date, buy_reason, mode: 'edit' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    portfoliosData = data.portfolios;
+                    renderPortfolios();
+                    closeEditModal();
+                    notifyPortfolioMessage(`Updated ${symLabel} in ${pfName}`, 'success');
+                    refreshPrices();
+                } else {
+                    notifyPortfolioMessage(data.error || 'Failed to update holding', 'error');
+                }
+            } catch (err) {
+                console.error('Edit holding error:', err);
+                notifyPortfolioMessage('Failed to update holding. Please check your connection.', 'error');
+            } finally {
+                if (typeof window.setModalBrandLoader === 'function') {
+                    window.setModalBrandLoader('editHoldingModal', false);
+                }
             }
         }
 

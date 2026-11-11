@@ -2592,11 +2592,31 @@
             inset: 0;
             width: 100%;
             height: 100%;
+            min-height: 0;
+            padding: 18px 16px;
+            gap: 10px;
             z-index: 50;
             background: rgba(15, 23, 42, 0.90);
             backdrop-filter: blur(6px);
             border-radius: inherit;
             transition: opacity 0.2s ease-in-out;
+        }
+        .cd-brand-loader.overlay.compact {
+            padding: 12px 14px;
+            gap: 8px;
+        }
+        .cd-brand-loader.overlay.compact .chart-loader-brand-box {
+            width: 56px;
+            height: 56px;
+        }
+        .cd-brand-loader.overlay.compact .chart-loader-logo {
+            width: 32px;
+            height: 32px;
+        }
+        .small-modal .small-modal-content.cd-modal-loading,
+        .modal .modal-content.cd-modal-loading {
+            position: relative !important;
+            overflow: hidden !important;
         }
         [data-theme="light"] .cd-brand-loader.overlay {
             background: rgba(255, 255, 255, 0.92) !important;
@@ -3855,4 +3875,61 @@
     .bullion-chg-pct {
         display: none !important;
     }
+}
+
+/* Fundamentals Modal Header Skeleton Loaders */
+#fundamentalsModal #fundamentals-modal-logo-web-placeholder.fundamentals-icon-skeleton,
+#fundamentalsModal #fundamentals-modal-logo-placeholder.fundamentals-icon-skeleton {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.14) 25%, rgba(148, 163, 184, 0.28) 50%, rgba(148, 163, 184, 0.14) 75%) !important;
+    background-size: 200% 100% !important;
+    animation: skeleton-shimmer 1.5s infinite ease-in-out !important;
+    color: transparent !important;
+    border-radius: 6px;
+}
+
+[data-theme="light"] #fundamentalsModal #fundamentals-modal-logo-web-placeholder.fundamentals-icon-skeleton,
+[data-theme="light"] #fundamentalsModal #fundamentals-modal-logo-placeholder.fundamentals-icon-skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%) !important;
+    background-size: 200% 100% !important;
+}
+
+#fundamentalsModal .fundamentals-text-skeleton {
+    display: block;
+    border-radius: 5px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.14) 25%, rgba(148, 163, 184, 0.28) 50%, rgba(148, 163, 184, 0.14) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite ease-in-out;
+}
+
+[data-theme="light"] #fundamentalsModal .fundamentals-text-skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+}
+
+#fundamentalsModal .fundamentals-text-skeleton.is-web-name {
+    width: 170px;
+    max-width: 42vw;
+    height: 15px;
+    margin: 2px 0;
+}
+
+#fundamentalsModal .fundamentals-text-skeleton.is-web-symbol {
+    width: 82px;
+    max-width: 24vw;
+    height: 10px;
+    margin: 2px 0;
+}
+
+#fundamentalsModal .fundamentals-text-skeleton.is-mobile-name {
+    width: 142px;
+    max-width: 48vw;
+    height: 13px;
+    margin: 2px 0;
+}
+
+#fundamentalsModal .fundamentals-text-skeleton.is-mobile-symbol {
+    width: 108px;
+    max-width: 40vw;
+    height: 10px;
+    margin: 1px 0;
 }

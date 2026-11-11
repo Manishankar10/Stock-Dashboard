@@ -52,12 +52,34 @@
             }
         }
 
+        const SMALLCASE_LOADER_OVERLAYS = {
+            createSmallcaseModal: 'scCreateLoaderOverlay',
+            txSmallcaseModal: 'scTxLoaderOverlay',
+            bulkStockSmallcaseModal: 'scBulkLoaderOverlay'
+        };
+
+        function formatSmallcaseLoaderSymbol(symbol) {
+            return (typeof cleanDisplaySymbol === 'function') ? cleanDisplaySymbol(symbol) : symbol;
+        }
+
+        function setSmallcaseModalLoader(modalId, isLoading, opts = {}) {
+            const overlayId = SMALLCASE_LOADER_OVERLAYS[modalId] || '';
+            if (typeof window.setModalBrandLoader === 'function') {
+                return window.setModalBrandLoader(modalId, isLoading, { ...opts, overlayId });
+            }
+            const overlay = overlayId ? document.getElementById(overlayId) : null;
+            if (overlay) overlay.style.display = isLoading ? 'flex' : 'none';
+            return Boolean(overlay);
+        }
+
         function openSmallcaseModal(id) {
+            setSmallcaseModalLoader(id, false);
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
         }
 
         function closeSmallcaseModal(id) {
+            setSmallcaseModalLoader(id, false);
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
             if (id === 'scDetailModal') {
@@ -333,18 +355,17 @@
             
             const submitBtn = document.getElementById('scCreateSubmitBtn');
             const cancelBtn = document.getElementById('scCreateCancelBtn');
-            const overlay = document.getElementById('scCreateLoaderOverlay');
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerText = 'Create Smallcase';
             }
             if (cancelBtn) cancelBtn.disabled = false;
-            if (overlay) overlay.style.display = 'none';
 
             openSmallcaseModal('createSmallcaseModal');
         }
 
         async function submitCreateSmallcase() {
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('createSmallcaseModal')) return;
             const name = document.getElementById('scCreateName').value.trim();
             if (!name) {
                 alert('Smallcase name is required');
@@ -368,14 +389,17 @@
 
             const submitBtn = document.getElementById('scCreateSubmitBtn');
             const cancelBtn = document.getElementById('scCreateCancelBtn');
-            const overlay = document.getElementById('scCreateLoaderOverlay');
 
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="sc-btn-spinner"></span> Adding Smallcase...';
             }
             if (cancelBtn) cancelBtn.disabled = true;
-            if (overlay) overlay.style.display = 'flex';
+            setSmallcaseModalLoader('createSmallcaseModal', true, {
+                title: 'Adding Smallcase...',
+                badge: 'Portfolio Basket',
+                subtitle: `Creating "${name}" and setting up initial data...`
+            });
 
             try {
                 const res = await fetch('/api/smallcases', {
@@ -388,17 +412,17 @@
                     alert(data.error || 'Could not create Smallcase');
                     return;
                 }
-                closeSmallcaseModal('createSmallcaseModal');
                 await loadSmallcasesTab();
+                closeSmallcaseModal('createSmallcaseModal');
             } catch (err) {
                 alert('Failed to create Smallcase: ' + err.message);
             } finally {
+                setSmallcaseModalLoader('createSmallcaseModal', false);
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerText = 'Create Smallcase';
                 }
                 if (cancelBtn) cancelBtn.disabled = false;
-                if (overlay) overlay.style.display = 'none';
             }
         }
 
@@ -612,6 +636,7 @@
 
         async function submitSaveEditSmallcase() {
             if (!selectedSmallcaseId) return;
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('editSmallcaseModal')) return;
             const payload = {
                 name: document.getElementById('scEditName').value.trim(),
                 description: document.getElementById('scEditDescription').value.trim(),
@@ -620,6 +645,17 @@
                 benchmark: document.getElementById('scEditBenchmark').value.trim(),
                 notes: document.getElementById('scEditNotes').value.trim()
             };
+            if (!payload.name) {
+                alert('Smallcase name is required');
+                document.getElementById('scEditName').focus();
+                return;
+            }
+
+            setSmallcaseModalLoader('editSmallcaseModal', true, {
+                title: 'Updating Smallcase...',
+                badge: 'Portfolio Basket',
+                subtitle: `Saving updates for "${payload.name}"...`
+            });
 
             try {
                 const res = await fetch('/api/smallcases/' + encodeURIComponent(selectedSmallcaseId), {
@@ -632,10 +668,12 @@
                     alert(data.error || 'Could not update Smallcase');
                     return;
                 }
-                closeSmallcaseModal('editSmallcaseModal');
                 await loadSmallcasesTab();
+                closeSmallcaseModal('editSmallcaseModal');
             } catch (err) {
                 alert('Failed to update Smallcase: ' + err.message);
+            } finally {
+                setSmallcaseModalLoader('editSmallcaseModal', false);
             }
         }
 
@@ -653,6 +691,7 @@
 
         async function submitSaveSmallcaseTransaction() {
             if (!selectedSmallcaseId) return;
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('txSmallcaseModal')) return;
             const symbol = document.getElementById('scTxSymbol').value.trim();
             if (!symbol) {
                 alert('Stock symbol is required');
@@ -672,15 +711,22 @@
             if (isNaN(body.quantity) || body.quantity <= 0) { alert('Invalid quantity'); return; }
             if (isNaN(body.price) || body.price <= 0) { alert('Invalid price'); return; }
 
+            const isSell = body.transaction_type === 'SELL';
+            const symLabel = formatSmallcaseLoaderSymbol(symbol);
             const txSubmitBtn = document.getElementById('scTxSubmitBtn');
             const txCancelBtn = document.getElementById('scTxCancelBtn');
-            const txOverlay = document.getElementById('scTxLoaderOverlay');
             if (txSubmitBtn) {
                 txSubmitBtn.disabled = true;
-                txSubmitBtn.innerHTML = '<span class="sc-btn-spinner"></span> Saving Holding...';
+                txSubmitBtn.innerHTML = `<span class="sc-btn-spinner"></span> ${isSell ? 'Selling Holding...' : 'Buying Holding...'}`;
             }
             if (txCancelBtn) txCancelBtn.disabled = true;
-            if (txOverlay) txOverlay.style.display = 'flex';
+            setSmallcaseModalLoader('txSmallcaseModal', true, {
+                title: isSell ? `Selling ${symLabel}...` : `Buying ${symLabel}...`,
+                badge: isSell ? 'Smallcase Sell' : 'Smallcase Buy',
+                subtitle: isSell
+                    ? `Recording sell order for ${symLabel} & updating holdings...`
+                    : `Recording buy order for ${symLabel} & updating holdings...`
+            });
 
             try {
                 const res = await fetch('/api/smallcases/' + encodeURIComponent(selectedSmallcaseId) + '/transactions', {
@@ -693,18 +739,18 @@
                     alert(data.error || 'Transaction failed');
                     return;
                 }
-                closeSmallcaseModal('txSmallcaseModal');
                 await loadSmallcasesTab();
                 await viewSmallcaseDetails(selectedSmallcaseId);
+                closeSmallcaseModal('txSmallcaseModal');
             } catch (err) {
                 alert('Transaction error: ' + err.message);
             } finally {
+                setSmallcaseModalLoader('txSmallcaseModal', false);
                 if (txSubmitBtn) {
                     txSubmitBtn.disabled = false;
                     txSubmitBtn.innerText = 'Confirm Transaction';
                 }
                 if (txCancelBtn) txCancelBtn.disabled = false;
-                if (txOverlay) txOverlay.style.display = 'none';
             }
         }
 
@@ -722,6 +768,7 @@
 
         async function submitConfirmExitSmallcase() {
             if (!selectedSmallcaseId || !selectedExitSymbol) return;
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('exitSmallcaseModal')) return;
 
             const body = {
                 transaction_type: 'SELL',
@@ -732,6 +779,16 @@
                 charges: parseFloat(document.getElementById('scExitCharges').value) || 0,
                 notes: document.getElementById('scExitNotes').value.trim()
             };
+
+            if (isNaN(body.quantity) || body.quantity <= 0) { alert('Invalid quantity'); return; }
+            if (isNaN(body.price) || body.price <= 0) { alert('Invalid exit price'); return; }
+
+            const symLabel = formatSmallcaseLoaderSymbol(selectedExitSymbol);
+            setSmallcaseModalLoader('exitSmallcaseModal', true, {
+                title: `Selling ${symLabel}...`,
+                badge: 'Smallcase Exit',
+                subtitle: `Exiting ${symLabel} position & updating realized P&L...`
+            });
 
             try {
                 const res = await fetch('/api/smallcases/' + encodeURIComponent(selectedSmallcaseId) + '/transactions', {
@@ -744,11 +801,13 @@
                     alert(data.error || 'Exit failed');
                     return;
                 }
-                closeSmallcaseModal('exitSmallcaseModal');
                 await loadSmallcasesTab();
                 await viewSmallcaseDetails(selectedSmallcaseId);
+                closeSmallcaseModal('exitSmallcaseModal');
             } catch (err) {
                 alert('Exit error: ' + err.message);
+            } finally {
+                setSmallcaseModalLoader('exitSmallcaseModal', false);
             }
         }
 
@@ -1303,13 +1362,17 @@
                 }
             }
 
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading('bulkStockSmallcaseModal')) return;
             const submitBtn = document.getElementById('scBulkSubmitBtn');
-            const bulkOverlay = document.getElementById('scBulkLoaderOverlay');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="sc-btn-spinner"></span> Adding stocks...';
             }
-            if (bulkOverlay) bulkOverlay.style.display = 'flex';
+            setSmallcaseModalLoader('bulkStockSmallcaseModal', true, {
+                title: `Buying ${bulkStockBasket.length} Stocks...`,
+                badge: 'Equal Weight Basket',
+                subtitle: 'Allocating quantities and recording BUY transactions...'
+            });
 
             const plannedAmount = document.getElementById('scBulkPlannedAmount')?.value || '';
             const txs = bulkStockBasket.map(s => ({
@@ -1348,11 +1411,11 @@
             } catch (err) {
                 showBulkStatus(err.message, 'error');
             } finally {
+                setSmallcaseModalLoader('bulkStockSmallcaseModal', false);
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerText = '✓ Add All Stocks to Smallcase';
                 }
-                if (bulkOverlay) bulkOverlay.style.display = 'none';
             }
         }
 

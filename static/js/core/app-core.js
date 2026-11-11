@@ -494,6 +494,11 @@
 
             const topModal = modalCandidates[0];
 
+            // Do not dismiss modal mid-submission while a branded loader overlay is active
+            if (typeof window.isModalBrandLoading === 'function' && window.isModalBrandLoading(topModal)) {
+                return false;
+            }
+
             if (topModal.id && modalCloseMap[topModal.id]) {
                 try {
                     modalCloseMap[topModal.id]();
@@ -532,6 +537,17 @@
                 if (typeof window.getCurrentDrawingTool === 'function' && window.getCurrentDrawingTool()) {
                     const chartModalEl = document.getElementById('chartModal');
                     if (chartModalEl && chartModalEl.style.display !== 'none' && !chartModalEl.hasAttribute('hidden')) {
+                        return;
+                    }
+                }
+
+                // Do not let Escape dismiss a modal while a brand loader submission is in flight
+                if (typeof window.isModalBrandLoading === 'function') {
+                    const loadingModalContent = document.querySelector('.small-modal-content.cd-modal-loading, .modal-content.cd-modal-loading');
+                    const loadingModal = loadingModalContent ? loadingModalContent.closest(GLOBAL_MODAL_SELECTOR) : null;
+                    if (loadingModal && isModalElementVisible(loadingModal)) {
+                        e.preventDefault();
+                        e.stopPropagation();
                         return;
                     }
                 }
@@ -1375,20 +1391,118 @@
             }
         }
 
+        function escapeBrandLoaderText(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[ch]);
+        }
+
         // Global Brand Animated Loader Component Generator
         window.createBrandLoaderHTML = function({ title = 'Loading...', subtitle = '', badge = '', isOverlay = false, minHeight = '' } = {}) {
+            const safeTitle = escapeBrandLoaderText(title);
+            const safeBadge = escapeBrandLoaderText(badge);
+            const safeSubtitle = escapeBrandLoaderText(subtitle);
             return `
-            <div class="cd-brand-loader ${isOverlay ? 'overlay' : ''}" ${minHeight ? `style="min-height: ${minHeight};"` : ''}>
+            <div class="cd-brand-loader ${isOverlay ? 'overlay' : ''}" ${minHeight ? `style="min-height: ${escapeBrandLoaderText(minHeight)};"` : ''}>
                 <div class="chart-loader-brand-box">
                     <div class="chart-loader-spinner-ring"></div>
                     <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
                 </div>
                 <div class="cd-loader-text-box">
-                    <div class="cd-loader-title">${title}</div>
-                    ${badge ? `<div class="cd-loader-badge">${badge}</div>` : ''}
-                    ${subtitle ? `<div class="cd-loader-subtitle">${subtitle}</div>` : ''}
+                    <div class="cd-loader-title">${safeTitle}</div>
+                    ${safeBadge ? `<div class="cd-loader-badge">${safeBadge}</div>` : ''}
+                    ${safeSubtitle ? `<div class="cd-loader-subtitle">${safeSubtitle}</div>` : ''}
                 </div>
             </div>`;
+        };
+
+        // Reusable modal logo-loader overlay controller (shares chart logo loader style)
+        function resolveBrandLoaderModalContent(modalOrId) {
+            const modalEl = (typeof modalOrId === 'string') ? document.getElementById(modalOrId) : modalOrId;
+            if (!modalEl) return null;
+            return modalEl.querySelector('.small-modal-content, .modal-content') || modalEl;
+        }
+
+        function setLoaderFieldText(textBox, selector, className, value, beforeNode) {
+            let el = textBox.querySelector(selector);
+            if (value) {
+                if (!el) {
+                    el = document.createElement('div');
+                    el.className = className;
+                    textBox.insertBefore(el, beforeNode || null);
+                }
+                el.textContent = value;
+                el.style.display = className === 'cd-loader-badge' ? 'inline-block' : 'block';
+            } else if (el) {
+                el.style.display = 'none';
+            }
+        }
+
+        window.isModalBrandLoading = function(modalOrId) {
+            const contentEl = resolveBrandLoaderModalContent(modalOrId);
+            return Boolean(contentEl && contentEl.classList.contains('cd-modal-loading'));
+        };
+
+        window.setModalBrandLoader = function(modalOrId, isLoading, { title = 'Processing...', subtitle = '', badge = '', compact = 'auto', overlayId = '' } = {}) {
+            const contentEl = resolveBrandLoaderModalContent(modalOrId);
+            if (!contentEl) return false;
+
+            const actionControls = contentEl.querySelectorAll('button, input[type="submit"]');
+            const findOverlay = () => overlayId
+                ? document.getElementById(overlayId)
+                : contentEl.querySelector('[data-cd-modal-loader="1"]');
+
+            if (!isLoading) {
+                contentEl.classList.remove('cd-modal-loading');
+                const existing = findOverlay();
+                if (existing) existing.style.display = 'none';
+                actionControls.forEach(btn => {
+                    if (btn.dataset.cdWasDisabled === '0') btn.disabled = false;
+                    delete btn.dataset.cdWasDisabled;
+                });
+                return true;
+            }
+
+            if (document.activeElement && contentEl.contains(document.activeElement) && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+
+            actionControls.forEach(btn => {
+                if (!btn.hasAttribute('data-cd-was-disabled')) {
+                    btn.dataset.cdWasDisabled = btn.disabled ? '1' : '0';
+                }
+                btn.disabled = true;
+            });
+
+            contentEl.scrollTop = 0;
+            const isCompact = (compact === true) || (compact === 'auto' && contentEl.clientHeight > 0 && contentEl.clientHeight < 245);
+            contentEl.classList.add('cd-modal-loading');
+
+            let overlay = findOverlay();
+            if (!overlay) {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = window.createBrandLoaderHTML({ title: '', badge: '', subtitle: '', isOverlay: true });
+                overlay = wrapper.firstElementChild;
+                overlay.setAttribute('data-cd-modal-loader', '1');
+                contentEl.insertBefore(overlay, contentEl.firstChild);
+            }
+
+            const textBox = overlay.querySelector('.cd-loader-text-box');
+            if (textBox) {
+                const titleEl = textBox.querySelector('.cd-loader-title');
+                if (titleEl) titleEl.textContent = title;
+                const subElBefore = textBox.querySelector('.cd-loader-subtitle');
+                setLoaderFieldText(textBox, '.cd-loader-badge', 'cd-loader-badge', badge, subElBefore);
+                setLoaderFieldText(textBox, '.cd-loader-subtitle', 'cd-loader-subtitle', subtitle, null);
+            }
+
+            overlay.classList.toggle('compact', Boolean(isCompact));
+            overlay.style.display = 'flex';
+            return true;
         };
 
 

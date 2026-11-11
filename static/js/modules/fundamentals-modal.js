@@ -28,73 +28,175 @@
         }
 
         let _currentModalSymbol = '';
+        let _fundamentalsRefreshTimer = null;
+
+        function getFundamentalsHeaderEls() {
+            return {
+                subtitle: document.getElementById('fundamentals-modal-subtitle'),
+                companyNameEl: document.getElementById('fundamentals-modal-company-name'),
+                companyDetailsEl: document.getElementById('fundamentals-modal-company-details'),
+                logoEl: document.getElementById('fundamentals-modal-logo'),
+                placeholderEl: document.getElementById('fundamentals-modal-logo-placeholder'),
+                webLogoEl: document.getElementById('fundamentals-modal-logo-web'),
+                webLogoPhEl: document.getElementById('fundamentals-modal-logo-web-placeholder'),
+                webNameEl: document.getElementById('fundamentals-modal-web-name'),
+                updatedEl: document.getElementById('fundamentals-modal-updated'),
+                screenerBtnEl: document.getElementById('fundamentals-modal-screener-btn'),
+                refreshBtnEl: document.getElementById('fundamentals-modal-refresh-btn')
+            };
+        }
+
+        function setFundamentalsLogoLoading(imgEl, phEl) {
+            if (imgEl) {
+                imgEl.onload = null;
+                imgEl.onerror = null;
+                imgEl.removeAttribute('src');
+                imgEl.style.display = 'none';
+            }
+            if (phEl) {
+                phEl.textContent = '';
+                phEl.classList.add('skeleton-box', 'fundamentals-icon-skeleton');
+                phEl.style.display = 'flex';
+            }
+        }
+
+        function applyFundamentalsHeaderLogo(imgEl, phEl, logoUrl, monogram) {
+            const fallbackText = monogram || 'STK';
+            const revealMonogram = () => {
+                if (imgEl) imgEl.style.display = 'none';
+                if (phEl) {
+                    phEl.classList.remove('skeleton-box', 'fundamentals-icon-skeleton');
+                    phEl.textContent = fallbackText;
+                    phEl.style.display = 'flex';
+                }
+            };
+
+            if (logoUrl && imgEl) {
+                if (phEl) {
+                    phEl.textContent = '';
+                    phEl.classList.add('skeleton-box', 'fundamentals-icon-skeleton');
+                    phEl.style.display = 'flex';
+                }
+                imgEl.style.display = 'none';
+                imgEl.onload = () => {
+                    if (phEl) {
+                        phEl.classList.remove('skeleton-box', 'fundamentals-icon-skeleton');
+                        phEl.textContent = '';
+                        phEl.style.display = 'none';
+                    }
+                    imgEl.style.display = 'block';
+                };
+                imgEl.onerror = revealMonogram;
+                imgEl.src = logoUrl;
+                if (imgEl.complete) {
+                    if (imgEl.naturalWidth > 0) imgEl.onload();
+                    else revealMonogram();
+                }
+            } else {
+                if (imgEl) {
+                    imgEl.onload = null;
+                    imgEl.onerror = null;
+                    imgEl.removeAttribute('src');
+                }
+                revealMonogram();
+            }
+        }
+
+        function setFundamentalsHeaderLoadingState(els) {
+            setFundamentalsLogoLoading(els.logoEl, els.placeholderEl);
+            setFundamentalsLogoLoading(els.webLogoEl, els.webLogoPhEl);
+            if (els.webNameEl) {
+                els.webNameEl.innerHTML = '<span class="fundamentals-text-skeleton is-web-name" aria-label="Loading stock name"></span>';
+            }
+            if (els.subtitle) {
+                els.subtitle.innerHTML = '<span class="fundamentals-text-skeleton is-web-symbol" aria-label="Loading symbol"></span>';
+            }
+            if (els.companyNameEl) {
+                els.companyNameEl.innerHTML = '<span class="fundamentals-text-skeleton is-mobile-name" aria-label="Loading stock name"></span>';
+            }
+            if (els.companyDetailsEl) {
+                els.companyDetailsEl.innerHTML = '<span class="fundamentals-text-skeleton is-mobile-symbol" aria-label="Loading symbol"></span>';
+            }
+            if (els.updatedEl) {
+                els.updatedEl.textContent = 'Updating...';
+            }
+        }
+
+        function applyFundamentalsHeaderResolved(payload, isError = false) {
+            const els = getFundamentalsHeaderEls();
+            const { name, symbol: retSym, logo, price, changePercent, updatedAt, screenerUrl } = payload || {};
+            const msgCleanSym = retSym ? cleanDisplaySymbol(retSym).toUpperCase() : '';
+            const activeCleanSym = _currentModalSymbol ? cleanDisplaySymbol(_currentModalSymbol).toUpperCase() : '';
+            if (!activeCleanSym || (msgCleanSym && msgCleanSym !== activeCleanSym)) return;
+
+            if (_fundamentalsRefreshTimer) {
+                clearTimeout(_fundamentalsRefreshTimer);
+                _fundamentalsRefreshTimer = null;
+            }
+            if (els.refreshBtnEl) els.refreshBtnEl.classList.remove('refreshing');
+
+            const dispSymbol = retSym || _currentModalSymbol;
+            const cleanDispSym = cleanDisplaySymbol(dispSymbol).toUpperCase();
+            const resolvedName = name || cleanDispSym || dispSymbol;
+
+            if (els.companyNameEl) els.companyNameEl.textContent = resolvedName;
+            if (els.webNameEl) els.webNameEl.textContent = resolvedName;
+            if (els.subtitle) els.subtitle.textContent = cleanDispSym;
+            if (els.updatedEl) {
+                els.updatedEl.textContent = isError
+                    ? 'Failed to load'
+                    : (updatedAt || ('Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST'));
+            }
+            if (els.screenerBtnEl) {
+                if (screenerUrl) {
+                    els.screenerBtnEl.href = screenerUrl;
+                } else {
+                    const bSym = String(dispSymbol).replace(/\.(NS|BO)$/i, '');
+                    els.screenerBtnEl.href = `https://www.screener.in/company/${encodeURIComponent(bSym)}/`;
+                }
+            }
+
+            if (els.companyDetailsEl) {
+                let det = dispSymbol;
+                if (isError) {
+                    det += ' · Unavailable';
+                } else if (price != null && price !== '') {
+                    const chg = changePercent != null && !isNaN(Number(changePercent)) ? Number(changePercent) : null;
+                    const sign = (chg != null && chg >= 0) ? '+' : '';
+                    det += ` · ₹${price}${chg != null ? ` (${sign}${chg.toFixed(2)}%)` : ''}`;
+                } else {
+                    det += ' · Screener.in';
+                }
+                els.companyDetailsEl.textContent = det;
+            }
+
+            const monogram = (String(dispSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase().slice(0, 3)) || 'STK';
+            applyFundamentalsHeaderLogo(els.logoEl, els.placeholderEl, logo || null, monogram);
+            applyFundamentalsHeaderLogo(els.webLogoEl, els.webLogoPhEl, logo || null, monogram);
+        }
 
         function openFundamentalsModal(symbol) {
             const modal = document.getElementById('fundamentalsModal');
             const frame = document.getElementById('fundamentalsFrame');
-            const subtitle = document.getElementById('fundamentals-modal-subtitle');
-            const companyNameEl = document.getElementById('fundamentals-modal-company-name');
-            const companyDetailsEl = document.getElementById('fundamentals-modal-company-details');
-            const logoEl = document.getElementById('fundamentals-modal-logo');
-            const placeholderEl = document.getElementById('fundamentals-modal-logo-placeholder');
-
             if (!modal || !frame) return;
 
             const safeSymbol = String(symbol || '').trim();
             if (!safeSymbol) return;
 
             const cleanSym = cleanDisplaySymbol(safeSymbol).toUpperCase();
+            const els = getFundamentalsHeaderEls();
+            if (_fundamentalsRefreshTimer) {
+                clearTimeout(_fundamentalsRefreshTimer);
+                _fundamentalsRefreshTimer = null;
+            }
+            if (els.refreshBtnEl) els.refreshBtnEl.classList.remove('refreshing');
             _currentModalSymbol = safeSymbol;
 
-            // Reset logo & placeholder with clean stock monogram
-            if (logoEl) {
-                logoEl.src = '';
-                logoEl.style.display = 'none';
+            // Keep icons, stock name, and symbol name in shimmer/text-loader state until fundamentals data loads
+            setFundamentalsHeaderLoadingState(els);
+            if (els.screenerBtnEl) {
+                els.screenerBtnEl.href = `https://www.screener.in/company/${encodeURIComponent(cleanSym)}/`;
             }
-            if (placeholderEl) {
-                placeholderEl.textContent = cleanSym.slice(0, 3);
-                placeholderEl.style.display = 'flex';
-            }
-            const webLogoEl = document.getElementById('fundamentals-modal-logo-web');
-            const webLogoPhEl = document.getElementById('fundamentals-modal-logo-web-placeholder');
-            const webNameEl = document.getElementById('fundamentals-modal-web-name');
-            const updatedEl = document.getElementById('fundamentals-modal-updated');
-            const screenerBtnEl = document.getElementById('fundamentals-modal-screener-btn');
-
-            if (webLogoEl) {
-                webLogoEl.src = '';
-                webLogoEl.style.display = 'none';
-            }
-            if (webLogoPhEl) {
-                webLogoPhEl.textContent = cleanSym.slice(0, 3);
-                webLogoPhEl.style.display = 'flex';
-            }
-            if (webNameEl) {
-                webNameEl.textContent = cleanDisplaySymbol(safeSymbol);
-            }
-            if (subtitle) {
-                subtitle.textContent = cleanSym;
-            }
-            if (updatedEl) {
-                updatedEl.textContent = 'Updating...';
-            }
-            if (screenerBtnEl) {
-                screenerBtnEl.href = `https://www.screener.in/company/${encodeURIComponent(cleanSym)}/`;
-            }
-
-            // Prefill with stock symbol and live price if available
-            if (companyNameEl) companyNameEl.textContent = safeSymbol;
-            let initialDetails = `${safeSymbol} · NSE`;
-            try {
-                const stock = (window.stockPricesData && window.stockPricesData[safeSymbol]) || null;
-                if (stock && stock.current_price != null) {
-                    const p = Number(stock.current_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    const chg = Number(stock.change_percent || 0);
-                    const sign = chg >= 0 ? '+' : '';
-                    initialDetails = `${safeSymbol} · ₹${p} (${sign}${chg.toFixed(2)}%)`;
-                }
-            } catch (e) {}
-            if (companyDetailsEl) companyDetailsEl.textContent = initialDetails;
 
             frame.src = `/fundamentals?symbol=${encodeURIComponent(safeSymbol)}`;
             const actionsWrapper = document.getElementById('stockNewsActionsWrapper');
@@ -129,9 +231,6 @@
             }
 
             frame.onload = () => {
-                if (subtitle) {
-                    subtitle.textContent = cleanSym;
-                }
                 try {
                     const frameDoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
                     if (frameDoc && !frameDoc._hasModalFrontListener) {
@@ -158,79 +257,10 @@
                         }
                     }
                     if (event.data && event.data.type === 'FUNDAMENTALS_INFO') {
-                        const { name, symbol: retSym, logo, price, changePercent, updatedAt, screenerUrl } = event.data;
-                        const nEl = document.getElementById('fundamentals-modal-company-name');
-                        const dEl = document.getElementById('fundamentals-modal-company-details');
-                        const lEl = document.getElementById('fundamentals-modal-logo');
-                        const pEl = document.getElementById('fundamentals-modal-logo-placeholder');
-                        const wLogoEl = document.getElementById('fundamentals-modal-logo-web');
-                        const wLogoPhEl = document.getElementById('fundamentals-modal-logo-web-placeholder');
-                        const wNameEl = document.getElementById('fundamentals-modal-web-name');
-                        const subEl = document.getElementById('fundamentals-modal-subtitle');
-                        const uEl = document.getElementById('fundamentals-modal-updated');
-                        const scrEl = document.getElementById('fundamentals-modal-screener-btn');
-                        const rBtnEl = document.getElementById('fundamentals-modal-refresh-btn');
-                        if (rBtnEl) rBtnEl.classList.remove('refreshing');
-
-                        const dispSymbol = retSym || _currentModalSymbol;
-                        const cleanDispSym = cleanDisplaySymbol(dispSymbol).toUpperCase();
-
-                        if (nEl && name) {
-                            nEl.textContent = name;
-                        }
-                        if (wNameEl && name) {
-                            wNameEl.textContent = name;
-                        }
-                        if (subEl) {
-                            subEl.textContent = cleanDispSym;
-                        }
-                        if (uEl) {
-                            uEl.textContent = updatedAt || ('Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST');
-                        }
-                        if (scrEl) {
-                            if (screenerUrl) {
-                                scrEl.href = screenerUrl;
-                            } else {
-                                const bSym = String(dispSymbol).replace(/\.(NS|BO)$/i, '');
-                                scrEl.href = `https://www.screener.in/company/${encodeURIComponent(bSym)}/`;
-                            }
-                        }
-
-                        if (dEl) {
-                            let det = dispSymbol;
-                            if (price != null && price !== '') {
-                                const chg = changePercent != null && !isNaN(Number(changePercent)) ? Number(changePercent) : null;
-                                const sign = (chg != null && chg >= 0) ? '+' : '';
-                                det += ` · ₹${price}${chg != null ? ` (${sign}${chg.toFixed(2)}%)` : ''}`;
-                            } else {
-                                det += ' · Screener.in';
-                            }
-                            dEl.textContent = det;
-                        }
-                        if (logo) {
-                            if (lEl) {
-                                lEl.src = logo;
-                                lEl.style.display = 'block';
-                            }
-                            if (wLogoEl) {
-                                wLogoEl.src = logo;
-                                wLogoEl.style.display = 'block';
-                            }
-                            if (pEl) pEl.style.display = 'none';
-                            if (wLogoPhEl) wLogoPhEl.style.display = 'none';
-                        } else {
-                            const dispSym = (dispSymbol || '').replace(/\.(NS|BO)$/i, '').toUpperCase();
-                            if (pEl) {
-                                pEl.textContent = dispSym.slice(0, 3) || 'STK';
-                                pEl.style.display = 'flex';
-                            }
-                            if (wLogoPhEl) {
-                                wLogoPhEl.textContent = dispSym.slice(0, 3) || 'STK';
-                                wLogoPhEl.style.display = 'flex';
-                            }
-                            if (lEl) lEl.style.display = 'none';
-                            if (wLogoEl) wLogoEl.style.display = 'none';
-                        }
+                        applyFundamentalsHeaderResolved(event.data, false);
+                    }
+                    if (event.data && event.data.type === 'FUNDAMENTALS_ERROR') {
+                        applyFundamentalsHeaderResolved(event.data, true);
                     }
                 });
                 _fundamentalsMsgListenerAttached = true;
@@ -240,13 +270,18 @@
         function refreshFundamentalsModal() {
             const frame = document.getElementById('fundamentalsFrame');
             if (!frame) return;
-            const rBtn = document.getElementById('fundamentals-modal-refresh-btn');
-            if (rBtn) {
-                rBtn.classList.add('refreshing');
-                setTimeout(() => rBtn.classList.remove('refreshing'), 1200);
+            const els = getFundamentalsHeaderEls();
+            if (_fundamentalsRefreshTimer) {
+                clearTimeout(_fundamentalsRefreshTimer);
+                _fundamentalsRefreshTimer = null;
             }
-            const uEl = document.getElementById('fundamentals-modal-updated');
-            if (uEl) uEl.textContent = 'Updating...';
+            if (els.refreshBtnEl) {
+                els.refreshBtnEl.classList.add('refreshing');
+                _fundamentalsRefreshTimer = setTimeout(() => {
+                    els.refreshBtnEl.classList.remove('refreshing');
+                }, 15000);
+            }
+            setFundamentalsHeaderLoadingState(els);
             try {
                 if (frame.contentWindow && typeof frame.contentWindow.loadFundamentals === 'function') {
                     frame.contentWindow.loadFundamentals();
@@ -262,23 +297,31 @@
         function closeFundamentalsModal() {
             const modal = document.getElementById('fundamentalsModal');
             const frame = document.getElementById('fundamentalsFrame');
-            const logoEl = document.getElementById('fundamentals-modal-logo');
-            const placeholderEl = document.getElementById('fundamentals-modal-logo-placeholder');
+            const els = getFundamentalsHeaderEls();
+            if (_fundamentalsRefreshTimer) {
+                clearTimeout(_fundamentalsRefreshTimer);
+                _fundamentalsRefreshTimer = null;
+            }
+            if (els.refreshBtnEl) els.refreshBtnEl.classList.remove('refreshing');
+            _currentModalSymbol = '';
             if (modal) modal.style.display = 'none';
             if (frame) frame.src = 'about:blank';
-            if (logoEl) {
-                logoEl.src = '';
-                logoEl.style.display = 'none';
-            }
-            const webLogoEl = document.getElementById('fundamentals-modal-logo-web');
-            if (webLogoEl) {
-                webLogoEl.src = '';
-                webLogoEl.style.display = 'none';
-            }
-            if (placeholderEl) {
-                placeholderEl.style.display = 'flex';
-                placeholderEl.textContent = '';
-            }
+            [
+                { imgEl: els.logoEl, phEl: els.placeholderEl },
+                { imgEl: els.webLogoEl, phEl: els.webLogoPhEl }
+            ].forEach(({ imgEl, phEl }) => {
+                if (imgEl) {
+                    imgEl.onload = null;
+                    imgEl.onerror = null;
+                    imgEl.removeAttribute('src');
+                    imgEl.style.display = 'none';
+                }
+                if (phEl) {
+                    phEl.classList.remove('skeleton-box', 'fundamentals-icon-skeleton');
+                    phEl.style.display = 'flex';
+                    phEl.textContent = '';
+                }
+            });
             const hasOtherOpenModal = document.getElementById('chartModal') && document.getElementById('chartModal').style.display !== 'none';
             if (!hasOtherOpenModal) {
                 document.body.style.overflow = '';

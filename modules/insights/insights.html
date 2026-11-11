@@ -122,13 +122,13 @@
                 <div id="mobile-bullion-slot" class="insights-mobile-bullion-slot"></div>
 
                 <!-- FII / DII Institutional Flow Data Card -->
-                <div class="card-container" id="insights-fiidii-card" style="padding: 16px 20px; margin-bottom: 0;">
+                <div class="card-container" id="insights-fiidii-card" style="padding: 16px 20px; margin-bottom: 0; display: flex; flex-direction: column;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <h3 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                            🏦 FII / DII Flow <span style="font-size: 10.5px; font-weight: 500; color: var(--text-secondary);" id="fiidii-date-tag">Today</span>
+                            🏦 FII / DII Flow
                         </h3>
                     </div>
-                    <div id="insights-fiidii-mount" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div id="insights-fiidii-mount" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
                         <div style="background: var(--bg-subtle); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; height: 36px; box-sizing: border-box;">
                             <span class="skeleton-box" style="width: 80px; height: 12px;"></span>
                             <span class="skeleton-box" style="width: 85px; height: 15px;"></span>
@@ -141,6 +141,9 @@
                             <span class="skeleton-box" style="width: 110px; height: 12px;"></span>
                             <span class="skeleton-box" style="width: 95px; height: 15px;"></span>
                         </div>
+                    </div>
+                    <div id="fiidii-footer-bar" style="margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.06)); display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; font-weight: 500; color: var(--text-secondary);">
+                        <span>⏱️ Updated on: <span id="fiidii-date-tag" style="font-weight: 600;">Today</span></span>
                     </div>
                 </div>
             </div>
