@@ -108,21 +108,21 @@ def normalize_domain(s):
 def get_allowed_research_websites():
     """
     Retrieves the comma-separated research websites configured by Admin in system settings.
-    Returns a list of normalized domain substrings, e.g. ['trendlyne.com', 'screener.in', 'bseindia.com', 'hdfcsec.com', 'sbisecurities.in'].
+    Returns a list of normalized domain substrings, e.g. ['trendlyne.com', 'screener.in', 'bseindia.com', 'hdfcsec.com', 'sbisecurities.in', 'icicidirect.com'].
     """
     try:
         from modules.common.system_settings import get_system_settings
         settings = get_system_settings()
-        raw = settings.get("research_document_websites") or "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in"
+        raw = settings.get("research_document_websites") or "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in, icicidirect.com"
     except Exception:
-        raw = "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in"
+        raw = "trendlyne.com, screener.in, bseindia.com, hdfcsec.com, sbisecurities.in, icicidirect.com"
 
     sites = []
     for s in str(raw).split(","):
         norm = normalize_domain(s)
         if norm and norm not in sites:
             sites.append(norm)
-    return sites or ["trendlyne.com", "screener.in", "bseindia.com", "hdfcsec.com", "sbisecurities.in"]
+    return sites or ["trendlyne.com", "screener.in", "bseindia.com", "hdfcsec.com", "sbisecurities.in", "icicidirect.com"]
 
 
 def is_pdf_or_content_available(report, allowed_sites=None):
@@ -148,7 +148,7 @@ def is_pdf_or_content_available(report, allowed_sites=None):
         report_source = (report.get("source") or "").lower()
         matched_site = False
         for site in allowed_sites:
-            # Matches if site is the report source (e.g. screener.in, trendlyne.com, hdfcsec.com, sbisecurities.in) or site domain is in URL
+            # Matches if site is the report source (e.g. screener.in, trendlyne.com, hdfcsec.com, sbisecurities.in, icicidirect.com) or site domain is in URL
             if site in report_source or site in url_lower:
                 matched_site = True
                 break
@@ -165,7 +165,9 @@ def is_pdf_or_content_available(report, allowed_sites=None):
         "/corpfiling/" in url_lower or
         "/hsl.docs/" in url_lower or
         "/fileserver/" in url_lower or
-        "sbisecurities.in" in url_lower
+        "sbisecurities.in" in url_lower or
+        "icicidirect.com" in url_lower or
+        "mailcontent.icicidirect.com" in url_lower
     )
 
     has_content = (
@@ -846,6 +848,174 @@ def fetch_sbisec_reports(symbol, company_name=None, force_refresh=False):
     return reports
 
 
+_icici_catalog_cache = {"timestamp": 0, "items": []}
+_icici_cache_lock = Lock()
+
+
+def _get_icici_catalog(force_refresh=False):
+    """
+    Fetches and caches the full ICICI Direct equity research investing ideas catalog
+    from https://www.icicidirect.com/research/equity/investing-ideas.
+    Cached in memory for 30 minutes.
+    """
+    global _icici_catalog_cache
+    now = time.time()
+    if not force_refresh:
+        with _icici_cache_lock:
+            if _icici_catalog_cache["items"] and (now - _icici_catalog_cache["timestamp"] < 1800):
+                return _icici_catalog_cache["items"]
+
+    url = "https://www.icicidirect.com/research/equity/investing-ideas"
+    try:
+        r = _fetch_url(url, timeout=12)
+        if not r or r.status_code != 200:
+            return []
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        tables = soup.find_all("table", class_="tablePositionalinvesting")
+        if not tables:
+            return []
+
+        tbl = tables[0]
+        rows = tbl.find_all("tr")
+        all_ideas = []
+        for row in rows[1:]:
+            cells = [td.get_text(strip=True) for td in row.find_all("td")]
+            if not cells:
+                continue
+
+            comp_name = cells[0] if len(cells) > 0 else ""
+            cmp_val = cells[1] if len(cells) > 1 else ""
+            entry_price = cells[2] if len(cells) > 2 else ""
+            target_price = cells[3] if len(cells) > 3 else ""
+            potential = cells[4] if len(cells) > 4 else ""
+            stop_loss = cells[5] if len(cells) > 5 else ""
+            call_date = cells[6] if len(cells) > 6 else ""
+            duration = cells[7] if len(cells) > 7 else ""
+            action = cells[8] if len(cells) > 8 else "BUY"
+
+            pdf_url = ""
+            stock_url = ""
+            fcode = ""
+            for a in row.find_all("a", href=True):
+                href = a.get("href", "").strip()
+                if ".pdf" in href.lower():
+                    pdf_url = href
+                elif "/stocks/" in href:
+                    stock_url = href
+                elif "/cashbuy/" in href:
+                    fcode = href.rstrip("/").split("/")[-1].upper()
+
+            if pdf_url and not pdf_url.startswith("http"):
+                pdf_url = f"https://mailcontent.icicidirect.com/mailcontent/{pdf_url.lstrip('/')}"
+
+            all_ideas.append({
+                "company": comp_name,
+                "fcode": fcode,
+                "cmp": cmp_val,
+                "entry_price": entry_price,
+                "target_price": target_price,
+                "potential": potential,
+                "stop_loss": stop_loss,
+                "call_date": call_date,
+                "duration": duration,
+                "action": action,
+                "stock_url": stock_url,
+                "pdf_url": pdf_url
+            })
+
+        with _icici_cache_lock:
+            _icici_catalog_cache = {
+                "timestamp": now,
+                "items": all_ideas
+            }
+        return all_ideas
+
+    except Exception as e:
+        logger.warning(f"Error fetching ICICI Direct investing ideas catalog: {e}")
+        return []
+
+
+def fetch_icicidirect_reports(symbol, company_name=None, force_refresh=False):
+    """
+    Fetches official institutional research reports & investing ideas from ICICI Direct
+    (https://www.icicidirect.com/research/equity/investing-ideas).
+    Extracts recommendation, horizon, target price, potential %, and direct PDF links.
+    """
+    clean_sym = clean_symbol(symbol)
+    if not clean_sym:
+        return []
+
+    catalog = _get_icici_catalog(force_refresh=force_refresh)
+    if not catalog:
+        return []
+
+    import urllib.parse
+
+    comp_clean = re.sub(r'\b(ltd|limited|india|industries|corp|corporation)\b', '', str(company_name or ''), flags=re.IGNORECASE).strip()
+
+    reports = []
+    for idx, idea in enumerate(catalog):
+        company = idea.get("company", "")
+        fcode = idea.get("fcode", "")
+        stock_url = idea.get("stock_url", "")
+        pdf_url = idea.get("pdf_url", "")
+
+        is_match = False
+        # 1. Exact fcode match
+        if fcode and fcode == clean_sym:
+            is_match = True
+        else:
+            # 2. Word boundary match on symbol
+            escaped_sym = re.escape(clean_sym)
+            pattern_sym = re.compile(rf'(?:^|[\s_(\[-]){escaped_sym}(?:$|[\s_)\].-])', re.IGNORECASE)
+            search_str = f"{company} {stock_url} {pdf_url}"
+            if pattern_sym.search(search_str):
+                is_match = True
+            elif comp_clean and len(comp_clean) >= 3:
+                pattern_comp = re.compile(rf'(?:^|[\s_(\[-]){re.escape(comp_clean)}(?:$|[\s_)\].-])', re.IGNORECASE)
+                if pattern_comp.search(search_str):
+                    is_match = True
+            elif len(clean_sym) >= 4 and len(fcode) >= 4 and clean_sym[:4] == fcode[:4]:
+                if clean_sym[:4].lower() in company.lower() or clean_sym[:4].lower() in stock_url.lower():
+                    is_match = True
+
+        if not is_match or not pdf_url:
+            continue
+
+        clean_url = urllib.parse.quote(pdf_url, safe=":/%._-")
+        date_str = idea.get("call_date") or "Recent"
+        duration = idea.get("duration") or "12-18 Month"
+        action = idea.get("action") or "BUY"
+        tp = idea.get("target_price") or ""
+        potential = idea.get("potential") or ""
+
+        title = f"{company} - Investing Idea ({duration})"
+        if tp:
+            title = f"{company} - Target Price: ₹{tp} ({duration})"
+
+        reports.append({
+            "id": f"icici-{clean_sym}-{idx + 1}",
+            "symbol": clean_sym,
+            "date": date_str,
+            "author": "ICICI Direct",
+            "institution_type": "Brokerage / Institutional",
+            "title": title,
+            "rating": action.upper(),
+            "target_price": tp.replace(",", ""),
+            "upside": f"{potential}%" if potential and potential != "NA" else "",
+            "url": clean_url,
+            "has_pdf": True,
+            "has_content": True,
+            "source": "icicidirect.com",
+            "category": "broker_research",
+            "tab_name": "Broker Research",
+            "is_live": True
+        })
+
+    return reports
+
+
 def parse_doc_date(date_str):
     """Robust parser for document dates (e.g. '28 Oct 2026', 'Oct 2026', 'FY 2026', '2026-10-28')."""
     if not date_str:
@@ -933,15 +1103,25 @@ class BrokerResearchProvider:
                     logger.warning(f"Error fetching SBI Securities reports: {e}")
             return []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        def _get_icicidirect():
+            if any("icicidirect.com" in s for s in allowed_sites):
+                try:
+                    return fetch_icicidirect_reports(clean_sym, company_name=company_name, force_refresh=force_refresh)
+                except Exception as e:
+                    logger.warning(f"Error fetching ICICI Direct reports: {e}")
+            return []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             f_trend = executor.submit(_get_trendlyne)
             f_scr = executor.submit(_get_screener_bse)
             f_hdfc = executor.submit(_get_hdfcsec)
             f_sbi = executor.submit(_get_sbisec)
+            f_icici = executor.submit(_get_icicidirect)
             reports.extend(f_trend.result() or [])
             reports.extend(f_scr.result() or [])
             reports.extend(f_hdfc.result() or [])
             reports.extend(f_sbi.result() or [])
+            reports.extend(f_icici.result() or [])
 
         # 3. Strictly filter: ONLY if PDF or content is available from allowed websites
         valid_reports = [r for r in reports if is_pdf_or_content_available(r, allowed_sites)]
