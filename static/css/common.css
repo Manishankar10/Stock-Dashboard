@@ -2613,6 +2613,22 @@
             width: 32px;
             height: 32px;
         }
+        .cd-brand-loader.card-framed {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(24px) saturate(190%);
+            -webkit-backdrop-filter: blur(24px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 38px 20px;
+            transition: all 0.2s ease;
+        }
+        :root:not([data-theme="dark"]) .cd-brand-loader.card-framed,
+        [data-theme="light"] .cd-brand-loader.card-framed {
+            background: rgba(255, 255, 255, 0.88);
+            border-color: rgba(226, 232, 240, 0.9);
+            box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
         .small-modal .small-modal-content.cd-modal-loading,
         .modal .modal-content.cd-modal-loading {
             position: relative !important;

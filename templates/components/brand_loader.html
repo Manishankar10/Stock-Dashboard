@@ -1,0 +1,21 @@
+<!-- templates/components/brand_loader.html -->
+<!-- Reusable Capital Desk Chart-Type Brand Animated Loader Component -->
+<div class="cd-brand-loader {{ 'card-framed' if card_framed else '' }} {{ 'overlay' if is_overlay else '' }} {{ loader_class | default('') }}" 
+     id="{{ loader_id | default('cd-brand-loader') }}" 
+     role="status" 
+     aria-live="polite"
+     style="min-height: {{ loader_min_height | default('260px') }};">
+    <div class="chart-loader-brand-box">
+        <div class="chart-loader-spinner-ring"></div>
+        <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+    </div>
+    <div class="cd-loader-text-box">
+        <div class="cd-loader-title">{{ loader_title | default('Loading...') }}</div>
+        {% if loader_badge %}
+        <div class="cd-loader-badge">{{ loader_badge }}</div>
+        {% endif %}
+        {% if loader_subtitle %}
+        <div class="cd-loader-subtitle">{{ loader_subtitle }}</div>
+        {% endif %}
+    </div>
+</div>

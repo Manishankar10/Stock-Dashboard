@@ -1402,12 +1402,29 @@
         }
 
         // Global Brand Animated Loader Component Generator
-        window.createBrandLoaderHTML = function({ title = 'Loading...', subtitle = '', badge = '', isOverlay = false, minHeight = '' } = {}) {
+        window.createBrandLoaderHTML = function({
+            title = 'Loading...',
+            subtitle = '',
+            badge = '',
+            isOverlay = false,
+            cardFramed = false,
+            minHeight = '',
+            id = '',
+            className = ''
+        } = {}) {
             const safeTitle = escapeBrandLoaderText(title);
             const safeBadge = escapeBrandLoaderText(badge);
             const safeSubtitle = escapeBrandLoaderText(subtitle);
+            const safeId = escapeBrandLoaderText(id);
+            const classes = [
+                'cd-brand-loader',
+                isOverlay ? 'overlay' : '',
+                cardFramed ? 'card-framed' : '',
+                className ? escapeBrandLoaderText(className) : ''
+            ].filter(Boolean).join(' ');
+
             return `
-            <div class="cd-brand-loader ${isOverlay ? 'overlay' : ''}" ${minHeight ? `style="min-height: ${escapeBrandLoaderText(minHeight)};"` : ''}>
+            <div class="${classes}" ${safeId ? `id="${safeId}"` : ''} ${minHeight ? `style="min-height: ${escapeBrandLoaderText(minHeight)};"` : ''} role="status" aria-live="polite">
                 <div class="chart-loader-brand-box">
                     <div class="chart-loader-spinner-ring"></div>
                     <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
@@ -1418,6 +1435,49 @@
                     ${safeSubtitle ? `<div class="cd-loader-subtitle">${safeSubtitle}</div>` : ''}
                 </div>
             </div>`;
+        };
+
+        // Reusable Brand Loader Component Controller: show / hide on any container without repeating markup
+        window.showBrandLoader = function(containerOrSelector, options = {}) {
+            const container = (typeof containerOrSelector === 'string')
+                ? document.querySelector(containerOrSelector)
+                : containerOrSelector;
+            if (!container) return null;
+
+            if (options.isOverlay) {
+                let overlay = container.querySelector('[data-cd-brand-loader="1"]');
+                if (!overlay) {
+                    const temp = document.createElement('div');
+                    temp.innerHTML = window.createBrandLoaderHTML({ ...options, isOverlay: true });
+                    overlay = temp.firstElementChild;
+                    overlay.setAttribute('data-cd-brand-loader', '1');
+                    container.appendChild(overlay);
+                } else {
+                    const titleEl = overlay.querySelector('.cd-loader-title');
+                    const badgeEl = overlay.querySelector('.cd-loader-badge');
+                    const subEl = overlay.querySelector('.cd-loader-subtitle');
+                    if (titleEl && options.title) titleEl.textContent = options.title;
+                    if (badgeEl && options.badge) badgeEl.textContent = options.badge;
+                    if (subEl && options.subtitle) subEl.textContent = options.subtitle;
+                }
+                overlay.style.display = 'flex';
+                return overlay;
+            }
+
+            container.innerHTML = window.createBrandLoaderHTML(options);
+            container.style.display = options.display || 'flex';
+            return container.querySelector('.cd-brand-loader');
+        };
+
+        window.hideBrandLoader = function(containerOrSelector) {
+            const container = (typeof containerOrSelector === 'string')
+                ? document.querySelector(containerOrSelector)
+                : containerOrSelector;
+            if (!container) return;
+            const overlay = container.querySelector('[data-cd-brand-loader="1"]');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
         };
 
         // Reusable modal logo-loader overlay controller (shares chart logo loader style)

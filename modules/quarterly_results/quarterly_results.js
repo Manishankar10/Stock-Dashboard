@@ -40,6 +40,76 @@
     }
 
     /**
+     * Get dynamic contextual description for filter operations
+     */
+    function getQrFilterContextDescription() {
+        if (qrState.search) {
+            return `Searching companies matching "${qrState.search}"...`;
+        }
+        if (qrState.watchlist && qrState.watchlist !== 'all') {
+            const wlLabel = (qrState.watchlist === 'portfolio') ? 'Portfolio' : (qrState.watchlist === 'any' ? 'All Watchlists' : qrState.watchlist);
+            return `Filtering earnings by ${wlLabel}...`;
+        }
+        if (qrState.industry && qrState.industry !== 'all') {
+            return `Filtering companies in ${qrState.industry}...`;
+        }
+        if (qrState.mcap_tier && qrState.mcap_tier !== 'all') {
+            const mcapNames = { large: 'Large Cap', mid: 'Mid Cap', small: 'Small Cap', micro: 'Micro Cap', custom: 'Custom Range' };
+            return `Filtering by Market Cap (${mcapNames[qrState.mcap_tier] || qrState.mcap_tier.toUpperCase()})...`;
+        }
+        if (qrState.date) {
+            return `Filtering earnings disclosed on ${qrState.date}...`;
+        }
+        if (qrState.custom_query) {
+            return `Executing screener query: ${qrState.custom_query}...`;
+        }
+        if (qrState.sorting && qrState.sorting !== 'latest') {
+            return `Sorting results by ${qrState.sorting.replace(/_/g, ' ')}...`;
+        }
+        return 'Applying filters across quarterly financial disclosures...';
+    }
+
+    /**
+     * Reusable Quarterly Results Brand Loader Component Caller
+     * Calls window.showBrandLoader to render the chart-type brand animated loader
+     */
+    function showQrResultsLoader(isFilter = false) {
+        const streamEl = document.getElementById('qr-cards-stream');
+        const emptyEl = document.getElementById('qr-empty-state');
+        const paginationToolbar = document.getElementById('qr-pagination-toolbar');
+        const paginationBottom = document.getElementById('qr-pagination-bottom');
+
+        if (emptyEl) emptyEl.style.display = 'none';
+        if (paginationToolbar) paginationToolbar.style.display = 'none';
+        if (paginationBottom) paginationBottom.style.display = 'none';
+
+        const title = isFilter ? 'Filtering Quarterly Results...' : 'Loading Quarterly Results...';
+        const badge = isFilter ? 'Applying Filter' : 'Capital Desk Earnings';
+        const subtitle = isFilter
+            ? getQrFilterContextDescription()
+            : 'Fetching latest quarterly earnings & financial disclosures...';
+
+        if (typeof window.showBrandLoader === 'function') {
+            window.showBrandLoader(streamEl, {
+                title,
+                badge,
+                subtitle,
+                cardFramed: true,
+                minHeight: '260px'
+            });
+        } else if (typeof window.createBrandLoaderHTML === 'function' && streamEl) {
+            streamEl.style.display = 'flex';
+            streamEl.innerHTML = window.createBrandLoaderHTML({
+                title,
+                badge,
+                subtitle,
+                cardFramed: true,
+                minHeight: '260px'
+            });
+        }
+    }
+
+    /**
      * Load quarterly results data from API
      */
     async function loadQuarterlyResults(forceRefresh = false) {
@@ -59,12 +129,10 @@
                 if (streamEl) streamEl.classList.remove('refreshing-drop');
             }, 600);
         }
-        if (!qrState.data && streamEl) {
-            streamEl.innerHTML = `
-                <div class="qr-card-skeleton"><div class="qr-skeleton-header"></div><div class="qr-skeleton-table"></div></div>
-                <div class="qr-card-skeleton"><div class="qr-skeleton-header"></div><div class="qr-skeleton-table"></div></div>
-            `;
-        }
+
+        // Show our reusable chart-type brand animated loader on initial load OR on filter
+        const isFilter = Boolean(qrState.data);
+        showQrResultsLoader(isFilter);
 
         const params = new URLSearchParams();
         if (qrState.search) params.set('search', qrState.search);
@@ -88,7 +156,7 @@
             renderQuarterlyResultsUI(data);
         } catch (err) {
             console.error('Failed to load quarterly results:', err);
-            if (!qrState.data && streamEl) {
+            if (streamEl) {
                 streamEl.innerHTML = `
                     <div class="qr-empty-state" style="display:block;">
                         <div class="qr-empty-icon">⚠️</div>
@@ -1634,6 +1702,7 @@
 
     // Expose global methods
     window.loadQuarterlyResults = loadQuarterlyResults;
+    window.showQrResultsLoader = showQrResultsLoader;
     window.handleQrSearch = handleQrSearch;
     window.clearQrSearch = clearQrSearch;
     window.setQrIndustryFilter = setQrIndustryFilter;

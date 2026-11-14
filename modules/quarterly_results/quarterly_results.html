@@ -107,15 +107,9 @@
 
             <!-- Results Cards Mount -->
             <div class="qr-cards-stream" id="qr-cards-stream">
-                <!-- Skeleton Loader -->
-                <div class="qr-card-skeleton">
-                    <div class="qr-skeleton-header"></div>
-                    <div class="qr-skeleton-table"></div>
-                </div>
-                <div class="qr-card-skeleton">
-                    <div class="qr-skeleton-header"></div>
-                    <div class="qr-skeleton-table"></div>
-                </div>
+                {% with card_framed=True, loader_id='qr-cards-initial-loader', loader_title='Loading Quarterly Results...', loader_badge='Capital Desk Earnings', loader_subtitle='Fetching latest corporate earnings & financial reports...' %}
+                    {% include 'components/brand_loader.html' %}
+                {% endwith %}
             </div>
 
             <!-- Pagination Bottom Controls (Shown when "No filter" is chosen) -->
