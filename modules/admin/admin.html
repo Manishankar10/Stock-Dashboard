@@ -5055,7 +5055,7 @@
                 ? 'Full Transactions Resync from June 2026' 
                 : 'Incremental Sync of New Transactions';
             const promptDesc = forceFull
-                ? 'This will:\n1. Synchronize all Block Deals, Bulk Deals, and Insider Trading disclosures starting from June 2026.\n2. Partition the process into monthly chunks (June, July, August, September, October 2026).\n3. Save all normalized records atomically into MongoDB Atlas & SQLite.\n\nProceed with full sync?'
+                ? 'This will:\n1. Synchronize all Block Deals, Bulk Deals, and Insider Trading disclosures starting from June 2026 up to current date.\n2. Partition the process into monthly chunks.\n3. Save all normalized records atomically into MongoDB Atlas & SQLite.\n\nProceed with full sync?'
                 : 'This will:\n1. Detect the latest transaction date currently stored in the database.\n2. Fetch only new records since that date (with a 5-day safety buffer for late filings).\n3. Store new records into MongoDB Atlas & SQLite database.\n\nProceed with incremental sync?';
 
             if (!confirm(`Are you sure you want to run ${promptTitle}?\n\n${promptDesc}`)) {

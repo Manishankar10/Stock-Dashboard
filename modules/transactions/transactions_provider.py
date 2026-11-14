@@ -11,7 +11,7 @@ import os
 from modules.common.ist_datetime import format_ist_display, now_ist
 from pathlib import Path
 import re
-from threading import Lock
+from threading import Lock, Thread
 import time
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -56,11 +56,20 @@ def parse_date_to_iso(raw_date: Any) -> str:
     if not raw_date:
         return ""
     val = str(raw_date).strip()
-    # Remove time if present
-    if "T" in val:
-        val = val.split("T")[0].strip()
-    if " " in val:
+    
+    # Remove ISO time component if present (e.g. '2026-10-27T18:30:00.000Z')
+    t_match = re.match(r"^(\d{4}-\d{2}-\d{2})T.*", val)
+    if t_match:
+        val = t_match.group(1)
+    elif " " in val:
         val = val.split(" ")[0].strip()
+
+    # Repair previously truncated Oct dates (e.g., '22-OC', '28-OC')
+    oc_match = re.match(r"^(\d{1,2})-OC(?:T)?(?:-(\d{4}))?$", val, re.IGNORECASE)
+    if oc_match:
+        d_num = oc_match.group(1).zfill(2)
+        yr = oc_match.group(2) or str(date.today().year)
+        val = f"{d_num}-Oct-{yr}"
     
     formats = (
         "%d-%b-%Y",
@@ -89,7 +98,7 @@ def parse_date_to_iso(raw_date: Any) -> str:
 def parse_date_to_display(raw_date: Any) -> str:
     """Convert to human display date e.g. '16 Oct 2026'."""
     iso = parse_date_to_iso(raw_date)
-    if iso and len(iso) == 10:
+    if iso and len(iso) == 10 and iso[:4].isdigit():
         try:
             dt = datetime.strptime(iso, "%Y-%m-%d")
             return dt.strftime("%d %b %Y")
@@ -117,22 +126,24 @@ class TransactionsProvider:
         self._admin_total_chunks: int = 0
         self._last_synced_display: Optional[str] = None
         self._load_stored_deals()
+        self._ensure_recent_deals_background()
 
     def _load_stored_deals(self):
         """Load persisted deals from Database (MongoDB Atlas & SQLite) with JSON storage fallback."""
+        loaded = False
         try:
             from db_store import load_transactions_deals_db
             res = load_transactions_deals_db(fallback_filepath=self.storage_file)
             deals = res.get("deals", [])
             if isinstance(deals, list) and deals:
                 self._cache_deals = deals
+                loaded = True
                 if self._last_fetch_time == 0:
                     self._last_fetch_time = time.time()
-                return
         except Exception as e:
             print(f"[TransactionsProvider] Warning loading from DB: {e}")
 
-        if self.storage_file.exists():
+        if not loaded and self.storage_file.exists():
             try:
                 with open(self.storage_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -143,6 +154,29 @@ class TransactionsProvider:
                                 self._last_fetch_time = os.path.getmtime(self.storage_file)
                             except Exception:
                                 self._last_fetch_time = time.time()
+            except Exception as e:
+                print(f"[TransactionsProvider] Warning loading storage file {self.storage_file}: {e}")
+
+        # Sanitize and repair any legacy truncated dates in _cache_deals
+        repaired = False
+        for deal in self._cache_deals:
+            raw_d = deal.get("date")
+            disp_d = deal.get("date_display")
+            if not raw_d or not re.match(r"^\d{4}-\d{2}-\d{2}$", str(raw_d)):
+                fixed_iso = parse_date_to_iso(disp_d or raw_d)
+                if fixed_iso and re.match(r"^\d{4}-\d{2}-\d{2}$", fixed_iso):
+                    deal["date"] = fixed_iso
+                    deal["date_display"] = parse_date_to_display(fixed_iso)
+                    repaired = True
+            elif not disp_d or not re.match(r"^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}$", str(disp_d)):
+                deal["date_display"] = parse_date_to_display(raw_d)
+                repaired = True
+
+        if repaired:
+            try:
+                self._persist_deals()
+            except Exception as ex:
+                print(f"[TransactionsProvider] Warning auto-repairing dates: {ex}")
             except Exception as e:
                 print(f"[TransactionsProvider] Warning loading storage file {self.storage_file}: {e}")
 
@@ -384,7 +418,12 @@ class TransactionsProvider:
             val = 0.0
 
         price = round(val / qty, 2) if qty > 0 and val > 0 else 0.0
-        raw_date = str(item.get("intimDt") or item.get("date") or "")
+        raw_date = str(item.get("intimDt") or item.get("date") or "").strip()
+        filing_url = str(item.get("xbrl") or "").strip()
+        if (not raw_date or raw_date == "-") and filing_url:
+            m_url = re.search(r"_(\d{2})(\d{2})(\d{4})\d{6}_", filing_url)
+            if m_url:
+                raw_date = f"{m_url.group(1)}-{m_url.group(2)}-{m_url.group(3)}"
         iso_date = parse_date_to_iso(raw_date)
 
         # Extract time if present in 'date' field
@@ -930,6 +969,169 @@ class TransactionsProvider:
             **self.get_sync_status()
         }
 
+    def _fetch_block_deals_range(self, session: requests.Session, start_d: date, end_d: date) -> List[Dict[str, Any]]:
+        """Fetch block deals for a date range."""
+        from_str = start_d.strftime("%d-%m-%Y")
+        to_str = end_d.strftime("%d-%m-%Y")
+        url = f"{NSE_HISTORICAL_DEALS_API}?optionType=block_deals&from={from_str}&to={to_str}"
+        try:
+            res = session.get(url, headers=HEADERS, timeout=12)
+            if res.status_code == 200:
+                items = res.json().get("data", [])
+                deals = []
+                for it in items:
+                    d = self._normalize_largedeal(it, "block")
+                    if d:
+                        deals.append(d)
+                return deals
+        except Exception as e:
+            print(f"[TransactionsProvider] Block deals fetch error ({from_str} to {to_str}): {e}")
+        return []
+
+    def _fetch_bulk_deals_range(self, session: requests.Session, start_d: date, end_d: date) -> List[Dict[str, Any]]:
+        """Fetch bulk deals for a date range, auto-slicing by day if NSE caps the results at 70 records."""
+        from_str = start_d.strftime("%d-%m-%Y")
+        to_str = end_d.strftime("%d-%m-%Y")
+        url = f"{NSE_HISTORICAL_DEALS_API}?optionType=bulk_deals&from={from_str}&to={to_str}"
+        try:
+            res = session.get(url, headers=HEADERS, timeout=12)
+            if res.status_code == 200:
+                items = res.json().get("data", [])
+                # If NSE returned 70 records and the range spans multiple days, slice day-by-day
+                if len(items) >= 70 and (end_d - start_d).days >= 1:
+                    all_sub = []
+                    curr = start_d
+                    while curr <= end_d:
+                        day_str = curr.strftime("%d-%m-%Y")
+                        try:
+                            r_day = session.get(f"{NSE_HISTORICAL_DEALS_API}?optionType=bulk_deals&from={day_str}&to={day_str}", headers=HEADERS, timeout=10)
+                            if r_day.status_code == 200:
+                                all_sub.extend(r_day.json().get("data", []))
+                        except Exception:
+                            pass
+                        curr += timedelta(days=1)
+                    items = all_sub
+
+                deals = []
+                for it in items:
+                    d = self._normalize_largedeal(it, "bulk")
+                    if d:
+                        deals.append(d)
+                return deals
+        except Exception as e:
+            print(f"[TransactionsProvider] Bulk deals fetch error ({from_str} to {to_str}): {e}")
+        return []
+
+    def _fetch_insider_deals_range(self, session: requests.Session, start_d: date, end_d: date) -> List[Dict[str, Any]]:
+        """Fetch insider disclosures (PIT) for date range with multi-year fallback."""
+        from_str = start_d.strftime("%d-%m-%Y")
+        to_str = end_d.strftime("%d-%m-%Y")
+        today = date.today()
+        pit_items = []
+        try:
+            url_pit = f"{NSE_INSIDER_API}?from_date={from_str}&to_date={to_str}"
+            res_pit = session.get(url_pit, headers=HEADERS, timeout=12)
+            if res_pit.status_code == 200:
+                pit_items = res_pit.json().get("data", [])
+        except Exception as ex:
+            print(f"[TransactionsProvider] Insider deals fetch error ({from_str} to {to_str}): {ex}")
+
+        # Fallback year query if zero items returned
+        if not pit_items:
+            for fb_year in [today.year - 1, today.year - 2, 2025, 2024]:
+                try:
+                    f_fb = start_d.replace(year=fb_year).strftime("%d-%m-%Y")
+                    t_fb = end_d.replace(year=fb_year).strftime("%d-%m-%Y")
+                    r_fb = session.get(f"{NSE_INSIDER_API}?from_date={f_fb}&to_date={t_fb}", headers=HEADERS, timeout=10)
+                    if r_fb.status_code == 200:
+                        fb_data = r_fb.json().get("data", [])
+                        if fb_data:
+                            pit_items = fb_data
+                            break
+                except Exception:
+                    continue
+
+        deals = []
+        for it in pit_items:
+            d = self._normalize_insider_deal(it)
+            if d:
+                deals.append(d)
+        return deals
+
+    def _fetch_live_snapshot(self, session: requests.Session) -> List[Dict[str, Any]]:
+        """Fetch today's live snapshot block and bulk deals from official NSE largedeal API."""
+        deals = []
+        try:
+            r_live = session.get(NSE_LARGEDEAL_API, headers=HEADERS, timeout=10)
+            if r_live.status_code == 200:
+                live_p = r_live.json()
+                for item in live_p.get("BLOCK_DEALS_DATA", []):
+                    d = self._normalize_largedeal(item, "block")
+                    if d:
+                        deals.append(d)
+                for item in live_p.get("BULK_DEALS_DATA", []):
+                    d = self._normalize_largedeal(item, "bulk")
+                    if d:
+                        deals.append(d)
+        except Exception as ex:
+            print(f"[TransactionsProvider] Live snapshot fetch error: {ex}")
+        return deals
+
+    def sync_recent_deals(self, days: int = 25) -> int:
+        """Incrementally sync recent deals from the last N days up to today into the database."""
+        today = date.today()
+        start_d = today - timedelta(days=days)
+        session = self._create_nse_session()
+
+        new_deals = []
+        new_deals.extend(self._fetch_block_deals_range(session, start_d, today))
+        new_deals.extend(self._fetch_bulk_deals_range(session, start_d, today))
+        new_deals.extend(self._fetch_insider_deals_range(session, start_d, today))
+        new_deals.extend(self._fetch_live_snapshot(session))
+
+        added_count = 0
+        with self._lock:
+            existing_map = {d.get("id"): d for d in self._cache_deals if d.get("id")}
+            for deal in new_deals:
+                did = deal.get("id")
+                if did and did not in existing_map:
+                    existing_map[did] = deal
+                    added_count += 1
+                elif did:
+                    existing_map[did] = deal
+
+            self._cache_deals = sorted(
+                existing_map.values(),
+                key=lambda x: (x.get("date", ""), x.get("value", 0)),
+                reverse=True
+            )
+            self._last_fetch_time = time.time()
+            self._last_synced_display = format_ist_display(now_ist())
+            self._persist_deals()
+        return added_count
+
+    def _ensure_recent_deals_background(self) -> None:
+        """Launch background self-healing worker if latest transaction in database is older than 2 days."""
+        def worker():
+            try:
+                today = date.today()
+                threshold_iso = (today - timedelta(days=2)).strftime("%Y-%m-%d")
+                with self._lock:
+                    valid_dates = [
+                        d.get("date") for d in self._cache_deals 
+                        if d.get("date") and re.match(r"^\d{4}-\d{2}-\d{2}$", str(d.get("date")))
+                    ]
+                latest_iso = max(valid_dates) if valid_dates else ""
+                if not latest_iso or latest_iso < threshold_iso:
+                    print(f"[TransactionsProvider] Detected stale transactions (latest: {latest_iso or 'none'}), syncing recent deals in background...")
+                    added = self.sync_recent_deals(days=25)
+                    print(f"[TransactionsProvider] Background sync finished, added {added} recent deals.")
+            except Exception as e:
+                print(f"[TransactionsProvider] Background recent sync error: {e}")
+
+        t = Thread(target=worker, daemon=True)
+        t.start()
+
     def _run_admin_sync_worker(self, force_full: bool = False) -> None:
         """Worker thread executing chunked sync from June 2026 or incremental delta sync."""
         try:
@@ -987,77 +1189,17 @@ class TransactionsProvider:
                 chunk_deals: List[Dict[str, Any]] = []
 
                 # 1. Fetch Block Deals for this chunk
-                try:
-                    url_block = f"{NSE_HISTORICAL_DEALS_API}?optionType=block_deals&from={from_str}&to={to_str}"
-                    res_b = session.get(url_block, headers=HEADERS, timeout=12)
-                    if res_b.status_code == 200:
-                        b_items = res_b.json().get("data", [])
-                        for item in b_items:
-                            deal = self._normalize_largedeal(item, "block")
-                            if deal:
-                                chunk_deals.append(deal)
-                except Exception as ex:
-                    print(f"[TransactionsProvider] Chunk {idx+1} block deals error: {ex}")
+                chunk_deals.extend(self._fetch_block_deals_range(session, chunk_start, chunk_end))
 
-                # 2. Fetch Bulk Deals for this chunk
-                try:
-                    url_bulk = f"{NSE_HISTORICAL_DEALS_API}?optionType=bulk_deals&from={from_str}&to={to_str}"
-                    res_bk = session.get(url_bulk, headers=HEADERS, timeout=12)
-                    if res_bk.status_code == 200:
-                        bk_items = res_bk.json().get("data", [])
-                        for item in bk_items:
-                            deal = self._normalize_largedeal(item, "bulk")
-                            if deal:
-                                chunk_deals.append(deal)
-                except Exception as ex:
-                    print(f"[TransactionsProvider] Chunk {idx+1} bulk deals error: {ex}")
+                # 2. Fetch Bulk Deals for this chunk (auto-sliced if NSE 70 record limit is hit)
+                chunk_deals.extend(self._fetch_bulk_deals_range(session, chunk_start, chunk_end))
 
-                # 3. Fetch Insider Deals (PIT) for this chunk
-                try:
-                    url_pit = f"{NSE_INSIDER_API}?from_date={from_str}&to_date={to_str}"
-                    res_pit = session.get(url_pit, headers=HEADERS, timeout=12)
-                    pit_items = []
-                    if res_pit.status_code == 200:
-                        pit_items = res_pit.json().get("data", [])
-
-                    # Fallback year query if zero items returned for an older chunk
-                    if not pit_items and chunk_end < today:
-                        for fb_year in [today.year - 1, 2025, 2024]:
-                            try:
-                                f_fb = chunk_start.replace(year=fb_year).strftime("%d-%m-%Y")
-                                t_fb = chunk_end.replace(year=fb_year).strftime("%d-%m-%Y")
-                                r_fb = session.get(f"{NSE_INSIDER_API}?from_date={f_fb}&to_date={t_fb}", headers=HEADERS, timeout=10)
-                                if r_fb.status_code == 200:
-                                    fb_data = r_fb.json().get("data", [])
-                                    if fb_data:
-                                        pit_items = fb_data
-                                        break
-                            except Exception:
-                                continue
-
-                    for item in pit_items:
-                        deal = self._normalize_insider_deal(item)
-                        if deal:
-                            chunk_deals.append(deal)
-                except Exception as ex:
-                    print(f"[TransactionsProvider] Chunk {idx+1} insider deals error: {ex}")
+                # 3. Fetch Insider Deals (PIT) for this chunk with multi-year fallback
+                chunk_deals.extend(self._fetch_insider_deals_range(session, chunk_start, chunk_end))
 
                 # 4. If current chunk contains today, also include live largedeal snapshot
                 if chunk_end >= today:
-                    try:
-                        r_live = session.get(NSE_LARGEDEAL_API, headers=HEADERS, timeout=10)
-                        if r_live.status_code == 200:
-                            live_p = r_live.json()
-                            for item in live_p.get("BLOCK_DEALS_DATA", []):
-                                deal = self._normalize_largedeal(item, "block")
-                                if deal:
-                                    chunk_deals.append(deal)
-                            for item in live_p.get("BULK_DEALS_DATA", []):
-                                deal = self._normalize_largedeal(item, "bulk")
-                                if deal:
-                                    chunk_deals.append(deal)
-                    except Exception as ex:
-                        print(f"[TransactionsProvider] Chunk {idx+1} live snapshot error: {ex}")
+                    chunk_deals.extend(self._fetch_live_snapshot(session))
 
                 # Deduplicate and persist incrementally after every chunk
                 new_in_chunk = 0
