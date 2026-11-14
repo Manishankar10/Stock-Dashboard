@@ -9302,9 +9302,13 @@ function getActiveChartIndicatorKeys() {
             // 2. Draw Main Chart
             ctx.drawImage(mainCanvas, 0, headerH);
 
-            // 3. Draw Drawings Overlay
+            // 3. Draw Drawings Overlay (scale to match mainCanvas dimensions for accurate trendline and drawing alignment)
             if (drawingCanvas) {
-                ctx.drawImage(drawingCanvas, 0, headerH);
+                ctx.save();
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(drawingCanvas, 0, headerH, w, mainH);
+                ctx.restore();
             }
 
             // 4. Draw RSI Pane if visible
