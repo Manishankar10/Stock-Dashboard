@@ -2333,7 +2333,7 @@
                         <div style="background: rgba(234, 88, 12, 0.08); border: 1px solid rgba(234, 88, 12, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 10px;">
                             <span style="font-size: 18px; line-height: 1;">⚡</span>
                             <div style="font-size: 12px; color: var(--text-primary); line-height: 1.5;">
-                                <strong>Chunked Monthly Synchronization &amp; Incremental Discovery:</strong> All transactions (Block Deals, Bulk Deals, and Insider Trading disclosures) are saved directly in MongoDB Atlas &amp; SQLite. Initial sync partitions disclosures from June 2026 into monthly chunks. Subsequent syncs automatically detect the latest recorded transaction in the database and incrementally ingest only new filings with zero disruption to end users.
+                                <strong>Chunk-by-Chunk Synchronization:</strong> Market transactions (Block Deals, Bulk Deals, and Insider Trading / Promoter Buys) are synchronized and updated on a chunk-by-chunk basis matching Quarterly Results sync. Each monthly chunk is normalized, merged, and immediately persisted to MongoDB Atlas &amp; SQLite before advancing. Standard sync processes August 2026 to date in 4 monthly chunks, while Full sync covers June 2026 to date.
                             </div>
                         </div>
                     </div>
@@ -2345,7 +2345,7 @@
                                 🔄 Check Status
                             </button>
                             <button type="button" id="btn-sync-tx-new" class="btn" onclick="triggerAdminTransactionsSync(false)" style="padding: 8px 18px; font-size: 12.5px; font-weight: 600; background: #0284c7; border-color: #0284c7; color: #fff; display: inline-flex; align-items: center; gap: 6px;">
-                                <span>⚡ Sync New Records</span>
+                                <span>⚡ Sync Transactions (Aug to Date)</span>
                             </button>
                             <button type="button" id="btn-sync-tx-full" class="btn" onclick="triggerAdminTransactionsSync(true)" style="padding: 8px 18px; font-size: 12.5px; font-weight: 600; background: #ea580c; border-color: #ea580c; color: #fff; display: inline-flex; align-items: center; gap: 6px;">
                                 <span>🚀 Full Resync from June 2026</span>
@@ -4972,7 +4972,9 @@
                 if (lastUpEl) lastUpEl.innerText = s.last_synced_display || 'Not synced yet';
                 if (totalCountEl) totalCountEl.innerText = `${(s.total_records || 0).toLocaleString()} Deals`;
                 if (breakdownEl) {
-                    breakdownEl.innerText = `${s.count_block || 0} Block • ${s.count_bulk || 0} Bulk • ${s.count_insider || 0} Insider`;
+                    const promoterPart = (s.count_promoter !== undefined) ? ` (${s.count_promoter} Promoter)` : '';
+                    breakdownEl.innerText = `${s.count_block || 0} Block • ${s.count_bulk || 0} Bulk • ${s.count_insider || 0} Insider${promoterPart}`;
+                    breakdownEl.title = `${s.count_block || 0} Block, ${s.count_bulk || 0} Bulk, ${s.count_insider || 0} Insider (${s.count_promoter || 0} Promoter Buys)`;
                 }
                 if (dateCovEl) {
                     if (s.earliest_date && s.latest_date && s.earliest_date !== 'None') {
@@ -5053,10 +5055,10 @@
         async function triggerAdminTransactionsSync(forceFull = false) {
             const promptTitle = forceFull 
                 ? 'Full Transactions Resync from June 2026' 
-                : 'Incremental Sync of New Transactions';
+                : 'Transactions Sync (August 2026 to Date)';
             const promptDesc = forceFull
-                ? 'This will:\n1. Synchronize all Block Deals, Bulk Deals, and Insider Trading disclosures starting from June 2026 up to current date.\n2. Partition the process into monthly chunks.\n3. Save all normalized records atomically into MongoDB Atlas & SQLite.\n\nProceed with full sync?'
-                : 'This will:\n1. Detect the latest transaction date currently stored in the database.\n2. Fetch only new records since that date (with a 5-day safety buffer for late filings).\n3. Store new records into MongoDB Atlas & SQLite database.\n\nProceed with incremental sync?';
+                ? 'This will:\n1. Synchronize all Block Deals, Bulk Deals, and Insider Trading disclosures starting from June 2026 up to current date.\n2. Partition the process into monthly chunks (June to current month).\n3. Ingest and save all new data into MongoDB Atlas & SQLite on a chunk-by-chunk basis matching Quarterly Results sync.\n\nProceed with full sync?'
+                : 'This will:\n1. Synchronize all Block Deals, Bulk Deals, and Insider Trading / Promoter purchases from August 2026 up to current date.\n2. Process 4 monthly chunks (August, September, October, November).\n3. Ingest and save all new data into MongoDB Atlas & SQLite on a chunk-by-chunk basis matching Quarterly Results sync.\n\nProceed with chunk-based sync?';
 
             if (!confirm(`Are you sure you want to run ${promptTitle}?\n\n${promptDesc}`)) {
                 return;

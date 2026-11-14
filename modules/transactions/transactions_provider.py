@@ -922,6 +922,12 @@ class TransactionsProvider:
             count_block = sum(1 for d in deals if d.get("deal_type") == "block")
             count_bulk = sum(1 for d in deals if d.get("deal_type") == "bulk")
             count_insider = sum(1 for d in deals if d.get("deal_type") == "insider")
+            count_promoter = sum(
+                1 for d in deals
+                if d.get("deal_type") == "insider"
+                and "promoter" in str(d.get("person_category", "")).lower()
+                and str(d.get("action", "")).upper() == "BUY"
+            )
 
             valid_dates = [
                 d.get("date") for d in deals 
@@ -947,6 +953,7 @@ class TransactionsProvider:
             "count_block": count_block,
             "count_bulk": count_bulk,
             "count_insider": count_insider,
+            "count_promoter": count_promoter,
             "earliest_date": earliest_date,
             "latest_date": latest_date,
             "date_coverage": f"{earliest_date} to {latest_date}" if valid_dates else "No records",
@@ -954,8 +961,8 @@ class TransactionsProvider:
             "storage": "MongoDB Atlas & SQLite (Synced)"
         }
 
-    def start_admin_background_sync(self, force_full: bool = False) -> Dict[str, Any]:
-        """Initiate background chunked sync of market transactions from June 2026 or incrementally."""
+    def start_admin_background_sync(self, force_full: bool = False, custom_start: Optional[str] = None) -> Dict[str, Any]:
+        """Initiate background chunked sync of market transactions from June 2026 or from August 2026."""
         with self._admin_sync_lock:
             if self._admin_is_syncing:
                 return {
@@ -971,10 +978,17 @@ class TransactionsProvider:
             self._admin_new_deals_count = 0
             self._admin_chunk_index = 0
             self._admin_total_chunks = 0
-            self._admin_current_chunk = "Determining date ranges..."
+            self._admin_current_chunk = "Determining date chunks..."
+
+        start_override = None
+        if custom_start:
+            try:
+                start_override = datetime.strptime(str(custom_start).strip(), "%Y-%m-%d").date()
+            except Exception:
+                start_override = None
 
         import threading
-        thread = threading.Thread(target=self._run_admin_sync_worker, args=(force_full,), daemon=True)
+        thread = threading.Thread(target=self._run_admin_sync_worker, args=(force_full, start_override), daemon=True)
         thread.start()
 
         return {
@@ -1161,31 +1175,23 @@ class TransactionsProvider:
         t = Thread(target=worker, daemon=True)
         t.start()
 
-    def _run_admin_sync_worker(self, force_full: bool = False) -> None:
-        """Worker thread executing chunked sync from June 2026 or incremental delta sync."""
+    def _run_admin_sync_worker(self, force_full: bool = False, start_date_override: Optional[date] = None) -> None:
+        """Worker thread executing chunked sync from June 2026 or from August 2026.
+        Updates and persists deals into MongoDB Atlas & SQLite on a chunk-by-chunk basis,
+        identical to the workflow in quarterly results sync.
+        """
         try:
             today = date.today()
             base_june_2026 = date(2026, 6, 1)
+            base_aug_2026 = date(2026, 8, 1)
 
-            # Determine start date: June 2026 for full sync, or latest DB date minus 5-day buffer for delta
-            if force_full:
+            # Determine start date: June 2026 for full sync, August 2026 for standard operational sync
+            if start_date_override:
+                start_date = start_date_override
+            elif force_full:
                 start_date = base_june_2026
             else:
-                with self._lock:
-                    valid_dates = [
-                        d.get("date") for d in self._cache_deals 
-                        if d.get("date") and re.match(r"^\d{4}-\d{2}-\d{2}$", str(d.get("date")))
-                    ]
-                if valid_dates:
-                    try:
-                        latest_iso = max(valid_dates)
-                        latest_dt = datetime.strptime(latest_iso, "%Y-%m-%d").date()
-                        # Overlap 5 days to capture delayed filings/corrections
-                        start_date = max(base_june_2026, latest_dt - timedelta(days=5))
-                    except Exception:
-                        start_date = base_june_2026
-                else:
-                    start_date = base_june_2026
+                start_date = base_aug_2026
 
             end_date = today
             if start_date > end_date:
@@ -1198,8 +1204,9 @@ class TransactionsProvider:
             total_chunks = len(chunks)
             with self._admin_sync_lock:
                 self._admin_total_chunks = total_chunks
-                self._admin_sync_progress = f"Found {total_chunks} date chunks from {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}."
-                self._admin_sync_percent = 8
+                self._admin_sync_progress = f"Found {total_chunks} date chunks ({start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}). Starting chunk-by-chunk sync..."
+                self._admin_sync_percent = 5
+                self._admin_new_deals_count = 0
 
             session = self._create_nse_session()
 
@@ -1208,16 +1215,16 @@ class TransactionsProvider:
                 to_str = chunk_end.strftime("%d-%m-%Y")
                 chunk_label = f"Chunk {idx + 1}/{total_chunks}: {chunk_name} ({from_str} to {to_str})"
 
+                pct_start = int(5 + (idx / total_chunks) * 90)
                 with self._admin_sync_lock:
                     self._admin_chunk_index = idx + 1
                     self._admin_current_chunk = chunk_label
-                    pct = int(10 + (idx / total_chunks) * 85)
-                    self._admin_sync_percent = min(pct, 95)
+                    self._admin_sync_percent = min(pct_start, 95)
                     self._admin_sync_progress = f"Fetching {chunk_label} from official NSE portals..."
 
                 chunk_deals: List[Dict[str, Any]] = []
 
-                # 1. Fetch Block Deals for this chunk
+                # 1. Fetch Block Deals for this chunk (auto-sliced if NSE 70 record limit is hit)
                 chunk_deals.extend(self._fetch_block_deals_range(session, chunk_start, chunk_end))
 
                 # 2. Fetch Bulk Deals for this chunk (auto-sliced if NSE 70 record limit is hit)
@@ -1230,8 +1237,9 @@ class TransactionsProvider:
                 if chunk_end >= today:
                     chunk_deals.extend(self._fetch_live_snapshot(session))
 
-                # Deduplicate and persist incrementally after every chunk
+                # Deduplicate and persist immediately after each chunk (chunk-by-chunk basis)
                 new_in_chunk = 0
+                chunk_saved_total = 0
                 with self._lock:
                     existing_map = {d.get("id"): d for d in self._cache_deals if d.get("id")}
                     for deal in chunk_deals:
@@ -1247,10 +1255,19 @@ class TransactionsProvider:
                         key=lambda x: (x.get("date", ""), x.get("value", 0)),
                         reverse=True
                     )
+                    chunk_saved_total = len(self._cache_deals)
                     self._persist_deals()
+                    self._last_synced_display = format_ist_display(now_ist())
+                    self._last_fetch_time = time.time()
 
+                pct_done = int(5 + ((idx + 1) / total_chunks) * 90)
                 with self._admin_sync_lock:
                     self._admin_new_deals_count += new_in_chunk
+                    self._admin_sync_percent = min(pct_done, 95)
+                    self._admin_sync_progress = (
+                        f"Chunk {idx + 1}/{total_chunks} ({chunk_name}) saved to database! "
+                        f"+{new_in_chunk} new records added ({len(chunk_deals)} verified in chunk, {chunk_saved_total} total in DB)."
+                    )
 
                 # Polite throttle between chunk calls
                 time.sleep(0.6)

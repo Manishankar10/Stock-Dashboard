@@ -797,8 +797,9 @@ def admin_transactions_sync():
     force_full = bool(payload.get("force_full", False))
     if not force_full and request.args.get("force_full"):
         force_full = request.args.get("force_full", "").lower() in ("1", "true", "yes")
+    custom_start = payload.get("start_date") or request.args.get("start_date")
 
-    res = provider.start_admin_background_sync(force_full=force_full)
+    res = provider.start_admin_background_sync(force_full=force_full, custom_start=custom_start)
     if not res.get("success"):
         return jsonify(res), 400
     return jsonify(res)
