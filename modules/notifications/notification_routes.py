@@ -1,7 +1,12 @@
 import os
+import logging
+import threading
+from typing import Optional, List, Dict, Any
 from flask import Blueprint, request, jsonify, session, send_file, current_app
 from modules.common.auth_utils import login_required, admin_required, load_users
 from modules.common.ist_datetime import format_ist_standard, format_ist_display, today_ist_str
+
+logger = logging.getLogger("notifications")
 from modules.notifications.fcm_service import (
     get_fcm_config,
     register_device_token,
@@ -135,11 +140,48 @@ def api_subscribe_device():
         return jsonify({"success": False, "error": msg}), 400
 
     user_keys = get_user_tokens(username)
+
+    # Determine canonical target token for this registered device
+    endpoint = ""
+    if isinstance(subscription_obj, dict) and subscription_obj.get("endpoint"):
+        endpoint = subscription_obj.get("endpoint", "").strip()
+    elif token.startswith("http://") or token.startswith("https://"):
+        endpoint = token.strip()
+    target_device_token = endpoint or token
+
+    # Automatically send welcome notification to that registered device only
+    base_url = request.url_root.rstrip("/") if request else ""
+    try:
+        from flask import current_app
+        app = current_app._get_current_object()
+
+        def _send_welcome_to_device(flask_app, user, dev_token, b_url):
+            with flask_app.app_context():
+                try:
+                    logger.info(f"[Notifications] Auto-dispatching welcome notification to newly registered device ({dev_token[:25]}...) for '{user}'")
+                    dispatch_welcome_notification(
+                        username=user,
+                        specific_tokens=[dev_token],
+                        base_url=b_url
+                    )
+                except Exception as ex:
+                    logger.error(f"[Notifications] Auto welcome notification error: {ex}")
+
+        t = threading.Thread(
+            target=_send_welcome_to_device,
+            args=(app, username, target_device_token, base_url),
+            daemon=True
+        )
+        t.start()
+    except Exception as e:
+        logger.error(f"[Notifications] Failed to launch auto welcome notification thread: {e}")
+
     return jsonify({
         "success": True,
         "message": msg,
         "username": username,
-        "registered_keys_count": len(user_keys)
+        "registered_keys_count": len(user_keys),
+        "welcome_sent": True
     })
 
 
@@ -494,6 +536,36 @@ def admin_send_sample_user():
         return jsonify(res)
 
 
+def dispatch_welcome_notification(username: str, specific_tokens: Optional[List[str]] = None, base_url: str = "") -> Dict[str, Any]:
+    """
+    Dispatches a welcoming greeting notification:
+    'Welcome to Capital Desk!! Best wishes message only'
+    Targeted to specific device token(s) or user devices.
+    Uses the exact notification UI format and payload from admin panel notifications.
+    """
+    title = "🎉 Welcome to Capital Desk!"
+    if username and username.lower() != "all":
+        body = f"Welcome to Capital Desk, {username.capitalize()}!! Best wishes on your financial journey. 🚀"
+    else:
+        body = "Welcome to Capital Desk!! Best wishes on your financial journey. 🚀"
+
+    payload_data = {
+        "url": "/",
+        "type": "welcome",
+        "target_user": username or "all"
+    }
+
+    result = send_web_push(
+        title=title,
+        body=body,
+        data_payload=payload_data,
+        target_topic="welcome",
+        specific_tokens=specific_tokens
+    )
+    result["target_username"] = username or "all"
+    return result
+
+
 @notifications_bp.route("/api/admin/notifications/send-welcome", methods=["POST"])
 @admin_required
 def admin_send_welcome():
@@ -504,10 +576,9 @@ def admin_send_welcome():
     """
     data = request.get_json(silent=True) or request.form.to_dict() or {}
     target_user = (data.get("username") or data.get("target_username") or "").strip()
+    base_url = request.url_root.rstrip("/") if request else ""
 
-    title = "🎉 Welcome to Capital Desk!"
     if target_user and target_user.lower() != "all":
-        body = f"Welcome to Capital Desk, {target_user.capitalize()}!! Best wishes on your financial journey. 🚀"
         specific_tokens = get_user_tokens(target_user)
         if not specific_tokens:
             return jsonify({
@@ -517,7 +588,6 @@ def admin_send_welcome():
                 "target_username": target_user
             })
     else:
-        body = "Welcome to Capital Desk!! Best wishes on your financial journey. 🚀"
         active_tokens = get_active_tokens()
         if not active_tokens:
             return jsonify({
@@ -528,17 +598,11 @@ def admin_send_welcome():
             })
         specific_tokens = active_tokens
 
-    result = send_web_push(
-        title=title,
-        body=body,
-        data_payload={
-            "url": "/",
-            "type": "welcome",
-            "target_user": target_user or "all"
-        },
-        specific_tokens=specific_tokens
+    result = dispatch_welcome_notification(
+        username=target_user or "all",
+        specific_tokens=specific_tokens,
+        base_url=base_url
     )
-    result["target_username"] = target_user or "all"
     return jsonify(result)
 
 

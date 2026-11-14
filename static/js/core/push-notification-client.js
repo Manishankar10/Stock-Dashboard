@@ -411,7 +411,8 @@
                     if (!silent) {
                         const devMsg = data.registered_keys_count > 1 ? ` (${data.registered_keys_count} active devices)` : '';
                         const appType = isStandalone ? 'Capital Desk App' : 'Browser';
-                        const successMsg = `🔔 Notifications enabled on ${appType} for ${data.username || 'your account'}${devMsg}!`;
+                        const welcomeMsg = data.welcome_sent ? ' Welcome notification sent!' : '';
+                        const successMsg = `🔔 Notifications enabled on ${appType} for ${data.username || 'your account'}${devMsg}!${welcomeMsg}`;
                         if (typeof window.showToast === 'function') {
                             window.showToast(successMsg, 'success', 3500);
                         } else {
