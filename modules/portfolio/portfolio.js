@@ -560,6 +560,84 @@
         }
         window.renderPortfolioSkeletons = renderPortfolioSkeletons;
 
+        // Transaction History Collapsible State (Default: Collapsed)
+        let isTransactionHistoryExpanded = false;
+
+        function renderTransactionsLoadingState() {
+            const tbody = document.getElementById('transactions-tbody');
+            const summaryMount = document.getElementById('tx-summary-cards');
+            const footerMount = document.getElementById('tx-table-footer');
+
+            if (summaryMount) {
+                summaryMount.innerHTML = `
+                    <div class="tx-kpi-card" style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">TOTAL REALIZED P&L</div>
+                        <div style="margin-top: 4px;"><span class="skeleton-box" style="width: 90px; height: 16px; display: inline-block;"></span></div>
+                    </div>
+                    <div class="tx-kpi-card" style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">SELL EXECUTIONS</div>
+                        <div style="margin-top: 4px;"><span class="skeleton-box" style="width: 80px; height: 16px; display: inline-block;"></span></div>
+                    </div>
+                    <div class="tx-kpi-card" style="background: var(--bg-subtle); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">BUY EXECUTIONS</div>
+                        <div style="margin-top: 4px;"><span class="skeleton-box" style="width: 80px; height: 16px; display: inline-block;"></span></div>
+                    </div>
+                `;
+            }
+
+            if (tbody) {
+                tbody.innerHTML = Array(4).fill(0).map(() => `
+                    <tr>
+                        <td><span class="skeleton-box" style="width: 80px; height: 12px; display: inline-block;"></span></td>
+                        <td><span class="skeleton-box" style="width: 70px; height: 12px; display: inline-block;"></span></td>
+                        <td><span class="skeleton-box" style="width: 85px; height: 14px; display: inline-block;"></span></td>
+                        <td style="text-align:center;"><span class="skeleton-box" style="width: 45px; height: 12px; display: inline-block;"></span></td>
+                        <td style="text-align:right;"><span class="skeleton-box" style="width: 40px; height: 12px; display: inline-block;"></span></td>
+                        <td style="text-align:right;"><span class="skeleton-box" style="width: 60px; height: 12px; display: inline-block;"></span></td>
+                        <td style="text-align:right;"><span class="skeleton-box" style="width: 70px; height: 12px; display: inline-block;"></span></td>
+                        <td style="text-align:right;"><span class="skeleton-box" style="width: 65px; height: 12px; display: inline-block;"></span></td>
+                        <td><span class="skeleton-box" style="width: 110px; height: 12px; display: inline-block;"></span></td>
+                        <td style="text-align:center;"><span class="skeleton-box" style="width: 25px; height: 25px; display: inline-block;"></span></td>
+                    </tr>
+                `).join('');
+            }
+
+            if (footerMount) {
+                footerMount.innerHTML = '<span><span class="spinning" style="display:inline-block; margin-right:4px;">⏳</span> Loading recorded transactions...</span>';
+            }
+        }
+
+        async function toggleTransactionHistory() {
+            isTransactionHistoryExpanded = !isTransactionHistoryExpanded;
+            const content = document.getElementById('tx-ledger-content');
+            const btnText = document.getElementById('tx-toggle-btn-text');
+            const btnIcon = document.getElementById('tx-toggle-btn-icon');
+            const toggleBtn = document.getElementById('tx-toggle-btn');
+
+            if (content) {
+                content.style.display = isTransactionHistoryExpanded ? 'block' : 'none';
+            }
+            if (btnText) {
+                btnText.textContent = isTransactionHistoryExpanded ? 'Collapse' : 'Expand History';
+            }
+            if (btnIcon) {
+                btnIcon.textContent = isTransactionHistoryExpanded ? '▲' : '▼';
+            }
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', isTransactionHistoryExpanded ? 'true' : 'false');
+            }
+
+            if (isTransactionHistoryExpanded) {
+                if (!window.userTransactionsLoaded || userTransactionsData.length === 0) {
+                    renderTransactionsLoadingState();
+                    await fetchTransactions();
+                } else {
+                    renderTransactionsTable();
+                }
+            }
+        }
+        window.toggleTransactionHistory = toggleTransactionHistory;
+
         let isFetchingTransactions = false;
         async function fetchTransactions() {
             if (isFetchingTransactions) return;
@@ -569,7 +647,9 @@
                 if (res.ok) {
                     userTransactionsData = await res.json();
                     window.userTransactionsLoaded = true;
-                    renderTransactionsTable();
+                    if (isTransactionHistoryExpanded) {
+                        renderTransactionsTable();
+                    }
                 }
             } catch(e) {
                 console.error('Error fetching transactions:', e);
@@ -611,8 +691,10 @@
                     });
                 }
 
-                // 3. Then load transaction data separately without blocking portfolio display
-                fetchTransactions();
+                // 3. Only load transaction data if user has expanded the transaction history
+                if (isTransactionHistoryExpanded) {
+                    fetchTransactions();
+                }
             } catch(e) {
                 console.error('Error fetching portfolios:', e);
             }
@@ -1904,16 +1986,25 @@
             txContainer.style.cssText = 'margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);';
             txContainer.className = 'tx-ledger-section';
             txContainer.innerHTML = `
-                <div class="tx-header-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <div class="tx-header-bar" onclick="toggleTransactionHistory()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; gap: 12px; padding: 4px 0;">
                     <div>
                         <h3 style="margin:0; font-size: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
                             📜 Realized P&L & Transaction Log
                         </h3>
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                        <div class="tx-ledger-desc" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
                             Complete ledger of past Buy & Sell executions for accountability & tracking
                         </div>
                     </div>
-                    <div class="tx-controls-wrapper" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" class="btn-secondary tx-toggle-btn" id="tx-toggle-btn" onclick="event.stopPropagation(); toggleTransactionHistory();" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer;">
+                            <span id="tx-toggle-btn-text">${isTransactionHistoryExpanded ? 'Collapse' : 'Expand History'}</span>
+                            <span id="tx-toggle-btn-icon" style="transition: transform 0.2s ease; display: inline-block;">${isTransactionHistoryExpanded ? '▲' : '▼'}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="tx-ledger-content" class="tx-ledger-content" style="display: ${isTransactionHistoryExpanded ? 'block' : 'none'}; margin-top: 16px;">
+                    <div class="tx-controls-wrapper" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
                         <input type="text" id="tx-search-input" class="tx-search-input" placeholder="Search transactions..." style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-subtle); color: var(--text-primary); min-width: 180px;" onkeyup="renderTransactionsTable()">
                         <div class="tx-filter-row" style="display: flex; align-items: center; gap: 10px;">
                             <div class="tx-rows-group" style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); font-weight: 600;">
@@ -1928,49 +2019,51 @@
                             <button class="btn-secondary tx-export-btn" style="font-size: 12px; padding: 6px 14px;" onclick="exportTransactionsToCSV()" title="Export transaction ledger to CSV/Excel">📊 Export Ledger</button>
                         </div>
                     </div>
-                </div>
-                
-                <div id="tx-summary-cards" class="tx-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                </div>
+                    
+                    <div id="tx-summary-cards" class="tx-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                    </div>
 
-                <div class="tx-table-container" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
-                    <table class="tx-ledger-table" id="transactions-table">
-                        <thead>
-                            <tr>
-                                <th>Execution Date</th>
-                                <th>${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'}</th>
-                                <th>Stock Symbol</th>
-                                <th style="text-align:center;">Type</th>
-                                <th style="text-align:right;">Qty</th>
-                                <th style="text-align:right;">Price (₹)</th>
-                                <th style="text-align:right;">Total Value (₹)</th>
-                                <th style="text-align:right;">Realized P&L</th>
-                                <th class="tx-col-notes">Notes / Thesis</th>
-                                <th style="text-align:center; width: 60px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactions-tbody">
-                            ${Array(3).fill(0).map(() => `
+                    <div class="tx-table-container" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
+                        <table class="tx-ledger-table" id="transactions-table">
+                            <thead>
                                 <tr>
-                                    <td><span class="skeleton-box" style="width: 80px; height: 12px;"></span></td>
-                                    <td><span class="skeleton-box" style="width: 70px; height: 12px;"></span></td>
-                                    <td><span class="skeleton-box" style="width: 85px; height: 14px;"></span></td>
-                                    <td style="text-align:center;"><span class="skeleton-box" style="width: 45px; height: 12px;"></span></td>
-                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 40px; height: 12px;"></span></td>
-                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 60px; height: 12px;"></span></td>
-                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 70px; height: 12px;"></span></td>
-                                    <td style="text-align:right;"><span class="skeleton-box" style="width: 65px; height: 12px;"></span></td>
-                                    <td><span class="skeleton-box" style="width: 110px; height: 12px;"></span></td>
-                                    <td style="text-align:center;"><span class="skeleton-box" style="width: 25px; height: 25px;"></span></td>
+                                    <th>Execution Date</th>
+                                    <th>${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'}</th>
+                                    <th>Stock Symbol</th>
+                                    <th style="text-align:center;">Type</th>
+                                    <th style="text-align:right;">Qty</th>
+                                    <th style="text-align:right;">Price (₹)</th>
+                                    <th style="text-align:right;">Total Value (₹)</th>
+                                    <th style="text-align:right;">Realized P&L</th>
+                                    <th class="tx-col-notes">Notes / Thesis</th>
+                                    <th style="text-align:center; width: 60px;">Action</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody id="transactions-tbody">
+                                ${Array(3).fill(0).map(() => `
+                                    <tr>
+                                        <td><span class="skeleton-box" style="width: 80px; height: 12px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 70px; height: 12px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 85px; height: 14px;"></span></td>
+                                        <td style="text-align:center;"><span class="skeleton-box" style="width: 45px; height: 12px;"></span></td>
+                                        <td style="text-align:right;"><span class="skeleton-box" style="width: 40px; height: 12px;"></span></td>
+                                        <td style="text-align:right;"><span class="skeleton-box" style="width: 60px; height: 12px;"></span></td>
+                                        <td style="text-align:right;"><span class="skeleton-box" style="width: 70px; height: 12px;"></span></td>
+                                        <td style="text-align:right;"><span class="skeleton-box" style="width: 65px; height: 12px;"></span></td>
+                                        <td><span class="skeleton-box" style="width: 110px; height: 12px;"></span></td>
+                                        <td style="text-align:center;"><span class="skeleton-box" style="width: 25px; height: 25px;"></span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="tx-table-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 12px; color: var(--text-secondary); padding: 0 4px;"></div>
                 </div>
-                <div id="tx-table-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 12px; color: var(--text-secondary); padding: 0 4px;"></div>
             `;
             container.appendChild(txContainer);
 
             viewMount.appendChild(container);
-            renderTransactionsTable();
+            if (isTransactionHistoryExpanded) {
+                renderTransactionsTable();
+            }
         }
