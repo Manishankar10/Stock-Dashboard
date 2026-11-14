@@ -193,17 +193,17 @@
                     <div class="qr-filter-section-content">
                         <div class="qr-options-list" id="qr-watchlist-options-desktop">
                             <label class="qr-radio-item">
-                                <input type="radio" name="qr-watchlist-desktop" value="all" onchange="window.setQrWatchlistScope('all')">
+                                <input type="radio" name="qr-watchlist-desktop" value="all" onchange="window.setQrWatchlistScope('all', 'desktop')">
                                 <span class="qr-radio-label">No filter</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
                             <label class="qr-radio-item active">
-                                <input type="radio" name="qr-watchlist-desktop" value="portfolio" checked onchange="window.setQrWatchlistScope('portfolio')">
+                                <input type="radio" name="qr-watchlist-desktop" value="portfolio" checked onchange="window.setQrWatchlistScope('portfolio', 'desktop')">
                                 <span class="qr-radio-label">In {{ portfolio_label|lower }}</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
                             <label class="qr-radio-item">
-                                <input type="radio" name="qr-watchlist-desktop" value="any" onchange="window.setQrWatchlistScope('any')">
+                                <input type="radio" name="qr-watchlist-desktop" value="any" onchange="window.setQrWatchlistScope('any', 'desktop')">
                                 <span class="qr-radio-label">In any watchlist</span>
                                 <span class="qr-check-icon">✓</span>
                             </label>
@@ -411,17 +411,17 @@
                 <div class="qr-filter-section-content">
                     <div class="qr-options-list" id="qr-watchlist-options-mobile">
                         <label class="qr-radio-item">
-                            <input type="radio" name="qr-watchlist-mobile" value="all" onchange="window.setQrWatchlistScope('all')">
+                            <input type="radio" name="qr-watchlist-mobile" value="all" onchange="window.setQrWatchlistScope('all', 'mobile')" onclick="window.setQrWatchlistScope('all', 'mobile')">
                             <span class="qr-radio-label">No filter</span>
                             <span class="qr-check-icon">✓</span>
                         </label>
                         <label class="qr-radio-item active">
-                            <input type="radio" name="qr-watchlist-mobile" value="portfolio" checked onchange="window.setQrWatchlistScope('portfolio')">
+                            <input type="radio" name="qr-watchlist-mobile" value="portfolio" checked onchange="window.setQrWatchlistScope('portfolio', 'mobile')" onclick="window.setQrWatchlistScope('portfolio', 'mobile')">
                             <span class="qr-radio-label">In {{ portfolio_label|lower }}</span>
                             <span class="qr-check-icon">✓</span>
                         </label>
                         <label class="qr-radio-item">
-                            <input type="radio" name="qr-watchlist-mobile" value="any" onchange="window.setQrWatchlistScope('any')">
+                            <input type="radio" name="qr-watchlist-mobile" value="any" onchange="window.setQrWatchlistScope('any', 'mobile')" onclick="window.setQrWatchlistScope('any', 'mobile')">
                             <span class="qr-radio-label">In any watchlist</span>
                             <span class="qr-check-icon">✓</span>
                         </label>

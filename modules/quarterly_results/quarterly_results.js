@@ -779,17 +779,17 @@
 
             let html = `
                 <label class="qr-radio-item ${isAll ? 'active' : ''}">
-                    <input type="radio" name="qr-watchlist-${source}" value="all" ${isAll ? 'checked' : ''} onchange="window.setQrWatchlistScope('all')">
+                    <input type="radio" name="qr-watchlist-${source}" value="all" ${isAll ? 'checked' : ''} onchange="window.setQrWatchlistScope('all', '${source}')" onclick="window.setQrWatchlistScope('all', '${source}')">
                     <span class="qr-radio-label">No filter</span>
                     <span class="qr-check-icon">✓</span>
                 </label>
                 <label class="qr-radio-item ${isPf ? 'active' : ''}">
-                    <input type="radio" name="qr-watchlist-${source}" value="portfolio" ${isPf ? 'checked' : ''} onchange="window.setQrWatchlistScope('portfolio')">
+                    <input type="radio" name="qr-watchlist-${source}" value="portfolio" ${isPf ? 'checked' : ''} onchange="window.setQrWatchlistScope('portfolio', '${source}')" onclick="window.setQrWatchlistScope('portfolio', '${source}')">
                     <span class="qr-radio-label">In portfolio</span>
                     <span class="qr-check-icon">✓</span>
                 </label>
                 <label class="qr-radio-item ${isAny ? 'active' : ''}">
-                    <input type="radio" name="qr-watchlist-${source}" value="any" ${isAny ? 'checked' : ''} onchange="window.setQrWatchlistScope('any')">
+                    <input type="radio" name="qr-watchlist-${source}" value="any" ${isAny ? 'checked' : ''} onchange="window.setQrWatchlistScope('any', '${source}')" onclick="window.setQrWatchlistScope('any', '${source}')">
                     <span class="qr-radio-label">In any watchlist</span>
                     <span class="qr-check-icon">✓</span>
                 </label>
@@ -799,7 +799,7 @@
                 const isActive = qrState.watchlist === name;
                 html += `
                     <label class="qr-radio-item ${isActive ? 'active' : ''}">
-                        <input type="radio" name="qr-watchlist-${source}" value="${escapeHtml(name)}" ${isActive ? 'checked' : ''} onchange="window.setQrWatchlistScope('${escapeHtml(name)}')">
+                        <input type="radio" name="qr-watchlist-${source}" value="${escapeHtml(name)}" ${isActive ? 'checked' : ''} onchange="window.setQrWatchlistScope('${escapeHtml(name)}', '${source}')" onclick="window.setQrWatchlistScope('${escapeHtml(name)}', '${source}')">
                         <span class="qr-radio-label">In ${escapeHtml(name)}</span>
                         <span class="qr-check-icon">✓</span>
                     </label>
@@ -808,6 +808,7 @@
 
             containerEl.innerHTML = html;
         });
+        initWatchlistMobileClickListener();
     }
 
     /**
@@ -916,10 +917,31 @@
         loadQuarterlyResults();
     }
 
-    function setQrWatchlistScope(scope) {
-        qrState.watchlist = scope || 'portfolio';
-        qrState.currentPage = 1;
-        loadQuarterlyResults();
+    let _lastWatchlistScopeCall = 0;
+    let _lastWatchlistScopeVal = null;
+
+    function setQrWatchlistScope(scope, source) {
+        const now = Date.now();
+        const isDuplicate = (_lastWatchlistScopeVal === scope && (now - _lastWatchlistScopeCall) < 250);
+        _lastWatchlistScopeCall = now;
+        _lastWatchlistScopeVal = scope;
+
+        if (!isDuplicate) {
+            qrState.watchlist = scope || 'portfolio';
+            qrState.currentPage = 1;
+            loadQuarterlyResults();
+        }
+
+        // In mobile filter popup, clicking any watchlist closes the popup
+        const mobileModal = document.getElementById('qrMobileFilterModal');
+        const isMobileModalOpen = mobileModal && (
+            mobileModal.style.display === 'flex' ||
+            mobileModal.style.display === 'block' ||
+            (window.getComputedStyle && window.getComputedStyle(mobileModal).display !== 'none')
+        );
+        if (source === 'mobile' || isMobileModalOpen) {
+            closeQrMobileFilter();
+        }
     }
 
     function setQrDateFilter(d) {
@@ -1640,10 +1662,27 @@
     window.initQrMobileScroll = initQrMobileScroll;
     window.qrState = qrState;
 
+    function initWatchlistMobileClickListener() {
+        const mobileWlContainer = document.getElementById('qr-watchlist-options-mobile');
+        if (mobileWlContainer && !mobileWlContainer._qrClickBound) {
+            mobileWlContainer._qrClickBound = true;
+            mobileWlContainer.addEventListener('click', (e) => {
+                const item = e.target.closest('.qr-radio-item');
+                if (item) {
+                    const input = item.querySelector('input[type="radio"]');
+                    if (input && input.value) {
+                        setQrWatchlistScope(input.value, 'mobile');
+                    }
+                }
+            });
+        }
+    }
+
     // Auto-init on DOMContentLoaded if starting on quarterly-results tab
     document.addEventListener('DOMContentLoaded', () => {
         initCustomQueryModalListeners();
         initQrMobileScroll();
+        initWatchlistMobileClickListener();
         if (window.INITIAL_TAB === 'quarterly-results' || window.currentTab === 'quarterly-results') {
             loadQuarterlyResults();
         }
