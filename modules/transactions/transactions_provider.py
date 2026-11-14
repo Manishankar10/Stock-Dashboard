@@ -149,6 +149,7 @@ class TransactionsProvider:
                     data = json.load(f)
                     if isinstance(data, list):
                         self._cache_deals = data
+                        loaded = True
                         if self._last_fetch_time == 0:
                             try:
                                 self._last_fetch_time = os.path.getmtime(self.storage_file)
@@ -156,6 +157,22 @@ class TransactionsProvider:
                                 self._last_fetch_time = time.time()
             except Exception as e:
                 print(f"[TransactionsProvider] Warning loading storage file {self.storage_file}: {e}")
+
+        # Bundled seed fallback if neither DB nor storage file was found (e.g. fresh production deployment)
+        seed_file = Path(__file__).resolve().parent / "seed_transactions.json"
+        if not loaded and len(self._cache_deals) == 0 and seed_file.exists():
+            try:
+                with open(seed_file, "r", encoding="utf-8") as f:
+                    seed_data = json.load(f)
+                    if isinstance(seed_data, list) and seed_data:
+                        print(f"[TransactionsProvider] Loaded {len(seed_data)} seed deals from {seed_file.name}")
+                        self._cache_deals = seed_data
+                        loaded = True
+                        if self._last_fetch_time == 0:
+                            self._last_fetch_time = time.time()
+                        self._persist_deals()
+            except Exception as e:
+                print(f"[TransactionsProvider] Warning loading seed file {seed_file}: {e}")
 
         # Sanitize and repair any legacy truncated dates in _cache_deals
         repaired = False
@@ -177,8 +194,6 @@ class TransactionsProvider:
                 self._persist_deals()
             except Exception as ex:
                 print(f"[TransactionsProvider] Warning auto-repairing dates: {ex}")
-            except Exception as e:
-                print(f"[TransactionsProvider] Warning loading storage file {self.storage_file}: {e}")
 
     def _persist_deals(self):
         """Save accumulated deals strictly to Database (MongoDB Atlas & SQLite) and backup storage file."""
@@ -970,7 +985,7 @@ class TransactionsProvider:
         }
 
     def _fetch_block_deals_range(self, session: requests.Session, start_d: date, end_d: date) -> List[Dict[str, Any]]:
-        """Fetch block deals for a date range."""
+        """Fetch block deals for a date range, auto-slicing by day if NSE caps results at 70 records."""
         from_str = start_d.strftime("%d-%m-%Y")
         to_str = end_d.strftime("%d-%m-%Y")
         url = f"{NSE_HISTORICAL_DEALS_API}?optionType=block_deals&from={from_str}&to={to_str}"
@@ -978,6 +993,20 @@ class TransactionsProvider:
             res = session.get(url, headers=HEADERS, timeout=12)
             if res.status_code == 200:
                 items = res.json().get("data", [])
+                if len(items) >= 70 and (end_d - start_d).days >= 1:
+                    all_sub = []
+                    curr = start_d
+                    while curr <= end_d:
+                        day_str = curr.strftime("%d-%m-%Y")
+                        try:
+                            r_day = session.get(f"{NSE_HISTORICAL_DEALS_API}?optionType=block_deals&from={day_str}&to={day_str}", headers=HEADERS, timeout=10)
+                            if r_day.status_code == 200:
+                                all_sub.extend(r_day.json().get("data", []))
+                        except Exception:
+                            pass
+                        curr += timedelta(days=1)
+                    items = all_sub
+
                 deals = []
                 for it in items:
                     d = self._normalize_largedeal(it, "block")
