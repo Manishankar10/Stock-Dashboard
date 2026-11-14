@@ -521,9 +521,7 @@
             const data = await res.json();
             if (data.success && data.reports && data.reports.length > 0) {
                 const allReports = data.reports;
-                const tabCounts = data.tab_counts || {};
                 const sourcesStr = (data.allowed_sources && data.allowed_sources.length > 0) ? data.allowed_sources.join(', ') : 'trendlyne.com, screener.in, bseindia.com';
-                let activeEmbeddedTab = 'all';
 
                 containerEl.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:11.5px; color:var(--text-secondary); flex-wrap:wrap; gap:8px;">
@@ -536,20 +534,6 @@
                                 </svg>
                             </button>
                         </div>
-                    </div>
-
-                    <!-- Category Tabs Bar for Embedded Section -->
-                    <div class="br-tabs-nav br-embedded-tabs" id="br-emb-tabs-${esc(cleanSym)}" style="margin-bottom: 12px; padding: 6px 0; border-bottom: 1px solid var(--border-color, rgba(148,163,184,0.15)); background: transparent;">
-                        ${CATEGORY_DEFS.map(cat => {
-                            const count = tabCounts[cat.id] !== undefined ? tabCounts[cat.id] : (cat.id === 'all' ? allReports.length : allReports.filter(r => r.category === cat.id).length);
-                            return `
-                                <button type="button" class="br-tab-btn ${cat.id === 'all' ? 'active' : ''}" data-cat="${cat.id}">
-                                    <span class="br-tab-icon">${cat.icon}</span>
-                                    <span class="br-tab-label">${cat.label}</span>
-                                    <span class="br-tab-badge">${count}</span>
-                                </button>
-                            `;
-                        }).join('')}
                     </div>
 
                     <div class="br-embedded-table-wrap">
@@ -569,38 +553,7 @@
                 `;
 
                 const tbody = document.getElementById(`br-embedded-tbody-${cleanSym}`);
-                const countBadge = document.getElementById(`br-emb-count-${cleanSym}`);
-
-                function renderEmbeddedFiltered() {
-                    let filtered = allReports;
-                    if (activeEmbeddedTab !== 'all') {
-                        filtered = filtered.filter(r => r.category === activeEmbeddedTab);
-                    }
-                    renderRows(filtered, tbody);
-                    if (countBadge) {
-                        const catObj = CATEGORY_DEFS.find(c => c.id === activeEmbeddedTab);
-                        const catLabel = catObj && catObj.id !== 'all' ? catObj.label : 'All';
-                        countBadge.innerText = `✓ ${filtered.length} Research Document${filtered.length === 1 ? '' : 's'} (${catLabel})`;
-                    }
-                }
-
-                // Initial render
-                renderEmbeddedFiltered();
-
-                // Wire Tab Click Events
-                const tabsContainer = document.getElementById(`br-emb-tabs-${cleanSym}`);
-                if (tabsContainer) {
-                    tabsContainer.querySelectorAll('.br-tab-btn').forEach(btn => {
-                        btn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            const targetCat = btn.getAttribute('data-cat');
-                            activeEmbeddedTab = targetCat || 'all';
-                            tabsContainer.querySelectorAll('.br-tab-btn').forEach(b => b.classList.remove('active'));
-                            btn.classList.add('active');
-                            renderEmbeddedFiltered();
-                        });
-                    });
-                }
+                renderRows(allReports, tbody);
 
             } else {
                 const sourcesStr = (data.allowed_sources && data.allowed_sources.length > 0) ? data.allowed_sources.join(', ') : 'trendlyne.com, screener.in, bseindia.com';
