@@ -1483,6 +1483,342 @@
 
         <!-- TAB 3: System Setting -->
         <div id="tab-settings" class="tab-content">
+
+            <!-- EXCHANGE DATASETS MASTER OVERVIEW TABLE -->
+            <div class="metric-card" style="margin-bottom: 24px; padding: 20px 22px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            📋 Exchange Datasets Master Overview
+                        </h4>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                            Storage Engine: <strong style="color: #10b981;">MongoDB Atlas + SQLite</strong>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="refreshAllDatasetStatuses()" style="font-size: 12px; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                            <span>🔄</span> Refresh All Statuses
+                        </button>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); border-radius: 10px;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 840px; font-size: 13px;">
+                        <thead>
+                            <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color);">
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 250px;">Management Dataset</th>
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 175px;">Total Records</th>
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 215px;">Last Synced</th>
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Source</th>
+                                <th style="text-align: right; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 130px;">Sync Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 1. Quarterly Results -->
+                            <tr id="sync-tbl-row-qr">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">📊</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Quarterly Results</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Financial Disclosures &amp; Key Ratios</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-qr" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">5,019 Companies</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-qr" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.25); font-size: 11px; font-weight: 600;">Screener.in / Exchange Filings</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-qr" class="btn" onclick="triggerAdminQuarterlyResultsRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #0284c7; color: #fff; border: 1px solid #0284c7; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-qr" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-qr" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-qr" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Scanning live quarterly disclosures...
+                                            </span>
+                                            <span id="sync-tbl-pct-qr" style="font-weight: 700; color: #0284c7; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-qr" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0284c7, #10b981); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-qr" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-qr"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 2. Shareholding Pattern -->
+                            <tr id="sync-tbl-row-shp">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">🤝</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Shareholding Pattern</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Promoter, FII &amp; DII Disclosures</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-shp" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">2,407 Disclosures</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-shp" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 11px; font-weight: 600;">NSE / BSE Exchange Feeds</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-shp" class="btn" onclick="triggerAdminShareholdingRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #10b981; color: #fff; border: 1px solid #10b981; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-shp" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-shp" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-shp" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Refreshing shareholding disclosures...
+                                            </span>
+                                            <span id="sync-tbl-pct-shp" style="font-weight: 700; color: #10b981; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-shp" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-shp" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-shp"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 3. Market Transactions -->
+                            <tr id="sync-tbl-row-tx">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">⚡</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Market Transactions</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">PIT Insider, Bulk &amp; Block Deals</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-tx" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">9,683 Deals</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-tx" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.25); font-size: 11px; font-weight: 600;">NSE Deals (PIT / Block / Bulk)</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-tx" class="btn" onclick="triggerAdminTransactionsSync(false)" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #ea580c; color: #fff; border: 1px solid #ea580c; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-tx" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-tx" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-tx" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Syncing transactions in monthly chunks...
+                                            </span>
+                                            <span id="sync-tbl-pct-tx" style="font-weight: 700; color: #ea580c; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-tx" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ea580c, #f59e0b); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-tx" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-tx"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 4. Corporate Actions -->
+                            <tr id="sync-tbl-row-corp">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">📢</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Corporate Actions</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Bonus, Splits, Rights &amp; Dividends</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-corp" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">1,061 Announcements</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-corp" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25); font-size: 11px; font-weight: 600;">NSE Exchange Disclosures</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-corp" class="btn" onclick="triggerAdminCorporateActionsRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #a855f7; color: #fff; border: 1px solid #a855f7; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-corp" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-corp" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-corp" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Connecting to official exchange portals...
+                                            </span>
+                                            <span id="sync-tbl-pct-corp" style="font-weight: 700; color: #a855f7; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-corp" style="width: 0%; height: 100%; background: linear-gradient(90deg, #a855f7, #6366f1); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-corp" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-corp"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 5. Industries Overview -->
+                            <tr id="sync-tbl-row-ind">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">🏭</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Industries Overview</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">SEBI 4-Tier Classification &amp; Sectors</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-ind" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">188 Industries</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-ind" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); font-size: 11px; font-weight: 600;">SEBI / NSE Macro Sectors</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-ind" class="btn" onclick="triggerAdminIndustriesRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #3b82f6; color: #fff; border: 1px solid #3b82f6; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-ind" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-ind" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-ind" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Scraping latest industry metrics...
+                                            </span>
+                                            <span id="sync-tbl-pct-ind" style="font-weight: 700; color: #3b82f6; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-ind" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #0284c7); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-ind" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-ind"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 6. IPO & GMP Tracker -->
+                            <tr id="sync-tbl-row-ipo">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">🚀</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">IPO &amp; GMP Tracker</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Mainboard &amp; SME Subscriptions / GMP</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-ipo" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">30 Issues</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-ipo" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(99, 102, 241, 0.12); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.25); font-size: 11px; font-weight: 600;">NSE / Chittorgarh GMP</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-ipo" class="btn" onclick="triggerAdminIpoRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #6366f1; color: #fff; border: 1px solid #6366f1; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-ipo" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-ipo" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-ipo" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Connecting to live IPO &amp; GMP portals...
+                                            </span>
+                                            <span id="sync-tbl-pct-ipo" style="font-weight: 700; color: #6366f1; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-ipo" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-ipo" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-ipo"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 7. Superstar Investors -->
+                            <tr id="sync-tbl-row-peoples">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">⭐</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Superstar Investors</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Ace Investors, FII &amp; DII Portfolios</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-peoples" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">242 Investors</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-peoples" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(234, 179, 8, 0.12); color: #ca8a04; border: 1px solid rgba(234, 179, 8, 0.25); font-size: 11px; font-weight: 600;">Ace Investors &amp; MF Feeds</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-peoples" class="btn" onclick="triggerAdminPeoplesSync()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #ca8a04; color: #fff; border: 1px solid #ca8a04; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-peoples" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-peoples" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-peoples" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Syncing superstar investor portfolios...
+                                            </span>
+                                            <span id="sync-tbl-pct-peoples" style="font-weight: 700; color: #ca8a04; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-peoples" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ca8a04, #eab308); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-peoples" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-peoples"></span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="metric-card" style="margin-bottom: 24px; max-width: 100%;">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <div>
@@ -1970,341 +2306,6 @@
                 </div>
                 <div style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
                     Storage Engine: <strong style="color: #10b981;">MongoDB Atlas + SQLite</strong>
-                </div>
-            </div>
-
-            <!-- EXCHANGE DATASETS MASTER OVERVIEW TABLE -->
-            <div class="metric-card" style="margin-bottom: 24px; padding: 20px 22px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-                    <div>
-                        <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                            📋 Exchange Datasets Master Overview
-                        </h4>
-                        <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
-                            Live record counts, synchronization telemetry, and one-click ingestion across all core exchange feeds.
-                        </p>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <button type="button" class="btn btn-secondary" onclick="refreshAllDatasetStatuses()" style="font-size: 12px; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                            <span>🔄</span> Refresh All Statuses
-                        </button>
-                    </div>
-                </div>
-
-                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); border-radius: 10px;">
-                    <table style="width: 100%; border-collapse: collapse; min-width: 840px; font-size: 13px;">
-                        <thead>
-                            <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color);">
-                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 250px;">Management Dataset</th>
-                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 175px;">Total Records</th>
-                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 215px;">Last Synced</th>
-                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Source</th>
-                                <th style="text-align: right; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 130px;">Sync Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- 1. Quarterly Results -->
-                            <tr id="sync-tbl-row-qr">
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 18px;">📊</span>
-                                        <div>
-                                            <div style="font-weight: 600; color: var(--text-primary);">Quarterly Results</div>
-                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Financial Disclosures &amp; Key Ratios</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-qr" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">5,019 Companies</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-last-qr" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span class="badge" style="background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.25); font-size: 11px; font-weight: 600;">Screener.in / Exchange Filings</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
-                                    <button type="button" id="sync-tbl-btn-qr" class="btn" onclick="triggerAdminQuarterlyResultsRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #0284c7; color: #fff; border: 1px solid #0284c7; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
-                                </td>
-                            </tr>
-                            <tr id="sync-tbl-status-row-qr" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
-                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
-                                    <div id="sync-tbl-progress-box-qr" style="display: none;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
-                                            <span id="sync-tbl-msg-qr" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Scanning live quarterly disclosures...
-                                            </span>
-                                            <span id="sync-tbl-pct-qr" style="font-weight: 700; color: #0284c7; font-feature-settings: 'tnum';">0%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                                            <div id="sync-tbl-bar-qr" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0284c7, #10b981); border-radius: 999px; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-                                    <div id="sync-tbl-result-box-qr" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
-                                        <span id="sync-tbl-result-qr"></span>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- 2. Shareholding Pattern -->
-                            <tr id="sync-tbl-row-shp">
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 18px;">🤝</span>
-                                        <div>
-                                            <div style="font-weight: 600; color: var(--text-primary);">Shareholding Pattern</div>
-                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Promoter, FII &amp; DII Disclosures</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-shp" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">2,407 Disclosures</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-last-shp" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 11px; font-weight: 600;">NSE / BSE Exchange Feeds</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
-                                    <button type="button" id="sync-tbl-btn-shp" class="btn" onclick="triggerAdminShareholdingRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #10b981; color: #fff; border: 1px solid #10b981; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
-                                </td>
-                            </tr>
-                            <tr id="sync-tbl-status-row-shp" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
-                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
-                                    <div id="sync-tbl-progress-box-shp" style="display: none;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
-                                            <span id="sync-tbl-msg-shp" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Refreshing shareholding disclosures...
-                                            </span>
-                                            <span id="sync-tbl-pct-shp" style="font-weight: 700; color: #10b981; font-feature-settings: 'tnum';">0%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                                            <div id="sync-tbl-bar-shp" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 999px; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-                                    <div id="sync-tbl-result-box-shp" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
-                                        <span id="sync-tbl-result-shp"></span>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- 3. Market Transactions -->
-                            <tr id="sync-tbl-row-tx">
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 18px;">⚡</span>
-                                        <div>
-                                            <div style="font-weight: 600; color: var(--text-primary);">Market Transactions</div>
-                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">PIT Insider, Bulk &amp; Block Deals</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-tx" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">9,683 Deals</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-last-tx" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span class="badge" style="background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.25); font-size: 11px; font-weight: 600;">NSE Deals (PIT / Block / Bulk)</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
-                                    <button type="button" id="sync-tbl-btn-tx" class="btn" onclick="triggerAdminTransactionsSync(false)" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #ea580c; color: #fff; border: 1px solid #ea580c; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
-                                </td>
-                            </tr>
-                            <tr id="sync-tbl-status-row-tx" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
-                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
-                                    <div id="sync-tbl-progress-box-tx" style="display: none;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
-                                            <span id="sync-tbl-msg-tx" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Syncing transactions in monthly chunks...
-                                            </span>
-                                            <span id="sync-tbl-pct-tx" style="font-weight: 700; color: #ea580c; font-feature-settings: 'tnum';">0%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                                            <div id="sync-tbl-bar-tx" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ea580c, #f59e0b); border-radius: 999px; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-                                    <div id="sync-tbl-result-box-tx" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
-                                        <span id="sync-tbl-result-tx"></span>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- 4. Corporate Actions -->
-                            <tr id="sync-tbl-row-corp">
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 18px;">📢</span>
-                                        <div>
-                                            <div style="font-weight: 600; color: var(--text-primary);">Corporate Actions</div>
-                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Bonus, Splits, Rights &amp; Dividends</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-corp" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">1,061 Announcements</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-last-corp" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span class="badge" style="background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25); font-size: 11px; font-weight: 600;">NSE Exchange Disclosures</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
-                                    <button type="button" id="sync-tbl-btn-corp" class="btn" onclick="triggerAdminCorporateActionsRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #a855f7; color: #fff; border: 1px solid #a855f7; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
-                                </td>
-                            </tr>
-                            <tr id="sync-tbl-status-row-corp" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
-                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
-                                    <div id="sync-tbl-progress-box-corp" style="display: none;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
-                                            <span id="sync-tbl-msg-corp" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Connecting to official exchange portals...
-                                            </span>
-                                            <span id="sync-tbl-pct-corp" style="font-weight: 700; color: #a855f7; font-feature-settings: 'tnum';">0%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                                            <div id="sync-tbl-bar-corp" style="width: 0%; height: 100%; background: linear-gradient(90deg, #a855f7, #6366f1); border-radius: 999px; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-                                    <div id="sync-tbl-result-box-corp" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
-                                        <span id="sync-tbl-result-corp"></span>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- 5. Industries Overview -->
-                            <tr id="sync-tbl-row-ind">
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 18px;">🏭</span>
-                                        <div>
-                                            <div style="font-weight: 600; color: var(--text-primary);">Industries Overview</div>
-                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">SEBI 4-Tier Classification &amp; Sectors</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-ind" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">188 Industries</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-last-ind" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); font-size: 11px; font-weight: 600;">SEBI / NSE Macro Sectors</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
-                                    <button type="button" id="sync-tbl-btn-ind" class="btn" onclick="triggerAdminIndustriesRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #3b82f6; color: #fff; border: 1px solid #3b82f6; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
-                                </td>
-                            </tr>
-                            <tr id="sync-tbl-status-row-ind" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
-                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
-                                    <div id="sync-tbl-progress-box-ind" style="display: none;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
-                                            <span id="sync-tbl-msg-ind" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Scraping latest industry metrics...
-                                            </span>
-                                            <span id="sync-tbl-pct-ind" style="font-weight: 700; color: #3b82f6; font-feature-settings: 'tnum';">0%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                                            <div id="sync-tbl-bar-ind" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #0284c7); border-radius: 999px; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-                                    <div id="sync-tbl-result-box-ind" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
-                                        <span id="sync-tbl-result-ind"></span>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- 6. IPO & GMP Tracker -->
-                            <tr id="sync-tbl-row-ipo">
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 18px;">🚀</span>
-                                        <div>
-                                            <div style="font-weight: 600; color: var(--text-primary);">IPO &amp; GMP Tracker</div>
-                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Mainboard &amp; SME Subscriptions / GMP</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-ipo" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">30 Issues</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-last-ipo" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span class="badge" style="background: rgba(99, 102, 241, 0.12); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.25); font-size: 11px; font-weight: 600;">NSE / Chittorgarh GMP</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
-                                    <button type="button" id="sync-tbl-btn-ipo" class="btn" onclick="triggerAdminIpoRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #6366f1; color: #fff; border: 1px solid #6366f1; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
-                                </td>
-                            </tr>
-                            <tr id="sync-tbl-status-row-ipo" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
-                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
-                                    <div id="sync-tbl-progress-box-ipo" style="display: none;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
-                                            <span id="sync-tbl-msg-ipo" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Connecting to live IPO &amp; GMP portals...
-                                            </span>
-                                            <span id="sync-tbl-pct-ipo" style="font-weight: 700; color: #6366f1; font-feature-settings: 'tnum';">0%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                                            <div id="sync-tbl-bar-ipo" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 999px; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-                                    <div id="sync-tbl-result-box-ipo" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
-                                        <span id="sync-tbl-result-ipo"></span>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- 7. Superstar Investors -->
-                            <tr id="sync-tbl-row-peoples">
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 18px;">⭐</span>
-                                        <div>
-                                            <div style="font-weight: 600; color: var(--text-primary);">Superstar Investors</div>
-                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Ace Investors, FII &amp; DII Portfolios</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-peoples" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">242 Investors</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-last-peoples" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span class="badge" style="background: rgba(234, 179, 8, 0.12); color: #ca8a04; border: 1px solid rgba(234, 179, 8, 0.25); font-size: 11px; font-weight: 600;">Ace Investors &amp; MF Feeds</span>
-                                </td>
-                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
-                                    <button type="button" id="sync-tbl-btn-peoples" class="btn" onclick="triggerAdminPeoplesSync()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #ca8a04; color: #fff; border: 1px solid #ca8a04; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
-                                </td>
-                            </tr>
-                            <tr id="sync-tbl-status-row-peoples" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
-                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
-                                    <div id="sync-tbl-progress-box-peoples" style="display: none;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
-                                            <span id="sync-tbl-msg-peoples" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Syncing superstar investor portfolios...
-                                            </span>
-                                            <span id="sync-tbl-pct-peoples" style="font-weight: 700; color: #ca8a04; font-feature-settings: 'tnum';">0%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                                            <div id="sync-tbl-bar-peoples" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ca8a04, #eab308); border-radius: 999px; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-                                    <div id="sync-tbl-result-box-peoples" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
-                                        <span id="sync-tbl-result-peoples"></span>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
 
