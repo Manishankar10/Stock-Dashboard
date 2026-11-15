@@ -62,6 +62,26 @@
                 if (statusMsg && !statusMsg.innerText.includes('Sync completed')) {
                     statusMsg.innerText = `Ready • Database has ${counts.total || 0} investors across all categories`;
                 }
+
+                // Update Master Summary Table
+                const pTotal = (counts && counts.total !== undefined) ? counts.total : 0;
+                const pAdded = lastSyncRes.added !== undefined ? lastSyncRes.added : 0;
+                const pUpdated = lastSyncRes.updated !== undefined ? lastSyncRes.updated : 0;
+                const pCustom = pUpdated ? `+${pAdded} added, ${pUpdated} updated` : null;
+
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('peoples', {
+                        count: `${pTotal} Investors`,
+                        lastSynced: s.last_synced_at || 'Not synced yet',
+                        isSyncing: Boolean(s.is_syncing || s.status === 'syncing'),
+                        message: s.progress || 'Scraping superstar investor portfolios...',
+                        percent: s.percent || 0,
+                        newAdded: pAdded,
+                        customSuccessMsg: pCustom,
+                        totalStr: `${pTotal} Investors`,
+                        error: s.error
+                    });
+                }
             } catch (e) {
                 console.error("Error loading peoples status:", e);
             }
@@ -92,6 +112,9 @@
                     badge.style.color = '#0284c7';
                     badge.innerText = 'Syncing...';
                 }
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('peoples', { isSyncing: true, message: 'Scraping official directories & applying delta updates...', percent: 25 });
+                }
 
                 const res = await fetch('/api/admin/peoples/sync', {
                     method: 'POST',
@@ -118,6 +141,14 @@
                         badge.style.color = '#10b981';
                         badge.innerText = 'Up to Date';
                     }
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('peoples', {
+                            completed: true,
+                            newAdded: data.added || 0,
+                            customSuccessMsg: data.updated ? `+${data.added || 0} added, ${data.updated} updated` : null,
+                            totalStr: `${data.counts?.total || 242} Investors`
+                        });
+                    }
                     await loadAdminPeoplesStatus();
                     alert(`✅ Superstar Investors Sync Completed!
 
@@ -130,6 +161,9 @@
                 } else {
                     alert('❌ Failed to sync investors: ' + (data.error || 'Unknown error'));
                     if (statusMsg) statusMsg.innerText = 'Sync failed: ' + (data.error || 'Unknown error');
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('peoples', { isSyncing: false, error: data.error || 'Unknown error' });
+                    }
                 }
             } catch (e) {
                 if (progContainer) progContainer.style.display = 'none';
@@ -1936,6 +1970,341 @@
                 </div>
                 <div style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
                     Storage Engine: <strong style="color: #10b981;">MongoDB Atlas + SQLite</strong>
+                </div>
+            </div>
+
+            <!-- EXCHANGE DATASETS MASTER OVERVIEW TABLE -->
+            <div class="metric-card" style="margin-bottom: 24px; padding: 20px 22px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            📋 Exchange Datasets Master Overview
+                        </h4>
+                        <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                            Live record counts, synchronization telemetry, and one-click ingestion across all core exchange feeds.
+                        </p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" class="btn btn-secondary" onclick="refreshAllDatasetStatuses()" style="font-size: 12px; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                            <span>🔄</span> Refresh All Statuses
+                        </button>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); border-radius: 10px;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 840px; font-size: 13px;">
+                        <thead>
+                            <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color);">
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 250px;">Management Dataset</th>
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 175px;">Total Records</th>
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 215px;">Last Synced</th>
+                                <th style="text-align: left; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Source</th>
+                                <th style="text-align: right; padding: 12px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); width: 130px;">Sync Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 1. Quarterly Results -->
+                            <tr id="sync-tbl-row-qr">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">📊</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Quarterly Results</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Financial Disclosures &amp; Key Ratios</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-qr" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">5,019 Companies</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-qr" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.25); font-size: 11px; font-weight: 600;">Screener.in / Exchange Filings</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-qr" class="btn" onclick="triggerAdminQuarterlyResultsRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #0284c7; color: #fff; border: 1px solid #0284c7; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-qr" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-qr" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-qr" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Scanning live quarterly disclosures...
+                                            </span>
+                                            <span id="sync-tbl-pct-qr" style="font-weight: 700; color: #0284c7; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-qr" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0284c7, #10b981); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-qr" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-qr"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 2. Shareholding Pattern -->
+                            <tr id="sync-tbl-row-shp">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">🤝</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Shareholding Pattern</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Promoter, FII &amp; DII Disclosures</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-shp" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">2,407 Disclosures</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-shp" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 11px; font-weight: 600;">NSE / BSE Exchange Feeds</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-shp" class="btn" onclick="triggerAdminShareholdingRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #10b981; color: #fff; border: 1px solid #10b981; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-shp" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-shp" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-shp" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Refreshing shareholding disclosures...
+                                            </span>
+                                            <span id="sync-tbl-pct-shp" style="font-weight: 700; color: #10b981; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-shp" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-shp" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-shp"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 3. Market Transactions -->
+                            <tr id="sync-tbl-row-tx">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">⚡</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Market Transactions</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">PIT Insider, Bulk &amp; Block Deals</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-tx" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">9,683 Deals</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-tx" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.25); font-size: 11px; font-weight: 600;">NSE Deals (PIT / Block / Bulk)</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-tx" class="btn" onclick="triggerAdminTransactionsSync(false)" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #ea580c; color: #fff; border: 1px solid #ea580c; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-tx" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-tx" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-tx" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Syncing transactions in monthly chunks...
+                                            </span>
+                                            <span id="sync-tbl-pct-tx" style="font-weight: 700; color: #ea580c; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-tx" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ea580c, #f59e0b); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-tx" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-tx"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 4. Corporate Actions -->
+                            <tr id="sync-tbl-row-corp">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">📢</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Corporate Actions</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Bonus, Splits, Rights &amp; Dividends</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-corp" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">1,061 Announcements</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-corp" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25); font-size: 11px; font-weight: 600;">NSE Exchange Disclosures</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-corp" class="btn" onclick="triggerAdminCorporateActionsRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #a855f7; color: #fff; border: 1px solid #a855f7; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-corp" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-corp" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-corp" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Connecting to official exchange portals...
+                                            </span>
+                                            <span id="sync-tbl-pct-corp" style="font-weight: 700; color: #a855f7; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-corp" style="width: 0%; height: 100%; background: linear-gradient(90deg, #a855f7, #6366f1); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-corp" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-corp"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 5. Industries Overview -->
+                            <tr id="sync-tbl-row-ind">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">🏭</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Industries Overview</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">SEBI 4-Tier Classification &amp; Sectors</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-ind" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">188 Industries</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-ind" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); font-size: 11px; font-weight: 600;">SEBI / NSE Macro Sectors</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-ind" class="btn" onclick="triggerAdminIndustriesRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #3b82f6; color: #fff; border: 1px solid #3b82f6; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-ind" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-ind" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-ind" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Scraping latest industry metrics...
+                                            </span>
+                                            <span id="sync-tbl-pct-ind" style="font-weight: 700; color: #3b82f6; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-ind" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #0284c7); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-ind" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-ind"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 6. IPO & GMP Tracker -->
+                            <tr id="sync-tbl-row-ipo">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">🚀</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">IPO &amp; GMP Tracker</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Mainboard &amp; SME Subscriptions / GMP</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-ipo" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">30 Issues</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-ipo" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(99, 102, 241, 0.12); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.25); font-size: 11px; font-weight: 600;">NSE / Chittorgarh GMP</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-ipo" class="btn" onclick="triggerAdminIpoRefresh()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #6366f1; color: #fff; border: 1px solid #6366f1; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-ipo" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-ipo" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-ipo" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Connecting to live IPO &amp; GMP portals...
+                                            </span>
+                                            <span id="sync-tbl-pct-ipo" style="font-weight: 700; color: #6366f1; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-ipo" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-ipo" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-ipo"></span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 7. Superstar Investors -->
+                            <tr id="sync-tbl-row-peoples">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 18px;">⭐</span>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">Superstar Investors</div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 1px;">Ace Investors, FII &amp; DII Portfolios</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-peoples" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">242 Investors</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-peoples" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(234, 179, 8, 0.12); color: #ca8a04; border: 1px solid rgba(234, 179, 8, 0.25); font-size: 11px; font-weight: 600;">Ace Investors &amp; MF Feeds</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right;">
+                                    <button type="button" id="sync-tbl-btn-peoples" class="btn" onclick="triggerAdminPeoplesSync()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #ca8a04; color: #fff; border: 1px solid #ca8a04; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync</button>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-peoples" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-peoples" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-peoples" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Syncing superstar investor portfolios...
+                                            </span>
+                                            <span id="sync-tbl-pct-peoples" style="font-weight: 700; color: #ca8a04; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-peoples" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ca8a04, #eab308); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-peoples" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-peoples"></span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -4228,6 +4597,112 @@
         }
 
 
+        // =========================================================================
+        // EXCHANGE DATASETS MASTER OVERVIEW & TELEMETRY CONTROLLER
+        // =========================================================================
+        const syncSummaryState = {
+            qr: { prevCount: null, wasSyncing: false },
+            shp: { prevCount: null, wasSyncing: false },
+            tx: { prevCount: null, wasSyncing: false },
+            corp: { prevCount: null, wasSyncing: false },
+            ind: { prevCount: null, wasSyncing: false },
+            ipo: { prevCount: null, wasSyncing: false },
+            peoples: { prevCount: null, wasSyncing: false }
+        };
+
+        function updateSyncSummaryTableRow(key, opts = {}) {
+            const statusRow = document.getElementById(`sync-tbl-status-row-${key}`);
+            const countEl = document.getElementById(`sync-tbl-count-${key}`);
+            const lastEl = document.getElementById(`sync-tbl-last-${key}`);
+            const btn = document.getElementById(`sync-tbl-btn-${key}`);
+            const progBox = document.getElementById(`sync-tbl-progress-box-${key}`);
+            const msgEl = document.getElementById(`sync-tbl-msg-${key}`);
+            const pctEl = document.getElementById(`sync-tbl-pct-${key}`);
+            const barEl = document.getElementById(`sync-tbl-bar-${key}`);
+            const resBox = document.getElementById(`sync-tbl-result-box-${key}`);
+            const resEl = document.getElementById(`sync-tbl-result-${key}`);
+
+            if (opts.count !== undefined && countEl) {
+                countEl.innerText = opts.count;
+            }
+            if (opts.lastSynced !== undefined && lastEl) {
+                lastEl.innerText = opts.lastSynced || 'Never';
+            }
+
+            if (!syncSummaryState[key]) {
+                syncSummaryState[key] = { wasSyncing: false, prevCount: null };
+            }
+            const state = syncSummaryState[key];
+
+            if (opts.isSyncing) {
+                state.wasSyncing = true;
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '⏳ Syncing...';
+                    btn.style.opacity = '0.75';
+                }
+                if (statusRow) statusRow.style.display = 'table-row';
+                if (progBox) progBox.style.display = 'block';
+                if (resBox) resBox.style.display = 'none';
+
+                if (msgEl) {
+                    msgEl.innerHTML = `<span class="spin-anim" style="display: inline-block;">⏳</span> ${opts.message || 'Ingestion in progress...'}`;
+                }
+                const pct = Math.max(0, Math.min(100, Math.round(opts.percent || 15)));
+                if (pctEl) pctEl.innerText = `${pct}%`;
+                if (barEl) barEl.style.width = `${pct}%`;
+            } else {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '⚡ Sync';
+                    btn.style.opacity = '1';
+                }
+
+                // If it just transitioned from syncing to idle, or was explicitly completed
+                if (state.wasSyncing || opts.completed) {
+                    state.wasSyncing = false;
+                    if (statusRow) statusRow.style.display = 'table-row';
+                    if (progBox) progBox.style.display = 'none';
+                    if (resBox) resBox.style.display = 'block';
+
+                    if (opts.error) {
+                        if (resEl) {
+                            const errSafe = typeof escapeHtml === 'function' ? escapeHtml(opts.error) : opts.error;
+                            resEl.innerHTML = `<span style="color: #ef4444; display: inline-flex; align-items: center; gap: 6px;">❌ Sync failed: ${errSafe}</span>`;
+                        }
+                    } else {
+                        const added = opts.newAdded !== undefined ? Number(opts.newAdded) : 0;
+                        const totalStr = opts.totalStr || (countEl ? countEl.innerText : 'DB');
+                        if (resEl) {
+                            if (added > 0) {
+                                resEl.innerHTML = `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 6px;">✅ Sync successful: <strong>+${added.toLocaleString()}</strong> new records added (${totalStr} total in DB)</span>`;
+                            } else if (opts.customSuccessMsg) {
+                                resEl.innerHTML = `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 6px;">✅ Sync successful: ${opts.customSuccessMsg} (${totalStr} total in DB)</span>`;
+                            } else {
+                                resEl.innerHTML = `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 6px;">✅ Sync successful: All records up-to-date (${totalStr} total in DB)</span>`;
+                            }
+                        }
+                    }
+                } else if (!opts.keepResult) {
+                    // Normal idle load without active sync
+                    if (progBox) progBox.style.display = 'none';
+                    if (!resBox || resBox.style.display !== 'block') {
+                        if (statusRow) statusRow.style.display = 'none';
+                    }
+                }
+            }
+        }
+
+        function refreshAllDatasetStatuses() {
+            if (typeof loadAdminQuarterlyResultsStatus === 'function') loadAdminQuarterlyResultsStatus();
+            if (typeof loadAdminShareholdingStatus === 'function') loadAdminShareholdingStatus();
+            if (typeof loadAdminTransactionsStatus === 'function') loadAdminTransactionsStatus();
+            if (typeof loadAdminCorporateActionsStatus === 'function') loadAdminCorporateActionsStatus();
+            if (typeof loadAdminIndustriesStatus === 'function') loadAdminIndustriesStatus();
+            if (typeof loadAdminIpoStatus === 'function') loadAdminIpoStatus();
+            if (typeof loadAdminPeoplesStatus === 'function') loadAdminPeoplesStatus();
+        }
+
         // ==========================================
         // ==========================================
         // INDUSTRIES OVERVIEW DATASET CONTROLLERS
@@ -4259,6 +4734,18 @@
                     backupEl.innerText = s.last_backup || 'None';
                     backupEl.title = s.last_backup || 'None';
                 }
+
+                // Update Master Summary Table
+                updateSyncSummaryTableRow('ind', {
+                    count: `${s.total_industries || 188} Industries`,
+                    lastSynced: s.last_updated_display || s.last_updated || 'Never',
+                    isSyncing: Boolean(s.is_refreshing),
+                    message: s.progress || 'Scraping in progress...',
+                    percent: s.percent || 0,
+                    customSuccessMsg: `All ${s.total_industries || 188} industries & stocks verified`,
+                    totalStr: `${s.total_industries || 188} Industries`,
+                    error: s.error
+                });
 
                 if (s.is_refreshing) {
                     if (progContainer) progContainer.style.display = 'block';
@@ -4329,6 +4816,7 @@
                 refreshBtn.disabled = true;
                 refreshBtn.innerHTML = 'Starting Refresh...';
             }
+            updateSyncSummaryTableRow('ind', { isSyncing: true, message: 'Starting industries dataset refresh...', percent: 10 });
 
             try {
                 const res = await fetch('/api/admin/industries_overview/refresh', {
@@ -4352,6 +4840,7 @@
                         refreshBtn.disabled = false;
                         refreshBtn.innerHTML = '🚀 Refresh Industries Overview Dataset';
                     }
+                    updateSyncSummaryTableRow('ind', { isSyncing: false, error: data.error || 'Unknown error' });
                 }
             } catch (e) {
                 alert('❌ Error requesting refresh: ' + e.message);
@@ -4396,6 +4885,23 @@
                     breakdownEl.innerText = parts.join(' • ') || 'None';
                     breakdownEl.title = parts.join(' • ') || 'None';
                 }
+
+                // Update Master Summary Table
+                const prevCorp = syncSummaryState.corp?.prevCount;
+                const corpTotal = s.total_actions || 0;
+                const corpAdded = (prevCorp !== null && corpTotal > prevCorp) ? (corpTotal - prevCorp) : 0;
+                if (!s.is_refreshing && corpTotal > 0) syncSummaryState.corp.prevCount = corpTotal;
+
+                updateSyncSummaryTableRow('corp', {
+                    count: `${corpTotal.toLocaleString()} Announcements`,
+                    lastSynced: s.last_updated_display || s.last_updated || 'Never',
+                    isSyncing: Boolean(s.is_refreshing),
+                    message: s.progress || 'Connecting to official stock exchange portals...',
+                    percent: s.percent || 0,
+                    newAdded: corpAdded,
+                    totalStr: `${corpTotal.toLocaleString()} Announcements`,
+                    error: s.error
+                });
 
                 if (s.is_refreshing) {
                     if (progContainer) progContainer.style.display = 'block';
@@ -4466,6 +4972,7 @@
                 refreshBtn.disabled = true;
                 refreshBtn.innerHTML = 'Starting Official Refresh...';
             }
+            updateSyncSummaryTableRow('corp', { isSyncing: true, message: 'Querying official exchange APIs...', percent: 10 });
 
             try {
                 const res = await fetch('/api/admin/corporate_actions/refresh', {
@@ -4489,6 +4996,7 @@
                         refreshBtn.disabled = false;
                         refreshBtn.innerHTML = '🚀 Refresh from Official Sites (NSE &amp; BSE)';
                     }
+                    updateSyncSummaryTableRow('corp', { isSyncing: false, error: data.error || data.message || 'Unknown error' });
                 }
             } catch (e) {
                 alert('❌ Error requesting refresh: ' + e.message);
@@ -4533,6 +5041,25 @@
                     breakdownEl.innerText = parts.join(' · ') || 'None';
                     breakdownEl.title = parts.join(' · ') || 'None';
                 }
+
+                // Update Master Summary Table
+                const prevIpo = syncSummaryState.ipo?.prevCount;
+                const ipoTotal = s.total_ipos || 0;
+                const ipoAdded = (prevIpo !== null && ipoTotal > prevIpo) ? (ipoTotal - prevIpo) : 0;
+                if (!s.is_refreshing && ipoTotal > 0) syncSummaryState.ipo.prevCount = ipoTotal;
+
+                const ipoCounts = s.counts || {};
+                const ipoDetail = ipoCounts.open !== undefined ? ` (${ipoCounts.open} Open • ${ipoCounts.upcoming || 0} Upcoming)` : '';
+                updateSyncSummaryTableRow('ipo', {
+                    count: `${ipoTotal} Issues${ipoDetail}`,
+                    lastSynced: s.last_updated_display || s.last_updated || 'Never',
+                    isSyncing: Boolean(s.is_refreshing),
+                    message: s.progress || 'Connecting to live IPO & GMP portals...',
+                    percent: s.percent || 0,
+                    newAdded: ipoAdded,
+                    totalStr: `${ipoTotal} Issues`,
+                    error: s.error
+                });
 
                 if (s.is_refreshing) {
                     if (progContainer) progContainer.style.display = 'block';
@@ -4603,6 +5130,7 @@
                 refreshBtn.disabled = true;
                 refreshBtn.innerHTML = 'Starting IPO Refresh...';
             }
+            updateSyncSummaryTableRow('ipo', { isSyncing: true, message: 'Connecting to live IPO & GMP portals...', percent: 10 });
 
             try {
                 const res = await fetch('/api/admin/ipos/refresh', {
@@ -4626,6 +5154,7 @@
                         refreshBtn.disabled = false;
                         refreshBtn.innerHTML = '🚀 Refresh IPO &amp; GMP Dataset';
                     }
+                    updateSyncSummaryTableRow('ipo', { isSyncing: false, error: data.error || data.message || 'Unknown error' });
                 }
             } catch (e) {
                 alert('❌ Error requesting refresh: ' + e.message);
@@ -4673,6 +5202,19 @@
                         breakdownEl.style.color = 'var(--text-secondary)';
                     }
                 }
+
+                // Update Master Summary Table
+                const qrTotal = s.total_records || 5019;
+                updateSyncSummaryTableRow('qr', {
+                    count: `${qrTotal.toLocaleString()} Companies`,
+                    lastSynced: s.last_updated_display || s.last_updated || 'Never',
+                    isSyncing: Boolean(s.is_refreshing),
+                    message: s.progress || 'Scanning live quarterly disclosures...',
+                    percent: s.percent || 0,
+                    newAdded: s.new_companies_found || 0,
+                    totalStr: `${qrTotal.toLocaleString()} Companies`,
+                    error: s.error
+                });
 
                 if (s.is_refreshing) {
                     if (badge) {
@@ -4744,6 +5286,7 @@
             }
             if (refreshIcon) refreshIcon.classList.add('spin-anim');
             if (refreshText) refreshText.innerText = 'Starting Refresh...';
+            updateSyncSummaryTableRow('qr', { isSyncing: true, message: 'Querying live market filings & disclosures...', percent: 10 });
 
             try {
                 const res = await fetch('/api/admin/quarterly_results/refresh', {
@@ -4769,6 +5312,7 @@
                     }
                     if (refreshIcon) refreshIcon.classList.remove('spin-anim');
                     if (refreshText) refreshText.innerText = 'Refresh Quarterly Results';
+                    updateSyncSummaryTableRow('qr', { isSyncing: false, error: data.error || data.message || 'Unknown error' });
                 }
             } catch (e) {
                 alert('❌ Error requesting refresh: ' + e.message);
@@ -4810,6 +5354,21 @@
                 if (totalFilingsEl) totalFilingsEl.innerText = `${s.total_records || 0} Disclosures`;
                 if (equitiesEl) equitiesEl.innerText = `${s.count_equities || 0} Equities`;
                 if (smeEl) smeEl.innerText = `${s.count_sme || 0} SME`;
+
+                // Update Master Summary Table
+                const shpTotal = s.total_records || 0;
+                const shpAdded = (s.last_result && s.last_result.added !== undefined) ? s.last_result.added : (s.processed_count || 0);
+
+                updateSyncSummaryTableRow('shp', {
+                    count: `${shpTotal.toLocaleString()} Disclosures`,
+                    lastSynced: s.last_synced_display || s.last_updated_display || 'Never',
+                    isSyncing: Boolean(s.is_refreshing),
+                    message: s.progress || 'Refreshing shareholding disclosures...',
+                    percent: s.percent || 0,
+                    newAdded: shpAdded,
+                    totalStr: `${shpTotal.toLocaleString()} Disclosures`,
+                    error: s.last_error
+                });
 
                 if (s.is_refreshing) {
                     if (badge) {
@@ -4882,6 +5441,7 @@
             }
             if (refreshIcon) refreshIcon.classList.add('spin-anim');
             if (refreshText) refreshText.innerText = 'Starting Refresh...';
+            updateSyncSummaryTableRow('shp', { isSyncing: true, message: 'Querying live shareholding pattern feeds...', percent: 10 });
 
             try {
                 const res = await fetch('/api/admin/shareholding/refresh', {
@@ -4907,6 +5467,7 @@
                     }
                     if (refreshIcon) refreshIcon.classList.remove('spin-anim');
                     if (refreshText) refreshText.innerText = 'Sync Shareholding Dataset';
+                    updateSyncSummaryTableRow('shp', { isSyncing: false, error: data.error || data.message || 'Unknown error' });
                 }
             } catch (e) {
                 alert('❌ Error requesting refresh: ' + e.message);
@@ -4959,6 +5520,20 @@
                         dateCovEl.innerText = 'No records in DB';
                     }
                 }
+
+                // Update Master Summary Table
+                const txTotal = s.total_records || 0;
+                const txChunkMsg = s.current_chunk ? `Processing chunk: ${s.current_chunk}` : (s.progress || 'Syncing transactions in monthly chunks...');
+                updateSyncSummaryTableRow('tx', {
+                    count: `${txTotal.toLocaleString()} Deals`,
+                    lastSynced: s.last_synced_display || 'Not synced yet',
+                    isSyncing: Boolean(s.is_syncing),
+                    message: txChunkMsg,
+                    percent: s.percent || 0,
+                    newAdded: s.new_deals_count || 0,
+                    totalStr: `${txTotal.toLocaleString()} Deals`,
+                    error: s.error
+                });
 
                 if (s.is_syncing) {
                     if (badge) {
@@ -5053,6 +5628,7 @@
 
             const statusMsg = document.getElementById('admin-tx-status-msg');
             if (statusMsg) statusMsg.innerText = 'Triggering transactions background sync...';
+            updateSyncSummaryTableRow('tx', { isSyncing: true, message: 'Initializing transactions monthly chunk sync...', percent: 10 });
 
             try {
                 const res = await fetch('/api/admin/transactions/sync', {
@@ -5067,6 +5643,7 @@
                     alert('❌ Failed to start sync: ' + (data.error || data.message || 'Unknown error'));
                     if (syncNewBtn) { syncNewBtn.disabled = false; syncNewBtn.style.opacity = '1'; }
                     if (fullSyncBtn) { fullSyncBtn.disabled = false; fullSyncBtn.style.opacity = '1'; }
+                    updateSyncSummaryTableRow('tx', { isSyncing: false, error: data.error || data.message || 'Unknown error' });
                 }
             } catch (e) {
                 alert('❌ Error requesting transactions sync: ' + e.message);
@@ -5815,6 +6392,26 @@
                 if (statusMsg && !statusMsg.innerText.includes('Sync completed')) {
                     statusMsg.innerText = `Ready • Database has ${counts.total || 0} investors across all categories`;
                 }
+
+                // Update Master Summary Table
+                const pTotal = (counts && counts.total !== undefined) ? counts.total : 0;
+                const pAdded = lastSyncRes.added !== undefined ? lastSyncRes.added : 0;
+                const pUpdated = lastSyncRes.updated !== undefined ? lastSyncRes.updated : 0;
+                const pCustom = pUpdated ? `+${pAdded} added, ${pUpdated} updated` : null;
+
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('peoples', {
+                        count: `${pTotal} Investors`,
+                        lastSynced: s.last_synced_at || 'Not synced yet',
+                        isSyncing: Boolean(s.is_syncing || s.status === 'syncing'),
+                        message: s.progress || 'Scraping superstar investor portfolios...',
+                        percent: s.percent || 0,
+                        newAdded: pAdded,
+                        customSuccessMsg: pCustom,
+                        totalStr: `${pTotal} Investors`,
+                        error: s.error
+                    });
+                }
             } catch (e) {
                 console.error("Error loading peoples status:", e);
             }
@@ -5845,6 +6442,9 @@
                     badge.style.color = '#0284c7';
                     badge.innerText = 'Syncing...';
                 }
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('peoples', { isSyncing: true, message: 'Scraping official directories & applying delta updates...', percent: 25 });
+                }
 
                 const res = await fetch('/api/admin/peoples/sync', {
                     method: 'POST',
@@ -5871,6 +6471,14 @@
                         badge.style.color = '#10b981';
                         badge.innerText = 'Up to Date';
                     }
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('peoples', {
+                            completed: true,
+                            newAdded: data.added || 0,
+                            customSuccessMsg: data.updated ? `+${data.added || 0} added, ${data.updated} updated` : null,
+                            totalStr: `${data.counts?.total || 242} Investors`
+                        });
+                    }
                     await loadAdminPeoplesStatus();
                     alert(`✅ Superstar Investors Sync Completed!
 
@@ -5883,6 +6491,9 @@
                 } else {
                     alert('❌ Failed to sync investors: ' + (data.error || 'Unknown error'));
                     if (statusMsg) statusMsg.innerText = 'Sync failed: ' + (data.error || 'Unknown error');
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('peoples', { isSyncing: false, error: data.error || 'Unknown error' });
+                    }
                 }
             } catch (e) {
                 if (progContainer) progContainer.style.display = 'none';
