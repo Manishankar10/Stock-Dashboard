@@ -51,6 +51,7 @@ from modules.stock_notes import stock_notes_bp
 from modules.market_depth import market_depth_bp
 from modules.common.custom_queries_routes import custom_queries_bp
 from modules.technical_screener import technical_screener_bp
+from modules.chartink import chartink_bp
 from modules.notifications import notifications_bp
 
 # Initialize Flask Application
@@ -144,6 +145,7 @@ app.register_blueprint(technical_screener_bp)
 app.register_blueprint(custom_queries_bp)
 app.register_blueprint(stock_notes_bp)
 app.register_blueprint(market_depth_bp)
+app.register_blueprint(chartink_bp)
 
 # Static Asset Serving for Modules
 @app.route("/modules/<path:filename>")
@@ -260,6 +262,11 @@ def industries_overview_page():
 @login_required
 def technical_screener_page():
     return render_template("index.html", initial_tab="technical-screener")
+
+@app.route("/chartink")
+@login_required
+def chartink_page():
+    return render_template("index.html", initial_tab="chartink")
 
 @app.route("/tv-chart")
 def tv_chart_page():

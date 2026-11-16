@@ -25,7 +25,8 @@ const AppRouter = {
         'industries-overview': '/industries-overview',
         'shareholding': '/shareholding',
         'peoples': '/peoples',
-        'technical-screener': '/technical-screener'
+        'technical-screener': '/technical-screener',
+        'chartink': '/chartink'
     },
 
     reverseMap: {
@@ -46,7 +47,8 @@ const AppRouter = {
         '/industries-overview': 'industries-overview',
         '/shareholding': 'shareholding',
         '/peoples': 'peoples',
-        '/technical-screener': 'technical-screener'
+        '/technical-screener': 'technical-screener',
+        '/chartink': 'chartink'
     },
 
     closeAnyOpenModalOrDrawer() {
@@ -433,7 +435,7 @@ function switchTab(tabName, pushState = true) {
         closeMarketPulseSubmenu();
     }
 
-    const isTool = ['mutual-funds', 'mutual-fund-detail', 'plan-calculator', 'technical-screener'].includes(tabName);
+    const isTool = ['mutual-funds', 'mutual-fund-detail', 'plan-calculator', 'technical-screener', 'chartink'].includes(tabName);
     const toolsTrigger = document.getElementById('sidebar-nav-tools');
     if (toolsTrigger) {
         toolsTrigger.classList.toggle('active', isTool);
@@ -548,6 +550,8 @@ function switchTab(tabName, pushState = true) {
         if (typeof window.loadIndustriesOverviewModule === 'function') window.loadIndustriesOverviewModule();
     } else if (tabName === 'technical-screener') {
         if (typeof window.loadTechnicalScreenerModule === 'function') window.loadTechnicalScreenerModule();
+    } else if (tabName === 'chartink') {
+        if (typeof window.initChartink === 'function') window.initChartink();
     }
 
     // 5. Automatically close submenus and mobile drawer if open

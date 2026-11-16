@@ -1,0 +1,314 @@
+<!-- ==============================================================================
+     CAPITAL DESK - CHARTINK SCREENER REPLICA MODULE
+     Location: modules/chartink/chartink.html
+     Replicates Chartink My Scans Category Table + Detailed Paginated Stock Results.
+     ============================================================================== -->
+
+<div id="tab-chartink" class="tab-content" style="display: none;">
+
+    <!-- =========================================================================
+         VIEW 1: SCANNERS & CATEGORIES DASHBOARD (Matches Chartink Category View)
+         ========================================================================= -->
+    <div id="ci-view-scanners-list" class="ci-view-section">
+        <!-- Top Filter & Action Bar (Matching Image 1) -->
+        <div class="ci-scanners-top-bar">
+            <!-- Left: Filter Buttons & Tag Dropdown -->
+            <div class="ci-top-left-controls">
+                <div class="ci-segmented-pill-group" role="group" aria-label="Scanner view scope">
+                    <button type="button" class="ci-scope-btn active" id="ci-scope-all" onclick="setChartinkScope('all')">All</button>
+                    <button type="button" class="ci-scope-btn" id="ci-scope-fav" onclick="setChartinkScope('fav')">Favourites</button>
+                </div>
+
+                <div class="ci-tag-filter-wrap">
+                    <span class="ci-tag-icon">☰</span>
+                    <select id="ci-tag-filter" class="ci-tag-select" onchange="handleChartinkTagFilter(this.value)">
+                        <option value="">Filter by tag</option>
+                    </select>
+                </div>
+
+                <div class="ci-scanners-search-box">
+                    <span class="ci-search-icon">🔍</span>
+                    <input type="text" id="ci-scanners-search" placeholder="Search scanners by name or clause..." oninput="handleScannersSearch(this.value)">
+                </div>
+            </div>
+
+            <!-- Right: Actions & Create Button -->
+            <div class="ci-top-right-controls">
+                <label class="ci-chart-preview-label" title="Enable mini inline chart previews">
+                    <span>Chart Preview</span>
+                    <span class="ci-toggle-switch">
+                        <input type="checkbox" id="ci-chart-preview-switch" onchange="toggleChartinkChartPreview(this.checked)">
+                        <span class="ci-toggle-slider"></span>
+                    </span>
+                </label>
+
+                <button type="button" class="btn ci-btn-create-scanner" onclick="openChartinkImportModal()" title="Create or copy scanner from Chartink">
+                    <span>➕</span> <span>Create scanner</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Scanners Table (Matching Image 1) -->
+        <div class="card-container ci-scanners-table-card">
+            <div class="ci-table-responsive">
+                <table class="ci-scanners-table" id="ci-scanners-table">
+                    <thead>
+                        <tr>
+                            <th class="ci-th-name" onclick="sortScannersBy('name')">
+                                <span>NAME</span> <span class="ci-sort-arrow">⇅</span>
+                            </th>
+                            <th class="ci-th-desc">DESCRIPTION</th>
+                            <th class="ci-th-clause">CLAUSE</th>
+                            <th class="ci-th-tags" onclick="sortScannersBy('tag')">
+                                <span>TAGS</span> <span class="ci-sort-arrow">⇅</span>
+                            </th>
+                            <th class="ci-th-date" onclick="sortScannersBy('date')">
+                                <span>CREATED ON</span> <span class="ci-sort-arrow">⇅</span>
+                            </th>
+                            <th class="ci-th-actions" style="text-align: right;">ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ci-scanners-tbody">
+                        <!-- Populated dynamically by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="ci-table-footer">
+                <div id="ci-scanners-count-lbl">Showing all scanners</div>
+                <div style="font-size: 11px; color: var(--text-muted);">Click any scanner name to view live filtered stocks</div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- =========================================================================
+         VIEW 2: SCREENER DETAIL & PAGINATED FILTERED STOCKS (Drill-down view)
+         ========================================================================= -->
+    <div id="ci-view-scanner-detail" class="ci-view-section" style="display: none;">
+        <!-- Top Back Navigation & Action Bar -->
+        <div class="ci-detail-top-bar">
+            <div class="ci-detail-breadcrumb-group">
+                <button type="button" class="ci-back-btn" onclick="backToScannersList()" title="Back to All Scanners">
+                    <span>←</span> <span>All Scanners</span>
+                </button>
+                <div class="ci-detail-title-wrap">
+                    <h2 class="ci-detail-title" id="ci-detail-title">Day Close &gt; 0%</h2>
+                    <span class="ci-live-pill"><span class="ci-pulsing-dot"></span>LIVE RADAR</span>
+                </div>
+            </div>
+
+            <div class="ci-detail-actions">
+                <button type="button" class="btn btn-secondary ci-btn-refresh" id="ci-detail-refresh-btn" onclick="refreshCurrentScan()" title="Re-run live scan">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                    <span>Run Scan</span>
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="exportChartinkCsv()" title="Export stocks to CSV">
+                    <span>📥</span> <span>Export CSV</span>
+                </button>
+                <a href="#" target="_blank" rel="noopener noreferrer" class="ci-source-link" id="ci-detail-source-link" title="Open scanner on Chartink">
+                    <span>Chartink Source</span> ↗
+                </a>
+            </div>
+        </div>
+
+        <!-- Screener Rule Card -->
+        <div class="ci-meta-card">
+            <div class="ci-meta-top">
+                <div class="ci-meta-info">
+                    <div class="ci-meta-heading">
+                        <span class="ci-meta-badge" id="ci-detail-tag-badge">Gainers</span>
+                        <span class="ci-meta-count" id="ci-detail-stock-count">0 Stocks</span>
+                    </div>
+                    <div class="ci-meta-desc" id="ci-detail-desc">Filtered live by today's price action and technical rules.</div>
+                </div>
+            </div>
+
+            <!-- Formula Details -->
+            <details class="ci-query-details" open>
+                <summary class="ci-query-summary">Scan Clause / Formula</summary>
+                <pre class="ci-query-code" id="ci-detail-query">—</pre>
+            </details>
+        </div>
+
+        <!-- Toolbar: Entries Per Page, Search, Quick Filters & Sort -->
+        <div class="ci-toolbar">
+            <div class="ci-entries-per-page">
+                <label for="ci-page-size-select" class="ci-sort-lbl">Show</label>
+                <select id="ci-page-size-select" class="ci-sort-dropdown" onchange="changePageSize(this.value)">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="all">All</option>
+                </select>
+                <span class="ci-sort-lbl">entries</span>
+            </div>
+
+            <div class="ci-search-box">
+                <span class="ci-search-icon">🔍</span>
+                <input type="text" id="ci-stocks-search-input" placeholder="Search symbol or company in results..." oninput="handleStocksSearch(this.value)">
+            </div>
+
+            <div class="ci-filter-pills" role="group" aria-label="Stock filter pills">
+                <button type="button" class="ci-filter-btn active" data-filter="all" onclick="setStocksFilter('all')">All (<span id="ci-pill-all-count">0</span>)</button>
+                <button type="button" class="ci-filter-btn" data-filter="gainers" onclick="setStocksFilter('gainers')">🟢 Gainers (<span id="ci-pill-gainers-count">0</span>)</button>
+                <button type="button" class="ci-filter-btn" data-filter="losers" onclick="setStocksFilter('losers')">🔴 Losers (<span id="ci-pill-losers-count">0</span>)</button>
+                <button type="button" class="ci-filter-btn" data-filter="high-vol" onclick="setStocksFilter('high-vol')">⚡ Vol &gt; 100k</button>
+            </div>
+
+            <div class="ci-sort-group">
+                <label for="ci-stocks-sort-select" class="ci-sort-lbl">Sort:</label>
+                <select id="ci-stocks-sort-select" class="ci-sort-dropdown" onchange="handleStocksSort(this.value)">
+                    <option value="per_chg_desc">Today's % Change (High to Low)</option>
+                    <option value="per_chg_asc">Today's % Change (Low to High)</option>
+                    <option value="close_desc">Price: High to Low</option>
+                    <option value="close_asc">Price: Low to High</option>
+                    <option value="volume_desc">Volume: High to Low</option>
+                    <option value="symbol_asc">Symbol: A to Z</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Paginated Stocks Table -->
+        <div class="card-container ci-table-card">
+            <div class="ci-table-responsive">
+                <table class="ci-table" id="ci-stocks-table">
+                    <thead>
+                        <tr>
+                            <th class="ci-th-sr">#</th>
+                            <th class="ci-th-stock">Stock / Company</th>
+                            <th class="ci-th-price">LTP (₹)</th>
+                            <th class="ci-th-chg">Today's Change</th>
+                            <th class="ci-th-vol">Volume</th>
+                            <th class="ci-th-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ci-stocks-tbody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Bar (Matching Chartink Results Page) -->
+            <div class="ci-pagination-bar">
+                <div class="ci-pagination-info" id="ci-pagination-info">
+                    Showing 1 to 25 of 0 entries
+                </div>
+                <div class="ci-pagination-controls" id="ci-pagination-controls">
+                    <!-- Page buttons rendered by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==============================================================================
+     MODAL: CREATE / COPY SCREENER FROM CHARTINK
+     ============================================================================== -->
+<div class="modal-backdrop ci-modal-backdrop" id="chartinkImportModal" style="display: none;" onclick="if(event.target === this) closeChartinkImportModal()">
+    <div class="modal-container ci-modal-container" role="dialog" aria-modal="true" aria-labelledby="ci-modal-title">
+        <div class="ci-modal-header">
+            <div class="ci-modal-header-text">
+                <h3 class="ci-modal-title" id="ci-modal-title">
+                    <span>⚡</span> <span>Create / Copy Scanner from Chartink</span>
+                </h3>
+                <p class="ci-modal-subtitle">Paste any Chartink URL to import it live, or enter custom scan details.</p>
+            </div>
+            <button type="button" class="ci-modal-close-btn" onclick="closeChartinkImportModal()" aria-label="Close modal" title="Close">✕</button>
+        </div>
+
+        <div class="ci-modal-body">
+            <div class="ci-form-group">
+                <label for="ci-import-url" class="ci-form-label">
+                    <span>Chartink URL or Slug:</span>
+                    <span class="ci-required-star">*</span>
+                </label>
+                <div class="ci-input-with-btn">
+                    <input type="text" id="ci-import-url" class="ci-modal-input" placeholder="e.g. https://chartink.com/screener/cup-and-handle" autocomplete="off">
+                    <button type="button" class="ci-paste-btn" onclick="pasteFromClipboard('ci-import-url')">📋 Paste</button>
+                </div>
+                <div class="ci-form-help">Copy link address from your browser when viewing any scanner on Chartink.com.</div>
+            </div>
+
+            <!-- Quick Template Suggestions -->
+            <div class="ci-quick-suggestions">
+                <span class="ci-quick-lbl">Examples from Chartink:</span>
+                <button type="button" class="ci-quick-pill" onclick="setChartinkImportUrl('https://chartink.com/screener/pivot-point-scan-for-intraday')">Pivot Point Scan</button>
+                <button type="button" class="ci-quick-pill" onclick="setChartinkImportUrl('https://chartink.com/screener/near-ath')">Near ATH</button>
+                <button type="button" class="ci-quick-pill" onclick="setChartinkImportUrl('https://chartink.com/screener/cup-and-handle')">Cup &amp; Handle</button>
+                <button type="button" class="ci-quick-pill" onclick="setChartinkImportUrl('https://chartink.com/screener/stocks-down-5-2')">Stocks Down 3%</button>
+            </div>
+
+            <div class="ci-form-group" style="margin-top: 4px;">
+                <label for="ci-import-tags" class="ci-form-label">Tags (comma separated):</label>
+                <input type="text" id="ci-import-tags" class="ci-modal-input" placeholder="e.g. Intraday, Breakouts, Swing">
+            </div>
+
+            <!-- Error message box -->
+            <div class="ci-modal-error" id="ci-modal-error" style="display: none;"></div>
+        </div>
+
+        <div class="ci-modal-footer">
+            <button type="button" class="ci-btn-modal-cancel" onclick="closeChartinkImportModal()">Cancel</button>
+            <button type="button" class="ci-btn-modal-submit" id="ci-submit-import-btn" onclick="submitChartinkImport()">
+                <span>⚡</span> <span>Import &amp; Add Scanner</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add to Watchlist Modal -->
+<div class="modal-backdrop ci-modal-backdrop" id="chartinkAddToWatchlistModal" style="display: none;" onclick="if(event.target === this) closeChartinkWatchlistModal()">
+    <div class="modal-container ci-modal-container-sm" role="dialog" aria-modal="true">
+        <div class="ci-modal-header">
+            <h3 class="ci-modal-title"><span>➕</span> <span>Add to Watchlist</span></h3>
+            <button type="button" class="ci-modal-close-btn" onclick="closeChartinkWatchlistModal()" aria-label="Close modal" title="Close">✕</button>
+        </div>
+        <div class="ci-modal-body">
+            <div style="font-size: 13px; color: var(--text-secondary);">
+                Adding stock: <strong id="ci-wl-stock-symbol" style="color: var(--accent-color, #10b981);">—</strong>
+            </div>
+            <div class="ci-form-group">
+                <label for="ci-wl-select" class="ci-form-label">Select Destination Watchlist:</label>
+                <select id="ci-wl-select" class="ci-modal-input" style="cursor: pointer;"></select>
+            </div>
+        </div>
+        <div class="ci-modal-footer">
+            <button type="button" class="ci-btn-modal-cancel" onclick="closeChartinkWatchlistModal()">Cancel</button>
+            <button type="button" class="ci-btn-modal-submit" id="ci-wl-confirm-btn" onclick="confirmAddChartinkToWatchlist()">Add Stock</button>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Tag Edit Modal -->
+<div class="modal-backdrop ci-modal-backdrop" id="chartinkTagModal" style="display: none;" onclick="if(event.target === this) closeChartinkTagModal()">
+    <div class="modal-container ci-modal-container-sm" role="dialog" aria-modal="true">
+        <div class="ci-modal-header">
+            <h3 class="ci-modal-title"><span>🏷️</span> <span id="ci-tag-modal-title">Edit Scanner Tags</span></h3>
+            <button type="button" class="ci-modal-close-btn" onclick="closeChartinkTagModal()" aria-label="Close modal" title="Close">✕</button>
+        </div>
+        <div class="ci-modal-body">
+            <div style="font-size: 13px; color: var(--text-secondary);">
+                Scanner: <strong id="ci-tag-scanner-name" style="color: var(--accent-color, #10b981);">—</strong>
+            </div>
+            <div class="ci-form-group">
+                <label for="ci-tag-input" class="ci-form-label">Tags (comma-separated):</label>
+                <input type="text" id="ci-tag-input" class="ci-modal-input" placeholder="e.g. Intraday, Breakouts, Swing">
+            </div>
+            <div class="ci-quick-suggestions">
+                <span class="ci-quick-lbl">Quick add:</span>
+                <button type="button" class="ci-quick-pill" onclick="appendChartinkTag('Intraday')">+ Intraday</button>
+                <button type="button" class="ci-quick-pill" onclick="appendChartinkTag('Breakouts')">+ Breakouts</button>
+                <button type="button" class="ci-quick-pill" onclick="appendChartinkTag('Patterns')">+ Patterns</button>
+                <button type="button" class="ci-quick-pill" onclick="appendChartinkTag('Volume')">+ Volume</button>
+                <button type="button" class="ci-quick-pill" onclick="appendChartinkTag('Momentum')">+ Momentum</button>
+            </div>
+        </div>
+        <div class="ci-modal-footer">
+            <button type="button" class="ci-btn-modal-cancel" onclick="closeChartinkTagModal()">Cancel</button>
+            <button type="button" class="ci-btn-modal-submit" id="ci-tag-save-btn" onclick="saveChartinkTags()">Save Tags</button>
+        </div>
+    </div>
+</div>
