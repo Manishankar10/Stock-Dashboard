@@ -279,6 +279,20 @@ def _init_sqlite_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS index_constituents (
+                    index_key TEXT PRIMARY KEY,
+                    index_name TEXT NOT NULL,
+                    symbol TEXT,
+                    official_size INTEGER DEFAULT 0,
+                    stocks TEXT NOT NULL,
+                    total_stocks INTEGER DEFAULT 0,
+                    last_synced TEXT,
+                    last_synced_display TEXT,
+                    metadata TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -1366,3 +1380,164 @@ def save_transactions_deals_db(deals, last_updated_iso=None, last_updated_displa
             print(f"[DB Store] Warning saving transactions backup JSON {backup_filepath}: {e}")
 
     return True
+
+
+# ==============================================================================
+# INDEX STOCKS & CONSTITUENTS (NIFTY 50, 100, 500, BANK, FIN, MID, SML, MICRO)
+# ==============================================================================
+
+def load_index_constituents_db(index_key=None):
+    """
+    Load index constituents from database:
+    1. Primary: MongoDB Atlas collection 'index_constituents'
+    2. Local: SQLite database 'capital_desk.db' table 'index_constituents'
+    If index_key is None, loads all indices.
+    """
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["index_constituents"]
+            if index_key:
+                doc = col.find_one({"_id": str(index_key).strip()})
+                if doc:
+                    doc.pop("_id", None)
+                    return doc
+            else:
+                docs = list(col.find({}))
+                if docs:
+                    res = {}
+                    for d in docs:
+                        k = d.get("_id") or d.get("index_key")
+                        d.pop("_id", None)
+                        res[k] = d
+                    return res
+        except Exception as e:
+            print(f"MongoDB load_index_constituents error: {e}")
+
+    # 2. SQLite
+    conn = None
+    try:
+        _init_sqlite_db()
+        conn = sqlite3.connect(_SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        if index_key:
+            cursor.execute(
+                "SELECT index_key, index_name, symbol, official_size, stocks, total_stocks, last_synced, last_synced_display, metadata FROM index_constituents WHERE index_key = ?",
+                (str(index_key).strip(),)
+            )
+            row = cursor.fetchone()
+            if row:
+                stocks = json.loads(row[4]) if row[4] else []
+                meta = json.loads(row[8]) if row[8] else {}
+                return {
+                    "index_key": row[0],
+                    "index_name": row[1],
+                    "symbol": row[2],
+                    "official_size": row[3],
+                    "stocks": stocks,
+                    "total_stocks": row[5] or len(stocks),
+                    "last_synced": row[6],
+                    "last_synced_display": row[7],
+                    "metadata": meta
+                }
+        else:
+            cursor.execute("SELECT index_key, index_name, symbol, official_size, stocks, total_stocks, last_synced, last_synced_display, metadata FROM index_constituents")
+            rows = cursor.fetchall()
+            if rows:
+                res = {}
+                for row in rows:
+                    stocks = json.loads(row[4]) if row[4] else []
+                    meta = json.loads(row[8]) if row[8] else {}
+                    res[row[0]] = {
+                        "index_key": row[0],
+                        "index_name": row[1],
+                        "symbol": row[2],
+                        "official_size": row[3],
+                        "stocks": stocks,
+                        "total_stocks": row[5] or len(stocks),
+                        "last_synced": row[6],
+                        "last_synced_display": row[7],
+                        "metadata": meta
+                    }
+                return res
+    except Exception as e:
+        print(f"SQLite load_index_constituents error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return None
+
+
+def save_index_constituents_db(index_key, index_name, symbol, official_size, stocks, last_synced_iso=None, last_synced_display=None, metadata=None):
+    """
+    Saves index constituent stocks and telemetry to MongoDB Atlas collection 'index_constituents'
+    and SQLite 'index_constituents' table in capital_desk.db.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    last_synced_iso = last_synced_iso or now_utc.isoformat()
+    last_synced_display = format_ist_display(last_synced_display)
+    total_stocks = len(stocks)
+    metadata = metadata or {}
+    key_str = str(index_key).strip()
+
+    doc_data = {
+        "index_key": key_str,
+        "index_name": str(index_name),
+        "symbol": str(symbol or index_name),
+        "official_size": int(official_size or 0),
+        "stocks": stocks,
+        "total_stocks": total_stocks,
+        "last_synced": last_synced_iso,
+        "last_synced_display": last_synced_display,
+        "metadata": metadata,
+        "updated_at": last_synced_iso
+    }
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["index_constituents"]
+            mongo_doc = dict(doc_data)
+            mongo_doc["_id"] = key_str
+            col.replace_one({"_id": key_str}, mongo_doc, upsert=True)
+        except Exception as e:
+            print(f"MongoDB save_index_constituents error: {e}")
+
+    # 2. SQLite
+    conn = None
+    try:
+        _init_sqlite_db()
+        conn = sqlite3.connect(_SQLITE_DB_PATH)
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO index_constituents 
+            (index_key, index_name, symbol, official_size, stocks, total_stocks, last_synced, last_synced_display, metadata, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            (
+                key_str,
+                str(index_name),
+                str(symbol or index_name),
+                int(official_size or 0),
+                json.dumps(stocks, ensure_ascii=False),
+                total_stocks,
+                last_synced_iso,
+                last_synced_display,
+                json.dumps(metadata, ensure_ascii=False)
+            )
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"SQLite save_index_constituents error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return {
+        "success": True,
+        "index_key": key_str,
+        "total_stocks": total_stocks,
+        "last_synced_display": last_synced_display
+    }

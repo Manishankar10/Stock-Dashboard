@@ -46,6 +46,7 @@ from modules.broker_research import broker_research_bp, init_broker_research
 from modules.industries_overview import industries_overview_bp, init_industries_overview
 from modules.shareholding import shareholding_bp, init_shareholding
 from modules.peoples import peoples_bp, init_peoples
+from modules.index_stocks import index_stocks_bp
 from modules.drawings import drawings_bp
 from modules.stock_notes import stock_notes_bp
 from modules.market_depth import market_depth_bp
@@ -140,6 +141,7 @@ app.register_blueprint(broker_research_bp)
 app.register_blueprint(industries_overview_bp)
 app.register_blueprint(shareholding_bp)
 app.register_blueprint(peoples_bp)
+app.register_blueprint(index_stocks_bp)
 app.register_blueprint(drawings_bp)
 app.register_blueprint(technical_screener_bp)
 app.register_blueprint(custom_queries_bp)

@@ -87,6 +87,33 @@
             }
         }
 
+        async function loadAdminIndicesStatus() {
+            if (typeof window.loadAdminIndicesStatus === 'function' && window.loadAdminIndicesStatus !== loadAdminIndicesStatus) {
+                return window.loadAdminIndicesStatus();
+            }
+            try {
+                const res = await fetch('/api/admin/indices/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+                const s = data.status;
+                const totalConstituents = s.total_constituents || 0;
+                const totalIndices = s.total_indices || 10;
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('indices', {
+                        count: `${totalConstituents.toLocaleString()} Stocks (${totalIndices} Indices)`,
+                        lastSynced: s.last_synced_display || 'Never',
+                        isSyncing: Boolean(s.is_syncing),
+                        message: s.progress || 'Ingesting official constituents from NSE...',
+                        percent: s.percent || 0,
+                        totalStr: `${totalConstituents.toLocaleString()} Stocks`,
+                        error: s.error
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading indices status:", e);
+            }
+        }
+
         async function triggerAdminPeoplesSync() {
             const syncBtn = document.getElementById('btn-sync-peoples');
             const syncIcon = document.getElementById('admin-peoples-sync-icon');
@@ -1811,6 +1838,60 @@
                                     </div>
                                 </td>
                             </tr>
+
+                            <!-- 8. Benchmark Index Stocks & Constituents -->
+                            <tr id="sync-tbl-row-indices">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <span style="font-size: 18px; margin-top: 1px;">🏛️</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                <span style="font-weight: 600; color: var(--text-primary);">Index Stocks &amp; Constituents</span>
+                                                <button type="button" onclick="toggleAdminIndicesModal(true)" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;">🔍 View 10 Indices</button>
+                                            </div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                                                10 Benchmark Indices (Nifty 50, Next 50, 100, Midcap 150, Smallcap 250, Microcap 250, LargeMid 250, 500, Bank, Fin Service)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-indices" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">1,632 Stocks (10 Indices)</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-indices" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 11px; font-weight: 600;">NSE Official Feeds</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right; min-width: 175px;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: stretch;">
+                                        <button type="button" id="sync-tbl-btn-indices" class="btn" onclick="triggerAdminIndicesSync()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #10b981; color: #fff; border: 1px solid #10b981; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync &amp; Rebalance</button>
+                                        <label style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; font-size: 10.5px; color: var(--text-secondary); cursor: pointer; user-select: none; margin: 0; white-space: nowrap;">
+                                            <input type="checkbox" id="sync-indices-rebalance-check" checked style="accent-color: #10b981; cursor: pointer; margin: 0;" />
+                                            <span>Rebalance with official size</span>
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-indices" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-indices" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-indices" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Ingesting official constituents from NSE...
+                                            </span>
+                                            <span id="sync-tbl-pct-indices" style="font-weight: 700; color: #10b981; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-indices" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-indices" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-indices"></span>
+                                    </div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -3199,6 +3280,61 @@
         </div>
     </div>
 
+    <!-- MODAL: Official Indices Breakdown & Direct NSE Links -->
+    <div id="adminIndicesModal" class="modal">
+        <div class="modal-content" style="width: 960px; max-width: 96vw; max-height: 90vh; padding: 22px 24px; display: flex; flex-direction: column;">
+            <div class="modal-header" style="flex-shrink: 0; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">🏛️</span>
+                    <div>
+                        <h3 class="modal-title" style="margin: 0; font-size: 17.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 9px; flex-wrap: wrap;">
+                            Benchmark Index Stocks &amp; Constituents
+                            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;">10 Official Indices</span>
+                        </h3>
+                        <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                            Synchronized with official NSE feeds and persisted to <strong>MongoDB Atlas + SQLite</strong> (Dual persistence via <code>db_store.py</code>)
+                        </p>
+                    </div>
+                </div>
+                <span class="close-btn" onclick="toggleAdminIndicesModal(false)" style="font-size: 28px; line-height: 1; cursor: pointer;">&times;</span>
+            </div>
+
+            <div style="flex: 1; overflow-y: auto; padding-right: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                    <div style="font-size: 12.5px; color: var(--text-secondary);">
+                        Auto-rebalancing ensures the constituent count matches the official index definition (50, 150, 250, 500, 12, 20).
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" class="btn" onclick="triggerAdminIndicesSync()" style="background: #10b981; color: #fff; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px;">⚡ Sync &amp; Rebalance All</button>
+                    </div>
+                </div>
+
+                <div class="modal-table-scroll" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+                        <thead>
+                            <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color); color: var(--text-secondary); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <th style="padding: 10px 14px;">Index Name</th>
+                                <th style="padding: 10px 14px;">Category</th>
+                                <th style="padding: 10px 14px; text-align: center;">Official Size</th>
+                                <th style="padding: 10px 14px; text-align: center;">Constituents In DB</th>
+                                <th style="padding: 10px 14px; text-align: center;">Rebalance Status</th>
+                                <th style="padding: 10px 14px; text-align: right;">Official Live Feed</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-indices-table-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="flex-shrink: 0; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary);">
+                <span>Storage engine: <code>index_constituents</code> collection (MongoDB) + SQLite</span>
+                <button type="button" class="btn btn-secondary" onclick="toggleAdminIndicesModal(false)" style="padding: 6px 16px;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function switchAdminTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -3230,6 +3366,7 @@
                 loadAdminShareholdingStatus();
                 loadAdminTransactionsStatus();
                 loadAdminPeoplesStatus();
+                loadAdminIndicesStatus();
             } else if (tabName === 'system') {
                 loadAdminStats();
                 loadProductionJsonFilesList();
@@ -4111,7 +4248,8 @@
             corp: { prevCount: null, wasSyncing: false },
             ind: { prevCount: null, wasSyncing: false },
             ipo: { prevCount: null, wasSyncing: false },
-            peoples: { prevCount: null, wasSyncing: false }
+            peoples: { prevCount: null, wasSyncing: false },
+            indices: { prevCount: null, wasSyncing: false }
         };
 
         function updateSyncSummaryTableRow(key, opts = {}) {
@@ -4205,6 +4343,7 @@
             if (typeof loadAdminIndustriesStatus === 'function') loadAdminIndustriesStatus();
             if (typeof loadAdminIpoStatus === 'function') loadAdminIpoStatus();
             if (typeof loadAdminPeoplesStatus === 'function') loadAdminPeoplesStatus();
+            if (typeof loadAdminIndicesStatus === 'function') loadAdminIndicesStatus();
         }
 
         // ==========================================
@@ -5921,6 +6060,33 @@
             }
         }
 
+        async function loadAdminIndicesStatus() {
+            if (typeof window.loadAdminIndicesStatus === 'function' && window.loadAdminIndicesStatus !== loadAdminIndicesStatus) {
+                return window.loadAdminIndicesStatus();
+            }
+            try {
+                const res = await fetch('/api/admin/indices/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+                const s = data.status;
+                const totalConstituents = s.total_constituents || 0;
+                const totalIndices = s.total_indices || 10;
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('indices', {
+                        count: `${totalConstituents.toLocaleString()} Stocks (${totalIndices} Indices)`,
+                        lastSynced: s.last_synced_display || 'Never',
+                        isSyncing: Boolean(s.is_syncing),
+                        message: s.progress || 'Ingesting official constituents from NSE...',
+                        percent: s.percent || 0,
+                        totalStr: `${totalConstituents.toLocaleString()} Stocks`,
+                        error: s.error
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading indices status:", e);
+            }
+        }
+
         async function triggerAdminPeoplesSync() {
             const syncBtn = document.getElementById('btn-sync-peoples');
             const syncIcon = document.getElementById('admin-peoples-sync-icon');
@@ -6011,6 +6177,179 @@
                 if (statusMsg) statusMsg.innerText = 'Error: ' + e.message;
             }
         }
+
+
+        // ==========================================
+        // INDEX STOCKS & CONSTITUENTS CONTROLLER
+        // ==========================================
+        let _adminIndicesPollTimer = null;
+        let _adminIndicesData = null;
+
+        async function loadAdminIndicesStatus() {
+            try {
+                const res = await fetch('/api/admin/indices/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                _adminIndicesData = s;
+                const totalConstituents = s.total_constituents || 0;
+                const totalIndices = s.total_indices || 10;
+                const isSyncing = Boolean(s.is_syncing);
+                const lastSynced = s.last_synced_display || 'Never';
+
+                let customMsg = null;
+                if (s.last_result) {
+                    const lr = s.last_result;
+                    if (lr.enforce_official_size) {
+                        customMsg = `Rebalanced all ${totalIndices} indices (${totalConstituents.toLocaleString()} constituent stocks in DB)`;
+                    } else {
+                        customMsg = `Synced all ${totalIndices} indices (${totalConstituents.toLocaleString()} constituent stocks in DB)`;
+                    }
+                }
+
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('indices', {
+                        count: `${totalConstituents.toLocaleString()} Stocks (${totalIndices} Indices)`,
+                        lastSynced: lastSynced,
+                        isSyncing: isSyncing,
+                        message: s.progress || 'Ingesting official constituents from NSE...',
+                        percent: s.percent || 0,
+                        customSuccessMsg: customMsg,
+                        totalStr: `${totalConstituents.toLocaleString()} Stocks`,
+                        error: s.error
+                    });
+                }
+
+                // If modal is open, refresh table
+                const modal = document.getElementById('adminIndicesModal');
+                if (modal && modal.style.display === 'block') {
+                    renderAdminIndicesModalTable(s.indices || []);
+                }
+
+                // Polling if syncing
+                if (isSyncing) {
+                    if (!_adminIndicesPollTimer) {
+                        _adminIndicesPollTimer = setTimeout(() => {
+                            _adminIndicesPollTimer = null;
+                            loadAdminIndicesStatus();
+                        }, 1200);
+                    }
+                } else if (_adminIndicesPollTimer) {
+                    clearTimeout(_adminIndicesPollTimer);
+                    _adminIndicesPollTimer = null;
+                }
+            } catch (e) {
+                console.error("Error loading index stocks status:", e);
+            }
+        }
+
+        async function triggerAdminIndicesSync() {
+            const btn = document.getElementById('sync-tbl-btn-indices');
+            const rebalanceCheck = document.getElementById('sync-indices-rebalance-check');
+            const shouldRebalance = rebalanceCheck ? rebalanceCheck.checked : true;
+
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '⏳ Syncing...';
+                    btn.style.opacity = '0.75';
+                }
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('indices', {
+                        isSyncing: true,
+                        message: shouldRebalance 
+                            ? 'Starting official NSE ingestion & rebalancing to official size...' 
+                            : 'Starting official NSE constituent ingestion...',
+                        percent: 8
+                    });
+                }
+
+                const res = await fetch('/api/admin/indices/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rebalance: shouldRebalance })
+                });
+                const data = await res.json();
+
+                if (!data.success) {
+                    alert('❌ Failed to trigger index stocks sync: ' + (data.message || data.error || 'Unknown error'));
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('indices', { isSyncing: false, error: data.message || data.error });
+                    }
+                } else {
+                    setTimeout(loadAdminIndicesStatus, 600);
+                }
+            } catch (e) {
+                alert('❌ Error starting index stocks sync: ' + e.message);
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('indices', { isSyncing: false, error: e.message });
+                }
+            }
+        }
+
+        function toggleAdminIndicesModal(show) {
+            const modal = document.getElementById('adminIndicesModal');
+            if (!modal) return;
+            if (show) {
+                modal.style.display = 'block';
+                if (_adminIndicesData && _adminIndicesData.indices) {
+                    renderAdminIndicesModalTable(_adminIndicesData.indices);
+                }
+                loadAdminIndicesStatus();
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        function renderAdminIndicesModalTable(indices) {
+            const tbody = document.getElementById('admin-indices-table-body');
+            if (!tbody) return;
+            if (!indices || indices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-secondary);">Loading constituent data...</td></tr>';
+                return;
+            }
+
+            let html = '';
+            indices.forEach(idx => {
+                const isRebalanced = idx.total_stocks === idx.official_size;
+                const statusBadge = isRebalanced 
+                    ? `<span class="badge badge-success" style="font-size: 11px; padding: 2px 8px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25);">✓ Rebalanced (${idx.total_stocks}/${idx.official_size})</span>`
+                    : `<span class="badge" style="font-size: 11px; padding: 2px 8px; background: rgba(234, 179, 8, 0.15); color: #ca8a04; border: 1px solid rgba(234, 179, 8, 0.25);">⚠️ Raw Feed (${idx.total_stocks}/${idx.official_size})</span>`;
+
+                html += `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 10px 14px; font-weight: 600; color: var(--text-primary);">
+                            <span style="margin-right: 6px;">${idx.icon || '🏛️'}</span>
+                            <span>${idx.name}</span>
+                        </td>
+                        <td style="padding: 10px 14px; color: var(--text-secondary);">
+                            <span class="badge" style="background: var(--bg-body); font-size: 11px; border: 1px solid var(--border-color);">${idx.category || 'Equity'}</span>
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: var(--text-primary); font-feature-settings: 'tnum';">
+                            ${idx.official_size}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: ${isRebalanced ? '#10b981' : '#ca8a04'}; font-feature-settings: 'tnum';">
+                            ${idx.total_stocks}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            ${statusBadge}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: right;">
+                            <a href="${idx.nse_url}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 4px; color: #3b82f6; text-decoration: none; font-size: 12px; font-weight: 600;">
+                                <span>NSE Market Data</span>
+                                <span style="font-size: 10px;">↗</span>
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        window.loadAdminIndicesStatus = loadAdminIndicesStatus;
+        window.triggerAdminIndicesSync = triggerAdminIndicesSync;
+        window.toggleAdminIndicesModal = toggleAdminIndicesModal;
 
 
         // =========================================================
