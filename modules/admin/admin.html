@@ -114,6 +114,32 @@
             }
         }
 
+        async function loadAdminTradingHolidaysStatus() {
+            if (typeof window.loadAdminTradingHolidaysStatus === 'function' && window.loadAdminTradingHolidaysStatus !== loadAdminTradingHolidaysStatus) {
+                return window.loadAdminTradingHolidaysStatus();
+            }
+            try {
+                const res = await fetch('/api/admin/trading_holidays/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+                const s = data.status;
+                const totalHolidays = s.total_holidays || 0;
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('holidays', {
+                        count: `${totalHolidays} Holidays (10 Years)`,
+                        lastSynced: s.last_synced_display || 'Never',
+                        isSyncing: Boolean(s.is_syncing),
+                        message: s.progress || 'Ingesting holidays from official NSE calendar...',
+                        percent: s.percent || 0,
+                        totalStr: `${totalHolidays} Holidays`,
+                        error: s.error
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading trading holidays status:", e);
+            }
+        }
+
         async function triggerAdminPeoplesSync() {
             const syncBtn = document.getElementById('btn-sync-peoples');
             const syncIcon = document.getElementById('admin-peoples-sync-icon');
@@ -1892,6 +1918,60 @@
                                     </div>
                                 </td>
                             </tr>
+
+                            <!-- 9. Official Trading Holidays -->
+                            <tr id="sync-tbl-row-holidays">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <span style="font-size: 18px; margin-top: 1px;">🗓️</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                <span style="font-weight: 600; color: var(--text-primary);">Trading Holidays (NSE / BSE)</span>
+                                                <button type="button" onclick="toggleAdminTradingHolidaysModal(true)" style="background: rgba(14, 165, 233, 0.12); color: #0284c7; border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;">🔍 View 10 Years</button>
+                                            </div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                                                10-Year Exchange Calendar (2017–2026) • Equities &amp; Derivatives
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-holidays" style="font-weight: 600; font-feature-settings: 'tnum'; color: var(--text-primary);">188 Holidays (10 Years)</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-holidays" style="color: var(--text-secondary); font-size: 12px;">Loading...</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0284c7; border: 1px solid rgba(14, 165, 233, 0.25); font-size: 11px; font-weight: 600;">NSE / BSE Official Calendar</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-align: right; min-width: 175px;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: stretch;">
+                                        <button type="button" id="sync-tbl-btn-holidays" class="btn" onclick="triggerAdminTradingHolidaysSync()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #0284c7; color: #fff; border: 1px solid #0284c7; border-radius: 6px; width: 100%; justify-content: center;">⚡ Sync Current Year</button>
+                                        <label style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; font-size: 10.5px; color: var(--text-secondary); cursor: pointer; user-select: none; margin: 0; white-space: nowrap;">
+                                            <input type="checkbox" id="sync-holidays-only-if-not-exist" checked style="accent-color: #0284c7; cursor: pointer; margin: 0;" />
+                                            <span>Sync if not exist in DB</span>
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-holidays" class="sync-tbl-status-row" style="display: none; background: var(--bg-subtle);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-holidays" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-holidays" style="color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Ingesting current year holidays from official NSE calendar...
+                                            </span>
+                                            <span id="sync-tbl-pct-holidays" style="font-weight: 700; color: #0284c7; font-feature-settings: 'tnum';">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-holidays" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); border-radius: 999px; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-holidays" style="display: none; font-size: 12.5px; font-weight: 600; padding: 2px 0;">
+                                        <span id="sync-tbl-result-holidays"></span>
+                                    </div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -3349,6 +3429,86 @@
         </div>
     </div>
 
+    <!-- MODAL: Official Trading Holidays (10 Years: 2017 - 2026) -->
+    <div id="adminTradingHolidaysModal" class="modal">
+        <div class="modal-content" style="width: 1020px; max-width: 96vw; max-height: 90vh; padding: 22px 24px; display: flex; flex-direction: column;">
+            <div class="modal-header" style="flex-shrink: 0; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">🗓️</span>
+                    <div>
+                        <h3 class="modal-title" style="margin: 0; font-size: 17.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 9px; flex-wrap: wrap;">
+                            Exchange Trading Holidays
+                            <span class="badge" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;">10 Years: 2017–2026</span>
+                        </h3>
+                        <p style="margin: 3px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                            Official NSE &amp; BSE Equity (Capital Market) trading holidays stored in <strong>MongoDB Atlas + SQLite</strong> (<code>db_store.py</code>)
+                        </p>
+                    </div>
+                </div>
+                <span class="close-btn" onclick="toggleAdminTradingHolidaysModal(false)" style="font-size: 28px; line-height: 1; cursor: pointer;">&times;</span>
+            </div>
+
+            <div style="flex: 1; overflow-y: auto; padding-right: 4px;">
+                <!-- Telemetry Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Total Holidays in DB</div>
+                        <div id="admin-holidays-modal-total" style="font-size: 19px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">188 Holidays</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">10 Years (2017 – 2026)</div>
+                    </div>
+                    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Current Year Status</div>
+                        <div id="admin-holidays-modal-curr-status" style="font-size: 19px; font-weight: 700; color: #10b981; margin-top: 2px;">✓ 2026 Synced</div>
+                        <div id="admin-holidays-modal-curr-count" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">20 official holidays in DB</div>
+                    </div>
+                    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Next Trading Holiday</div>
+                        <div id="admin-holidays-modal-next-name" style="font-size: 14.5px; font-weight: 700; color: #0284c7; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Loading...</div>
+                        <div id="admin-holidays-modal-next-date" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">—</div>
+                    </div>
+                </div>
+
+                <!-- Controls Bar: Year Filters & Sync -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;" id="admin-holidays-year-filters">
+                        <!-- Populated dynamically via JS: All, 2026, 2025, 2024... -->
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="admin-holidays-modal-only-check" checked style="accent-color: #0284c7;" />
+                            <span>Sync if not exist</span>
+                        </label>
+                        <button type="button" class="btn" onclick="triggerAdminTradingHolidaysSyncFromModal()" style="background: #0284c7; color: #fff; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px;">⚡ Sync Current Year (2026)</button>
+                    </div>
+                </div>
+
+                <!-- Holidays Table -->
+                <div class="modal-table-scroll" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+                        <thead>
+                            <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color); color: var(--text-secondary); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <th style="padding: 10px 14px;">Date</th>
+                                <th style="padding: 10px 14px;">Day</th>
+                                <th style="padding: 10px 14px;">Holiday Name</th>
+                                <th style="padding: 10px 14px; text-align: center;">Year</th>
+                                <th style="padding: 10px 14px; text-align: center;">Segment</th>
+                                <th style="padding: 10px 14px;">Notes / Session Info</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-trading-holidays-table-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="flex-shrink: 0; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary);">
+                <span>Dual persistence: <code>trading_holidays</code> collection (MongoDB) + SQLite</span>
+                <button type="button" class="btn btn-secondary" onclick="toggleAdminTradingHolidaysModal(false)" style="padding: 6px 16px;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function switchAdminTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -3381,6 +3541,7 @@
                 loadAdminTransactionsStatus();
                 loadAdminPeoplesStatus();
                 loadAdminIndicesStatus();
+                loadAdminTradingHolidaysStatus();
             } else if (tabName === 'system') {
                 loadAdminStats();
                 loadProductionJsonFilesList();
@@ -4263,7 +4424,8 @@
             ind: { prevCount: null, wasSyncing: false },
             ipo: { prevCount: null, wasSyncing: false },
             peoples: { prevCount: null, wasSyncing: false },
-            indices: { prevCount: null, wasSyncing: false }
+            indices: { prevCount: null, wasSyncing: false },
+            holidays: { prevCount: null, wasSyncing: false }
         };
 
         function updateSyncSummaryTableRow(key, opts = {}) {
@@ -4358,6 +4520,7 @@
             if (typeof loadAdminIpoStatus === 'function') loadAdminIpoStatus();
             if (typeof loadAdminPeoplesStatus === 'function') loadAdminPeoplesStatus();
             if (typeof loadAdminIndicesStatus === 'function') loadAdminIndicesStatus();
+            if (typeof loadAdminTradingHolidaysStatus === 'function') loadAdminTradingHolidaysStatus();
         }
 
         // ==========================================
@@ -6101,6 +6264,32 @@
             }
         }
 
+        async function loadAdminTradingHolidaysStatus() {
+            if (typeof window.loadAdminTradingHolidaysStatus === 'function' && window.loadAdminTradingHolidaysStatus !== loadAdminTradingHolidaysStatus) {
+                return window.loadAdminTradingHolidaysStatus();
+            }
+            try {
+                const res = await fetch('/api/admin/trading_holidays/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+                const s = data.status;
+                const totalHolidays = s.total_holidays || 0;
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('holidays', {
+                        count: `${totalHolidays} Holidays (10 Years)`,
+                        lastSynced: s.last_synced_display || 'Never',
+                        isSyncing: Boolean(s.is_syncing),
+                        message: s.progress || 'Ingesting holidays from official NSE calendar...',
+                        percent: s.percent || 0,
+                        totalStr: `${totalHolidays} Holidays`,
+                        error: s.error
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading trading holidays status:", e);
+            }
+        }
+
         async function triggerAdminPeoplesSync() {
             const syncBtn = document.getElementById('btn-sync-peoples');
             const syncIcon = document.getElementById('admin-peoples-sync-icon');
@@ -6429,6 +6618,262 @@
         window.loadAdminIndicesStatus = loadAdminIndicesStatus;
         window.triggerAdminIndicesSync = triggerAdminIndicesSync;
         window.toggleAdminIndicesModal = toggleAdminIndicesModal;
+
+
+        // ==========================================
+        // TRADING HOLIDAYS CONTROLLER (2017 - 2026)
+        // ==========================================
+        let _adminHolidaysPollTimer = null;
+        let _adminHolidaysData = null;
+        let _adminHolidaysSelectedYear = 'all';
+        let _adminHolidaysCachedList = [];
+
+        async function loadAdminTradingHolidaysStatus() {
+            try {
+                const res = await fetch('/api/admin/trading_holidays/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                _adminHolidaysData = s;
+                const totalHolidays = s.total_holidays || 0;
+                const currYear = s.current_year || 2026;
+                const currCount = s.current_year_count || 0;
+                const isSyncing = Boolean(s.is_syncing);
+                const lastSynced = s.last_synced_display || 'Never';
+
+                let customMsg = null;
+                if (s.last_result) {
+                    const lr = s.last_result;
+                    customMsg = `Synced ${lr.holidays_count || currCount} official holidays for ${lr.year || currYear} (${totalHolidays} total across 10 years)`;
+                }
+
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('holidays', {
+                        count: `${totalHolidays} Holidays (10 Years)`,
+                        lastSynced: lastSynced,
+                        isSyncing: isSyncing,
+                        message: s.progress || `Ingesting official holidays for ${currYear} from NSE...`,
+                        percent: s.percent || 0,
+                        customSuccessMsg: customMsg,
+                        totalStr: `${totalHolidays} Holidays`,
+                        error: s.error
+                    });
+                }
+
+                // If modal is open, refresh modal summary & table
+                const modal = document.getElementById('adminTradingHolidaysModal');
+                if (modal && modal.style.display === 'block') {
+                    updateAdminHolidaysModalUI(s);
+                }
+
+                // Polling if syncing
+                if (isSyncing) {
+                    if (!_adminHolidaysPollTimer) {
+                        _adminHolidaysPollTimer = setTimeout(() => {
+                            _adminHolidaysPollTimer = null;
+                            loadAdminTradingHolidaysStatus();
+                        }, 1200);
+                    }
+                } else if (_adminHolidaysPollTimer) {
+                    clearTimeout(_adminHolidaysPollTimer);
+                    _adminHolidaysPollTimer = null;
+                }
+            } catch (e) {
+                console.error("Error loading trading holidays status:", e);
+            }
+        }
+
+        async function triggerAdminTradingHolidaysSync(force = false) {
+            const btn = document.getElementById('sync-tbl-btn-holidays');
+            const onlyCheck = document.getElementById('sync-holidays-only-if-not-exist');
+            const onlyIfNotExists = onlyCheck ? onlyCheck.checked : true;
+
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '⏳ Syncing...';
+                    btn.style.opacity = '0.75';
+                }
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('holidays', {
+                        isSyncing: true,
+                        message: 'Connecting to official NSE holiday calendar...',
+                        percent: 15
+                    });
+                }
+
+                const res = await fetch('/api/admin/trading_holidays/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        only_if_not_exists: force ? false : onlyIfNotExists,
+                        force: force
+                    })
+                });
+                const data = await res.json();
+
+                if (data.already_exists) {
+                    alert(`ℹ️ Current Year Already Synced:\n\n${data.message}\n\nTo force a re-sync directly from live NSE, uncheck "Sync if not exist in DB" or click Sync in the modal.`);
+                    loadAdminTradingHolidaysStatus();
+                } else if (!data.success) {
+                    alert('❌ Failed to trigger holiday sync: ' + (data.message || data.error || 'Unknown error'));
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('holidays', { isSyncing: false, error: data.message || data.error });
+                    }
+                } else {
+                    setTimeout(loadAdminTradingHolidaysStatus, 600);
+                }
+            } catch (e) {
+                alert('❌ Error requesting holiday sync: ' + e.message);
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('holidays', { isSyncing: false, error: e.message });
+                }
+            }
+        }
+
+        function triggerAdminTradingHolidaysSyncFromModal() {
+            const onlyCheck = document.getElementById('admin-holidays-modal-only-check');
+            const onlyIfNotExists = onlyCheck ? onlyCheck.checked : true;
+            triggerAdminTradingHolidaysSync(!onlyIfNotExists);
+        }
+
+        function toggleAdminTradingHolidaysModal(show) {
+            const modal = document.getElementById('adminTradingHolidaysModal');
+            if (!modal) return;
+            if (show) {
+                modal.style.display = 'block';
+                loadAdminTradingHolidaysList();
+                loadAdminTradingHolidaysStatus();
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function loadAdminTradingHolidaysList() {
+            try {
+                const res = await fetch('/api/trading_holidays');
+                const data = await res.json();
+                if (data.success && data.holidays) {
+                    _adminHolidaysCachedList = data.holidays;
+                    renderAdminTradingHolidaysModalTable();
+                }
+            } catch (e) {
+                console.error("Error loading trading holidays list:", e);
+            }
+        }
+
+        function updateAdminHolidaysModalUI(s) {
+            const totEl = document.getElementById('admin-holidays-modal-total');
+            const currStatEl = document.getElementById('admin-holidays-modal-curr-status');
+            const currCountEl = document.getElementById('admin-holidays-modal-curr-count');
+            const nextNameEl = document.getElementById('admin-holidays-modal-next-name');
+            const nextDateEl = document.getElementById('admin-holidays-modal-next-date');
+
+            if (totEl) totEl.innerText = `${s.total_holidays || 0} Holidays`;
+            if (currStatEl) {
+                if (s.has_current_year) {
+                    currStatEl.innerText = `✓ ${s.current_year} Synced`;
+                    currStatEl.style.color = '#10b981';
+                } else {
+                    currStatEl.innerText = `⚠️ ${s.current_year} Missing`;
+                    currStatEl.style.color = '#ef4444';
+                }
+            }
+            if (currCountEl) currCountEl.innerText = `${s.current_year_count || 0} official holidays in DB`;
+
+            if (s.next_holiday) {
+                if (nextNameEl) nextNameEl.innerText = s.next_holiday.holiday_name || 'Upcoming Holiday';
+                if (nextDateEl) nextDateEl.innerText = `${s.next_holiday.date} (${s.next_holiday.day})`;
+            } else {
+                if (nextNameEl) nextNameEl.innerText = 'None upcoming';
+                if (nextDateEl) nextDateEl.innerText = '—';
+            }
+
+            // Render Year Filter Buttons
+            const filterContainer = document.getElementById('admin-holidays-year-filters');
+            if (filterContainer && s.years) {
+                let fHtml = `<button type="button" class="btn ${(_adminHolidaysSelectedYear === 'all') ? 'btn-primary' : 'btn-secondary'}" onclick="filterAdminHolidaysByYear('all')" style="padding: 4px 10px; font-size: 11px; border-radius: 4px;">All Years (${s.total_holidays})</button>`;
+                
+                const descYears = [...s.years].sort((a, b) => b - a);
+                descYears.forEach(yr => {
+                    const cnt = s.counts_by_year ? (s.counts_by_year[yr] || 0) : 0;
+                    const isActive = _adminHolidaysSelectedYear === String(yr);
+                    fHtml += `<button type="button" class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}" onclick="filterAdminHolidaysByYear('${yr}')" style="padding: 4px 10px; font-size: 11px; border-radius: 4px;">${yr} (${cnt})</button>`;
+                });
+                filterContainer.innerHTML = fHtml;
+            }
+        }
+
+        function filterAdminHolidaysByYear(yr) {
+            _adminHolidaysSelectedYear = String(yr);
+            if (_adminHolidaysData) {
+                updateAdminHolidaysModalUI(_adminHolidaysData);
+            }
+            renderAdminTradingHolidaysModalTable();
+        }
+
+        function renderAdminTradingHolidaysModalTable() {
+            const tbody = document.getElementById('admin-trading-holidays-table-body');
+            if (!tbody) return;
+            if (!_adminHolidaysCachedList || _adminHolidaysCachedList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-secondary);">Loading trading holiday records...</td></tr>';
+                return;
+            }
+
+            let filtered = _adminHolidaysCachedList;
+            if (_adminHolidaysSelectedYear !== 'all') {
+                filtered = filtered.filter(h => String(h.year) === _adminHolidaysSelectedYear);
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-secondary);">No holidays found for selected year.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(h => {
+                const isWeekend = h.day === 'Saturday' || h.day === 'Sunday';
+                const hasMuhurat = (h.notes || '').toLowerCase().includes('muhurat');
+
+                let noteBadge = '<span style="color: var(--text-secondary); font-size: 11px;">—</span>';
+                if (hasMuhurat) {
+                    noteBadge = `<span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #ca8a04; border: 1px solid rgba(234, 179, 8, 0.25); font-weight: 600; font-size: 11px;">🪔 ${h.notes}</span>`;
+                } else if (h.notes) {
+                    noteBadge = `<span style="font-size: 11px; color: var(--text-secondary);">${h.notes}</span>`;
+                }
+
+                html += `
+                    <tr style="border-bottom: 1px solid var(--border-color); ${isWeekend ? 'background: rgba(148, 163, 184, 0.04);' : ''}">
+                        <td style="padding: 10px 14px; font-weight: 600; color: var(--text-primary); font-feature-settings: 'tnum'; white-space: nowrap;">
+                            ${h.date}
+                        </td>
+                        <td style="padding: 10px 14px; color: ${isWeekend ? '#ca8a04' : 'var(--text-primary)'}; font-weight: 500;">
+                            ${h.day}
+                        </td>
+                        <td style="padding: 10px 14px; font-weight: 600; color: var(--text-primary);">
+                            ${h.holiday_name}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: var(--text-secondary); font-feature-settings: 'tnum';">
+                            ${h.year}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <span class="badge" style="background: var(--bg-body); font-size: 11px; border: 1px solid var(--border-color);">${h.segment || 'Equities'}</span>
+                        </td>
+                        <td style="padding: 10px 14px;">
+                            ${noteBadge}
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        window.loadAdminTradingHolidaysStatus = loadAdminTradingHolidaysStatus;
+        window.triggerAdminTradingHolidaysSync = triggerAdminTradingHolidaysSync;
+        window.triggerAdminTradingHolidaysSyncFromModal = triggerAdminTradingHolidaysSyncFromModal;
+        window.toggleAdminTradingHolidaysModal = toggleAdminTradingHolidaysModal;
+        window.filterAdminHolidaysByYear = filterAdminHolidaysByYear;
 
 
         // =========================================================
