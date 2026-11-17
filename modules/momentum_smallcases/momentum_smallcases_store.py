@@ -707,6 +707,7 @@ def run_strategy_init(strategy_id, username=None):
         "ranked_stocks": ranked_stocks,
         "portfolio_snapshot": portfolio,
         "changes": portfolio.get("changes", {}),
+        "exited_stocks": portfolio.get("exited_stocks", []),
         "executed_at": now_iso
     }
 
@@ -841,6 +842,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
         "ranked_stocks": ranked_stocks,
         "portfolio_snapshot": portfolio,
         "changes": portfolio.get("changes", {}),
+        "exited_stocks": portfolio.get("exited_stocks", []),
         "executed_at": now_iso
     }
 

@@ -635,18 +635,36 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     retained_holdings = []
     removed_symbols = []
     retained_symbols = []
+    exited_stocks = []
 
     for sym, h in prev_holdings_map.items():
         stk = rank_map.get(sym)
         # Check if stock exits
         if not stk or stk["rank"] > exit_regime_ranking:
-            # Sell
-            exit_price = stk["price"] if stk else h.get("current_price", h["buy_price"])
-            sell_value = h["quantity"] * exit_price
+            # Sell / Exit
+            exit_price = round(float(stk["price"]) if stk else float(h.get("current_price", h["buy_price"])), 2)
+            qty = int(h["quantity"])
+            avg_price = round(float(h.get("buy_price", 0.0)), 2)
+            invested = round(qty * avg_price, 2)
+            sell_value = round(qty * exit_price, 2)
             fee = round(sell_value * TRANSACTION_FEE_RATE, 2)
             wallet += (sell_value - fee)
             total_fees += fee
             removed_symbols.append(sym)
+            pnl = round(sell_value - invested, 2)
+            pnl_pct = round(((exit_price - avg_price) / avg_price) * 100.0, 2) if avg_price > 0 else 0.0
+
+            exited_stocks.append({
+                "symbol": sym,
+                "quantity": qty,
+                "average_price": avg_price,
+                "exit_price": exit_price,
+                "invested": invested,
+                "exit_value": sell_value,
+                "pnl": pnl,
+                "pnl_percent": pnl_pct,
+                "fee": fee
+            })
             if stk:
                 stk["action"] = "SELL"
                 stk["is_held"] = False
@@ -731,9 +749,11 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         "wallet_balance": wallet,
         "total_portfolio_value": total_val,
         "fees_paid": round(total_fees, 2),
+        "exited_stocks": exited_stocks,
         "changes": {
             "added": added_symbols,
             "removed": removed_symbols,
-            "retained": retained_symbols
+            "retained": retained_symbols,
+            "exited_stocks": exited_stocks
         }
     }

@@ -1208,7 +1208,127 @@
                     </table>
                 </div>
             </div>
+        `;
 
+        // In every rebalancing after Portfolio Holdings Snapshot: show Exited Stocks Details
+        if (!isInit) {
+            let exitedStocks = run.exited_stocks || portfolio.exited_stocks || (changes && changes.exited_stocks) || [];
+
+            // Fallback derivation for any previous runs
+            if ((!exitedStocks || exitedStocks.length === 0) && removed && removed.length > 0) {
+                const prevHoldings = (currentStrategy.runs && selectedRunIndex > 0)
+                    ? (currentStrategy.runs[selectedRunIndex - 1]?.portfolio_snapshot?.holdings || [])
+                    : [];
+                const prevMap = {};
+                prevHoldings.forEach(h => { prevMap[h.symbol] = h; });
+                const rankMap = {};
+                (run.ranked_stocks || []).forEach(s => { rankMap[s.symbol] = s; });
+
+                exitedStocks = removed.map(sym => {
+                    const h = prevMap[sym] || {};
+                    const stk = rankMap[sym] || {};
+                    const qty = Number(h.quantity || 0);
+                    const avgPrice = Number(h.buy_price || 0);
+                    const exitPrice = Number(stk.price || h.current_price || avgPrice);
+                    const invested = qty * avgPrice;
+                    const exitVal = qty * exitPrice;
+                    const pnl = exitVal - invested;
+                    const pnlPct = avgPrice > 0 ? ((exitPrice - avgPrice) / avgPrice) * 100 : 0;
+                    return {
+                        symbol: sym,
+                        quantity: qty,
+                        average_price: avgPrice,
+                        exit_price: exitPrice,
+                        invested: invested,
+                        exit_value: exitVal,
+                        pnl: pnl,
+                        pnl_percent: pnlPct
+                    };
+                });
+            }
+
+            const totalExitedPnl = (exitedStocks || []).reduce((sum, s) => sum + (Number(s.pnl) || 0), 0);
+            const totalExitedInvested = (exitedStocks || []).reduce((sum, s) => sum + (Number(s.invested) || 0), 0);
+            const totalExitedPnlPct = totalExitedInvested > 0 ? (totalExitedPnl / totalExitedInvested) * 100 : 0;
+            const totalPnlColor = totalExitedPnl >= 0 ? '#10b981' : '#ef4444';
+
+            html += `
+                <!-- Exited Stocks Details Table -->
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span style="color: #ef4444;">🚪</span> <span>Exited Stocks (${(exitedStocks || []).length} ${(exitedStocks || []).length === 1 ? 'stock' : 'stocks'})</span>
+                        </h4>
+                        ${(exitedStocks && exitedStocks.length > 0) ? `
+                            <div style="font-size: 12.5px; font-family: monospace;">
+                                <span style="color: var(--text-secondary);">Total Exited P&amp;L:</span>
+                                <strong style="color: ${totalPnlColor}; font-weight: 700; margin-left: 4px;">
+                                    ${totalExitedPnl >= 0 ? '+' : ''}₹${formatCurrency(totalExitedPnl)} (${totalExitedPnl >= 0 ? '+' : ''}${totalExitedPnlPct.toFixed(2)}%)
+                                </strong>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="msc-indices-table" style="font-size: 12px;">
+                            <thead>
+                                <tr style="background: var(--bg-subtle);">
+                                    <th style="width: 45px;">S.NO</th>
+                                    <th>STOCK SYMBOL</th>
+                                    <th style="text-align: right;">QTY</th>
+                                    <th style="text-align: right;">AVERAGE PRICE</th>
+                                    <th style="text-align: right;">EXIT PRICE</th>
+                                    <th style="text-align: right;">TOTAL P/L</th>
+                                    <th style="text-align: right;">P/L %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            if (!exitedStocks || exitedStocks.length === 0) {
+                html += `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 22px; color: var(--text-secondary);">
+                            No stocks exited during this rebalancing (all constituent holdings remained within the exit regime rank).
+                        </td>
+                    </tr>
+                `;
+            } else {
+                exitedStocks.forEach((s, idx) => {
+                    const pnl = Number(s.pnl || 0);
+                    const pnlPct = Number(s.pnl_percent || 0);
+                    const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+
+                    html += `
+                        <tr>
+                            <td style="color: var(--text-secondary); font-weight: 500;">${idx + 1}</td>
+                            <td>
+                                <strong style="color: var(--text-primary); cursor: pointer;" onclick="if(typeof openInHouseChart==='function') openInHouseChart('${escapeHtml(s.symbol)}');" title="Open chart for ${escapeHtml(s.symbol)}">
+                                    ${escapeHtml(s.symbol)}
+                                </strong>
+                            </td>
+                            <td style="text-align: right; font-family: monospace; font-weight: 600;">${s.quantity}</td>
+                            <td style="text-align: right; font-family: monospace;">₹${formatCurrency(s.average_price)}</td>
+                            <td style="text-align: right; font-family: monospace; font-weight: 600;">₹${formatCurrency(s.exit_price)}</td>
+                            <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
+                                ${pnl >= 0 ? '+' : ''}₹${formatCurrency(pnl)}
+                            </td>
+                            <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
+                                ${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `
             <!-- Capital & Wallet Audit Logs -->
             <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
