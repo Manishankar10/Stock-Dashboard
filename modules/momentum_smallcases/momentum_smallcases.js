@@ -21,6 +21,39 @@
     let isSubmitting = false;
 
     // =========================================================================
+    // BRAND LOGO LOADER HELPERS
+    // =========================================================================
+    function showSmallcaseGlobalLoader({ title = 'Processing...', badge = 'Momentum Engine', subtitle = '' } = {}) {
+        const overlay = document.getElementById('mscGlobalProcessLoader');
+        if (!overlay) return;
+        const titleEl = document.getElementById('mscGlobalLoaderTitle');
+        const badgeEl = document.getElementById('mscGlobalLoaderBadge');
+        const subEl = document.getElementById('mscGlobalLoaderSubtitle');
+        if (titleEl && title) titleEl.textContent = title;
+        if (badgeEl) {
+            badgeEl.textContent = badge;
+            badgeEl.style.display = badge ? 'inline-block' : 'none';
+        }
+        if (subEl) {
+            subEl.textContent = subtitle;
+            subEl.style.display = subtitle ? 'block' : 'none';
+        }
+        overlay.style.display = 'flex';
+    }
+
+    function hideSmallcaseGlobalLoader() {
+        const overlay = document.getElementById('mscGlobalProcessLoader');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    function setSmallcaseModalLoader(modalId, isLoading, options = {}) {
+        if (typeof window.setModalBrandLoader === 'function') {
+            return window.setModalBrandLoader(modalId, isLoading, options);
+        }
+        return false;
+    }
+
+    // =========================================================================
     // UTILITY FORMATTERS
     // =========================================================================
     function escapeHtml(str) {
@@ -161,12 +194,20 @@
         const mount = document.getElementById('momentum-strategies-mount');
         if (!mount) return;
 
-        mount.innerHTML = `
-            <div style="text-align: center; padding: 45px 20px; color: var(--text-secondary);">
-                <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 8px;">⏳</span><br>
-                Loading Momentum Smallcases...
-            </div>
-        `;
+        if (typeof window.createBrandLoaderHTML === 'function') {
+            mount.innerHTML = window.createBrandLoaderHTML({
+                title: 'Loading Momentum Smallcases...',
+                badge: 'Smallcase Dashboard',
+                subtitle: 'Loading smallcase portfolios, rankings, and rebalance schedules...'
+            });
+        } else {
+            mount.innerHTML = `
+                <div style="text-align: center; padding: 45px 20px; color: var(--text-secondary);">
+                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 8px;">⏳</span><br>
+                    Loading Momentum Smallcases...
+                </div>
+            `;
+        }
 
         try {
             const res = await fetch('/api/momentum-smallcases/strategies');
@@ -346,6 +387,7 @@
     // 2. ADD STRATEGY MODAL
     // =========================================================================
     async function openAddStrategyModal() {
+        setSmallcaseModalLoader('addStrategyModal', false);
         const modal = document.getElementById('addStrategyModal');
         const select = document.getElementById('stratIndexSelect');
         const submitBtn = document.getElementById('stratCreateSubmitBtn');
@@ -499,6 +541,7 @@
     }
 
     function closeAddStrategyModal() {
+        setSmallcaseModalLoader('addStrategyModal', false);
         const modal = document.getElementById('addStrategyModal');
         if (modal) modal.style.display = 'none';
     }
@@ -553,6 +596,12 @@
         }
         isSubmitting = true;
 
+        setSmallcaseModalLoader('addStrategyModal', true, {
+            title: 'Creating Momentum Smallcase...',
+            badge: 'Smallcase Engine',
+            subtitle: 'Configuring universe, exit regime & scheduling rebalance dates...'
+        });
+
         try {
             const res = await fetch('/api/momentum-smallcases/strategies', {
                 method: 'POST',
@@ -588,6 +637,7 @@
             alertToast('Failed to create smallcase: ' + err.message, 'error');
         } finally {
             isSubmitting = false;
+            setSmallcaseModalLoader('addStrategyModal', false);
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerText = origText;
@@ -603,12 +653,18 @@
 
         const container = document.getElementById('sd-selected-run-container');
         if (container) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 8px;">⏳</span><br>
-                    Loading Smallcase Details...
-                </div>
-            `;
+            container.innerHTML = (typeof window.createBrandLoaderHTML === 'function')
+                ? window.createBrandLoaderHTML({
+                    title: 'Loading Smallcase Details...',
+                    badge: 'Strategy Analytics',
+                    subtitle: 'Loading formula, execution timeline, and constituent holdings...'
+                })
+                : `
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 8px;">⏳</span><br>
+                        Loading Smallcase Details...
+                    </div>
+                `;
         }
 
         try {
@@ -1102,6 +1158,11 @@
         }
 
         alertToast('Executing Init... Fetching quotes & computing momentum metrics', 'info');
+        showSmallcaseGlobalLoader({
+            title: 'Executing Initial Portfolio Allocation...',
+            badge: 'Momentum Engine',
+            subtitle: 'Fetching historical quotes, evaluating 1M, 2M, 5M, 9M returns & volatilities, and executing equal-weight allocation...'
+        });
 
         try {
             const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}/run-init`, {
@@ -1120,11 +1181,14 @@
         } catch (err) {
             console.error('Error running Init:', err);
             alertToast('Init execution failed: ' + err.message, 'error');
+        } finally {
+            hideSmallcaseGlobalLoader();
         }
     }
 
     function openRunRebalanceModal() {
         if (!currentStrategy) return;
+        setSmallcaseModalLoader('runRebalanceModal', false);
         document.getElementById('rebal-modal-strat-name').innerText = currentStrategy.name;
         document.getElementById('rebal-modal-date').innerText = formatDateDisplay(currentStrategy.next_rebalance_date);
         document.getElementById('rebalStepupInput').value = '0';
@@ -1138,6 +1202,7 @@
     }
 
     function closeRunRebalanceModal() {
+        setSmallcaseModalLoader('runRebalanceModal', false);
         const modal = document.getElementById('runRebalanceModal');
         if (modal) modal.style.display = 'none';
     }
@@ -1158,6 +1223,17 @@
             btn.innerHTML = '<span>⏳</span> Rebalancing...';
         }
         isSubmitting = true;
+
+        setSmallcaseModalLoader('runRebalanceModal', true, {
+            title: 'Executing Rebalance...',
+            badge: 'Scheduled Rebalance',
+            subtitle: 'Re-evaluating momentum universe, liquidating exit stocks, and buying top momentum picks...'
+        });
+        showSmallcaseGlobalLoader({
+            title: 'Executing Smallcase Rebalance...',
+            badge: 'Scheduled Rebalance',
+            subtitle: 'Re-evaluating momentum universe, liquidating exit stocks, and buying top momentum picks...'
+        });
 
         try {
             const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/run-rebalance`, {
@@ -1183,6 +1259,8 @@
             alertToast('Rebalance failed: ' + err.message, 'error');
         } finally {
             isSubmitting = false;
+            setSmallcaseModalLoader('runRebalanceModal', false);
+            hideSmallcaseGlobalLoader();
             if (btn) {
                 btn.disabled = false;
                 btn.innerText = origText;
@@ -1195,6 +1273,7 @@
     // =========================================================================
     function openEditFormulaModal() {
         if (!currentStrategy) return;
+        setSmallcaseModalLoader('editFormulaModal', false);
         document.getElementById('formulaEditInput').value = currentStrategy.formula || '';
         const modal = document.getElementById('editFormulaModal');
         if (modal) modal.style.display = 'flex';
@@ -1205,6 +1284,7 @@
     }
 
     function closeEditFormulaModal() {
+        setSmallcaseModalLoader('editFormulaModal', false);
         const modal = document.getElementById('editFormulaModal');
         if (modal) modal.style.display = 'none';
     }
@@ -1225,6 +1305,12 @@
             btn.innerText = 'Saving...';
         }
         isSubmitting = true;
+
+        setSmallcaseModalLoader('editFormulaModal', true, {
+            title: 'Saving Momentum Formula...',
+            badge: 'Formula Editor',
+            subtitle: 'Updating momentum ranking formula for future rebalances...'
+        });
 
         try {
             const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/formula`, {
@@ -1248,6 +1334,7 @@
             alertToast('Error saving formula: ' + err.message, 'error');
         } finally {
             isSubmitting = false;
+            setSmallcaseModalLoader('editFormulaModal', false);
             if (btn) {
                 btn.disabled = false;
                 btn.innerText = origText;
@@ -1259,6 +1346,7 @@
     // 6. DELETE STRATEGY / INDEX HANDLER
     // =========================================================================
     function openDeleteStrategyModal(strategyId, name) {
+        setSmallcaseModalLoader('momentumIndexDeleteModal', false);
         document.getElementById('mIndexDeleteId').value = strategyId;
         document.getElementById('mIndexDeleteType').value = 'strategy';
         document.getElementById('mscDeleteModalHeader').innerText = 'Delete Smallcase';
@@ -1273,6 +1361,7 @@
     }
 
     function openDeleteManualIndexModal(indexId, name) {
+        setSmallcaseModalLoader('momentumIndexDeleteModal', false);
         document.getElementById('mIndexDeleteId').value = indexId;
         document.getElementById('mIndexDeleteType').value = 'index';
         document.getElementById('mscDeleteModalHeader').innerText = 'Delete Manual Index';
@@ -1282,6 +1371,7 @@
     }
 
     function closeMomentumDeleteModal() {
+        setSmallcaseModalLoader('momentumIndexDeleteModal', false);
         const modal = document.getElementById('momentumIndexDeleteModal');
         if (modal) modal.style.display = 'none';
     }
@@ -1296,6 +1386,12 @@
             btn.disabled = true;
             btn.innerText = 'Deleting...';
         }
+
+        setSmallcaseModalLoader('momentumIndexDeleteModal', true, {
+            title: 'Deleting Record...',
+            badge: targetType === 'strategy' ? 'Momentum Smallcase' : 'Manual Index',
+            subtitle: 'Permanently removing record and calculation logs...'
+        });
 
         try {
             const url = targetType === 'strategy'
@@ -1325,6 +1421,7 @@
             console.error('Error deleting target:', err);
             alertToast('Delete error: ' + err.message, 'error');
         } finally {
+            setSmallcaseModalLoader('momentumIndexDeleteModal', false);
             if (btn) {
                 btn.disabled = false;
                 btn.innerText = 'Delete';
@@ -1339,12 +1436,20 @@
         const mount = document.getElementById('momentum-indices-mount');
         if (!mount) return;
 
-        mount.innerHTML = `
-            <div style="text-align: center; padding: 45px 20px; color: var(--text-secondary);">
-                <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 8px;">⏳</span><br>
-                Loading Manual Indices...
-            </div>
-        `;
+        if (typeof window.createBrandLoaderHTML === 'function') {
+            mount.innerHTML = window.createBrandLoaderHTML({
+                title: 'Loading Manual Indices...',
+                badge: 'Constituent Universes',
+                subtitle: 'Retrieving manual constituent lists and tracking dates...'
+            });
+        } else {
+            mount.innerHTML = `
+                <div style="text-align: center; padding: 45px 20px; color: var(--text-secondary);">
+                    <span class="spinning" style="display: inline-block; font-size: 24px; margin-bottom: 8px;">⏳</span><br>
+                    Loading Manual Indices...
+                </div>
+            `;
+        }
 
         try {
             const res = await fetch('/api/momentum-smallcases/indices');
@@ -1508,6 +1613,7 @@
 
     // Manual Index Form: Add / Edit
     function openAddManualIndexModal() {
+        setSmallcaseModalLoader('momentumIndexFormModal', false);
         document.getElementById('mIndexEditId').value = '';
         document.getElementById('mIndexNameInput').value = '';
         document.getElementById('mIndexDescInput').value = '';
@@ -1528,6 +1634,7 @@
     }
 
     async function openEditManualIndexModal(indexId) {
+        setSmallcaseModalLoader('momentumIndexFormModal', false);
         let idx = momentumIndicesCache.find(x => x.id === indexId);
         if (!idx) {
             try {
@@ -1571,6 +1678,7 @@
     }
 
     function closeMomentumFormModal() {
+        setSmallcaseModalLoader('momentumIndexFormModal', false);
         const modal = document.getElementById('momentumIndexFormModal');
         if (modal) modal.style.display = 'none';
     }
@@ -1645,6 +1753,12 @@
         }
         isSubmitting = true;
 
+        setSmallcaseModalLoader('momentumIndexFormModal', true, {
+            title: editId ? 'Updating Manual Index...' : 'Creating Manual Index...',
+            badge: 'Constituent Universe',
+            subtitle: 'Validating format and registering constituent stocks...'
+        });
+
         const url = editId ? `/api/momentum-smallcases/indices/${encodeURIComponent(editId)}` : '/api/momentum-smallcases/indices';
         const method = editId ? 'PUT' : 'POST';
 
@@ -1673,6 +1787,7 @@
             alertToast('Error saving index: ' + err.message, 'error');
         } finally {
             isSubmitting = false;
+            setSmallcaseModalLoader('momentumIndexFormModal', false);
             if (saveBtn) {
                 saveBtn.disabled = false;
                 saveBtn.innerText = originalText;
@@ -1683,6 +1798,11 @@
     // View Manual Index Modal
     async function openViewManualIndexModal(indexId) {
         currentViewingIndex = null;
+        setSmallcaseModalLoader('momentumIndexViewModal', true, {
+            title: 'Loading Constituent Quotes...',
+            badge: 'Live Market Data',
+            subtitle: 'Fetching live prices and calculating active tracking days...'
+        });
         const modal = document.getElementById('momentumIndexViewModal');
         if (modal) modal.style.display = 'flex';
 
@@ -1782,10 +1902,13 @@
         } catch (err) {
             console.error('Error fetching view details:', err);
             if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 20px;">Failed to load details: ${escapeHtml(err.message)}</td></tr>`;
+        } finally {
+            setSmallcaseModalLoader('momentumIndexViewModal', false);
         }
     }
 
     function closeMomentumViewModal() {
+        setSmallcaseModalLoader('momentumIndexViewModal', false);
         const modal = document.getElementById('momentumIndexViewModal');
         if (modal) modal.style.display = 'none';
         currentViewingIndex = null;

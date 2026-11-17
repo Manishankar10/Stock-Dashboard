@@ -81,9 +81,16 @@
             </div>
 
             <div id="momentum-strategies-mount">
-                <div style="text-align: center; padding: 50px 20px; color: var(--text-secondary);">
-                    <span class="spinning" style="display: inline-block; font-size: 26px; margin-bottom: 10px;">⏳</span><br>
-                    Loading Smallcases...
+                <div class="cd-brand-loader">
+                    <div class="chart-loader-brand-box">
+                        <div class="chart-loader-spinner-ring"></div>
+                        <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                    </div>
+                    <div class="cd-loader-text-box">
+                        <div class="cd-loader-title">Loading Smallcases...</div>
+                        <div class="cd-loader-badge">Momentum Strategies</div>
+                        <div class="cd-loader-subtitle">Loading smallcase strategies &amp; rebalancing schedule...</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -235,7 +242,17 @@
             </div>
 
             <div id="momentum-indices-mount">
-                <!-- Mount for manual indices table -->
+                <div class="cd-brand-loader">
+                    <div class="chart-loader-brand-box">
+                        <div class="chart-loader-spinner-ring"></div>
+                        <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+                    </div>
+                    <div class="cd-loader-text-box">
+                        <div class="cd-loader-title">Loading Manual Indices...</div>
+                        <div class="cd-loader-badge">Constituent Universes</div>
+                        <div class="cd-loader-subtitle">Loading constituent lists and tracking dates...</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -566,6 +583,19 @@
                     Delete
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Global Brand Process Loader Overlay (Active during Init, Rebalance, and Engine Recalculations) -->
+    <div id="mscGlobalProcessLoader" class="msc-global-process-loader" style="display: none;" role="status" aria-live="polite">
+        <div class="chart-loader-brand-box">
+            <div class="chart-loader-spinner-ring"></div>
+            <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+        </div>
+        <div class="cd-loader-text-box">
+            <div class="cd-loader-title" id="mscGlobalLoaderTitle">Executing Calculation...</div>
+            <div class="cd-loader-badge" id="mscGlobalLoaderBadge">Momentum Engine</div>
+            <div class="cd-loader-subtitle" id="mscGlobalLoaderSubtitle">Fetching historical quotes, evaluating returns & volatilities...</div>
         </div>
     </div>
 

@@ -833,6 +833,11 @@
             btn.disabled = true;
             btn.innerText = 'Importing...';
             document.getElementById('scImportStatus').innerHTML = '<div style="padding:10px; font-size:12px; color:var(--text-secondary);">Reading Excel file...</div>';
+            setSmallcaseModalLoader('importSmallcaseModal', true, {
+                title: 'Importing Excel Holdings...',
+                badge: 'Smallcase Basket',
+                subtitle: 'Reading file and validating constituent transactions...'
+            });
 
             try {
                 const fd = new FormData();
@@ -857,6 +862,7 @@
             } catch (err) {
                 document.getElementById('scImportStatus').innerHTML = `<div style="padding:10px; color:#ef4444; font-size:12px;">Import failed: ${escapeHtml(err.message)}</div>`;
             } finally {
+                setSmallcaseModalLoader('importSmallcaseModal', false);
                 btn.disabled = false;
                 btn.innerText = 'Import Excel';
             }

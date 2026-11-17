@@ -1484,7 +1484,7 @@
         function resolveBrandLoaderModalContent(modalOrId) {
             const modalEl = (typeof modalOrId === 'string') ? document.getElementById(modalOrId) : modalOrId;
             if (!modalEl) return null;
-            return modalEl.querySelector('.small-modal-content, .modal-content') || modalEl;
+            return modalEl.querySelector('.small-modal-content, .modal-content, .modal-container, .msc-modal-container') || modalEl;
         }
 
         function setLoaderFieldText(textBox, selector, className, value, beforeNode) {
