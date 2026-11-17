@@ -585,19 +585,37 @@ def run_strategy_init(strategy_id, username=None):
         username=username
     )
     if not constituents:
-        raise ValueError(f"No constituents found for index '{target.get('index_name')}'")
+        raise ValueError(f"Index '{target.get('index_name')}' contains 0 constituent stocks. Please add stocks in Manual Indices.")
 
     # 2. Evaluate and rank stocks
-    ranked_stocks, eligible_count = rank_and_evaluate_universe(
+    ranked_stocks, eligible_count, meta = rank_and_evaluate_universe(
         stock_items=constituents,
         target_date=exec_date,
         formula_str=target.get("formula"),
         no_of_stocks=target["no_of_stocks"],
-        exit_regime_ranking=target["exit_regime_ranking"]
+        exit_regime_ranking=target["exit_regime_ranking"],
+        return_meta=True
     )
 
     if not ranked_stocks:
-        raise ValueError("Could not calculate momentum metrics for constituent stocks. Please check network/data.")
+        if eligible_count == 0:
+            earliest = meta.get("earliest_date_added")
+            earliest_str = earliest.strftime("%d/%m/%Y") if earliest else "N/A"
+            latest = meta.get("latest_date_added")
+            latest_str = latest.strftime("%d/%m/%Y") if latest else "N/A"
+            exec_fmt = exec_date.strftime("%d/%m/%Y")
+            raise ValueError(
+                f"No constituent stocks in index '{target.get('index_name')}' were eligible on or before the Smallcase Start Date ({exec_fmt}). "
+                f"Found {len(constituents)} stocks in this index, but their Date Added is between {earliest_str} and {latest_str} (after start date {exec_fmt}). "
+                f"Please set your Smallcase Start Date to {earliest_str} or later, or adjust the Date Added of stocks in Manual Indices."
+            )
+        else:
+            failed_syms = meta.get("failed_symbols", [])
+            failed_str = ", ".join(failed_syms[:5]) if failed_syms else "all eligible stocks"
+            raise ValueError(
+                f"Could not calculate momentum metrics for constituent stocks ({failed_str}). "
+                f"Please ensure tickers are valid NSE symbols and market data is accessible."
+            )
 
     # 3. Execute equal weight allocation
     portfolio = execute_init_run(
@@ -715,16 +733,21 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
         raise ValueError("No constituents found for index")
 
     # Rank universe
-    ranked_stocks, eligible_count = rank_and_evaluate_universe(
+    ranked_stocks, eligible_count, meta = rank_and_evaluate_universe(
         stock_items=constituents,
         target_date=exec_date,
         formula_str=target.get("formula"),
         no_of_stocks=target["no_of_stocks"],
-        exit_regime_ranking=target["exit_regime_ranking"]
+        exit_regime_ranking=target["exit_regime_ranking"],
+        return_meta=True
     )
 
     if not ranked_stocks:
-        raise ValueError("Could not calculate momentum metrics for rebalance date")
+        if eligible_count == 0:
+            raise ValueError(f"No constituent stocks in index '{target.get('index_name')}' were eligible on rebalance date {exec_date}.")
+        failed_syms = meta.get("failed_symbols", [])
+        failed_str = ", ".join(failed_syms[:5]) if failed_syms else "stocks"
+        raise ValueError(f"Could not calculate momentum metrics for rebalance date ({failed_str}).")
 
     # Execute rebalance
     portfolio = execute_rebalance_run(

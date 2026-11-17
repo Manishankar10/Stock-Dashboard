@@ -395,6 +395,7 @@
                     }
 
                     select.innerHTML = optHtml || '<option value="">No indices available</option>';
+                    checkStratDateAndIndexMatch();
                 } else {
                     select.innerHTML = '<option value="">Failed to load indices</option>';
                 }
@@ -409,6 +410,92 @@
             const input = document.getElementById('stratNameInput');
             if (input) input.focus();
         }, 100);
+    }
+
+    async function checkStratDateAndIndexMatch() {
+        const indexId = document.getElementById('stratIndexSelect')?.value;
+        const startDateVal = document.getElementById('stratStartDateInput')?.value;
+        const hintEl = document.getElementById('stratIndexHint');
+        const dateHintEl = document.getElementById('stratStartDateHint');
+        if (!hintEl) return;
+
+        if (!indexId) {
+            hintEl.innerHTML = `<span style="color: var(--text-secondary);">Select index universe to evaluate momentum rankings from.</span>`;
+            if (dateHintEl) dateHintEl.innerHTML = `📅 If holiday/weekend, auto-advances to next trading day.`;
+            return;
+        }
+
+        const found = indicesCatalogCache.find(x => x.id === indexId);
+        if (!found) return;
+
+        if (found.type === 'nifty') {
+            hintEl.innerHTML = `<span style="color: #10b981; font-weight: 600;">✓ Official Nifty benchmark (${found.stock_count} constituents). All stocks eligible.</span>`;
+            if (dateHintEl) dateHintEl.innerHTML = `📅 If holiday/weekend, auto-advances to next trading day.`;
+            return;
+        }
+
+        // For manual index: fetch or find index constituents
+        let manualIdx = momentumIndicesCache.find(x => x.id === indexId);
+        if (!manualIdx || !manualIdx.stocks) {
+            try {
+                const res = await fetch(`/api/momentum-smallcases/indices/${encodeURIComponent(indexId)}?enrich=0`);
+                const data = await res.json();
+                if (data.success && data.index) {
+                    manualIdx = data.index;
+                }
+            } catch (_) {}
+        }
+
+        if (!manualIdx || !manualIdx.stocks || manualIdx.stocks.length === 0) {
+            hintEl.innerHTML = `<span style="color: #ef4444; font-weight: 600;">⚠️ This index has 0 constituent stocks! Please add stocks in Manual Indices first.</span>`;
+            return;
+        }
+
+        const stocks = manualIdx.stocks;
+        if (!startDateVal) {
+            hintEl.innerHTML = `<span style="color: var(--text-secondary);">Index has ${stocks.length} stocks. Select a Start Date to check eligibility.</span>`;
+            return;
+        }
+
+        const startD = new Date(startDateVal);
+        let eligibleCount = 0;
+        let earliestDate = null;
+        let latestDate = null;
+
+        stocks.forEach(s => {
+            const dtStr = s.date_added;
+            if (!dtStr) {
+                eligibleCount++;
+                return;
+            }
+            const parts = dtStr.replace(/[\-\.]/g, '/').split('/');
+            if (parts.length === 3) {
+                const d = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10) - 1;
+                const y = parseInt(parts[2], 10);
+                const stockD = new Date(y, m, d);
+                if (!earliestDate || stockD < earliestDate) earliestDate = stockD;
+                if (!latestDate || stockD > latestDate) latestDate = stockD;
+                if (stockD <= startD) eligibleCount++;
+            } else {
+                eligibleCount++;
+            }
+        });
+
+        const earliestFmt = earliestDate ? earliestDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+        const latestFmt = latestDate ? latestDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+
+        if (eligibleCount === 0) {
+            hintEl.innerHTML = `<span style="color: #f59e0b; font-weight: 600;">⚠️ 0 of ${stocks.length} stocks eligible! Earliest stock added on ${earliestFmt}.</span>`;
+            if (dateHintEl) {
+                dateHintEl.innerHTML = `<span style="color: #f59e0b; font-weight: 600;">⚠️ Start Date is before all constituent stock dates (earliest: ${earliestFmt}). Set Start Date &ge; ${earliestFmt} to include stocks in Init.</span>`;
+            }
+        } else {
+            hintEl.innerHTML = `<span style="color: #10b981; font-weight: 600;">✓ ${eligibleCount} of ${stocks.length} stocks eligible for Init on this start date (Added: ${earliestFmt} to ${latestFmt}).</span>`;
+            if (dateHintEl) {
+                dateHintEl.innerHTML = `📅 If holiday/weekend, auto-advances to next trading day.`;
+            }
+        }
     }
 
     function closeAddStrategyModal() {
@@ -1518,7 +1605,7 @@
     }
 
     function insertSampleStocksFormat() {
-        const sample = `[RELIANCE, 15/10/2026], [TCS, 01/11/2026], [TITAN, 05/11/2026], [BAJFINANCE, 10/11/2026], [BHARTIARTL, 12/11/2026]`;
+        const sample = `[RELIANCE, 01/01/2026], [TCS, 15/01/2026], [TITAN, 01/02/2026], [BAJFINANCE, 15/02/2026], [BHARTIARTL, 20/02/2026]`;
         const textarea = document.getElementById('mIndexStocksInput');
         if (textarea) {
             textarea.value = sample;
@@ -1777,6 +1864,7 @@
     window.saveEditedFormula = saveEditedFormula;
     window.openDeleteStrategyModal = openDeleteStrategyModal;
     window.promptDeleteCurrentStrategy = promptDeleteCurrentStrategy;
+    window.checkStratDateAndIndexMatch = checkStratDateAndIndexMatch;
 
     // Manual Indices
     window.openAddManualIndexModal = openAddManualIndexModal;

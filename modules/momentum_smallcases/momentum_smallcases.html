@@ -264,8 +264,8 @@
                         <label for="stratStartDateInput" class="msc-form-label">
                             Start Date <span style="color: #ef4444;">*</span>
                         </label>
-                        <input type="date" id="stratStartDateInput" class="msc-modal-input" required>
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                        <input type="date" id="stratStartDateInput" class="msc-modal-input" onchange="checkStratDateAndIndexMatch()" required>
+                        <div id="stratStartDateHint" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                             📅 If holiday/weekend, auto-advances to next trading day.
                         </div>
                     </div>
@@ -274,7 +274,10 @@
                         <label for="stratIndexSelect" class="msc-form-label">
                             Index Universe <span style="color: #ef4444;">*</span>
                         </label>
-                        <select id="stratIndexSelect" class="msc-modal-input" style="cursor: pointer;"></select>
+                        <select id="stratIndexSelect" class="msc-modal-input" style="cursor: pointer;" onchange="checkStratDateAndIndexMatch()"></select>
+                        <div id="stratIndexHint" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Select index universe to evaluate momentum rankings from.
+                        </div>
                     </div>
 
                     <div class="msc-form-group">
@@ -448,7 +451,7 @@
                         </div>
                     </div>
 
-                    <textarea id="mIndexStocksInput" class="msc-modal-textarea" rows="5" placeholder="[RELIANCE, 15/10/2026], [TCS, 01/11/2026], [TITAN, 05/11/2026]" oninput="updateLiveStocksChipsPreview(this.value)"></textarea>
+                    <textarea id="mIndexStocksInput" class="msc-modal-textarea" rows="5" placeholder="[RELIANCE, 01/01/2026], [TCS, 15/01/2026], [TITAN, 01/02/2026]" oninput="updateLiveStocksChipsPreview(this.value)"></textarea>
                     
                     <!-- Live Parse Preview -->
                     <div id="mIndexLiveChipsContainer" style="margin-top: 10px; display: none;">
