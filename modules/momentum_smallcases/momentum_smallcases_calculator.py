@@ -263,11 +263,23 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
         return []
 
     # Convert to (date_obj, close_price)
+    cutoff_date = None
+    if target_cutoff_date:
+        if isinstance(target_cutoff_date, str):
+            try:
+                cutoff_date = datetime.strptime(target_cutoff_date[:10], "%Y-%m-%d").date()
+            except Exception:
+                cutoff_date = None
+        elif isinstance(target_cutoff_date, datetime):
+            cutoff_date = target_cutoff_date.date()
+        elif isinstance(target_cutoff_date, date):
+            cutoff_date = target_cutoff_date
+
     parsed_series = []
     for d_str, price in data_points:
         try:
             dt = datetime.strptime(d_str[:10], "%Y-%m-%d").date()
-            if target_cutoff_date and dt > target_cutoff_date:
+            if cutoff_date and dt > cutoff_date:
                 continue
             parsed_series.append((dt, price))
         except Exception:
@@ -528,6 +540,7 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
     meta_result = {
         "failed_symbols": failed_symbols,
         "eligible_count": len(eligible_symbols),
+        "all_stocks": calculated_stocks,
         **date_info
     }
 
@@ -547,6 +560,7 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
     - 0.10% transaction fee deducted on each purchase.
     - Leftover cash remains in wallet.
     """
+    amount_to_invest = round(float(amount_to_invest), 2)
     top_picks = [s for s in ranked_stocks if s["rank"] <= no_of_stocks]
     if not top_picks:
         return {
@@ -555,6 +569,9 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
             "current_value": 0.0,
             "wallet_balance": amount_to_invest,
             "total_portfolio_value": amount_to_invest,
+            "total_capital": amount_to_invest,
+            "total_pnl": 0.0,
+            "total_pnl_percent": 0.0,
             "fees_paid": 0.0,
             "changes": {"added": [], "removed": [], "retained": []}
         }
@@ -601,13 +618,19 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
             s["is_held"] = False
 
     wallet_balance = round(amount_to_invest - total_invested - total_fees, 2)
+    total_portfolio_value = round(total_invested + wallet_balance, 2)
+    total_pnl = round(total_portfolio_value - amount_to_invest, 2)
+    total_pnl_percent = round((total_pnl / amount_to_invest) * 100.0, 2) if amount_to_invest > 0 else 0.0
 
     return {
         "holdings": holdings,
         "invested_value": round(total_invested, 2),
         "current_value": round(total_invested, 2),
         "wallet_balance": wallet_balance,
-        "total_portfolio_value": round(total_invested + wallet_balance, 2),
+        "total_portfolio_value": total_portfolio_value,
+        "total_capital": amount_to_invest,
+        "total_pnl": total_pnl,
+        "total_pnl_percent": total_pnl_percent,
         "fees_paid": round(total_fees, 2),
         "changes": {
             "added": added_symbols,
@@ -617,11 +640,17 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
     }
 
 
-def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking):
+def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking, target_date=None, all_universe_stocks=None, total_capital=None):
     """
     Rebalance execution with pure equal allocation across all stocks (including stepup and existing stocks):
     1. Retain stocks whose rank <= exit_regime_ranking.
     2. Exit (completely sell) stocks whose rank > exit_regime_ranking or missing from rankings (deduct 0.10% sell fee).
+       Exit price is resolved from:
+       - ranked_stocks
+       - all_universe_stocks (full universe evaluation before display truncation)
+       - target_date historical closing quote via fetch_stock_daily_series
+       - fallback to previous holding's price
+       Negative P&L and negative percentage are accurately recorded and deducted from portfolio value.
     3. Select top-ranked newcomers to fill up to no_of_stocks.
     4. Compute total available equity (current market values of retained holdings + wallet cash + stepup + proceeds from exited stocks).
     5. Calculate target equal allocation per stock = total_equity / no_of_stocks.
@@ -632,10 +661,17 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     7. Deduct 0.10% transaction fees on all rebalancing trades and track wallet balance.
     """
     rank_map = {s["symbol"]: s for s in ranked_stocks}
+    all_stocks_map = {}
+    if all_universe_stocks:
+        for s in all_universe_stocks:
+            if isinstance(s, dict) and "symbol" in s:
+                all_stocks_map[s["symbol"]] = s
+    all_stocks_map.update(rank_map)
+
     prev_holdings_map = {h["symbol"]: h for h in previous_holdings}
 
     # Wallet starts with previous cash + newly deposited step-up
-    wallet = previous_wallet + float(stepup_amount or 0.0)
+    wallet = float(previous_wallet) + float(stepup_amount or 0.0)
     total_fees = 0.0
 
     removed_symbols = []
@@ -645,12 +681,36 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     # Step 1: Identify Exiting Stocks vs Retained Stocks
     for sym, h in prev_holdings_map.items():
         stk = rank_map.get(sym)
-        if not stk or stk["rank"] > exit_regime_ranking:
+        univ_stk = all_stocks_map.get(sym)
+
+        is_retained = False
+        if stk and stk.get("rank") is not None and stk["rank"] <= exit_regime_ranking:
+            is_retained = True
+        elif univ_stk and univ_stk.get("rank") is not None and univ_stk["rank"] <= exit_regime_ranking:
+            is_retained = True
+            stk = univ_stk
+
+        if not is_retained:
             # Complete Exit / Sell
-            exit_price = round(float(stk["price"]) if stk else float(h.get("current_price", h["buy_price"])), 2)
-            qty = int(h["quantity"])
+            exit_price = None
+            if stk and stk.get("price") is not None:
+                exit_price = round(float(stk["price"]), 2)
+            elif univ_stk and univ_stk.get("price") is not None:
+                exit_price = round(float(univ_stk["price"]), 2)
+            else:
+                try:
+                    series = fetch_stock_daily_series(sym, target_cutoff_date=target_date)
+                    if series:
+                        exit_price = round(float(series[-1][1]), 2)
+                except Exception as e:
+                    logger.warning(f"Error fetching exit price for {sym}: {e}")
+
+            if exit_price is None or exit_price <= 0:
+                exit_price = round(float(h.get("current_price", h.get("buy_price", 0.0))), 2)
+
+            qty = int(h.get("quantity", 0))
             avg_price = round(float(h.get("buy_price", 0.0)), 2)
-            invested = round(qty * avg_price, 2)
+            invested = round(float(h.get("invested", qty * avg_price)), 2)
             sell_value = round(qty * exit_price, 2)
             fee = round(sell_value * TRANSACTION_FEE_RATE, 2)
             wallet += (sell_value - fee)
@@ -674,6 +734,10 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                 stk["action"] = "SELL"
                 stk["action_label"] = "SELL (Exit)"
                 stk["is_held"] = False
+            elif univ_stk:
+                univ_stk["action"] = "SELL"
+                univ_stk["action_label"] = "SELL (Exit)"
+                univ_stk["is_held"] = False
         else:
             retained_symbols.append(sym)
 
@@ -846,6 +910,13 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     wallet = round(wallet, 2)
     total_val = round(final_current + wallet, 2)
 
+    # Compute Total Capital and Net P&L (handling negative returns cleanly)
+    if total_capital is None:
+        total_capital = float(previous_wallet) + sum(float(h.get("invested", 0.0)) for h in previous_holdings) + float(stepup_amount or 0.0)
+    total_cap = round(float(total_capital), 2)
+    total_pnl = round(total_val - total_cap, 2)
+    total_pnl_pct = round((total_pnl / total_cap) * 100.0, 2) if total_cap > 0 else 0.0
+
     # Weight percentages
     for h in final_holdings:
         h["weight_percent"] = round((h["current_value"] / max(total_val, 1.0)) * 100.0, 2)
@@ -856,6 +927,9 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         "current_value": final_current,
         "wallet_balance": wallet,
         "total_portfolio_value": total_val,
+        "total_capital": total_cap,
+        "total_pnl": total_pnl,
+        "total_pnl_percent": total_pnl_pct,
         "fees_paid": round(total_fees, 2),
         "exited_stocks": exited_stocks,
         "changes": {

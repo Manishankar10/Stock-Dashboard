@@ -177,6 +177,15 @@
         return formatted;
     }
 
+    function formatSignedCurrency(val, withPlus = true) {
+        if (val == null || isNaN(val)) return '₹0.00';
+        const num = Number(val);
+        const absStr = formatCurrency(Math.abs(num));
+        if (num > 0) return (withPlus ? '+₹' : '₹') + absStr;
+        if (num < 0) return '-₹' + absStr;
+        return '₹' + absStr;
+    }
+
     function formatDateDisplay(isoOrStr) {
         if (!isoOrStr) return '—';
         try {
@@ -433,15 +442,15 @@
                 ? `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 11px; padding: 3px 8px; border-radius: 4px;">DRAFT</span>`
                 : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700;">ACTIVE</span>`;
 
-            const invested = Number(s.amount_to_invest || 0);
+            const invested = Number(s.total_capital != null ? s.total_capital : (s.amount_to_invest || 0));
             const currVal = Number(s.current_portfolio_value || invested);
-            const pnl = currVal - invested;
+            const pnl = s.total_pnl != null ? Number(s.total_pnl) : (currVal - invested);
             const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
 
             let pnlHtml = '';
             if (!isDraft) {
                 const color = pnl >= 0 ? '#10b981' : '#ef4444';
-                pnlHtml = `<div style="font-size: 11px; color: ${color}; font-weight: 600;">${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</div>`;
+                pnlHtml = `<div style="font-size: 11px; color: ${color}; font-weight: 600;">${formatSignedCurrency(pnl, true)} (${formatPercent(pnlPct, true)})</div>`;
             }
 
             html += `
@@ -866,14 +875,30 @@
             }
 
             // Render Financial Metrics
-            const capVal = Number(s.amount_to_invest || 0);
+            const capVal = Number(s.total_capital != null ? s.total_capital : (s.amount_to_invest || 0));
             const portVal = Number(s.current_portfolio_value || capVal);
             const walletVal = Number(s.current_wallet || 0);
             const feesVal = Number(s.total_fees_paid || 0);
             const holdingsCount = (s.holdings || []).length;
+            const pnlVal = s.total_pnl != null ? Number(s.total_pnl) : (portVal - capVal);
+            const pnlPct = capVal > 0 ? (pnlVal / capVal) * 100 : 0;
+            const isPnlPositive = pnlVal >= 0;
+            const pnlColor = isPnlPositive ? '#10b981' : '#ef4444';
 
             document.getElementById('sd-metric-capital').innerText = `₹${formatCurrency(capVal)}`;
-            document.getElementById('sd-metric-port-value').innerText = `₹${formatCurrency(portVal)}`;
+            
+            const portValEl = document.getElementById('sd-metric-port-value');
+            if (portValEl) {
+                portValEl.innerText = `₹${formatCurrency(portVal)}`;
+                portValEl.style.color = pnlColor;
+            }
+
+            const pnlEl = document.getElementById('sd-metric-pnl');
+            if (pnlEl) {
+                pnlEl.style.color = pnlColor;
+                pnlEl.innerHTML = `${formatSignedCurrency(pnlVal, true)} <span id="sd-metric-pnl-pct" style="font-size: 12px; font-weight: 600; color: ${pnlColor};">(${formatPercent(pnlPct, true)})</span>`;
+            }
+
             document.getElementById('sd-metric-wallet').innerText = `₹${formatCurrency(walletVal)}`;
             document.getElementById('sd-metric-fees').innerText = `₹${formatCurrency(feesVal)}`;
             document.getElementById('sd-metric-holdings-count').innerText = `${holdingsCount} ${holdingsCount === 1 ? 'stock' : 'stocks'}`;
@@ -1064,6 +1089,12 @@
             dateNote += ` <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; font-size: 11px;">Holiday Adjusted from ${schedDate}</span>`;
         }
 
+        const snapVal = Number(portfolio.total_portfolio_value || 0);
+        const snapCap = Number(portfolio.total_capital != null ? portfolio.total_capital : (currentStrategy.amount_to_invest || 0));
+        const snapPnl = portfolio.total_pnl != null ? Number(portfolio.total_pnl) : (snapVal - snapCap);
+        const snapPnlPct = snapCap > 0 ? (snapPnl / snapCap) * 100 : 0;
+        const snapColor = snapPnl >= 0 ? '#10b981' : '#ef4444';
+
         let html = `
             <!-- Run Summary Banner -->
             <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -1075,9 +1106,10 @@
                         ${dateNote} &bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <span style="font-size: 12px; color: var(--text-secondary);">
-                        Snapshot Value: <strong style="color: #10b981; font-family: monospace;">₹${formatCurrency(portfolio.total_portfolio_value || 0)}</strong>
+                        Snapshot Value: <strong style="color: ${snapColor}; font-family: monospace;">₹${formatCurrency(snapVal)}</strong>
+                        <span style="font-size: 11px; font-weight: 600; color: ${snapColor}; margin-left: 3px;">(${formatSignedCurrency(snapPnl, true)} / ${formatPercent(snapPnlPct, true)})</span>
                     </span>
                     <span style="font-size: 12px; color: var(--text-secondary);">
                         Cash in Wallet: <strong style="color: var(--text-primary); font-family: monospace;">₹${formatCurrency(portfolio.wallet_balance || 0)}</strong>
@@ -1276,10 +1308,10 @@
                         <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--text-primary);">₹${formatCurrency(h.current_value)}</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 600; color: #3b82f6;">${weightDisplay}</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 600; color: ${pnlColor};">
-                            ${pnl >= 0 ? '+' : ''}₹${formatCurrency(pnl)}
+                            ${formatSignedCurrency(pnl, true)}
                         </td>
                         <td style="text-align: right; font-family: monospace; font-weight: 600; color: ${pnlColor};">
-                            ${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%
+                            ${formatPercent(pnlPct, true)}
                         </td>
                     </tr>
                 `;
@@ -1346,7 +1378,7 @@
                             <div style="font-size: 12.5px; font-family: monospace;">
                                 <span style="color: var(--text-secondary);">Total Exited P&amp;L:</span>
                                 <strong style="color: ${totalPnlColor}; font-weight: 700; margin-left: 4px;">
-                                    ${totalExitedPnl >= 0 ? '+' : ''}₹${formatCurrency(totalExitedPnl)} (${totalExitedPnl >= 0 ? '+' : ''}${totalExitedPnlPct.toFixed(2)}%)
+                                    ${formatSignedCurrency(totalExitedPnl, true)} (${formatPercent(totalExitedPnlPct, true)})
                                 </strong>
                             </div>
                         ` : ''}
@@ -1393,10 +1425,10 @@
                             <td style="text-align: right; font-family: monospace;">₹${formatCurrency(s.average_price)}</td>
                             <td style="text-align: right; font-family: monospace; font-weight: 600;">₹${formatCurrency(s.exit_price)}</td>
                             <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
-                                ${pnl >= 0 ? '+' : ''}₹${formatCurrency(pnl)}
+                                ${formatSignedCurrency(pnl, true)}
                             </td>
                             <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
-                                ${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%
+                                ${formatPercent(pnlPct, true)}
                             </td>
                         </tr>
                     `;

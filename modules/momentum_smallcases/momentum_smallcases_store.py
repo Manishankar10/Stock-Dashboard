@@ -461,6 +461,14 @@ def get_user_strategies(username=None):
     """Retrieves all momentum smallcase strategies for the user."""
     data = load_user_momentum_smallcases(username)
     strategies = data.get("strategies", [])
+    for s in strategies:
+        cap = float(s.get("total_capital") if s.get("total_capital") is not None else s.get("amount_to_invest", 0.0))
+        port_val = float(s.get("current_portfolio_value") if s.get("current_portfolio_value") is not None else cap)
+        pnl = float(s.get("total_pnl") if s.get("total_pnl") is not None else (port_val - cap))
+        pnl_pct = float(s.get("total_pnl_percent") if s.get("total_pnl_percent") is not None else (((pnl / cap) * 100.0) if cap > 0 else 0.0))
+        s["total_capital"] = round(cap, 2)
+        s["total_pnl"] = round(pnl, 2)
+        s["total_pnl_percent"] = round(pnl_pct, 2)
     return strategies
 
 
@@ -728,6 +736,9 @@ def run_strategy_init(strategy_id, username=None):
     target["holdings"] = portfolio["holdings"]
     target["current_wallet"] = portfolio["wallet_balance"]
     target["current_portfolio_value"] = portfolio["total_portfolio_value"]
+    target["total_capital"] = portfolio.get("total_capital", float(target.get("amount_to_invest", 0.0)))
+    target["total_pnl"] = portfolio.get("total_pnl", round(portfolio["total_portfolio_value"] - target["amount_to_invest"], 2))
+    target["total_pnl_percent"] = portfolio.get("total_pnl_percent", 0.0)
     target["total_fees_paid"] = round(target.get("total_fees_paid", 0.0) + portfolio["fees_paid"], 2)
     target["next_rebalance_date"] = next_rebal.isoformat()
     target["updated_at"] = now_iso
@@ -842,7 +853,10 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
         previous_wallet=prev_wallet,
         stepup_amount=stepup,
         no_of_stocks=target["no_of_stocks"],
-        exit_regime_ranking=target["exit_regime_ranking"]
+        exit_regime_ranking=target["exit_regime_ranking"],
+        target_date=exec_date,
+        all_universe_stocks=meta.get("all_stocks"),
+        total_capital=float(target.get("amount_to_invest", 0.0))
     )
 
     # Next future rebalance date
@@ -870,6 +884,9 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
     target["holdings"] = portfolio["holdings"]
     target["current_wallet"] = portfolio["wallet_balance"]
     target["current_portfolio_value"] = portfolio["total_portfolio_value"]
+    target["total_capital"] = portfolio.get("total_capital", float(target.get("amount_to_invest", 0.0)))
+    target["total_pnl"] = portfolio.get("total_pnl", round(portfolio["total_portfolio_value"] - target["amount_to_invest"], 2))
+    target["total_pnl_percent"] = portfolio.get("total_pnl_percent", 0.0)
     target["total_fees_paid"] = round(target.get("total_fees_paid", 0.0) + portfolio["fees_paid"], 2)
     target["next_rebalance_date"] = next_rebal.isoformat()
     target["updated_at"] = now_iso
