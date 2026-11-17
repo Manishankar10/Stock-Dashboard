@@ -45,12 +45,21 @@
     }
 
     function toast(message, error) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, error ? 'error' : 'success');
+            return;
+        }
         const el = document.getElementById('mf-toast');
+        if (!el) return;
         el.textContent = message;
         el.classList.toggle('error', Boolean(error));
         el.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), 3300);
+        if (!error) {
+            toastTimer = setTimeout(() => el.classList.remove('show'), 3300);
+        } else {
+            el.onclick = () => el.classList.remove('show');
+        }
     }
 
     function setBusy(button, busy, label) {

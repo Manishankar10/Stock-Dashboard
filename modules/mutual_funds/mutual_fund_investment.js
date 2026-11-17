@@ -10,12 +10,21 @@
     const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
     function toast(message, error) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, error ? 'error' : 'success');
+            return;
+        }
         const target = document.getElementById('mf-toast');
+        if (!target) return;
         target.textContent = message;
         target.classList.toggle('error', Boolean(error));
         target.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => target.classList.remove('show'), 3500);
+        if (!error) {
+            toastTimer = setTimeout(() => target.classList.remove('show'), 3500);
+        } else {
+            target.onclick = () => target.classList.remove('show');
+        }
     }
 
     function setMode(value) {

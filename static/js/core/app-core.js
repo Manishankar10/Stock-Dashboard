@@ -737,6 +737,8 @@
         // =========================================================
         // BOTTOM CENTER TOASTER NOTIFICATION SYSTEM
         // Modern, non-intrusive floating toaster at bottom center
+        // Policy: Error and Warning messages MUST be closed by user only (no auto-close).
+        // Info and Success messages may auto-dismiss after duration.
         // =========================================================
         function showToast(message, type = 'info', durationOrTitle = 2800) {
             if (!message) return;
@@ -753,10 +755,34 @@
                 document.body.appendChild(container);
             }
 
-            // Keep at most 3 simultaneous toasts to prevent viewport clutter
-            const existingToasts = container.querySelectorAll('.app-bottom-toast:not(.toast-hiding)');
-            if (existingToasts.length >= 3) {
-                const oldest = existingToasts[0];
+            // Normalize type and auto-infer if message contains error/warning indicators
+            const rawType = String(type || '').toLowerCase();
+            let toastType = 'info';
+            if (['error', 'danger', 'fail', 'failed'].includes(rawType)) {
+                toastType = 'error';
+            } else if (['warning', 'warn'].includes(rawType)) {
+                toastType = 'warning';
+            } else if (['success', 'ok'].includes(rawType)) {
+                toastType = 'success';
+            } else {
+                const lowerMsg = msgStr.toLowerCase();
+                if (lowerMsg.startsWith('❌') || lowerMsg.includes('error:') || lowerMsg.includes('failed to')) {
+                    toastType = 'error';
+                } else if (lowerMsg.startsWith('⚠️') || lowerMsg.includes('warning:') || lowerMsg.includes('caution:')) {
+                    toastType = 'warning';
+                } else {
+                    toastType = 'info';
+                }
+            }
+
+            // Error and Warning messages must NOT auto-close (close by user only)
+            const isManualCloseOnly = (toastType === 'error' || toastType === 'warning');
+
+            // For auto-closing toasts, keep at most 3 simultaneous toasts to prevent viewport clutter.
+            // Never auto-evict active error or warning toasts; they must remain until closed by user.
+            const existingAutoToasts = container.querySelectorAll('.app-bottom-toast:not(.toast-hiding):not(.toast-error):not(.toast-warning)');
+            if (existingAutoToasts.length >= 3) {
+                const oldest = existingAutoToasts[0];
                 oldest.classList.add('toast-hiding');
                 setTimeout(() => { if (oldest.parentElement) oldest.remove(); }, 220);
             }
@@ -768,21 +794,20 @@
                 info: 'ℹ️'
             };
 
-            const toastType = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'info';
             const icon = icons[toastType] || 'ℹ️';
 
             const toast = document.createElement('div');
-            toast.className = `app-bottom-toast toast-${toastType}`;
-            toast.role = 'status';
+            toast.className = `app-bottom-toast toast-${toastType}${isManualCloseOnly ? ' toast-manual-close' : ''}`;
+            toast.role = isManualCloseOnly ? 'alert' : 'status';
             toast.innerHTML = `
                 <span class="app-toast-icon">${icon}</span>
                 <span class="app-toast-text">${escapeHtml(msgStr)}</span>
-                <span class="app-toast-dismiss" title="Dismiss">&times;</span>
+                <button type="button" class="app-toast-dismiss" title="Click to close" aria-label="Close message">&times;</button>
             `;
 
             let isDismissed = false;
             const dismissToast = (e) => {
-                if (e) e.stopPropagation();
+                if (e && e.stopPropagation) e.stopPropagation();
                 if (isDismissed) return;
                 isDismissed = true;
                 toast.classList.add('toast-hiding');
@@ -791,11 +816,23 @@
                 }, 220);
             };
 
+            // Clicking anywhere on toast or dismiss button closes the toast
             toast.onclick = dismissToast;
+            const dismissBtn = toast.querySelector('.app-toast-dismiss');
+            if (dismissBtn) {
+                dismissBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    dismissToast(e);
+                };
+            }
 
             container.appendChild(toast);
 
-            setTimeout(dismissToast, duration);
+            // Error and warning messages must be closed by user only (no auto-close timer)
+            if (!isManualCloseOnly) {
+                setTimeout(dismissToast, duration);
+            }
+
             return toast;
         }
         window.showToast = showToast;
