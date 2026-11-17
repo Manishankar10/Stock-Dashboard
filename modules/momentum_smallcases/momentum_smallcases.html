@@ -462,9 +462,12 @@
                 <div class="msc-form-group">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <label for="mIndexStocksInput" class="msc-form-label" style="margin-bottom: 0;">
-                            Stocks <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">(Symbol and Date Added)</span>
+                            Stocks <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">(Symbol / Company Name and Date Added)</span>
                         </label>
                         <div style="display: flex; gap: 6px;">
+                            <button type="button" class="msc-btn-pill" id="mIndexResolveBtn" onclick="resolveStocksInput()" title="Auto-detect & convert Company Names to official NSE Tickers">
+                                ⚡ Resolve Symbols
+                            </button>
                             <button type="button" class="msc-btn-pill" onclick="insertSampleStocksFormat()" title="Fill with example stocks">
                                 💡 Insert Sample
                             </button>
@@ -479,10 +482,13 @@
                         <div class="msc-format-badge">FORMAT</div>
                         <div class="msc-format-text">
                             <code>[stockname1, dateAdded(DD/MM/YYYY)], [stockname2, dateAdded(DD/MM/YYYY)]</code>
+                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                                ✨ Paste company names or tickers (e.g. <code>[Netweb Technologies India Ltd, 01/01/2026]</code>) — symbols are auto-resolved & stored in DB!
+                            </div>
                         </div>
                     </div>
 
-                    <textarea id="mIndexStocksInput" class="msc-modal-textarea" rows="5" placeholder="[RELIANCE, 01/01/2026], [TCS, 15/01/2026], [TITAN, 01/02/2026]" oninput="updateLiveStocksChipsPreview(this.value)"></textarea>
+                    <textarea id="mIndexStocksInput" class="msc-modal-textarea" rows="5" placeholder="[NETWEB TECHNOLOGIES INDIA LTD, 01/01/2026], [CAPLIN POINT LABORATORIES LTD, 01/01/2026], [SYRMA SGS TECHNOLOGY LTD, 01/01/2026], [RELIANCE, 01/01/2026]" oninput="updateLiveStocksChipsPreview(this.value)"></textarea>
                     
                     <!-- Live Parse Preview -->
                     <div id="mIndexLiveChipsContainer" style="margin-top: 10px; display: none;">

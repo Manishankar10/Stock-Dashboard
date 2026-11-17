@@ -6,8 +6,12 @@ Handles storage, parsing, validation, and retrieval of Manual Momentum Indices.
 import os
 import re
 import uuid
+import json
+import logging
 from datetime import datetime, date
 from flask import session
+
+logger = logging.getLogger(__name__)
 
 _DATA_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _fetcher = None
@@ -124,10 +128,19 @@ def parse_stocks_input(stocks_str):
     """
     Parses stocks input in format:
     [stockname1, dateAdded(DD/MM/YYYY)], [stockname2, dateAdded(DD/MM/YYYY)]
+    Automatically resolves stock / company names to official NSE ticker symbols.
     Returns a list of parsed stock dictionaries ordered by date_added ascending.
     """
     if not stocks_str or not isinstance(stocks_str, str):
         return []
+
+    try:
+        from modules.momentum_smallcases.symbol_resolver import resolve_and_parse_stocks
+        parsed = resolve_and_parse_stocks(stocks_str)
+        if parsed:
+            return parsed
+    except Exception as e:
+        logger.warning(f"Error resolving symbols in parse_stocks_input: {e}")
 
     results = []
     seen = set()
@@ -140,6 +153,11 @@ def parse_stocks_input(stocks_str):
         sym = symbol_raw.strip().upper()
         if not sym:
             continue
+        try:
+            from modules.momentum_smallcases.symbol_resolver import resolve_symbol
+            sym = resolve_symbol(sym)
+        except Exception:
+            pass
         norm_date = normalize_date(date_raw)
         key = (sym, norm_date)
         if key not in seen:
@@ -158,6 +176,11 @@ def parse_stocks_input(stocks_str):
             sym = symbol_raw.strip().upper()
             if not sym:
                 continue
+            try:
+                from modules.momentum_smallcases.symbol_resolver import resolve_symbol
+                sym = resolve_symbol(sym)
+            except Exception:
+                pass
             norm_date = normalize_date(date_raw.strip())
             key = (sym, norm_date)
             if key not in seen:
@@ -178,6 +201,11 @@ def format_stocks_output(stocks_list):
     """Formats a list of stocks into the canonical string: [symbol, DD/MM/YYYY], ..."""
     if not stocks_list or not isinstance(stocks_list, list):
         return ""
+    try:
+        from modules.momentum_smallcases.symbol_resolver import format_stocks_output as resolver_format
+        return resolver_format(stocks_list)
+    except Exception:
+        pass
     items = []
     for s in stocks_list:
         sym = s.get("symbol", "").strip().upper()
@@ -851,4 +879,37 @@ def delete_user_strategy(strategy_id, username=None):
     data["strategies"] = strategies
     save_user_momentum_smallcases(data, username)
     return True
+
+
+def reset_all_momentum_data(username=None):
+    """
+    Cleans and resets all data related to momentum smallcases (indices, strategies, price caches)
+    so user can start fresh from scratch.
+    """
+    user = username or session.get('username') or 'admin'
+    clean_state = {"indices": [], "strategies": []}
+    save_user_momentum_smallcases(clean_state, user)
+
+    # Clean local price cache
+    try:
+        from modules.momentum_smallcases.momentum_smallcases_calculator import _CACHE_FILE, _memory_price_cache, _cache_lock
+        with _cache_lock:
+            _memory_price_cache.clear()
+        if os.path.exists(_CACHE_FILE):
+            with open(_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump({}, f, indent=4)
+    except Exception as e:
+        logger.warning(f"Error resetting price cache in reset_all_momentum_data: {e}")
+
+    # Clean MongoDB if connected
+    try:
+        from db_store import db
+        if db is not None:
+            safe_user = _safe_user(user)
+            db["momentum_smallcases"].delete_many({"_id": safe_user})
+    except Exception as e:
+        logger.warning(f"Error resetting MongoDB momentum_smallcases: {e}")
+
+    return {"success": True, "message": "All momentum smallcase data has been completely reset."}
+
 

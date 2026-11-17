@@ -20,6 +20,7 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     run_strategy_init,
     run_strategy_rebalance,
     delete_user_strategy,
+    reset_all_momentum_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -325,3 +326,30 @@ def delete_strategy_api(strategy_id):
     except Exception as e:
         logger.error(f"Error deleting strategy '{strategy_id}': {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/resolve-stocks", methods=["POST"])
+def resolve_stocks_api():
+    """Resolves company names or tickers in raw input into official NSE symbols."""
+    try:
+        body = request.get_json(silent=True) or {}
+        stocks_str = body.get("stocks", "")
+        from modules.momentum_smallcases.symbol_resolver import resolve_stocks_summary
+        summary = resolve_stocks_summary(stocks_str)
+        return jsonify(summary)
+    except Exception as e:
+        logger.error(f"Error resolving stocks: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/reset-data", methods=["POST"])
+def reset_momentum_data_api():
+    """Cleans all momentum smallcases data so user can start fresh from scratch."""
+    try:
+        user = session.get("username") or "admin"
+        res = reset_all_momentum_data(username=user)
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error resetting momentum data: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+

@@ -209,6 +209,33 @@
                 results.push({ symbol: sym, date_added: dt });
             }
         }
+
+        // Fallback for unbracketed lines or comma-separated pairs
+        if (results.length === 0 && stocksStr.trim()) {
+            const lines = stocksStr.split(/[\r\n,]+/).map(l => l.trim()).filter(Boolean);
+            const now = new Date();
+            const todayStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+            for (const line of lines) {
+                const dateMatch = line.match(/([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})\s*$/);
+                let sym = '';
+                let dt = todayStr;
+                if (dateMatch) {
+                    dt = dateMatch[1].replace(/[\-\.]/g, '/');
+                    sym = line.slice(0, dateMatch.index).trim().replace(/[\[\(\"\'\],]+$/g, '').trim();
+                } else {
+                    sym = line.replace(/^[\[\(\"\'\s]+|[\]\)\"\'\s,]+$/g, '').trim();
+                }
+                sym = sym.toUpperCase();
+                if (sym && sym.length > 1) {
+                    const key = sym + '_' + dt;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        results.push({ symbol: sym, date_added: dt });
+                    }
+                }
+            }
+        }
+
         // Chronologically sort by date_added ascending, then symbol ascending
         results.sort((a, b) => {
             const dtA = parseDateAddedForSort(a.date_added);
@@ -1838,6 +1865,59 @@
         }
     }
 
+    async function resolveStocksInput() {
+        const textarea = document.getElementById('mIndexStocksInput');
+        if (!textarea) return;
+        const text = (textarea.value || '').trim();
+        if (!text) {
+            alertToast('Please enter stock names or symbols first', 'info');
+            textarea.focus();
+            return;
+        }
+
+        const resolveBtn = document.getElementById('mIndexResolveBtn');
+        const origText = resolveBtn ? resolveBtn.innerHTML : '⚡ Resolve Symbols';
+        if (resolveBtn) {
+            resolveBtn.disabled = true;
+            resolveBtn.innerHTML = '<span>⏳</span> Resolving...';
+        }
+
+        try {
+            const res = await safeFetchJson('/api/momentum-smallcases/resolve-stocks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stocks: text })
+            });
+
+            if (res && res.success) {
+                if (res.formatted_stocks) {
+                    textarea.value = res.formatted_stocks;
+                    updateLiveStocksChipsPreview(res.formatted_stocks);
+                }
+                const count = res.resolved_count || 0;
+                if (count > 0) {
+                    const sampleList = Object.entries(res.replacements || {})
+                        .slice(0, 4)
+                        .map(([k, v]) => `${k} → ${v}`)
+                        .join(', ');
+                    alertToast(`Resolved ${count} stock name(s) to NSE tickers: ${sampleList}`, 'success');
+                } else {
+                    alertToast(`All ${res.total_count || 0} stocks verified as valid NSE tickers!`, 'success');
+                }
+            } else {
+                alertToast(res?.error || 'Could not resolve symbols', 'warning');
+            }
+        } catch (err) {
+            console.error('Error resolving stock symbols:', err);
+            alertToast('Error resolving stock symbols: ' + err.message, 'error');
+        } finally {
+            if (resolveBtn) {
+                resolveBtn.disabled = false;
+                resolveBtn.innerHTML = origText;
+            }
+        }
+    }
+
     async function saveManualIndex() {
         if (isSubmitting) return;
 
@@ -2117,4 +2197,5 @@
     window.updateLiveStocksChipsPreview = updateLiveStocksChipsPreview;
     window.insertSampleStocksFormat = insertSampleStocksFormat;
     window.clearStocksInput = clearStocksInput;
+    window.resolveStocksInput = resolveStocksInput;
 })();
