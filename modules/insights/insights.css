@@ -965,6 +965,12 @@
     border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
+.mmi-live-pill.mmi-frozen {
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-secondary, #94a3b8);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
 .mmi-pulsing-dot {
     width: 6px;
     height: 6px;
@@ -972,6 +978,13 @@
     background: #10b981;
     box-shadow: 0 0 8px #10b981;
     animation: mmi-dot-pulse 2s infinite ease-in-out;
+}
+
+.mmi-frozen-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-secondary, #94a3b8);
 }
 
 @keyframes mmi-dot-pulse {

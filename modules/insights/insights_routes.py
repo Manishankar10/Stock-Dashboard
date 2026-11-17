@@ -12,7 +12,8 @@ from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, session, render_template
 from modules.common.auth_utils import login_required
-from modules.common.data_paths import BASE_DATA_DIR, USER_DATA_DIR
+from modules.common.data_paths import BASE_DATA_DIR, USER_DATA_DIR, APP_DATA_DIR
+from modules.common.ist_datetime import now_ist, today_ist_str
 from db_store import load_technical_signals_db, save_technical_signals_db
 from modules.common.market_fetcher import (
     fiidii_cache,
@@ -71,20 +72,88 @@ def _extract_pf_symbols_set(portfolios):
             syms.add(item)
     return syms
 
+FIIDII_STORAGE_FILE = os.path.join(APP_DATA_DIR, "fiidii_latest.json")
+
+_FIIDII_STATE = {
+    "data": None,
+    "last_attempt": 0,
+    "last_success": 0
+}
+
+def _load_fiidii_from_disk():
+    try:
+        if os.path.exists(FIIDII_STORAGE_FILE):
+            with open(FIIDII_STORAGE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"[Insights] Error loading fiidii_latest.json: {e}")
+    return None
+
+def _save_fiidii_to_disk(data):
+    try:
+        os.makedirs(APP_DATA_DIR, exist_ok=True)
+        with open(FIIDII_STORAGE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"[Insights] Error saving fiidii_latest.json: {e}")
+
 def fetch_fii_dii_data(force_refresh=False):
     """
-    Fetches real-time Provisional FII/FPI and DII Institutional Trading Activity
-    directly from the National Stock Exchange of India (NSE Official API) with
-    automatic failover to secondary sources and in-memory caching.
+    Schedule-aware Provisional FII/FPI and DII Trading Activity:
+    - Official provisional data published by NSE only once per trading day after 6:00 PM IST (typically ~6:15 - 6:30 PM).
+    - Weekdays before 6:00 PM IST: Today's data not published yet; yesterday's finalized session is served with ZERO network calls.
+    - Weekends: NSE closed. Friday's finalized session is frozen with ZERO network calls.
+    - Weekdays 6:00 PM - 7:30 PM IST: Discovery window. Checks NSE (with 5-min cooldown) until today's data is received.
+    - Once today's data is captured: 100% FROZEN until tomorrow 6:00 PM IST.
     """
-    if not force_refresh:
-        cached = fiidii_cache.get("fii_dii")
-        if cached:
+    global _FIIDII_STATE
+    now_ts = time.time()
+    ist_now = now_ist()
+    today_date = ist_now.date()
+    today_iso = today_date.strftime('%Y-%m-%d')
+    yesterday_date = today_date - datetime.timedelta(days=1)
+    weekday = ist_now.weekday()
+    minute_of_day = ist_now.hour * 60 + ist_now.minute
+    time_6pm = 18 * 60  # 18:00 IST (1080 min)
+
+    # 1. Restore from disk if memory cache is empty
+    if _FIIDII_STATE["data"] is None:
+        disk_data = _load_fiidii_from_disk()
+        if disk_data:
+            _FIIDII_STATE["data"] = disk_data
+
+    cached = _FIIDII_STATE["data"]
+
+    # 2. Schedule-aware evaluation
+    if not force_refresh and cached:
+        cached_trade_date = cached.get("trade_date_iso")
+        is_today_data = (cached_trade_date == today_iso) or ("(Today)" in str(cached.get("date", "")))
+
+        # Case A: Weekend (Sat/Sun) - NSE closed. Return cached Friday data.
+        if weekday >= 5:
+            cached["is_frozen"] = True
+            cached["status_label"] = "Weekend (Market Closed)"
             return cached
 
-    now_ist = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
-    today_date = now_ist.date()
-    yesterday_date = today_date - datetime.timedelta(days=1)
+        # Case B: Weekday before 6:00 PM IST - Today's provisional figures not published yet.
+        if minute_of_day < time_6pm:
+            cached["is_frozen"] = True
+            cached["status_label"] = "Latest Official Session (Updates after 6:00 PM)"
+            return cached
+
+        # Case C: Weekday after 6:00 PM IST, and today's data has ALREADY been captured!
+        if is_today_data:
+            cached["is_frozen"] = True
+            cached["status_label"] = "Today's Official Provisional Data"
+            return cached
+
+        # Case D: Weekday after 6:00 PM IST, but today's data not yet in cache.
+        # Apply cooldown (5 mins between 6:00-7:30 PM, 15 mins after 7:30 PM)
+        cooldown_sec = 300 if minute_of_day < (19 * 60 + 30) else 900
+        if (now_ts - _FIIDII_STATE.get("last_attempt", 0)) < cooldown_sec:
+            return cached
+
+    _FIIDII_STATE["last_attempt"] = now_ts
 
     # =========================================================
     # PRIMARY PROVIDER: NSE India Official FII/DII API Direct
@@ -136,14 +205,18 @@ def fetch_fii_dii_data(force_refresh=False):
                         dii_sell = sell_val
                         dii_net = net_val
 
-                # Format human display date
-                date_display = date_str or now_ist.strftime('%d %b %Y')
+                # Format human display date & evaluate if today
+                is_today = False
+                trade_date_iso = None
+                date_display = date_str or ist_now.strftime('%d %b %Y')
                 if date_str:
                     for fmt in ('%d-%b-%Y', '%d-%B-%Y', '%d/%m/%Y', '%Y-%m-%d', '%d %b %Y'):
                         try:
                             dt = datetime.datetime.strptime(date_str, fmt).date()
+                            trade_date_iso = dt.strftime('%Y-%m-%d')
                             if dt == today_date:
                                 date_display = f"{dt.strftime('%d %b %Y')} (Today)"
+                                is_today = True
                             elif dt == yesterday_date:
                                 date_display = f"{dt.strftime('%d %b %Y')} (Yesterday)"
                             else:
@@ -157,6 +230,10 @@ def fetch_fii_dii_data(force_refresh=False):
 
                 res = {
                     "date": date_display,
+                    "trade_date_iso": trade_date_iso,
+                    "is_today": is_today,
+                    "is_frozen": is_today or (minute_of_day < time_6pm) or (weekday >= 5),
+                    "status_label": "Today's Official Provisional Data" if is_today else "Latest Official Session (Updates after 6:00 PM)",
                     "fii_net": round(fii_net, 2),
                     "dii_net": round(dii_net, 2),
                     "total_net": round(fii_net + dii_net, 2),
@@ -169,7 +246,10 @@ def fetch_fii_dii_data(force_refresh=False):
                     "source": "NSE Official",
                     "headline": f"FIIs: {fii_prefix}₹{fii_net:,.2f} Cr | DIIs: {dii_prefix}₹{dii_net:,.2f} Cr"
                 }
-                fiidii_cache.set("fii_dii", res, ttl=600)
+                _FIIDII_STATE["data"] = res
+                _FIIDII_STATE["last_success"] = time.time()
+                _save_fiidii_to_disk(res)
+                fiidii_cache.set("fii_dii", res, ttl=86400)
                 return res
     except Exception as e:
         print(f"[Insights] NSE FII/DII API direct fetch exception: {e}")
@@ -178,8 +258,8 @@ def fetch_fii_dii_data(force_refresh=False):
     # SECONDARY BACKUP: Economic Times FII/DII Table
     # =========================================================
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-    today_str = now_ist.strftime('%d %b')
-    yest_str = (now_ist - datetime.timedelta(days=1)).strftime('%d %b')
+    today_str = ist_now.strftime('%d %b')
+    yest_str = (ist_now - datetime.timedelta(days=1)).strftime('%d %b')
     try:
         url = 'https://economictimes.indiatimes.com/markets/fii-dii-activity'
         r = requests.get(url, headers=headers, timeout=6)
@@ -201,8 +281,9 @@ def fetch_fii_dii_data(force_refresh=False):
                         dii_val = float(cols[1].replace(',', ''))
                         d_str = dates[idx] if idx < len(dates) else ''
                         
+                        is_today = bool(d_str and d_str.lower() == today_str.lower())
                         date_display = d_str if d_str else 'Latest Session'
-                        if d_str and d_str.lower() == today_str.lower():
+                        if is_today:
                             date_display = f'{d_str} (Today)'
                         elif d_str and d_str.lower() == yest_str.lower():
                             date_display = f'{d_str} (Yesterday)'
@@ -214,6 +295,10 @@ def fetch_fii_dii_data(force_refresh=False):
 
                         res = {
                             "date": date_display,
+                            "trade_date_iso": today_iso if is_today else None,
+                            "is_today": is_today,
+                            "is_frozen": is_today or (minute_of_day < time_6pm) or (weekday >= 5),
+                            "status_label": "Today's Official Provisional Data" if is_today else "Latest Official Session (Updates after 6:00 PM)",
                             "fii_net": fii_val,
                             "dii_net": dii_val,
                             "total_net": round(fii_val + dii_val, 2),
@@ -222,7 +307,10 @@ def fetch_fii_dii_data(force_refresh=False):
                             "source": "ET Backup",
                             "headline": f"FIIs: {fii_prefix}₹{fii_val:,.2f} Cr | DIIs: {dii_prefix}₹{dii_val:,.2f} Cr"
                         }
-                        fiidii_cache.set("fii_dii", res, ttl=600)
+                        _FIIDII_STATE["data"] = res
+                        _FIIDII_STATE["last_success"] = time.time()
+                        _save_fiidii_to_disk(res)
+                        fiidii_cache.set("fii_dii", res, ttl=86400)
                         return res
     except Exception:
         pass
@@ -256,12 +344,14 @@ def fetch_fii_dii_data(force_refresh=False):
                         dii_val = float(dii_v.replace(',', '')) * (-1 if any(k in dii_act.lower() for k in ['sell', 'sold', 'dump', 'outflow']) else 1)
                         
                         date_display = "Latest Session"
+                        is_today = False
                         if pub_date_str:
                             try:
                                 dt = datetime.datetime.strptime(pub_date_str[:16], '%a, %d %b %Y')
                                 now_utc = datetime.datetime.now(datetime.timezone.utc).date()
                                 if dt.date() == now_utc:
                                     date_display = dt.strftime('%d %b %Y (Today)')
+                                    is_today = True
                                 elif dt.date() == now_utc - datetime.timedelta(days=1):
                                     date_display = dt.strftime('%d %b %Y (Yesterday)')
                                 else:
@@ -271,6 +361,10 @@ def fetch_fii_dii_data(force_refresh=False):
                                 
                         res = {
                             "date": date_display,
+                            "trade_date_iso": today_iso if is_today else None,
+                            "is_today": is_today,
+                            "is_frozen": is_today or (minute_of_day < time_6pm) or (weekday >= 5),
+                            "status_label": "Today's Official Provisional Data" if is_today else "Latest Official Session (Updates after 6:00 PM)",
                             "fii_net": fii_val,
                             "dii_net": dii_val,
                             "total_net": round(fii_val + dii_val, 2),
@@ -279,20 +373,29 @@ def fetch_fii_dii_data(force_refresh=False):
                             "source": "News Backup",
                             "headline": t
                         }
-                        fiidii_cache.set("fii_dii", res, ttl=600)
+                        _FIIDII_STATE["data"] = res
+                        _FIIDII_STATE["last_success"] = time.time()
+                        _save_fiidii_to_disk(res)
+                        fiidii_cache.set("fii_dii", res, ttl=86400)
                         return res
         except Exception:
             pass
 
     # =========================================================
-    # QUATERNARY BACKUP: Return previous cached result if available
+    # QUATERNARY BACKUP: Return previous cached or disk result if available
     # =========================================================
+    if _FIIDII_STATE.get("data"):
+        return _FIIDII_STATE["data"]
+    disk_data = _load_fiidii_from_disk()
+    if disk_data:
+        _FIIDII_STATE["data"] = disk_data
+        return disk_data
     stale = fiidii_cache.get_expired_fallback("fii_dii")
     if stale:
         return stale
 
     # Baseline active fallback
-    fallback_date = now_ist.strftime('%d %b %Y (Latest Session)')
+    fallback_date = ist_now.strftime('%d %b %Y (Latest Session)')
     return {
         "date": fallback_date,
         "fii_net": 13749.82,
@@ -455,7 +558,8 @@ def get_insights_summary_api():
 
 _BULLION_CACHE = {
     "data": None,
-    "timestamp": 0
+    "last_scrape_attempt": 0,
+    "last_scrape_success": 0
 }
 
 FALLBACK_BULLION_RATES = {
@@ -472,11 +576,60 @@ FALLBACK_BULLION_RATES = {
 }
 
 def fetch_live_gold_silver_rates(force_refresh=False):
+    """
+    Schedule-aware Bullion (Gold & Silver) Fetcher & Cache:
+    - Gold and silver reference rates update once per morning around 10:00 AM IST.
+    - If today's rate is already stored in SQLite DB: 100% FROZEN until tomorrow 09:45 AM (0 network calls).
+    - Sunday: Bullion markets closed. Saturday's rate is frozen all day (0 network calls).
+    - Weekdays/Saturday before 09:45 AM: Today's rate not published yet; yesterday's DB rate is returned (0 network calls).
+    - Weekdays/Saturday 09:45 AM - 10:30 AM: Scrapes livechennai.com (with 10-min cooldown) until today's rate is acquired.
+    - Once today's rate is acquired: Immediately freezes for the rest of the day & night.
+    """
     global _BULLION_CACHE
     now = time.time()
-    if not force_refresh and _BULLION_CACHE["data"] and (now - _BULLION_CACHE["timestamp"] < 900):
-        return _BULLION_CACHE["data"]
+    ist_now = now_ist()
+    today_iso = today_ist_str()  # e.g. "2026-11-17"
+    weekday = ist_now.weekday()   # 0=Mon, ..., 5=Sat, 6=Sun
+    minute_of_day = ist_now.hour * 60 + ist_now.minute
+    time_10am_window_start = 9 * 60 + 45  # 09:45 AM IST (585 min)
 
+    # 1. Check SQLite for latest record if memory cache is empty
+    if _BULLION_CACHE["data"] is None:
+        db_latest = get_latest_bullion_with_changes()
+        if db_latest:
+            _BULLION_CACHE["data"] = db_latest
+
+    curr = _BULLION_CACHE["data"]
+
+    # 2. Schedule-aware evaluation (skip external scraping if not needed)
+    if not force_refresh and curr:
+        curr_date = curr.get("date")
+
+        # Case A: Today's rate is ALREADY captured in database!
+        if curr_date == today_iso:
+            curr["is_frozen"] = True
+            curr["status_label"] = "Today's Official Rate"
+            return curr
+
+        # Case B: Sunday - Bullion markets are closed.
+        if weekday == 6:
+            curr["is_frozen"] = True
+            curr["status_label"] = "Weekend (Market Closed)"
+            return curr
+
+        # Case C: Before 09:45 AM IST - Today's rates not published yet.
+        if minute_of_day < time_10am_window_start:
+            curr["is_frozen"] = True
+            curr["status_label"] = "Latest Official Rate (Updates ~10:00 AM)"
+            return curr
+
+        # Case D: After 09:45 AM IST, but today's rate not yet captured in DB.
+        # Check cooldown to prevent scraping on every page request while waiting for publication
+        if (now - _BULLION_CACHE.get("last_scrape_attempt", 0)) < 600:
+            return curr
+
+    # 3. Perform external scraping from livechennai.com
+    _BULLION_CACHE["last_scrape_attempt"] = now
     url = "https://www.livechennai.com/gold_silverrate.asp"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -600,17 +753,23 @@ def fetch_live_gold_silver_rates(force_refresh=False):
                     if g24_1 > 0:
                         upsert_bullion_rate(d_txt, g24_1, g22_1, s_1)
 
+        _BULLION_CACHE["last_scrape_success"] = now
         latest_rec = get_latest_bullion_with_changes()
         if latest_rec:
-            result.update(latest_rec)
-            _BULLION_CACHE["data"] = result
-            _BULLION_CACHE["timestamp"] = now
-            return result
+            if latest_rec.get("date") == today_iso:
+                latest_rec["is_frozen"] = True
+                latest_rec["status_label"] = "Today's Official Rate"
+            _BULLION_CACHE["data"] = latest_rec
+            return latest_rec
     except Exception as e:
         print(f"Error fetching live gold/silver rates from livechennai: {e}")
 
-    if _BULLION_CACHE["data"]:
+    if _BULLION_CACHE.get("data"):
         return _BULLION_CACHE["data"]
+    db_rec = get_latest_bullion_with_changes()
+    if db_rec:
+        _BULLION_CACHE["data"] = db_rec
+        return db_rec
     return FALLBACK_BULLION_RATES
 
 

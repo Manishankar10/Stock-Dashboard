@@ -12,6 +12,7 @@ import urllib.request
 import logging
 from datetime import datetime, timedelta
 from modules.common.data_paths import APP_DATA_DIR
+from modules.common.ist_datetime import now_ist, is_market_hours, format_ist_display
 
 logger = logging.getLogger(__name__)
 
@@ -213,83 +214,32 @@ def _generate_smooth_history_fallback(current_val, y_val, w_val, m_val):
     return points
 
 
-def fetch_market_mood_index(force_refresh=False):
-    """
-    Main entry point: fetches MMI data from Tickertape API with in-memory caching
-    and persistent SQLite storage.
-    """
-    global _MMI_CACHE
-    now = time.time()
+def _build_mmi_payload(date_str, current_val, nifty, vix, fii, raw_data=None, is_market_open=None):
+    """Construct standard MMI payload dictionary from values and historical DB."""
+    if is_market_open is None:
+        is_market_open = is_market_hours()
 
-    if not force_refresh and _MMI_CACHE["data"] and (now - _MMI_CACHE["timestamp"] < CACHE_TTL_SECONDS):
-        return _MMI_CACHE["data"]
+    current_val = float(current_val or 50.0)
+    nifty = float(nifty or 0.0) if nifty is not None else None
+    vix = abs(float(vix)) if vix is not None else 15.0
+    fii = float(fii or 0.0) if fii is not None else None
 
-    url = "https://api.tickertape.in/mmi/now"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json",
-        "Referer": "https://www.tickertape.in/market-mood-index"
-    }
-
-    raw_data = None
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            if resp.status == 200:
-                body = resp.read().decode("utf-8")
-                parsed = json.loads(body)
-                if parsed.get("success") and "data" in parsed:
-                    raw_data = parsed["data"]
-    except Exception as e:
-        logger.warning(f"Tickertape MMI API request failed ({e}). Falling back to cached/stored data.")
-
-    today_str = datetime.now().strftime("%Y-%m-%d")
-
+    # Comparisons
     if raw_data:
-        current_val = float(raw_data.get("currentValue") or raw_data.get("indicator") or 50.0)
-        nifty = float(raw_data.get("nifty") or 0.0)
-        raw_vix = raw_data.get("vix")
-        vix = abs(float(raw_vix)) if raw_vix is not None else 15.0
-        fii = float(raw_data.get("fii") or 0.0)
-
-        # Comparisons
         last_day = raw_data.get("lastDay") or {}
         y_val = float(last_day.get("indicator") or current_val)
-
         last_week = raw_data.get("lastWeek") or {}
         w_val = float(last_week.get("indicator") or current_val)
-
         last_month = raw_data.get("lastMonth") or {}
         m_val = float(last_month.get("indicator") or current_val)
-
         last_year = raw_data.get("lastYear") or {}
         yr_val = float(last_year.get("indicator") or current_val)
-
-        # Save to SQLite
-        save_mmi_reading(today_str, current_val, nifty, vix, fii, raw_data)
-
     else:
-        # Fallback to DB or sensible defaults
         db_records = get_mmi_history_list(limit=2)
-        if db_records:
-            latest = db_records[-1]
-            current_val = latest["value"]
-            nifty = latest.get("nifty") or 25000.0
-            vix = latest.get("vix") or 16.5
-            fii = 0.0
-            y_val = db_records[-2]["value"] if len(db_records) > 1 else current_val
-            w_val = current_val * 0.95
-            m_val = current_val * 0.8
-            yr_val = 60.0
-        else:
-            current_val = 77.5
-            nifty = 25044.65
-            vix = 17.42
-            fii = -100416.0
-            y_val = 79.99
-            w_val = 58.85
-            m_val = 17.01
-            yr_val = 65.66
+        y_val = db_records[-2]["value"] if len(db_records) > 1 else current_val
+        w_val = current_val * 0.95
+        m_val = current_val * 0.8
+        yr_val = 60.0
 
     current_zone = get_zone_info(current_val)
     y_zone = get_zone_info(y_val)
@@ -316,7 +266,10 @@ def fetch_market_mood_index(force_refresh=False):
     else:
         history_points = _generate_smooth_history_fallback(current_val, y_val, w_val, m_val)
 
-    result_payload = {
+    status_label = "LIVE" if is_market_open else "FROZEN"
+    desc_label = "Live Sentiment • 5-min Auto Refresh" if is_market_open else "Market Closed • Mood Index frozen at 03:30 PM closing reading"
+
+    return {
         "current": {
             "value": round(current_val, 1),
             "zone": current_zone["zone"],
@@ -329,7 +282,12 @@ def fetch_market_mood_index(force_refresh=False):
             "nifty": round(nifty, 2) if nifty else None,
             "vix": round(vix, 2) if vix else None,
             "fii": round(fii, 0) if fii else None,
-            "updated_time": datetime.now().strftime("%d %b %Y, %I:%M %p")
+            "updated_time": format_ist_display(now_ist())
+        },
+        "market_status": {
+            "is_open": is_market_open,
+            "status_text": status_label,
+            "description": desc_label
         },
         "comparisons": {
             "yesterday": {
@@ -363,6 +321,102 @@ def fetch_market_mood_index(force_refresh=False):
         ],
         "history": history_points
     }
+
+
+def _load_mmi_from_sqlite():
+    """Load latest MMI snapshot directly from SQLite without any network call."""
+    try:
+        init_mmi_db()
+        with _get_connection() as conn:
+            row = conn.execute("SELECT * FROM mmi_history ORDER BY date DESC LIMIT 1").fetchone()
+            if not row:
+                return None
+            raw_data = None
+            if row["raw_json"]:
+                try:
+                    raw_data = json.loads(row["raw_json"])
+                except Exception:
+                    pass
+            date_str = row["date"]
+            current_val = float(row["mmi_value"])
+            nifty = float(row["nifty"]) if row["nifty"] is not None else None
+            vix = float(row["vix"]) if row["vix"] is not None else None
+            fii = float(row["fii"]) if row["fii"] is not None else None
+            return _build_mmi_payload(date_str, current_val, nifty, vix, fii, raw_data, is_market_open=False)
+    except Exception as e:
+        logger.warning(f"Error loading MMI snapshot from SQLite: {e}")
+        return None
+
+
+def fetch_market_mood_index(force_refresh=False):
+    """
+    Main entry point: fetches MMI data from Tickertape API with schedule-aware caching
+    and persistent SQLite storage.
+    - Market Hours (Mon-Fri 09:15 to 15:30 IST): Active TTL (300 seconds / 5 minutes).
+    - Off-Market / Weekends: 100% FROZEN at latest closing reading. Zero external calls.
+    """
+    global _MMI_CACHE
+    now = time.time()
+    market_open = is_market_hours()
+
+    # 1. In-memory cache validation
+    if not force_refresh and _MMI_CACHE["data"]:
+        if market_open:
+            # During trading hours: 5-minute active TTL
+            if now - _MMI_CACHE["timestamp"] < CACHE_TTL_SECONDS:
+                return _MMI_CACHE["data"]
+        else:
+            # After market hours: 100% frozen. Return cached closing snapshot immediately.
+            return _MMI_CACHE["data"]
+
+    # 2. If memory cache empty and market is closed, restore directly from SQLite (0 network calls)
+    if not force_refresh and not market_open and _MMI_CACHE["data"] is None:
+        db_payload = _load_mmi_from_sqlite()
+        if db_payload:
+            _MMI_CACHE["data"] = db_payload
+            _MMI_CACHE["timestamp"] = now
+            return db_payload
+
+    # 3. Fetch from Tickertape API (during market hours, force_refresh, or initial empty DB)
+    url = "https://api.tickertape.in/mmi/now"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Referer": "https://www.tickertape.in/market-mood-index"
+    }
+
+    raw_data = None
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            if resp.status == 200:
+                body = resp.read().decode("utf-8")
+                parsed = json.loads(body)
+                if parsed.get("success") and "data" in parsed:
+                    raw_data = parsed["data"]
+    except Exception as e:
+        logger.warning(f"Tickertape MMI API request failed ({e}). Falling back to cached/stored data.")
+
+    today_str = now_ist().strftime("%Y-%m-%d")
+
+    if raw_data:
+        current_val = float(raw_data.get("currentValue") or raw_data.get("indicator") or 50.0)
+        nifty = float(raw_data.get("nifty") or 0.0)
+        raw_vix = raw_data.get("vix")
+        vix = abs(float(raw_vix)) if raw_vix is not None else 15.0
+        fii = float(raw_data.get("fii") or 0.0)
+
+        # Save to SQLite
+        save_mmi_reading(today_str, current_val, nifty, vix, fii, raw_data)
+        result_payload = _build_mmi_payload(today_str, current_val, nifty, vix, fii, raw_data, is_market_open=market_open)
+
+    else:
+        # Fallback to DB if network error
+        db_payload = _load_mmi_from_sqlite()
+        if db_payload:
+            result_payload = db_payload
+        else:
+            result_payload = _build_mmi_payload(today_str, 77.5, 25044.65, 17.42, -100416.0, None, is_market_open=market_open)
 
     _MMI_CACHE["data"] = result_payload
     _MMI_CACHE["timestamp"] = now

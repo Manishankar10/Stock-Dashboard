@@ -1840,6 +1840,21 @@
             const mount = document.getElementById('insights-mmi-mount');
             if (!mount || !mmiData) return;
 
+            // Update MMI Live / Frozen status pill
+            const livePill = document.getElementById('mmi-live-pill');
+            if (livePill) {
+                const isLive = mmiData.market_status ? mmiData.market_status.is_open : true;
+                if (isLive) {
+                    livePill.className = 'mmi-live-pill';
+                    livePill.innerHTML = '<span class="mmi-pulsing-dot"></span> LIVE';
+                    livePill.title = 'Market Open • Live Sentiment Tracking (5-min auto refresh)';
+                } else {
+                    livePill.className = 'mmi-live-pill mmi-frozen';
+                    livePill.innerHTML = '<span class="mmi-frozen-dot"></span> FROZEN';
+                    livePill.title = mmiData.market_status?.description || 'Market Closed • Sentiment frozen at 03:30 PM closing value';
+                }
+            }
+
             const cur = mmiData.current || {};
             const score = (cur.value !== undefined) ? Number(cur.value) : 50.0;
             const zone = cur.zone || 'Neutral';
