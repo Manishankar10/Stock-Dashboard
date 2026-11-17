@@ -506,9 +506,13 @@
             submitBtn.innerText = 'Create Smallcase';
         }
 
-        // Set default date to today
+        // Set default date to today and clamp max to today
         const todayStr = new Date().toISOString().slice(0, 10);
-        document.getElementById('stratStartDateInput').value = todayStr;
+        const dateInput = document.getElementById('stratStartDateInput');
+        if (dateInput) {
+            dateInput.value = todayStr;
+            dateInput.max = todayStr;
+        }
         document.getElementById('stratNameInput').value = '';
         document.getElementById('stratNoOfStocksInput').value = '12';
         document.getElementById('stratExitRegimeInput').value = '22';
@@ -675,6 +679,11 @@
         }
         if (!startDate) {
             alertToast('Please select a start date', 'warning');
+            return;
+        }
+        const todayStr = new Date().toISOString().substring(0, 10);
+        if (startDate > todayStr) {
+            alertToast(`Cannot set start date in the future (${formatDateDisplay(startDate)}). Today is ${formatDateDisplay(todayStr)}.`, 'error');
             return;
         }
         if (!indexId) {
@@ -874,16 +883,32 @@
                 </div>
             `;
         } else {
-            actionBtnHtml = `
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <button type="button" class="btn-primary" onclick="openRunAllModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);">
-                        <span>⚡</span> <span>Run All Rebalances</span>
-                    </button>
-                    <button type="button" class="btn-secondary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
-                        <span style="display: inline-flex; align-items: center;">${getRebalanceIconSVG(14, 2.5)}</span> <span>Run Next Rebalance</span>
-                    </button>
-                </div>
-            `;
+            const todayStr = new Date().toISOString().substring(0, 10);
+            const isNextRebalFuture = nextRebalDate && nextRebalDate.substring(0, 10) > todayStr;
+
+            if (isNextRebalFuture) {
+                actionBtnHtml = `
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn-secondary" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; color: #10b981; border-color: rgba(16, 185, 129, 0.4); cursor: default;" title="All scheduled rebalances up to today are completed">
+                            <span>✓</span> <span>Up to Date</span>
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; opacity: 0.7;" title="Next scheduled rebalance on ${formatDateDisplay(nextRebalDate)} is in the future">
+                            <span style="display: inline-flex; align-items: center;">${getClockIconSVG(14)}</span> <span>Next: ${formatDateDisplay(nextRebalDate)}</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionBtnHtml = `
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn-primary" onclick="openRunAllModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);">
+                            <span>⚡</span> <span>Run All Rebalances</span>
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
+                            <span style="display: inline-flex; align-items: center;">${getRebalanceIconSVG(14, 2.5)}</span> <span>Run Next Rebalance</span>
+                        </button>
+                    </div>
+                `;
+            }
         }
         if (actionSlot) actionSlot.innerHTML = actionBtnHtml;
 
@@ -1446,6 +1471,14 @@
 
     function openRunRebalanceModal() {
         if (!currentStrategy) return;
+
+        const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
+        const todayStr = new Date().toISOString().substring(0, 10);
+        if (nextRebalStr && nextRebalStr > todayStr) {
+            alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Market data is not available for future dates (today is ${formatDateDisplay(todayStr)}).`, 'error');
+            return;
+        }
+
         setSmallcaseModalLoader('runRebalanceModal', false);
         document.getElementById('rebal-modal-strat-name').innerText = currentStrategy.name;
         document.getElementById('rebal-modal-date').innerText = formatDateDisplay(currentStrategy.next_rebalance_date);
@@ -1467,6 +1500,13 @@
 
     async function confirmRunRebalance() {
         if (!currentStrategy || isSubmitting) return;
+
+        const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
+        const todayStr = new Date().toISOString().substring(0, 10);
+        if (nextRebalStr && nextRebalStr > todayStr) {
+            alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Market data is not available for future dates (today is ${formatDateDisplay(todayStr)}).`, 'error');
+            return;
+        }
 
         const stepupVal = parseFloat(document.getElementById('rebalStepupInput')?.value || 0) || 0;
         if (stepupVal < 0) {
@@ -1541,6 +1581,13 @@
         }
 
         const isDraft = currentStrategy.status === 'DRAFT' || !currentStrategy.runs || currentStrategy.runs.length === 0;
+        const todayStr = new Date().toISOString().substring(0, 10);
+        const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
+        if (!isDraft && nextRebalStr && nextRebalStr > todayStr) {
+            alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Smallcase is already up to date up to today (${formatDateDisplay(todayStr)}).`, 'error');
+            return;
+        }
+
         const modal = document.getElementById('runAllRebalanceModal');
         const titleEl = document.getElementById('runall-modal-title');
         const descEl = document.getElementById('runall-modal-desc');
@@ -1550,7 +1597,6 @@
 
         if (stepupInput) stepupInput.value = '0';
         if (cutoffInput) {
-            const todayStr = new Date().toISOString().substring(0, 10);
             cutoffInput.value = todayStr;
             cutoffInput.max = todayStr;
         }
@@ -1594,6 +1640,18 @@
         }
 
         const cutoffVal = document.getElementById('runAllCutoffDateInput')?.value || '';
+        const todayStr = new Date().toISOString().substring(0, 10);
+        if (cutoffVal && cutoffVal > todayStr) {
+            alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(cutoffVal)}). Cutoff date cannot be in the future (today is ${formatDateDisplay(todayStr)}).`, 'error');
+            return;
+        }
+
+        const isDraft = currentStrategy.status === 'DRAFT' || !currentStrategy.runs || currentStrategy.runs.length === 0;
+        const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
+        if (!isDraft && nextRebalStr && nextRebalStr > todayStr) {
+            alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Smallcase is already up to date.`, 'error');
+            return;
+        }
 
         const btn = document.getElementById('runAllConfirmBtn');
         const origText = btn ? btn.innerText : '⚡ Run All Now';

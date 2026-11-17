@@ -501,6 +501,10 @@ def create_user_strategy(
     except Exception:
         raise ValueError("Start date must be in YYYY-MM-DD format")
 
+    today_d = date.today()
+    if start_d > today_d:
+        raise ValueError(f"Start date ({start_d.strftime('%d/%m/%Y')}) cannot be in the future (today is {today_d.strftime('%d/%m/%Y')}).")
+
     if not index_id:
         raise ValueError("Index selection is required")
 
@@ -643,6 +647,14 @@ def run_strategy_init(strategy_id, username=None):
     holidays_set = get_official_trading_holidays()
     exec_date, was_moved = get_next_trading_day(start_d, holidays_set)
 
+    today_d = date.today()
+    if exec_date > today_d:
+        moved_note = f" (adjusted from {start_d.strftime('%d/%m/%Y')})" if was_moved else ""
+        raise ValueError(
+            f"Cannot execute Init for future date ({exec_date.strftime('%d/%m/%Y')}{moved_note}). "
+            f"Smallcase start date cannot be in the future (today is {today_d.strftime('%d/%m/%Y')})."
+        )
+
     # 1. Fetch universe constituents
     constituents = get_strategy_index_constituents(
         target["index_id"],
@@ -774,6 +786,14 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
     holidays_set = get_official_trading_holidays()
     exec_date, was_moved = get_next_trading_day(rebal_d, holidays_set)
 
+    today_d = date.today()
+    if exec_date > today_d:
+        moved_note = f" (adjusted from {rebal_d.strftime('%d/%m/%Y')})" if was_moved else ""
+        raise ValueError(
+            f"Cannot execute rebalance for future date ({exec_date.strftime('%d/%m/%Y')}{moved_note}). "
+            f"Market data is not available for future dates (today is {today_d.strftime('%d/%m/%Y')})."
+        )
+
     now_iso = datetime.now().isoformat()
 
     # Step-up capital handling
@@ -894,7 +914,10 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
 
     today_d = date.today()
     if cutoff_d > today_d:
-        cutoff_d = today_d
+        raise ValueError(
+            f"Cannot execute rebalance for future date ({cutoff_d.strftime('%d/%m/%Y')}). "
+            f"Cutoff date cannot be in the future (today is {today_d.strftime('%d/%m/%Y')})."
+        )
 
     init_executed = False
     rebalances_executed = 0
@@ -942,7 +965,16 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
     total_runs = (1 if init_executed else 0) + rebalances_executed
 
     if total_runs == 0:
-        msg = f"Strategy is already up to date. Next scheduled rebalance is on {final_target.get('next_rebalance_date')}."
+        next_dt_str = final_target.get('next_rebalance_date', '')
+        try:
+            next_d_obj = datetime.strptime(next_dt_str[:10], "%Y-%m-%d").date()
+            next_fmt = next_d_obj.strftime("%d/%m/%Y")
+        except Exception:
+            next_fmt = next_dt_str
+        raise ValueError(
+            f"Cannot execute rebalance for future date ({next_fmt}). "
+            f"Smallcase is already up to date up to today ({today_d.strftime('%d/%m/%Y')})."
+        )
     else:
         parts = []
         if init_executed:
