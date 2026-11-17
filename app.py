@@ -33,6 +33,7 @@ from modules.auth_admin.auth_admin_routes import auth_admin_bp
 from modules.fundamentals import fundamentals_bp
 from modules.fundamentals_concalls import fundamentals_concalls_bp
 from modules.smallcases import smallcases_bp, init_smallcases
+from modules.momentum_smallcases import momentum_smallcases_bp, init_momentum_smallcases
 from modules.ipo_tracker import ipo_tracker_bp, init_ipo_tracker
 from modules.mutual_funds import mutual_funds_bp, init_mutual_funds
 from modules.plan_calculator import plan_calculator_bp, init_plan_calculator
@@ -47,6 +48,7 @@ from modules.industries_overview import industries_overview_bp, init_industries_
 from modules.shareholding import shareholding_bp, init_shareholding
 from modules.peoples import peoples_bp, init_peoples
 from modules.index_stocks import index_stocks_bp
+from modules.trading_holidays import trading_holidays_bp
 from modules.drawings import drawings_bp
 from modules.stock_notes import stock_notes_bp
 from modules.market_depth import market_depth_bp
@@ -100,6 +102,7 @@ ensure_default_admin(init_user_fn=lambda u: (load_data(u), load_portfolios(u)))
 
 # Initialize dependent standalone modules
 init_smallcases(fetcher, login_required, BASE_DATA_DIR)
+init_momentum_smallcases(fetcher, login_required, BASE_DATA_DIR)
 init_analytics(login_required)
 init_ipo_tracker(login_required)
 init_mutual_funds(login_required, BASE_DATA_DIR)
@@ -128,6 +131,7 @@ app.register_blueprint(insights_bp)
 app.register_blueprint(fundamentals_bp)
 app.register_blueprint(fundamentals_concalls_bp)
 app.register_blueprint(smallcases_bp)
+app.register_blueprint(momentum_smallcases_bp)
 app.register_blueprint(ipo_tracker_bp)
 app.register_blueprint(mutual_funds_bp)
 app.register_blueprint(plan_calculator_bp)
@@ -142,6 +146,7 @@ app.register_blueprint(industries_overview_bp)
 app.register_blueprint(shareholding_bp)
 app.register_blueprint(peoples_bp)
 app.register_blueprint(index_stocks_bp)
+app.register_blueprint(trading_holidays_bp)
 app.register_blueprint(drawings_bp)
 app.register_blueprint(technical_screener_bp)
 app.register_blueprint(custom_queries_bp)
@@ -235,10 +240,20 @@ def analytics_page():
 def insights_page():
     return render_template("index.html", initial_tab="insights")
 
+@app.route("/momentum-smallcases")
+@login_required
+def momentum_smallcases_page():
+    return render_template("index.html", initial_tab="momentum-smallcases")
+
+@app.route("/smallcase-baskets")
+@login_required
+def smallcase_baskets_page():
+    return render_template("index.html", initial_tab="smallcase-baskets")
+
 @app.route("/smallcases")
 @login_required
 def smallcases_page():
-    return render_template("index.html", initial_tab="smallcases")
+    return render_template("index.html", initial_tab="smallcase-baskets")
 
 @app.route("/quarterly-results")
 @login_required

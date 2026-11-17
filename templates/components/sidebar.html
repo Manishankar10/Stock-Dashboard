@@ -51,10 +51,22 @@
             <span class="sidebar-nav-text">Insights</span>
         </button>
 
-        <button type="button" class="sidebar-nav-item" id="sidebar-nav-smallcases" onclick="switchTab('smallcases'); closeMobileSidebarOnSelect();">
-            <span class="sidebar-nav-icon">📦</span>
-            <span class="sidebar-nav-text">Smallcases</span>
-        </button>
+        <!-- Smallcases Main Menu with Submenu (Momentum Smallcases, Smallcase Baskets) -->
+        <div class="smallcases-menu-item sidebar-tools-nav">
+            <button type="button" class="sidebar-nav-item tools-menu-trigger" id="sidebar-nav-smallcases" aria-expanded="false" aria-haspopup="true" onclick="toggleSmallcasesSubmenu(event)">
+                <span class="sidebar-nav-icon">📦</span>
+                <span class="sidebar-nav-text">Smallcases</span>
+                <span class="sidebar-nav-arrow" aria-hidden="true">›</span>
+            </button>
+            <div class="smallcases-submenu sidebar-tools-submenu" aria-label="Smallcases">
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-momentum-smallcases" onclick="switchTab('momentum-smallcases'); closeSmallcasesSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">🚀</span><span class="sidebar-nav-text">Momentum Smallcases</span>
+                </button>
+                <button type="button" class="sidebar-nav-item tools-submenu-link" id="sidebar-nav-smallcase-baskets" onclick="switchTab('smallcase-baskets'); closeSmallcasesSubmenu(); closeMobileSidebarOnSelect();">
+                    <span class="sidebar-nav-icon">🧺</span><span class="sidebar-nav-text">Smallcase Baskets</span>
+                </button>
+            </div>
+        </div>
 
         <!-- Market Pulse Main Menu with Submenu -->
         <div class="market-pulse-menu-item sidebar-tools-nav">
@@ -256,9 +268,10 @@
 .menu-item:hover { background: var(--table-hover-bg); color: var(--btn-primary-bg); }
 .menu-divider { height: 1px; margin: 4px 0; background: var(--border-color); }
 
-/* Tools & Market Pulse Menu Items & Submenu Accordion */
+/* Tools, Market Pulse & Smallcases Menu Items & Submenu Accordion */
 .tools-menu-item,
-.market-pulse-menu-item { position: relative; width: 100%; }
+.market-pulse-menu-item,
+.smallcases-menu-item { position: relative; width: 100%; }
 .tools-menu-trigger {
     width: 100%;
     justify-content: space-between;
@@ -281,7 +294,8 @@
     transition: transform 0.2s ease;
 }
 .tools-menu-item.open .sidebar-nav-arrow,
-.market-pulse-menu-item.open .sidebar-nav-arrow {
+.market-pulse-menu-item.open .sidebar-nav-arrow,
+.smallcases-menu-item.open .sidebar-nav-arrow {
     transform: rotate(90deg);
 }
 
@@ -290,7 +304,8 @@
    ========================================================= */
 @media (min-width: 769px) {
     .tools-submenu,
-    .market-pulse-submenu {
+    .market-pulse-submenu,
+    .smallcases-submenu {
         display: none;
         position: fixed;
         left: 220px;
@@ -307,13 +322,15 @@
     }
 
     .app-sidebar.collapsed .tools-submenu,
-    .app-sidebar.collapsed .market-pulse-submenu {
+    .app-sidebar.collapsed .market-pulse-submenu,
+    .app-sidebar.collapsed .smallcases-submenu {
         left: 58px;
     }
 
     /* Invisible hover bridge to eliminate gap jitter when moving mouse into flyout */
     .tools-submenu::before,
-    .market-pulse-submenu::before {
+    .market-pulse-submenu::before,
+    .smallcases-submenu::before {
         content: "";
         position: absolute;
         top: -24px;
@@ -329,18 +346,23 @@
     .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
     .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
-    .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
+    .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
+    .smallcases-menu-item:hover > .smallcases-submenu:not(.force-hidden),
+    .smallcases-menu-item.hover-active > .smallcases-submenu:not(.force-hidden),
+    .smallcases-menu-item.open > .smallcases-submenu:not(.force-hidden) {
         display: flex !important;
     }
 
     /* Instantly disappear when clicked even if cursor is still hovering */
     .tools-submenu.force-hidden,
-    .market-pulse-submenu.force-hidden {
+    .market-pulse-submenu.force-hidden,
+    .smallcases-submenu.force-hidden {
         display: none !important;
     }
 
     .tools-submenu .sidebar-nav-item,
-    .market-pulse-submenu .sidebar-nav-item {
+    .market-pulse-submenu .sidebar-nav-item,
+    .smallcases-submenu .sidebar-nav-item {
         padding: 8px 12px;
         font-size: 13px;
         border-radius: 6px;
@@ -378,8 +400,10 @@
        ========================================================= */
     .app-sidebar.collapsed .tools-submenu,
     .app-sidebar.collapsed .market-pulse-submenu,
+    .app-sidebar.collapsed .smallcases-submenu,
     body.sidebar-collapsed .tools-submenu,
-    body.sidebar-collapsed .market-pulse-submenu {
+    body.sidebar-collapsed .market-pulse-submenu,
+    body.sidebar-collapsed .smallcases-submenu {
         position: fixed !important;
         left: 58px !important;
         min-width: 220px !important;
@@ -401,26 +425,36 @@
     .app-sidebar.collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .smallcases-menu-item:hover > .smallcases-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .smallcases-menu-item.hover-active > .smallcases-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .smallcases-menu-item.open > .smallcases-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item.hover-active > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
-    body.sidebar-collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
+    body.sidebar-collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
+    body.sidebar-collapsed .smallcases-menu-item:hover > .smallcases-submenu:not(.force-hidden),
+    body.sidebar-collapsed .smallcases-menu-item.hover-active > .smallcases-submenu:not(.force-hidden),
+    body.sidebar-collapsed .smallcases-menu-item.open > .smallcases-submenu:not(.force-hidden) {
         display: flex !important;
     }
 
     .app-sidebar.collapsed .tools-submenu.force-hidden,
     .app-sidebar.collapsed .market-pulse-submenu.force-hidden,
+    .app-sidebar.collapsed .smallcases-submenu.force-hidden,
     body.sidebar-collapsed .tools-submenu.force-hidden,
-    body.sidebar-collapsed .market-pulse-submenu.force-hidden {
+    body.sidebar-collapsed .market-pulse-submenu.force-hidden,
+    body.sidebar-collapsed .smallcases-submenu.force-hidden {
         display: none !important;
     }
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-item,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-item,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-item,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-item,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-item {
         width: 100% !important;
         min-width: 100% !important;
         height: auto !important;
@@ -444,16 +478,20 @@
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-item:hover,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-item:hover,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-item:hover,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-item:hover,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item:hover {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item:hover,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-item:hover {
         background-color: var(--table-hover-bg) !important;
         color: var(--text-primary) !important;
     }
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-item.active,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-item.active,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-item.active,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-item.active,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item.active {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item.active,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-item.active {
         background: var(--btn-primary-bg) !important;
         color: var(--btn-primary-text) !important;
         font-weight: 700 !important;
@@ -462,8 +500,10 @@
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-icon,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-icon,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-icon,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-icon,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-icon {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-icon,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-icon {
         font-size: 16px !important;
         width: 20px !important;
         height: 20px !important;
@@ -476,8 +516,10 @@
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-text,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-text,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-text,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-text,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-text {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-text,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-text {
         display: inline-block !important;
         visibility: visible !important;
         opacity: 1 !important;
@@ -493,7 +535,8 @@
 
 @media (max-width: 768px) {
     .tools-submenu,
-    .market-pulse-submenu {
+    .market-pulse-submenu,
+    .smallcases-submenu {
         display: none;
         position: static;
         min-width: 0;
@@ -509,17 +552,20 @@
     }
 
     .tools-menu-item.open > .tools-submenu:not(.force-hidden),
-    .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
+    .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
+    .smallcases-menu-item.open > .smallcases-submenu:not(.force-hidden) {
         display: flex !important;
     }
 
     .tools-submenu.force-hidden,
-    .market-pulse-submenu.force-hidden {
+    .market-pulse-submenu.force-hidden,
+    .smallcases-submenu.force-hidden {
         display: none !important;
     }
 
     .tools-submenu .sidebar-nav-item,
-    .market-pulse-submenu .sidebar-nav-item {
+    .market-pulse-submenu .sidebar-nav-item,
+    .smallcases-submenu .sidebar-nav-item {
         padding: 7px 10px;
         font-size: 12.5px;
         border-radius: 6px;
@@ -532,7 +578,8 @@
     }
 
     .tools-submenu .sidebar-nav-item:hover,
-    .market-pulse-submenu .sidebar-nav-item:hover {
+    .market-pulse-submenu .sidebar-nav-item:hover,
+    .smallcases-submenu .sidebar-nav-item:hover {
         background-color: var(--table-hover-bg);
         color: var(--text-primary);
     }
@@ -542,8 +589,10 @@
        ========================================================= */
     .app-sidebar.collapsed .tools-submenu,
     .app-sidebar.collapsed .market-pulse-submenu,
+    .app-sidebar.collapsed .smallcases-submenu,
     body.sidebar-collapsed .tools-submenu,
-    body.sidebar-collapsed .market-pulse-submenu {
+    body.sidebar-collapsed .market-pulse-submenu,
+    body.sidebar-collapsed .smallcases-submenu {
         position: fixed !important;
         left: 58px !important;
         min-width: 220px !important;
@@ -565,26 +614,36 @@
     .app-sidebar.collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
     .app-sidebar.collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .smallcases-menu-item:hover > .smallcases-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .smallcases-menu-item.hover-active > .smallcases-submenu:not(.force-hidden),
+    .app-sidebar.collapsed .smallcases-menu-item.open > .smallcases-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item:hover > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item.hover-active > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .tools-menu-item.open > .tools-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item:hover > .market-pulse-submenu:not(.force-hidden),
     body.sidebar-collapsed .market-pulse-menu-item.hover-active > .market-pulse-submenu:not(.force-hidden),
-    body.sidebar-collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden) {
+    body.sidebar-collapsed .market-pulse-menu-item.open > .market-pulse-submenu:not(.force-hidden),
+    body.sidebar-collapsed .smallcases-menu-item:hover > .smallcases-submenu:not(.force-hidden),
+    body.sidebar-collapsed .smallcases-menu-item.hover-active > .smallcases-submenu:not(.force-hidden),
+    body.sidebar-collapsed .smallcases-menu-item.open > .smallcases-submenu:not(.force-hidden) {
         display: flex !important;
     }
 
     .app-sidebar.collapsed .tools-submenu.force-hidden,
     .app-sidebar.collapsed .market-pulse-submenu.force-hidden,
+    .app-sidebar.collapsed .smallcases-submenu.force-hidden,
     body.sidebar-collapsed .tools-submenu.force-hidden,
-    body.sidebar-collapsed .market-pulse-submenu.force-hidden {
+    body.sidebar-collapsed .market-pulse-submenu.force-hidden,
+    body.sidebar-collapsed .smallcases-submenu.force-hidden {
         display: none !important;
     }
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-item,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-item,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-item,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-item,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-item {
         width: 100% !important;
         min-width: 100% !important;
         height: auto !important;
@@ -608,16 +667,20 @@
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-item:hover,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-item:hover,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-item:hover,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-item:hover,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item:hover {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item:hover,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-item:hover {
         background-color: var(--table-hover-bg) !important;
         color: var(--text-primary) !important;
     }
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-item.active,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-item.active,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-item.active,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-item.active,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item.active {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-item.active,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-item.active {
         background: var(--btn-primary-bg) !important;
         color: var(--btn-primary-text) !important;
         font-weight: 700 !important;
@@ -626,8 +689,10 @@
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-icon,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-icon,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-icon,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-icon,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-icon {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-icon,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-icon {
         font-size: 16px !important;
         width: 20px !important;
         height: 20px !important;
@@ -640,8 +705,10 @@
 
     .app-sidebar.collapsed .tools-submenu .sidebar-nav-text,
     .app-sidebar.collapsed .market-pulse-submenu .sidebar-nav-text,
+    .app-sidebar.collapsed .smallcases-submenu .sidebar-nav-text,
     body.sidebar-collapsed .tools-submenu .sidebar-nav-text,
-    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-text {
+    body.sidebar-collapsed .market-pulse-submenu .sidebar-nav-text,
+    body.sidebar-collapsed .smallcases-submenu .sidebar-nav-text {
         display: inline-block !important;
         visibility: visible !important;
         opacity: 1 !important;
@@ -796,7 +863,10 @@
 .sidebar-nav:has(.tools-menu-item.open),
 .sidebar-nav:has(.market-pulse-menu-item:hover),
 .sidebar-nav:has(.market-pulse-menu-item.hover-active),
-.sidebar-nav:has(.market-pulse-menu-item.open) {
+.sidebar-nav:has(.market-pulse-menu-item.open),
+.sidebar-nav:has(.smallcases-menu-item:hover),
+.sidebar-nav:has(.smallcases-menu-item.hover-active),
+.sidebar-nav:has(.smallcases-menu-item.open) {
     z-index: 10020;
 }
 
@@ -1093,7 +1163,9 @@ body.sidebar-collapsed .sidebar-nav {
 .app-sidebar.collapsed .tools-menu-item,
 body.sidebar-collapsed .tools-menu-item,
 .app-sidebar.collapsed .market-pulse-menu-item,
-body.sidebar-collapsed .market-pulse-menu-item {
+body.sidebar-collapsed .market-pulse-menu-item,
+.app-sidebar.collapsed .smallcases-menu-item,
+body.sidebar-collapsed .smallcases-menu-item {
     width: 44px !important;
     display: flex !important;
     justify-content: center !important;
@@ -1364,7 +1436,10 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
         const trigger = document.getElementById('sidebar-nav-market-pulse');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
         const toolsItem = document.querySelector('.tools-menu-item');
-        if (!toolsItem || (!toolsItem.classList.contains('open') && !toolsItem.classList.contains('hover-active'))) {
+        const scItem = document.querySelector('.smallcases-menu-item');
+        const anyOtherOpen = (toolsItem && (toolsItem.classList.contains('open') || toolsItem.classList.contains('hover-active'))) ||
+                             (scItem && (scItem.classList.contains('open') || scItem.classList.contains('hover-active')));
+        if (!anyOtherOpen) {
             const nav = document.querySelector('.sidebar-nav');
             if (nav) nav.style.zIndex = '';
         }
@@ -1376,6 +1451,7 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
             event.preventDefault();
         }
         closeMarketPulseSubmenu();
+        closeSmallcasesSubmenu();
         const item = document.querySelector('.tools-menu-item');
         const trigger = document.getElementById('sidebar-nav-tools');
         if (!item) return;
@@ -1424,7 +1500,74 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
         const trigger = document.getElementById('sidebar-nav-tools');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
         const pulseItem = document.querySelector('.market-pulse-menu-item');
-        if (!pulseItem || (!pulseItem.classList.contains('open') && !pulseItem.classList.contains('hover-active'))) {
+        const scItem = document.querySelector('.smallcases-menu-item');
+        const anyOtherOpen = (pulseItem && (pulseItem.classList.contains('open') || pulseItem.classList.contains('hover-active'))) ||
+                             (scItem && (scItem.classList.contains('open') || scItem.classList.contains('hover-active')));
+        if (!anyOtherOpen) {
+            const nav = document.querySelector('.sidebar-nav');
+            if (nav) nav.style.zIndex = '';
+        }
+    }
+
+    function toggleSmallcasesSubmenu(event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        closeMarketPulseSubmenu();
+        closeToolsSubmenu();
+        const item = document.querySelector('.smallcases-menu-item');
+        const trigger = document.getElementById('sidebar-nav-smallcases');
+        if (!item) return;
+        const submenu = item.querySelector('.smallcases-submenu');
+        if (submenu) submenu.classList.remove('force-hidden');
+        const open = item.classList.toggle('open');
+        if (trigger) trigger.setAttribute('aria-expanded', String(open));
+        if (open && window.innerWidth > 768) {
+            positionSmallcasesSubmenu();
+        }
+    }
+
+    function positionSmallcasesSubmenu() {
+        if (window.innerWidth <= 768) return;
+        const item = document.querySelector('.smallcases-menu-item');
+        if (!item) return;
+        const submenu = item.querySelector('.smallcases-submenu');
+        if (!submenu) return;
+        const bounds = item.getBoundingClientRect();
+        const sidebar = document.getElementById('app-sidebar');
+        const isCollapsed = (sidebar && sidebar.classList.contains('collapsed')) || document.body.classList.contains('sidebar-collapsed') || document.documentElement.classList.contains('sidebar-collapsed');
+        
+        const submenuHeight = submenu.offsetHeight || 110;
+        const maxTop = window.innerHeight - submenuHeight - 10;
+        submenu.style.top = Math.max(10, Math.min(bounds.top - 4, maxTop)) + 'px';
+        submenu.style.left = (isCollapsed ? 58 : 220) + 'px';
+        submenu.style.zIndex = '100050';
+        const nav = document.querySelector('.sidebar-nav');
+        if (nav) nav.style.zIndex = '10020';
+    }
+
+    function closeSmallcasesSubmenu() {
+        if (window.smallcasesCloseTimer) {
+            clearTimeout(window.smallcasesCloseTimer);
+            window.smallcasesCloseTimer = null;
+        }
+        const item = document.querySelector('.smallcases-menu-item');
+        if (item) {
+            item.classList.remove('open');
+            item.classList.remove('hover-active');
+            const submenu = item.querySelector('.smallcases-submenu');
+            if (submenu) {
+                submenu.classList.add('force-hidden');
+            }
+        }
+        const trigger = document.getElementById('sidebar-nav-smallcases');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        const pulseItem = document.querySelector('.market-pulse-menu-item');
+        const toolsItem = document.querySelector('.tools-menu-item');
+        const anyOtherOpen = (pulseItem && (pulseItem.classList.contains('open') || pulseItem.classList.contains('hover-active'))) ||
+                             (toolsItem && (toolsItem.classList.contains('open') || toolsItem.classList.contains('hover-active')));
+        if (!anyOtherOpen) {
             const nav = document.querySelector('.sidebar-nav');
             if (nav) nav.style.zIndex = '';
         }
@@ -1437,6 +1580,9 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
     window.toggleToolsSubmenu = toggleToolsSubmenu;
     window.positionToolsSubmenu = positionToolsSubmenu;
     window.closeToolsSubmenu = closeToolsSubmenu;
+    window.toggleSmallcasesSubmenu = toggleSmallcasesSubmenu;
+    window.positionSmallcasesSubmenu = positionSmallcasesSubmenu;
+    window.closeSmallcasesSubmenu = closeSmallcasesSubmenu;
 
     function closeSettingsMenu() {
         document.querySelectorAll('.menu-dropdown-content.show').forEach(menu => menu.classList.remove('show'));
@@ -1474,6 +1620,9 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
         if (!event.target.closest('.market-pulse-menu-item')) {
             closeMarketPulseSubmenu();
         }
+        if (!event.target.closest('.smallcases-menu-item')) {
+            closeSmallcasesSubmenu();
+        }
     });
 
     // Handle admin page auto-collapse & other pages auto-expand
@@ -1499,6 +1648,7 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
 
         window.marketPulseCloseTimer = null;
         window.toolsCloseTimer = null;
+        window.smallcasesCloseTimer = null;
 
         const pulseItem = document.querySelector('.market-pulse-menu-item');
         if (pulseItem) {
@@ -1511,9 +1661,17 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
                     clearTimeout(window.toolsCloseTimer);
                     window.toolsCloseTimer = null;
                 }
+                if (window.smallcasesCloseTimer) {
+                    clearTimeout(window.smallcasesCloseTimer);
+                    window.smallcasesCloseTimer = null;
+                }
                 const toolsMenu = document.querySelector('.tools-menu-item');
                 if (toolsMenu && !toolsMenu.classList.contains('open')) {
                     toolsMenu.classList.remove('hover-active');
+                }
+                const scMenu = document.querySelector('.smallcases-menu-item');
+                if (scMenu && !scMenu.classList.contains('open')) {
+                    scMenu.classList.remove('hover-active');
                 }
 
                 pulseItem.classList.add('hover-active');
@@ -1542,9 +1700,17 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
                     clearTimeout(window.marketPulseCloseTimer);
                     window.marketPulseCloseTimer = null;
                 }
+                if (window.smallcasesCloseTimer) {
+                    clearTimeout(window.smallcasesCloseTimer);
+                    window.smallcasesCloseTimer = null;
+                }
                 const pulseMenu = document.querySelector('.market-pulse-menu-item');
                 if (pulseMenu && !pulseMenu.classList.contains('open')) {
                     pulseMenu.classList.remove('hover-active');
+                }
+                const scMenu = document.querySelector('.smallcases-menu-item');
+                if (scMenu && !scMenu.classList.contains('open')) {
+                    scMenu.classList.remove('hover-active');
                 }
 
                 toolsItem.classList.add('hover-active');
@@ -1562,6 +1728,45 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
             });
         }
 
+        const smallcasesItem = document.querySelector('.smallcases-menu-item');
+        if (smallcasesItem) {
+            smallcasesItem.addEventListener('mouseenter', function() {
+                if (window.smallcasesCloseTimer) {
+                    clearTimeout(window.smallcasesCloseTimer);
+                    window.smallcasesCloseTimer = null;
+                }
+                if (window.toolsCloseTimer) {
+                    clearTimeout(window.toolsCloseTimer);
+                    window.toolsCloseTimer = null;
+                }
+                if (window.marketPulseCloseTimer) {
+                    clearTimeout(window.marketPulseCloseTimer);
+                    window.marketPulseCloseTimer = null;
+                }
+                const pulseMenu = document.querySelector('.market-pulse-menu-item');
+                if (pulseMenu && !pulseMenu.classList.contains('open')) {
+                    pulseMenu.classList.remove('hover-active');
+                }
+                const toolsMenu = document.querySelector('.tools-menu-item');
+                if (toolsMenu && !toolsMenu.classList.contains('open')) {
+                    toolsMenu.classList.remove('hover-active');
+                }
+
+                smallcasesItem.classList.add('hover-active');
+                if (window.innerWidth > 768) {
+                    positionSmallcasesSubmenu();
+                    const submenu = smallcasesItem.querySelector('.smallcases-submenu');
+                    if (submenu) submenu.classList.remove('force-hidden');
+                }
+            });
+            smallcasesItem.addEventListener('mouseleave', function() {
+                if (window.smallcasesCloseTimer) clearTimeout(window.smallcasesCloseTimer);
+                window.smallcasesCloseTimer = setTimeout(function() {
+                    smallcasesItem.classList.remove('hover-active');
+                }, 240);
+            });
+        }
+
         // Instantly close open hover menus when moving cursor over any other primary nav item
         document.querySelectorAll('.sidebar-nav > .sidebar-nav-item').forEach(function(navBtn) {
             navBtn.addEventListener('mouseenter', function() {
@@ -1573,11 +1778,18 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
                     clearTimeout(window.toolsCloseTimer);
                     window.toolsCloseTimer = null;
                 }
+                if (window.smallcasesCloseTimer) {
+                    clearTimeout(window.smallcasesCloseTimer);
+                    window.smallcasesCloseTimer = null;
+                }
                 if (pulseItem && !pulseItem.classList.contains('open')) {
                     pulseItem.classList.remove('hover-active');
                 }
                 if (toolsItem && !toolsItem.classList.contains('open')) {
                     toolsItem.classList.remove('hover-active');
+                }
+                if (smallcasesItem && !smallcasesItem.classList.contains('open')) {
+                    smallcasesItem.classList.remove('hover-active');
                 }
             });
         });
@@ -1588,6 +1800,7 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
                 if (window.innerWidth > 768) {
                     positionMarketPulseSubmenu();
                     positionToolsSubmenu();
+                    positionSmallcasesSubmenu();
                 }
             }, { passive: true });
         }
@@ -1629,7 +1842,9 @@ body.sidebar-collapsed .tools-menu-trigger > .sidebar-nav-icon {
                     'portfolios': '/portfolios',
                     'dashboard': '/portfolios',
                     'insights': '/insights',
-                    'smallcases': '/smallcases',
+                    'smallcases': '/smallcase-baskets',
+                    'smallcase-baskets': '/smallcase-baskets',
+                    'momentum-smallcases': '/momentum-smallcases',
                     'ipos': '/#ipos',
                     'corporate-actions': '/#corporate-actions',
                     'quarterly-results': '/quarterly-results',

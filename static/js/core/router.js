@@ -13,7 +13,9 @@ const AppRouter = {
         'portfolios': '/portfolios',
         'dashboard': '/analytics',
         'insights': '/insights',
-        'smallcases': '/smallcases',
+        'smallcases': '/smallcase-baskets',
+        'smallcase-baskets': '/smallcase-baskets',
+        'momentum-smallcases': '/momentum-smallcases',
         'mutual-funds': '/mutual-funds',
         'mutual-fund-detail': '/mutual-funds',
         'ipos': '/ipos',
@@ -35,7 +37,9 @@ const AppRouter = {
         '/portfolios': 'portfolios',
         '/analytics': 'dashboard',
         '/insights': 'insights',
-        '/smallcases': 'smallcases',
+        '/smallcases': 'smallcase-baskets',
+        '/smallcase-baskets': 'smallcase-baskets',
+        '/momentum-smallcases': 'momentum-smallcases',
         '/mutual-funds': 'mutual-funds',
         '/mutual-funds/dashboard': 'mutual-funds',
         '/ipos': 'ipos',
@@ -419,13 +423,13 @@ function switchTab(tabName, pushState = true) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav-item').forEach(item => item.classList.remove('active'));
     
-    const activeNavKey = tabName === 'mutual-fund-detail' ? 'mutual-funds' : (tabName === 'dashboard' ? 'portfolios' : tabName);
+    const activeNavKey = tabName === 'mutual-fund-detail' ? 'mutual-funds' : (tabName === 'dashboard' ? 'portfolios' : (tabName === 'smallcases' ? 'smallcase-baskets' : tabName));
     const btnEl = document.getElementById(`btn-tab-${activeNavKey}`);
     const sidebarNavEl = document.getElementById(`sidebar-nav-${activeNavKey}`);
     if (btnEl) btnEl.classList.add('active');
     if (sidebarNavEl) sidebarNavEl.classList.add('active');
 
-    // Highlight parent Market Pulse or Tools button if a sub-tab is active
+    // Highlight parent Market Pulse or Tools or Smallcases button if a sub-tab is active
     const isMarketPulse = ['ipos', 'corporate-actions', 'quarterly-results', 'transactions', 'sector-rotation', 'industries-overview', 'shareholding', 'peoples'].includes(tabName);
     const marketPulseTrigger = document.getElementById('sidebar-nav-market-pulse');
     if (marketPulseTrigger) {
@@ -444,13 +448,25 @@ function switchTab(tabName, pushState = true) {
         closeToolsSubmenu();
     }
 
+    const isSmallcases = ['momentum-smallcases', 'smallcase-baskets', 'smallcases'].includes(tabName);
+    const smallcasesTrigger = document.getElementById('sidebar-nav-smallcases');
+    if (smallcasesTrigger) {
+        smallcasesTrigger.classList.toggle('active', isSmallcases);
+    }
+    if (typeof closeSmallcasesSubmenu === 'function') {
+        closeSmallcasesSubmenu();
+    }
+
     // 2. Smoothly switch active tab-content
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
         content.style.display = 'none';
     });
 
-    const targetTabEl = document.getElementById(`tab-${tabName}`);
+    let targetTabEl = document.getElementById(`tab-${tabName}`);
+    if (!targetTabEl && (tabName === 'smallcase-baskets' || tabName === 'smallcases')) {
+        targetTabEl = document.getElementById('tab-smallcases') || document.getElementById('tab-smallcase-baskets');
+    }
     if (targetTabEl) {
         targetTabEl.style.display = 'block';
         // Force a reflow for smooth hardware-accelerated CSS transition
@@ -503,8 +519,10 @@ function switchTab(tabName, pushState = true) {
         } else {
             if (typeof loadInsightsTab === 'function') loadInsightsTab();
         }
-    } else if (tabName === 'smallcases') {
+    } else if (tabName === 'smallcases' || tabName === 'smallcase-baskets') {
         if (typeof loadSmallcasesTab === 'function') loadSmallcasesTab();
+    } else if (tabName === 'momentum-smallcases') {
+        if (typeof loadMomentumSmallcasesTab === 'function') loadMomentumSmallcasesTab();
     } else if (tabName === 'watchlists') {
         if (typeof renderWatchlists === 'function') renderWatchlists();
         if (!window.watchlistsLoaded && typeof fetchWatchlists === 'function') {
@@ -560,6 +578,9 @@ function switchTab(tabName, pushState = true) {
     }
     if (typeof closeToolsSubmenu === 'function') {
         closeToolsSubmenu();
+    }
+    if (typeof closeSmallcasesSubmenu === 'function') {
+        closeSmallcasesSubmenu();
     }
     if (typeof closeMobileSidebarOnSelect === 'function') {
         closeMobileSidebarOnSelect();

@@ -305,6 +305,26 @@ def _init_sqlite_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS trading_holidays (
+                    holiday_id TEXT PRIMARY KEY,
+                    date TEXT NOT NULL,
+                    year INTEGER NOT NULL,
+                    holiday_name TEXT NOT NULL,
+                    day TEXT NOT NULL,
+                    exchange TEXT DEFAULT 'NSE, BSE',
+                    segment TEXT DEFAULT 'Capital Market (Equities)',
+                    is_trading_holiday INTEGER DEFAULT 1,
+                    is_clearing_holiday INTEGER DEFAULT 0,
+                    morning_session TEXT,
+                    evening_session TEXT,
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_year ON trading_holidays(year)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON trading_holidays(date)")
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -1674,4 +1694,178 @@ def load_index_rebalance_audit(limit=10):
             conn.close()
 
     return []
+
+
+# ==============================================================================
+# OFFICIAL TRADING HOLIDAYS (LAST 10 YEARS: 2017 - 2026)
+# ==============================================================================
+
+def load_trading_holidays_db(year=None):
+    """
+    Loads official trading holidays from database (MongoDB Atlas or SQLite).
+    If year is specified, filters by that year. Returns list sorted by date ascending.
+    """
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["trading_holidays"]
+            query = {"year": int(year)} if year is not None else {}
+            docs = list(col.find(query, {"_id": 0}).sort("date", 1))
+            if docs:
+                return docs
+        except Exception as e:
+            print(f"MongoDB load_trading_holidays error: {e}")
+
+    # 2. SQLite
+    conn = None
+    try:
+        _init_sqlite_db()
+        conn = sqlite3.connect(_SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        if year is not None:
+            cursor.execute(
+                """
+                SELECT holiday_id, date, year, holiday_name, day, exchange, segment,
+                       is_trading_holiday, is_clearing_holiday, morning_session, evening_session, notes, updated_at
+                FROM trading_holidays
+                WHERE year = ?
+                ORDER BY date ASC
+                """,
+                (int(year),)
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT holiday_id, date, year, holiday_name, day, exchange, segment,
+                       is_trading_holiday, is_clearing_holiday, morning_session, evening_session, notes, updated_at
+                FROM trading_holidays
+                ORDER BY date ASC
+                """
+            )
+        rows = cursor.fetchall()
+        if rows:
+            results = []
+            for r in rows:
+                results.append({
+                    "holiday_id": r[0],
+                    "date": r[1],
+                    "year": r[2],
+                    "holiday_name": r[3],
+                    "day": r[4],
+                    "exchange": r[5],
+                    "segment": r[6],
+                    "is_trading_holiday": bool(r[7]),
+                    "is_clearing_holiday": bool(r[8]),
+                    "morning_session": r[9],
+                    "evening_session": r[10],
+                    "notes": r[11],
+                    "updated_at": r[12]
+                })
+            return results
+    except Exception as e:
+        print(f"SQLite load_trading_holidays error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return []
+
+
+def save_trading_holidays_db(holidays, year=None, last_synced_display=None):
+    """
+    Saves a list of trading holiday records to MongoDB Atlas and SQLite.
+    Each item must contain: holiday_id, date, year, holiday_name, day.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    ts_iso = now_utc.isoformat()
+    last_synced_display = last_synced_display or format_ist_display(ts_iso)
+
+    if not holidays:
+        return {"success": True, "count": 0}
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["trading_holidays"]
+            for h in holidays:
+                h_doc = dict(h)
+                hid = str(h_doc.get("holiday_id") or f"{h_doc.get('date')}_{h_doc.get('holiday_name')}")
+                h_doc["holiday_id"] = hid
+                h_doc["_id"] = hid
+                h_doc["updated_at"] = ts_iso
+                col.replace_one({"_id": hid}, h_doc, upsert=True)
+        except Exception as e:
+            print(f"MongoDB save_trading_holidays error: {e}")
+
+    # 2. SQLite
+    conn = None
+    try:
+        _init_sqlite_db()
+        conn = sqlite3.connect(_SQLITE_DB_PATH)
+        for h in holidays:
+            hid = str(h.get("holiday_id") or f"{h.get('date')}_{h.get('holiday_name')}")
+            dt = str(h.get("date", ""))
+            yr = int(h.get("year") or (int(dt[:4]) if len(dt) >= 4 else 2026))
+            hname = str(h.get("holiday_name", ""))
+            day = str(h.get("day", ""))
+            exchange = str(h.get("exchange", "NSE, BSE"))
+            segment = str(h.get("segment", "Capital Market (Equities)"))
+            is_trade = 1 if h.get("is_trading_holiday", True) else 0
+            is_clear = 1 if h.get("is_clearing_holiday", False) else 0
+            m_sess = h.get("morning_session")
+            e_sess = h.get("evening_session")
+            notes = str(h.get("notes") or "")
+
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO trading_holidays
+                (holiday_id, date, year, holiday_name, day, exchange, segment,
+                 is_trading_holiday, is_clearing_holiday, morning_session, evening_session, notes, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                (hid, dt, yr, hname, day, exchange, segment, is_trade, is_clear, m_sess, e_sess, notes)
+            )
+        conn.commit()
+    except Exception as e:
+        print(f"SQLite save_trading_holidays error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return {
+        "success": True,
+        "count": len(holidays),
+        "last_synced_display": last_synced_display
+    }
+
+
+def get_trading_holidays_telemetry_db():
+    """
+    Returns summary telemetry for trading holidays: total records, years covered,
+    counts per year, current year holiday count, and latest sync timestamp.
+    """
+    import datetime
+    all_holidays = load_trading_holidays_db()
+    counts_by_year = {}
+    latest_updated = ""
+    for h in all_holidays:
+        y = h.get("year")
+        if y:
+            counts_by_year[y] = counts_by_year.get(y, 0) + 1
+        up = str(h.get("updated_at") or "")
+        if up > latest_updated:
+            latest_updated = up
+
+    now_year = datetime.datetime.now().year
+    return {
+        "total_holidays": len(all_holidays),
+        "years": sorted(list(counts_by_year.keys())),
+        "counts_by_year": counts_by_year,
+        "current_year": now_year,
+        "current_year_count": counts_by_year.get(now_year, 0),
+        "has_current_year": counts_by_year.get(now_year, 0) > 0,
+        "last_updated_display": format_ist_display(latest_updated) if latest_updated else "Never"
+    }
+
 

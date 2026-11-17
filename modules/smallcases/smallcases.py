@@ -476,9 +476,10 @@ def _guard(f):
 
 
 @smallcases_bp.route('/smallcases', methods=['GET'])
+@smallcases_bp.route('/smallcase-baskets', methods=['GET'])
 @_guard
 def page():
-    return render_template('index.html', initial_tab='smallcases')
+    return render_template('index.html', initial_tab='smallcase-baskets')
 
 
 @smallcases_bp.route('/api/smallcases', methods=['GET'])

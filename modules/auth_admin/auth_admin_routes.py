@@ -45,6 +45,7 @@ def _get_user_dependencies():
     from modules.portfolio.portfolio_routes import load_portfolios, save_portfolios, load_user_transactions, save_user_transactions, get_user_portfolio_file
     from modules.alerts.alerts_routes import load_user_alerts, save_user_alerts
     from modules.smallcases import load_user_smallcases, save_user_smallcases
+    from modules.momentum_smallcases import load_user_momentum_smallcases, save_user_momentum_smallcases
     return {
         "load_data": load_data,
         "save_data": save_data,
@@ -56,6 +57,8 @@ def _get_user_dependencies():
         "save_user_alerts": save_user_alerts,
         "load_user_smallcases": load_user_smallcases,
         "save_user_smallcases": save_user_smallcases,
+        "load_user_momentum_smallcases": load_user_momentum_smallcases,
+        "save_user_momentum_smallcases": save_user_momentum_smallcases,
         "get_user_watchlist_file": get_user_watchlist_file,
         "get_user_portfolio_file": get_user_portfolio_file
     }
@@ -510,7 +513,8 @@ def admin_export_system_backup():
             "portfolios": _get_user_dependencies()["load_portfolios"](uname),
             "transactions": _get_user_dependencies()["load_user_transactions"](uname),
             "alerts": _get_user_dependencies()["load_user_alerts"](uname),
-            "smallcases": _get_user_dependencies()["load_user_smallcases"](uname)
+            "smallcases": _get_user_dependencies()["load_user_smallcases"](uname),
+            "momentum_smallcases": _get_user_dependencies()["load_user_momentum_smallcases"](uname)
         }
     
     backup_data = {
@@ -547,6 +551,8 @@ def admin_import_system_backup():
                 _get_user_dependencies()["save_user_alerts"](udata["alerts"], uname)
             if "smallcases" in udata:
                 _get_user_dependencies()["save_user_smallcases"](udata["smallcases"], uname)
+            if "momentum_smallcases" in udata:
+                _get_user_dependencies()["save_user_momentum_smallcases"](udata["momentum_smallcases"], uname)
         if "system_settings" in req_data and isinstance(req_data["system_settings"], dict):
             try:
                 update_system_settings(req_data["system_settings"])
