@@ -870,6 +870,98 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
     return target
 
 
+def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None):
+    """
+    Executes Init (if strategy is in DRAFT status) and then sequentially executes
+    all scheduled monthly rebalances up to up_to_date (defaults to today).
+    Each rebalance run receives the specified stepup_per_rebalance capital amount.
+    """
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    if not target:
+        raise ValueError("Strategy not found")
+
+    if up_to_date:
+        if isinstance(up_to_date, str):
+            cutoff_d = datetime.strptime(up_to_date[:10], "%Y-%m-%d").date()
+        elif isinstance(up_to_date, datetime):
+            cutoff_d = up_to_date.date()
+        else:
+            cutoff_d = up_to_date
+    else:
+        cutoff_d = date.today()
+
+    today_d = date.today()
+    if cutoff_d > today_d:
+        cutoff_d = today_d
+
+    init_executed = False
+    rebalances_executed = 0
+
+    # 1. Execute Init if DRAFT or no runs
+    if target.get("status") == "DRAFT" or not target.get("runs"):
+        start_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
+        if start_d > cutoff_d:
+            raise ValueError(f"Smallcase start date ({start_d}) is after cutoff date ({cutoff_d}). Cannot run Init.")
+        target = run_strategy_init(strategy_id, username=username)
+        init_executed = True
+
+    # 2. Iteratively execute all due rebalances up to cutoff_d
+    max_rebal_runs = 120  # Safeguard: max 10 years of monthly rebalances
+    last_processed_date = None
+
+    while rebalances_executed < max_rebal_runs:
+        sched_rebal_str = target.get("next_rebalance_date")
+        if not sched_rebal_str:
+            break
+        rebal_d = datetime.strptime(sched_rebal_str[:10], "%Y-%m-%d").date()
+        if rebal_d > cutoff_d:
+            break
+        if last_processed_date and rebal_d <= last_processed_date:
+            logger.warning(f"Rebalance date did not advance: {rebal_d} <= {last_processed_date}")
+            break
+
+        try:
+            target = run_strategy_rebalance(
+                strategy_id,
+                stepup_amount=float(stepup_per_rebalance or 0.0),
+                username=username
+            )
+            rebalances_executed += 1
+            last_processed_date = rebal_d
+        except Exception as e:
+            logger.error(f"Error during batch rebalance on {rebal_d}: {e}", exc_info=True)
+            err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(e)}"
+            if rebalances_executed > 0 or init_executed:
+                raise RuntimeError(err_msg)
+            else:
+                raise
+
+    final_target = get_user_strategy(strategy_id, username=username) or target
+    total_runs = (1 if init_executed else 0) + rebalances_executed
+
+    if total_runs == 0:
+        msg = f"Strategy is already up to date. Next scheduled rebalance is on {final_target.get('next_rebalance_date')}."
+    else:
+        parts = []
+        if init_executed:
+            parts.append("Init")
+        if rebalances_executed > 0:
+            parts.append(f"{rebalances_executed} rebalance{'s' if rebalances_executed != 1 else ''}")
+        stepup_val = float(stepup_per_rebalance or 0.0)
+        stepup_txt = f" with ₹{stepup_val:,.2f} step-up per rebalance" if stepup_val > 0 else ""
+        msg = f"Successfully executed {' + '.join(parts)}{stepup_txt} up to {cutoff_d}. Next rebalance is on {final_target.get('next_rebalance_date')}."
+
+    return {
+        "strategy": final_target,
+        "init_executed": init_executed,
+        "rebalances_executed": rebalances_executed,
+        "total_runs_executed": total_runs,
+        "message": msg
+    }
+
+
 def delete_user_strategy(strategy_id, username=None):
     """Deletes a strategy by ID."""
     user = username or session.get('username') or 'admin'

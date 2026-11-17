@@ -447,12 +447,15 @@
                         ${statusBadge}
                     </td>
                     <td style="text-align: right;">
-                        <div style="display: inline-flex; gap: 6px; justify-content: flex-end;">
+                        <div style="display: inline-flex; gap: 6px; justify-content: flex-end; align-items: center;">
                             <button type="button" class="msc-action-btn view" onclick="openStrategyDetailView('${escapeHtml(s.id)}')" title="View Details & Timeline">
                                 <span>👁️ Details</span>
                             </button>
+                            <button type="button" class="msc-action-btn edit" onclick="openRunAllModal('${escapeHtml(s.id)}')" title="Run All (Init + Rebalances)" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
+                                <span>⚡ Run All</span>
+                            </button>
                             ${isDraft ? `
-                                <button type="button" class="msc-action-btn edit" onclick="runStrategyInit('${escapeHtml(s.id)}')" title="Execute Initial Allocation" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
+                                <button type="button" class="msc-action-btn" onclick="runStrategyInit('${escapeHtml(s.id)}')" title="Execute Initial Allocation" style="color: var(--text-primary); border-color: var(--border-color);">
                                     <span>▶ Init</span>
                                 </button>
                             ` : ''}
@@ -861,15 +864,25 @@
         let actionBtnHtml = '';
         if (status === 'DRAFT' || runs.length === 0) {
             actionBtnHtml = `
-                <button type="button" class="btn-primary" onclick="runStrategyInit('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>${getPlayIconSVG(12)}</span> <span>Run Init</span>
-                </button>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-primary" onclick="openRunAllModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);">
+                        <span>⚡</span> <span>Run All (Init + Rebalances)</span>
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="runStrategyInit('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;">
+                        <span>${getPlayIconSVG(12)}</span> <span>Run Init Only</span>
+                    </button>
+                </div>
             `;
         } else {
             actionBtnHtml = `
-                <button type="button" class="btn-primary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: #10b981;">
-                    <span style="display: inline-flex; align-items: center;">${getRebalanceIconSVG(14, 2.5)}</span> <span>Run Rebalance</span>
-                </button>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-primary" onclick="openRunAllModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);">
+                        <span>⚡</span> <span>Run All Rebalances</span>
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
+                        <span style="display: inline-flex; align-items: center;">${getRebalanceIconSVG(14, 2.5)}</span> <span>Run Next Rebalance</span>
+                    </button>
+                </div>
             `;
         }
         if (actionSlot) actionSlot.innerHTML = actionBtnHtml;
@@ -953,9 +966,14 @@
                 <p style="margin: 0 auto 20px auto; font-size: 13px; max-width: 520px; color: var(--text-secondary); line-height: 1.5;">
                     Executing Init will evaluate all constituent stocks added on or before <strong>${formatDateDisplay(strategy.start_date)}</strong>, rank them using your momentum formula, allocate equal capital across the top <strong>${strategy.no_of_stocks}</strong> stocks (deducting 0.10% transaction fees), and place the smallcase in <strong>ACTIVE</strong> state.
                 </p>
-                <button type="button" class="btn-primary" onclick="runStrategyInit('${escapeHtml(strategy.id)}')" style="font-size: 13.5px; padding: 9px 24px; display: inline-flex; align-items: center; gap: 8px;">
-                    <span>▶</span> <span>Execute Initial Portfolio (Init)</span>
-                </button>
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-primary" onclick="openRunAllModal('${escapeHtml(strategy.id)}')" style="font-size: 13.5px; padding: 9px 24px; display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <span>⚡</span> <span>Run All (Init + Rebalances)</span>
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="runStrategyInit('${escapeHtml(strategy.id)}')" style="font-size: 13.5px; padding: 9px 20px; display: inline-flex; align-items: center; gap: 8px;">
+                        <span>▶</span> <span>Execute Init Only</span>
+                    </button>
+                </div>
             </div>
         `;
     }
@@ -1499,6 +1517,130 @@
         } finally {
             isSubmitting = false;
             setSmallcaseModalLoader('runRebalanceModal', false);
+            hideSmallcaseGlobalLoader();
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = origText;
+            }
+        }
+    }
+
+    // =========================================================================
+    // 4B. RUN ALL (INIT + REBALANCES) BATCH ENGINE
+    // =========================================================================
+    function openRunAllModal(strategyId) {
+        let strat = currentStrategy;
+        if (strategyId) {
+            strat = (strategiesCache || []).find(s => s.id === strategyId) || currentStrategy;
+            if (strat) currentStrategy = strat;
+        }
+
+        if (!currentStrategy) {
+            alertToast('No strategy selected', 'warning');
+            return;
+        }
+
+        const isDraft = currentStrategy.status === 'DRAFT' || !currentStrategy.runs || currentStrategy.runs.length === 0;
+        const modal = document.getElementById('runAllRebalanceModal');
+        const titleEl = document.getElementById('runall-modal-title');
+        const descEl = document.getElementById('runall-modal-desc');
+        const subdescEl = document.getElementById('runall-modal-subdesc');
+        const stepupInput = document.getElementById('runAllStepupInput');
+        const cutoffInput = document.getElementById('runAllCutoffDateInput');
+
+        if (stepupInput) stepupInput.value = '0';
+        if (cutoffInput) {
+            const todayStr = new Date().toISOString().substring(0, 10);
+            cutoffInput.value = todayStr;
+            cutoffInput.max = todayStr;
+        }
+
+        if (isDraft) {
+            if (titleEl) titleEl.innerText = `Run All (Init + Rebalances): ${currentStrategy.name}`;
+            if (descEl) {
+                descEl.innerHTML = `Will first execute <strong>Init</strong> on start date <strong>${formatDateDisplay(currentStrategy.start_date)}</strong>, and then sequentially execute all scheduled monthly rebalances up to the cutoff date.`;
+            }
+            if (subdescEl) {
+                subdescEl.innerText = `Initial capital: ₹${formatCurrency(currentStrategy.amount_to_invest)}. Any step-up specified below will be added on each subsequent rebalance run.`;
+            }
+        } else {
+            if (titleEl) titleEl.innerText = `Run All Rebalances: ${currentStrategy.name}`;
+            if (descEl) {
+                descEl.innerHTML = `Will iteratively execute all pending scheduled monthly rebalances starting from <strong>${formatDateDisplay(currentStrategy.next_rebalance_date)}</strong> up to the cutoff date.`;
+            }
+            if (subdescEl) {
+                subdescEl.innerText = `Current wallet: ₹${formatCurrency(currentStrategy.current_wallet || 0)}. Any step-up specified below will be added before each rebalance run.`;
+            }
+        }
+
+        if (modal) modal.style.display = 'flex';
+        setTimeout(() => {
+            if (stepupInput) stepupInput.focus();
+        }, 100);
+    }
+
+    function closeRunAllModal() {
+        const modal = document.getElementById('runAllRebalanceModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function confirmRunAllRebalances() {
+        if (!currentStrategy || isSubmitting) return;
+
+        const stepupVal = parseFloat(document.getElementById('runAllStepupInput')?.value || 0) || 0;
+        if (stepupVal < 0) {
+            alertToast('Step-up amount cannot be negative', 'warning');
+            return;
+        }
+
+        const cutoffVal = document.getElementById('runAllCutoffDateInput')?.value || '';
+
+        const btn = document.getElementById('runAllConfirmBtn');
+        const origText = btn ? btn.innerText : '⚡ Run All Now';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳</span> Executing Runs...';
+        }
+        isSubmitting = true;
+
+        showSmallcaseGlobalLoader({
+            title: 'Running All Scheduled Rebalances...',
+            badge: 'Batch Rebalance Engine',
+            subtitle: 'Evaluating chronological universe, liquidating exit stocks, and buying top momentum picks...'
+        });
+
+        try {
+            const data = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/run-all`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    stepup_amount: stepupVal,
+                    up_to_date: cutoffVal
+                })
+            });
+
+            if (!data.success) {
+                alertToast(data.error || 'Failed to complete all rebalances', 'error');
+                if (data.strategy) {
+                    currentStrategy = data.strategy;
+                    selectedRunIndex = (currentStrategy.runs || []).length > 0 ? currentStrategy.runs.length - 1 : null;
+                    await openStrategyDetailView(currentStrategy.id);
+                }
+                return;
+            }
+
+            closeRunAllModal();
+            alertToast(data.message || 'All scheduled rebalances completed successfully!', 'success');
+
+            // Refresh view and select latest run
+            selectedRunIndex = null;
+            await openStrategyDetailView(currentStrategy.id);
+            await loadStrategiesList();
+        } catch (err) {
+            console.error('Error running all rebalances:', err);
+            alertToast('Batch run failed: ' + err.message, 'error');
+        } finally {
+            isSubmitting = false;
             hideSmallcaseGlobalLoader();
             if (btn) {
                 btn.disabled = false;
@@ -2307,6 +2449,9 @@
     window.openRunRebalanceModal = openRunRebalanceModal;
     window.closeRunRebalanceModal = closeRunRebalanceModal;
     window.confirmRunRebalance = confirmRunRebalance;
+    window.openRunAllModal = openRunAllModal;
+    window.closeRunAllModal = closeRunAllModal;
+    window.confirmRunAllRebalances = confirmRunAllRebalances;
     window.openEditFormulaModal = openEditFormulaModal;
     window.closeEditFormulaModal = closeEditFormulaModal;
     window.saveEditedFormula = saveEditedFormula;

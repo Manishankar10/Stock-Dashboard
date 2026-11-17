@@ -19,6 +19,7 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     update_user_strategy_formula,
     run_strategy_init,
     run_strategy_rebalance,
+    run_strategy_all_rebalances,
     delete_user_strategy,
     reset_all_momentum_data,
 )
@@ -311,6 +312,42 @@ def run_rebalance_api(strategy_id):
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
         logger.error(f"Error running rebalance for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/run-all", methods=["POST"])
+def run_all_strategy_api(strategy_id):
+    """Executes Init (if DRAFT) and all scheduled rebalances up to today (or specified cutoff date)."""
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        stepup = float(body.get("stepup_amount") or body.get("stepup_per_rebalance") or 0.0)
+        up_to = body.get("up_to_date")
+        result = run_strategy_all_rebalances(
+            strategy_id=strategy_id,
+            stepup_per_rebalance=stepup,
+            up_to_date=up_to,
+            username=user
+        )
+        return jsonify({
+            "success": True,
+            "strategy": result["strategy"],
+            "init_executed": result["init_executed"],
+            "rebalances_executed": result["rebalances_executed"],
+            "total_runs_executed": result["total_runs_executed"],
+            "message": result["message"]
+        })
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except RuntimeError as re:
+        strat = get_user_strategy(strategy_id, username=user)
+        return jsonify({
+            "success": False,
+            "strategy": strat,
+            "error": str(re)
+        }), 400
+    except Exception as e:
+        logger.error(f"Error running all rebalances for '{strategy_id}': {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
