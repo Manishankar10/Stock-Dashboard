@@ -12,6 +12,14 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     update_user_index,
     delete_user_index,
     parse_stocks_input,
+    get_combined_indices_list,
+    get_user_strategies,
+    get_user_strategy,
+    create_user_strategy,
+    update_user_strategy_formula,
+    run_strategy_init,
+    run_strategy_rebalance,
+    delete_user_strategy,
 )
 
 logger = logging.getLogger(__name__)
@@ -164,4 +172,155 @@ def parse_stocks_api():
         parsed = parse_stocks_input(stocks_str)
         return jsonify({"success": True, "count": len(parsed), "stocks": parsed})
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ==============================================================================
+# STRATEGY & CALCULATION ENDPOINTS
+# ==============================================================================
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/indices-catalog", methods=["GET"])
+def get_indices_catalog_api():
+    """Returns all available indices: manual indices + official Nifty benchmark indices."""
+    try:
+        user = session.get("username") or "admin"
+        catalog = get_combined_indices_list(user)
+        return jsonify({"success": True, "indices": catalog})
+    except Exception as e:
+        logger.error(f"Error fetching indices catalog: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies", methods=["GET"])
+def list_strategies_api():
+    """Lists all momentum smallcase strategies for current user."""
+    try:
+        user = session.get("username") or "admin"
+        strategies = get_user_strategies(user)
+        total_strategies = len(strategies)
+        active_strategies = sum(1 for s in strategies if s.get("status") == "ACTIVE")
+        total_capital = sum(float(s.get("amount_to_invest", 0.0)) for s in strategies)
+        total_value = sum(float(s.get("current_portfolio_value", s.get("amount_to_invest", 0.0))) for s in strategies)
+
+        summary = {
+            "total_strategies": total_strategies,
+            "active_strategies": active_strategies,
+            "total_capital": round(total_capital, 2),
+            "total_portfolio_value": round(total_value, 2)
+        }
+
+        return jsonify({
+            "success": True,
+            "strategies": strategies,
+            "summary": summary
+        })
+    except Exception as e:
+        logger.error(f"Error listing strategies: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies", methods=["POST"])
+def create_strategy_api():
+    """Creates a new Momentum Smallcase strategy."""
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        new_strat = create_user_strategy(
+            name=body.get("name"),
+            start_date=body.get("start_date"),
+            index_id=body.get("index_id"),
+            no_of_stocks=body.get("no_of_stocks"),
+            exit_regime_ranking=body.get("exit_regime_ranking"),
+            rebalance_day=body.get("rebalance_day"),
+            amount_to_invest=body.get("amount_to_invest"),
+            formula=body.get("formula"),
+            username=user
+        )
+        return jsonify({"success": True, "strategy": new_strat, "message": "Momentum Smallcase created successfully"}), 201
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error creating strategy: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>", methods=["GET"])
+def get_strategy_api(strategy_id):
+    """Retrieves full details of a strategy."""
+    try:
+        user = session.get("username") or "admin"
+        strat = get_user_strategy(strategy_id, username=user)
+        if not strat:
+            return jsonify({"success": False, "error": "Strategy not found"}), 404
+        return jsonify({"success": True, "strategy": strat})
+    except Exception as e:
+        logger.error(f"Error getting strategy '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/formula", methods=["PUT"])
+def update_formula_api(strategy_id):
+    """Updates formula for a strategy."""
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        formula = body.get("formula")
+        updated = update_user_strategy_formula(strategy_id, formula, username=user)
+        return jsonify({"success": True, "strategy": updated, "message": "Formula updated successfully"})
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error updating formula for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/run-init", methods=["POST"])
+def run_init_api(strategy_id):
+    """Executes initial portfolio calculation & allocation."""
+    try:
+        user = session.get("username") or "admin"
+        updated = run_strategy_init(strategy_id, username=user)
+        return jsonify({
+            "success": True,
+            "strategy": updated,
+            "message": "Init execution completed successfully"
+        })
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error running Init for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/run-rebalance", methods=["POST"])
+def run_rebalance_api(strategy_id):
+    """Executes rebalance calculation & allocation, with optional step-up capital."""
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        stepup = float(body.get("stepup_amount") or 0.0)
+        updated = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=user)
+        return jsonify({
+            "success": True,
+            "strategy": updated,
+            "message": "Rebalance execution completed successfully"
+        })
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error running rebalance for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>", methods=["DELETE"])
+def delete_strategy_api(strategy_id):
+    """Deletes a strategy."""
+    try:
+        user = session.get("username") or "admin"
+        ok = delete_user_strategy(strategy_id, username=user)
+        if not ok:
+            return jsonify({"success": False, "error": "Strategy not found"}), 404
+        return jsonify({"success": True, "message": "Strategy deleted successfully"})
+    except Exception as e:
+        logger.error(f"Error deleting strategy '{strategy_id}': {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500

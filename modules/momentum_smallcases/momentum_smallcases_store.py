@@ -50,6 +50,8 @@ def load_user_momentum_smallcases(username=None):
         data = {}
     if "indices" not in data or not isinstance(data["indices"], list):
         data["indices"] = []
+    if "strategies" not in data or not isinstance(data["strategies"], list):
+        data["strategies"] = []
     return data
 
 
@@ -284,3 +286,509 @@ def delete_user_index(index_id, username=None):
     data["indices"] = indices
     save_user_momentum_smallcases(data, username)
     return True
+
+
+# ==============================================================================
+# STRATEGY / MOMENTUM SMALLCASE MANAGEMENT
+# ==============================================================================
+
+def get_combined_indices_list(username=None):
+    """
+    Returns list of all available indices:
+    - Manual Momentum Indices created by user
+    - Official Nifty Benchmark Indices from index_stocks_provider
+    """
+    results = []
+
+    # 1. User's Manual Indices
+    user_indices = get_user_indices(username)
+    for idx in user_indices:
+        results.append({
+            "id": idx.get("id"),
+            "name": idx.get("name"),
+            "type": "manual",
+            "category": "Manual Momentum Indices",
+            "stock_count": idx.get("stock_count", len(idx.get("stocks", []))),
+            "description": idx.get("description", "")
+        })
+
+    # 2. Official Nifty Indices
+    try:
+        from modules.index_stocks.index_stocks_provider import index_stocks_provider
+        nifty_indices = index_stocks_provider.get_all_indices()
+        for idx in nifty_indices:
+            results.append({
+                "id": idx.get("key"),
+                "name": idx.get("name"),
+                "type": "nifty",
+                "category": idx.get("category", "Nifty Benchmark"),
+                "stock_count": idx.get("official_size", idx.get("total_stocks", 50)),
+                "description": idx.get("description", "")
+            })
+    except Exception as e:
+        logger.warning(f"Error fetching Nifty benchmark indices: {e}")
+
+    return results
+
+
+def get_strategy_index_constituents(index_id, index_type="manual", username=None):
+    """
+    Retrieves constituent stocks for a given index.
+    Returns list of dicts: [{"symbol": "...", "date_added": "DD/MM/YYYY" | None}]
+    """
+    if index_type == "manual" or str(index_id).startswith("midx_"):
+        idx = get_user_index(index_id, username=username)
+        if not idx:
+            return []
+        return idx.get("stocks", [])
+    else:
+        # Nifty official index
+        try:
+            from modules.index_stocks.index_stocks_provider import index_stocks_provider
+            data = index_stocks_provider.get_index_stocks(index_id)
+            if data and "stocks" in data:
+                return [{"symbol": s.get("symbol", ""), "date_added": None} for s in data["stocks"] if s.get("symbol")]
+        except Exception as e:
+            logger.warning(f"Error fetching Nifty index constituents for '{index_id}': {e}")
+        return []
+
+
+def calculate_strategy_next_rebalance(base_date, rebalance_day):
+    """
+    Computes next rebalance date based on rebalance_day, and adjusts
+    for weekends and official trading holidays.
+    """
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        get_next_trading_day,
+        get_official_trading_holidays,
+    )
+
+    if isinstance(base_date, str):
+        base = datetime.strptime(base_date[:10], "%Y-%m-%d").date()
+    elif isinstance(base_date, datetime):
+        base = base_date.date()
+    else:
+        base = base_date
+
+    r_day = int(rebalance_day)
+    # Clamp to valid calendar day
+    r_day = max(1, min(28, r_day))
+
+    if base.day < r_day:
+        target_year = base.year
+        target_month = base.month
+    else:
+        if base.month == 12:
+            target_year = base.year + 1
+            target_month = 1
+        else:
+            target_year = base.year
+            target_month = base.month + 1
+
+    scheduled_date = date(target_year, target_month, r_day)
+    holidays_set = get_official_trading_holidays()
+    adjusted_date, was_moved = get_next_trading_day(scheduled_date, holidays_set)
+
+    return scheduled_date, adjusted_date, was_moved
+
+
+def get_user_strategies(username=None):
+    """Retrieves all momentum smallcase strategies for the user."""
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    return strategies
+
+
+def get_user_strategy(strategy_id, username=None):
+    """Retrieves a single strategy by ID."""
+    strategies = get_user_strategies(username)
+    return next((x for x in strategies if x.get("id") == strategy_id), None)
+
+
+def create_user_strategy(
+    name,
+    start_date,
+    index_id,
+    no_of_stocks,
+    exit_regime_ranking,
+    rebalance_day,
+    amount_to_invest,
+    formula=None,
+    username=None
+):
+    """Creates a new Momentum Smallcase strategy."""
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        DEFAULT_FORMULA,
+        get_next_trading_day,
+        get_official_trading_holidays,
+    )
+
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Smallcase name is required")
+
+    start_date_str = str(start_date or "").strip()[:10]
+    if not start_date_str:
+        raise ValueError("Start date is required")
+
+    try:
+        start_d = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    except Exception:
+        raise ValueError("Start date must be in YYYY-MM-DD format")
+
+    if not index_id:
+        raise ValueError("Index selection is required")
+
+    try:
+        no_of_stocks = int(no_of_stocks)
+        if no_of_stocks <= 0:
+            raise ValueError()
+    except Exception:
+        raise ValueError("No. of stocks must be a positive integer")
+
+    try:
+        exit_regime = int(exit_regime_ranking)
+        if exit_regime < no_of_stocks:
+            raise ValueError()
+    except Exception:
+        raise ValueError(f"Exit regime ranking must be greater than or equal to No. of stocks ({no_of_stocks})")
+
+    try:
+        rebal_day = int(rebalance_day)
+        if rebal_day < 1 or rebal_day > 31:
+            raise ValueError()
+    except Exception:
+        raise ValueError("Rebalance day must be between 1 and 31")
+
+    try:
+        amt = float(amount_to_invest)
+        if amt <= 0:
+            raise ValueError()
+    except Exception:
+        raise ValueError("Amount to invest must be a positive number")
+
+    formula = (formula or "").strip() or DEFAULT_FORMULA
+
+    # Identify index name & type
+    all_indices = get_combined_indices_list(username)
+    found_idx = next((x for x in all_indices if x["id"] == index_id), None)
+    index_name = found_idx["name"] if found_idx else str(index_id)
+    index_type = found_idx["type"] if found_idx else ("manual" if str(index_id).startswith("midx_") else "nifty")
+
+    # Check holiday adjustment for start date
+    holidays_set = get_official_trading_holidays()
+    adj_start, was_moved_start = get_next_trading_day(start_d, holidays_set)
+
+    # Compute first scheduled rebalance date
+    _, first_next_rebal, _ = calculate_strategy_next_rebalance(adj_start, rebal_day)
+
+    now_iso = datetime.now().isoformat()
+    strategy_id = f"msc_strategy_{uuid.uuid4().hex[:12]}"
+
+    capital_logs = [
+        {
+            "id": f"clog_{uuid.uuid4().hex[:8]}",
+            "timestamp": now_iso,
+            "type": "INITIAL_DEPOSIT",
+            "amount": amt,
+            "wallet_after": amt,
+            "notes": f"Initial capital allocation for {name}"
+        }
+    ]
+
+    new_strategy = {
+        "id": strategy_id,
+        "name": name,
+        "start_date": start_date_str,
+        "effective_start_date": adj_start.isoformat(),
+        "is_start_holiday_moved": was_moved_start,
+        "index_id": index_id,
+        "index_name": index_name,
+        "index_type": index_type,
+        "no_of_stocks": no_of_stocks,
+        "exit_regime_ranking": exit_regime,
+        "rebalance_day": rebal_day,
+        "initial_amount": amt,
+        "amount_to_invest": amt,
+        "current_wallet": amt,
+        "current_portfolio_value": amt,
+        "total_fees_paid": 0.0,
+        "formula": formula,
+        "status": "DRAFT",  # DRAFT -> ACTIVE upon Init run
+        "runs": [],
+        "holdings": [],
+        "next_rebalance_date": first_next_rebal.isoformat(),
+        "capital_logs": capital_logs,
+        "created_at": now_iso,
+        "updated_at": now_iso
+    }
+
+    data = load_user_momentum_smallcases(username)
+    strategies = data.setdefault("strategies", [])
+    strategies.insert(0, new_strategy)
+    save_user_momentum_smallcases(data, username)
+
+    return new_strategy
+
+
+def update_user_strategy_formula(strategy_id, formula, username=None):
+    """Updates formula for a strategy."""
+    formula = (formula or "").strip()
+    if not formula:
+        raise ValueError("Formula cannot be empty")
+
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    if not target:
+        raise ValueError("Strategy not found")
+
+    target["formula"] = formula
+    target["updated_at"] = datetime.now().isoformat()
+    save_user_momentum_smallcases(data, username)
+    return target
+
+
+def run_strategy_init(strategy_id, username=None):
+    """
+    Executes the initial portfolio run for the strategy:
+    1. Filters universe constituents by stock date_added <= start_date.
+    2. Ranks universe using formula.
+    3. Allocates equal weight to top no_of_stocks with 0.10% transaction fees.
+    4. Updates wallet and sets strategy status to ACTIVE.
+    """
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        rank_and_evaluate_universe,
+        execute_init_run,
+        get_next_trading_day,
+        get_official_trading_holidays,
+    )
+
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    if not target:
+        raise ValueError("Strategy not found")
+
+    if target.get("status") == "ACTIVE" and len(target.get("runs", [])) > 0:
+        raise ValueError("Init has already been executed for this strategy")
+
+    # Determine execution date
+    start_d = datetime.strptime(target["start_date"], "%Y-%m-%d").date()
+    holidays_set = get_official_trading_holidays()
+    exec_date, was_moved = get_next_trading_day(start_d, holidays_set)
+
+    # 1. Fetch universe constituents
+    constituents = get_strategy_index_constituents(
+        target["index_id"],
+        target.get("index_type", "manual"),
+        username=username
+    )
+    if not constituents:
+        raise ValueError(f"No constituents found for index '{target.get('index_name')}'")
+
+    # 2. Evaluate and rank stocks
+    ranked_stocks, eligible_count = rank_and_evaluate_universe(
+        stock_items=constituents,
+        target_date=exec_date,
+        formula_str=target.get("formula"),
+        no_of_stocks=target["no_of_stocks"],
+        exit_regime_ranking=target["exit_regime_ranking"]
+    )
+
+    if not ranked_stocks:
+        raise ValueError("Could not calculate momentum metrics for constituent stocks. Please check network/data.")
+
+    # 3. Execute equal weight allocation
+    portfolio = execute_init_run(
+        ranked_stocks=ranked_stocks,
+        amount_to_invest=target["amount_to_invest"],
+        no_of_stocks=target["no_of_stocks"]
+    )
+
+    now_iso = datetime.now().isoformat()
+
+    # Calculate next scheduled rebalance date
+    _, next_rebal, _ = calculate_strategy_next_rebalance(exec_date, target["rebalance_day"])
+
+    init_run_entry = {
+        "run_id": f"run_init_{uuid.uuid4().hex[:10]}",
+        "run_type": "INIT",
+        "run_number": 0,
+        "title": "Init Run",
+        "scheduled_date": target["start_date"],
+        "executed_date": exec_date.isoformat(),
+        "is_holiday_adjusted": was_moved,
+        "formula_used": target.get("formula"),
+        "eligible_stocks_count": eligible_count,
+        "ranked_stocks": ranked_stocks,
+        "portfolio_snapshot": portfolio,
+        "changes": portfolio.get("changes", {}),
+        "executed_at": now_iso
+    }
+
+    target["status"] = "ACTIVE"
+    target["runs"] = [init_run_entry]
+    target["holdings"] = portfolio["holdings"]
+    target["current_wallet"] = portfolio["wallet_balance"]
+    target["current_portfolio_value"] = portfolio["total_portfolio_value"]
+    target["total_fees_paid"] = round(target.get("total_fees_paid", 0.0) + portfolio["fees_paid"], 2)
+    target["next_rebalance_date"] = next_rebal.isoformat()
+    target["updated_at"] = now_iso
+
+    # Capital audit log for execution
+    added_list = portfolio.get("changes", {}).get("added", [])
+    target.setdefault("capital_logs", []).append({
+        "id": f"clog_{uuid.uuid4().hex[:8]}",
+        "timestamp": now_iso,
+        "type": "PORTFOLIO_INIT",
+        "amount": target["amount_to_invest"],
+        "fees": portfolio["fees_paid"],
+        "wallet_after": portfolio["wallet_balance"],
+        "notes": f"Init completed: Bought {len(added_list)} stocks. Fees: ₹{portfolio['fees_paid']:.2f}. Remaining cash in wallet: ₹{portfolio['wallet_balance']:.2f}"
+    })
+
+    save_user_momentum_smallcases(data, username)
+    return target
+
+
+def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
+    """
+    Executes a rebalance run for the strategy:
+    1. Advances to next rebalance trading date.
+    2. Takes any stepup_amount and credits it to wallet.
+    3. Evaluates constituent stocks added up to rebalance date.
+    4. Sells stocks dropping beyond exit_regime_ranking (0.10% fee).
+    5. Retains stocks within exit regime.
+    6. Buys top newcomers to fill portfolio (0.10% fee).
+    7. Updates wallet, capital logs, and sets next rebalance date.
+    """
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        rank_and_evaluate_universe,
+        execute_rebalance_run,
+        get_next_trading_day,
+        get_official_trading_holidays,
+    )
+
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    if not target:
+        raise ValueError("Strategy not found")
+
+    if target.get("status") != "ACTIVE" or not target.get("runs"):
+        raise ValueError("Please run Init before rebalancing")
+
+    runs = target.setdefault("runs", [])
+    last_run = runs[-1]
+    prev_holdings = target.get("holdings", [])
+    prev_wallet = target.get("current_wallet", 0.0)
+
+    # Next scheduled date
+    sched_rebal_str = target.get("next_rebalance_date") or date.today().isoformat()
+    rebal_d = datetime.strptime(sched_rebal_str[:10], "%Y-%m-%d").date()
+    holidays_set = get_official_trading_holidays()
+    exec_date, was_moved = get_next_trading_day(rebal_d, holidays_set)
+
+    now_iso = datetime.now().isoformat()
+
+    # Step-up capital handling
+    stepup = float(stepup_amount or 0.0)
+    if stepup > 0:
+        target["amount_to_invest"] = round(target.get("amount_to_invest", 0.0) + stepup, 2)
+        target.setdefault("capital_logs", []).append({
+            "id": f"clog_{uuid.uuid4().hex[:8]}",
+            "timestamp": now_iso,
+            "type": "STEPUP_DEPOSIT",
+            "amount": stepup,
+            "wallet_after": round(prev_wallet + stepup, 2),
+            "notes": f"Step-up capital added prior to rebalance: ₹{stepup:,.2f}"
+        })
+
+    # Fetch index constituents up to rebalance date
+    constituents = get_strategy_index_constituents(
+        target["index_id"],
+        target.get("index_type", "manual"),
+        username=username
+    )
+    if not constituents:
+        raise ValueError("No constituents found for index")
+
+    # Rank universe
+    ranked_stocks, eligible_count = rank_and_evaluate_universe(
+        stock_items=constituents,
+        target_date=exec_date,
+        formula_str=target.get("formula"),
+        no_of_stocks=target["no_of_stocks"],
+        exit_regime_ranking=target["exit_regime_ranking"]
+    )
+
+    if not ranked_stocks:
+        raise ValueError("Could not calculate momentum metrics for rebalance date")
+
+    # Execute rebalance
+    portfolio = execute_rebalance_run(
+        ranked_stocks=ranked_stocks,
+        previous_holdings=prev_holdings,
+        previous_wallet=prev_wallet,
+        stepup_amount=stepup,
+        no_of_stocks=target["no_of_stocks"],
+        exit_regime_ranking=target["exit_regime_ranking"]
+    )
+
+    # Next future rebalance date
+    _, next_rebal, _ = calculate_strategy_next_rebalance(exec_date, target["rebalance_day"])
+
+    rebal_number = len(runs)
+    rebal_run_entry = {
+        "run_id": f"run_rebal_{uuid.uuid4().hex[:10]}",
+        "run_type": "REBALANCE",
+        "run_number": rebal_number,
+        "title": f"Rebalance #{rebal_number}",
+        "scheduled_date": sched_rebal_str,
+        "executed_date": exec_date.isoformat(),
+        "is_holiday_adjusted": was_moved,
+        "formula_used": target.get("formula"),
+        "eligible_stocks_count": eligible_count,
+        "ranked_stocks": ranked_stocks,
+        "portfolio_snapshot": portfolio,
+        "changes": portfolio.get("changes", {}),
+        "executed_at": now_iso
+    }
+
+    runs.append(rebal_run_entry)
+    target["holdings"] = portfolio["holdings"]
+    target["current_wallet"] = portfolio["wallet_balance"]
+    target["current_portfolio_value"] = portfolio["total_portfolio_value"]
+    target["total_fees_paid"] = round(target.get("total_fees_paid", 0.0) + portfolio["fees_paid"], 2)
+    target["next_rebalance_date"] = next_rebal.isoformat()
+    target["updated_at"] = now_iso
+
+    # Capital audit log for rebalance
+    changes = portfolio.get("changes", {})
+    target.setdefault("capital_logs", []).append({
+        "id": f"clog_{uuid.uuid4().hex[:8]}",
+        "timestamp": now_iso,
+        "type": "REBALANCE_EXECUTED",
+        "amount": stepup,
+        "fees": portfolio["fees_paid"],
+        "wallet_after": portfolio["wallet_balance"],
+        "notes": f"Rebalance #{rebal_number} executed on {exec_date}. Added: {len(changes.get('added', []))}, Removed: {len(changes.get('removed', []))}, Retained: {len(changes.get('retained', []))}. Fees: ₹{portfolio['fees_paid']:.2f}. Wallet: ₹{portfolio['wallet_balance']:.2f}"
+    })
+
+    save_user_momentum_smallcases(data, username)
+    return target
+
+
+def delete_user_strategy(strategy_id, username=None):
+    """Deletes a strategy by ID."""
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    initial_len = len(strategies)
+    strategies = [x for x in strategies if x.get("id") != strategy_id]
+    if len(strategies) == initial_len:
+        return False
+    data["strategies"] = strategies
+    save_user_momentum_smallcases(data, username)
+    return True
+

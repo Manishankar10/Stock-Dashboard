@@ -14,7 +14,7 @@ import threading
 from typing import Dict, Any, List, Optional
 import requests
 
-from modules.common.ist_datetime import now_ist, format_ist_display, today_ist_str
+from modules.common.ist_datetime import now_ist, format_ist_display, format_ist_date, today_ist_str
 from modules.common.data_paths import APP_DATA_DIR
 import db_store
 
@@ -67,7 +67,7 @@ class TradingHolidaysProvider:
                 if os.path.exists(SEED_FILE_PATH):
                     with open(SEED_FILE_PATH, "r", encoding="utf-8") as f:
                         seed_data = json.load(f)
-                    now_display = format_ist_display(datetime.datetime.now(datetime.timezone.utc).isoformat())
+                    now_display = format_ist_date(datetime.datetime.now(datetime.timezone.utc).isoformat())
                     db_store.save_trading_holidays_db(seed_data, last_synced_display=now_display)
                     logger.info(f"Seeded {len(seed_data)} official trading holidays across 10 years (2017-2026) into DB.")
         except Exception as e:
@@ -88,7 +88,10 @@ class TradingHolidaysProvider:
 
         for h in holidays:
             if h.get("date") >= today and h.get("is_trading_holiday", True):
-                return h
+                res = dict(h)
+                if not res.get("date_display") and res.get("date"):
+                    res["date_display"] = format_ist_date(res["date"])
+                return res
         return None
 
     def is_today_holiday(self) -> Dict[str, Any]:
@@ -106,7 +109,10 @@ class TradingHolidaysProvider:
         holidays = self.get_all_holidays(year=current_year)
         for h in holidays:
             if h.get("date") == today and h.get("is_trading_holiday", True):
-                return {"is_holiday": True, "reason": h.get("holiday_name"), "holiday": h}
+                h_out = dict(h)
+                if not h_out.get("date_display") and h_out.get("date"):
+                    h_out["date_display"] = format_ist_date(h_out["date"])
+                return {"is_holiday": True, "reason": h.get("holiday_name"), "holiday": h_out}
 
         return {"is_holiday": False, "reason": "Normal Trading Day", "holiday": None}
 
@@ -118,6 +124,8 @@ class TradingHolidaysProvider:
         last_sync = self._last_synced_display
         if last_sync == "Never" and telemetry.get("last_updated_display") != "Never":
             last_sync = telemetry.get("last_updated_display")
+        if last_sync and last_sync != "Never":
+            last_sync = format_ist_date(last_sync)
 
         return {
             "is_syncing": self._is_syncing,
@@ -180,7 +188,7 @@ class TradingHolidaysProvider:
                 self._progress = f"Parsed {len(holidays)} official holidays for {year}. Persisting to MongoDB & SQLite..."
 
             # Save to DB
-            now_display = format_ist_display(datetime.datetime.now(datetime.timezone.utc).isoformat())
+            now_display = format_ist_date(datetime.datetime.now(datetime.timezone.utc).isoformat())
             res = db_store.save_trading_holidays_db(holidays, year=year, last_synced_display=now_display)
 
             duration = round(time.time() - start_time, 2)
@@ -197,6 +205,7 @@ class TradingHolidaysProvider:
                     "holidays": [
                         {
                             "date": h["date"],
+                            "date_display": h.get("date_display") or format_ist_date(h["date"]),
                             "holiday_name": h["holiday_name"],
                             "day": h["day"],
                             "notes": h.get("notes", "")
@@ -266,10 +275,12 @@ class TradingHolidaysProvider:
                     elif "Election" in desc:
                         notes = "Special official state/general election voting holiday"
 
+                    disp_date = dt.strftime("%d-%m-%Y") if dt else iso_date
                     hid = f"{iso_date}_{desc.upper().replace(' ', '_').replace('*', '').replace('/', '_')}"
                     parsed.append({
                         "holiday_id": hid,
                         "date": iso_date,
+                        "date_display": disp_date,
                         "year": item_year,
                         "holiday_name": desc,
                         "day": weekday,

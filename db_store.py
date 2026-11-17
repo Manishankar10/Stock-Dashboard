@@ -1712,6 +1712,10 @@ def load_trading_holidays_db(year=None):
             query = {"year": int(year)} if year is not None else {}
             docs = list(col.find(query, {"_id": 0}).sort("date", 1))
             if docs:
+                from modules.common.ist_datetime import format_ist_date
+                for d in docs:
+                    if not d.get("date_display") and d.get("date"):
+                        d["date_display"] = format_ist_date(d["date"])
                 return docs
         except Exception as e:
             print(f"MongoDB load_trading_holidays error: {e}")
@@ -1745,10 +1749,13 @@ def load_trading_holidays_db(year=None):
         rows = cursor.fetchall()
         if rows:
             results = []
+            from modules.common.ist_datetime import format_ist_date
             for r in rows:
+                dt_raw = r[1]
                 results.append({
                     "holiday_id": r[0],
-                    "date": r[1],
+                    "date": dt_raw,
+                    "date_display": format_ist_date(dt_raw),
                     "year": r[2],
                     "holiday_name": r[3],
                     "day": r[4],
@@ -1778,8 +1785,9 @@ def save_trading_holidays_db(holidays, year=None, last_synced_display=None):
     """
     import datetime
     now_utc = datetime.datetime.now(datetime.timezone.utc)
+    from modules.common.ist_datetime import format_ist_date
     ts_iso = now_utc.isoformat()
-    last_synced_display = last_synced_display or format_ist_display(ts_iso)
+    last_synced_display = last_synced_display or format_ist_date(ts_iso)
 
     if not holidays:
         return {"success": True, "count": 0}
@@ -1794,6 +1802,8 @@ def save_trading_holidays_db(holidays, year=None, last_synced_display=None):
                 h_doc["holiday_id"] = hid
                 h_doc["_id"] = hid
                 h_doc["updated_at"] = ts_iso
+                if not h_doc.get("date_display") and h_doc.get("date"):
+                    h_doc["date_display"] = format_ist_date(h_doc["date"])
                 col.replace_one({"_id": hid}, h_doc, upsert=True)
         except Exception as e:
             print(f"MongoDB save_trading_holidays error: {e}")
@@ -1858,6 +1868,7 @@ def get_trading_holidays_telemetry_db():
             latest_updated = up
 
     now_year = datetime.datetime.now().year
+    from modules.common.ist_datetime import format_ist_date
     return {
         "total_holidays": len(all_holidays),
         "years": sorted(list(counts_by_year.keys())),
@@ -1865,7 +1876,7 @@ def get_trading_holidays_telemetry_db():
         "current_year": now_year,
         "current_year_count": counts_by_year.get(now_year, 0),
         "has_current_year": counts_by_year.get(now_year, 0) > 0,
-        "last_updated_display": format_ist_display(latest_updated) if latest_updated else "Never"
+        "last_updated_display": format_ist_date(latest_updated) if latest_updated else "Never"
     }
 
 

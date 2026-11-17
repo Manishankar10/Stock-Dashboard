@@ -357,3 +357,339 @@
 .msc-constituents-table tbody tr:hover {
     background-color: var(--table-hover-bg, rgba(255, 255, 255, 0.03));
 }
+
+/* ==============================================================================
+   SUB-NAVIGATION PILL GROUP
+   ============================================================================== */
+.msc-subnav-pill-group {
+    display: inline-flex;
+    background: var(--bg-card, #1e222d);
+    border: 1px solid var(--border-color, #2a2e39);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 4px;
+}
+
+.msc-subnav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #787b86);
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.18s ease;
+    user-select: none;
+}
+
+.msc-subnav-btn:hover {
+    color: var(--text-primary, #d1d4dc);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.msc-subnav-btn.active {
+    background: #10b981;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+/* ==============================================================================
+   INTERACTIVE EXECUTION TIMELINE
+   ============================================================================== */
+.msc-timeline-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding: 16px 12px;
+    background: var(--bg-subtle, rgba(0, 0, 0, 0.15));
+    border: 1px solid var(--border-color, #2a2e39);
+    border-radius: 10px;
+    scrollbar-width: thin;
+}
+
+.msc-timeline-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    min-width: 140px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    user-select: none;
+    position: relative;
+}
+
+.msc-timeline-node:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-color);
+}
+
+.msc-timeline-node.selected {
+    background: var(--bg-card, #1e222d);
+    border-color: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.msc-timeline-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    margin-bottom: 6px;
+    font-weight: 700;
+    transition: transform 0.2s ease;
+}
+
+.msc-timeline-node:hover .msc-timeline-icon {
+    transform: scale(1.1);
+}
+
+.msc-timeline-icon.completed {
+    background: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.msc-timeline-icon.current {
+    background: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    animation: mscPulse 2s infinite;
+}
+
+.msc-timeline-icon.upcoming {
+    background: var(--bg-card, #1e222d);
+    border: 1px dashed var(--border-color, #2a2e39);
+    color: var(--text-secondary);
+}
+
+@keyframes mscPulse {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.msc-timeline-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.msc-timeline-subtext {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 3px;
+    white-space: nowrap;
+}
+
+.msc-timeline-connector {
+    flex: 1 1 40px;
+    min-width: 30px;
+    height: 2px;
+    background: var(--border-color, #2a2e39);
+    margin: 0 4px;
+    position: relative;
+    top: -12px;
+}
+
+.msc-timeline-connector.completed {
+    background: #10b981;
+}
+
+.msc-timeline-action-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 12px;
+    border-left: 1px solid var(--border-color);
+    margin-left: 12px;
+}
+
+/* ==============================================================================
+   TABLE ROW COLORS: GREEN (TOP SELECTION) & DARK YELLOW (EXIT REGIME)
+   ============================================================================== */
+.msc-row-top-selection {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    border-left: 3px solid #10b981;
+}
+
+.msc-row-top-selection:hover {
+    background-color: rgba(16, 185, 129, 0.18) !important;
+}
+
+.msc-row-exit-regime {
+    background-color: rgba(202, 138, 4, 0.14) !important;
+    border-left: 3px solid #ca8a04;
+}
+
+.msc-row-exit-regime:hover {
+    background-color: rgba(202, 138, 4, 0.22) !important;
+}
+
+.msc-row-excluded {
+    opacity: 0.68;
+}
+
+.msc-row-excluded:hover {
+    opacity: 0.95;
+    background-color: var(--table-hover-bg, rgba(255, 255, 255, 0.03)) !important;
+}
+
+/* Tier Badges */
+.msc-tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.msc-tier-badge.top-pick {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.msc-tier-badge.exit-regime {
+    background: rgba(202, 138, 4, 0.22);
+    color: #eab308;
+    border: 1px solid rgba(202, 138, 4, 0.45);
+}
+
+.msc-tier-badge.excluded {
+    background: rgba(100, 116, 139, 0.18);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Action Badges in Ranked Table */
+.msc-action-pill {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.msc-action-pill.buy {
+    background: #10b981;
+    color: #ffffff;
+}
+
+.msc-action-pill.hold {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.msc-action-pill.sell {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.msc-action-pill.none {
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+}
+
+/* ==============================================================================
+   CHANGES SUMMARY COMPARISON BANNER
+   ============================================================================== */
+.msc-changes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.msc-change-card {
+    background: var(--bg-card, #1e222d);
+    border: 1px solid var(--border-color, #2a2e39);
+    border-radius: 8px;
+    padding: 14px;
+    transition: transform 0.15s ease;
+}
+
+.msc-change-card.added {
+    border-left: 3px solid #10b981;
+}
+
+.msc-change-card.removed {
+    border-left: 3px solid #ef4444;
+}
+
+.msc-change-card.retained {
+    border-left: 3px solid #3b82f6;
+}
+
+.msc-change-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.msc-change-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.msc-change-count {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.msc-change-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-height: 70px;
+    overflow-y: auto;
+}
+
+.msc-stock-chip {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+}
+
+.msc-stock-chip.add {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.msc-stock-chip.rem {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.msc-stock-chip.ret {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+}
+

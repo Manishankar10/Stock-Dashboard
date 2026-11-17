@@ -114,6 +114,19 @@
             }
         }
 
+        function formatHolidayDate(val) {
+            if (!val || val === 'Never' || val === '—' || val === '-') return val || '—';
+            if (typeof window.formatAppDate === 'function') {
+                const res = window.formatAppDate(val, false);
+                if (res && res !== '-') return res;
+            }
+            const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(val).trim());
+            if (match) {
+                return `${match[3]}-${match[2]}-${match[1]}`;
+            }
+            return String(val);
+        }
+
         async function loadAdminTradingHolidaysStatus() {
             if (typeof window.loadAdminTradingHolidaysStatus === 'function' && window.loadAdminTradingHolidaysStatus !== loadAdminTradingHolidaysStatus) {
                 return window.loadAdminTradingHolidaysStatus();
@@ -124,10 +137,13 @@
                 if (!data.success || !data.status) return;
                 const s = data.status;
                 const totalHolidays = s.total_holidays || 0;
+                const lastSyncedDate = s.last_synced_display && s.last_synced_display !== 'Never'
+                    ? formatHolidayDate(s.last_synced_display)
+                    : 'Never';
                 if (typeof updateSyncSummaryTableRow === 'function') {
                     updateSyncSummaryTableRow('holidays', {
                         count: `${totalHolidays} Holidays (10 Years)`,
-                        lastSynced: s.last_synced_display || 'Never',
+                        lastSynced: lastSyncedDate,
                         isSyncing: Boolean(s.is_syncing),
                         message: s.progress || 'Ingesting holidays from official NSE calendar...',
                         percent: s.percent || 0,
@@ -6783,8 +6799,9 @@
             if (currCountEl) currCountEl.innerText = `${s.current_year_count || 0} official holidays in DB`;
 
             if (s.next_holiday) {
+                const nextDateFormatted = s.next_holiday.date_display || formatHolidayDate(s.next_holiday.date);
                 if (nextNameEl) nextNameEl.innerText = s.next_holiday.holiday_name || 'Upcoming Holiday';
-                if (nextDateEl) nextDateEl.innerText = `${s.next_holiday.date} (${s.next_holiday.day})`;
+                if (nextDateEl) nextDateEl.innerText = `${nextDateFormatted} (${s.next_holiday.day})`;
             } else {
                 if (nextNameEl) nextNameEl.innerText = 'None upcoming';
                 if (nextDateEl) nextDateEl.innerText = '—';
@@ -6835,6 +6852,7 @@
             filtered.forEach(h => {
                 const isWeekend = h.day === 'Saturday' || h.day === 'Sunday';
                 const hasMuhurat = (h.notes || '').toLowerCase().includes('muhurat');
+                const holidayDateFormatted = h.date_display || formatHolidayDate(h.date);
 
                 let noteBadge = '<span style="color: var(--text-secondary); font-size: 11px;">—</span>';
                 if (hasMuhurat) {
@@ -6846,7 +6864,7 @@
                 html += `
                     <tr style="border-bottom: 1px solid var(--border-color); ${isWeekend ? 'background: rgba(148, 163, 184, 0.04);' : ''}">
                         <td style="padding: 10px 14px; font-weight: 600; color: var(--text-primary); font-feature-settings: 'tnum'; white-space: nowrap;">
-                            ${h.date}
+                            ${holidayDateFormatted}
                         </td>
                         <td style="padding: 10px 14px; color: ${isWeekend ? '#ca8a04' : 'var(--text-primary)'}; font-weight: 500;">
                             ${h.day}

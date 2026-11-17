@@ -11,7 +11,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "26-01-2017"
   },
   {
     "holiday_id": "2017-02-21_MUNICIPAL_CORPORATION_ELECTIONS_(BMC)",
@@ -25,7 +26,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Special state election holiday"
+    "notes": "Special state election holiday",
+    "date_display": "21-02-2017"
   },
   {
     "holiday_id": "2017-02-24_MAHASHIVRATRI",
@@ -39,7 +41,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "24-02-2017"
   },
   {
     "holiday_id": "2017-03-13_HOLI",
@@ -53,7 +56,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "13-03-2017"
   },
   {
     "holiday_id": "2017-04-04_RAM_NAVAMI",
@@ -67,7 +71,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "04-04-2017"
   },
   {
     "holiday_id": "2017-04-09_SHRI_MAHAVIR_JAYANTI",
@@ -81,7 +86,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "09-04-2017"
   },
   {
     "holiday_id": "2017-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI___GOOD_FRIDAY",
@@ -95,7 +101,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Coinciding holiday"
+    "notes": "Coinciding holiday",
+    "date_display": "14-04-2017"
   },
   {
     "holiday_id": "2017-05-01_MAHARASHTRA_DAY",
@@ -109,7 +116,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2017"
   },
   {
     "holiday_id": "2017-06-26_ID-UL-FITR_(RAMZAN_ID)",
@@ -123,7 +131,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "26-06-2017"
   },
   {
     "holiday_id": "2017-08-15_INDEPENDENCE_DAY",
@@ -137,7 +146,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "15-08-2017"
   },
   {
     "holiday_id": "2017-08-25_GANESH_CHATURTHI",
@@ -151,7 +161,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-08-2017"
   },
   {
     "holiday_id": "2017-09-02_BAKRI_ID",
@@ -165,7 +176,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "02-09-2017"
   },
   {
     "holiday_id": "2017-09-30_DUSSEHRA",
@@ -179,7 +191,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "30-09-2017"
   },
   {
     "holiday_id": "2017-10-01_MUHARRAM",
@@ -193,7 +206,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "01-10-2017"
   },
   {
     "holiday_id": "2017-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -207,7 +221,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "02-10-2017"
   },
   {
     "holiday_id": "2017-10-19_DIWALI_LAXMI_PUJAN",
@@ -221,7 +236,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (6:30 PM - 7:30 PM)"
+    "notes": "Muhurat Trading conducted (6:30 PM - 7:30 PM)",
+    "date_display": "19-10-2017"
   },
   {
     "holiday_id": "2017-10-20_DIWALI_BALIPRATIPADA",
@@ -235,7 +251,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "20-10-2017"
   },
   {
     "holiday_id": "2017-11-04_GURUNANAK_JAYANTI",
@@ -249,7 +266,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "04-11-2017"
   },
   {
     "holiday_id": "2017-12-25_CHRISTMAS",
@@ -263,7 +281,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2017"
   },
   {
     "holiday_id": "2018-01-26_REPUBLIC_DAY",
@@ -277,7 +296,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "26-01-2018"
   },
   {
     "holiday_id": "2018-02-13_MAHASHIVRATRI",
@@ -291,7 +311,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "13-02-2018"
   },
   {
     "holiday_id": "2018-03-02_HOLI",
@@ -305,7 +326,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "02-03-2018"
   },
   {
     "holiday_id": "2018-03-29_SHRI_MAHAVIR_JAYANTI",
@@ -319,7 +341,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "29-03-2018"
   },
   {
     "holiday_id": "2018-03-30_GOOD_FRIDAY",
@@ -333,7 +356,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "30-03-2018"
   },
   {
     "holiday_id": "2018-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -347,7 +371,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "14-04-2018"
   },
   {
     "holiday_id": "2018-05-01_MAHARASHTRA_DAY",
@@ -361,7 +386,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2018"
   },
   {
     "holiday_id": "2018-06-16_ID-UL-FITR_(RAMZAN_ID)",
@@ -375,7 +401,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "16-06-2018"
   },
   {
     "holiday_id": "2018-08-15_INDEPENDENCE_DAY",
@@ -389,7 +416,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "15-08-2018"
   },
   {
     "holiday_id": "2018-08-22_BAKRI_ID",
@@ -403,7 +431,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "22-08-2018"
   },
   {
     "holiday_id": "2018-09-13_GANESH_CHATURTHI",
@@ -417,7 +446,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "13-09-2018"
   },
   {
     "holiday_id": "2018-09-20_MUHARRAM",
@@ -431,7 +461,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "20-09-2018"
   },
   {
     "holiday_id": "2018-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -445,7 +476,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "02-10-2018"
   },
   {
     "holiday_id": "2018-10-19_DUSSEHRA",
@@ -459,7 +491,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "19-10-2018"
   },
   {
     "holiday_id": "2018-11-07_DIWALI_LAXMI_PUJAN",
@@ -473,7 +506,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (5:30 PM - 6:30 PM)"
+    "notes": "Muhurat Trading conducted (5:30 PM - 6:30 PM)",
+    "date_display": "07-11-2018"
   },
   {
     "holiday_id": "2018-11-08_DIWALI_BALIPRATIPADA",
@@ -487,7 +521,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "08-11-2018"
   },
   {
     "holiday_id": "2018-11-23_GURUNANAK_JAYANTI",
@@ -501,7 +536,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "23-11-2018"
   },
   {
     "holiday_id": "2018-12-25_CHRISTMAS",
@@ -515,7 +551,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2018"
   },
   {
     "holiday_id": "2019-01-26_REPUBLIC_DAY",
@@ -529,7 +566,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "26-01-2019"
   },
   {
     "holiday_id": "2019-03-04_MAHASHIVRATRI",
@@ -543,7 +581,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "04-03-2019"
   },
   {
     "holiday_id": "2019-03-21_HOLI",
@@ -557,7 +596,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "21-03-2019"
   },
   {
     "holiday_id": "2019-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -571,7 +611,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "14-04-2019"
   },
   {
     "holiday_id": "2019-04-17_SHRI_MAHAVIR_JAYANTI",
@@ -585,7 +626,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "17-04-2019"
   },
   {
     "holiday_id": "2019-04-19_GOOD_FRIDAY",
@@ -599,7 +641,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "19-04-2019"
   },
   {
     "holiday_id": "2019-04-29_PARLIAMENTARY_ELECTIONS_(MUMBAI)",
@@ -613,7 +656,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Lok Sabha voting holiday"
+    "notes": "Lok Sabha voting holiday",
+    "date_display": "29-04-2019"
   },
   {
     "holiday_id": "2019-05-01_MAHARASHTRA_DAY",
@@ -627,7 +671,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2019"
   },
   {
     "holiday_id": "2019-06-05_ID-UL-FITR_(RAMZAN_ID)",
@@ -641,7 +686,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "05-06-2019"
   },
   {
     "holiday_id": "2019-08-12_BAKRI_ID",
@@ -655,7 +701,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "12-08-2019"
   },
   {
     "holiday_id": "2019-08-15_INDEPENDENCE_DAY",
@@ -669,7 +716,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "15-08-2019"
   },
   {
     "holiday_id": "2019-09-02_GANESH_CHATURTHI",
@@ -683,7 +731,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "02-09-2019"
   },
   {
     "holiday_id": "2019-09-10_MUHARRAM",
@@ -697,7 +746,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "10-09-2019"
   },
   {
     "holiday_id": "2019-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -711,7 +761,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "02-10-2019"
   },
   {
     "holiday_id": "2019-10-08_DUSSEHRA",
@@ -725,7 +776,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "08-10-2019"
   },
   {
     "holiday_id": "2019-10-21_MAHARASHTRA_LEGISLATIVE_ASSEMBLY_ELECTION",
@@ -739,7 +791,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "State voting holiday"
+    "notes": "State voting holiday",
+    "date_display": "21-10-2019"
   },
   {
     "holiday_id": "2019-10-27_DIWALI_LAXMI_PUJAN",
@@ -753,7 +806,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)"
+    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)",
+    "date_display": "27-10-2019"
   },
   {
     "holiday_id": "2019-10-28_DIWALI_BALIPRATIPADA",
@@ -767,7 +821,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "28-10-2019"
   },
   {
     "holiday_id": "2019-11-12_GURUNANAK_JAYANTI",
@@ -781,7 +836,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "12-11-2019"
   },
   {
     "holiday_id": "2019-12-25_CHRISTMAS",
@@ -795,7 +851,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2019"
   },
   {
     "holiday_id": "2020-01-26_REPUBLIC_DAY",
@@ -809,7 +866,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "26-01-2020"
   },
   {
     "holiday_id": "2020-02-21_MAHASHIVRATRI",
@@ -823,7 +881,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "21-02-2020"
   },
   {
     "holiday_id": "2020-03-10_HOLI",
@@ -837,7 +896,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "10-03-2020"
   },
   {
     "holiday_id": "2020-04-02_SHRI_RAM_NAVAMI",
@@ -851,7 +911,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "02-04-2020"
   },
   {
     "holiday_id": "2020-04-06_SHRI_MAHAVIR_JAYANTI",
@@ -865,7 +926,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "06-04-2020"
   },
   {
     "holiday_id": "2020-04-10_GOOD_FRIDAY",
@@ -879,7 +941,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "10-04-2020"
   },
   {
     "holiday_id": "2020-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -893,7 +956,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-04-2020"
   },
   {
     "holiday_id": "2020-05-01_MAHARASHTRA_DAY",
@@ -907,7 +971,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2020"
   },
   {
     "holiday_id": "2020-05-25_ID-UL-FITR_(RAMZAN_ID)",
@@ -921,7 +986,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-05-2020"
   },
   {
     "holiday_id": "2020-08-01_BAKRI_ID",
@@ -935,7 +1001,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "01-08-2020"
   },
   {
     "holiday_id": "2020-08-15_INDEPENDENCE_DAY",
@@ -949,7 +1016,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "15-08-2020"
   },
   {
     "holiday_id": "2020-08-22_GANESH_CHATURTHI",
@@ -963,7 +1031,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "22-08-2020"
   },
   {
     "holiday_id": "2020-08-30_MUHARRAM",
@@ -977,7 +1046,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "30-08-2020"
   },
   {
     "holiday_id": "2020-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -991,7 +1061,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "02-10-2020"
   },
   {
     "holiday_id": "2020-11-14_DIWALI_LAXMI_PUJAN",
@@ -1005,7 +1076,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)"
+    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)",
+    "date_display": "14-11-2020"
   },
   {
     "holiday_id": "2020-11-16_DIWALI_BALIPRATIPADA",
@@ -1019,7 +1091,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "16-11-2020"
   },
   {
     "holiday_id": "2020-11-30_GURUNANAK_JAYANTI",
@@ -1033,7 +1106,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "30-11-2020"
   },
   {
     "holiday_id": "2020-12-25_CHRISTMAS",
@@ -1047,7 +1121,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2020"
   },
   {
     "holiday_id": "2021-01-26_REPUBLIC_DAY",
@@ -1061,7 +1136,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "26-01-2021"
   },
   {
     "holiday_id": "2021-03-11_MAHASHIVRATRI",
@@ -1075,7 +1151,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "11-03-2021"
   },
   {
     "holiday_id": "2021-03-29_HOLI",
@@ -1089,7 +1166,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "29-03-2021"
   },
   {
     "holiday_id": "2021-04-02_GOOD_FRIDAY",
@@ -1103,7 +1181,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "02-04-2021"
   },
   {
     "holiday_id": "2021-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -1117,7 +1196,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-04-2021"
   },
   {
     "holiday_id": "2021-04-21_SHRI_RAM_NAVAMI",
@@ -1131,7 +1211,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "21-04-2021"
   },
   {
     "holiday_id": "2021-04-25_SHRI_MAHAVIR_JAYANTI",
@@ -1145,7 +1226,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "25-04-2021"
   },
   {
     "holiday_id": "2021-05-01_MAHARASHTRA_DAY",
@@ -1159,7 +1241,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "01-05-2021"
   },
   {
     "holiday_id": "2021-05-13_ID-UL-FITR_(RAMZAN_ID)",
@@ -1173,7 +1256,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "13-05-2021"
   },
   {
     "holiday_id": "2021-07-21_BAKRI_ID",
@@ -1187,7 +1271,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "21-07-2021"
   },
   {
     "holiday_id": "2021-08-15_INDEPENDENCE_DAY",
@@ -1201,7 +1286,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "15-08-2021"
   },
   {
     "holiday_id": "2021-08-19_MUHARRAM",
@@ -1215,7 +1301,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "19-08-2021"
   },
   {
     "holiday_id": "2021-09-10_GANESH_CHATURTHI",
@@ -1229,7 +1316,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "10-09-2021"
   },
   {
     "holiday_id": "2021-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -1243,7 +1331,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "02-10-2021"
   },
   {
     "holiday_id": "2021-10-15_DUSSEHRA",
@@ -1257,7 +1346,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "15-10-2021"
   },
   {
     "holiday_id": "2021-11-04_DIWALI_LAXMI_PUJAN",
@@ -1271,7 +1361,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)"
+    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)",
+    "date_display": "04-11-2021"
   },
   {
     "holiday_id": "2021-11-05_DIWALI_BALIPRATIPADA",
@@ -1285,7 +1376,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "05-11-2021"
   },
   {
     "holiday_id": "2021-11-19_GURUNANAK_JAYANTI",
@@ -1299,7 +1391,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "19-11-2021"
   },
   {
     "holiday_id": "2021-12-25_CHRISTMAS",
@@ -1313,7 +1406,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "25-12-2021"
   },
   {
     "holiday_id": "2022-01-26_REPUBLIC_DAY",
@@ -1327,7 +1421,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "26-01-2022"
   },
   {
     "holiday_id": "2022-03-01_MAHASHIVRATRI",
@@ -1341,7 +1436,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-03-2022"
   },
   {
     "holiday_id": "2022-03-18_HOLI",
@@ -1355,7 +1451,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "18-03-2022"
   },
   {
     "holiday_id": "2022-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI___MAHAVIR_JAYANTI",
@@ -1369,7 +1466,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Coinciding holiday"
+    "notes": "Coinciding holiday",
+    "date_display": "14-04-2022"
   },
   {
     "holiday_id": "2022-04-15_GOOD_FRIDAY",
@@ -1383,7 +1481,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "15-04-2022"
   },
   {
     "holiday_id": "2022-05-01_MAHARASHTRA_DAY",
@@ -1397,7 +1496,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "01-05-2022"
   },
   {
     "holiday_id": "2022-05-03_ID-UL-FITR_(RAMZAN_ID)",
@@ -1411,7 +1511,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "03-05-2022"
   },
   {
     "holiday_id": "2022-07-10_BAKRI_ID",
@@ -1425,7 +1526,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "10-07-2022"
   },
   {
     "holiday_id": "2022-08-09_MUHARRAM",
@@ -1439,7 +1541,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "09-08-2022"
   },
   {
     "holiday_id": "2022-08-15_INDEPENDENCE_DAY",
@@ -1453,7 +1556,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "15-08-2022"
   },
   {
     "holiday_id": "2022-08-31_GANESH_CHATURTHI",
@@ -1467,7 +1571,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "31-08-2022"
   },
   {
     "holiday_id": "2022-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -1481,7 +1586,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "02-10-2022"
   },
   {
     "holiday_id": "2022-10-05_DUSSEHRA",
@@ -1495,7 +1601,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "05-10-2022"
   },
   {
     "holiday_id": "2022-10-24_DIWALI_LAXMI_PUJAN",
@@ -1509,7 +1616,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)"
+    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)",
+    "date_display": "24-10-2022"
   },
   {
     "holiday_id": "2022-10-26_DIWALI_BALIPRATIPADA",
@@ -1523,7 +1631,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "26-10-2022"
   },
   {
     "holiday_id": "2022-11-08_GURUNANAK_JAYANTI",
@@ -1537,7 +1646,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "08-11-2022"
   },
   {
     "holiday_id": "2022-12-25_CHRISTMAS",
@@ -1551,7 +1661,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "25-12-2022"
   },
   {
     "holiday_id": "2023-01-26_REPUBLIC_DAY",
@@ -1565,7 +1676,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "26-01-2023"
   },
   {
     "holiday_id": "2023-02-18_MAHASHIVRATRI",
@@ -1579,7 +1691,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "18-02-2023"
   },
   {
     "holiday_id": "2023-03-07_HOLI",
@@ -1593,7 +1706,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "07-03-2023"
   },
   {
     "holiday_id": "2023-03-30_SHRI_RAM_NAVAMI",
@@ -1607,7 +1721,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "30-03-2023"
   },
   {
     "holiday_id": "2023-04-04_SHRI_MAHAVIR_JAYANTI",
@@ -1621,7 +1736,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "04-04-2023"
   },
   {
     "holiday_id": "2023-04-07_GOOD_FRIDAY",
@@ -1635,7 +1751,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "07-04-2023"
   },
   {
     "holiday_id": "2023-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -1649,7 +1766,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-04-2023"
   },
   {
     "holiday_id": "2023-04-22_ID-UL-FITR_(RAMZAN_ID)",
@@ -1663,7 +1781,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "22-04-2023"
   },
   {
     "holiday_id": "2023-05-01_MAHARASHTRA_DAY",
@@ -1677,7 +1796,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2023"
   },
   {
     "holiday_id": "2023-06-29_BAKRI_ID",
@@ -1691,7 +1811,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "29-06-2023"
   },
   {
     "holiday_id": "2023-07-29_MUHARRAM",
@@ -1705,7 +1826,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "29-07-2023"
   },
   {
     "holiday_id": "2023-08-15_INDEPENDENCE_DAY",
@@ -1719,7 +1841,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "15-08-2023"
   },
   {
     "holiday_id": "2023-09-19_GANESH_CHATURTHI",
@@ -1733,7 +1856,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "19-09-2023"
   },
   {
     "holiday_id": "2023-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -1747,7 +1871,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "02-10-2023"
   },
   {
     "holiday_id": "2023-10-24_DUSSEHRA",
@@ -1761,7 +1886,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "24-10-2023"
   },
   {
     "holiday_id": "2023-11-12_DIWALI_LAXMI_PUJAN",
@@ -1775,7 +1901,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)"
+    "notes": "Muhurat Trading conducted (6:15 PM - 7:15 PM)",
+    "date_display": "12-11-2023"
   },
   {
     "holiday_id": "2023-11-14_DIWALI_BALIPRATIPADA",
@@ -1789,7 +1916,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-11-2023"
   },
   {
     "holiday_id": "2023-11-27_GURUNANAK_JAYANTI",
@@ -1803,7 +1931,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "27-11-2023"
   },
   {
     "holiday_id": "2023-12-25_CHRISTMAS",
@@ -1817,7 +1946,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2023"
   },
   {
     "holiday_id": "2024-01-22_SPECIAL_HOLIDAY_(RAM_MANDIR_PRAN_PRATISHTHA)",
@@ -1831,7 +1961,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Declared special exchange holiday"
+    "notes": "Declared special exchange holiday",
+    "date_display": "22-01-2024"
   },
   {
     "holiday_id": "2024-01-26_REPUBLIC_DAY",
@@ -1845,7 +1976,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "26-01-2024"
   },
   {
     "holiday_id": "2024-03-08_MAHASHIVRATRI",
@@ -1859,7 +1991,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "08-03-2024"
   },
   {
     "holiday_id": "2024-03-25_HOLI",
@@ -1873,7 +2006,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-03-2024"
   },
   {
     "holiday_id": "2024-03-29_GOOD_FRIDAY",
@@ -1887,7 +2021,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "29-03-2024"
   },
   {
     "holiday_id": "2024-04-11_ID-UL-FITR_(RAMADAN_EID)",
@@ -1901,7 +2036,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "11-04-2024"
   },
   {
     "holiday_id": "2024-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -1915,7 +2051,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "14-04-2024"
   },
   {
     "holiday_id": "2024-04-17_SHRI_RAM_NAVAMI",
@@ -1929,7 +2066,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "17-04-2024"
   },
   {
     "holiday_id": "2024-04-21_SHRI_MAHAVIR_JAYANTI",
@@ -1943,7 +2081,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "21-04-2024"
   },
   {
     "holiday_id": "2024-05-01_MAHARASHTRA_DAY",
@@ -1957,7 +2096,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2024"
   },
   {
     "holiday_id": "2024-05-20_PARLIAMENTARY_ELECTIONS_(MUMBAI_LOK_SABHA)",
@@ -1971,7 +2111,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "General election voting holiday"
+    "notes": "General election voting holiday",
+    "date_display": "20-05-2024"
   },
   {
     "holiday_id": "2024-06-17_BAKRI_ID",
@@ -1985,7 +2126,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "17-06-2024"
   },
   {
     "holiday_id": "2024-07-17_MUHARRAM",
@@ -1999,7 +2141,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "17-07-2024"
   },
   {
     "holiday_id": "2024-08-15_INDEPENDENCE_DAY",
@@ -2013,7 +2156,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "15-08-2024"
   },
   {
     "holiday_id": "2024-09-07_GANESH_CHATURTHI",
@@ -2027,7 +2171,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "07-09-2024"
   },
   {
     "holiday_id": "2024-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -2041,7 +2186,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "02-10-2024"
   },
   {
     "holiday_id": "2024-10-12_DUSSEHRA",
@@ -2055,7 +2201,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "12-10-2024"
   },
   {
     "holiday_id": "2024-11-01_DIWALI_LAXMI_PUJAN",
@@ -2069,7 +2216,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading conducted (6:00 PM - 7:00 PM)"
+    "notes": "Muhurat Trading conducted (6:00 PM - 7:00 PM)",
+    "date_display": "01-11-2024"
   },
   {
     "holiday_id": "2024-11-15_GURUNANAK_JAYANTI",
@@ -2083,7 +2231,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "15-11-2024"
   },
   {
     "holiday_id": "2024-11-20_MAHARASHTRA_ASSEMBLY_GENERAL_ELECTION",
@@ -2097,7 +2246,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Assembly election voting holiday"
+    "notes": "Assembly election voting holiday",
+    "date_display": "20-11-2024"
   },
   {
     "holiday_id": "2024-12-25_CHRISTMAS",
@@ -2111,7 +2261,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2024"
   },
   {
     "holiday_id": "2025-01-26_REPUBLIC_DAY",
@@ -2125,7 +2276,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "26-01-2025"
   },
   {
     "holiday_id": "2025-02-26_MAHASHIVRATRI",
@@ -2139,7 +2291,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "26-02-2025"
   },
   {
     "holiday_id": "2025-03-14_HOLI",
@@ -2153,7 +2306,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-03-2025"
   },
   {
     "holiday_id": "2025-03-31_ID-UL-FITR_(RAMADAN_EID)",
@@ -2167,7 +2321,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "31-03-2025"
   },
   {
     "holiday_id": "2025-04-10_SHRI_MAHAVIR_JAYANTI",
@@ -2181,7 +2336,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "10-04-2025"
   },
   {
     "holiday_id": "2025-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -2195,7 +2351,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-04-2025"
   },
   {
     "holiday_id": "2025-04-18_GOOD_FRIDAY",
@@ -2209,7 +2366,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "18-04-2025"
   },
   {
     "holiday_id": "2025-05-01_MAHARASHTRA_DAY",
@@ -2223,7 +2381,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2025"
   },
   {
     "holiday_id": "2025-06-07_BAKRI_ID",
@@ -2237,7 +2396,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "07-06-2025"
   },
   {
     "holiday_id": "2025-07-06_MUHARRAM",
@@ -2251,7 +2411,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "06-07-2025"
   },
   {
     "holiday_id": "2025-08-15_INDEPENDENCE_DAY",
@@ -2265,7 +2426,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "15-08-2025"
   },
   {
     "holiday_id": "2025-08-27_GANESH_CHATURTHI",
@@ -2279,7 +2441,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "27-08-2025"
   },
   {
     "holiday_id": "2025-10-02_MAHATMA_GANDHI_JAYANTI___DUSSEHRA",
@@ -2293,7 +2456,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday & Dussehra coinciding"
+    "notes": "National holiday & Dussehra coinciding",
+    "date_display": "02-10-2025"
   },
   {
     "holiday_id": "2025-10-21_DIWALI_LAXMI_PUJAN",
@@ -2307,7 +2471,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading scheduled in evening"
+    "notes": "Muhurat Trading scheduled in evening",
+    "date_display": "21-10-2025"
   },
   {
     "holiday_id": "2025-10-22_DIWALI-BALIPRATIPADA",
@@ -2321,7 +2486,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "22-10-2025"
   },
   {
     "holiday_id": "2025-11-05_PRAKASH_GURPURB_SRI_GURU_NANAK_DEV",
@@ -2335,7 +2501,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "05-11-2025"
   },
   {
     "holiday_id": "2025-12-25_CHRISTMAS",
@@ -2349,7 +2516,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2025"
   },
   {
     "holiday_id": "2026-01-15_MUNICIPAL_CORPORATION_ELECTION_-_MAHARASHTRA",
@@ -2363,7 +2531,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Official election holiday"
+    "notes": "Official election holiday",
+    "date_display": "15-01-2026"
   },
   {
     "holiday_id": "2026-01-26_REPUBLIC_DAY",
@@ -2377,7 +2546,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "26-01-2026"
   },
   {
     "holiday_id": "2026-02-15_MAHASHIVRATRI",
@@ -2391,7 +2561,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "15-02-2026"
   },
   {
     "holiday_id": "2026-03-03_HOLI",
@@ -2405,7 +2576,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "03-03-2026"
   },
   {
     "holiday_id": "2026-03-21_ID-UL-FITR_(RAMADAN_EID)",
@@ -2419,7 +2591,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend holiday"
+    "notes": "Weekend holiday",
+    "date_display": "21-03-2026"
   },
   {
     "holiday_id": "2026-03-26_SHRI_RAM_NAVAMI",
@@ -2433,7 +2606,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "26-03-2026"
   },
   {
     "holiday_id": "2026-03-31_SHRI_MAHAVIR_JAYANTI",
@@ -2447,7 +2621,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "31-03-2026"
   },
   {
     "holiday_id": "2026-04-03_GOOD_FRIDAY",
@@ -2461,7 +2636,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "03-04-2026"
   },
   {
     "holiday_id": "2026-04-14_DR._BABA_SAHEB_AMBEDKAR_JAYANTI",
@@ -2475,7 +2651,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-04-2026"
   },
   {
     "holiday_id": "2026-05-01_MAHARASHTRA_DAY",
@@ -2489,7 +2666,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "01-05-2026"
   },
   {
     "holiday_id": "2026-05-28_BAKRI_ID",
@@ -2503,7 +2681,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "28-05-2026"
   },
   {
     "holiday_id": "2026-06-26_MUHARRAM",
@@ -2517,7 +2696,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "26-06-2026"
   },
   {
     "holiday_id": "2026-08-15_INDEPENDENCE_DAY",
@@ -2531,7 +2711,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Weekend / National holiday"
+    "notes": "Weekend / National holiday",
+    "date_display": "15-08-2026"
   },
   {
     "holiday_id": "2026-09-14_GANESH_CHATURTHI",
@@ -2545,7 +2726,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "14-09-2026"
   },
   {
     "holiday_id": "2026-10-02_MAHATMA_GANDHI_JAYANTI",
@@ -2559,7 +2741,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": "National holiday"
+    "notes": "National holiday",
+    "date_display": "02-10-2026"
   },
   {
     "holiday_id": "2026-10-20_DUSSEHRA",
@@ -2573,7 +2756,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "20-10-2026"
   },
   {
     "holiday_id": "2026-11-08_DIWALI_LAXMI_PUJAN",
@@ -2587,7 +2771,8 @@
     "is_clearing_holiday": false,
     "morning_session": null,
     "evening_session": null,
-    "notes": "Muhurat Trading will be conducted (timing notified by exchange)"
+    "notes": "Muhurat Trading will be conducted (timing notified by exchange)",
+    "date_display": "08-11-2026"
   },
   {
     "holiday_id": "2026-11-10_DIWALI-BALIPRATIPADA",
@@ -2601,7 +2786,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "10-11-2026"
   },
   {
     "holiday_id": "2026-11-24_PRAKASH_GURPURB_SRI_GURU_NANAK_DEV",
@@ -2615,7 +2801,8 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "24-11-2026"
   },
   {
     "holiday_id": "2026-12-25_CHRISTMAS",
@@ -2629,6 +2816,7 @@
     "is_clearing_holiday": true,
     "morning_session": null,
     "evening_session": null,
-    "notes": ""
+    "notes": "",
+    "date_display": "25-12-2026"
   }
 ]

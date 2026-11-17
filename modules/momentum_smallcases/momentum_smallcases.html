@@ -1,78 +1,404 @@
 <!-- ==============================================================================
      CAPITAL DESK - MOMENTUM SMALLCASES MODULE
      Location: modules/momentum_smallcases/momentum_smallcases.html
-     Dedicated view for Manual Momentum Indices, stock constituent lists, and tracking.
+     Includes:
+     1. Momentum Smallcase Strategies Dashboard & Execution Engine
+     2. Strategy Details View with Interactive Timeline, Formula Editor & Stock Rankings
+     3. Manual Indices CRUD Manager
      ============================================================================== -->
 
 <div id="tab-momentum-smallcases" class="tab-content" style="display: none;">
 
-    <!-- Summary Metrics Cards Grid -->
-    <div class="summary-grid" id="momentum-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px;">
-        <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
-            <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Total Indices</div>
-            <div class="value" id="msc-stat-total-indices" style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-top: 6px;">0</div>
+    <!-- Top Sub-Navigation Pill Switcher -->
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div class="msc-subnav-pill-group" role="group" aria-label="Momentum Views">
+            <button type="button" class="msc-subnav-btn active" id="msc-subnav-strategies-btn" onclick="switchMomentumSubView('strategies')">
+                <span>🚀</span> <span>Momentum Smallcases</span>
+            </button>
+            <button type="button" class="msc-subnav-btn" id="msc-subnav-manual-btn" onclick="switchMomentumSubView('manual-indices')">
+                <span>📑</span> <span>Manual Indices</span>
+            </button>
         </div>
-        <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
-            <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Total Stocks Tracked</div>
-            <div class="value" id="msc-stat-total-stocks" style="font-size: 24px; font-weight: 700; color: #10b981; margin-top: 6px;">0</div>
-        </div>
-        <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
-            <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Avg Stocks / Index</div>
-            <div class="value" id="msc-stat-avg-stocks" style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-top: 6px;">0</div>
-        </div>
-        <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
-            <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Latest Activity</div>
-            <div class="value" id="msc-stat-last-activity" style="font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-top: 10px;">—</div>
+        <div id="msc-top-actions-slot">
+            <!-- Dynamically populated or toggled based on active subview -->
         </div>
     </div>
 
-    <!-- Main Card Container -->
-    <div class="card-container" style="padding: 22px;">
-        <!-- Card Header with Title and Actions -->
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 18px;">
-            <div>
-                <h2 style="margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 9px;">
-                    <span>🚀</span> Momentum Smallcases
-                </h2>
-                <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
-                    Create, manage, and track custom Manual Indices with constituent stocks and addition dates.
+    <!-- =========================================================================
+         SUBVIEW 1: STRATEGIES LIST DASHBOARD
+         ========================================================================= -->
+    <div id="msc-subview-strategies" class="msc-subview-section">
+        <!-- Overview Stats Grid -->
+        <div class="summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px;">
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Total Smallcases</div>
+                <div class="value" id="msc-stat-total-strats" style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-top: 6px;">0</div>
+            </div>
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Active Strategies</div>
+                <div class="value" id="msc-stat-active-strats" style="font-size: 24px; font-weight: 700; color: #10b981; margin-top: 6px;">0</div>
+            </div>
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Total Capital Invested</div>
+                <div class="value" id="msc-stat-total-capital" style="font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 6px;">₹0</div>
+            </div>
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">Portfolio Value</div>
+                <div class="value" id="msc-stat-portfolio-val" style="font-size: 22px; font-weight: 700; color: #10b981; margin-top: 6px;">₹0</div>
+            </div>
+        </div>
+
+        <!-- Strategies Main Card -->
+        <div class="card-container" style="padding: 22px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 18px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 9px;">
+                        <span>🚀</span> Momentum Smallcase Strategies
+                    </h2>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                        Systematic momentum portfolio engine with automatic equal-weight allocation, exit regimes, and scheduled rebalancing.
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-secondary" title="Refresh Smallcases" onclick="loadStrategiesList()" style="font-size: 12.5px; padding: 7px 15px; display: inline-flex; align-items: center; gap: 5px;">
+                        <span>↻</span> <span>Refresh</span>
+                    </button>
+                    <button type="button" class="btn-primary" onclick="openAddStrategyModal()" style="font-size: 12.5px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;">
+                        <span>➕</span> <span>Add Smallcase</span>
+                    </button>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <button type="button" class="btn-secondary" title="Refresh Indices" onclick="loadMomentumSmallcasesTab()" style="font-size: 12.5px; padding: 7px 15px; display: inline-flex; align-items: center; gap: 5px;">
-                    <span>↻</span> <span>Refresh</span>
-                </button>
-                <button type="button" class="btn-primary" onclick="openAddManualIndexModal()" style="font-size: 12.5px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>➕</span> <span>Add Manual Index</span>
-                </button>
-            </div>
-        </div>
 
-        <!-- Filter & Search Toolbar -->
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-            <div style="position: relative; flex: 1; max-width: 420px; min-width: 240px;">
-                <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-secondary); pointer-events: none;">🔍</span>
-                <input type="text" id="msc-indices-search" placeholder="Search index by name, description, or stock..." oninput="filterMomentumIndices(this.value)" style="width: 100%; padding: 8px 12px 8px 32px; font-size: 13px; background: var(--bg-subtle, var(--bg-card)); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span id="msc-indices-count-badge" style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-color);">
-                    0 Indices
+            <!-- Filter Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                <div style="position: relative; flex: 1; max-width: 420px; min-width: 240px;">
+                    <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-secondary); pointer-events: none;">🔍</span>
+                    <input type="text" id="msc-strategies-search" placeholder="Search smallcases by name or index..." oninput="filterStrategiesList(this.value)" style="width: 100%; padding: 8px 12px 8px 32px; font-size: 13px; background: var(--bg-subtle, var(--bg-card)); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                </div>
+                <span id="msc-strategies-count-badge" style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-color);">
+                    0 Smallcases
                 </span>
             </div>
-        </div>
 
-        <!-- Indices Table Mount -->
-        <div id="momentum-indices-mount">
-            <div style="text-align: center; padding: 50px 20px; color: var(--text-secondary);">
-                <span class="spinning" style="display: inline-block; font-size: 26px; margin-bottom: 10px;">⏳</span><br>
-                Loading Momentum Smallcases...
+            <div id="momentum-strategies-mount">
+                <div style="text-align: center; padding: 50px 20px; color: var(--text-secondary);">
+                    <span class="spinning" style="display: inline-block; font-size: 26px; margin-bottom: 10px;">⏳</span><br>
+                    Loading Smallcases...
+                </div>
             </div>
         </div>
     </div>
 
     <!-- =========================================================================
-         MODAL 1: ADD / EDIT MANUAL INDEX MODAL
+         SUBVIEW 2: STRATEGY DETAILS & EXECUTION DASHBOARD (DEEP VIEW)
          ========================================================================= -->
+    <div id="msc-subview-strategy-detail" class="msc-subview-section" style="display: none;">
+        <!-- Top Back Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" onclick="switchMomentumSubView('strategies')" style="font-size: 12.5px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;">
+                <span>←</span> <span>Back to Smallcases</span>
+            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span id="sd-status-badge" class="badge" style="font-size: 12px; padding: 4px 12px; border-radius: 20px;">DRAFT</span>
+                <button type="button" class="msc-action-btn delete" id="sd-delete-btn" onclick="promptDeleteCurrentStrategy()" title="Delete Smallcase">
+                    <span>🗑️ Delete</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Strategy Main Overview Card -->
+        <div class="card-container" style="padding: 22px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 18px; margin-bottom: 18px;">
+                <div>
+                    <h2 id="sd-strategy-name" style="margin: 0; font-size: 22px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 10px;">
+                        Strategy Name
+                    </h2>
+                    <div style="display: flex; gap: 14px; align-items: center; margin-top: 6px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-secondary);">
+                        <span>📊 Index: <strong id="sd-index-name" style="color: var(--text-primary);">—</strong></span>
+                        <span>📅 Start Date: <strong id="sd-start-date" style="color: var(--text-primary);">—</strong></span>
+                        <span>🎯 Targets: <strong id="sd-stock-counts" style="color: #10b981;">—</strong></span>
+                        <span>🔄 Rebalance: <strong id="sd-rebal-day" style="color: var(--text-primary);">—</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Metrics Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                <div style="background: var(--bg-subtle); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Total Capital</div>
+                    <div id="sd-metric-capital" style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">₹0</div>
+                </div>
+                <div style="background: var(--bg-subtle); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Portfolio Value</div>
+                    <div id="sd-metric-port-value" style="font-size: 18px; font-weight: 700; color: #10b981; margin-top: 4px;">₹0</div>
+                </div>
+                <div style="background: var(--bg-subtle); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Wallet Cash</div>
+                    <div id="sd-metric-wallet" style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">₹0</div>
+                </div>
+                <div style="background: var(--bg-subtle); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Fees Paid (0.10%)</div>
+                    <div id="sd-metric-fees" style="font-size: 18px; font-weight: 700; color: var(--text-secondary); margin-top: 4px;">₹0</div>
+                </div>
+                <div style="background: var(--bg-subtle); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Holdings</div>
+                    <div id="sd-metric-holdings-count" style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">0 stocks</div>
+                </div>
+            </div>
+
+            <!-- Formula Banner & Edit Tool -->
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                        <span>📐</span> <span>Momentum Formula (1M, 2M, 5M, 9M Price Return / 1M, 3M Volatility)</span>
+                    </div>
+                    <button type="button" class="msc-btn-pill" onclick="openEditFormulaModal()" style="font-size: 11.5px; padding: 3px 10px;">
+                        <span>✏️</span> <span>Edit Formula</span>
+                    </button>
+                </div>
+                <div id="sd-formula-text" style="font-family: monospace; font-size: 13px; color: #10b981; word-break: break-all; background: var(--bg-card); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    (50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)
+                </div>
+            </div>
+
+            <!-- Interactive Execution Timeline -->
+            <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>⏱️</span> <span>Execution & Rebalancing Timeline</span>
+                    </h3>
+                    <div id="sd-timeline-action-slot">
+                        <!-- Run Init or Run Rebalance button -->
+                    </div>
+                </div>
+
+                <div class="msc-timeline-wrapper" id="sd-timeline-mount">
+                    <!-- Populated dynamically with timeline stages -->
+                </div>
+            </div>
+
+            <!-- Selected Run Results Container -->
+            <div id="sd-selected-run-container">
+                <!-- Populated dynamically with run's changes, ranked table, holdings & logs -->
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         SUBVIEW 3: MANUAL INDICES CRUD SECTION
+         ========================================================================= -->
+    <div id="msc-subview-manual-indices" class="msc-subview-section" style="display: none;">
+        <!-- Manual Indices Summary Grid -->
+        <div class="summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px;">
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Total Manual Indices</div>
+                <div class="value" id="msc-stat-total-indices" style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-top: 6px;">0</div>
+            </div>
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Total Stocks Tracked</div>
+                <div class="value" id="msc-stat-total-stocks" style="font-size: 24px; font-weight: 700; color: #10b981; margin-top: 6px;">0</div>
+            </div>
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Avg Stocks / Index</div>
+                <div class="value" id="msc-stat-avg-stocks" style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-top: 6px;">0</div>
+            </div>
+            <div class="metric-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                <div class="label" style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Latest Activity</div>
+                <div class="value" id="msc-stat-last-activity" style="font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-top: 10px;">—</div>
+            </div>
+        </div>
+
+        <div class="card-container" style="padding: 22px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 18px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 9px;">
+                        <span>📑</span> Manual Custom Indices
+                    </h2>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                        Create, edit, and maintain custom constituent stock universes with entry dates in format: <code>[stockname, DD/MM/YYYY]</code>.
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-secondary" title="Refresh Indices" onclick="loadMomentumSmallcasesTab()" style="font-size: 12.5px; padding: 7px 15px;">↻ Refresh</button>
+                    <button type="button" class="btn-primary" onclick="openAddManualIndexModal()" style="font-size: 12.5px; padding: 7px 16px;">➕ Add Manual Index</button>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                <div style="position: relative; flex: 1; max-width: 420px; min-width: 240px;">
+                    <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-secondary); pointer-events: none;">🔍</span>
+                    <input type="text" id="msc-indices-search" placeholder="Search manual indices by name or stock..." oninput="filterMomentumIndices(this.value)" style="width: 100%; padding: 8px 12px 8px 32px; font-size: 13px; background: var(--bg-subtle, var(--bg-card)); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                </div>
+                <span id="msc-indices-count-badge" style="font-size: 12px; color: var(--text-secondary); background: var(--bg-subtle); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-color);">
+                    0 Indices
+                </span>
+            </div>
+
+            <div id="momentum-indices-mount">
+                <!-- Mount for manual indices table -->
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         MODAL: ADD MOMENTUM SMALLCASE (STRATEGY)
+         ========================================================================= -->
+    <div class="modal-backdrop msc-modal-backdrop" id="addStrategyModal" style="display: none;" onclick="if(event.target === this) closeAddStrategyModal()">
+        <div class="modal-container msc-modal-container-lg" role="dialog" aria-modal="true">
+            <div class="msc-modal-header">
+                <h3 class="msc-modal-title">
+                    <span>🚀</span> <span>Add Momentum Smallcase</span>
+                </h3>
+                <button type="button" class="msc-modal-close-btn" onclick="closeAddStrategyModal()">✕</button>
+            </div>
+            <div class="msc-modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="msc-form-group" style="grid-column: span 2;">
+                        <label for="stratNameInput" class="msc-form-label">
+                            Smallcase Name <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="text" id="stratNameInput" class="msc-modal-input" placeholder="e.g. Nifty High Momentum 12" required>
+                    </div>
+
+                    <div class="msc-form-group">
+                        <label for="stratStartDateInput" class="msc-form-label">
+                            Start Date <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="date" id="stratStartDateInput" class="msc-modal-input" required>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            📅 If holiday/weekend, auto-advances to next trading day.
+                        </div>
+                    </div>
+
+                    <div class="msc-form-group">
+                        <label for="stratIndexSelect" class="msc-form-label">
+                            Index Universe <span style="color: #ef4444;">*</span>
+                        </label>
+                        <select id="stratIndexSelect" class="msc-modal-input" style="cursor: pointer;"></select>
+                    </div>
+
+                    <div class="msc-form-group">
+                        <label for="stratNoOfStocksInput" class="msc-form-label">
+                            No. of Stocks <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="number" id="stratNoOfStocksInput" class="msc-modal-input" value="12" min="1" max="100" required>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Target portfolio size (colored in Green).
+                        </div>
+                    </div>
+
+                    <div class="msc-form-group">
+                        <label for="stratExitRegimeInput" class="msc-form-label">
+                            Exit Regime Ranking <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="number" id="stratExitRegimeInput" class="msc-modal-input" value="22" min="1" max="200" required>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Stocks up to this rank are kept (Dark Yellow). Drops exit.
+                        </div>
+                    </div>
+
+                    <div class="msc-form-group">
+                        <label for="stratRebalDayInput" class="msc-form-label">
+                            Rebalance Day (of month) <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="number" id="stratRebalDayInput" class="msc-modal-input" value="21" min="1" max="31" required>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            e.g. 21 = monthly rebalance on 21st (or next trading day).
+                        </div>
+                    </div>
+
+                    <div class="msc-form-group">
+                        <label for="stratAmountInput" class="msc-form-label">
+                            Amount to Invest (₹) <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="number" id="stratAmountInput" class="msc-modal-input" value="100000" min="1000" step="1000" required>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Equal-weighted across initial stocks; remainder in wallet.
+                        </div>
+                    </div>
+
+                    <div class="msc-form-group" style="grid-column: span 2;">
+                        <label for="stratFormulaInput" class="msc-form-label">
+                            Momentum Formula
+                        </label>
+                        <textarea id="stratFormulaInput" class="msc-modal-textarea" rows="2" style="font-family: monospace; font-size: 12.5px;">(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)</textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="msc-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeAddStrategyModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
+                <button type="button" class="btn-primary" id="stratCreateSubmitBtn" onclick="submitCreateStrategy()" style="font-size: 12.5px; padding: 7px 20px;">
+                    Create Smallcase
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         MODAL: RUN REBALANCE (WITH OPTIONAL STEP-UP CAPITAL)
+         ========================================================================= -->
+    <div class="modal-backdrop msc-modal-backdrop" id="runRebalanceModal" style="display: none;" onclick="if(event.target === this) closeRunRebalanceModal()">
+        <div class="modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
+            <div class="msc-modal-header">
+                <h3 class="msc-modal-title">
+                    <span>🔄</span> <span>Execute Rebalance</span>
+                </h3>
+                <button type="button" class="msc-modal-close-btn" onclick="closeRunRebalanceModal()">✕</button>
+            </div>
+            <div class="msc-modal-body">
+                <div style="font-size: 13px; color: var(--text-primary); margin-bottom: 12px; line-height: 1.4;">
+                    Rebalance smallcase <strong id="rebal-modal-strat-name" style="color: #10b981;">—</strong> on scheduled trading day <strong id="rebal-modal-date">—</strong>.
+                </div>
+                <div class="msc-form-group">
+                    <label for="rebalStepupInput" class="msc-form-label">
+                        Add Extra / Step-up Amount (₹, optional):
+                    </label>
+                    <input type="number" id="rebalStepupInput" class="msc-modal-input" placeholder="0" min="0" step="1000" value="0">
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                        Any extra capital will be credited to wallet and re-allocated with existing capital. 0.10% transaction fees apply.
+                    </div>
+                </div>
+            </div>
+            <div class="msc-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeRunRebalanceModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
+                <button type="button" class="btn-primary" id="rebalConfirmSubmitBtn" onclick="confirmRunRebalance()" style="font-size: 12.5px; padding: 7px 20px;">
+                    Confirm & Rebalance
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         MODAL: EDIT FORMULA MODAL
+         ========================================================================= -->
+    <div class="modal-backdrop msc-modal-backdrop" id="editFormulaModal" style="display: none;" onclick="if(event.target === this) closeEditFormulaModal()">
+        <div class="modal-container msc-modal-container" role="dialog" aria-modal="true">
+            <div class="msc-modal-header">
+                <h3 class="msc-modal-title">
+                    <span>✏️</span> <span>Edit Momentum Formula</span>
+                </h3>
+                <button type="button" class="msc-modal-close-btn" onclick="closeEditFormulaModal()">✕</button>
+            </div>
+            <div class="msc-modal-body">
+                <div class="msc-form-group">
+                    <label for="formulaEditInput" class="msc-form-label">Formula Expression:</label>
+                    <textarea id="formulaEditInput" class="msc-modal-textarea" rows="3" style="font-family: monospace; font-size: 13px;"></textarea>
+                    <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; line-height: 1.4;">
+                        Default format: <code>(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)</code>
+                    </div>
+                </div>
+            </div>
+            <div class="msc-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeEditFormulaModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
+                <button type="button" class="btn-primary" id="formulaSaveSubmitBtn" onclick="saveEditedFormula()" style="font-size: 12.5px; padding: 7px 20px;">Save Formula</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         EXISTING MANUAL INDICES MODALS (ADD, VIEW, DELETE)
+         ========================================================================= -->
+    <!-- Add / Edit Manual Index Modal -->
     <div class="modal-backdrop msc-modal-backdrop" id="momentumIndexFormModal" style="display: none;" onclick="if(event.target === this) closeMomentumFormModal()">
         <div class="modal-container msc-modal-container" role="dialog" aria-modal="true">
             <div class="msc-modal-header">
@@ -143,9 +469,7 @@
         </div>
     </div>
 
-    <!-- =========================================================================
-         MODAL 2: VIEW MANUAL INDEX DETAILS MODAL
-         ========================================================================= -->
+    <!-- View Manual Index Modal -->
     <div class="modal-backdrop msc-modal-backdrop" id="momentumIndexViewModal" style="display: none;" onclick="if(event.target === this) closeMomentumViewModal()">
         <div class="modal-container msc-modal-container-lg" role="dialog" aria-modal="true">
             <div class="msc-modal-header">
@@ -159,11 +483,9 @@
                 <button type="button" class="msc-modal-close-btn" onclick="closeMomentumViewModal()" aria-label="Close modal" title="Close">✕</button>
             </div>
             <div class="msc-modal-body" style="padding-top: 14px;">
-                <!-- Description Box -->
                 <div id="mIndexViewDescBox" style="background: var(--bg-subtle); padding: 12px 14px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 16px; font-size: 13px; color: var(--text-primary); line-height: 1.4;">
                 </div>
 
-                <!-- Metrics Highlights Row -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px;">
                     <div style="background: var(--bg-subtle); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); text-align: center;">
                         <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Constituents</div>
@@ -179,7 +501,6 @@
                     </div>
                 </div>
 
-                <!-- Stock Constituents Table -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary);">Constituent Stocks</h4>
                     <span id="mIndexViewStocksCounter" style="font-size: 12px; color: var(--text-secondary);"></span>
@@ -196,56 +517,50 @@
                                 <th style="padding: 9px 12px; text-align: right; font-size: 11px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">CHG %</th>
                             </tr>
                         </thead>
-                        <tbody id="mIndexViewStocksTbody">
-                            <!-- Populated dynamically -->
-                        </tbody>
+                        <tbody id="mIndexViewStocksTbody"></tbody>
                     </table>
                 </div>
 
-                <!-- Raw Stocks Copy Box -->
                 <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Raw Format String</span>
-                        <button type="button" class="msc-btn-pill" onclick="copyViewRawStocks()" title="Copy raw format to clipboard">
-                            📋 Copy String
-                        </button>
+                        <button type="button" class="msc-btn-pill" onclick="copyViewRawStocks()" title="Copy raw format to clipboard">📋 Copy String</button>
                     </div>
                     <pre id="mIndexViewRawStocks" style="margin: 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; color: var(--text-primary); max-height: 80px; overflow-y: auto;"></pre>
                 </div>
             </div>
             <div class="msc-modal-footer" style="justify-content: space-between;">
-                <button type="button" class="btn-secondary" id="mIndexViewEditBtn" onclick="editFromViewModal()" style="font-size: 12.5px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 5px;">
-                    <span>✏️</span> <span>Edit Index</span>
+                <button type="button" class="btn-secondary" id="mIndexViewEditBtn" onclick="editFromViewModal()" style="font-size: 12.5px; padding: 7px 16px;">
+                    <span>✏️ Edit Index</span>
                 </button>
                 <button type="button" class="btn-primary" onclick="closeMomentumViewModal()" style="font-size: 12.5px; padding: 7px 18px;">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- =========================================================================
-         MODAL 3: DELETE CONFIRMATION MODAL
-         ========================================================================= -->
+    <!-- Delete Confirmation Modal (Indices & Strategies) -->
     <div class="modal-backdrop msc-modal-backdrop" id="momentumIndexDeleteModal" style="display: none;" onclick="if(event.target === this) closeMomentumDeleteModal()">
         <div class="modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
             <div class="msc-modal-header" style="border-bottom-color: rgba(239, 68, 68, 0.2);">
                 <h3 class="msc-modal-title" style="color: #ef4444;">
-                    <span>🗑️</span> Delete Manual Index
+                    <span>🗑️</span> <span id="mscDeleteModalHeader">Delete Item</span>
                 </h3>
                 <button type="button" class="msc-modal-close-btn" onclick="closeMomentumDeleteModal()">✕</button>
             </div>
             <div class="msc-modal-body" style="padding: 16px;">
                 <input type="hidden" id="mIndexDeleteId" value="">
+                <input type="hidden" id="mIndexDeleteType" value="index">
                 <p style="margin: 0 0 10px 0; font-size: 14px; color: var(--text-primary);">
                     Are you sure you want to delete <strong id="mIndexDeleteName" style="color: #ef4444;">—</strong>?
                 </p>
                 <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.4;">
-                    This will permanently remove this momentum index and its constituent stock history. This action cannot be undone.
+                    This will permanently delete this record and all associated calculation history. This action cannot be undone.
                 </div>
             </div>
             <div class="msc-modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeMomentumDeleteModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
-                <button type="button" class="btn-danger" id="mIndexConfirmDeleteBtn" onclick="confirmDeleteManualIndex()" style="font-size: 12.5px; padding: 7px 18px; background: #ef4444; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                    Delete Index
+                <button type="button" class="btn-danger" id="mIndexConfirmDeleteBtn" onclick="confirmDeleteTarget()" style="font-size: 12.5px; padding: 7px 18px; background: #ef4444; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Delete
                 </button>
             </div>
         </div>

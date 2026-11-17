@@ -112,6 +112,37 @@ def format_ist_display(
     return f"{formatted} IST" if with_tz else formatted
 
 
+def format_ist_date(
+    dt_val: Optional[Union[datetime.datetime, datetime.date, float, int, str]] = None,
+    fmt: str = "%d-%m-%Y"
+) -> str:
+    """
+    Format a datetime value into standard Capital Desk date-only format (DD-MM-YYYY) in IST with no time.
+    """
+    if dt_val is None:
+        return now_ist().strftime(fmt)
+    if isinstance(dt_val, str):
+        cleaned = dt_val.strip()
+        if not cleaned:
+            return now_ist().strftime(fmt)
+        if cleaned == "Never":
+            return "Never"
+        try:
+            dt = to_ist(cleaned)
+            return dt.strftime(fmt)
+        except Exception:
+            for f in ("%d-%m-%Y", "%Y-%m-%d", "%d-%b-%Y", "%d-%B-%Y"):
+                try:
+                    return datetime.datetime.strptime(cleaned.split("T")[0], f).strftime(fmt)
+                except Exception:
+                    pass
+            return cleaned
+
+    dt = to_ist(dt_val)
+    return dt.strftime(fmt)
+
+
+
 def format_ist_standard(
     dt_val: Optional[Union[datetime.datetime, datetime.date, float, int, str]] = None,
     with_tz: bool = False
