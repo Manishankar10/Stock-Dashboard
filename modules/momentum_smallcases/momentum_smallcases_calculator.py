@@ -540,10 +540,10 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
 # PORTFOLIO EXECUTION: INIT & REBALANCE LOGIC
 # ==============================================================================
 
-def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
+def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks, max_allocation_pct=None):
     """
     Initial execution:
-    - Equal weight allocated across top no_of_stocks.
+    - Equal weight allocated across top no_of_stocks, capped by max_allocation_pct if set.
     - 0.10% transaction fee deducted on each purchase.
     - Leftover cash remains in wallet.
     """
@@ -560,6 +560,16 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
         }
 
     target_per_stock = amount_to_invest / float(len(top_picks))
+    max_cap = None
+    if max_allocation_pct is not None and str(max_allocation_pct).strip() != "":
+        try:
+            m_pct = float(max_allocation_pct)
+            if m_pct > 0:
+                max_cap = amount_to_invest * (m_pct / 100.0)
+                target_per_stock = min(target_per_stock, max_cap)
+        except Exception:
+            pass
+
     holdings = []
     total_invested = 0.0
     total_fees = 0.0
@@ -569,14 +579,19 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
         price = s["price"]
         # Allow purchase taking 0.10% fee into account
         qty = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
+        if max_cap and qty > 0:
+            while qty > 0 and (qty * price) > max_cap:
+                qty -= 1
         if qty > 0:
             stock_cost = qty * price
             fee = round(stock_cost * TRANSACTION_FEE_RATE, 2)
             total_invested += stock_cost
             total_fees += fee
+            weight_pct = round((stock_cost / amount_to_invest) * 100.0, 2)
             s["action"] = "BUY"
             s["quantity"] = qty
             s["allocated_amount"] = round(stock_cost, 2)
+            s["weight_percent"] = weight_pct
             s["fee"] = fee
             s["is_held"] = True
             added_symbols.append(s["symbol"])
@@ -588,6 +603,7 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
                 "current_price": price,
                 "invested": round(stock_cost, 2),
                 "current_value": round(stock_cost, 2),
+                "weight_percent": weight_pct,
                 "pnl": 0.0,
                 "pnl_percent": 0.0
             })
@@ -614,13 +630,13 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
     }
 
 
-def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking):
+def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking, max_allocation_pct=None):
     """
     Rebalance execution:
     1. Retain stocks whose rank <= exit_regime_ranking.
     2. Exit (sell) stocks whose rank > exit_regime_ranking or missing from rankings (deduct 0.10% sell fee).
     3. Buy top-ranked newcomers to fill back up to no_of_stocks.
-    4. Equal-weight allocation taking initial capital + stepup amount into account.
+    4. Equal-weight allocation taking initial capital + stepup amount into account, subject to max_allocation_pct cap.
     """
     rank_map = {s["symbol"]: s for s in ranked_stocks}
     prev_holdings_map = {h["symbol"]: h for h in previous_holdings}
@@ -673,6 +689,15 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     # Total portfolio equity available
     current_equity = sum(h["current_value"] for h in retained_holdings) + wallet
     target_per_stock = current_equity / float(no_of_stocks)
+    max_cap = None
+    if max_allocation_pct is not None and str(max_allocation_pct).strip() != "":
+        try:
+            m_pct = float(max_allocation_pct)
+            if m_pct > 0:
+                max_cap = current_equity * (m_pct / 100.0)
+                target_per_stock = min(target_per_stock, max_cap)
+        except Exception:
+            pass
 
     # How many new stocks needed?
     slots_needed = no_of_stocks - len(retained_holdings)
@@ -689,6 +714,9 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         for s in candidates[:slots_needed]:
             price = s["price"]
             qty = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
+            if max_cap and qty > 0:
+                while qty > 0 and (qty * price) > max_cap:
+                    qty -= 1
             if qty > 0 and (qty * price * (1.0 + TRANSACTION_FEE_RATE)) <= wallet:
                 cost = qty * price
                 fee = round(cost * TRANSACTION_FEE_RATE, 2)
@@ -715,13 +743,18 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     final_invested = sum(h["invested"] for h in retained_holdings)
     final_current = sum(h["current_value"] for h in retained_holdings)
     wallet = round(wallet, 2)
+    total_val = round(final_current + wallet, 2)
+
+    # Calculate weight percentages for all holdings
+    for h in retained_holdings:
+        h["weight_percent"] = round((h["current_value"] / max(total_val, 1.0)) * 100.0, 2)
 
     return {
         "holdings": retained_holdings,
         "invested_value": round(final_invested, 2),
         "current_value": round(final_current, 2),
         "wallet_balance": wallet,
-        "total_portfolio_value": round(final_current + wallet, 2),
+        "total_portfolio_value": total_val,
         "fees_paid": round(total_fees, 2),
         "changes": {
             "added": added_symbols,

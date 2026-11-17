@@ -403,6 +403,7 @@
                         <div style="font-size: 12px;">
                             <span style="color: #10b981; font-weight: 700;">${s.no_of_stocks} Top</span> / 
                             <span style="color: #eab308; font-weight: 700;">Exit &le; ${s.exit_regime_ranking}</span>
+                            ${s.max_allocation_pct ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Max: <strong style="color: var(--text-primary);">${s.max_allocation_pct}%</strong>/stock</div>` : ''}
                         </div>
                     </td>
                     <td>
@@ -485,6 +486,8 @@
         document.getElementById('stratExitRegimeInput').value = '22';
         document.getElementById('stratRebalDayInput').value = '21';
         document.getElementById('stratAmountInput').value = '100000';
+        const maxAllocInput = document.getElementById('stratMaxAllocInput');
+        if (maxAllocInput) maxAllocInput.value = '';
         document.getElementById('stratFormulaInput').value =
             '(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)';
 
@@ -637,6 +640,7 @@
         const exitRegime = parseInt(document.getElementById('stratExitRegimeInput')?.value, 10);
         const rebalDay = parseInt(document.getElementById('stratRebalDayInput')?.value, 10);
         const amount = parseFloat(document.getElementById('stratAmountInput')?.value);
+        const maxAllocRaw = (document.getElementById('stratMaxAllocInput')?.value || '').trim();
         const formula = (document.getElementById('stratFormulaInput')?.value || '').trim();
 
         if (!name) {
@@ -669,6 +673,16 @@
             return;
         }
 
+        let maxAlloc = null;
+        if (maxAllocRaw) {
+            maxAlloc = parseFloat(maxAllocRaw);
+            if (isNaN(maxAlloc) || maxAlloc <= 0 || maxAlloc > 100) {
+                alertToast('Max % allocation per stock must be a number between 1 and 100', 'warning');
+                document.getElementById('stratMaxAllocInput')?.focus();
+                return;
+            }
+        }
+
         const submitBtn = document.getElementById('stratCreateSubmitBtn');
         const origText = submitBtn ? submitBtn.innerText : 'Create';
         if (submitBtn) {
@@ -695,6 +709,7 @@
                     exit_regime_ranking: exitRegime,
                     rebalance_day: rebalDay,
                     amount_to_invest: amount,
+                    max_allocation_pct: maxAlloc,
                     formula: formula
                 })
             });
@@ -785,6 +800,12 @@
             document.getElementById('sd-start-date').innerText = startText;
             document.getElementById('sd-stock-counts').innerText = `Top ${s.no_of_stocks} (Green) / Exit Rank ${s.exit_regime_ranking} (Yellow)`;
             document.getElementById('sd-rebal-day').innerText = `${s.rebalance_day}th monthly`;
+            const maxAllocEl = document.getElementById('sd-max-alloc');
+            if (maxAllocEl) {
+                maxAllocEl.innerText = (s.max_allocation_pct != null && s.max_allocation_pct > 0)
+                    ? `${s.max_allocation_pct}% / stock`
+                    : 'Equal Weight (No Cap)';
+            }
 
             // Render Financial Metrics
             const capVal = Number(s.amount_to_invest || 0);
@@ -1129,6 +1150,7 @@
                                 <th style="text-align: right;">CURRENT PRICE</th>
                                 <th style="text-align: right;">INVESTED</th>
                                 <th style="text-align: right;">CURRENT VALUE</th>
+                                <th style="text-align: right;">ALLOC %</th>
                                 <th style="text-align: right;">P&amp;L (₹)</th>
                                 <th style="text-align: right;">P&amp;L %</th>
                             </tr>
@@ -1137,12 +1159,15 @@
         `;
 
         if (holdings.length === 0) {
-            html += `<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">No active stock holdings in this snapshot.</td></tr>`;
+            html += `<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-secondary);">No active stock holdings in this snapshot.</td></tr>`;
         } else {
             holdings.forEach((h, idx) => {
                 const pnl = Number(h.pnl || 0);
                 const pnlPct = Number(h.pnl_percent || 0);
                 const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+                const weightDisplay = h.weight_percent != null
+                    ? `${Number(h.weight_percent).toFixed(1)}%`
+                    : (portfolio.total_portfolio_value > 0 ? `${((h.current_value / portfolio.total_portfolio_value) * 100).toFixed(1)}%` : '—');
 
                 html += `
                     <tr>
@@ -1157,6 +1182,7 @@
                         <td style="text-align: right; font-family: monospace; font-weight: 600;">₹${formatCurrency(h.current_price)}</td>
                         <td style="text-align: right; font-family: monospace;">₹${formatCurrency(h.invested)}</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--text-primary);">₹${formatCurrency(h.current_value)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 600; color: #3b82f6;">${weightDisplay}</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 600; color: ${pnlColor};">
                             ${pnl >= 0 ? '+' : ''}₹${formatCurrency(pnl)}
                         </td>
