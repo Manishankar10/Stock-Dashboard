@@ -619,29 +619,34 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
 
 def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking):
     """
-    Rebalance execution:
+    Rebalance execution with pure equal allocation across all stocks (including stepup and existing stocks):
     1. Retain stocks whose rank <= exit_regime_ranking.
-    2. Exit (sell) stocks whose rank > exit_regime_ranking or missing from rankings (deduct 0.10% sell fee).
-    3. Buy top-ranked newcomers to fill back up to no_of_stocks.
-    4. Equal-weight allocation taking initial capital + stepup amount into account.
+    2. Exit (completely sell) stocks whose rank > exit_regime_ranking or missing from rankings (deduct 0.10% sell fee).
+    3. Select top-ranked newcomers to fill up to no_of_stocks.
+    4. Compute total available equity (current market values of retained holdings + wallet cash + stepup + proceeds from exited stocks).
+    5. Calculate target equal allocation per stock = total_equity / no_of_stocks.
+    6. Rebalance existing stocks and newcomers:
+       - Trim overweight retained stocks (sell excess shares to bring to target allocation).
+       - Buy additional shares for underweight retained stocks to bring to target allocation.
+       - Buy newcomer stocks up to target allocation.
+    7. Deduct 0.10% transaction fees on all rebalancing trades and track wallet balance.
     """
     rank_map = {s["symbol"]: s for s in ranked_stocks}
     prev_holdings_map = {h["symbol"]: h for h in previous_holdings}
 
-    # Liquidate exiting stocks
+    # Wallet starts with previous cash + newly deposited step-up
     wallet = previous_wallet + float(stepup_amount or 0.0)
     total_fees = 0.0
 
-    retained_holdings = []
     removed_symbols = []
     retained_symbols = []
     exited_stocks = []
 
+    # Step 1: Identify Exiting Stocks vs Retained Stocks
     for sym, h in prev_holdings_map.items():
         stk = rank_map.get(sym)
-        # Check if stock exits
         if not stk or stk["rank"] > exit_regime_ranking:
-            # Sell / Exit
+            # Complete Exit / Sell
             exit_price = round(float(stk["price"]) if stk else float(h.get("current_price", h["buy_price"])), 2)
             qty = int(h["quantity"])
             avg_price = round(float(h.get("buy_price", 0.0)), 2)
@@ -667,85 +672,188 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
             })
             if stk:
                 stk["action"] = "SELL"
+                stk["action_label"] = "SELL (Exit)"
                 stk["is_held"] = False
         else:
-            # Retain
             retained_symbols.append(sym)
-            curr_price = stk["price"]
-            curr_val = round(h["quantity"] * curr_price, 2)
-            invested = h.get("invested", h["buy_price"] * h["quantity"])
-            pnl = round(curr_val - invested, 2)
-            pnl_pct = round((pnl / invested) * 100.0, 2) if invested > 0 else 0.0
 
-            retained_holdings.append({
-                "symbol": sym,
-                "quantity": h["quantity"],
-                "buy_price": h["buy_price"],
-                "current_price": curr_price,
-                "invested": invested,
-                "current_value": curr_val,
-                "pnl": pnl,
-                "pnl_percent": pnl_pct
-            })
-            stk["action"] = "HOLD"
-            stk["quantity"] = h["quantity"]
-            stk["is_held"] = True
+    # Step 2: Select Newcomers to Fill Up to no_of_stocks
+    slots_needed = no_of_stocks - len(retained_symbols)
+    candidates = []
+    if slots_needed > 0:
+        top_candidates = [s for s in ranked_stocks if s["rank"] <= no_of_stocks and s["symbol"] not in retained_symbols]
+        if len(top_candidates) < slots_needed:
+            extra = [s for s in ranked_stocks if s["symbol"] not in retained_symbols and s not in top_candidates]
+            top_candidates.extend(extra[:slots_needed - len(top_candidates)])
+        candidates = top_candidates[:slots_needed]
 
-    # Total portfolio equity available
-    current_equity = sum(h["current_value"] for h in retained_holdings) + wallet
-    target_per_stock = current_equity / float(no_of_stocks)
+    # Target portfolio basket = Retained symbols + New candidate symbols
+    new_candidate_symbols = [s["symbol"] for s in candidates]
+    all_target_symbols = list(retained_symbols) + new_candidate_symbols
+    total_target_stocks_count = max(1, len(all_target_symbols))
 
-    # How many new stocks needed?
-    slots_needed = no_of_stocks - len(retained_holdings)
+    # Step 3: Compute Total Available Equity
+    # Market value of held retained stocks + wallet cash (which includes stepup + exit proceeds)
+    retained_equity = 0.0
+    for sym in retained_symbols:
+        h = prev_holdings_map[sym]
+        stk = rank_map[sym]
+        retained_equity += float(h["quantity"]) * float(stk["price"])
+
+    total_equity = retained_equity + wallet
+    target_per_stock = total_equity / float(total_target_stocks_count)
+
+    # Step 4: Rebalance trades
+    holdings_dict = {}
     added_symbols = []
 
-    if slots_needed > 0:
-        # Find highest ranked stocks not yet held
-        candidates = [s for s in ranked_stocks if s["rank"] <= no_of_stocks and s["symbol"] not in retained_symbols]
-        if len(candidates) < slots_needed:
-            # Fallback to next best candidates up to exit regime
-            extra = [s for s in ranked_stocks if s["symbol"] not in retained_symbols and s not in candidates]
-            candidates.extend(extra[:slots_needed - len(candidates)])
+    # Prepare holding states
+    for sym in retained_symbols:
+        h = prev_holdings_map[sym]
+        stk = rank_map[sym]
+        price = float(stk["price"])
+        q_old = int(h["quantity"])
+        p_avg = float(h.get("buy_price", price))
+        inv_old = float(h.get("invested", q_old * p_avg))
+        holdings_dict[sym] = {
+            "symbol": sym,
+            "quantity": q_old,
+            "buy_price": p_avg,
+            "current_price": price,
+            "invested": inv_old,
+            "is_new": False
+        }
 
-        for s in candidates[:slots_needed]:
-            price = s["price"]
-            qty = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
-            if qty > 0 and (qty * price * (1.0 + TRANSACTION_FEE_RATE)) <= wallet:
-                cost = qty * price
+    for s in candidates:
+        sym = s["symbol"]
+        price = float(s["price"])
+        holdings_dict[sym] = {
+            "symbol": sym,
+            "quantity": 0,
+            "buy_price": price,
+            "current_price": price,
+            "invested": 0.0,
+            "is_new": True
+        }
+
+    # Phase 4A: Trim Overweight Retained Stocks FIRST to free up liquidity
+    for sym, item in holdings_dict.items():
+        price = item["current_price"]
+        q_old = item["quantity"]
+        q_target = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
+
+        if q_target < q_old:
+            # Overweight: trim excess shares
+            qty_to_sell = q_old - q_target
+            sell_val = round(qty_to_sell * price, 2)
+            fee = round(sell_val * TRANSACTION_FEE_RATE, 2)
+            wallet += (sell_val - fee)
+            total_fees += fee
+
+            # Update item: buy_price per share remains the same on trim
+            item["quantity"] = q_target
+            item["invested"] = round(q_target * item["buy_price"], 2)
+
+            stk = rank_map.get(sym)
+            if stk:
+                stk["action"] = "SELL"
+                stk["action_label"] = f"TRIM (-{qty_to_sell})"
+                stk["quantity"] = q_target
+                stk["is_held"] = True
+                stk["allocated_amount"] = round(q_target * price, 2)
+
+    # Phase 4B: Buy Underweight Retained Stocks and Newcomers
+    for sym, item in holdings_dict.items():
+        price = item["current_price"]
+        q_current = item["quantity"]
+        q_target = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
+
+        if q_target > q_current:
+            qty_needed = q_target - q_current
+            share_cost_with_fee = price * (1.0 + TRANSACTION_FEE_RATE)
+            max_affordable = math.floor(wallet / share_cost_with_fee) if share_cost_with_fee > 0 else 0
+            qty_to_buy = min(qty_needed, max(0, max_affordable))
+
+            if qty_to_buy > 0:
+                cost = round(qty_to_buy * price, 2)
                 fee = round(cost * TRANSACTION_FEE_RATE, 2)
                 wallet -= (cost + fee)
                 total_fees += fee
-                s["action"] = "BUY"
-                s["quantity"] = qty
-                s["allocated_amount"] = round(cost, 2)
-                s["fee"] = fee
-                s["is_held"] = True
-                added_symbols.append(s["symbol"])
 
-                retained_holdings.append({
-                    "symbol": s["symbol"],
-                    "quantity": qty,
-                    "buy_price": price,
-                    "current_price": price,
-                    "invested": round(cost, 2),
-                    "current_value": round(cost, 2),
-                    "pnl": 0.0,
-                    "pnl_percent": 0.0
-                })
+                new_qty = q_current + qty_to_buy
+                new_invested = round(item["invested"] + cost, 2)
+                new_avg_buy_price = round(new_invested / new_qty, 2) if new_qty > 0 else price
 
-    final_invested = sum(h["invested"] for h in retained_holdings)
-    final_current = sum(h["current_value"] for h in retained_holdings)
+                item["quantity"] = new_qty
+                item["invested"] = new_invested
+                item["buy_price"] = new_avg_buy_price
+
+                stk = rank_map.get(sym)
+                if stk:
+                    if item["is_new"]:
+                        stk["action"] = "BUY"
+                        stk["action_label"] = f"BUY ({new_qty})"
+                        added_symbols.append(sym)
+                    else:
+                        stk["action"] = "BUY"
+                        stk["action_label"] = f"BUY (+{qty_to_buy})"
+                    stk["quantity"] = new_qty
+                    stk["is_held"] = True
+                    stk["allocated_amount"] = round(new_qty * price, 2)
+                    stk["fee"] = fee
+            else:
+                stk = rank_map.get(sym)
+                if stk:
+                    stk["action"] = "HOLD"
+                    stk["action_label"] = f"HOLD ({q_current})"
+                    stk["quantity"] = q_current
+                    stk["is_held"] = (q_current > 0)
+        elif q_target == q_current and not item["is_new"]:
+            stk = rank_map.get(sym)
+            if stk and stk.get("action") not in ("SELL", "BUY"):
+                stk["action"] = "HOLD"
+                stk["action_label"] = f"HOLD ({q_current})"
+                stk["quantity"] = q_current
+                stk["is_held"] = True
+                stk["allocated_amount"] = round(q_current * price, 2)
+
+    # Step 5: Finalize Holdings Snapshot
+    final_holdings = []
+    for sym in all_target_symbols:
+        item = holdings_dict.get(sym)
+        if not item or item["quantity"] <= 0:
+            continue
+        qty = item["quantity"]
+        curr_price = item["current_price"]
+        curr_val = round(qty * curr_price, 2)
+        inv = round(item["invested"], 2)
+        pnl = round(curr_val - inv, 2)
+        pnl_pct = round((pnl / inv) * 100.0, 2) if inv > 0 else 0.0
+
+        final_holdings.append({
+            "symbol": sym,
+            "quantity": qty,
+            "buy_price": item["buy_price"],
+            "current_price": curr_price,
+            "invested": inv,
+            "current_value": curr_val,
+            "pnl": pnl,
+            "pnl_percent": pnl_pct
+        })
+
+    final_invested = round(sum(h["invested"] for h in final_holdings), 2)
+    final_current = round(sum(h["current_value"] for h in final_holdings), 2)
     wallet = round(wallet, 2)
     total_val = round(final_current + wallet, 2)
 
-    # Calculate weight percentages for all holdings
-    for h in retained_holdings:
+    # Weight percentages
+    for h in final_holdings:
         h["weight_percent"] = round((h["current_value"] / max(total_val, 1.0)) * 100.0, 2)
 
     return {
-        "holdings": retained_holdings,
-        "invested_value": round(final_invested, 2),
-        "current_value": round(final_current, 2),
+        "holdings": final_holdings,
+        "invested_value": final_invested,
+        "current_value": final_current,
         "wallet_balance": wallet,
         "total_portfolio_value": total_val,
         "fees_paid": round(total_fees, 2),

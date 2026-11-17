@@ -1137,7 +1137,10 @@
 
                 // Action pill
                 let actionPill = '<span class="msc-action-pill none">—</span>';
-                if (s.action === 'BUY') {
+                if (s.action_label) {
+                    const actClass = s.action === 'BUY' ? 'buy' : (s.action === 'SELL' ? 'sell' : (s.action === 'HOLD' ? 'hold' : 'none'));
+                    actionPill = `<span class="msc-action-pill ${actClass}">${escapeHtml(s.action_label)}</span>`;
+                } else if (s.action === 'BUY') {
                     actionPill = `<span class="msc-action-pill buy">BUY (${s.quantity || 0})</span>`;
                 } else if (s.action === 'HOLD') {
                     actionPill = `<span class="msc-action-pill hold">HOLD (${s.quantity || 0})</span>`;
