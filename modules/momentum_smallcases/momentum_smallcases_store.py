@@ -478,11 +478,10 @@ def create_user_strategy(
     exit_regime_ranking,
     rebalance_day,
     amount_to_invest,
-    max_allocation_pct=None,
     formula=None,
     username=None
 ):
-    """Creates a new Momentum Smallcase strategy."""
+    """Creates a new Momentum Smallcase strategy with equal weight allocation."""
     from modules.momentum_smallcases.momentum_smallcases_calculator import (
         DEFAULT_FORMULA,
         get_next_trading_day,
@@ -533,16 +532,6 @@ def create_user_strategy(
     except Exception:
         raise ValueError("Amount to invest must be a positive number")
 
-    max_alloc = None
-    if max_allocation_pct is not None and str(max_allocation_pct).strip() != "":
-        try:
-            val = float(max_allocation_pct)
-            if val <= 0 or val > 100:
-                raise ValueError()
-            max_alloc = round(val, 2)
-        except Exception:
-            raise ValueError("Max % allocation per stock must be a number between 1 and 100")
-
     formula = (formula or "").strip() or DEFAULT_FORMULA
 
     # Identify index name & type
@@ -586,7 +575,6 @@ def create_user_strategy(
         "rebalance_day": rebal_day,
         "initial_amount": amt,
         "amount_to_invest": amt,
-        "max_allocation_pct": max_alloc,
         "current_wallet": amt,
         "current_portfolio_value": amt,
         "total_fees_paid": 0.0,
@@ -694,12 +682,11 @@ def run_strategy_init(strategy_id, username=None):
                 f"Please ensure tickers are valid NSE symbols and market data is accessible."
             )
 
-    # 3. Execute equal weight allocation (capped by max_allocation_pct if set)
+    # 3. Execute equal weight allocation
     portfolio = execute_init_run(
         ranked_stocks=ranked_stocks,
         amount_to_invest=target["amount_to_invest"],
-        no_of_stocks=target["no_of_stocks"],
-        max_allocation_pct=target.get("max_allocation_pct")
+        no_of_stocks=target["no_of_stocks"]
     )
 
     now_iso = datetime.now().isoformat()
@@ -827,15 +814,14 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
         failed_str = ", ".join(failed_syms[:5]) if failed_syms else "stocks"
         raise ValueError(f"Could not calculate momentum metrics for rebalance date ({failed_str}).")
 
-    # Execute rebalance (capped by max_allocation_pct if set)
+    # Execute rebalance equal weight allocation
     portfolio = execute_rebalance_run(
         ranked_stocks=ranked_stocks,
         previous_holdings=prev_holdings,
         previous_wallet=prev_wallet,
         stepup_amount=stepup,
         no_of_stocks=target["no_of_stocks"],
-        exit_regime_ranking=target["exit_regime_ranking"],
-        max_allocation_pct=target.get("max_allocation_pct")
+        exit_regime_ranking=target["exit_regime_ranking"]
     )
 
     # Next future rebalance date

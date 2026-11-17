@@ -429,7 +429,6 @@
                         <div style="font-size: 12px;">
                             <span style="color: #10b981; font-weight: 700;">${s.no_of_stocks} Top</span> / 
                             <span style="color: #eab308; font-weight: 700;">Exit &le; ${s.exit_regime_ranking}</span>
-                            ${s.max_allocation_pct ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Max: <strong style="color: var(--text-primary);">${s.max_allocation_pct}%</strong>/stock</div>` : ''}
                         </div>
                     </td>
                     <td>
@@ -512,8 +511,6 @@
         document.getElementById('stratExitRegimeInput').value = '22';
         document.getElementById('stratRebalDayInput').value = '21';
         document.getElementById('stratAmountInput').value = '100000';
-        const maxAllocInput = document.getElementById('stratMaxAllocInput');
-        if (maxAllocInput) maxAllocInput.value = '';
         document.getElementById('stratFormulaInput').value =
             '(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)';
 
@@ -666,7 +663,6 @@
         const exitRegime = parseInt(document.getElementById('stratExitRegimeInput')?.value, 10);
         const rebalDay = parseInt(document.getElementById('stratRebalDayInput')?.value, 10);
         const amount = parseFloat(document.getElementById('stratAmountInput')?.value);
-        const maxAllocRaw = (document.getElementById('stratMaxAllocInput')?.value || '').trim();
         const formula = (document.getElementById('stratFormulaInput')?.value || '').trim();
 
         if (!name) {
@@ -699,16 +695,6 @@
             return;
         }
 
-        let maxAlloc = null;
-        if (maxAllocRaw) {
-            maxAlloc = parseFloat(maxAllocRaw);
-            if (isNaN(maxAlloc) || maxAlloc <= 0 || maxAlloc > 100) {
-                alertToast('Max % allocation per stock must be a number between 1 and 100', 'warning');
-                document.getElementById('stratMaxAllocInput')?.focus();
-                return;
-            }
-        }
-
         const submitBtn = document.getElementById('stratCreateSubmitBtn');
         const origText = submitBtn ? submitBtn.innerText : 'Create';
         if (submitBtn) {
@@ -735,7 +721,6 @@
                     exit_regime_ranking: exitRegime,
                     rebalance_day: rebalDay,
                     amount_to_invest: amount,
-                    max_allocation_pct: maxAlloc,
                     formula: formula
                 })
             });
@@ -828,9 +813,7 @@
             document.getElementById('sd-rebal-day').innerText = `${s.rebalance_day}th monthly`;
             const maxAllocEl = document.getElementById('sd-max-alloc');
             if (maxAllocEl) {
-                maxAllocEl.innerText = (s.max_allocation_pct != null && s.max_allocation_pct > 0)
-                    ? `${s.max_allocation_pct}% / stock`
-                    : 'Equal Weight (No Cap)';
+                maxAllocEl.innerText = 'Equal Weight';
             }
 
             // Render Financial Metrics

@@ -235,7 +235,6 @@ def create_strategy_api():
             exit_regime_ranking=body.get("exit_regime_ranking"),
             rebalance_day=body.get("rebalance_day"),
             amount_to_invest=body.get("amount_to_invest"),
-            max_allocation_pct=body.get("max_allocation_pct"),
             formula=body.get("formula"),
             username=user
         )

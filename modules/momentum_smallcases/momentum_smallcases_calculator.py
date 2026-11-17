@@ -540,10 +540,10 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
 # PORTFOLIO EXECUTION: INIT & REBALANCE LOGIC
 # ==============================================================================
 
-def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks, max_allocation_pct=None):
+def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
     """
     Initial execution:
-    - Equal weight allocated across top no_of_stocks, capped by max_allocation_pct if set.
+    - Equal weight allocated across top no_of_stocks.
     - 0.10% transaction fee deducted on each purchase.
     - Leftover cash remains in wallet.
     """
@@ -560,16 +560,6 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks, max_allocati
         }
 
     target_per_stock = amount_to_invest / float(len(top_picks))
-    max_cap = None
-    if max_allocation_pct is not None and str(max_allocation_pct).strip() != "":
-        try:
-            m_pct = float(max_allocation_pct)
-            if m_pct > 0:
-                max_cap = amount_to_invest * (m_pct / 100.0)
-                target_per_stock = min(target_per_stock, max_cap)
-        except Exception:
-            pass
-
     holdings = []
     total_invested = 0.0
     total_fees = 0.0
@@ -579,9 +569,6 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks, max_allocati
         price = s["price"]
         # Allow purchase taking 0.10% fee into account
         qty = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
-        if max_cap and qty > 0:
-            while qty > 0 and (qty * price) > max_cap:
-                qty -= 1
         if qty > 0:
             stock_cost = qty * price
             fee = round(stock_cost * TRANSACTION_FEE_RATE, 2)
@@ -630,13 +617,13 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks, max_allocati
     }
 
 
-def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking, max_allocation_pct=None):
+def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking):
     """
     Rebalance execution:
     1. Retain stocks whose rank <= exit_regime_ranking.
     2. Exit (sell) stocks whose rank > exit_regime_ranking or missing from rankings (deduct 0.10% sell fee).
     3. Buy top-ranked newcomers to fill back up to no_of_stocks.
-    4. Equal-weight allocation taking initial capital + stepup amount into account, subject to max_allocation_pct cap.
+    4. Equal-weight allocation taking initial capital + stepup amount into account.
     """
     rank_map = {s["symbol"]: s for s in ranked_stocks}
     prev_holdings_map = {h["symbol"]: h for h in previous_holdings}
@@ -689,15 +676,6 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     # Total portfolio equity available
     current_equity = sum(h["current_value"] for h in retained_holdings) + wallet
     target_per_stock = current_equity / float(no_of_stocks)
-    max_cap = None
-    if max_allocation_pct is not None and str(max_allocation_pct).strip() != "":
-        try:
-            m_pct = float(max_allocation_pct)
-            if m_pct > 0:
-                max_cap = current_equity * (m_pct / 100.0)
-                target_per_stock = min(target_per_stock, max_cap)
-        except Exception:
-            pass
 
     # How many new stocks needed?
     slots_needed = no_of_stocks - len(retained_holdings)
@@ -714,9 +692,6 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         for s in candidates[:slots_needed]:
             price = s["price"]
             qty = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
-            if max_cap and qty > 0:
-                while qty > 0 and (qty * price) > max_cap:
-                    qty -= 1
             if qty > 0 and (qty * price * (1.0 + TRANSACTION_FEE_RATE)) <= wallet:
                 cost = qty * price
                 fee = round(cost * TRANSACTION_FEE_RATE, 2)
