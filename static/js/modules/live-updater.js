@@ -50,6 +50,12 @@
 
             if (allSymbols.size === 0) return;
 
+            const isWlTab = (typeof currentTab !== 'undefined' && currentTab === 'watchlists') || (window.currentTab === 'watchlists');
+            const isPfTab = (typeof currentTab !== 'undefined' && currentTab === 'portfolios') || (window.currentTab === 'portfolios');
+
+            if (isWlTab && typeof window.startWatchlistSpin === 'function') window.startWatchlistSpin();
+            if (isPfTab && typeof window.startPortfolioSpin === 'function') window.startPortfolioSpin();
+
             try {
                 const res = await fetch('/api/stock_data', {
                 method: 'POST',
@@ -373,6 +379,9 @@
             }
             } catch (err) {
                 console.warn('Live updater error:', err);
+            } finally {
+                if (isWlTab && typeof window.stopWatchlistSpin === 'function') window.stopWatchlistSpin();
+                if (isPfTab && typeof window.stopPortfolioSpin === 'function') window.stopPortfolioSpin();
             }
         }
 

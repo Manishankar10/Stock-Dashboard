@@ -162,38 +162,55 @@
 }
 
 .bullion-refresh-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 0;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28.5px !important;
+    height: 28.5px !important;
+    min-width: 28.5px !important;
+    min-height: 28.5px !important;
+    border-radius: 7px !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #10b981 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+    animation: none !important;
+}
+
+[data-theme="light"] .bullion-refresh-btn,
+:root:not([data-theme="dark"]) .bullion-refresh-btn {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    color: #059669 !important;
 }
 
 .bullion-refresh-btn:hover {
-    background: rgba(92, 124, 250, 0.15);
-    color: #5c7cfa;
-    border-color: rgba(92, 124, 250, 0.35);
-    transform: translateY(-0.5px);
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: #10b981 !important;
+    transform: translateY(-1px) !important;
 }
 
 .bullion-refresh-btn:active {
-    transform: scale(0.92);
+    transform: scale(0.92) !important;
+    background: rgba(16, 185, 129, 0.25) !important;
 }
 
-.bullion-refresh-btn.spinning svg {
-    animation: bullion-spin 0.8s linear infinite;
+.bullion-refresh-btn svg {
+    width: 13px !important;
+    height: 13px !important;
+    color: inherit !important;
+    transform-origin: center center !important;
 }
 
-@keyframes bullion-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.bullion-refresh-btn.spinning svg,
+.bullion-refresh-btn.refreshing svg {
+    animation: pf-spin 0.75s linear infinite !important;
+    transform-origin: center center !important;
 }
 
 /* Metal Scope Filter Pills */
@@ -993,32 +1010,55 @@
 }
 
 .mmi-refresh-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 0;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28.5px !important;
+    height: 28.5px !important;
+    min-width: 28.5px !important;
+    min-height: 28.5px !important;
+    border-radius: 7px !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #10b981 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+    animation: none !important;
+}
+
+[data-theme="light"] .mmi-refresh-btn,
+:root:not([data-theme="dark"]) .mmi-refresh-btn {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    color: #059669 !important;
 }
 
 .mmi-refresh-btn:hover {
-    color: var(--accent-color, #10b981);
-    border-color: var(--accent-color, #10b981);
-    transform: rotate(180deg);
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: #10b981 !important;
+    transform: translateY(-1px) !important;
 }
 
-.mmi-refresh-btn.spinning svg {
-    animation: mmi-spin 0.8s linear infinite;
+.mmi-refresh-btn:active {
+    transform: scale(0.92) !important;
+    background: rgba(16, 185, 129, 0.25) !important;
 }
 
-@keyframes mmi-spin {
-    to { transform: rotate(360deg); }
+.mmi-refresh-btn svg {
+    width: 13px !important;
+    height: 13px !important;
+    color: inherit !important;
+    transform-origin: center center !important;
+}
+
+.mmi-refresh-btn.spinning svg,
+.mmi-refresh-btn.refreshing svg {
+    animation: pf-spin 0.75s linear infinite !important;
+    transform-origin: center center !important;
 }
 
 /* Segmented View Navigation (Speedometer | 30D Trend | Drivers) */

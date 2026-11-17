@@ -153,43 +153,61 @@
 }
 
 .br-refresh-btn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--br-glass-border);
-    color: var(--br-text-primary);
-    border-radius: 8px;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 0;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28.5px !important;
+    height: 28.5px !important;
+    min-width: 28.5px !important;
+    min-height: 28.5px !important;
+    border-radius: 7px !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #10b981 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+    animation: none !important;
 }
 
 .br-refresh-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    transform: translateY(-1px);
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: #10b981 !important;
+    transform: translateY(-1px) !important;
 }
 
-[data-theme="light"] .br-refresh-btn {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #334155;
+[data-theme="light"] .br-refresh-btn,
+:root:not([data-theme="dark"]) .br-refresh-btn {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    color: #059669 !important;
 }
 
 [data-theme="light"] .br-refresh-btn:hover {
-    background: #e2e8f0;
+    background: rgba(16, 185, 129, 0.2) !important;
+}
+
+.br-refresh-btn:active {
+    transform: scale(0.92) !important;
+    background: rgba(16, 185, 129, 0.25) !important;
 }
 
 .br-refresh-icon {
     display: inline-block;
-    transition: transform 0.3s ease;
-    transform-origin: center;
+    width: 13px !important;
+    height: 13px !important;
+    color: inherit !important;
+    transition: transform 0.2s ease;
+    transform-origin: center center !important;
 }
 
-.br-refresh-icon.is-spinning {
-    animation: brSpin 0.75s linear infinite;
+.br-refresh-icon.is-spinning,
+.br-refresh-btn.refreshing .br-refresh-icon,
+.br-refresh-btn.spinning .br-refresh-icon {
+    animation: pf-spin 0.75s linear infinite !important;
 }
 
 @keyframes brSpin {

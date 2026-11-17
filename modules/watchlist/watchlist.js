@@ -26,8 +26,17 @@
         // =========================================================
         window._wlActiveApiCount = window._wlActiveApiCount || 0;
         window._isWlRefreshing = false;
+        window._wlSpinStartTime = 0;
+        let _wlSpinTimeout = null;
 
         function startWatchlistSpin() {
+            if (window._wlActiveApiCount === 0) {
+                window._wlSpinStartTime = Date.now();
+            }
+            if (_wlSpinTimeout) {
+                clearTimeout(_wlSpinTimeout);
+                _wlSpinTimeout = null;
+            }
             window._wlActiveApiCount = (window._wlActiveApiCount || 0) + 1;
             window._isWlRefreshing = true;
             updateWatchlistRefreshButtonsState(true);
@@ -36,8 +45,21 @@
         function stopWatchlistSpin() {
             window._wlActiveApiCount = Math.max(0, (window._wlActiveApiCount || 1) - 1);
             if (window._wlActiveApiCount === 0) {
-                window._isWlRefreshing = false;
-                updateWatchlistRefreshButtonsState(false);
+                const elapsed = Date.now() - (window._wlSpinStartTime || 0);
+                const minTime = 350;
+                const remaining = Math.max(0, minTime - elapsed);
+                if (remaining > 0) {
+                    if (_wlSpinTimeout) clearTimeout(_wlSpinTimeout);
+                    _wlSpinTimeout = setTimeout(() => {
+                        if (window._wlActiveApiCount === 0) {
+                            window._isWlRefreshing = false;
+                            updateWatchlistRefreshButtonsState(false);
+                        }
+                    }, remaining);
+                } else {
+                    window._isWlRefreshing = false;
+                    updateWatchlistRefreshButtonsState(false);
+                }
             }
         }
 

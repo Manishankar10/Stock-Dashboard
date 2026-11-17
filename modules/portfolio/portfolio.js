@@ -4,6 +4,72 @@
         // Global Transactions State
         let userTransactionsData = [];
 
+        // =========================================================
+        // PORTFOLIO REFRESH BUTTON SPIN CONTROLLER
+        // Spins refresh button during any portfolio API call until finished
+        // =========================================================
+        window._pfActiveApiCount = window._pfActiveApiCount || 0;
+        window._isPfRefreshing = false;
+        window._pfSpinStartTime = 0;
+        let _pfSpinTimeout = null;
+
+        function startPortfolioSpin() {
+            if (window._pfActiveApiCount === 0) {
+                window._pfSpinStartTime = Date.now();
+            }
+            if (_pfSpinTimeout) {
+                clearTimeout(_pfSpinTimeout);
+                _pfSpinTimeout = null;
+            }
+            window._pfActiveApiCount = (window._pfActiveApiCount || 0) + 1;
+            window._isPfRefreshing = true;
+            updatePortfolioRefreshButtonsState(true);
+        }
+
+        function stopPortfolioSpin() {
+            window._pfActiveApiCount = Math.max(0, (window._pfActiveApiCount || 1) - 1);
+            if (window._pfActiveApiCount === 0) {
+                const elapsed = Date.now() - (window._pfSpinStartTime || 0);
+                const minTime = 350;
+                const remaining = Math.max(0, minTime - elapsed);
+                if (remaining > 0) {
+                    if (_pfSpinTimeout) clearTimeout(_pfSpinTimeout);
+                    _pfSpinTimeout = setTimeout(() => {
+                        if (window._pfActiveApiCount === 0) {
+                            window._isPfRefreshing = false;
+                            updatePortfolioRefreshButtonsState(false);
+                        }
+                    }, remaining);
+                } else {
+                    window._isPfRefreshing = false;
+                    updatePortfolioRefreshButtonsState(false);
+                }
+            }
+        }
+
+        function updatePortfolioRefreshButtonsState(isSpinning) {
+            const btns = document.querySelectorAll('.pf-refresh-btn');
+            btns.forEach(b => {
+                const svg = b.querySelector('svg');
+                if (isSpinning) {
+                    b.classList.add('refreshing');
+                    b.classList.remove('spinning'); // Outer button box strictly never rotates
+                    b.setAttribute('aria-busy', 'true');
+                    b.title = `Updating ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL.toLowerCase() : 'portfolio'} quotes...`;
+                    if (svg) svg.classList.add('spinning');
+                } else {
+                    b.classList.remove('refreshing', 'spinning');
+                    b.removeAttribute('aria-busy');
+                    b.title = `Refresh ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} Quotes`;
+                    if (svg) svg.classList.remove('spinning');
+                }
+            });
+        }
+
+        window.startPortfolioSpin = startPortfolioSpin;
+        window.stopPortfolioSpin = stopPortfolioSpin;
+        window.updatePortfolioRefreshButtonsState = updatePortfolioRefreshButtonsState;
+
 // fetchTransactions managed in portfolio lifecycle
 
         async function deleteTransaction(txId) {
@@ -457,10 +523,8 @@
 
         async function triggerPortfolioRefresh(btnEl) {
             if (window._isPfRefreshing) return;
-            window._isPfRefreshing = true;
-
-            const btns = document.querySelectorAll('.pf-refresh-btn');
-            btns.forEach(b => b.classList.add('refreshing'));
+            startPortfolioSpin();
+            const minSpinTime = new Promise(resolve => setTimeout(resolve, 500));
 
             // 1. Put number loader when showing in init
             const skelVal = '<span class="skeleton-box" style="width: 75px; height: 16px; display: inline-block;"></span>';
@@ -489,13 +553,17 @@
                 if (typeof currentTab !== 'undefined') currentTab = 'portfolios';
 
                 if (typeof refreshPrices === 'function') {
-                    await refreshPrices({ force_refresh: true });
+                    await Promise.allSettled([
+                        refreshPrices({ force_refresh: true }),
+                        minSpinTime
+                    ]);
+                } else {
+                    await minSpinTime;
                 }
             } catch (err) {
                 console.warn('Portfolio refresh error:', err);
             } finally {
-                btns.forEach(b => b.classList.remove('refreshing'));
-                window._isPfRefreshing = false;
+                stopPortfolioSpin();
 
                 // Safety fallback: if skeleton remains in DOM for any reason, re-render cached numbers
                 if (valEl && valEl.querySelector('.skeleton-box')) {
@@ -659,6 +727,7 @@
         }
 
         async function fetchPortfolios() {
+            startPortfolioSpin();
             if (!window.portfoliosLoaded) {
                 renderPortfolioSkeletons();
             }
@@ -697,6 +766,8 @@
                 }
             } catch(e) {
                 console.error('Error fetching portfolios:', e);
+            } finally {
+                stopPortfolioSpin();
             }
         }
         window.fetchPortfolios = fetchPortfolios;
@@ -1554,6 +1625,7 @@
             `;
 
             // Filter & Sort Control Bar with Export Action & Quick Refresh
+            const isPfSpinning = !!(window._isPfRefreshing || (window._pfActiveApiCount && window._pfActiveApiCount > 0));
             const filterSortDiv = document.createElement('div');
             filterSortDiv.className = 'filter-sort-bar';
             filterSortDiv.innerHTML = `
@@ -1587,8 +1659,8 @@
                     </div>
                 </div>
                 <div class="pf-controls-right">
-                    <button class="pf-refresh-btn" onclick="triggerPortfolioRefresh(this);" title="Refresh ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} Quotes" aria-label="Refresh Quotes">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <button class="pf-refresh-btn ${isPfSpinning ? 'refreshing' : ''}" onclick="triggerPortfolioRefresh(this);" title="Refresh ${typeof window.PORTFOLIO_LABEL !== 'undefined' ? window.PORTFOLIO_LABEL : 'Portfolio'} Quotes" aria-label="Refresh Quotes" ${isPfSpinning ? 'aria-busy="true"' : ''}>
+                        <svg class="${isPfSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                     </button>

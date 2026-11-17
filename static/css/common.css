@@ -846,54 +846,117 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Watchlist & Portfolio Refresh Buttons */
+        /* Watchlist, Portfolio & Universal Refresh Loader Buttons */
         .wl-refresh-btn,
-        .pf-refresh-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 28.5px;
-            height: 28.5px;
-            border-radius: 7px;
-            background: rgba(16, 185, 129, 0.12);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: #10b981;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            padding: 0;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+        .wl-mobile-refresh-btn,
+        .pf-refresh-btn,
+        .tx-refresh-btn,
+        .corp-refresh-btn,
+        .upcoming-refresh-btn,
+        .bullion-refresh-btn,
+        .mmi-refresh-btn,
+        .br-refresh-btn,
+        .market-depth-refresh-btn,
+        .cd-refresh-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 28.5px !important;
+            height: 28.5px !important;
+            min-width: 28.5px !important;
+            min-height: 28.5px !important;
+            border-radius: 7px !important;
+            background: rgba(16, 185, 129, 0.12) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+            border: 1px solid rgba(16, 185, 129, 0.3) !important;
+            color: #10b981 !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            padding: 0 !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+            box-sizing: border-box !important;
             animation: none !important; /* Button box never rotates */
         }
 
         :root:not([data-theme="dark"]) .wl-refresh-btn,
-        :root:not([data-theme="dark"]) .pf-refresh-btn {
-            background: rgba(16, 185, 129, 0.1);
-            border-color: rgba(16, 185, 129, 0.25);
-            color: #059669;
+        :root:not([data-theme="dark"]) .wl-mobile-refresh-btn,
+        :root:not([data-theme="dark"]) .pf-refresh-btn,
+        :root:not([data-theme="dark"]) .tx-refresh-btn,
+        :root:not([data-theme="dark"]) .corp-refresh-btn,
+        :root:not([data-theme="dark"]) .upcoming-refresh-btn,
+        :root:not([data-theme="dark"]) .bullion-refresh-btn,
+        :root:not([data-theme="dark"]) .mmi-refresh-btn,
+        :root:not([data-theme="dark"]) .br-refresh-btn,
+        :root:not([data-theme="dark"]) .market-depth-refresh-btn,
+        :root:not([data-theme="dark"]) .cd-refresh-btn,
+        [data-theme="light"] .wl-refresh-btn,
+        [data-theme="light"] .wl-mobile-refresh-btn,
+        [data-theme="light"] .pf-refresh-btn,
+        [data-theme="light"] .tx-refresh-btn,
+        [data-theme="light"] .corp-refresh-btn,
+        [data-theme="light"] .upcoming-refresh-btn,
+        [data-theme="light"] .bullion-refresh-btn,
+        [data-theme="light"] .mmi-refresh-btn,
+        [data-theme="light"] .br-refresh-btn,
+        [data-theme="light"] .market-depth-refresh-btn,
+        [data-theme="light"] .cd-refresh-btn {
+            background: rgba(16, 185, 129, 0.1) !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+            color: #059669 !important;
         }
 
         .wl-refresh-btn svg,
         .wl-mobile-refresh-btn svg,
-        .pf-refresh-btn svg {
-            width: 13px;
-            height: 13px;
+        .pf-refresh-btn svg,
+        .tx-refresh-btn svg,
+        .tx-refresh-svg,
+        .corp-refresh-btn svg,
+        .corp-refresh-svg,
+        .upcoming-refresh-btn svg,
+        .bullion-refresh-btn svg,
+        .mmi-refresh-btn svg,
+        .br-refresh-btn svg,
+        .br-refresh-icon,
+        .market-depth-refresh-btn svg,
+        .market-depth-refresh-icon,
+        .cd-refresh-btn svg {
+            width: 13px !important;
+            height: 13px !important;
+            color: inherit !important;
             transition: transform 0.2s ease;
             transform-origin: center center !important;
         }
 
         .wl-refresh-btn:hover,
-        .pf-refresh-btn:hover {
-            background: rgba(16, 185, 129, 0.2);
-            border-color: #10b981;
-            transform: translateY(-1px);
+        .wl-mobile-refresh-btn:hover,
+        .pf-refresh-btn:hover,
+        .tx-refresh-btn:hover,
+        .corp-refresh-btn:hover,
+        .upcoming-refresh-btn:hover,
+        .bullion-refresh-btn:hover,
+        .mmi-refresh-btn:hover,
+        .br-refresh-btn:hover,
+        .market-depth-refresh-btn:hover,
+        .cd-refresh-btn:hover {
+            background: rgba(16, 185, 129, 0.2) !important;
+            border-color: #10b981 !important;
+            transform: translateY(-1px) !important;
         }
 
         .wl-refresh-btn:active,
-        .pf-refresh-btn:active {
-            transform: scale(0.92);
-            background: rgba(16, 185, 129, 0.25);
+        .wl-mobile-refresh-btn:active,
+        .pf-refresh-btn:active,
+        .tx-refresh-btn:active,
+        .corp-refresh-btn:active,
+        .upcoming-refresh-btn:active,
+        .bullion-refresh-btn:active,
+        .mmi-refresh-btn:active,
+        .br-refresh-btn:active,
+        .market-depth-refresh-btn:active,
+        .cd-refresh-btn:active {
+            transform: scale(0.92) !important;
+            background: rgba(16, 185, 129, 0.25) !important;
         }
 
         /* Spin only the SVG symbol alone */
@@ -904,7 +967,29 @@
         .wl-mobile-refresh-btn.spinning svg,
         .wl-mobile-refresh-btn svg.spinning,
         .pf-refresh-btn.refreshing svg,
-        .pf-refresh-btn.spinning svg {
+        .pf-refresh-btn.spinning svg,
+        .pf-refresh-btn svg.spinning,
+        .tx-refresh-btn.refreshing svg,
+        .tx-refresh-btn.spinning svg,
+        .tx-refresh-btn.refreshing .tx-refresh-svg,
+        .tx-refresh-btn.spinning .tx-refresh-svg,
+        .corp-refresh-btn.refreshing svg,
+        .corp-refresh-btn.loading svg,
+        .corp-refresh-btn.refreshing .corp-refresh-svg,
+        .upcoming-refresh-btn.refreshing svg,
+        .upcoming-refresh-btn.spinning svg,
+        .bullion-refresh-btn.refreshing svg,
+        .bullion-refresh-btn.spinning svg,
+        .mmi-refresh-btn.refreshing svg,
+        .mmi-refresh-btn.spinning svg,
+        .br-refresh-btn.refreshing svg,
+        .br-refresh-btn.spinning svg,
+        .br-refresh-icon.is-spinning,
+        .market-depth-refresh-btn.refreshing svg,
+        .market-depth-refresh-btn.spinning svg,
+        .market-depth-refresh-icon.is-spinning,
+        .cd-refresh-btn.refreshing svg,
+        .cd-refresh-btn.spinning svg {
             animation: pf-spin 0.75s linear infinite !important;
             transform-origin: center center !important;
         }
@@ -912,7 +997,25 @@
         .wl-refresh-btn.refreshing,
         .wl-refresh-btn.spinning,
         .wl-mobile-refresh-btn.refreshing,
-        .wl-mobile-refresh-btn.spinning {
+        .wl-mobile-refresh-btn.spinning,
+        .pf-refresh-btn.refreshing,
+        .pf-refresh-btn.spinning,
+        .tx-refresh-btn.refreshing,
+        .tx-refresh-btn.spinning,
+        .corp-refresh-btn.refreshing,
+        .corp-refresh-btn.spinning,
+        .upcoming-refresh-btn.refreshing,
+        .upcoming-refresh-btn.spinning,
+        .bullion-refresh-btn.refreshing,
+        .bullion-refresh-btn.spinning,
+        .mmi-refresh-btn.refreshing,
+        .mmi-refresh-btn.spinning,
+        .br-refresh-btn.refreshing,
+        .br-refresh-btn.spinning,
+        .market-depth-refresh-btn.refreshing,
+        .market-depth-refresh-btn.spinning,
+        .cd-refresh-btn.refreshing,
+        .cd-refresh-btn.spinning {
             pointer-events: none;
             opacity: 1;
             animation: none !important; /* Button box strictly never spins */

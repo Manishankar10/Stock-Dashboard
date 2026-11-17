@@ -1108,8 +1108,14 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            width: 28.5px;
+            height: 28.5px;
+            min-width: 28.5px;
+            min-height: 28.5px;
+            border-radius: 7px;
             background: rgba(16, 185, 129, 0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(16, 185, 129, 0.3);
             color: #10b981;
             cursor: pointer;
@@ -1130,8 +1136,11 @@
         }
         .wl-refresh-btn:active {
             transform: scale(0.92);
+            background: rgba(16, 185, 129, 0.25);
         }
         .wl-refresh-btn svg {
+            width: 13px;
+            height: 13px;
             transition: transform 0.2s ease;
             transform-origin: center center !important;
         }
@@ -1142,7 +1151,7 @@
         }
         .wl-refresh-btn.refreshing {
             pointer-events: none;
-            opacity: 0.95;
+            opacity: 1;
             animation: none !important;
         }
 
@@ -1438,8 +1447,8 @@
                         <span>🌐</span> External API / URL Call Logs
                         <span id="external-api-logs-badge" class="badge" style="background: rgba(255,255,255,0.28); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700;">0</span>
                     </button>
-                    <button type="button" class="wl-refresh-btn" id="btn-admin-login-logs-refresh" onclick="loadAdminLogs()" title="Refresh Login Logs" aria-label="Refresh Login Logs" style="width: 34px; height: 34px; border-radius: 8px;">
-                        <svg id="admin-login-logs-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin: center center;">
+                    <button type="button" class="wl-refresh-btn" id="btn-admin-login-logs-refresh" onclick="loadAdminLogs()" title="Refresh Login Logs" aria-label="Refresh Login Logs">
+                        <svg id="admin-login-logs-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin: center center;">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                     </button>
@@ -3093,8 +3102,8 @@
                         </select>
                     </div>
 
-                    <button type="button" class="wl-refresh-btn" id="btn-ext-logs-refresh" onclick="loadExternalApiLogs()" title="Refresh External API Logs" aria-label="Refresh External API Logs" style="width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;">
-                        <svg id="ext-logs-refresh-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin: center center;">
+                    <button type="button" class="wl-refresh-btn" id="btn-ext-logs-refresh" onclick="loadExternalApiLogs()" title="Refresh External API Logs" aria-label="Refresh External API Logs" style="flex-shrink: 0;">
+                        <svg id="ext-logs-refresh-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin: center center;">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                     </button>

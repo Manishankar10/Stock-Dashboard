@@ -1958,3 +1958,52 @@
         window.closeRefreshIntervalsModal = function() {};
         window.handleSaveRefreshIntervals = function() {};
         window.updateRefreshIntervalLabels = function() {};
+
+        // =========================================================
+        // UNIVERSAL API REFRESH SPINNER INTERCEPTOR
+        // Automatically spins active Watchlist/Portfolio refresh loader
+        // whenever ANY foreground or background /api/ request occurs
+        // =========================================================
+        (function initApiSpinInterceptor() {
+            if (window._apiSpinInterceptorInstalled) return;
+            window._apiSpinInterceptorInstalled = true;
+            const origFetch = window.fetch;
+            if (!origFetch) return;
+
+            window.fetch = function(...args) {
+                const rawUrl = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+                const isApi = typeof rawUrl === 'string' && (rawUrl.startsWith('/api/') || rawUrl.includes('/api/'));
+
+                let spunWl = false;
+                let spunPf = false;
+
+                if (isApi) {
+                    const isWlTab = (window.currentTab === 'watchlists') || (document.getElementById('tab-watchlists')?.classList.contains('active'));
+                    const isPfTab = (window.currentTab === 'portfolios') || (document.getElementById('tab-portfolios')?.classList.contains('active'));
+
+                    if (isWlTab && typeof window.startWatchlistSpin === 'function') {
+                        window.startWatchlistSpin();
+                        spunWl = true;
+                    }
+                    if (isPfTab && typeof window.startPortfolioSpin === 'function') {
+                        window.startPortfolioSpin();
+                        spunPf = true;
+                    }
+                }
+
+                const promise = origFetch.apply(this, args);
+
+                if (spunWl || spunPf) {
+                    promise.finally(() => {
+                        if (spunWl && typeof window.stopWatchlistSpin === 'function') {
+                            window.stopWatchlistSpin();
+                        }
+                        if (spunPf && typeof window.stopPortfolioSpin === 'function') {
+                            window.stopPortfolioSpin();
+                        }
+                    });
+                }
+
+                return promise;
+            };
+        })();

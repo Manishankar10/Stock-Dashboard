@@ -143,8 +143,10 @@
         const loader = document.getElementById('marketDepthLoader');
         const errBox = document.getElementById('marketDepthError');
         const tableWrap = document.getElementById('marketDepthTableWrap');
+        const refreshBtn = document.getElementById('marketDepthRefreshBtn');
         const refreshIcon = document.querySelector('.market-depth-refresh-icon');
 
+        if (refreshBtn) refreshBtn.classList.add('refreshing');
         if (refreshIcon) refreshIcon.classList.add('is-spinning');
         if (errBox) errBox.style.display = 'none';
 
@@ -187,6 +189,7 @@
             const elapsed = Date.now() - startTime;
             const remaining = Math.max(0, 400 - elapsed);
             setTimeout(() => {
+                if (refreshBtn) refreshBtn.classList.remove('refreshing');
                 if (refreshIcon) refreshIcon.classList.remove('is-spinning');
             }, remaining);
         }
