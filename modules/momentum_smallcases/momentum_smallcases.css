@@ -6,6 +6,7 @@
 /* Modal Backdrop & Containers */
 .msc-modal-backdrop,
 body > .msc-modal-backdrop {
+    display: none;
     position: fixed !important;
     inset: 0 !important;
     top: 0 !important;
@@ -14,21 +15,38 @@ body > .msc-modal-backdrop {
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    background: rgba(0, 0, 0, 0.82) !important;
+    background: rgba(0, 0, 0, 0.85) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     z-index: 100080 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
     padding: 16px !important;
     box-sizing: border-box !important;
     margin: 0 !important;
 }
 
+.msc-modal-backdrop[style*="display: flex"],
+.msc-modal-backdrop[style*="display: block"],
+.msc-modal-backdrop[style*="flex"],
+.msc-modal-backdrop[style*="block"],
+.msc-modal-backdrop.show,
+.msc-modal-backdrop.active,
+body > .msc-modal-backdrop[style*="display: flex"],
+body > .msc-modal-backdrop[style*="display: block"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.msc-modal-backdrop[style*="display: none"],
+.msc-modal-backdrop[style*="none"],
+body > .msc-modal-backdrop[style*="display: none"],
+body > .msc-modal-backdrop[style*="none"] {
+    display: none !important;
+}
+
 [data-theme="light"] .msc-modal-backdrop,
 [data-theme="light"] body > .msc-modal-backdrop {
-    background: rgba(0, 0, 0, 0.82) !important;
+    background: rgba(0, 0, 0, 0.85) !important;
 }
 
 .msc-modal-container {
@@ -59,6 +77,7 @@ body > .msc-modal-backdrop {
 /* Fullscreen Global Process Loader Overlay */
 .msc-global-process-loader,
 body > .msc-global-process-loader {
+    display: none;
     position: fixed !important;
     inset: 0 !important;
     top: 0 !important;
@@ -71,14 +90,29 @@ body > .msc-global-process-loader {
     background: rgba(0, 0, 0, 0.85) !important;
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
     margin: 0 !important;
     padding: 24px !important;
     box-sizing: border-box !important;
     transition: opacity 0.2s ease-in-out;
+}
+
+.msc-global-process-loader[style*="display: flex"],
+.msc-global-process-loader[style*="display: block"],
+.msc-global-process-loader[style*="flex"],
+.msc-global-process-loader[style*="block"],
+body > .msc-global-process-loader[style*="display: flex"],
+body > .msc-global-process-loader[style*="display: block"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.msc-global-process-loader[style*="display: none"],
+.msc-global-process-loader[style*="none"],
+body > .msc-global-process-loader[style*="display: none"],
+body > .msc-global-process-loader[style*="none"] {
+    display: none !important;
 }
 
 [data-theme="light"] .msc-global-process-loader,

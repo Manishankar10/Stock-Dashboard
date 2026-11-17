@@ -1595,9 +1595,9 @@
         }
         isSubmitting = true;
 
-        closeRunRebalanceModal();
-        showSmallcaseGlobalLoader({
-            title: 'Executing Smallcase Rebalance...',
+        // Keep modal open and display brand loader inside it
+        setSmallcaseModalLoader('runRebalanceModal', true, {
+            title: 'Executing Rebalance...',
             badge: 'Scheduled Rebalance',
             subtitle: 'Re-evaluating momentum universe, liquidating exit stocks, and buying top momentum picks...'
         });
@@ -1639,6 +1639,7 @@
     // =========================================================================
     function openRunAllModal(strategyId) {
         ensureModalsAttachedToBody();
+        setSmallcaseModalLoader('runAllRebalanceModal', false);
         let strat = currentStrategy;
         if (strategyId) {
             strat = (strategiesCache || []).find(s => s.id === strategyId) || currentStrategy;
@@ -1696,6 +1697,7 @@
     }
 
     function closeRunAllModal() {
+        setSmallcaseModalLoader('runAllRebalanceModal', false);
         const modal = document.getElementById('runAllRebalanceModal');
         if (modal) modal.style.display = 'none';
     }
@@ -1731,8 +1733,8 @@
         }
         isSubmitting = true;
 
-        closeRunAllModal();
-        showSmallcaseGlobalLoader({
+        // Keep modal open and display brand loader inside it
+        setSmallcaseModalLoader('runAllRebalanceModal', true, {
             title: 'Running All Scheduled Rebalances...',
             badge: 'Batch Rebalance Engine',
             subtitle: 'Evaluating chronological universe, liquidating exit stocks, and buying top momentum picks...'
@@ -1770,6 +1772,7 @@
             alertToast('Batch run failed: ' + err.message, 'error');
         } finally {
             isSubmitting = false;
+            setSmallcaseModalLoader('runAllRebalanceModal', false);
             hideSmallcaseGlobalLoader();
             if (btn) {
                 btn.disabled = false;
