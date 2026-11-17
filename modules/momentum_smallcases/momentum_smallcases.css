@@ -4,20 +4,31 @@
    ============================================================================== */
 
 /* Modal Backdrop & Containers */
-.msc-modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px);
-    z-index: 100060;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    box-sizing: border-box;
+.msc-modal-backdrop,
+body > .msc-modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.82) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    z-index: 100080 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+}
+
+[data-theme="light"] .msc-modal-backdrop,
+[data-theme="light"] body > .msc-modal-backdrop {
+    background: rgba(0, 0, 0, 0.82) !important;
 }
 
 .msc-modal-container {
@@ -27,12 +38,13 @@
     border-radius: 12px;
     width: 100%;
     max-width: 580px;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
     display: flex;
     flex-direction: column;
     max-height: 90vh;
     overflow: hidden;
     position: relative;
+    margin: auto !important;
     animation: mscFadeIn 0.18s ease-out;
 }
 
@@ -42,6 +54,125 @@
 
 .msc-modal-container-sm {
     max-width: 440px;
+}
+
+/* Fullscreen Global Process Loader Overlay */
+.msc-global-process-loader,
+body > .msc-global-process-loader {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 100099 !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 24px !important;
+    box-sizing: border-box !important;
+    transition: opacity 0.2s ease-in-out;
+}
+
+[data-theme="light"] .msc-global-process-loader,
+[data-theme="light"] body > .msc-global-process-loader {
+    background: rgba(0, 0, 0, 0.85) !important;
+}
+
+.msc-global-loader-card {
+    background: #111827 !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 16px !important;
+    padding: 34px 40px !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 1px 1px rgba(255, 255, 255, 0.1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 16px !important;
+    max-width: 480px !important;
+    width: 90% !important;
+    text-align: center !important;
+    position: relative !important;
+    margin: auto !important;
+    box-sizing: border-box !important;
+    animation: mscLoaderPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes mscLoaderPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.msc-global-loader-card .chart-loader-brand-box {
+    width: 76px !important;
+    height: 76px !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.msc-global-loader-card .chart-loader-logo {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 50% !important;
+    object-fit: contain !important;
+}
+
+.msc-global-loader-card .chart-loader-spinner-ring {
+    position: absolute !important;
+    inset: 0 !important;
+    border-radius: 50% !important;
+    border: 3.5px solid rgba(16, 185, 129, 0.2) !important;
+    border-top-color: #10b981 !important;
+    animation: cdSpin 0.9s linear infinite !important;
+}
+
+.msc-global-loader-card .cd-loader-text-box {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.msc-global-loader-card .cd-loader-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    letter-spacing: 0.2px !important;
+}
+
+.msc-global-loader-card .cd-loader-badge {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #10b981 !important;
+    background: rgba(16, 185, 129, 0.16) !important;
+    border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    padding: 3px 12px !important;
+    border-radius: 12px !important;
+    display: inline-block !important;
+}
+
+.msc-global-loader-card .cd-loader-subtitle {
+    font-size: 12.5px !important;
+    color: #94a3b8 !important;
+    line-height: 1.45 !important;
+    margin-top: 2px !important;
 }
 
 @keyframes mscFadeIn {

@@ -21,9 +21,44 @@
     let isSubmitting = false;
 
     // =========================================================================
+    // MODAL TELEPORTATION HELPER
+    // Ensures all modals and global loaders are direct children of document.body
+    // so they are never clipped or trapped by .tab-content CSS transforms.
+    // =========================================================================
+    const MSC_MODAL_ELEMENT_IDS = [
+        'mscGlobalProcessLoader',
+        'runRebalanceModal',
+        'runAllRebalanceModal',
+        'addStrategyModal',
+        'editFormulaModal',
+        'momentumIndexFormModal',
+        'momentumIndexViewModal',
+        'momentumIndexDeleteModal'
+    ];
+
+    function ensureModalsAttachedToBody() {
+        if (typeof document === 'undefined' || !document.body) return;
+        MSC_MODAL_ELEMENT_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.parentElement !== document.body) {
+                document.body.appendChild(el);
+            }
+        });
+    }
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', ensureModalsAttachedToBody);
+        } else {
+            ensureModalsAttachedToBody();
+        }
+    }
+
+    // =========================================================================
     // BRAND LOGO LOADER HELPERS
     // =========================================================================
     function showSmallcaseGlobalLoader({ title = 'Processing...', badge = 'Momentum Engine', subtitle = '' } = {}) {
+        ensureModalsAttachedToBody();
         const overlay = document.getElementById('mscGlobalProcessLoader');
         if (!overlay) return;
         const titleEl = document.getElementById('mscGlobalLoaderTitle');
@@ -286,6 +321,7 @@
 
     // Main entry point called by router on tab activation
     function loadMomentumSmallcasesTab() {
+        ensureModalsAttachedToBody();
         if (activeSubView === 'manual-indices') {
             loadMomentumManualIndices();
         } else if (activeSubView === 'strategy-detail' && currentStrategy) {
@@ -497,6 +533,7 @@
     // 2. ADD STRATEGY MODAL
     // =========================================================================
     async function openAddStrategyModal() {
+        ensureModalsAttachedToBody();
         setSmallcaseModalLoader('addStrategyModal', false);
         const modal = document.getElementById('addStrategyModal');
         const select = document.getElementById('stratIndexSelect');
@@ -1474,6 +1511,7 @@
 
     function openRunRebalanceModal() {
         if (!currentStrategy) return;
+        ensureModalsAttachedToBody();
 
         const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
         const todayStr = new Date().toISOString().substring(0, 10);
@@ -1525,11 +1563,7 @@
         }
         isSubmitting = true;
 
-        setSmallcaseModalLoader('runRebalanceModal', true, {
-            title: 'Executing Rebalance...',
-            badge: 'Scheduled Rebalance',
-            subtitle: 'Re-evaluating momentum universe, liquidating exit stocks, and buying top momentum picks...'
-        });
+        closeRunRebalanceModal();
         showSmallcaseGlobalLoader({
             title: 'Executing Smallcase Rebalance...',
             badge: 'Scheduled Rebalance',
@@ -1572,6 +1606,7 @@
     // 4B. RUN ALL (INIT + REBALANCES) BATCH ENGINE
     // =========================================================================
     function openRunAllModal(strategyId) {
+        ensureModalsAttachedToBody();
         let strat = currentStrategy;
         if (strategyId) {
             strat = (strategiesCache || []).find(s => s.id === strategyId) || currentStrategy;
@@ -1664,6 +1699,7 @@
         }
         isSubmitting = true;
 
+        closeRunAllModal();
         showSmallcaseGlobalLoader({
             title: 'Running All Scheduled Rebalances...',
             badge: 'Batch Rebalance Engine',
@@ -1715,6 +1751,7 @@
     // =========================================================================
     function openEditFormulaModal() {
         if (!currentStrategy) return;
+        ensureModalsAttachedToBody();
         setSmallcaseModalLoader('editFormulaModal', false);
         document.getElementById('formulaEditInput').value = currentStrategy.formula || '';
         const modal = document.getElementById('editFormulaModal');
@@ -1788,6 +1825,7 @@
     // =========================================================================
     function openDeleteStrategyModal(strategyId, optName) {
         if (!strategyId) return;
+        ensureModalsAttachedToBody();
         setSmallcaseModalLoader('momentumIndexDeleteModal', false);
         const strat = (strategiesCache || []).find(x => x.id === strategyId) || (currentStrategy && currentStrategy.id === strategyId ? currentStrategy : null);
         const name = optName || (strat ? strat.name : '') || 'this smallcase';
@@ -1816,6 +1854,7 @@
 
     function openDeleteManualIndexModal(indexId, optName) {
         if (!indexId) return;
+        ensureModalsAttachedToBody();
         setSmallcaseModalLoader('momentumIndexDeleteModal', false);
         const idx = (momentumIndicesCache || []).find(x => x.id === indexId) || (currentViewingIndex && currentViewingIndex.id === indexId ? currentViewingIndex : null);
         const name = optName || (idx ? idx.name : '') || 'this index';
@@ -2085,6 +2124,7 @@
 
     // Manual Index Form: Add / Edit
     function openAddManualIndexModal() {
+        ensureModalsAttachedToBody();
         setSmallcaseModalLoader('momentumIndexFormModal', false);
         document.getElementById('mIndexEditId').value = '';
         document.getElementById('mIndexNameInput').value = '';
@@ -2106,6 +2146,7 @@
     }
 
     async function openEditManualIndexModal(indexId) {
+        ensureModalsAttachedToBody();
         setSmallcaseModalLoader('momentumIndexFormModal', false);
         let idx = momentumIndicesCache.find(x => x.id === indexId);
         if (!idx) {
@@ -2320,6 +2361,7 @@
 
     // View Manual Index Modal
     async function openViewManualIndexModal(indexId) {
+        ensureModalsAttachedToBody();
         currentViewingIndex = null;
         setSmallcaseModalLoader('momentumIndexViewModal', true, {
             title: 'Loading Constituent Quotes...',

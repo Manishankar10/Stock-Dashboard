@@ -657,14 +657,16 @@
 
     <!-- Global Brand Process Loader Overlay (Active during Init, Rebalance, and Engine Recalculations) -->
     <div id="mscGlobalProcessLoader" class="msc-global-process-loader" style="display: none;" role="status" aria-live="polite">
-        <div class="chart-loader-brand-box">
-            <div class="chart-loader-spinner-ring"></div>
-            <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
-        </div>
-        <div class="cd-loader-text-box">
-            <div class="cd-loader-title" id="mscGlobalLoaderTitle">Executing Calculation...</div>
-            <div class="cd-loader-badge" id="mscGlobalLoaderBadge">Momentum Engine</div>
-            <div class="cd-loader-subtitle" id="mscGlobalLoaderSubtitle">Fetching historical quotes, evaluating returns & volatilities...</div>
+        <div class="msc-global-loader-card">
+            <div class="chart-loader-brand-box">
+                <div class="chart-loader-spinner-ring"></div>
+                <img src="/static/favicon-192.png" alt="Capital Desk Logo" class="chart-loader-logo">
+            </div>
+            <div class="cd-loader-text-box">
+                <div class="cd-loader-title" id="mscGlobalLoaderTitle">Executing Calculation...</div>
+                <div class="cd-loader-badge" id="mscGlobalLoaderBadge">Momentum Engine</div>
+                <div class="cd-loader-subtitle" id="mscGlobalLoaderSubtitle">Fetching historical quotes, evaluating returns & volatilities...</div>
+            </div>
         </div>
     </div>
 

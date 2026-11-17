@@ -2803,7 +2803,7 @@
             transition: opacity 0.2s ease-in-out;
         }
         [data-theme="light"] .msc-global-process-loader {
-            background: rgba(255, 255, 255, 0.92) !important;
+            background: rgba(0, 0, 0, 0.85) !important;
         }
         [data-theme="light"] .cd-brand-loader.overlay {
             background: rgba(255, 255, 255, 0.92) !important;
