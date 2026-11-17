@@ -27,6 +27,30 @@ DEFAULT_FORMULA = "(50% * 1M price return + 30% * 2M price return + 10% * 5M pri
 
 import threading
 
+try:
+    from curl_cffi import requests as stock_http_requests
+    _HAS_CURL_CFFI = True
+except ImportError:
+    import requests as stock_http_requests
+    _HAS_CURL_CFFI = False
+
+_thread_local = threading.local()
+
+
+def _get_thread_http_session():
+    """Provides a thread-local persistent HTTP session with Chrome TLS impersonation or connection pooling."""
+    if not hasattr(_thread_local, 'session'):
+        if _HAS_CURL_CFFI:
+            _thread_local.session = stock_http_requests.Session(impersonate="chrome")
+        else:
+            s = stock_http_requests.Session()
+            adapter = stock_http_requests.adapters.HTTPAdapter(pool_connections=30, pool_maxsize=30, max_retries=1)
+            s.mount('https://', adapter)
+            s.mount('http://', adapter)
+            _thread_local.session = s
+    return _thread_local.session
+
+
 # Cache directory for downloaded historical prices
 _CACHE_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -178,7 +202,7 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
             data_points = cached["series"]
 
     if data_points is None:
-        import requests
+        session = _get_thread_http_session()
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json',
@@ -189,7 +213,7 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
         for host in hosts:
             url = f"https://{host}/v8/finance/chart/{fetch_sym}.NS?interval=1d&range=5y"
             try:
-                r = requests.get(url, headers=headers, timeout=6)
+                r = session.get(url, headers=headers, timeout=3.5)
                 if r.status_code == 200:
                     body = r.json()
                     res = body.get('chart', {}).get('result', [{}])[0]
@@ -211,6 +235,9 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
                                 "series": series
                             }
                         break
+                elif r.status_code == 404:
+                    # Symbol not found on NSE query endpoint, break to avoid wasting time on query1
+                    break
             except Exception as e:
                 logger.warning(f"Error fetching Yahoo series for {fetch_sym} from {host}: {e}")
 
@@ -468,7 +495,8 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
         return (sym, None)
 
     # Fetch concurrently with safe worker pool
-    with ThreadPoolExecutor(max_workers=min(12, max(2, len(eligible_symbols)))) as executor:
+    worker_count = min(24, max(4, len(eligible_symbols)))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
         results = executor.map(_eval, eligible_symbols)
         for sym, r in results:
             if r:

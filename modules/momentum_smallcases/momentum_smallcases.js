@@ -53,6 +53,48 @@
         return false;
     }
 
+    // Robust JSON fetch wrapper that intercepts 502/504 gateway timeouts and non-JSON error pages
+    async function safeFetchJson(url, options = {}) {
+        let res;
+        try {
+            res = await fetch(url, options);
+        } catch (netErr) {
+            throw new Error('Network error or server unreachable: ' + (netErr.message || 'connection failed'));
+        }
+
+        let data = null;
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        if (contentType.includes('application/json')) {
+            try {
+                data = await res.json();
+            } catch (_) {
+                data = null;
+            }
+        }
+
+        if (data === null) {
+            const rawText = await res.text().catch(() => '');
+            const cleanText = rawText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+            if (res.status === 502) {
+                throw new Error('502 Bad Gateway: Upstream connection timed out or server restarted. Please check if the Flask server is running.');
+            }
+            if (res.status === 504) {
+                throw new Error('504 Gateway Timeout: The calculation took longer than the proxy timeout limit. Please retry now that data is partially cached.');
+            }
+            throw new Error(`Server returned HTTP ${res.status} (${res.statusText || 'Error'})${cleanText ? ': ' + cleanText : ''}`);
+        }
+
+        if (!res.ok) {
+            const msg = (data && data.error) ? data.error : `HTTP ${res.status}: ${res.statusText || 'Request failed'}`;
+            const err = new Error(msg);
+            err.data = data;
+            err.status = res.status;
+            throw err;
+        }
+
+        return data;
+    }
+
     // =========================================================================
     // UTILITY FORMATTERS
     // =========================================================================
@@ -111,6 +153,21 @@
         return isoOrStr;
     }
 
+    // Helper to parse DD/MM/YYYY into timestamp for chronological sorting
+    function parseDateAddedForSort(dtStr) {
+        if (!dtStr || typeof dtStr !== 'string') return 0;
+        const parts = dtStr.trim().replace(/[\-\.]/g, '/').split('/');
+        if (parts.length === 3) {
+            const d = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            let y = parseInt(parts[2], 10);
+            if (y < 100) y += 2000;
+            return new Date(y, m, d).getTime();
+        }
+        const t = new Date(dtStr).getTime();
+        return isNaN(t) ? 0 : t;
+    }
+
     // Client-side parser for manual index format: [stockname, DD/MM/YYYY]
     function parseStocksClient(stocksStr) {
         if (!stocksStr || typeof stocksStr !== 'string') return [];
@@ -135,6 +192,13 @@
                 results.push({ symbol: sym, date_added: dt });
             }
         }
+        // Chronologically sort by date_added ascending, then symbol ascending
+        results.sort((a, b) => {
+            const dtA = parseDateAddedForSort(a.date_added);
+            const dtB = parseDateAddedForSort(b.date_added);
+            if (dtA !== dtB) return dtA - dtB;
+            return (a.symbol || '').localeCompare(b.symbol || '');
+        });
         return results;
     }
 
@@ -603,7 +667,7 @@
         });
 
         try {
-            const res = await fetch('/api/momentum-smallcases/strategies', {
+            const data = await safeFetchJson('/api/momentum-smallcases/strategies', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -618,7 +682,6 @@
                 })
             });
 
-            const data = await res.json();
             if (!data.success) {
                 alertToast(data.error || 'Failed to create strategy', 'error');
                 return;
@@ -1165,11 +1228,10 @@
         });
 
         try {
-            const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}/run-init`, {
+            const data = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}/run-init`, {
                 method: 'POST'
             });
 
-            const data = await res.json();
             if (!data.success) {
                 alertToast(data.error || 'Failed to execute Init', 'error');
                 return;
@@ -1236,7 +1298,7 @@
         });
 
         try {
-            const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/run-rebalance`, {
+            const data = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/run-rebalance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1244,7 +1306,6 @@
                 })
             });
 
-            const data = await res.json();
             if (!data.success) {
                 alertToast(data.error || 'Failed to execute rebalance', 'error');
                 return;
@@ -1313,13 +1374,12 @@
         });
 
         try {
-            const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/formula`, {
+            const data = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/formula`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ formula: formula })
             });
 
-            const data = await res.json();
             if (!data.success) {
                 alertToast(data.error || 'Failed to update formula', 'error');
                 return;
@@ -1398,8 +1458,7 @@
                 ? `/api/momentum-smallcases/strategies/${encodeURIComponent(id)}`
                 : `/api/momentum-smallcases/indices/${encodeURIComponent(id)}`;
 
-            const res = await fetch(url, { method: 'DELETE' });
-            const data = await res.json();
+            const data = await safeFetchJson(url, { method: 'DELETE' });
             if (!data.success) {
                 alertToast(data.error || 'Failed to delete record', 'error');
                 return;
@@ -1638,8 +1697,7 @@
         let idx = momentumIndicesCache.find(x => x.id === indexId);
         if (!idx) {
             try {
-                const res = await fetch(`/api/momentum-smallcases/indices/${encodeURIComponent(indexId)}?enrich=0`);
-                const data = await res.json();
+                const data = await safeFetchJson(`/api/momentum-smallcases/indices/${encodeURIComponent(indexId)}?enrich=0`);
                 if (data.success && data.index) {
                     idx = data.index;
                 }
@@ -1763,7 +1821,7 @@
         const method = editId ? 'PUT' : 'POST';
 
         try {
-            const res = await fetch(url, {
+            const data = await safeFetchJson(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1773,7 +1831,6 @@
                 })
             });
 
-            const data = await res.json();
             if (!data.success) {
                 alertToast(data.error || 'Failed to save index', 'error');
                 return;
@@ -1822,8 +1879,7 @@
         if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-secondary);">⏳ Loading stocks & live quotes...</td></tr>`;
 
         try {
-            const res = await fetch(`/api/momentum-smallcases/indices/${encodeURIComponent(indexId)}?enrich=1`);
-            const data = await res.json();
+            const data = await safeFetchJson(`/api/momentum-smallcases/indices/${encodeURIComponent(indexId)}?enrich=1`);
             if (!data.success || !data.index) {
                 if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 20px;">Could not load index details.</td></tr>`;
                 return;
@@ -1837,18 +1893,24 @@
             if (descEl) {
                 descEl.innerText = idx.description || 'No description provided for this index.';
             }
-            if (countEl) countEl.innerText = (idx.stocks || []).length;
+
+            // Strictly sort constituent stocks by date_added ascending, then symbol ascending
+            const stocks = (idx.stocks || []).slice().sort((a, b) => {
+                const dtA = parseDateAddedForSort(a.date_added);
+                const dtB = parseDateAddedForSort(b.date_added);
+                if (dtA !== dtB) return dtA - dtB;
+                return (a.symbol || '').localeCompare(b.symbol || '');
+            });
+            idx.stocks = stocks;
+
+            if (countEl) countEl.innerText = stocks.length;
             if (createdEl) createdEl.innerText = formatDateDisplay(idx.created_at);
             if (updatedEl) updatedEl.innerText = formatDateDisplay(idx.updated_at || idx.created_at);
 
-            let rawStr = idx.raw_stocks || '';
-            if (!rawStr && idx.stocks && idx.stocks.length > 0) {
-                rawStr = idx.stocks.map(s => `[${s.symbol}, ${s.date_added}]`).join(', ');
-            }
+            let rawStr = stocks.length > 0 ? stocks.map(s => `[${s.symbol}, ${s.date_added}]`).join(', ') : (idx.raw_stocks || '');
             if (rawEl) rawEl.innerText = rawStr || 'No constituent stocks registered.';
 
-            const stocks = idx.stocks || [];
-            if (counter) counter.innerText = `${stocks.length} ${stocks.length === 1 ? 'constituent' : 'constituents'}`;
+            if (counter) counter.innerText = `${stocks.length} ${stocks.length === 1 ? 'constituent' : 'constituents'} (ordered by Date Added ▲ ASC)`;
 
             if (stocks.length === 0) {
                 if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 30px;">No stocks in this index. Click "Edit Index" to add stocks.</td></tr>`;
@@ -1883,7 +1945,7 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 11px;">
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; font-size: 11px; font-weight: 600;">
                                     📅 ${escapeHtml(s.date_added)}
                                 </span>
                             </td>

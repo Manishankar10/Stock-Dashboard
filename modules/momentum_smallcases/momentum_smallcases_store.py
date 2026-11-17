@@ -89,6 +89,22 @@ def normalize_date(date_str):
     return date_str.strip()
 
 
+def parse_date_added_obj(date_str):
+    """Parses DD/MM/YYYY into a datetime.date object for chronological comparison."""
+    if not date_str:
+        return date.min
+    try:
+        parts = str(date_str).strip().replace('-', '/').replace('.', '/').split('/')
+        if len(parts) == 3:
+            d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+            if y < 100:
+                y += 2000
+            return date(y, m, d)
+    except Exception:
+        pass
+    return date.min
+
+
 def calculate_days_active(date_str):
     """Calculates days elapsed since date_added (DD/MM/YYYY)."""
     if not date_str:
@@ -108,7 +124,7 @@ def parse_stocks_input(stocks_str):
     """
     Parses stocks input in format:
     [stockname1, dateAdded(DD/MM/YYYY)], [stockname2, dateAdded(DD/MM/YYYY)]
-    Returns a list of parsed stock dictionaries.
+    Returns a list of parsed stock dictionaries ordered by date_added ascending.
     """
     if not stocks_str or not isinstance(stocks_str, str):
         return []
@@ -153,6 +169,8 @@ def parse_stocks_input(stocks_str):
                     "days_active": days
                 })
 
+    # Always sort parsed stocks chronologically by date_added ascending, then symbol ascending
+    results.sort(key=lambda s: (parse_date_added_obj(s.get("date_added")), s.get("symbol", "")))
     return results
 
 
@@ -170,18 +188,20 @@ def format_stocks_output(stocks_list):
 
 
 def get_user_indices(username=None):
-    """Retrieves all manual momentum indices for the user."""
+    """Retrieves all manual momentum indices for the user with constituents sorted by date_added ascending."""
     data = load_user_momentum_smallcases(username)
     indices = data.get("indices", [])
-    # Update days_active dynamically
     for idx in indices:
-        for s in idx.get("stocks", []):
+        stks = idx.get("stocks", [])
+        for s in stks:
             s["days_active"] = calculate_days_active(s.get("date_added", ""))
+        stks.sort(key=lambda s: (parse_date_added_obj(s.get("date_added")), s.get("symbol", "")))
+        idx["stocks"] = stks
     return indices
 
 
 def create_user_index(name, description, stocks_str, username=None):
-    """Creates a new manual index."""
+    """Creates a new manual index with constituents sorted by date_added ascending."""
     name = (name or "").strip()
     if not name:
         raise ValueError("Index name is required")
@@ -211,7 +231,7 @@ def create_user_index(name, description, stocks_str, username=None):
 
 
 def get_user_index(index_id, username=None, enrich_quotes=False):
-    """Retrieves a single index by ID, with optional live market price enrichment."""
+    """Retrieves a single index by ID, with constituents sorted by date_added ascending and optional live market price enrichment."""
     indices = get_user_indices(username)
     found = next((x for x in indices if x.get("id") == index_id), None)
     if not found:
@@ -220,6 +240,8 @@ def get_user_index(index_id, username=None, enrich_quotes=False):
     # Clone for return
     result = dict(found)
     stocks = [dict(s) for s in result.get("stocks", [])]
+    # Ensure sorting by date_added ascending, then symbol ascending
+    stocks.sort(key=lambda s: (parse_date_added_obj(s.get("date_added")), s.get("symbol", "")))
 
     # Recalculate days_active
     for s in stocks:
@@ -245,6 +267,7 @@ def get_user_index(index_id, username=None, enrich_quotes=False):
                 s["company_name"] = sym
 
     result["stocks"] = stocks
+    result["raw_stocks"] = format_stocks_output(stocks)
     return result
 
 
