@@ -223,6 +223,13 @@ class IndexStocksProvider:
             stocks = record.get("stocks", [])
             total_stocks = len(stocks) if stocks else record.get("total_stocks", 0)
             last_synced = record.get("last_synced_display") or record.get("last_synced") or "Never"
+            meta = record.get("metadata") or {}
+            last_changes = meta.get("last_changes") or {
+                "entered": [],
+                "exited": [],
+                "entered_count": 0,
+                "exited_count": 0
+            }
             
             indices_list.append({
                 "key": key,
@@ -235,7 +242,8 @@ class IndexStocksProvider:
                 "icon": reg["icon"],
                 "description": reg["description"],
                 "last_synced": last_synced,
-                "is_rebalanced": total_stocks == reg["official_size"]
+                "is_rebalanced": total_stocks == reg["official_size"],
+                "last_changes": last_changes
             })
             
         return indices_list
@@ -282,6 +290,12 @@ class IndexStocksProvider:
             if idx["last_synced"] and idx["last_synced"] != "Never":
                 latest_sync = idx["last_synced"]
 
+        audit_history = []
+        try:
+            audit_history = db_store.load_index_rebalance_audit(limit=10) or []
+        except Exception:
+            pass
+
         return {
             "is_syncing": self._is_syncing,
             "progress": self._progress,
@@ -291,7 +305,8 @@ class IndexStocksProvider:
             "total_indices": len(all_indices),
             "total_constituents": total_constituents,
             "last_synced_display": latest_sync,
-            "indices": all_indices
+            "indices": all_indices,
+            "audit_history": audit_history
         }
 
     def start_background_sync(self, enforce_official_size: bool = True) -> Dict[str, Any]:
@@ -312,7 +327,9 @@ class IndexStocksProvider:
         start_time = time.time()
         synced_counts = {}
         total_added = 0
+        total_exited_all = 0
         total_updated = 0
+        changes_by_index = {}
         errors = []
 
         try:
@@ -334,13 +351,32 @@ class IndexStocksProvider:
                     # Check delta vs current stored
                     existing_doc = db_store.load_index_constituents_db(key) or {}
                     existing_stocks = existing_doc.get("stocks", [])
-                    old_syms = {s.get("symbol") for s in existing_stocks if isinstance(s, dict)}
-                    new_syms = {s.get("symbol") for s in stocks if isinstance(s, dict)}
-                    
-                    diff_added = len(new_syms - old_syms)
-                    total_added += diff_added
-                    if diff_added > 0 or len(stocks) != len(existing_stocks):
+                    old_syms_map = {s.get("symbol"): s for s in existing_stocks if isinstance(s, dict) and s.get("symbol")}
+                    new_syms_map = {s.get("symbol"): s for s in stocks if isinstance(s, dict) and s.get("symbol")}
+
+                    entered_symbols = [s for s in new_syms_map if s not in old_syms_map]
+                    exited_symbols = [s for s in old_syms_map if s not in new_syms_map]
+
+                    entered_list = [new_syms_map[s] for s in entered_symbols]
+                    exited_list = [old_syms_map[s] for s in exited_symbols]
+
+                    total_added += len(entered_list)
+                    total_exited_all += len(exited_list)
+                    if len(entered_list) > 0 or len(exited_list) > 0 or len(stocks) != len(existing_stocks):
                         total_updated += 1
+
+                    index_change = {
+                        "key": key,
+                        "name": reg["name"],
+                        "official_size": reg["official_size"],
+                        "total_before": len(existing_stocks),
+                        "total_after": len(stocks),
+                        "entered": entered_list,
+                        "exited": exited_list,
+                        "entered_count": len(entered_list),
+                        "exited_count": len(exited_list)
+                    }
+                    changes_by_index[reg["name"]] = index_change
 
                     now_display = format_ist_display(datetime.datetime.now(datetime.timezone.utc).isoformat())
                     db_store.save_index_constituents_db(
@@ -356,7 +392,8 @@ class IndexStocksProvider:
                             "nse_url": reg["nse_url"],
                             "rebalanced": enforce_official_size,
                             "official_target": reg["official_size"],
-                            "actual_count": len(stocks)
+                            "actual_count": len(stocks),
+                            "last_changes": index_change
                         }
                     )
                     synced_counts[reg["name"]] = len(stocks)
@@ -367,6 +404,21 @@ class IndexStocksProvider:
             now_final = format_ist_display(datetime.datetime.now(datetime.timezone.utc).isoformat())
             self._last_synced_display = now_final
 
+            # Save historical audit record
+            now_utc = datetime.datetime.now(datetime.timezone.utc)
+            audit_entry = {
+                "timestamp": now_utc.isoformat(),
+                "timestamp_display": now_final,
+                "total_entered": total_added,
+                "total_exited": total_exited_all,
+                "enforce_official_size": enforce_official_size,
+                "changes_by_index": changes_by_index
+            }
+            try:
+                db_store.save_index_rebalance_audit(audit_entry)
+            except Exception as ae:
+                logger.warning(f"Error saving index rebalance audit: {ae}")
+
             with self._lock:
                 self._percent = 100
                 self._progress = "Sync and rebalance completed successfully."
@@ -375,10 +427,12 @@ class IndexStocksProvider:
                     "total_indices": len(INDEX_REGISTRY),
                     "total_constituents": sum(synced_counts.values()),
                     "added": total_added,
+                    "exited": total_exited_all,
                     "updated": total_updated,
                     "duration_seconds": duration,
                     "enforce_official_size": enforce_official_size,
                     "counts": synced_counts,
+                    "changes_by_index": changes_by_index,
                     "errors": errors if errors else None
                 }
                 self._is_syncing = False

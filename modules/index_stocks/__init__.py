@@ -60,6 +60,22 @@ def get_all_indices_with_stocks():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@index_stocks_bp.route("/api/indices/audit", methods=["GET"])
+def get_indices_audit():
+    """Returns rebalance audit log showing newly entered and exited constituent stocks across syncs."""
+    try:
+        import db_store
+        limit = int(request.args.get("limit", 10))
+        logs = db_store.load_index_rebalance_audit(limit=limit)
+        return jsonify({
+            "success": True,
+            "total_logs": len(logs),
+            "audit": logs
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @index_stocks_bp.route("/api/admin/indices/status", methods=["GET"])
 @admin_required
 def admin_indices_status():

@@ -293,6 +293,18 @@ def _init_sqlite_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS index_rebalance_audit (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    timestamp_display TEXT NOT NULL,
+                    total_entered INTEGER DEFAULT 0,
+                    total_exited INTEGER DEFAULT 0,
+                    enforce_official_size INTEGER DEFAULT 1,
+                    changes_json TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -1541,3 +1553,125 @@ def save_index_constituents_db(index_key, index_name, symbol, official_size, sto
         "total_stocks": total_stocks,
         "last_synced_display": last_synced_display
     }
+
+
+def save_index_rebalance_audit(audit_entry):
+    """
+    Saves an index rebalance & sync audit entry recording all entered and exited stocks.
+    Persisted to MongoDB collection 'index_rebalance_audit' and SQLite table 'index_rebalance_audit'.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    ts_iso = audit_entry.get("timestamp") or now_utc.isoformat()
+    ts_display = audit_entry.get("timestamp_display") or format_ist_display(ts_iso)
+    total_entered = int(audit_entry.get("total_entered") or 0)
+    total_exited = int(audit_entry.get("total_exited") or 0)
+    enforce_size = 1 if audit_entry.get("enforce_official_size", True) else 0
+    changes_by_index = audit_entry.get("changes_by_index") or {}
+
+    doc = {
+        "timestamp": ts_iso,
+        "timestamp_display": ts_display,
+        "total_entered": total_entered,
+        "total_exited": total_exited,
+        "enforce_official_size": bool(enforce_size),
+        "changes_by_index": changes_by_index,
+        "created_at": ts_iso
+    }
+
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["index_rebalance_audit"]
+            col.insert_one(dict(doc))
+        except Exception as e:
+            print(f"MongoDB save_index_rebalance_audit error: {e}")
+
+    # 2. SQLite
+    conn = None
+    try:
+        _init_sqlite_db()
+        conn = sqlite3.connect(_SQLITE_DB_PATH)
+        conn.execute(
+            """
+            INSERT INTO index_rebalance_audit 
+            (timestamp, timestamp_display, total_entered, total_exited, enforce_official_size, changes_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ts_iso,
+                ts_display,
+                total_entered,
+                total_exited,
+                enforce_size,
+                json.dumps(changes_by_index, ensure_ascii=False)
+            )
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"SQLite save_index_rebalance_audit error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return doc
+
+
+def load_index_rebalance_audit(limit=10):
+    """
+    Loads recent rebalance & sync audit logs from MongoDB or SQLite.
+    Returns list of audit entries containing entered and exited stocks per index.
+    """
+    # 1. MongoDB Atlas
+    if db is not None:
+        try:
+            col = db["index_rebalance_audit"]
+            docs = list(col.find({}, {"_id": 0}).sort("created_at", -1).limit(int(limit)))
+            if docs:
+                return docs
+        except Exception as e:
+            print(f"MongoDB load_index_rebalance_audit error: {e}")
+
+    # 2. SQLite
+    conn = None
+    try:
+        _init_sqlite_db()
+        conn = sqlite3.connect(_SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, timestamp, timestamp_display, total_entered, total_exited, enforce_official_size, changes_json, created_at
+            FROM index_rebalance_audit
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (int(limit),)
+        )
+        rows = cursor.fetchall()
+        if rows:
+            results = []
+            for r in rows:
+                changes = {}
+                try:
+                    changes = json.loads(r[6]) if r[6] else {}
+                except Exception:
+                    pass
+                results.append({
+                    "id": r[0],
+                    "timestamp": r[1],
+                    "timestamp_display": r[2],
+                    "total_entered": r[3],
+                    "total_exited": r[4],
+                    "enforce_official_size": bool(r[5]),
+                    "changes_by_index": changes,
+                    "created_at": r[7]
+                })
+            return results
+    except Exception as e:
+        print(f"SQLite load_index_rebalance_audit error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return []
+

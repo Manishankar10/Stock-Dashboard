@@ -3318,6 +3318,7 @@
                                 <th style="padding: 10px 14px; text-align: center;">Official Size</th>
                                 <th style="padding: 10px 14px; text-align: center;">Constituents In DB</th>
                                 <th style="padding: 10px 14px; text-align: center;">Rebalance Status</th>
+                                <th style="padding: 10px 14px; text-align: center;">Latest Delta (Entered / Exited)</th>
                                 <th style="padding: 10px 14px; text-align: right;">Official Live Feed</th>
                             </tr>
                         </thead>
@@ -3325,6 +3326,19 @@
                             <!-- Populated dynamically via JS -->
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Recent Rebalance & Changes Log (Entered & Exited Stocks) -->
+                <div style="margin-top: 18px; border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; background: var(--bg-subtle);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>🔄</span> Rebalance Delta: Entered &amp; Exited Stocks on Every Sync
+                        </h4>
+                        <span id="admin-indices-delta-badge" class="badge" style="font-size: 11px; padding: 2px 8px; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25);">Live Sync Telemetry</span>
+                    </div>
+                    <div id="admin-indices-changes-log" style="font-size: 12px; line-height: 1.5; color: var(--text-secondary);">
+                        Loading rebalance change history...
+                    </div>
                 </div>
             </div>
 
@@ -6201,7 +6215,11 @@
                 let customMsg = null;
                 if (s.last_result) {
                     const lr = s.last_result;
-                    if (lr.enforce_official_size) {
+                    const ent = lr.added !== undefined ? lr.added : 0;
+                    const ext = lr.exited !== undefined ? lr.exited : 0;
+                    if (ent > 0 || ext > 0) {
+                        customMsg = `+${ent} entered, -${ext} exited across indices (${totalConstituents.toLocaleString()} stocks in DB)`;
+                    } else if (lr.enforce_official_size) {
                         customMsg = `Rebalanced all ${totalIndices} indices (${totalConstituents.toLocaleString()} constituent stocks in DB)`;
                     } else {
                         customMsg = `Synced all ${totalIndices} indices (${totalConstituents.toLocaleString()} constituent stocks in DB)`;
@@ -6224,7 +6242,7 @@
                 // If modal is open, refresh table
                 const modal = document.getElementById('adminIndicesModal');
                 if (modal && modal.style.display === 'block') {
-                    renderAdminIndicesModalTable(s.indices || []);
+                    renderAdminIndicesModalTable(s.indices || [], s.audit_history || []);
                 }
 
                 // Polling if syncing
@@ -6302,11 +6320,11 @@
             }
         }
 
-        function renderAdminIndicesModalTable(indices) {
+        function renderAdminIndicesModalTable(indices, auditHistory) {
             const tbody = document.getElementById('admin-indices-table-body');
             if (!tbody) return;
             if (!indices || indices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-secondary);">Loading constituent data...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center; color: var(--text-secondary);">Loading constituent data...</td></tr>';
                 return;
             }
 
@@ -6316,6 +6334,22 @@
                 const statusBadge = isRebalanced 
                     ? `<span class="badge badge-success" style="font-size: 11px; padding: 2px 8px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25);">✓ Rebalanced (${idx.total_stocks}/${idx.official_size})</span>`
                     : `<span class="badge" style="font-size: 11px; padding: 2px 8px; background: rgba(234, 179, 8, 0.15); color: #ca8a04; border: 1px solid rgba(234, 179, 8, 0.25);">⚠️ Raw Feed (${idx.total_stocks}/${idx.official_size})</span>`;
+
+                let deltaHtml = '<span style="color: var(--text-secondary); font-size: 11px;">0 changes</span>';
+                if (idx.last_changes) {
+                    const ent = idx.last_changes.entered || [];
+                    const ext = idx.last_changes.exited || [];
+                    if (ent.length > 0 || ext.length > 0) {
+                        const parts = [];
+                        if (ent.length > 0) {
+                            parts.push(`<span style="color: #10b981; font-weight: 600;" title="${ent.map(s => s.symbol + ' - ' + (s.company_name || '')).join('\n')}">+${ent.length} in</span>`);
+                        }
+                        if (ext.length > 0) {
+                            parts.push(`<span style="color: #ef4444; font-weight: 600;" title="${ext.map(s => s.symbol + ' - ' + (s.company_name || '')).join('\n')}">-${ext.length} out</span>`);
+                        }
+                        deltaHtml = parts.join(' • ');
+                    }
+                }
 
                 html += `
                     <tr style="border-bottom: 1px solid var(--border-color);">
@@ -6335,9 +6369,12 @@
                         <td style="padding: 10px 14px; text-align: center;">
                             ${statusBadge}
                         </td>
+                        <td style="padding: 10px 14px; text-align: center; font-size: 11.5px;">
+                            ${deltaHtml}
+                        </td>
                         <td style="padding: 10px 14px; text-align: right;">
                             <a href="${idx.nse_url}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 4px; color: #3b82f6; text-decoration: none; font-size: 12px; font-weight: 600;">
-                                <span>NSE Market Data</span>
+                                <span>NSE Feed</span>
                                 <span style="font-size: 10px;">↗</span>
                             </a>
                         </td>
@@ -6345,6 +6382,48 @@
                 `;
             });
             tbody.innerHTML = html;
+
+            // Render bottom changes log (Entered & Exited summary)
+            const logBox = document.getElementById('admin-indices-changes-log');
+            if (logBox) {
+                let changesFound = false;
+                let logHtml = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+
+                indices.forEach(idx => {
+                    const lc = idx.last_changes;
+                    if (lc && ( (lc.entered && lc.entered.length > 0) || (lc.exited && lc.exited.length > 0) )) {
+                        changesFound = true;
+                        logHtml += `
+                            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 12px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                                    <strong style="color: var(--text-primary); font-size: 12.5px;">${idx.icon || '🏛️'} ${idx.name}</strong>
+                                    <span style="font-size: 11px; color: var(--text-secondary);">Target Size: <strong>${idx.official_size}</strong> | Constituents In DB: <strong>${idx.total_stocks}</strong></span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 5px; font-size: 11.5px;">
+                        `;
+                        if (lc.entered && lc.entered.length > 0) {
+                            const entBadges = lc.entered.map(s => `<span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); font-weight: 600; padding: 2px 7px;">+ ${s.symbol} <span style="font-weight: 400; opacity: 0.85;">(${s.company_name || ''})</span></span>`).join(' ');
+                            logHtml += `<div style="display: flex; align-items: flex-start; gap: 8px;"><strong style="color: #10b981; min-width: 65px; margin-top: 2px;">🟢 Entered:</strong> <div style="display: flex; flex-wrap: wrap; gap: 4px;">${entBadges}</div></div>`;
+                        }
+                        if (lc.exited && lc.exited.length > 0) {
+                            const extBadges = lc.exited.map(s => `<span class="badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); font-weight: 600; padding: 2px 7px;">- ${s.symbol} <span style="font-weight: 400; opacity: 0.85;">(${s.company_name || ''})</span></span>`).join(' ');
+                            logHtml += `<div style="display: flex; align-items: flex-start; gap: 8px;"><strong style="color: #ef4444; min-width: 65px; margin-top: 2px;">🔴 Exited:</strong> <div style="display: flex; flex-wrap: wrap; gap: 4px;">${extBadges}</div></div>`;
+                        }
+                        logHtml += `</div></div>`;
+                    }
+                });
+
+                if (!changesFound) {
+                    logHtml += `
+                        <div style="padding: 12px; text-align: center; color: var(--text-secondary); background: var(--bg-card); border-radius: 6px; border: 1px dashed var(--border-color);">
+                            <span>✓ All 10 benchmark indices compositions are up-to-date and fully rebalanced with official sizes. No additions or exclusions on the latest sync check.</span>
+                        </div>
+                    `;
+                }
+
+                logHtml += '</div>';
+                logBox.innerHTML = logHtml;
+            }
         }
 
         window.loadAdminIndicesStatus = loadAdminIndicesStatus;
