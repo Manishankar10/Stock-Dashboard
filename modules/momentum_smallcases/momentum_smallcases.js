@@ -53,6 +53,23 @@
         return false;
     }
 
+    // Crisp SVG vector icons to avoid platform emoji rendering quirks (e.g. blue square emoji on Windows)
+    function getRebalanceIconSVG(size = 15, strokeWidth = 2.4, extraStyle = '') {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; ${extraStyle}"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>`;
+    }
+
+    function getCheckIconSVG(size = 15, strokeWidth = 2.8, extraStyle = '') {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; ${extraStyle}"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    }
+
+    function getClockIconSVG(size = 14, strokeWidth = 2, extraStyle = '') {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; ${extraStyle}"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+    }
+
+    function getPlayIconSVG(size = 13, extraStyle = '') {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" style="display: inline-block; vertical-align: middle; ${extraStyle}"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+    }
+
     // Robust JSON fetch wrapper that intercepts 502/504 gateway timeouts and non-JSON error pages
     async function safeFetchJson(url, options = {}) {
         let res;
@@ -815,13 +832,13 @@
         if (status === 'DRAFT' || runs.length === 0) {
             actionBtnHtml = `
                 <button type="button" class="btn-primary" onclick="runStrategyInit('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>▶</span> <span>Run Init</span>
+                    <span>${getPlayIconSVG(12)}</span> <span>Run Init</span>
                 </button>
             `;
         } else {
             actionBtnHtml = `
                 <button type="button" class="btn-primary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: #10b981;">
-                    <span>🔄</span> <span>Run Rebalance</span>
+                    <span style="display: inline-flex; align-items: center;">${getRebalanceIconSVG(14, 2.5)}</span> <span>Run Rebalance</span>
                 </button>
             `;
         }
@@ -833,13 +850,13 @@
             // Unrun Init Node
             html += `
                 <div class="msc-timeline-node selected" onclick="selectTimelineRun(null)">
-                    <div class="msc-timeline-icon current">▶</div>
+                    <div class="msc-timeline-icon current">${getPlayIconSVG(13)}</div>
                     <div class="msc-timeline-label">Init</div>
                     <div class="msc-timeline-subtext">Scheduled: ${formatDateDisplay(currentStrategy.start_date)}</div>
                 </div>
                 <div class="msc-timeline-connector"></div>
                 <div class="msc-timeline-node" style="opacity: 0.6; cursor: default;">
-                    <div class="msc-timeline-icon upcoming">⏳</div>
+                    <div class="msc-timeline-icon upcoming">${getClockIconSVG(14)}</div>
                     <div class="msc-timeline-label">Next Rebalance</div>
                     <div class="msc-timeline-subtext">Scheduled: ${formatDateDisplay(nextRebalDate)}</div>
                 </div>
@@ -852,9 +869,13 @@
                 const execDate = formatDateDisplay(r.executed_date || r.scheduled_date);
                 const holidayNote = r.is_holiday_adjusted ? ' (Adj)' : '';
 
+                // Clean vector icons for completed timeline milestones:
+                // Checkmark for initial setup, crisp circular dual-arrows for rebalancing runs
+                const nodeIcon = isInit ? getCheckIconSVG(16, 2.8) : getRebalanceIconSVG(16, 2.4);
+
                 html += `
                     <div class="msc-timeline-node ${isSelected ? 'selected' : ''}" onclick="selectTimelineRun(${idx})" title="Click to view run results on ${execDate}">
-                        <div class="msc-timeline-icon completed">${isInit ? '✓' : '🔄'}</div>
+                        <div class="msc-timeline-icon completed">${nodeIcon}</div>
                         <div class="msc-timeline-label">${escapeHtml(label)}</div>
                         <div class="msc-timeline-subtext">${execDate}${holidayNote}</div>
                     </div>
@@ -867,7 +888,7 @@
             // Upcoming Next Rebalance node (Readonly)
             html += `
                 <div class="msc-timeline-node" style="opacity: 0.85; cursor: default;" title="Upcoming next scheduled rebalancing day">
-                    <div class="msc-timeline-icon upcoming">⏳</div>
+                    <div class="msc-timeline-icon upcoming">${getClockIconSVG(14)}</div>
                     <div class="msc-timeline-label" style="color: var(--text-secondary);">Next Rebalance</div>
                     <div class="msc-timeline-subtext" style="color: #10b981; font-weight: 600;">${formatDateDisplay(nextRebalDate)}</div>
                 </div>
@@ -938,7 +959,7 @@
             <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                        <span>${isInit ? '🎯' : '🔄'}</span> <span>${escapeHtml(runTitle)}</span>
+                        <span style="display: inline-flex; align-items: center;">${isInit ? '🎯' : getRebalanceIconSVG(17, 2.4)}</span> <span>${escapeHtml(runTitle)}</span>
                     </div>
                     <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px;">
                         ${dateNote} &bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong>
@@ -976,7 +997,9 @@
                 </div>
                 <div class="msc-change-card retained">
                     <div class="msc-change-header">
-                        <span class="msc-change-title" style="color: #3b82f6;">🔄 Retained Stocks</span>
+                        <span class="msc-change-title" style="color: #3b82f6; display: flex; align-items: center; gap: 5px;">
+                            ${getRebalanceIconSVG(13, 2.3)} Retained Stocks
+                        </span>
                         <span class="msc-change-count" style="color: #3b82f6;">${retained.length}</span>
                     </div>
                     <div class="msc-change-chips">

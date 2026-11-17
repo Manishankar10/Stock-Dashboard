@@ -452,6 +452,10 @@
     transition: transform 0.2s ease;
 }
 
+.msc-timeline-icon svg {
+    display: block;
+}
+
 .msc-timeline-node:hover .msc-timeline-icon {
     transform: scale(1.1);
 }
