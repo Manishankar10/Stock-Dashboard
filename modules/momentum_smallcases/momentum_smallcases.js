@@ -318,10 +318,9 @@
         }
 
         try {
-            const res = await fetch('/api/momentum-smallcases/strategies');
-            const data = await res.json();
-            if (!data.success) {
-                mount.innerHTML = `<div style="text-align: center; padding: 30px; color: #ef4444;">Failed to load strategies: ${escapeHtml(data.error || 'Server error')}</div>`;
+            const data = await safeFetchJson('/api/momentum-smallcases/strategies');
+            if (!data || !data.success) {
+                mount.innerHTML = `<div style="text-align: center; padding: 30px; color: #ef4444;">Failed to load strategies: ${escapeHtml(data?.error || 'Server error')}</div>`;
                 return;
             }
 
@@ -458,7 +457,7 @@
                                     <span>▶ Init</span>
                                 </button>
                             ` : ''}
-                            <button type="button" class="msc-action-btn delete" onclick="openDeleteStrategyModal('${escapeHtml(s.id)}', '${escapeHtml(s.name)}')" title="Delete Smallcase">
+                            <button type="button" class="msc-action-btn delete" onclick="openDeleteStrategyModal('${escapeHtml(s.id)}')" title="Delete Smallcase">
                                 <span>🗑️</span>
                             </button>
                         </div>
@@ -1481,27 +1480,50 @@
     // =========================================================================
     // 6. DELETE STRATEGY / INDEX HANDLER
     // =========================================================================
-    function openDeleteStrategyModal(strategyId, name) {
+    function openDeleteStrategyModal(strategyId, optName) {
+        if (!strategyId) return;
         setSmallcaseModalLoader('momentumIndexDeleteModal', false);
-        document.getElementById('mIndexDeleteId').value = strategyId;
-        document.getElementById('mIndexDeleteType').value = 'strategy';
-        document.getElementById('mscDeleteModalHeader').innerText = 'Delete Smallcase';
-        document.getElementById('mIndexDeleteName').innerText = name || 'this smallcase';
+        const strat = (strategiesCache || []).find(x => x.id === strategyId) || (currentStrategy && currentStrategy.id === strategyId ? currentStrategy : null);
+        const name = optName || (strat ? strat.name : '') || 'this smallcase';
+
+        const idInput = document.getElementById('mIndexDeleteId');
+        const typeInput = document.getElementById('mIndexDeleteType');
+        const headerEl = document.getElementById('mscDeleteModalHeader');
+        const nameEl = document.getElementById('mIndexDeleteName');
+
+        if (idInput) idInput.value = strategyId;
+        if (typeInput) typeInput.value = 'strategy';
+        if (headerEl) headerEl.innerText = 'Delete Smallcase';
+        if (nameEl) nameEl.innerText = name;
+
         const modal = document.getElementById('momentumIndexDeleteModal');
         if (modal) modal.style.display = 'flex';
     }
 
     function promptDeleteCurrentStrategy() {
-        if (!currentStrategy) return;
+        if (!currentStrategy || !currentStrategy.id) {
+            alertToast('No strategy selected to delete', 'warning');
+            return;
+        }
         openDeleteStrategyModal(currentStrategy.id, currentStrategy.name);
     }
 
-    function openDeleteManualIndexModal(indexId, name) {
+    function openDeleteManualIndexModal(indexId, optName) {
+        if (!indexId) return;
         setSmallcaseModalLoader('momentumIndexDeleteModal', false);
-        document.getElementById('mIndexDeleteId').value = indexId;
-        document.getElementById('mIndexDeleteType').value = 'index';
-        document.getElementById('mscDeleteModalHeader').innerText = 'Delete Manual Index';
-        document.getElementById('mIndexDeleteName').innerText = name || 'this index';
+        const idx = (momentumIndicesCache || []).find(x => x.id === indexId) || (currentViewingIndex && currentViewingIndex.id === indexId ? currentViewingIndex : null);
+        const name = optName || (idx ? idx.name : '') || 'this index';
+
+        const idInput = document.getElementById('mIndexDeleteId');
+        const typeInput = document.getElementById('mIndexDeleteType');
+        const headerEl = document.getElementById('mscDeleteModalHeader');
+        const nameEl = document.getElementById('mIndexDeleteName');
+
+        if (idInput) idInput.value = indexId;
+        if (typeInput) typeInput.value = 'index';
+        if (headerEl) headerEl.innerText = 'Delete Manual Index';
+        if (nameEl) nameEl.innerText = name;
+
         const modal = document.getElementById('momentumIndexDeleteModal');
         if (modal) modal.style.display = 'flex';
     }
@@ -1530,13 +1552,20 @@
         });
 
         try {
-            const url = targetType === 'strategy'
+            const baseUrl = targetType === 'strategy'
                 ? `/api/momentum-smallcases/strategies/${encodeURIComponent(id)}`
                 : `/api/momentum-smallcases/indices/${encodeURIComponent(id)}`;
 
-            const data = await safeFetchJson(url, { method: 'DELETE' });
-            if (!data.success) {
-                alertToast(data.error || 'Failed to delete record', 'error');
+            let data = null;
+            try {
+                data = await safeFetchJson(baseUrl, { method: 'DELETE' });
+            } catch (delErr) {
+                // Fallback to POST /delete if DELETE method is intercepted or blocked
+                data = await safeFetchJson(`${baseUrl}/delete`, { method: 'POST' });
+            }
+
+            if (!data || !data.success) {
+                alertToast(data?.error || 'Failed to delete record', 'error');
                 return;
             }
 
@@ -1544,12 +1573,14 @@
             alertToast(targetType === 'strategy' ? 'Smallcase deleted successfully' : 'Manual Index deleted successfully', 'info');
 
             if (targetType === 'strategy') {
+                currentStrategy = null;
                 if (activeSubView === 'strategy-detail') {
                     switchMomentumSubView('strategies');
                 } else {
                     await loadStrategiesList();
                 }
             } else {
+                currentViewingIndex = null;
                 await loadMomentumManualIndices();
             }
         } catch (err) {
@@ -1711,7 +1742,7 @@
                             <button type="button" class="msc-action-btn edit" onclick="openEditManualIndexModal('${escapeHtml(idx.id)}')" title="Edit Index">
                                 <span>✏️ Edit</span>
                             </button>
-                            <button type="button" class="msc-action-btn delete" onclick="openDeleteManualIndexModal('${escapeHtml(idx.id)}', '${escapeHtml(idx.name)}')" title="Delete Index">
+                            <button type="button" class="msc-action-btn delete" onclick="openDeleteManualIndexModal('${escapeHtml(idx.id)}')" title="Delete Index">
                                 <span>🗑️</span>
                             </button>
                         </div>

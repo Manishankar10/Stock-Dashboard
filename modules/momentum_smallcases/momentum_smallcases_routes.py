@@ -149,7 +149,8 @@ def update_index_api(index_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@momentum_smallcases_bp.route("/api/momentum-smallcases/indices/<index_id>", methods=["DELETE"])
+@momentum_smallcases_bp.route("/api/momentum-smallcases/indices/<index_id>", methods=["DELETE", "POST"])
+@momentum_smallcases_bp.route("/api/momentum-smallcases/indices/<index_id>/delete", methods=["POST", "DELETE"])
 def delete_index_api(index_id):
     """Deletes a manual index."""
     try:
@@ -314,7 +315,8 @@ def run_rebalance_api(strategy_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>", methods=["DELETE"])
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>", methods=["DELETE", "POST"])
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/delete", methods=["POST", "DELETE"])
 def delete_strategy_api(strategy_id):
     """Deletes a strategy."""
     try:

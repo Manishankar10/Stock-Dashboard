@@ -328,15 +328,29 @@ def update_user_index(index_id, name, description, stocks_str, username=None):
 
 def delete_user_index(index_id, username=None):
     """Deletes a manual index by ID."""
-    data = load_user_momentum_smallcases(username)
+    user = username or session.get('username') or 'admin'
+    data = load_user_momentum_smallcases(user)
     indices = data.get("indices", [])
     initial_len = len(indices)
-    indices = [x for x in indices if x.get("id") != index_id]
-    if len(indices) == initial_len:
-        return False
-    data["indices"] = indices
-    save_user_momentum_smallcases(data, username)
-    return True
+    target_id = str(index_id or "").strip()
+    indices = [x for x in indices if str(x.get("id", "")).strip() != target_id]
+    if len(indices) != initial_len:
+        data["indices"] = indices
+        save_user_momentum_smallcases(data, user)
+        return True
+
+    # Fallback to admin if not found in current user doc
+    if user != 'admin':
+        data_admin = load_user_momentum_smallcases('admin')
+        admin_indices = data_admin.get("indices", [])
+        admin_len = len(admin_indices)
+        admin_indices = [x for x in admin_indices if str(x.get("id", "")).strip() != target_id]
+        if len(admin_indices) != admin_len:
+            data_admin["indices"] = admin_indices
+            save_user_momentum_smallcases(data_admin, 'admin')
+            return True
+
+    return False
 
 
 # ==============================================================================
@@ -870,15 +884,29 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
 
 def delete_user_strategy(strategy_id, username=None):
     """Deletes a strategy by ID."""
-    data = load_user_momentum_smallcases(username)
+    user = username or session.get('username') or 'admin'
+    data = load_user_momentum_smallcases(user)
     strategies = data.get("strategies", [])
     initial_len = len(strategies)
-    strategies = [x for x in strategies if x.get("id") != strategy_id]
-    if len(strategies) == initial_len:
-        return False
-    data["strategies"] = strategies
-    save_user_momentum_smallcases(data, username)
-    return True
+    target_id = str(strategy_id or "").strip()
+    strategies = [x for x in strategies if str(x.get("id", "")).strip() != target_id]
+    if len(strategies) != initial_len:
+        data["strategies"] = strategies
+        save_user_momentum_smallcases(data, user)
+        return True
+
+    # Fallback to admin if not found in current user doc
+    if user != 'admin':
+        data_admin = load_user_momentum_smallcases('admin')
+        admin_strategies = data_admin.get("strategies", [])
+        admin_len = len(admin_strategies)
+        admin_strategies = [x for x in admin_strategies if str(x.get("id", "")).strip() != target_id]
+        if len(admin_strategies) != admin_len:
+            data_admin["strategies"] = admin_strategies
+            save_user_momentum_smallcases(data_admin, 'admin')
+            return True
+
+    return False
 
 
 def reset_all_momentum_data(username=None):
