@@ -228,7 +228,7 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
         for host in hosts:
             url = f"https://{host}/v8/finance/chart/{fetch_sym}.NS?interval=1d&range=5y"
             try:
-                r = session.get(url, headers=headers, timeout=3.5)
+                r = session.get(url, headers=headers, timeout=2.0)
                 if r.status_code == 200:
                     body = r.json()
                     res = body.get('chart', {}).get('result', [{}])[0]
@@ -250,8 +250,8 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
                                 "series": series
                             }
                         break
-                elif r.status_code == 404:
-                    # Symbol not found on NSE query endpoint, break to avoid wasting time on query1
+                elif r.status_code in (404, 400):
+                    # Symbol not found or bad request, break to avoid wasting time on query1
                     break
             except Exception as e:
                 logger.warning(f"Error fetching Yahoo series for {fetch_sym} from {host}: {e}")

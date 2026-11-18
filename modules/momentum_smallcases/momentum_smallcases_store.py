@@ -672,6 +672,25 @@ def run_strategy_init(strategy_id, username=None):
     if not constituents:
         raise ValueError(f"Index '{target.get('index_name')}' contains 0 constituent stocks. Please add stocks in Manual Indices.")
 
+    # 1.1 Pre-warm daily quotes in parallel for all index constituents to prevent 502 Bad Gateway timeouts
+    symbols_to_warm = set()
+    for c in (constituents or []):
+        if isinstance(c, dict) and c.get("symbol"):
+            symbols_to_warm.add(c["symbol"])
+        elif isinstance(c, str):
+            symbols_to_warm.add(c)
+
+    if symbols_to_warm:
+        from concurrent.futures import ThreadPoolExecutor
+        from modules.momentum_smallcases.momentum_smallcases_calculator import (
+            fetch_stock_daily_series,
+            save_price_cache,
+        )
+        worker_count = min(32, max(4, len(symbols_to_warm)))
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            list(pool.map(lambda s: fetch_stock_daily_series(s), symbols_to_warm))
+        save_price_cache()
+
     # 2. Evaluate and rank stocks
     ranked_stocks, eligible_count, meta = rank_and_evaluate_universe(
         stock_items=constituents,
@@ -828,6 +847,28 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     )
     if not constituents:
         raise ValueError("No constituents found for index")
+
+    # Standalone rebalance pre-warming
+    if save_cache:
+        symbols_to_warm = set()
+        for c in (constituents or []):
+            if isinstance(c, dict) and c.get("symbol"):
+                symbols_to_warm.add(c["symbol"])
+            elif isinstance(c, str):
+                symbols_to_warm.add(c)
+        for h in target.get("holdings", []):
+            if isinstance(h, dict) and h.get("symbol"):
+                symbols_to_warm.add(h["symbol"])
+        if symbols_to_warm:
+            from concurrent.futures import ThreadPoolExecutor
+            from modules.momentum_smallcases.momentum_smallcases_calculator import (
+                fetch_stock_daily_series,
+                save_price_cache,
+            )
+            worker_count = min(32, max(4, len(symbols_to_warm)))
+            with ThreadPoolExecutor(max_workers=worker_count) as pool:
+                list(pool.map(lambda s: fetch_stock_daily_series(s), symbols_to_warm))
+            save_price_cache()
 
     # Rank universe
     ranked_stocks, eligible_count, meta = rank_and_evaluate_universe(
