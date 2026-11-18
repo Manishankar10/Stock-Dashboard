@@ -130,9 +130,9 @@ def admin_stock_closing_prices_sync():
 
 def init_stock_closing_prices(app):
     """
-    Initializes the stock closing prices subsystem.
-    Checks whether database contains initial 2-year closing prices.
-    If empty, initiates background worker to backfill on initial boot.
+    Initializes the stock closing prices subsystem on app boot.
+    Verifies database state without triggering automatic background syncs.
+    All future syncs are triggered manually via the Admin Settings button.
     """
     try:
         stock_closing_prices_provider.ensure_initialized()

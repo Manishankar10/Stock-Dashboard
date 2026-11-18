@@ -191,13 +191,19 @@ class StockClosingPricesProvider:
         # Calculate pending stocks count
         pending_count = 0
         latest_date = self._latest_trading_date
+        best_synced_display = self._last_synced_display
         if summary:
-            # find latest date present across stocks
+            # find latest date present across stocks and latest synced timestamp
             for sym, rec in summary.items():
                 d = rec.get("latest_date", "")
                 if d and d > latest_date:
                     latest_date = d
+                sd = rec.get("last_synced_display", "")
+                if sd and sd != "Never" and (best_synced_display == "Never" or not best_synced_display):
+                    best_synced_display = sd
             self._latest_trading_date = latest_date
+            if best_synced_display and best_synced_display != "Never":
+                self._last_synced_display = best_synced_display
             
             # Count stocks missing the latest date
             if latest_date:
@@ -478,19 +484,14 @@ class StockClosingPricesProvider:
     def ensure_initialized(self):
         """
         Called on application initialization.
-        Checks if 'stock_closing_prices' table/collection is populated.
-        If empty, triggers automatic background ingestion of 2-year closing prices.
+        Verifies existing stock closing prices dataset and loads telemetry.
+        Automatic sync on boot is completely disabled — synchronization is purely manual
+        via the Admin Settings "Sync Pending Closes" button.
         """
         try:
             summary = db_store.load_stock_closing_prices_db(summary_only=True)
             count = len(summary) if summary else 0
-            logger.info(f"Checking stock closing prices on init: {count} stocks currently in DB.")
-
-            if count < 50:
-                logger.info("stock_closing_prices table is empty or incomplete on boot. Triggering background backfill...")
-                self.start_background_sync(force=True, full_resync=True, on_init=True)
-            else:
-                logger.info(f"stock_closing_prices already initialized with {count} constituent stocks.")
+            logger.info(f"stock_closing_prices verified on init: {count} constituent stocks loaded in DB (Auto-sync disabled, manual sync only).")
         except Exception as e:
             logger.warning(f"Error in ensure_initialized: {e}")
 

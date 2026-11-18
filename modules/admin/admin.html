@@ -4622,7 +4622,7 @@
             } else {
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = '⚡ Sync';
+                    btn.innerHTML = (key === 'stock_prices') ? '🔄 Sync Pending Closes' : '⚡ Sync';
                     btn.style.opacity = '1';
                 }
 
