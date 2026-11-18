@@ -20,6 +20,8 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     run_strategy_init,
     run_strategy_rebalance,
     run_strategy_all_rebalances,
+    start_async_execution_job,
+    get_execution_job_status,
     delete_user_strategy,
     reset_all_momentum_data,
 )
@@ -282,12 +284,21 @@ def run_init_api(strategy_id):
     """Executes initial portfolio calculation & allocation."""
     try:
         user = session.get("username") or "admin"
-        updated = run_strategy_init(strategy_id, username=user)
+        if request.args.get("sync") == "1":
+            updated = run_strategy_init(strategy_id, username=user)
+            return jsonify({
+                "success": True,
+                "strategy": updated,
+                "message": "Init execution completed successfully"
+            })
+        
+        job_id = start_async_execution_job("INIT", strategy_id, username=user)
         return jsonify({
             "success": True,
-            "strategy": updated,
-            "message": "Init execution completed successfully"
-        })
+            "async": True,
+            "job_id": job_id,
+            "message": "Init execution started"
+        }), 202
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
@@ -302,12 +313,22 @@ def run_rebalance_api(strategy_id):
         user = session.get("username") or "admin"
         body = request.get_json(silent=True) or {}
         stepup = float(body.get("stepup_amount") or 0.0)
-        updated = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=user)
+        
+        if request.args.get("sync") == "1":
+            updated = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=user)
+            return jsonify({
+                "success": True,
+                "strategy": updated,
+                "message": "Rebalance execution completed successfully"
+            })
+        
+        job_id = start_async_execution_job("REBALANCE", strategy_id, username=user, stepup_amount=stepup)
         return jsonify({
             "success": True,
-            "strategy": updated,
-            "message": "Rebalance execution completed successfully"
-        })
+            "async": True,
+            "job_id": job_id,
+            "message": "Rebalance execution started"
+        }), 202
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
@@ -323,20 +344,30 @@ def run_all_strategy_api(strategy_id):
         body = request.get_json(silent=True) or {}
         stepup = float(body.get("stepup_amount") or body.get("stepup_per_rebalance") or 0.0)
         up_to = body.get("up_to_date")
-        result = run_strategy_all_rebalances(
-            strategy_id=strategy_id,
-            stepup_per_rebalance=stepup,
-            up_to_date=up_to,
-            username=user
-        )
+        
+        if request.args.get("sync") == "1":
+            result = run_strategy_all_rebalances(
+                strategy_id=strategy_id,
+                stepup_per_rebalance=stepup,
+                up_to_date=up_to,
+                username=user
+            )
+            return jsonify({
+                "success": True,
+                "strategy": result["strategy"],
+                "init_executed": result["init_executed"],
+                "rebalances_executed": result["rebalances_executed"],
+                "total_runs_executed": result["total_runs_executed"],
+                "message": result["message"]
+            })
+        
+        job_id = start_async_execution_job("RUN_ALL", strategy_id, username=user, stepup_per_rebalance=stepup, up_to_date=up_to)
         return jsonify({
             "success": True,
-            "strategy": result["strategy"],
-            "init_executed": result["init_executed"],
-            "rebalances_executed": result["rebalances_executed"],
-            "total_runs_executed": result["total_runs_executed"],
-            "message": result["message"]
-        })
+            "async": True,
+            "job_id": job_id,
+            "message": "Run All execution started"
+        }), 202
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except RuntimeError as re:
@@ -349,6 +380,15 @@ def run_all_strategy_api(strategy_id):
     except Exception as e:
         logger.error(f"Error running all rebalances for '{strategy_id}': {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/jobs/<job_id>", methods=["GET"])
+def get_job_status_api(job_id):
+    """Returns execution status for an async momentum job."""
+    job = get_execution_job_status(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Job not found"}), 404
+    return jsonify({"success": True, "job": job})
 
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>", methods=["DELETE", "POST"])

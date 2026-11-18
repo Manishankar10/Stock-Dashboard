@@ -8,6 +8,7 @@ import re
 import uuid
 import json
 import logging
+import threading
 from datetime import datetime, date
 from flask import session
 
@@ -1157,5 +1158,81 @@ def reset_all_momentum_data(username=None):
         logger.warning(f"Error resetting MongoDB momentum_smallcases: {e}")
 
     return {"success": True, "message": "All momentum smallcase data has been completely reset."}
+
+
+# ==============================================================================
+# ASYNC EXECUTION JOBS (Immune to Gunicorn / Nginx / Reverse Proxy 502 Timeouts)
+# ==============================================================================
+
+_EXECUTION_JOBS = {}
+_JOBS_LOCK = threading.Lock()
+
+
+def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
+    """
+    Launches an execution job in a background thread and returns immediately with a unique job_id.
+    Prevents 502 Bad Gateway timeouts caused by long calculations exceeding proxy limits (e.g. 30s).
+    """
+    import threading
+    job_id = f"job_{uuid.uuid4().hex[:12]}"
+    with _JOBS_LOCK:
+        # Prune old completed jobs if dictionary grows
+        if len(_EXECUTION_JOBS) > 100:
+            completed_keys = [k for k, v in _EXECUTION_JOBS.items() if v.get("status") in ("COMPLETED", "FAILED")]
+            for k in completed_keys[:50]:
+                _EXECUTION_JOBS.pop(k, None)
+
+        _EXECUTION_JOBS[job_id] = {
+            "id": job_id,
+            "job_type": job_type,  # "INIT", "REBALANCE", "RUN_ALL"
+            "strategy_id": strategy_id,
+            "status": "RUNNING",
+            "progress": "Starting execution...",
+            "started_at": datetime.now().isoformat(),
+            "completed_at": None,
+            "result": None,
+            "error": None
+        }
+
+    def _worker():
+        try:
+            logger.info(f"Async job {job_id} ({job_type}) started for strategy {strategy_id}")
+            if job_type == "INIT":
+                res = run_strategy_init(strategy_id, username=username)
+            elif job_type == "REBALANCE":
+                stepup = kwargs.get("stepup_amount", 0.0)
+                res = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=username)
+            elif job_type == "RUN_ALL":
+                stepup = kwargs.get("stepup_per_rebalance", 0.0)
+                up_to = kwargs.get("up_to_date")
+                res = run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=stepup, up_to_date=up_to, username=username)
+            else:
+                raise ValueError(f"Unknown job type: {job_type}")
+
+            with _JOBS_LOCK:
+                _EXECUTION_JOBS[job_id]["status"] = "COMPLETED"
+                _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
+                _EXECUTION_JOBS[job_id]["result"] = res
+            logger.info(f"Async job {job_id} ({job_type}) completed successfully")
+        except Exception as e:
+            logger.error(f"Error in async job {job_id} ({job_type}): {e}", exc_info=True)
+            with _JOBS_LOCK:
+                _EXECUTION_JOBS[job_id]["status"] = "FAILED"
+                _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
+                _EXECUTION_JOBS[job_id]["error"] = str(e)
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
+    return job_id
+
+
+def get_execution_job_status(job_id):
+    """Retrieves current status and result for an async execution job."""
+    with _JOBS_LOCK:
+        job = _EXECUTION_JOBS.get(job_id)
+        if not job:
+            return None
+        return dict(job)
+
 
 

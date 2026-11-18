@@ -147,6 +147,37 @@
         return data;
     }
 
+    // Polls background execution job until completion (immune to reverse proxy / Gunicorn 502/504 timeouts)
+    async function pollJobUntilComplete(jobId, statusTitle = 'Executing...') {
+        const startTime = Date.now();
+        const maxPollMs = 300000; // 5 minute max safety threshold
+        const pollInterval = 1200; // 1.2s poll interval
+
+        while (Date.now() - startTime < maxPollMs) {
+            await new Promise(r => setTimeout(r, pollInterval));
+            let res = null;
+            try {
+                res = await safeFetchJson(`/api/momentum-smallcases/jobs/${encodeURIComponent(jobId)}`);
+            } catch (pollErr) {
+                console.warn('Transient polling error:', pollErr);
+                continue;
+            }
+
+            if (!res || !res.success || !res.job) {
+                continue;
+            }
+
+            const job = res.job;
+            if (job.status === 'COMPLETED') {
+                return job.result;
+            }
+            if (job.status === 'FAILED') {
+                throw new Error(job.error || 'Execution failed');
+            }
+        }
+        throw new Error('Calculation timed out after 5 minutes. Please refresh the page to view current progress.');
+    }
+
     // =========================================================================
     // UTILITY FORMATTERS
     // =========================================================================
@@ -1539,6 +1570,10 @@
                 return;
             }
 
+            if (data.async && data.job_id) {
+                await pollJobUntilComplete(data.job_id, 'Executing Initial Allocation...');
+            }
+
             alertToast('Init execution completed successfully!', 'success');
             await openStrategyDetailView(strategyId);
             await loadStrategiesList();
@@ -1623,6 +1658,10 @@
             if (!data.success) {
                 alertToast(data.error || 'Failed to execute rebalance', 'error');
                 return;
+            }
+
+            if (data.async && data.job_id) {
+                await pollJobUntilComplete(data.job_id, 'Executing Rebalance...');
             }
 
             closeRunRebalanceModal();
@@ -1769,8 +1808,13 @@
                 return;
             }
 
+            let resultData = data;
+            if (data.async && data.job_id) {
+                resultData = await pollJobUntilComplete(data.job_id, 'Executing Batch Rebalances...');
+            }
+
             closeRunAllModal();
-            alertToast(data.message || 'All scheduled rebalances completed successfully!', 'success');
+            alertToast((resultData && resultData.message) || 'All scheduled rebalances completed successfully!', 'success');
 
             // Refresh view and select latest run
             selectedRunIndex = null;
