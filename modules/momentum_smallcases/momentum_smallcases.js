@@ -1052,6 +1052,7 @@
         }
 
         mount.innerHTML = html;
+        attachTimelineMouseScroll(mount);
 
         // Auto-scroll the timeline horizontally to keep the active (recent rightmost) node in view
         const scrollRecentNode = () => {
@@ -1067,6 +1068,67 @@
 
         requestAnimationFrame(scrollRecentNode);
         setTimeout(scrollRecentNode, 100);
+    }
+
+    function attachTimelineMouseScroll(mount) {
+        if (!mount || mount._hasMouseScrollAttached) return;
+        mount._hasMouseScrollAttached = true;
+
+        // 1. Mouse Wheel -> Horizontal Timeline Scroll
+        // Translates vertical wheel rotation (deltaY) into horizontal scrolling
+        mount.addEventListener('wheel', (evt) => {
+            const maxScroll = mount.scrollWidth - mount.clientWidth;
+            if (maxScroll <= 0) return;
+
+            const delta = Math.abs(evt.deltaY) >= Math.abs(evt.deltaX) ? evt.deltaY : evt.deltaX;
+            if (delta !== 0) {
+                evt.preventDefault();
+                mount.scrollLeft += delta;
+            }
+        }, { passive: false });
+
+        // 2. Mouse Click-and-Drag (Grab to scroll horizontally)
+        let isDown = false;
+        let startX = 0;
+        let initialScrollLeft = 0;
+        let draggedDistance = 0;
+
+        mount.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Only primary/left mouse click
+            isDown = true;
+            mount.classList.add('is-dragging');
+            startX = e.pageX - mount.offsetLeft;
+            initialScrollLeft = mount.scrollLeft;
+            draggedDistance = 0;
+        });
+
+        const handleMouseUp = () => {
+            if (!isDown) return;
+            isDown = false;
+            mount.classList.remove('is-dragging');
+        };
+
+        window.addEventListener('mouseup', handleMouseUp);
+        mount.addEventListener('mouseleave', handleMouseUp);
+
+        mount.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            const x = e.pageX - mount.offsetLeft;
+            const walk = (x - startX);
+            draggedDistance = Math.abs(walk);
+            if (draggedDistance > 3) {
+                e.preventDefault();
+                mount.scrollLeft = initialScrollLeft - walk;
+            }
+        });
+
+        // Prevent accidental timeline node selection when dragging
+        mount.addEventListener('click', (e) => {
+            if (draggedDistance > 6) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        }, true);
     }
 
     function selectTimelineRun(runIndex) {

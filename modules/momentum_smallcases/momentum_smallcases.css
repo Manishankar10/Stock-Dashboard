@@ -601,11 +601,38 @@ body > .msc-global-process-loader[style*="none"] {
     align-items: center;
     gap: 0;
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 16px 12px;
     background: var(--bg-subtle, rgba(0, 0, 0, 0.15));
     border: 1px solid var(--border-color, #2a2e39);
     border-radius: 10px;
     scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+    cursor: grab;
+    user-select: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.msc-timeline-wrapper::-webkit-scrollbar {
+    height: 6px;
+}
+
+.msc-timeline-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.msc-timeline-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.msc-timeline-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.msc-timeline-wrapper.is-dragging {
+    cursor: grabbing;
+    user-select: none;
 }
 
 .msc-timeline-node {
@@ -615,6 +642,7 @@ body > .msc-global-process-loader[style*="none"] {
     text-align: center;
     cursor: pointer;
     min-width: 140px;
+    flex-shrink: 0;
     padding: 8px 12px;
     border-radius: 8px;
     transition: all 0.2s ease;
@@ -700,8 +728,9 @@ body > .msc-global-process-loader[style*="none"] {
 }
 
 .msc-timeline-connector {
-    flex: 1 1 40px;
-    min-width: 30px;
+    flex: 0 0 40px;
+    min-width: 40px;
+    flex-shrink: 0;
     height: 2px;
     background: var(--border-color, #2a2e39);
     margin: 0 4px;
