@@ -496,9 +496,6 @@
                             <button type="button" class="msc-action-btn view" onclick="openStrategyDetailView('${escapeHtml(s.id)}')" title="View Details & Timeline">
                                 <span>👁️ Details</span>
                             </button>
-                            <button type="button" class="msc-action-btn edit" onclick="openRunAllModal('${escapeHtml(s.id)}')" title="Run All (Init + Rebalances)" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
-                                <span>⚡ Run All</span>
-                            </button>
                             ${isDraft ? `
                                 <button type="button" class="msc-action-btn" onclick="runStrategyInit('${escapeHtml(s.id)}')" title="Execute Initial Allocation" style="color: var(--text-primary); border-color: var(--border-color);">
                                     <span>▶ Init</span>
@@ -812,7 +809,7 @@
     // =========================================================================
     // 3. STRATEGY DETAILS & EXECUTION TIMELINE VIEW
     // =========================================================================
-    async function openStrategyDetailView(strategyId) {
+    async function openStrategyDetailView(strategyId, optRunIndex = null) {
         switchMomentumSubView('strategy-detail');
 
         const container = document.getElementById('sd-selected-run-container');
@@ -906,9 +903,11 @@
             // Render Formula
             document.getElementById('sd-formula-text').innerText = s.formula || '—';
 
-            // Render Timeline & Selected Run
+            // Render Timeline & Selected Run (focus the recent one / most right)
             const runs = s.runs || [];
-            if (selectedRunIndex == null || selectedRunIndex >= runs.length) {
+            if (optRunIndex != null && optRunIndex >= 0 && optRunIndex < runs.length) {
+                selectedRunIndex = optRunIndex;
+            } else {
                 selectedRunIndex = runs.length > 0 ? runs.length - 1 : null;
             }
 
@@ -1026,6 +1025,21 @@
         }
 
         mount.innerHTML = html;
+
+        // Auto-scroll the timeline horizontally to keep the active (recent rightmost) node in view
+        const scrollRecentNode = () => {
+            const selectedNode = mount.querySelector('.msc-timeline-node.selected');
+            if (selectedNode) {
+                const offsetLeft = selectedNode.offsetLeft - mount.offsetLeft;
+                const targetScrollLeft = offsetLeft - (mount.clientWidth / 2) + (selectedNode.offsetWidth / 2);
+                mount.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
+            } else if (runs && runs.length > 0) {
+                mount.scrollTo({ left: mount.scrollWidth, behavior: 'smooth' });
+            }
+        };
+
+        requestAnimationFrame(scrollRecentNode);
+        setTimeout(scrollRecentNode, 100);
     }
 
     function selectTimelineRun(runIndex) {
