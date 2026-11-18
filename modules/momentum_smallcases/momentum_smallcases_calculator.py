@@ -79,11 +79,26 @@ def save_price_cache():
     with _cache_lock:
         try:
             os.makedirs(os.path.dirname(_CACHE_FILE), exist_ok=True)
-            tmp = _CACHE_FILE + ".tmp"
+            tmp = f"{_CACHE_FILE}.tmp.{os.getpid()}"
             data_copy = dict(_memory_price_cache)
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(data_copy, f, ensure_ascii=False)
-            os.replace(tmp, _CACHE_FILE)
+            
+            # Robust atomic replacement with brief retries on Windows
+            for attempt in range(5):
+                try:
+                    os.replace(tmp, _CACHE_FILE)
+                    break
+                except PermissionError:
+                    if attempt < 4:
+                        time.sleep(0.06)
+                    else:
+                        import shutil
+                        shutil.copyfile(tmp, _CACHE_FILE)
+                        try:
+                            os.remove(tmp)
+                        except Exception:
+                            pass
         except Exception as e:
             logger.warning(f"Failed to save price cache: {e}")
 
@@ -477,7 +492,7 @@ def filter_universe_by_date(stock_items, target_date):
     return eligible
 
 
-def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stocks, exit_regime_ranking, return_meta=False):
+def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stocks, exit_regime_ranking, return_meta=False, save_cache=True):
     """
     Calculates formula scores for all eligible stocks, ranks them descending,
     assigns color tiers (green for top N, dark yellow up to exit regime),
@@ -516,8 +531,9 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
             else:
                 failed_symbols.append(sym)
 
-    # Save disk cache ONCE after all worker threads finish
-    save_price_cache()
+    # Save disk cache ONCE after all worker threads finish (if save_cache requested)
+    if save_cache:
+        save_price_cache()
 
     # Sort descending by total_score
     calculated_stocks.sort(key=lambda x: x["total_score"], reverse=True)

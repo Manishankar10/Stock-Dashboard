@@ -759,7 +759,7 @@ def run_strategy_init(strategy_id, username=None):
     return target
 
 
-def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
+def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_cache=True):
     """
     Executes a rebalance run for the strategy:
     1. Advances to next rebalance trading date.
@@ -836,7 +836,8 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None):
         formula_str=target.get("formula"),
         no_of_stocks=target["no_of_stocks"],
         exit_regime_ranking=target["exit_regime_ranking"],
-        return_meta=True
+        return_meta=True,
+        save_cache=save_cache
     )
 
     if not ranked_stocks:
@@ -912,7 +913,16 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
     Executes Init (if strategy is in DRAFT status) and then sequentially executes
     all scheduled monthly rebalances up to up_to_date (defaults to today).
     Each rebalance run receives the specified stepup_per_rebalance capital amount.
+    Pre-warms all universe quotes upfront to ensure lightning-fast execution and
+    prevents 502 Bad Gateway proxy timeouts.
     """
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        fetch_stock_daily_series,
+        save_price_cache,
+    )
+
     data = load_user_momentum_smallcases(username)
     strategies = data.get("strategies", [])
     target = next((x for x in strategies if x.get("id") == strategy_id), None)
@@ -936,8 +946,33 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
             f"Cutoff date cannot be in the future (today is {today_d.strftime('%d/%m/%Y')})."
         )
 
+    # 0. Pre-warm daily quotes in parallel for all index constituents & current holdings
+    constituents = get_strategy_index_constituents(
+        target["index_id"],
+        target.get("index_type", "manual"),
+        username=username
+    )
+    symbols_to_warm = set()
+    for c in (constituents or []):
+        if isinstance(c, dict) and c.get("symbol"):
+            symbols_to_warm.add(c["symbol"])
+        elif isinstance(c, str):
+            symbols_to_warm.add(c)
+    for h in target.get("holdings", []):
+        if isinstance(h, dict) and h.get("symbol"):
+            symbols_to_warm.add(h["symbol"])
+
+    if symbols_to_warm:
+        logger.info(f"Pre-warming {len(symbols_to_warm)} universe stock quotes for batch rebalance...")
+        worker_count = min(24, max(4, len(symbols_to_warm)))
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            list(pool.map(lambda s: fetch_stock_daily_series(s), symbols_to_warm))
+        save_price_cache()
+
     init_executed = False
     rebalances_executed = 0
+    batch_start_time = time.time()
+    max_batch_seconds = 22.0  # Safe threshold well below typical 30s/60s reverse proxy timeouts
 
     # 1. Execute Init if DRAFT or no runs
     if target.get("status") == "DRAFT" or not target.get("runs"):
@@ -950,6 +985,7 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
     # 2. Iteratively execute all due rebalances up to cutoff_d
     max_rebal_runs = 120  # Safeguard: max 10 years of monthly rebalances
     last_processed_date = None
+    reached_time_limit = False
 
     while rebalances_executed < max_rebal_runs:
         sched_rebal_str = target.get("next_rebalance_date")
@@ -962,11 +998,18 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
             logger.warning(f"Rebalance date did not advance: {rebal_d} <= {last_processed_date}")
             break
 
+        # Time threshold guard to prevent proxy 502/504 timeout
+        if rebalances_executed > 0 and (time.time() - batch_start_time) > max_batch_seconds:
+            logger.info(f"Batch time limit ({max_batch_seconds}s) reached after {rebalances_executed} rebalances; returning cleanly.")
+            reached_time_limit = True
+            break
+
         try:
             target = run_strategy_rebalance(
                 strategy_id,
                 stepup_amount=float(stepup_per_rebalance or 0.0),
-                username=username
+                username=username,
+                save_cache=False
             )
             rebalances_executed += 1
             last_processed_date = rebal_d
@@ -977,6 +1020,9 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
                 raise RuntimeError(err_msg)
             else:
                 raise
+
+    # Save disk price cache once after batch completes
+    save_price_cache()
 
     final_target = get_user_strategy(strategy_id, username=username) or target
     total_runs = (1 if init_executed else 0) + rebalances_executed
@@ -1001,6 +1047,8 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
         stepup_val = float(stepup_per_rebalance or 0.0)
         stepup_txt = f" with ₹{stepup_val:,.2f} step-up per rebalance" if stepup_val > 0 else ""
         msg = f"Successfully executed {' + '.join(parts)}{stepup_txt} up to {cutoff_d}. Next rebalance is on {final_target.get('next_rebalance_date')}."
+        if reached_time_limit:
+            msg += " (Reached batch safe time limit; click Run All again to continue remaining runs)."
 
     return {
         "strategy": final_target,
