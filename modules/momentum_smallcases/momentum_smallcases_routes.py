@@ -278,6 +278,28 @@ def get_strategy_consolidated_stocks_api(strategy_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/export-ranked-excel", methods=["GET"])
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/runs/<int:run_index>/export-ranked-excel", methods=["GET"])
+def export_ranked_stocks_excel_api(strategy_id, run_index=None):
+    """Exports an Excel workbook (.xlsx) containing all eligible stocks ranked by momentum formula score."""
+    try:
+        from flask import send_file
+        from modules.momentum_smallcases.momentum_smallcases_excel import export_ranked_stocks_to_bytes
+        user = session.get("username") or "admin"
+        filename, bio = export_ranked_stocks_to_bytes(strategy_id, run_index=run_index, username=user)
+        return send_file(
+            bio,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 404
+    except Exception as e:
+        logger.error(f"Error exporting ranked stocks Excel for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/formula", methods=["PUT"])
 def update_formula_api(strategy_id):
     """Updates formula for a strategy."""

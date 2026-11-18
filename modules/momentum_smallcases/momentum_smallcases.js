@@ -1266,6 +1266,9 @@
                             Showing top ${rankedStocks.length} stocks
                         </div>
                     </div>
+                    <button type="button" class="btn-secondary" onclick="downloadAllRankedStocksExcel()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'" title="Download Excel covering all eligible universe stocks calculated and ordered by score (.xlsx)">
+                        <span>📥</span> <span>Download All Ranked Stocks (.xlsx)</span>
+                    </button>
                 </div>
 
                 <div style="overflow-x: auto; max-height: 480px;">
@@ -1972,6 +1975,22 @@
                 btn.innerText = origText;
             }
         }
+    }
+
+    // =========================================================================
+    // 5a. EXCEL EXPORT FOR ALL RANKED STOCKS
+    // =========================================================================
+    function downloadAllRankedStocksExcel() {
+        if (!currentStrategy) {
+            alertToast('Please select a momentum smallcase strategy first.', 'error');
+            return;
+        }
+
+        const runIdx = (selectedRunIndex != null) ? selectedRunIndex : (currentStrategy.runs ? currentStrategy.runs.length - 1 : 0);
+        const url = `/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/runs/${encodeURIComponent(runIdx)}/export-ranked-excel`;
+
+        alertToast('Downloading Excel workbook for all eligible stocks...', 'info');
+        window.location.href = url;
     }
 
     // =========================================================================
@@ -3210,6 +3229,7 @@
     window.openDeleteStrategyModal = openDeleteStrategyModal;
     window.promptDeleteCurrentStrategy = promptDeleteCurrentStrategy;
     window.checkStratDateAndIndexMatch = checkStratDateAndIndexMatch;
+    window.downloadAllRankedStocksExcel = downloadAllRankedStocksExcel;
 
     // Consolidated Stocks
     window.openConsolidatedStocksModal = openConsolidatedStocksModal;
