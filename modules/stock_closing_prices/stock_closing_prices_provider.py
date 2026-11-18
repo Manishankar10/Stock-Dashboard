@@ -39,6 +39,9 @@ logger = logging.getLogger("stock_closing_prices")
 
 TELEMETRY_CACHE_FILE = os.path.join(APP_DATA_DIR, "stock_closing_prices_telemetry.json")
 
+# Process start baseline date: all historical dates before Jan 2025 are strictly excluded.
+START_DATE = "2025-01-01"
+
 
 class StockClosingPricesProvider:
     def __init__(self):
@@ -245,6 +248,7 @@ class StockClosingPricesProvider:
             "total_stocks": db_count,
             "universe_size": self._total_stocks,
             "pending_count": pending_count,
+            "start_date": START_DATE,
             "latest_trading_date": latest_date or "—",
             "last_synced_display": self._last_synced_display,
             "market_closed": market_closed,
@@ -370,16 +374,14 @@ class StockClosingPricesProvider:
             return None
 
         # Merge fetched bars with existing prices (idempotent, deduplicated by date)
-        price_dict = {p["d"]: p["c"] for p in existing_prices}
+        # Strictly exclude any historical data prior to Jan 2025 (START_DATE)
+        price_dict = {p["d"]: p["c"] for p in existing_prices if p.get("d", "") >= START_DATE}
         for b in fetched_bars:
-            price_dict[b["d"]] = b["c"]
+            if b.get("d", "") >= START_DATE:
+                price_dict[b["d"]] = b["c"]
 
         # Sort chronologically
         merged_dates = sorted(price_dict.keys())
-        # Cap to rolling 550 trading days (~2.2 years) to keep document size bounded
-        if len(merged_dates) > 550:
-            merged_dates = merged_dates[-550:]
-
         merged_prices = [{"d": d, "c": price_dict[d]} for d in merged_dates]
 
         if not merged_prices:
