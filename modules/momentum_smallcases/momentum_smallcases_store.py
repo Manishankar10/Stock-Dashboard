@@ -1341,6 +1341,19 @@ def get_strategy_consolidated_stocks(strategy_id, username=None):
         else:
             s["holding_period_text"] = "Current (0d)"
 
+    # Assign round/stint numbers chronologically per symbol
+    from collections import defaultdict
+    stints_by_sym = defaultdict(list)
+    for s in all_stints:
+        stints_by_sym[s["symbol"]].append(s)
+
+    for sym, group in stints_by_sym.items():
+        group.sort(key=lambda x: str(x.get("entry_date") or ""))
+        tot = len(group)
+        for idx, item in enumerate(group, 1):
+            item["round_number"] = idx
+            item["total_rounds"] = tot
+
     # Compute per-symbol total cumulative P&L across all stints
     sym_totals = {}
     for s in all_stints:

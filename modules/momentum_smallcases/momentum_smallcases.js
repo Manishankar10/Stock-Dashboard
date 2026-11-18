@@ -2207,6 +2207,22 @@
             symTotals[s.symbol].pnl += s.pnl;
         });
 
+        // Assign round numbers chronologically per symbol
+        const stintsBySym = {};
+        allStints.forEach(s => {
+            if (!stintsBySym[s.symbol]) stintsBySym[s.symbol] = [];
+            stintsBySym[s.symbol].push(s);
+        });
+
+        Object.values(stintsBySym).forEach(group => {
+            group.sort((a, b) => String(a.entry_date || '').localeCompare(String(b.entry_date || '')));
+            const tot = group.length;
+            group.forEach((item, idx) => {
+                item.round_number = idx + 1;
+                item.total_rounds = tot;
+            });
+        });
+
         allStints.forEach(s => {
             const tInv = symTotals[s.symbol].invested;
             const tPnl = symTotals[s.symbol].pnl;
@@ -2376,11 +2392,16 @@
                 const totalPnlPct = Number(s.total_stock_pnl_percent || 0);
                 const totalColor = totalPnl >= 0 ? '#10b981' : '#ef4444';
 
+                const roundBadge = (s.total_rounds && s.total_rounds > 1)
+                    ? `<span style="font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); margin-left: 6px; white-space: nowrap;" title="Participation round ${s.round_number} of ${s.total_rounds} for ${escapeHtml(s.symbol)}">Round ${s.round_number} of ${s.total_rounds}</span>`
+                    : '';
+
                 html += `
                     <tr style="border-bottom: 1px solid var(--border-color); transition: background-color 0.12s ease;">
                         <td style="text-align: center; color: var(--text-secondary); font-size: 11px;">${idx + 1}</td>
-                        <td style="font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px;">
+                        <td style="font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px; white-space: nowrap;">
                             ${escapeHtml(s.symbol)}
+                            ${roundBadge}
                         </td>
                         <td style="text-align: center;">${statusBadge}</td>
                         <td style="text-align: center; font-weight: 500; color: var(--text-primary);">${escapeHtml(s.entry_month_year || '—')}</td>
