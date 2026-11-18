@@ -938,7 +938,7 @@
                 selectedRunIndex = runs.length > 0 ? runs.length - 1 : null;
             }
 
-            renderTimeline(runs, s.next_rebalance_date, s.status);
+            renderTimeline(runs, s.next_rebalance_date, s.status, true, optRunIndex);
 
             if (runs.length > 0 && selectedRunIndex != null) {
                 renderRunResults(runs[selectedRunIndex]);
@@ -953,7 +953,7 @@
         }
     }
 
-    function renderTimeline(runs, nextRebalDate, status) {
+    function renderTimeline(runs, nextRebalDate, status, isInitialLoad = false, optRunIndex = null) {
         const mount = document.getElementById('sd-timeline-mount');
         const actionSlot = document.getElementById('sd-timeline-action-slot');
         if (!mount) return;
@@ -1048,24 +1048,26 @@
         mount.innerHTML = html;
         attachTimelineMouseScroll(mount);
 
-        // Auto-scroll the timeline horizontally to keep the active recent rightmost node in view
-        const scrollRecentNode = () => {
-            if (runs && runs.length > 0) {
-                // Focus the most recent rightmost run node
-                mount.scrollTo({ left: mount.scrollWidth, behavior: 'smooth' });
-            } else {
-                const selectedNode = mount.querySelector('.msc-timeline-node.selected');
-                if (selectedNode) {
-                    const offsetLeft = selectedNode.offsetLeft - mount.offsetLeft;
-                    const targetScrollLeft = offsetLeft - (mount.clientWidth / 2) + (selectedNode.offsetWidth / 2);
-                    mount.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
+        // Auto-scroll the timeline horizontally ONLY on initial page load to keep the active recent rightmost node in view
+        if (isInitialLoad) {
+            const scrollRecentNode = () => {
+                if (optRunIndex == null && runs && runs.length > 0) {
+                    // Focus the most recent rightmost run node on initial view load
+                    mount.scrollTo({ left: mount.scrollWidth, behavior: 'smooth' });
+                } else {
+                    const selectedNode = mount.querySelector('.msc-timeline-node.selected');
+                    if (selectedNode) {
+                        const offsetLeft = selectedNode.offsetLeft - mount.offsetLeft;
+                        const targetScrollLeft = offsetLeft - (mount.clientWidth / 2) + (selectedNode.offsetWidth / 2);
+                        mount.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
+                    }
                 }
-            }
-        };
+            };
 
-        requestAnimationFrame(scrollRecentNode);
-        setTimeout(scrollRecentNode, 80);
-        setTimeout(scrollRecentNode, 250);
+            requestAnimationFrame(scrollRecentNode);
+            setTimeout(scrollRecentNode, 80);
+            setTimeout(scrollRecentNode, 250);
+        }
     }
 
     function attachTimelineMouseScroll(mount) {
@@ -1134,7 +1136,22 @@
         if (!currentStrategy) return;
 
         const runs = currentStrategy.runs || [];
-        renderTimeline(runs, currentStrategy.next_rebalance_date, currentStrategy.status);
+        const mount = document.getElementById('sd-timeline-mount');
+        if (mount) {
+            const nodes = mount.querySelectorAll('.msc-timeline-node');
+            if (nodes.length > 0) {
+                // Update selected node classes in place without resetting or jumping the scroll position
+                nodes.forEach((node, idx) => {
+                    if (idx === runIndex || (runIndex === null && idx === 0 && runs.length === 0)) {
+                        node.classList.add('selected');
+                    } else {
+                        node.classList.remove('selected');
+                    }
+                });
+            } else {
+                renderTimeline(runs, currentStrategy.next_rebalance_date, currentStrategy.status, false, runIndex);
+            }
+        }
 
         if (runIndex != null && runs[runIndex]) {
             renderRunResults(runs[runIndex]);
