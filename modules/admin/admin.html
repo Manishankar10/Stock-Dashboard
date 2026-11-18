@@ -1988,6 +1988,62 @@
                                     </div>
                                 </td>
                             </tr>
+
+                            <!-- 10. Stock Closing Prices (2Y EOD History & Daily Closes) -->
+                            <tr id="sync-tbl-row-stock_prices">
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <span style="font-size: 18px; margin-top: 1px;">📉</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                <span style="font-weight: 600; color: var(--text-primary);">Stock Closing Prices</span>
+                                                <button type="button" onclick="toggleAdminStockPricesModal(true)" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;">🔍 View 750 Stocks</button>
+                                            </div>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                                                2-Year EOD Daily Closes • 750 Benchmark Index Constituents (Take only post-market close)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-count-stock_prices" style="font-weight: 600; font-size: 13px; color: var(--text-primary);">0 Stocks</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-last-stock_prices" style="color: var(--text-secondary); font-size: 12px;">Never</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <span id="sync-tbl-badge-stock_prices" class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.25); font-size: 11px;">EOD Ready</span>
+                                </td>
+                                <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                                        <button type="button" id="sync-tbl-btn-stock_prices" class="btn" onclick="triggerAdminStockPricesSync()" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                                            🔄 Sync Pending Closes
+                                        </button>
+                                        <label style="display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; font-size: 11px; color: var(--text-secondary); cursor: pointer; margin: 0; user-select: none;">
+                                            <input type="checkbox" id="sync-stock-prices-full-resync" style="margin: 0; width: 13px; height: 13px; accent-color: var(--accent-primary); cursor: pointer;">
+                                            <span>Full 2-Year Resync</span>
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="sync-tbl-status-row-stock_prices" class="sync-tbl-status-row" style="display: none; background: rgba(0, 0, 0, 0.02);">
+                                <td colspan="5" style="padding: 10px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                                    <div id="sync-tbl-progress-box-stock_prices" style="display: none;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                                            <span id="sync-tbl-msg-stock_prices" style="color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px;">
+                                                <span class="spin-anim" style="display: inline-block;">⏳</span> Ingesting closing prices...
+                                            </span>
+                                            <span id="sync-tbl-pct-stock_prices" style="font-weight: 700; color: var(--accent-primary);">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                                            <div id="sync-tbl-bar-stock_prices" style="width: 0%; height: 100%; background: #0ea5e9; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="sync-tbl-result-box-stock_prices" style="display: none; font-size: 12px;">
+                                        <span id="sync-tbl-result-stock_prices"></span>
+                                    </div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -3525,6 +3581,83 @@
         </div>
     </div>
 
+    <!-- ==========================================
+         STOCK CLOSING PRICES INSPECTOR MODAL
+         ========================================== -->
+    <div id="adminStockPricesModal" class="modal" style="display: none;">
+        <div class="modal-content" style="width: 1100px; max-width: 96vw; max-height: 90vh; padding: 22px 24px; display: flex; flex-direction: column;">
+            <div class="modal-header" style="flex-shrink: 0; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        <span>📉</span> Stock Closing Prices (2-Year EOD Series)
+                    </h3>
+                    <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+                        750 Benchmark Index Constituent Stocks • Strictly EOD closes (Market closed enforcement)
+                    </p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" class="btn" onclick="triggerAdminStockPricesSync()" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                        🔄 Sync Pending Closes
+                    </button>
+                    <button type="button" class="close-btn" onclick="toggleAdminStockPricesModal(false)" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary);">&times;</button>
+                </div>
+            </div>
+
+            <!-- Telemetry Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; flex-shrink: 0;">
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Total Stocks</div>
+                    <div id="modal-sp-total-stocks" style="font-size: 20px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0 / 750</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Latest Trading Date</div>
+                    <div id="modal-sp-latest-date" style="font-size: 18px; font-weight: 700; color: #0ea5e9; margin-top: 2px;">—</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Pending Updates</div>
+                    <div id="modal-sp-pending-count" style="font-size: 18px; font-weight: 700; color: #ca8a04; margin-top: 2px;">0 Stocks</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Market Session</div>
+                    <div id="modal-sp-market-status" style="font-size: 14px; font-weight: 700; color: #10b981; margin-top: 4px;">CLOSED</div>
+                </div>
+            </div>
+
+            <!-- Search Filter Bar -->
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-shrink: 0;">
+                <input type="text" id="modal-sp-search-input" placeholder="🔍 Search by stock symbol or company name (e.g. RELIANCE, TCS, INFY)..." oninput="filterAdminStockPricesModalTable()" style="flex: 1; padding: 8px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 13px;">
+                <button type="button" onclick="loadAdminStockPricesModalList()" class="btn" style="background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;">Refresh Table</button>
+            </div>
+
+            <!-- Scrollable Table -->
+            <div style="flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card);">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+                    <thead style="position: sticky; top: 0; background: var(--bg-subtle); z-index: 10; border-bottom: 2px solid var(--border-color);">
+                        <tr>
+                            <th style="padding: 10px 14px; text-align: left; font-weight: 700; color: var(--text-secondary);">Symbol</th>
+                            <th style="padding: 10px 14px; text-align: left; font-weight: 700; color: var(--text-secondary);">Company Name</th>
+                            <th style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--text-secondary);">Latest Close (₹)</th>
+                            <th style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--text-secondary);">Change</th>
+                            <th style="padding: 10px 14px; text-align: center; font-weight: 700; color: var(--text-secondary);">Latest Date</th>
+                            <th style="padding: 10px 14px; text-align: center; font-weight: 700; color: var(--text-secondary);">2Y Bars</th>
+                            <th style="padding: 10px 14px; text-align: left; font-weight: 700; color: var(--text-secondary);">Last Synced</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-sp-table-body">
+                        <tr>
+                            <td colspan="7" style="padding: 24px; text-align: center; color: var(--text-secondary);">Loading stock closing prices...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-footer" style="flex-shrink: 0; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <span id="modal-sp-footer-count" style="font-size: 12px; color: var(--text-secondary);">Showing 0 stocks</span>
+                <button type="button" class="btn" onclick="toggleAdminStockPricesModal(false)" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 6px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function switchAdminTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -3558,6 +3691,7 @@
                 loadAdminPeoplesStatus();
                 loadAdminIndicesStatus();
                 loadAdminTradingHolidaysStatus();
+                if (typeof loadAdminStockPricesStatus === 'function') loadAdminStockPricesStatus();
             } else if (tabName === 'system') {
                 loadAdminStats();
                 loadProductionJsonFilesList();
@@ -4537,6 +4671,7 @@
             if (typeof loadAdminPeoplesStatus === 'function') loadAdminPeoplesStatus();
             if (typeof loadAdminIndicesStatus === 'function') loadAdminIndicesStatus();
             if (typeof loadAdminTradingHolidaysStatus === 'function') loadAdminTradingHolidaysStatus();
+            if (typeof loadAdminStockPricesStatus === 'function') loadAdminStockPricesStatus();
         }
 
         // ==========================================
@@ -6892,6 +7027,256 @@
         window.triggerAdminTradingHolidaysSyncFromModal = triggerAdminTradingHolidaysSyncFromModal;
         window.toggleAdminTradingHolidaysModal = toggleAdminTradingHolidaysModal;
         window.filterAdminHolidaysByYear = filterAdminHolidaysByYear;
+
+
+        // =========================================================
+        // STOCK CLOSING PRICES CONTROLLER (750 STOCKS 2Y EOD)
+        // =========================================================
+        let _adminStockPricesPollTimer = null;
+        let _adminStockPricesData = null;
+        let _adminStockPricesCachedList = [];
+
+        async function loadAdminStockPricesStatus() {
+            try {
+                const res = await fetch('/api/admin/stock_closing_prices/status');
+                const data = await res.json();
+                if (!data.success || !data.status) return;
+
+                const s = data.status;
+                _adminStockPricesData = s;
+                const totalStocks = s.total_stocks || 0;
+                const universe = s.universe_size || 750;
+                const isSyncing = Boolean(s.is_syncing);
+                const lastSynced = s.last_synced_display || 'Never';
+                const latestDate = s.latest_trading_date || '—';
+                const marketClosed = s.market_closed;
+
+                // Update row badges and texts
+                const badgeEl = document.getElementById('sync-tbl-badge-stock_prices');
+                if (badgeEl) {
+                    if (isSyncing) {
+                        badgeEl.style.background = 'rgba(14, 165, 233, 0.15)';
+                        badgeEl.style.color = '#0ea5e9';
+                        badgeEl.style.borderColor = 'rgba(14, 165, 233, 0.3)';
+                        badgeEl.innerHTML = '<span class="spin-anim">⏳</span> Syncing...';
+                    } else if (!marketClosed) {
+                        badgeEl.style.background = 'rgba(234, 179, 8, 0.15)';
+                        badgeEl.style.color = '#ca8a04';
+                        badgeEl.style.borderColor = 'rgba(234, 179, 8, 0.3)';
+                        badgeEl.innerHTML = '🔒 Market Open';
+                    } else if (totalStocks > 0) {
+                        badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
+                        badgeEl.style.color = '#10b981';
+                        badgeEl.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                        badgeEl.innerHTML = `✓ EOD Ready (${latestDate})`;
+                    } else {
+                        badgeEl.style.background = 'rgba(148, 163, 184, 0.15)';
+                        badgeEl.style.color = 'var(--text-secondary)';
+                        badgeEl.innerHTML = 'Empty';
+                    }
+                }
+
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('stock_prices', {
+                        count: `${totalStocks.toLocaleString()} / ${universe} Stocks`,
+                        lastSynced: lastSynced,
+                        isSyncing: isSyncing,
+                        message: s.progress || 'Ingesting closing prices from Yahoo Finance...',
+                        percent: s.percent || 0,
+                        totalStr: `${totalStocks} Stocks`,
+                        error: s.last_error
+                    });
+                }
+
+                // If modal is open, refresh summary
+                updateAdminStockPricesModalTelemetry(s);
+
+                // Auto-poll while syncing
+                if (isSyncing) {
+                    if (!_adminStockPricesPollTimer) {
+                        _adminStockPricesPollTimer = setTimeout(() => {
+                            _adminStockPricesPollTimer = null;
+                            loadAdminStockPricesStatus();
+                        }, 1500);
+                    }
+                } else if (_adminStockPricesPollTimer) {
+                    clearTimeout(_adminStockPricesPollTimer);
+                    _adminStockPricesPollTimer = null;
+                }
+            } catch (e) {
+                console.error("Error loading stock closing prices status:", e);
+            }
+        }
+
+        async function triggerAdminStockPricesSync(overrideFull = false) {
+            const btn = document.getElementById('sync-tbl-btn-stock_prices');
+            const fullCheck = document.getElementById('sync-stock-prices-full-resync');
+            const isFull = overrideFull || (fullCheck ? fullCheck.checked : false);
+
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '⏳ Ingesting...';
+                    btn.style.opacity = '0.75';
+                }
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('stock_prices', {
+                        isSyncing: true,
+                        message: 'Connecting to exchange closing feed...',
+                        percent: 5
+                    });
+                }
+
+                const res = await fetch('/api/admin/stock_closing_prices/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_resync: isFull,
+                        force: isFull
+                    })
+                });
+                const data = await res.json();
+
+                if (data.market_open) {
+                    alert(`🔒 Sync Blocked:\n\n${data.message}\n\nDaily closing prices can only be captured and updated after market close (post 03:30 PM IST).`);
+                    loadAdminStockPricesStatus();
+                } else if (!data.success) {
+                    alert('❌ Failed to trigger stock prices sync: ' + (data.message || data.error || 'Unknown error'));
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('stock_prices', { isSyncing: false, error: data.message });
+                    }
+                } else {
+                    setTimeout(loadAdminStockPricesStatus, 600);
+                }
+            } catch (e) {
+                alert('❌ Error requesting stock closing prices sync: ' + e.message);
+                loadAdminStockPricesStatus();
+            }
+        }
+
+        function updateAdminStockPricesModalTelemetry(s) {
+            const modal = document.getElementById('adminStockPricesModal');
+            if (!modal || modal.style.display !== 'block') return;
+
+            const totalEl = document.getElementById('modal-sp-total-stocks');
+            const dateEl = document.getElementById('modal-sp-latest-date');
+            const pendEl = document.getElementById('modal-sp-pending-count');
+            const mktEl = document.getElementById('modal-sp-market-status');
+
+            if (totalEl) totalEl.textContent = `${(s.total_stocks || 0).toLocaleString()} / ${s.universe_size || 750}`;
+            if (dateEl) dateEl.textContent = s.latest_trading_date || '—';
+            if (pendEl) pendEl.textContent = `${s.pending_count || 0} Stocks`;
+            if (mktEl) {
+                mktEl.textContent = s.market_status || 'CLOSED';
+                mktEl.style.color = s.market_closed ? '#10b981' : '#ca8a04';
+            }
+        }
+
+        function toggleAdminStockPricesModal(show = true) {
+            const modal = document.getElementById('adminStockPricesModal');
+            if (!modal) return;
+            if (show) {
+                modal.style.display = 'block';
+                loadAdminStockPricesStatus();
+                loadAdminStockPricesModalList();
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function loadAdminStockPricesModalList() {
+            const tbody = document.getElementById('modal-sp-table-body');
+            const footerCount = document.getElementById('modal-sp-footer-count');
+            if (!tbody) return;
+
+            tbody.innerHTML = '<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-secondary);"><span class="spin-anim">⏳</span> Loading 750 stock closing prices from database...</td></tr>';
+
+            try {
+                const res = await fetch('/api/stock_closing_prices');
+                const data = await res.json();
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 24px; text-align: center; color: #ef4444;">Error loading stocks: ${data.error || 'Unknown error'}</td></tr>`;
+                    return;
+                }
+
+                _adminStockPricesCachedList = data.stocks || [];
+                renderAdminStockPricesModalTable(_adminStockPricesCachedList);
+                if (footerCount) footerCount.textContent = `Showing ${_adminStockPricesCachedList.length.toLocaleString()} constituent stocks`;
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="7" style="padding: 24px; text-align: center; color: #ef4444;">Network error: ${e.message}</td></tr>`;
+            }
+        }
+
+        function filterAdminStockPricesModalTable() {
+            const input = document.getElementById('modal-sp-search-input');
+            const q = input ? input.value.trim().toUpperCase() : '';
+            if (!q) {
+                renderAdminStockPricesModalTable(_adminStockPricesCachedList);
+                return;
+            }
+
+            const filtered = _adminStockPricesCachedList.filter(s => {
+                const sym = (s.symbol || '').toUpperCase();
+                const name = (s.company_name || '').toUpperCase();
+                return sym.includes(q) || name.includes(q);
+            });
+            renderAdminStockPricesModalTable(filtered);
+            const footerCount = document.getElementById('modal-sp-footer-count');
+            if (footerCount) footerCount.textContent = `Filtered ${filtered.length.toLocaleString()} of ${_adminStockPricesCachedList.length.toLocaleString()} stocks`;
+        }
+
+        function renderAdminStockPricesModalTable(stocks) {
+            const tbody = document.getElementById('modal-sp-table-body');
+            if (!tbody) return;
+
+            if (!stocks || stocks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-secondary);">No stock records found in database. Click "Sync Pending Closes" above to backfill.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            stocks.forEach(s => {
+                const chg = s.change || 0;
+                const chgPct = s.change_pct || 0;
+                const isPositive = chg >= 0;
+                const chgColor = isPositive ? '#10b981' : '#ef4444';
+                const sign = isPositive ? '+' : '';
+
+                html += `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 10px 14px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 13px;">
+                            ${s.symbol}
+                        </td>
+                        <td style="padding: 10px 14px; color: var(--text-secondary); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${s.company_name || s.symbol}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--text-primary); font-feature-settings: 'tnum';">
+                            ₹${Number(s.latest_close || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: right; font-weight: 600; color: ${chgColor}; font-feature-settings: 'tnum';">
+                            ${sign}${chg.toFixed(2)} (${sign}${chgPct.toFixed(2)}%)
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center; color: var(--text-secondary); font-size: 12px;">
+                            ${s.latest_date || '—'}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <span class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; font-size: 11px;">${s.total_records || 0} Days</span>
+                        </td>
+                        <td style="padding: 10px 14px; font-size: 11px; color: var(--text-secondary);">
+                            ${s.last_synced_display || '—'}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        window.loadAdminStockPricesStatus = loadAdminStockPricesStatus;
+        window.triggerAdminStockPricesSync = triggerAdminStockPricesSync;
+        window.toggleAdminStockPricesModal = toggleAdminStockPricesModal;
+        window.loadAdminStockPricesModalList = loadAdminStockPricesModalList;
+        window.filterAdminStockPricesModalTable = filterAdminStockPricesModalTable;
 
 
         // =========================================================

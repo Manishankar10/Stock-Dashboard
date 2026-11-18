@@ -49,6 +49,7 @@ from modules.shareholding import shareholding_bp, init_shareholding
 from modules.peoples import peoples_bp, init_peoples
 from modules.index_stocks import index_stocks_bp
 from modules.trading_holidays import trading_holidays_bp
+from modules.stock_closing_prices import stock_closing_prices_bp, init_stock_closing_prices
 from modules.drawings import drawings_bp
 from modules.stock_notes import stock_notes_bp
 from modules.market_depth import market_depth_bp
@@ -117,6 +118,7 @@ init_broker_research(login_required, load_data)
 init_industries_overview(login_required, load_data, BASE_DATA_DIR)
 init_shareholding(login_required, load_data, BASE_DATA_DIR)
 init_peoples(login_required)
+init_stock_closing_prices(app)
 
 # Register Feature Blueprints
 app.register_blueprint(auth_admin_bp)
@@ -147,6 +149,7 @@ app.register_blueprint(shareholding_bp)
 app.register_blueprint(peoples_bp)
 app.register_blueprint(index_stocks_bp)
 app.register_blueprint(trading_holidays_bp)
+app.register_blueprint(stock_closing_prices_bp)
 app.register_blueprint(drawings_bp)
 app.register_blueprint(technical_screener_bp)
 app.register_blueprint(custom_queries_bp)
