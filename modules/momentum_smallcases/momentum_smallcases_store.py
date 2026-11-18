@@ -276,16 +276,33 @@ def get_user_index(index_id, username=None, enrich_quotes=False):
     for s in stocks:
         s["days_active"] = calculate_days_active(s.get("date_added", ""))
 
-    if enrich_quotes and _fetcher:
+    if enrich_quotes:
         for s in stocks:
             sym = s.get("symbol")
+            if not sym:
+                continue
+            clean_s = sym.strip().upper().replace('.NS', '').replace('.BO', '')
             try:
-                quote = _fetcher.fetch_stock(sym, use_cache=True)
-                if quote and not quote.get("error"):
-                    s["current_price"] = quote.get("price") or quote.get("current_price") or 0.0
-                    s["change"] = quote.get("change") or 0.0
-                    s["change_percent"] = quote.get("change_percent") or quote.get("pChange") or 0.0
-                    s["company_name"] = quote.get("company_name") or quote.get("name") or sym
+                # 1. Primary: Check stock_closing_prices in DB
+                from db_store import load_stock_closing_prices_db
+                doc = load_stock_closing_prices_db(symbol=clean_s)
+                if doc and doc.get("latest_close") is not None:
+                    s["current_price"] = doc.get("latest_close")
+                    s["change"] = doc.get("change") or 0.0
+                    s["change_percent"] = doc.get("change_pct") or 0.0
+                    s["company_name"] = doc.get("company_name") or sym
+                elif _fetcher:
+                    # 2. Fallback: Live Provider
+                    quote = _fetcher.fetch_stock(sym, use_cache=True)
+                    if quote and not quote.get("error"):
+                        s["current_price"] = quote.get("price") or quote.get("current_price") or 0.0
+                        s["change"] = quote.get("change") or 0.0
+                        s["change_percent"] = quote.get("change_percent") or quote.get("pChange") or 0.0
+                        s["company_name"] = quote.get("company_name") or quote.get("name") or sym
+                    else:
+                        s["current_price"] = None
+                        s["change_percent"] = None
+                        s["company_name"] = sym
                 else:
                     s["current_price"] = None
                     s["change_percent"] = None
@@ -682,14 +699,16 @@ def run_strategy_init(strategy_id, username=None):
             symbols_to_warm.add(c)
 
     if symbols_to_warm:
-        from concurrent.futures import ThreadPoolExecutor
         from modules.momentum_smallcases.momentum_smallcases_calculator import (
+            prewarm_stock_prices_cache,
             fetch_stock_daily_series,
             save_price_cache,
         )
+        prewarm_stock_prices_cache(symbols_to_warm)
+        from concurrent.futures import ThreadPoolExecutor
         worker_count = min(32, max(4, len(symbols_to_warm)))
         with ThreadPoolExecutor(max_workers=worker_count) as pool:
-            list(pool.map(lambda s: fetch_stock_daily_series(s), symbols_to_warm))
+            list(pool.map(lambda s: fetch_stock_daily_series(s, target_cutoff_date=exec_date), symbols_to_warm))
         save_price_cache()
 
     # 2. Evaluate and rank stocks
@@ -862,14 +881,16 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
             if isinstance(h, dict) and h.get("symbol"):
                 symbols_to_warm.add(h["symbol"])
         if symbols_to_warm:
-            from concurrent.futures import ThreadPoolExecutor
             from modules.momentum_smallcases.momentum_smallcases_calculator import (
+                prewarm_stock_prices_cache,
                 fetch_stock_daily_series,
                 save_price_cache,
             )
+            prewarm_stock_prices_cache(symbols_to_warm)
+            from concurrent.futures import ThreadPoolExecutor
             worker_count = min(32, max(4, len(symbols_to_warm)))
             with ThreadPoolExecutor(max_workers=worker_count) as pool:
-                list(pool.map(lambda s: fetch_stock_daily_series(s), symbols_to_warm))
+                list(pool.map(lambda s: fetch_stock_daily_series(s, target_cutoff_date=exec_date), symbols_to_warm))
             save_price_cache()
 
     # Rank universe

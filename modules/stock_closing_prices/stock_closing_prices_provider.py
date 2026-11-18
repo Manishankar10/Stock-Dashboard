@@ -180,9 +180,37 @@ class StockClosingPricesProvider:
             return True, "Market is CLOSED (Pre-market hours before 09:15 AM IST)."
         return True, "Market is CLOSED (Post-market EOD hours after 03:30 PM IST)."
 
+    def get_latest_market_trading_date(self) -> str:
+        """
+        Returns the latest completed market trading date (YYYY-MM-DD) in IST.
+        - If today is a weekday post 03:30 PM IST and not a holiday, today is the latest trading date.
+        - Otherwise returns the most recent past trading day (skipping weekends and trading holidays).
+        """
+        now = now_ist()
+        today = now.date()
+        minutes = now.hour * 60 + now.minute
+
+        holidays_set = set()
+        try:
+            from modules.trading_holidays.trading_holidays_provider import trading_holidays_provider
+            all_holidays = trading_holidays_provider.get_all_holidays(year=now.year)
+            holidays_set = {h.get("date") for h in all_holidays if h.get("is_trading_holiday", 1)}
+        except Exception:
+            pass
+
+        cand = today if (now.weekday() < 5 and minutes >= 930 and today.strftime("%Y-%m-%d") not in holidays_set) else (today - datetime.timedelta(days=1))
+
+        for _ in range(15):
+            d_str = cand.strftime("%Y-%m-%d")
+            if cand.weekday() < 5 and d_str not in holidays_set:
+                return d_str
+            cand -= datetime.timedelta(days=1)
+        return today.strftime("%Y-%m-%d")
+
     def get_sync_status(self) -> Dict[str, Any]:
         """Telemetry status for Admin Exchange Datasets & Feed Synchronization table."""
         market_closed, market_msg = self.is_market_closed()
+        target_market_date = self.get_latest_market_trading_date()
         
         # Check current count from DB
         summary = db_store.load_stock_closing_prices_db(summary_only=True) or {}
@@ -190,7 +218,7 @@ class StockClosingPricesProvider:
         
         # Calculate pending stocks count
         pending_count = 0
-        latest_date = self._latest_trading_date
+        latest_date = target_market_date or self._latest_trading_date
         best_synced_display = self._last_synced_display
         if summary:
             # find latest date present across stocks and latest synced timestamp
@@ -205,9 +233,10 @@ class StockClosingPricesProvider:
             if best_synced_display and best_synced_display != "Never":
                 self._last_synced_display = best_synced_display
             
-            # Count stocks missing the latest date
-            if latest_date:
-                pending_count = sum(1 for sym, rec in summary.items() if rec.get("latest_date") != latest_date)
+            # Count stocks missing the target market trading date
+            check_date = target_market_date or latest_date
+            if check_date:
+                pending_count = sum(1 for sym, rec in summary.items() if (rec.get("latest_date") or "") < check_date)
 
         return {
             "is_syncing": self._is_syncing,
@@ -397,13 +426,34 @@ class StockClosingPricesProvider:
 
             # Load existing records (summary only for quick comparison)
             existing_summary = db_store.load_stock_closing_prices_db(summary_only=True) or {}
+            target_market_date = self.get_latest_market_trading_date()
 
             # Prepare list of stocks to fetch
-            # If not full_resync, we can fetch all or pending
-            stock_items = list(stocks_map.items())
+            if not full_resync:
+                # Sync strictly ONLY pending stocks that do not have the latest market trading date
+                stock_items = [
+                    (sym, cname) for sym, cname in stocks_map.items()
+                    if sym not in existing_summary or (existing_summary[sym].get("latest_date") or "") < target_market_date
+                ]
+                if not stock_items:
+                    now_final = format_ist_display()
+                    with self._lock:
+                        self._is_syncing = False
+                        self._percent = 100
+                        self._last_synced_display = now_final
+                        self._latest_trading_date = target_market_date
+                        self._progress = f"All {len(existing_summary)} stocks are already up-to-date as of {target_market_date}. 0 pending dates to sync."
+                    self._persist_telemetry()
+                    logger.info(f"Sync check complete: 0 pending stocks. All stocks up-to-date as of {target_market_date}.")
+                    return
+                logger.info(f"Syncing pending dates for {len(stock_items)} stocks (Target date: {target_market_date})...")
+            else:
+                stock_items = list(stocks_map.items())
+
+            total_target = len(stock_items)
 
             with self._lock:
-                self._progress = f"Synchronizing {total_target} index stocks EOD closing prices..."
+                self._progress = f"Synchronizing pending dates for {total_target} stocks (Target: {target_market_date})..."
                 self._percent = 5
             self._persist_telemetry()
 

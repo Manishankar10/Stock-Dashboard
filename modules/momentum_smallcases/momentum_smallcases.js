@@ -962,10 +962,7 @@
         if (status === 'DRAFT' || runs.length === 0) {
             actionBtnHtml = `
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <button type="button" class="btn-primary" onclick="openRunAllModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);">
-                        <span>⚡</span> <span>Run All (Init + Rebalances)</span>
-                    </button>
-                    <button type="button" class="btn-secondary" onclick="runStrategyInit('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn-primary" onclick="runStrategyInit('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);">
                         <span>${getPlayIconSVG(12)}</span> <span>Run Init Only</span>
                     </button>
                 </div>
@@ -988,10 +985,7 @@
             } else {
                 actionBtnHtml = `
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <button type="button" class="btn-primary" onclick="openRunAllModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);">
-                            <span>⚡</span> <span>Run All Rebalances</span>
-                        </button>
-                        <button type="button" class="btn-secondary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
+                        <button type="button" class="btn-primary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);">
                             <span style="display: inline-flex; align-items: center;">${getRebalanceIconSVG(14, 2.5)}</span> <span>Run Next Rebalance</span>
                         </button>
                     </div>
@@ -1054,20 +1048,24 @@
         mount.innerHTML = html;
         attachTimelineMouseScroll(mount);
 
-        // Auto-scroll the timeline horizontally to keep the active (recent rightmost) node in view
+        // Auto-scroll the timeline horizontally to keep the active recent rightmost node in view
         const scrollRecentNode = () => {
-            const selectedNode = mount.querySelector('.msc-timeline-node.selected');
-            if (selectedNode) {
-                const offsetLeft = selectedNode.offsetLeft - mount.offsetLeft;
-                const targetScrollLeft = offsetLeft - (mount.clientWidth / 2) + (selectedNode.offsetWidth / 2);
-                mount.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
-            } else if (runs && runs.length > 0) {
+            if (runs && runs.length > 0) {
+                // Focus the most recent rightmost run node
                 mount.scrollTo({ left: mount.scrollWidth, behavior: 'smooth' });
+            } else {
+                const selectedNode = mount.querySelector('.msc-timeline-node.selected');
+                if (selectedNode) {
+                    const offsetLeft = selectedNode.offsetLeft - mount.offsetLeft;
+                    const targetScrollLeft = offsetLeft - (mount.clientWidth / 2) + (selectedNode.offsetWidth / 2);
+                    mount.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
+                }
             }
         };
 
         requestAnimationFrame(scrollRecentNode);
-        setTimeout(scrollRecentNode, 100);
+        setTimeout(scrollRecentNode, 80);
+        setTimeout(scrollRecentNode, 250);
     }
 
     function attachTimelineMouseScroll(mount) {
@@ -1157,11 +1155,8 @@
                     Executing Init will evaluate all constituent stocks added on or before <strong>${formatDateDisplay(strategy.start_date)}</strong>, rank them using your momentum formula, allocate equal capital across the top <strong>${strategy.no_of_stocks}</strong> stocks (deducting 0.10% transaction fees), and place the smallcase in <strong>ACTIVE</strong> state.
                 </p>
                 <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                    <button type="button" class="btn-primary" onclick="openRunAllModal('${escapeHtml(strategy.id)}')" style="font-size: 13.5px; padding: 9px 24px; display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                        <span>⚡</span> <span>Run All (Init + Rebalances)</span>
-                    </button>
-                    <button type="button" class="btn-secondary" onclick="runStrategyInit('${escapeHtml(strategy.id)}')" style="font-size: 13.5px; padding: 9px 20px; display: inline-flex; align-items: center; gap: 8px;">
-                        <span>▶</span> <span>Execute Init Only</span>
+                    <button type="button" class="btn-primary" onclick="runStrategyInit('${escapeHtml(strategy.id)}')" style="font-size: 13.5px; padding: 9px 24px; display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);">
+                        <span>▶</span> <span>Execute Init</span>
                     </button>
                 </div>
             </div>
