@@ -496,11 +496,6 @@
                             <button type="button" class="msc-action-btn view" onclick="openStrategyDetailView('${escapeHtml(s.id)}')" title="View Details & Timeline">
                                 <span>👁️ Details</span>
                             </button>
-                            ${isDraft ? `
-                                <button type="button" class="msc-action-btn" onclick="runStrategyInit('${escapeHtml(s.id)}')" title="Execute Initial Allocation" style="color: var(--text-primary); border-color: var(--border-color);">
-                                    <span>▶ Init</span>
-                                </button>
-                            ` : ''}
                             <button type="button" class="msc-action-btn delete" onclick="openDeleteStrategyModal('${escapeHtml(s.id)}')" title="Delete Smallcase">
                                 <span>🗑️</span>
                             </button>
