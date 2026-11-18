@@ -22,6 +22,7 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     run_strategy_all_rebalances,
     start_async_execution_job,
     get_execution_job_status,
+    get_strategy_consolidated_stocks,
     delete_user_strategy,
     reset_all_momentum_data,
 )
@@ -260,6 +261,20 @@ def get_strategy_api(strategy_id):
         return jsonify({"success": True, "strategy": strat})
     except Exception as e:
         logger.error(f"Error getting strategy '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/consolidated-stocks", methods=["GET"])
+def get_strategy_consolidated_stocks_api(strategy_id):
+    """Retrieves consolidated participated stocks performance history for a strategy."""
+    try:
+        user = session.get("username") or "admin"
+        data = get_strategy_consolidated_stocks(strategy_id, username=user)
+        return jsonify({"success": True, "data": data})
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 404
+    except Exception as e:
+        logger.error(f"Error fetching consolidated stocks for '{strategy_id}': {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

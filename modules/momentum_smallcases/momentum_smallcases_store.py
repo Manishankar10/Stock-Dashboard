@@ -1160,6 +1160,232 @@ def reset_all_momentum_data(username=None):
     return {"success": True, "message": "All momentum smallcase data has been completely reset."}
 
 
+def get_strategy_consolidated_stocks(strategy_id, username=None):
+    """
+    Computes consolidated participated stocks performance history for a strategy across
+    all executed runs (Init and Rebalances).
+    Returns list of participated stocks with:
+    - symbol
+    - status ('HOLDING' | 'EXITED')
+    - entry_month_year (e.g. 'Mar 2024')
+    - exit_month_year (e.g. 'Aug 2024' or 'Holding')
+    - days_held
+    - holding_period_text
+    - invested
+    - current_or_exit_value
+    - pnl (supports negative return)
+    - pnl_percent
+    - total_stock_pnl
+    - total_stock_pnl_percent
+    Ordered by longer holding period descending.
+    Includes consolidated summary total at end.
+    """
+    strat = get_user_strategy(strategy_id, username=username)
+    if not strat:
+        raise ValueError("Strategy not found")
+
+    runs = strat.get("runs", [])
+    if not runs:
+        return {
+            "stocks": [],
+            "summary": {
+                "total_participated": 0,
+                "holding_count": 0,
+                "exited_count": 0,
+                "total_invested": 0.0,
+                "total_value": 0.0,
+                "consolidated_pnl": 0.0,
+                "consolidated_pnl_percent": 0.0
+            }
+        }
+
+    def parse_d(d_str):
+        if not d_str:
+            return None
+        try:
+            return datetime.strptime(str(d_str)[:10], "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    def fmt_month_year(d_obj, d_str=None):
+        if not d_obj and d_str:
+            d_obj = parse_d(d_str)
+        if not d_obj:
+            return "—"
+        return d_obj.strftime("%b %Y")
+
+    active_stints = {}
+    all_stints = []
+
+    for run_idx, run in enumerate(runs):
+        exec_date_str = run.get("executed_date") or run.get("scheduled_date") or ""
+        exec_date = parse_d(exec_date_str)
+        portfolio = run.get("portfolio_snapshot") or {}
+        holdings = portfolio.get("holdings") or []
+        exited = portfolio.get("exited_stocks") or (portfolio.get("changes", {}).get("exited_stocks") or [])
+
+        # 1. Exited stocks in this run
+        for ex in exited:
+            sym = ex.get("symbol")
+            if not sym:
+                continue
+            exit_price = round(float(ex.get("exit_price") or 0.0), 2)
+            exit_val = round(float(ex.get("exit_value") or (ex.get("quantity", 0) * exit_price)), 2)
+            qty = int(ex.get("quantity") or 0)
+            avg_price = round(float(ex.get("average_price") or ex.get("buy_price") or 0.0), 2)
+
+            stint = active_stints.pop(sym, None)
+            if stint:
+                stint["exit_date"] = exec_date_str
+                stint["exit_date_obj"] = exec_date
+                stint["exit_month_year"] = fmt_month_year(exec_date, exec_date_str)
+                stint["exit_price"] = exit_price
+                stint["exit_value"] = exit_val
+                stint["current_or_exit_value"] = exit_val
+                stint["status"] = "EXITED"
+                
+                inv = stint["invested"]
+                pnl = round(exit_val - inv, 2)
+                pnl_pct = round(((exit_val - inv) / inv) * 100.0, 2) if inv > 0 else 0.0
+                stint["pnl"] = pnl
+                stint["pnl_percent"] = pnl_pct
+                all_stints.append(stint)
+            else:
+                inv = round(float(ex.get("invested") or (qty * avg_price)), 2)
+                pnl = round(float(ex.get("pnl") if ex.get("pnl") is not None else (exit_val - inv)), 2)
+                pnl_pct = round(float(ex.get("pnl_percent") if ex.get("pnl_percent") is not None else (((exit_val - inv) / inv) * 100.0 if inv > 0 else 0.0)), 2)
+                prev_run_date_str = runs[max(0, run_idx - 1)].get("executed_date") if run_idx > 0 else exec_date_str
+                prev_d = parse_d(prev_run_date_str)
+                all_stints.append({
+                    "symbol": sym,
+                    "status": "EXITED",
+                    "entry_date": prev_run_date_str,
+                    "entry_date_obj": prev_d,
+                    "entry_month_year": fmt_month_year(prev_d, prev_run_date_str),
+                    "entry_price": avg_price,
+                    "exit_date": exec_date_str,
+                    "exit_date_obj": exec_date,
+                    "exit_month_year": fmt_month_year(exec_date, exec_date_str),
+                    "exit_price": exit_price,
+                    "quantity": qty,
+                    "invested": inv,
+                    "current_or_exit_value": exit_val,
+                    "pnl": pnl,
+                    "pnl_percent": pnl_pct
+                })
+
+        # 2. Holdings in this run
+        for h in holdings:
+            sym = h.get("symbol")
+            if not sym:
+                continue
+            qty = int(h.get("quantity") or 0)
+            buy_price = round(float(h.get("buy_price") or 0.0), 2)
+            curr_price = round(float(h.get("current_price") or buy_price), 2)
+            inv = round(float(h.get("invested") or (qty * buy_price)), 2)
+            curr_val = round(float(h.get("current_value") or (qty * curr_price)), 2)
+            pnl = round(float(h.get("pnl") if h.get("pnl") is not None else (curr_val - inv)), 2)
+            pnl_pct = round(float(h.get("pnl_percent") if h.get("pnl_percent") is not None else (((curr_val - inv) / inv) * 100.0 if inv > 0 else 0.0)), 2)
+
+            if sym not in active_stints:
+                active_stints[sym] = {
+                    "symbol": sym,
+                    "status": "HOLDING",
+                    "entry_date": exec_date_str,
+                    "entry_date_obj": exec_date,
+                    "entry_month_year": fmt_month_year(exec_date, exec_date_str),
+                    "entry_price": buy_price,
+                    "exit_date": None,
+                    "exit_date_obj": None,
+                    "exit_month_year": "Holding",
+                    "exit_price": None,
+                    "quantity": qty,
+                    "invested": inv,
+                    "current_price": curr_price,
+                    "current_or_exit_value": curr_val,
+                    "pnl": pnl,
+                    "pnl_percent": pnl_pct,
+                    "last_date_obj": exec_date
+                }
+            else:
+                s = active_stints[sym]
+                s["quantity"] = qty
+                s["current_price"] = curr_price
+                s["invested"] = inv
+                s["current_or_exit_value"] = curr_val
+                s["pnl"] = pnl
+                s["pnl_percent"] = pnl_pct
+                s["last_date_obj"] = exec_date
+
+    latest_run_date = parse_d(runs[-1].get("executed_date") or runs[-1].get("scheduled_date"))
+    for stint in active_stints.values():
+        stint["status"] = "HOLDING"
+        stint["exit_month_year"] = "Holding"
+        stint["exit_date"] = None
+        stint["exit_date_obj"] = stint.get("last_date_obj") or latest_run_date
+        all_stints.append(stint)
+
+    # Compute holding period duration in days and formatted text
+    for s in all_stints:
+        d_start = s.get("entry_date_obj") or latest_run_date
+        d_end = s.get("exit_date_obj") or latest_run_date
+        days = 0
+        if d_start and d_end:
+            days = max(0, (d_end - d_start).days)
+        s["days_held"] = days
+        months = round(days / 30.4, 1)
+        if months >= 1.0:
+            s["holding_period_text"] = f"{int(round(months))} mo{'s' if round(months) != 1 else ''} ({days}d)"
+        elif days > 0:
+            s["holding_period_text"] = f"{days} day{'s' if days != 1 else ''}"
+        else:
+            s["holding_period_text"] = "Current (0d)"
+
+    # Compute per-symbol total cumulative P&L across all stints
+    sym_totals = {}
+    for s in all_stints:
+        sym = s["symbol"]
+        if sym not in sym_totals:
+            sym_totals[sym] = {"invested": 0.0, "pnl": 0.0}
+        sym_totals[sym]["invested"] += s["invested"]
+        sym_totals[sym]["pnl"] += s["pnl"]
+
+    for s in all_stints:
+        sym = s["symbol"]
+        tot_inv = sym_totals[sym]["invested"]
+        tot_p = sym_totals[sym]["pnl"]
+        s["total_stock_pnl"] = round(tot_p, 2)
+        s["total_stock_pnl_percent"] = round((tot_p / tot_inv) * 100.0, 2) if tot_inv > 0 else 0.0
+
+    # ORDER BY LONGER HOLDING PERIOD (DESCENDING)
+    all_stints.sort(key=lambda x: (x["days_held"], x["pnl"]), reverse=True)
+
+    # Compute consolidated summary
+    tot_invested = round(sum(s["invested"] for s in all_stints), 2)
+    tot_val = round(sum(s["current_or_exit_value"] for s in all_stints), 2)
+    tot_pnl = round(sum(s["pnl"] for s in all_stints), 2)
+    tot_pnl_pct = round((tot_pnl / tot_invested) * 100.0, 2) if tot_invested > 0 else 0.0
+
+    # Clean date objects before returning JSON
+    for s in all_stints:
+        s.pop("entry_date_obj", None)
+        s.pop("exit_date_obj", None)
+        s.pop("last_date_obj", None)
+
+    return {
+        "stocks": all_stints,
+        "summary": {
+            "total_participated": len(all_stints),
+            "holding_count": sum(1 for s in all_stints if s["status"] == "HOLDING"),
+            "exited_count": sum(1 for s in all_stints if s["status"] == "EXITED"),
+            "total_invested": tot_invested,
+            "total_value": tot_val,
+            "consolidated_pnl": tot_pnl,
+            "consolidated_pnl_percent": tot_pnl_pct
+        }
+    }
+
+
 # ==============================================================================
 # ASYNC EXECUTION JOBS (Immune to Gunicorn / Nginx / Reverse Proxy 502 Timeouts)
 # ==============================================================================

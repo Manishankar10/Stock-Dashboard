@@ -31,6 +31,7 @@
         'runAllRebalanceModal',
         'addStrategyModal',
         'editFormulaModal',
+        'consolidatedStocksModal',
         'momentumIndexFormModal',
         'momentumIndexViewModal',
         'momentumIndexDeleteModal'
@@ -1298,10 +1299,13 @@
 
             <!-- Current Portfolio Holdings Snapshot Table -->
             <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>💼</span> <span>Portfolio Holdings Snapshot (${holdings.length} stocks)</span>
                     </h4>
+                    <button type="button" class="btn-secondary" onclick="openConsolidatedStocksModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.22)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.12)'" title="View all participated stocks history with holding durations and consolidated P&amp;L">
+                        <span>📊</span> <span>Consolidated Stocks</span>
+                    </button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="msc-indices-table" style="font-size: 12px;">
@@ -1905,6 +1909,480 @@
                 btn.disabled = false;
                 btn.innerText = origText;
             }
+        }
+    }
+
+    // =========================================================================
+    // 5b. CONSOLIDATED PARTICIPATED STOCKS HISTORY MODAL
+    // Displays all participated stocks across Init and Rebalances
+    // Ordered by longer holding period descending, with In/Out dates,
+    // holding durations, stint P/L & %, total cumulative P/L & %, supporting negative returns,
+    // and consolidated portfolio total at the bottom.
+    // =========================================================================
+    let consolidatedStocksData = null;
+    let currentConsolidatedFilter = 'all';
+    let consolidatedSearchQuery = '';
+
+    function updateFilterPillStates() {
+        const pills = [
+            { id: 'csPillAll', filter: 'all' },
+            { id: 'csPillHolding', filter: 'holding' },
+            { id: 'csPillExited', filter: 'exited' }
+        ];
+        pills.forEach(p => {
+            const btn = document.getElementById(p.id);
+            if (!btn) return;
+            if (p.filter === currentConsolidatedFilter) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function setConsolidatedLoadingState() {
+        const countEl = document.getElementById('csSummaryCount');
+        const breakdownEl = document.getElementById('csSummaryBreakdown');
+        const invEl = document.getElementById('csSummaryInvested');
+        const valEl = document.getElementById('csSummaryValue');
+        const pnlEl = document.getElementById('csSummaryPnl');
+        const pnlPctEl = document.getElementById('csSummaryPnlPct');
+        const tbody = document.getElementById('csStocksTbody');
+        const tfoot = document.getElementById('csStocksTfoot');
+
+        if (countEl) countEl.innerText = 'Calculating...';
+        if (breakdownEl) breakdownEl.innerText = 'Evaluating all execution runs...';
+        if (invEl) invEl.innerText = '₹...';
+        if (valEl) valEl.innerText = '₹...';
+        if (pnlEl) {
+            pnlEl.innerText = '₹...';
+            pnlEl.style.color = 'var(--text-primary)';
+        }
+        if (pnlPctEl) {
+            pnlPctEl.innerText = '...%';
+            pnlPctEl.style.color = 'var(--text-primary)';
+        }
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 36px 20px; color: var(--text-secondary);"><div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">⏳ Loading Consolidated Stocks History...</div><div style="font-size: 11.5px;">Compiling holding periods, entry/exit dates and performance metrics</div></td></tr>`;
+        }
+        if (tfoot) tfoot.innerHTML = '';
+    }
+
+    function deriveConsolidatedStocksLocally(strategy) {
+        if (!strategy || !strategy.runs || strategy.runs.length === 0) {
+            return {
+                stocks: [],
+                summary: {
+                    total_participated: 0,
+                    holding_count: 0,
+                    exited_count: 0,
+                    total_invested: 0,
+                    total_value: 0,
+                    consolidated_pnl: 0,
+                    consolidated_pnl_percent: 0
+                }
+            };
+        }
+
+        const parseDate = (dStr) => {
+            if (!dStr) return null;
+            try {
+                const parts = String(dStr).slice(0, 10).split('-');
+                if (parts.length === 3) {
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                }
+            } catch (_) {}
+            return null;
+        };
+
+        const formatMonthYear = (dObj) => {
+            if (!dObj || isNaN(dObj.getTime())) return '—';
+            return dObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        };
+
+        const activeStints = {};
+        const allStints = [];
+        const runs = strategy.runs || [];
+
+        runs.forEach((run, runIdx) => {
+            const execDateStr = run.executed_date || run.scheduled_date || '';
+            const execDate = parseDate(execDateStr);
+            const portfolio = run.portfolio_snapshot || {};
+            const holdings = portfolio.holdings || [];
+            const exited = portfolio.exited_stocks || (portfolio.changes && portfolio.changes.exited_stocks) || [];
+
+            // Exited stocks
+            exited.forEach(ex => {
+                const sym = ex.symbol;
+                if (!sym) return;
+                const exitPrice = Number(ex.exit_price || 0);
+                const qty = Number(ex.quantity || 0);
+                const avgPrice = Number(ex.average_price || ex.buy_price || 0);
+                const exitVal = Number(ex.exit_value || (qty * exitPrice));
+
+                if (activeStints[sym]) {
+                    const stint = activeStints[sym];
+                    delete activeStints[sym];
+                    stint.exit_date = execDateStr;
+                    stint.exit_date_obj = execDate;
+                    stint.exit_month_year = formatMonthYear(execDate);
+                    stint.exit_price = exitPrice;
+                    stint.exit_value = exitVal;
+                    stint.current_or_exit_value = exitVal;
+                    stint.status = 'EXITED';
+
+                    const inv = stint.invested;
+                    const pnl = Number((exitVal - inv).toFixed(2));
+                    const pnlPct = inv > 0 ? Number((((exitVal - inv) / inv) * 100).toFixed(2)) : 0;
+                    stint.pnl = pnl;
+                    stint.pnl_percent = pnlPct;
+                    allStints.push(stint);
+                } else {
+                    const inv = Number(ex.invested || (qty * avgPrice));
+                    const pnl = ex.pnl !== undefined ? Number(ex.pnl) : Number((exitVal - inv).toFixed(2));
+                    const pnlPct = ex.pnl_percent !== undefined ? Number(ex.pnl_percent) : (inv > 0 ? Number((((exitVal - inv) / inv) * 100).toFixed(2)) : 0);
+                    const prevRunDateStr = runIdx > 0 ? (runs[runIdx - 1].executed_date || runs[runIdx - 1].scheduled_date) : execDateStr;
+                    const prevDate = parseDate(prevRunDateStr);
+                    allStints.push({
+                        symbol: sym,
+                        status: 'EXITED',
+                        entry_date: prevRunDateStr,
+                        entry_date_obj: prevDate,
+                        entry_month_year: formatMonthYear(prevDate),
+                        entry_price: avgPrice,
+                        exit_date: execDateStr,
+                        exit_date_obj: execDate,
+                        exit_month_year: formatMonthYear(execDate),
+                        exit_price: exitPrice,
+                        quantity: qty,
+                        invested: inv,
+                        current_or_exit_value: exitVal,
+                        pnl: pnl,
+                        pnl_percent: pnlPct
+                    });
+                }
+            });
+
+            // Holdings in this run
+            holdings.forEach(h => {
+                const sym = h.symbol;
+                if (!sym) return;
+                const qty = Number(h.quantity || 0);
+                const buyPrice = Number(h.buy_price || 0);
+                const currPrice = Number(h.current_price || buyPrice);
+                const inv = Number(h.invested || (qty * buyPrice));
+                const currVal = Number(h.current_value || (qty * currPrice));
+                const pnl = h.pnl !== undefined ? Number(h.pnl) : Number((currVal - inv).toFixed(2));
+                const pnlPct = h.pnl_percent !== undefined ? Number(h.pnl_percent) : (inv > 0 ? Number((((currVal - inv) / inv) * 100).toFixed(2)) : 0);
+
+                if (!activeStints[sym]) {
+                    activeStints[sym] = {
+                        symbol: sym,
+                        status: 'HOLDING',
+                        entry_date: execDateStr,
+                        entry_date_obj: execDate,
+                        entry_month_year: formatMonthYear(execDate),
+                        entry_price: buyPrice,
+                        exit_date: null,
+                        exit_date_obj: null,
+                        exit_month_year: 'Holding',
+                        exit_price: null,
+                        quantity: qty,
+                        invested: inv,
+                        current_price: currPrice,
+                        current_or_exit_value: currVal,
+                        pnl: pnl,
+                        pnl_percent: pnlPct,
+                        last_date_obj: execDate
+                    };
+                } else {
+                    const s = activeStints[sym];
+                    s.quantity = qty;
+                    s.current_price = currPrice;
+                    s.invested = inv;
+                    s.current_or_exit_value = currVal;
+                    s.pnl = pnl;
+                    s.pnl_percent = pnlPct;
+                    s.last_date_obj = execDate;
+                }
+            });
+        });
+
+        const latestRunDate = parseDate(runs[runs.length - 1].executed_date || runs[runs.length - 1].scheduled_date);
+        Object.values(activeStints).forEach(stint => {
+            stint.status = 'HOLDING';
+            stint.exit_month_year = 'Holding';
+            stint.exit_date = null;
+            stint.exit_date_obj = stint.last_date_obj || latestRunDate;
+            allStints.push(stint);
+        });
+
+        // Compute holding duration in days and text
+        allStints.forEach(s => {
+            const dStart = s.entry_date_obj || latestRunDate;
+            const dEnd = s.exit_date_obj || latestRunDate;
+            let days = 0;
+            if (dStart && dEnd) {
+                const diffTime = dEnd.getTime() - dStart.getTime();
+                days = Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+            }
+            s.days_held = days;
+            const months = Math.round(days / 30.4);
+            if (months >= 1) {
+                s.holding_period_text = `${months} mo${months !== 1 ? 's' : ''} (${days}d)`;
+            } else if (days > 0) {
+                s.holding_period_text = `${days} day${days !== 1 ? 's' : ''}`;
+            } else {
+                s.holding_period_text = 'Current (0d)';
+            }
+        });
+
+        // Total per symbol
+        const symTotals = {};
+        allStints.forEach(s => {
+            if (!symTotals[s.symbol]) symTotals[s.symbol] = { invested: 0, pnl: 0 };
+            symTotals[s.symbol].invested += s.invested;
+            symTotals[s.symbol].pnl += s.pnl;
+        });
+
+        allStints.forEach(s => {
+            const tInv = symTotals[s.symbol].invested;
+            const tPnl = symTotals[s.symbol].pnl;
+            s.total_stock_pnl = Number(tPnl.toFixed(2));
+            s.total_stock_pnl_percent = tInv > 0 ? Number(((tPnl / tInv) * 100).toFixed(2)) : 0;
+        });
+
+        // Order by longer holding period descending
+        allStints.sort((a, b) => {
+            if (b.days_held !== a.days_held) return b.days_held - a.days_held;
+            return b.pnl - a.pnl;
+        });
+
+        const totInvested = Number(allStints.reduce((acc, s) => acc + s.invested, 0).toFixed(2));
+        const totVal = Number(allStints.reduce((acc, s) => acc + s.current_or_exit_value, 0).toFixed(2));
+        const totPnl = Number(allStints.reduce((acc, s) => acc + s.pnl, 0).toFixed(2));
+        const totPnlPct = totInvested > 0 ? Number(((totPnl / totInvested) * 100).toFixed(2)) : 0;
+
+        return {
+            stocks: allStints,
+            summary: {
+                total_participated: allStints.length,
+                holding_count: allStints.filter(s => s.status === 'HOLDING').length,
+                exited_count: allStints.filter(s => s.status === 'EXITED').length,
+                total_invested: totInvested,
+                total_value: totVal,
+                consolidated_pnl: totPnl,
+                consolidated_pnl_percent: totPnlPct
+            }
+        };
+    }
+
+    async function openConsolidatedStocksModal() {
+        if (!currentStrategy) {
+            alertToast('Please select a momentum smallcase strategy first.', 'error');
+            return;
+        }
+
+        ensureModalsAttachedToBody();
+
+        const badgeEl = document.getElementById('csModalStrategyBadge');
+        if (badgeEl) badgeEl.innerText = currentStrategy.name || 'Strategy';
+
+        const searchInput = document.getElementById('csSearchInput');
+        if (searchInput) searchInput.value = '';
+        consolidatedSearchQuery = '';
+        currentConsolidatedFilter = 'all';
+        updateFilterPillStates();
+
+        setConsolidatedLoadingState();
+
+        const modal = document.getElementById('consolidatedStocksModal');
+        if (modal) modal.style.display = 'flex';
+
+        try {
+            const resp = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/consolidated-stocks`);
+            if (resp && resp.success && resp.data) {
+                consolidatedStocksData = resp.data;
+            } else {
+                consolidatedStocksData = deriveConsolidatedStocksLocally(currentStrategy);
+            }
+        } catch (err) {
+            console.warn('API error fetching consolidated stocks, falling back to client derivation:', err);
+            consolidatedStocksData = deriveConsolidatedStocksLocally(currentStrategy);
+        }
+
+        renderConsolidatedStocksView();
+    }
+
+    function closeConsolidatedStocksModal() {
+        const modal = document.getElementById('consolidatedStocksModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function filterConsolidatedTable(filterType) {
+        currentConsolidatedFilter = filterType || 'all';
+        updateFilterPillStates();
+        renderConsolidatedStocksTableRows();
+    }
+
+    function handleConsolidatedSearch() {
+        const input = document.getElementById('csSearchInput');
+        consolidatedSearchQuery = (input ? input.value : '').trim().toUpperCase();
+        renderConsolidatedStocksTableRows();
+    }
+
+    function renderConsolidatedStocksView() {
+        if (!consolidatedStocksData) return;
+        const summary = consolidatedStocksData.summary || {};
+
+        // Top Summary Cards
+        const countEl = document.getElementById('csSummaryCount');
+        const breakdownEl = document.getElementById('csSummaryBreakdown');
+        const invEl = document.getElementById('csSummaryInvested');
+        const valEl = document.getElementById('csSummaryValue');
+        const pnlEl = document.getElementById('csSummaryPnl');
+        const pnlPctEl = document.getElementById('csSummaryPnlPct');
+
+        if (countEl) countEl.innerText = `${summary.total_participated || 0} stocks`;
+        if (breakdownEl) breakdownEl.innerText = `${summary.holding_count || 0} active holding · ${summary.exited_count || 0} exited`;
+        if (invEl) invEl.innerText = `₹${formatCurrency(summary.total_invested || 0)}`;
+        if (valEl) valEl.innerText = `₹${formatCurrency(summary.total_value || 0)}`;
+
+        const pnl = Number(summary.consolidated_pnl || 0);
+        const pnlPct = Number(summary.consolidated_pnl_percent || 0);
+        const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+
+        if (pnlEl) {
+            pnlEl.innerText = formatSignedCurrency(pnl, true);
+            pnlEl.style.color = pnlColor;
+        }
+        if (pnlPctEl) {
+            pnlPctEl.innerText = formatPercent(pnlPct, true);
+            pnlPctEl.style.color = pnlColor;
+        }
+
+        // Pill counts
+        const pillAll = document.getElementById('csPillCountAll');
+        const pillHold = document.getElementById('csPillCountHolding');
+        const pillExit = document.getElementById('csPillCountExited');
+        if (pillAll) pillAll.innerText = summary.total_participated || 0;
+        if (pillHold) pillHold.innerText = summary.holding_count || 0;
+        if (pillExit) pillExit.innerText = summary.exited_count || 0;
+
+        renderConsolidatedStocksTableRows();
+    }
+
+    function renderConsolidatedStocksTableRows() {
+        if (!consolidatedStocksData) return;
+        const allStocks = consolidatedStocksData.stocks || [];
+        const summary = consolidatedStocksData.summary || {};
+        const tbody = document.getElementById('csStocksTbody');
+        const tfoot = document.getElementById('csStocksTfoot');
+        if (!tbody) return;
+
+        // Apply filter
+        let filtered = allStocks.filter(s => {
+            if (currentConsolidatedFilter === 'holding') return s.status === 'HOLDING';
+            if (currentConsolidatedFilter === 'exited') return s.status === 'EXITED';
+            return true;
+        });
+
+        // Apply search
+        if (consolidatedSearchQuery) {
+            filtered = filtered.filter(s => (s.symbol || '').toUpperCase().includes(consolidatedSearchQuery));
+        }
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 32px 20px; color: var(--text-secondary);"><div style="font-size: 13.5px;">No stocks match your filter criteria (${escapeHtml(currentConsolidatedFilter)}${consolidatedSearchQuery ? ' · ' + escapeHtml(consolidatedSearchQuery) : ''}).</div></td></tr>`;
+        } else {
+            let html = '';
+            filtered.forEach((s, idx) => {
+                const isHolding = s.status === 'HOLDING';
+                const statusBadge = isHolding
+                    ? `<span style="font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35);">Holding</span>`
+                    : `<span style="font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25);">Exited</span>`;
+
+                const outDisplay = isHolding
+                    ? `<span style="color: #10b981; font-weight: 600;">Holding</span>`
+                    : `<span style="color: var(--text-secondary);">${escapeHtml(s.exit_month_year || '—')}</span>`;
+
+                const stintPnl = Number(s.pnl || 0);
+                const stintPnlPct = Number(s.pnl_percent || 0);
+                const stintColor = stintPnl >= 0 ? '#10b981' : '#ef4444';
+
+                const totalPnl = Number(s.total_stock_pnl || 0);
+                const totalPnlPct = Number(s.total_stock_pnl_percent || 0);
+                const totalColor = totalPnl >= 0 ? '#10b981' : '#ef4444';
+
+                html += `
+                    <tr style="border-bottom: 1px solid var(--border-color); transition: background-color 0.12s ease;">
+                        <td style="text-align: center; color: var(--text-secondary); font-size: 11px;">${idx + 1}</td>
+                        <td style="font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px;">
+                            ${escapeHtml(s.symbol)}
+                        </td>
+                        <td style="text-align: center;">${statusBadge}</td>
+                        <td style="text-align: center; font-weight: 500; color: var(--text-primary);">${escapeHtml(s.entry_month_year || '—')}</td>
+                        <td style="text-align: center;">${outDisplay}</td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 700; color: var(--text-primary);">
+                            ${escapeHtml(s.holding_period_text || '—')}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; color: var(--text-secondary);">
+                            ₹${formatCurrency(s.invested || 0)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">
+                            ₹${formatCurrency(s.current_or_exit_value || 0)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${stintColor};">
+                            ${formatSignedCurrency(stintPnl, true)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${stintColor};">
+                            ${formatPercent(stintPnlPct, true)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${totalColor};">
+                            ${formatSignedCurrency(totalPnl, true)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${totalColor};">
+                            ${formatPercent(totalPnlPct, true)}
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // Consolidated Total in tfoot
+        if (tfoot) {
+            const totInvested = summary.total_invested || 0;
+            const totValue = summary.total_value || 0;
+            const totPnl = Number(summary.consolidated_pnl || 0);
+            const totPnlPct = Number(summary.consolidated_pnl_percent || 0);
+            const totPnlColor = totPnl >= 0 ? '#10b981' : '#ef4444';
+
+            tfoot.innerHTML = `
+                <tr style="background: var(--bg-subtle, rgba(255,255,255,0.04));">
+                    <td colspan="6" style="text-align: left; padding: 12px 14px; font-weight: 700; color: var(--text-primary);">
+                        📊 Consolidated Portfolio Total (${summary.total_participated || 0} participated stocks)
+                    </td>
+                    <td style="text-align: right; font-family: monospace; padding: 12px 8px; font-weight: 700; color: var(--text-primary);">
+                        ₹${formatCurrency(totInvested)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; padding: 12px 8px; font-weight: 700; color: var(--text-primary);">
+                        ₹${formatCurrency(totValue)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; padding: 12px 8px; font-weight: 700; color: ${totPnlColor};">
+                        ${formatSignedCurrency(totPnl, true)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; padding: 12px 8px; font-weight: 700; color: ${totPnlColor};">
+                        ${formatPercent(totPnlPct, true)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; padding: 12px 8px; font-weight: 700; color: ${totPnlColor};">
+                        ${formatSignedCurrency(totPnl, true)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; padding: 12px 8px; font-weight: 700; color: ${totPnlColor};">
+                        ${formatPercent(totPnlPct, true)}
+                    </td>
+                </tr>
+            `;
         }
     }
 
@@ -2649,6 +3127,12 @@
     window.openDeleteStrategyModal = openDeleteStrategyModal;
     window.promptDeleteCurrentStrategy = promptDeleteCurrentStrategy;
     window.checkStratDateAndIndexMatch = checkStratDateAndIndexMatch;
+
+    // Consolidated Stocks
+    window.openConsolidatedStocksModal = openConsolidatedStocksModal;
+    window.closeConsolidatedStocksModal = closeConsolidatedStocksModal;
+    window.filterConsolidatedTable = filterConsolidatedTable;
+    window.handleConsolidatedSearch = handleConsolidatedSearch;
 
     // Manual Indices
     window.openAddManualIndexModal = openAddManualIndexModal;
