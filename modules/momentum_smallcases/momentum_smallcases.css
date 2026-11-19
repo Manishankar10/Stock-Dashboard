@@ -79,12 +79,14 @@ body > .msc-modal-backdrop[style*="none"] {
     max-width: 440px;
 }
 
-.cs-filter-btn {
+.cs-filter-btn,
+.wlt-filter-btn {
     transition: all 0.15s ease;
     cursor: pointer;
 }
 
-.cs-filter-btn.active {
+.cs-filter-btn.active,
+.wlt-filter-btn.active {
     background: rgba(16, 185, 129, 0.22) !important;
     color: #10b981 !important;
     border-color: rgba(16, 185, 129, 0.5) !important;

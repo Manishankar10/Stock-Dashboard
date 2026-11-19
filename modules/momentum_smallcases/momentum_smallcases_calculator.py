@@ -831,6 +831,23 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
     total_pnl = round(total_portfolio_value - amount_to_invest, 2)
     total_pnl_percent = round((total_pnl / amount_to_invest) * 100.0, 2) if amount_to_invest > 0 else 0.0
 
+    # Build detailed transactions list
+    transactions = []
+    for h in holdings:
+        trade_amt = round(h["quantity"] * h["buy_price"], 2)
+        trade_fee = round(trade_amt * TRANSACTION_FEE_RATE, 2)
+        transactions.append({
+            "symbol": h["symbol"],
+            "action": "BUY",
+            "action_label": f"BUY ({h['quantity']})",
+            "quantity": h["quantity"],
+            "price": h["buy_price"],
+            "amount": trade_amt,
+            "fee": trade_fee,
+            "trade_type": "INITIAL_BUY",
+            "notes": "Initial Portfolio Allocation"
+        })
+
     return {
         "holdings": holdings,
         "invested_value": round(total_invested, 2),
@@ -841,6 +858,7 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
         "total_pnl": total_pnl,
         "total_pnl_percent": total_pnl_percent,
         "fees_paid": round(total_fees, 2),
+        "transactions": transactions,
         "changes": {
             "added": added_symbols,
             "removed": [],
@@ -1240,6 +1258,67 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     for h in final_holdings:
         h["weight_percent"] = round((h["current_value"] / max(total_val, 1.0)) * 100.0, 2)
 
+    # Build detailed transactions list for rebalance
+    transactions = []
+    # 1. Exited stocks (SELL)
+    for ex in exited_stocks:
+        transactions.append({
+            "symbol": ex["symbol"],
+            "action": "SELL",
+            "action_label": "SELL (Exit)",
+            "quantity": ex["quantity"],
+            "price": ex["exit_price"],
+            "amount": ex["exit_value"],
+            "fee": ex["fee"],
+            "trade_type": "EXIT_SELL",
+            "pnl": ex.get("pnl", 0.0),
+            "pnl_percent": ex.get("pnl_percent", 0.0),
+            "notes": f"Exit (Rank > {exit_regime_ranking})"
+        })
+
+    # 2. Holdings trades (Trims and Buys)
+    for sym in all_target_symbols:
+        item = holdings_dict.get(sym)
+        if not item:
+            continue
+        final_q = item["quantity"]
+        prev_q = int(prev_holdings_map.get(sym, {}).get("quantity", 0))
+        price = item["current_price"]
+
+        if final_q < prev_q:
+            # Overweight trim (SELL)
+            trim_qty = prev_q - final_q
+            sell_amt = round(trim_qty * price, 2)
+            fee = round(sell_amt * TRANSACTION_FEE_RATE, 2)
+            transactions.append({
+                "symbol": sym,
+                "action": "SELL",
+                "action_label": f"TRIM (-{trim_qty})",
+                "quantity": trim_qty,
+                "price": price,
+                "amount": sell_amt,
+                "fee": fee,
+                "trade_type": "TRIM_SELL",
+                "notes": f"Trim Overweight (-{trim_qty} shares to target)"
+            })
+        elif final_q > prev_q:
+            # Newcomer or underweight buy (BUY)
+            buy_qty = final_q - prev_q
+            buy_amt = round(buy_qty * price, 2)
+            fee = round(buy_amt * TRANSACTION_FEE_RATE, 2)
+            is_new = item.get("is_new", False) or (prev_q == 0)
+            transactions.append({
+                "symbol": sym,
+                "action": "BUY",
+                "action_label": f"BUY ({final_q})" if is_new else f"BUY (+{buy_qty})",
+                "quantity": buy_qty,
+                "price": price,
+                "amount": buy_amt,
+                "fee": fee,
+                "trade_type": "NEW_BUY" if is_new else "ADD_BUY",
+                "notes": "New Entry" if is_new else f"Rebalance Addition (+{buy_qty} shares)"
+            })
+
     return {
         "holdings": final_holdings,
         "invested_value": final_invested,
@@ -1250,6 +1329,7 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         "total_pnl": total_pnl,
         "total_pnl_percent": total_pnl_pct,
         "fees_paid": round(total_fees, 2),
+        "transactions": transactions,
         "exited_stocks": exited_stocks,
         "changes": {
             "added": added_symbols,

@@ -509,6 +509,111 @@
     </div>
 </div>
 
+<!-- =========================================================================
+     MODAL: WALLET ACTIVITY LOG TRANSACTIONS (ALL STOCKS BUY/SELL DETAILS)
+     ========================================================================= -->
+<div class="modal-backdrop msc-modal-backdrop" id="walletLogTransactionsModal" style="display: none;" onclick="if(event.target === this) closeLogTransactionsModal()">
+    <div class="modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1100px; width: 95%; max-height: 90vh;">
+        <div class="msc-modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 16px;">
+                    📋
+                </span>
+                <div>
+                    <h3 class="msc-modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        <span>Activity Transactions &amp; Orders</span>
+                        <span id="wltModalEventBadge" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color);">EVENT</span>
+                        <span id="wltModalRunBadge" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Run</span>
+                    </h3>
+                    <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;" id="wltModalSubtitle">
+                        All stocks buy/sell execution details with consolidated amounts and charges
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="msc-modal-close-btn" onclick="closeLogTransactionsModal()" style="font-size: 18px; line-height: 1; padding: 4px 8px;">✕</button>
+        </div>
+
+        <div class="msc-modal-body" style="padding: 16px 20px; overflow-y: auto;">
+            <!-- Summary KPI Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div style="background: var(--bg-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px;">Total Executed Trades</div>
+                    <div id="wltSummaryTradesCount" style="font-size: 18px; font-weight: 700; color: var(--text-primary);">0 trades</div>
+                    <div id="wltSummaryTradesBreakdown" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">0 BUY · 0 SELL</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px;">Total Buy Amount</div>
+                    <div id="wltSummaryBuyAmount" style="font-size: 18px; font-weight: 700; color: #10b981; font-family: monospace;">₹0.00</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Capital deployed</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px;">Total Sell Amount</div>
+                    <div id="wltSummarySellAmount" style="font-size: 18px; font-weight: 700; color: #ef4444; font-family: monospace;">₹0.00</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Exits &amp; trims proceeds</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px;">Total Charges (0.10%)</div>
+                    <div id="wltSummaryCharges" style="font-size: 18px; font-weight: 700; color: var(--text-primary); font-family: monospace;">₹0.00</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Transaction fees</div>
+                </div>
+            </div>
+
+            <!-- Filter & Search Toolbar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="btn-secondary wlt-filter-btn active" id="wltPillAll" onclick="filterLogTransactionsTable('all')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px;">
+                        All Trades (<span id="wltPillCountAll">0</span>)
+                    </button>
+                    <button type="button" class="btn-secondary wlt-filter-btn" id="wltPillBuy" onclick="filterLogTransactionsTable('buy')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px;">
+                        Buys (<span id="wltPillCountBuy">0</span>)
+                    </button>
+                    <button type="button" class="btn-secondary wlt-filter-btn" id="wltPillSell" onclick="filterLogTransactionsTable('sell')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px;">
+                        Sells (<span id="wltPillCountSell">0</span>)
+                    </button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 240px; flex-grow: 1; max-width: 320px;">
+                    <input type="text" id="wltSearchInput" class="msc-modal-input" placeholder="🔍 Search stock symbol..." oninput="handleLogTransactionsSearch()" style="font-size: 12px; padding: 6px 12px; border-radius: 6px;">
+                </div>
+            </div>
+
+            <!-- Transactions Table Container -->
+            <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--bg-card);">
+                <div style="overflow-x: auto; max-height: 50vh;">
+                    <table class="msc-indices-table" id="wltTransactionsTable" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2; box-shadow: 0 1px 0 var(--border-color);">
+                            <tr style="background: var(--bg-subtle);">
+                                <th style="width: 38px; text-align: center;">#</th>
+                                <th style="text-align: left; min-width: 120px;">STOCK SYMBOL</th>
+                                <th style="text-align: center; width: 120px;">ACTION</th>
+                                <th style="text-align: right; min-width: 90px;">QUANTITY</th>
+                                <th style="text-align: right; min-width: 110px;">PRICE (₹)</th>
+                                <th style="text-align: right; min-width: 130px;">TOTAL AMOUNT (₹)</th>
+                                <th style="text-align: right; min-width: 110px;">CHARGES (0.10%) (₹)</th>
+                                <th style="text-align: left; min-width: 180px;">DETAILS / NOTES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wltTransactionsTbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                        <tfoot id="wltTransactionsTfoot" style="position: sticky; bottom: 0; background: var(--bg-card); font-weight: 700; border-top: 2px solid var(--border-color); z-index: 2; box-shadow: 0 -2px 6px rgba(0,0,0,0.25);">
+                            <!-- Populated dynamically with consolidated totals -->
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="msc-modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 11.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                <span>💡</span> <span>0.10% transaction fee applied on all buy and sell orders. Total charges are deducted directly from wallet.</span>
+            </div>
+            <button type="button" class="btn-secondary" onclick="closeLogTransactionsModal()" style="font-size: 12.5px; padding: 7px 18px;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Global Brand Process Loader Overlay (Active during Init, Rebalance, and Engine Recalculations) -->
 <div id="mscGlobalProcessLoader" class="msc-global-process-loader" style="display: none;" role="status" aria-live="polite">
     <div class="msc-global-loader-card">

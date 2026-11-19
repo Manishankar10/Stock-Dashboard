@@ -768,6 +768,7 @@ def run_strategy_init(strategy_id, username=None):
         "portfolio_snapshot": portfolio,
         "changes": portfolio.get("changes", {}),
         "exited_stocks": portfolio.get("exited_stocks", []),
+        "transactions": portfolio.get("transactions", []),
         "executed_at": now_iso
     }
 
@@ -789,6 +790,8 @@ def run_strategy_init(strategy_id, username=None):
         "id": f"clog_{uuid.uuid4().hex[:8]}",
         "timestamp": now_iso,
         "type": "PORTFOLIO_INIT",
+        "run_id": init_run_entry["run_id"],
+        "run_number": 0,
         "amount": target["amount_to_invest"],
         "fees": portfolio["fees_paid"],
         "wallet_after": portfolio["wallet_balance"],
@@ -944,6 +947,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         "portfolio_snapshot": portfolio,
         "changes": portfolio.get("changes", {}),
         "exited_stocks": portfolio.get("exited_stocks", []),
+        "transactions": portfolio.get("transactions", []),
         "executed_at": now_iso
     }
 
@@ -965,6 +969,8 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         "id": f"clog_{uuid.uuid4().hex[:8]}",
         "timestamp": now_iso,
         "type": "REBALANCE_EXECUTED",
+        "run_id": rebal_run_entry["run_id"],
+        "run_number": rebal_number,
         "amount": stepup,
         "fees": portfolio["fees_paid"],
         "wallet_after": portfolio["wallet_balance"],

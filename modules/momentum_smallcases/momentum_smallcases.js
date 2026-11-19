@@ -34,7 +34,8 @@
         'consolidatedStocksModal',
         'momentumIndexFormModal',
         'momentumIndexViewModal',
-        'momentumIndexDeleteModal'
+        'momentumIndexDeleteModal',
+        'walletLogTransactionsModal'
     ];
 
     function ensureModalsAttachedToBody() {
@@ -1581,16 +1582,18 @@
                                 <th style="text-align: right; min-width: 100px;">AMOUNT / STEP-UP</th>
                                 <th style="text-align: right; min-width: 90px;">FEES (0.10%)</th>
                                 <th style="text-align: right; min-width: 100px;">WALLET AFTER</th>
-                                <th style="min-width: 250px;">NOTES</th>
+                                <th style="min-width: 230px;">NOTES</th>
+                                <th style="text-align: right; min-width: 110px;">ACTION</th>
                             </tr>
                         </thead>
                         <tbody>
         `;
 
         if (!capitalLogs || capitalLogs.length === 0) {
-            html += `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-secondary);">No capital logs recorded.</td></tr>`;
+            html += `<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">No capital logs recorded.</td></tr>`;
         } else {
             capitalLogs.slice().reverse().forEach(log => {
+                const canViewTrades = hasLogTransactions(log, currentStrategy);
                 html += `
                     <tr>
                         <td style="font-size: 11.5px; color: var(--text-secondary);">${formatDateTimeDisplay(log.timestamp)}</td>
@@ -1603,6 +1606,15 @@
                         <td style="text-align: right; font-family: monospace; color: var(--text-secondary);">₹${formatCurrency(log.fees || 0)}</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 600; color: #10b981;">₹${formatCurrency(log.wallet_after || 0)}</td>
                         <td style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(log.notes || '—')}</td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            ${canViewTrades ? `
+                                <button type="button" class="btn-sm btn-secondary" onclick="openLogTransactionsModal('${log.id}')" style="padding: 3px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color);" title="View all stock buy and sell execution details for this activity">
+                                    <span>📋</span> <span>Transactions</span>
+                                </button>
+                            ` : `
+                                <span style="font-size: 11.5px; color: var(--text-secondary);">—</span>
+                            `}
+                        </td>
                     </tr>
                 `;
             });
@@ -2551,6 +2563,427 @@
     }
 
     // =========================================================================
+    // 5B. WALLET ACTIVITY LOG TRANSACTIONS MODAL
+    // Shows all stock buy/sell order details with consolidated total amount and charges
+    // =========================================================================
+    let currentLogTradesState = {
+        log: null,
+        run: null,
+        trades: [],
+        filter: 'all',
+        query: ''
+    };
+
+    function hasLogTransactions(log, strategy) {
+        if (!log || !strategy) return false;
+        if (log.type === 'PORTFOLIO_INIT' || log.type === 'REBALANCE_EXECUTED') return true;
+        if (log.run_id) return true;
+        if (log.type === 'INITIAL_DEPOSIT' && strategy.runs && strategy.runs.length > 0) return true;
+        return false;
+    }
+
+    function getLogTransactions(log, strategy) {
+        if (!log || !strategy) return { run: null, trades: [] };
+        const runs = strategy.runs || [];
+        let matchedRun = null;
+
+        // 1. Match run by run_id
+        if (log.run_id) {
+            matchedRun = runs.find(r => r.run_id === log.run_id);
+        }
+        // 2. Match by run_number
+        if (!matchedRun && log.run_number !== undefined && log.run_number !== null) {
+            matchedRun = runs.find(r => r.run_number === log.run_number);
+        }
+        // 3. Match by notes regex (e.g. "Rebalance #1")
+        if (!matchedRun && log.notes) {
+            const m = log.notes.match(/Rebalance #(\d+)/i);
+            if (m) {
+                const num = parseInt(m[1], 10);
+                matchedRun = runs.find(r => r.run_number === num || (r.title && r.title.includes('#' + num)));
+            }
+        }
+        // 4. Match by log type
+        if (!matchedRun) {
+            if (log.type === 'PORTFOLIO_INIT' || log.type === 'INITIAL_DEPOSIT') {
+                matchedRun = runs.find(r => r.run_type === 'INIT') || runs[0];
+            } else if (log.type === 'REBALANCE_EXECUTED') {
+                const rebalRuns = runs.filter(r => r.run_type === 'REBALANCE');
+                if (rebalRuns.length > 0) {
+                    matchedRun = rebalRuns[rebalRuns.length - 1];
+                }
+            }
+        }
+
+        if (!matchedRun) return { run: null, trades: [] };
+
+        // Check if pre-calculated transactions exist
+        const snapshot = matchedRun.portfolio_snapshot || {};
+        if (snapshot.transactions && Array.isArray(snapshot.transactions) && snapshot.transactions.length > 0) {
+            return { run: matchedRun, trades: snapshot.transactions };
+        }
+        if (matchedRun.transactions && Array.isArray(matchedRun.transactions) && matchedRun.transactions.length > 0) {
+            return { run: matchedRun, trades: matchedRun.transactions };
+        }
+
+        // Fallback: derive trades dynamically from holdings, changes, and exited_stocks
+        const trades = [];
+        const isInit = matchedRun.run_type === 'INIT' || matchedRun.run_number === 0;
+
+        if (isInit) {
+            const holdings = snapshot.holdings || [];
+            holdings.forEach(h => {
+                const qty = Number(h.quantity || 0);
+                const price = Number(h.buy_price || h.current_price || 0);
+                const amt = Number(h.invested || (qty * price));
+                const fee = Number(h.fee || (amt * 0.0010));
+                trades.push({
+                    symbol: h.symbol,
+                    action: 'BUY',
+                    action_label: `BUY (${qty})`,
+                    quantity: qty,
+                    price: price,
+                    amount: Math.round(amt * 100) / 100,
+                    fee: Math.round(fee * 100) / 100,
+                    trade_type: 'INITIAL_BUY',
+                    notes: 'Initial Portfolio Allocation'
+                });
+            });
+        } else {
+            const runIdx = runs.indexOf(matchedRun);
+            const prevRun = runIdx > 0 ? runs[runIdx - 1] : null;
+            const prevHoldings = (prevRun && prevRun.portfolio_snapshot && prevRun.portfolio_snapshot.holdings) || [];
+            const prevMap = {};
+            prevHoldings.forEach(h => { prevMap[h.symbol] = h; });
+
+            const currHoldings = snapshot.holdings || [];
+            const currMap = {};
+            currHoldings.forEach(h => { currMap[h.symbol] = h; });
+
+            const exited = matchedRun.exited_stocks || snapshot.exited_stocks || (snapshot.changes && snapshot.changes.exited_stocks) || [];
+            const exitedSyms = new Set();
+
+            // 1. Exits
+            exited.forEach(ex => {
+                exitedSyms.add(ex.symbol);
+                const qty = Number(ex.quantity || 0);
+                const price = Number(ex.exit_price || ex.average_price || 0);
+                const amt = Number(ex.exit_value || (qty * price));
+                const fee = Number(ex.fee || (amt * 0.0010));
+                trades.push({
+                    symbol: ex.symbol,
+                    action: 'SELL',
+                    action_label: 'SELL (Exit)',
+                    quantity: qty,
+                    price: price,
+                    amount: Math.round(amt * 100) / 100,
+                    fee: Math.round(fee * 100) / 100,
+                    trade_type: 'EXIT_SELL',
+                    notes: 'Exit (Dropped Rank)'
+                });
+            });
+
+            // Any removed symbols not captured in exited list
+            prevHoldings.forEach(prevH => {
+                if (!currMap[prevH.symbol] && !exitedSyms.has(prevH.symbol)) {
+                    const qty = Number(prevH.quantity || 0);
+                    const price = Number(prevH.current_price || prevH.buy_price || 0);
+                    const amt = Number(qty * price);
+                    trades.push({
+                        symbol: prevH.symbol,
+                        action: 'SELL',
+                        action_label: 'SELL (Exit)',
+                        quantity: qty,
+                        price: price,
+                        amount: Math.round(amt * 100) / 100,
+                        fee: Math.round(amt * 0.0010 * 100) / 100,
+                        trade_type: 'EXIT_SELL',
+                        notes: 'Exit (Dropped Rank)'
+                    });
+                }
+            });
+
+            // 2. Trims and Buys
+            currHoldings.forEach(currH => {
+                const sym = currH.symbol;
+                const prevH = prevMap[sym];
+                const prevQ = prevH ? Number(prevH.quantity || 0) : 0;
+                const currQ = Number(currH.quantity || 0);
+                const price = Number(currH.current_price || currH.buy_price || 0);
+
+                if (currQ < prevQ) {
+                    const trimQty = prevQ - currQ;
+                    const amt = trimQty * price;
+                    trades.push({
+                        symbol: sym,
+                        action: 'SELL',
+                        action_label: `TRIM (-${trimQty})`,
+                        quantity: trimQty,
+                        price: price,
+                        amount: Math.round(amt * 100) / 100,
+                        fee: Math.round(amt * 0.0010 * 100) / 100,
+                        trade_type: 'TRIM_SELL',
+                        notes: `Trim Overweight (-${trimQty} shares)`
+                    });
+                } else if (currQ > prevQ) {
+                    const buyQty = currQ - prevQ;
+                    const amt = buyQty * price;
+                    const isNew = !prevH || prevQ === 0;
+                    trades.push({
+                        symbol: sym,
+                        action: 'BUY',
+                        action_label: isNew ? `BUY (${currQ})` : `BUY (+${buyQty})`,
+                        quantity: buyQty,
+                        price: price,
+                        amount: Math.round(amt * 100) / 100,
+                        fee: Math.round(amt * 0.0010 * 100) / 100,
+                        trade_type: isNew ? 'NEW_BUY' : 'ADD_BUY',
+                        notes: isNew ? 'New Entry' : `Rebalance Addition (+${buyQty} shares)`
+                    });
+                }
+            });
+        }
+
+        return { run: matchedRun, trades: trades };
+    }
+
+    function openLogTransactionsModal(logId) {
+        if (!currentStrategy) return;
+        ensureModalsAttachedToBody();
+        const logs = currentStrategy.capital_logs || [];
+        const log = logs.find(l => l.id === logId);
+        if (!log) {
+            alertToast('Log entry not found', 'error');
+            return;
+        }
+
+        const { run, trades } = getLogTransactions(log, currentStrategy);
+        currentLogTradesState = {
+            log: log,
+            run: run,
+            trades: trades || [],
+            filter: 'all',
+            query: ''
+        };
+
+        const modal = document.getElementById('walletLogTransactionsModal');
+        if (!modal) return;
+
+        // Reset search & filter
+        const searchInput = document.getElementById('wltSearchInput');
+        if (searchInput) searchInput.value = '';
+        ['all', 'buy', 'sell'].forEach(f => {
+            const pill = document.getElementById(`wltPill${f.charAt(0).toUpperCase() + f.slice(1)}`);
+            if (pill) {
+                if (f === 'all') pill.classList.add('active');
+                else pill.classList.remove('active');
+            }
+        });
+
+        // Set Badges
+        const evBadge = document.getElementById('wltModalEventBadge');
+        if (evBadge) evBadge.innerText = log.type || 'ACTIVITY';
+
+        const runBadge = document.getElementById('wltModalRunBadge');
+        if (runBadge) {
+            if (run) {
+                runBadge.innerText = run.title || `Run #${run.run_number}`;
+                runBadge.style.display = 'inline-block';
+            } else {
+                runBadge.style.display = 'none';
+            }
+        }
+
+        const subEl = document.getElementById('wltModalSubtitle');
+        if (subEl) {
+            const dateStr = formatDateTimeDisplay(log.timestamp);
+            subEl.innerText = `${currentStrategy.name} · ${dateStr} · Wallet: ₹${formatCurrency(log.wallet_after || 0)}`;
+        }
+
+        // Set KPI Cards
+        const totalTrades = trades.length;
+        const buyTrades = trades.filter(t => t.action === 'BUY');
+        const sellTrades = trades.filter(t => t.action === 'SELL');
+        const totalBuyAmt = buyTrades.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const totalSellAmt = sellTrades.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const totalCharges = trades.reduce((sum, t) => sum + (Number(t.fee) || 0), 0);
+
+        const countEl = document.getElementById('wltSummaryTradesCount');
+        if (countEl) countEl.innerText = `${totalTrades} ${totalTrades === 1 ? 'trade' : 'trades'}`;
+
+        const breakdownEl = document.getElementById('wltSummaryTradesBreakdown');
+        if (breakdownEl) breakdownEl.innerText = `${buyTrades.length} BUY · ${sellTrades.length} SELL`;
+
+        const buyAmtEl = document.getElementById('wltSummaryBuyAmount');
+        if (buyAmtEl) buyAmtEl.innerText = `₹${formatCurrency(totalBuyAmt)}`;
+
+        const sellAmtEl = document.getElementById('wltSummarySellAmount');
+        if (sellAmtEl) sellAmtEl.innerText = `₹${formatCurrency(totalSellAmt)}`;
+
+        const chargesEl = document.getElementById('wltSummaryCharges');
+        if (chargesEl) chargesEl.innerText = `₹${formatCurrency(totalCharges)}`;
+
+        // Set Pill Counts
+        const pAll = document.getElementById('wltPillCountAll');
+        if (pAll) pAll.innerText = totalTrades;
+        const pBuy = document.getElementById('wltPillCountBuy');
+        if (pBuy) pBuy.innerText = buyTrades.length;
+        const pSell = document.getElementById('wltPillCountSell');
+        if (pSell) pSell.innerText = sellTrades.length;
+
+        // Render Table & Footer
+        renderLogTransactionsTable();
+
+        modal.style.display = 'flex';
+    }
+
+    function closeLogTransactionsModal() {
+        const modal = document.getElementById('walletLogTransactionsModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function renderLogTransactionsTable() {
+        const tbody = document.getElementById('wltTransactionsTbody');
+        const tfoot = document.getElementById('wltTransactionsTfoot');
+        if (!tbody || !tfoot) return;
+
+        const { trades, filter, query } = currentLogTradesState;
+        let filtered = trades.slice();
+
+        // 1. Filter by BUY / SELL
+        if (filter === 'buy') {
+            filtered = filtered.filter(t => t.action === 'BUY');
+        } else if (filter === 'sell') {
+            filtered = filtered.filter(t => t.action === 'SELL');
+        }
+
+        // 2. Filter by search query
+        if (query && query.trim()) {
+            const q = query.trim().toUpperCase();
+            filtered = filtered.filter(t => (t.symbol || '').toUpperCase().includes(q));
+        }
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 28px; color: var(--text-secondary);">No transactions match your search/filter criteria.</td></tr>`;
+            tfoot.innerHTML = '';
+            return;
+        }
+
+        // Build Rows
+        let rowsHtml = '';
+        let totQty = 0;
+        let totAmount = 0;
+        let totFee = 0;
+        let totBuy = 0;
+        let totSell = 0;
+        let buyCount = 0;
+        let sellCount = 0;
+
+        filtered.forEach((t, i) => {
+            const isBuy = t.action === 'BUY';
+            const isSell = t.action === 'SELL';
+            const qty = Number(t.quantity || 0);
+            const price = Number(t.price || 0);
+            const amt = Number(t.amount || (qty * price));
+            const fee = Number(t.fee || (amt * 0.0010));
+
+            totQty += qty;
+            totAmount += amt;
+            totFee += fee;
+
+            if (isBuy) {
+                totBuy += amt;
+                buyCount++;
+            } else if (isSell) {
+                totSell += amt;
+                sellCount++;
+            }
+
+            const badgeBg = isBuy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+            const badgeColor = isBuy ? '#10b981' : '#ef4444';
+            const badgeBorder = isBuy ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+            const actionLabel = t.action_label || t.action || 'TRADE';
+
+            rowsHtml += `
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="text-align: center; color: var(--text-secondary); font-size: 11px;">${i + 1}</td>
+                    <td>
+                        <strong style="color: var(--text-primary); font-size: 12.5px; font-family: monospace;">${escapeHtml(t.symbol)}</strong>
+                    </td>
+                    <td style="text-align: center;">
+                        <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder};">
+                            ${escapeHtml(actionLabel)}
+                        </span>
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-size: 12px; font-weight: 600;">
+                        ${qty.toLocaleString('en-IN')}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-size: 12px; color: var(--text-secondary);">
+                        ₹${formatCurrency(price)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-size: 12px; font-weight: 700; color: ${badgeColor};">
+                        ₹${formatCurrency(amt)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: var(--text-secondary);">
+                        ₹${formatCurrency(fee)}
+                    </td>
+                    <td style="font-size: 11.5px; color: var(--text-secondary);">
+                        ${escapeHtml(t.notes || '—')}
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+
+        // Table Footer with Consolidated Totals
+        tfoot.innerHTML = `
+            <tr style="background: var(--bg-subtle); border-top: 2px solid var(--border-color); font-weight: 700;">
+                <td colspan="3" style="padding: 10px 14px;">
+                    <div style="font-size: 12.5px; color: var(--text-primary); font-weight: 700;">Consolidated Totals</div>
+                    <div style="font-size: 11px; font-weight: normal; color: var(--text-secondary); margin-top: 2px;">
+                        ${filtered.length} ${filtered.length === 1 ? 'Trade' : 'Trades'} (${buyCount} BUY, ${sellCount} SELL)
+                    </div>
+                </td>
+                <td style="text-align: right; font-family: monospace; font-size: 12px; font-weight: 700; padding: 10px 12px; color: var(--text-primary);">
+                    ${totQty.toLocaleString('en-IN')} shares
+                </td>
+                <td style="text-align: right; color: var(--text-secondary); padding: 10px 12px;">—</td>
+                <td style="text-align: right; font-family: monospace; padding: 10px 12px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">₹${formatCurrency(totAmount)}</div>
+                    <div style="font-size: 10px; font-weight: normal; color: var(--text-secondary); margin-top: 2px;">
+                        Buy: ₹${formatCurrency(totBuy)} · Sell: ₹${formatCurrency(totSell)}
+                    </div>
+                </td>
+                <td style="text-align: right; font-family: monospace; font-size: 13px; color: #f59e0b; font-weight: 700; padding: 10px 12px;">
+                    ₹${formatCurrency(totFee)}
+                </td>
+                <td style="font-size: 11px; font-weight: normal; color: var(--text-secondary); padding: 10px 14px;">
+                    0.10% total transaction charges
+                </td>
+            </tr>
+        `;
+    }
+
+    function filterLogTransactionsTable(type) {
+        currentLogTradesState.filter = type;
+        ['all', 'buy', 'sell'].forEach(f => {
+            const pill = document.getElementById(`wltPill${f.charAt(0).toUpperCase() + f.slice(1)}`);
+            if (pill) {
+                if (f === type) pill.classList.add('active');
+                else pill.classList.remove('active');
+            }
+        });
+        renderLogTransactionsTable();
+    }
+
+    function handleLogTransactionsSearch() {
+        const input = document.getElementById('wltSearchInput');
+        currentLogTradesState.query = (input ? input.value : '') || '';
+        renderLogTransactionsTable();
+    }
+
+    // =========================================================================
     // 6. DELETE STRATEGY / INDEX HANDLER
     // =========================================================================
     function openDeleteStrategyModal(strategyId, optName) {
@@ -3275,6 +3708,12 @@
     window.closeConsolidatedStocksModal = closeConsolidatedStocksModal;
     window.filterConsolidatedTable = filterConsolidatedTable;
     window.handleConsolidatedSearch = handleConsolidatedSearch;
+
+    // Activity Log Transactions
+    window.openLogTransactionsModal = openLogTransactionsModal;
+    window.closeLogTransactionsModal = closeLogTransactionsModal;
+    window.filterLogTransactionsTable = filterLogTransactionsTable;
+    window.handleLogTransactionsSearch = handleLogTransactionsSearch;
 
     // Manual Indices
     window.openAddManualIndexModal = openAddManualIndexModal;
