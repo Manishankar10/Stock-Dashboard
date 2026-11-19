@@ -8,23 +8,23 @@
      MODAL: ADD MOMENTUM SMALLCASE (STRATEGY)
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="addStrategyModal" style="display: none;" onclick="if(event.target === this) closeAddStrategyModal()">
-    <div class="modal-container msc-modal-container-lg" role="dialog" aria-modal="true">
-        <div class="msc-modal-header">
+    <div class="modal-container msc-modal-container msc-modal-container-lg" role="dialog" aria-modal="true" style="max-height: min(92vh, calc(100vh - 32px)); display: flex; flex-direction: column;">
+        <div class="msc-modal-header" style="flex-shrink: 0;">
             <h3 class="msc-modal-title">
                 <span>🚀</span> <span>Add Momentum Smallcase</span>
             </h3>
             <button type="button" class="msc-modal-close-btn" onclick="closeAddStrategyModal()">✕</button>
         </div>
-        <div class="msc-modal-body">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                <div class="msc-form-group" style="grid-column: span 2;">
+        <div class="msc-modal-body" style="overflow-y: auto; flex: 1 1 auto; padding: 16px 22px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;">
+                <div class="msc-form-group" style="grid-column: span 2; margin-bottom: 0;">
                     <label for="stratNameInput" class="msc-form-label">
                         Smallcase Name <span style="color: #ef4444;">*</span>
                     </label>
                     <input type="text" id="stratNameInput" class="msc-modal-input" placeholder="e.g. Nifty High Momentum 12" required>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratStartDateInput" class="msc-form-label">
                         Start Date <span style="color: #ef4444;">*</span>
                     </label>
@@ -34,7 +34,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratIndexSelect" class="msc-form-label">
                         Index Universe <span style="color: #ef4444;">*</span>
                     </label>
@@ -44,7 +44,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratNoOfStocksInput" class="msc-form-label">
                         No. of Stocks <span style="color: #ef4444;">*</span>
                     </label>
@@ -54,7 +54,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratExitRegimeInput" class="msc-form-label">
                         Exit Regime Ranking <span style="color: #ef4444;">*</span>
                     </label>
@@ -64,7 +64,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratRebalDayInput" class="msc-form-label">
                         Rebalance Day (of month) <span style="color: #ef4444;">*</span>
                     </label>
@@ -74,7 +74,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratAmountInput" class="msc-form-label">
                         Amount to Invest (₹) <span style="color: #ef4444;">*</span>
                     </label>
@@ -84,7 +84,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratTrimExistingSelect" class="msc-form-label">
                         Trim Existing Stock <span style="color: #ef4444;">*</span>
                     </label>
@@ -97,7 +97,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group">
+                <div class="msc-form-group" style="margin-bottom: 0;">
                     <label for="stratTradingDaysPerMonthSelect" class="msc-form-label">
                         Trading Days per Month <span style="color: #ef4444;">*</span>
                     </label>
@@ -110,7 +110,7 @@
                     </div>
                 </div>
 
-                <div class="msc-form-group" style="grid-column: span 2;">
+                <div class="msc-form-group" style="grid-column: span 2; margin-bottom: 0;">
                     <label for="stratFormulaInput" class="msc-form-label">
                         Momentum Formula
                     </label>
@@ -118,7 +118,7 @@
                 </div>
             </div>
         </div>
-        <div class="msc-modal-footer">
+        <div class="msc-modal-footer" style="flex-shrink: 0;">
             <button type="button" class="btn-secondary" onclick="closeAddStrategyModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
             <button type="button" class="btn-primary" id="stratCreateSubmitBtn" onclick="submitCreateStrategy()" style="font-size: 12.5px; padding: 7px 20px;">
                 Create Smallcase
@@ -131,7 +131,7 @@
      MODAL: RUN REBALANCE (WITH OPTIONAL STEP-UP CAPITAL)
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="runRebalanceModal" style="display: none;" onclick="if(event.target === this) closeRunRebalanceModal()">
-    <div class="modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
+    <div class="modal-container msc-modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
         <div class="msc-modal-header">
             <h3 class="msc-modal-title" style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
@@ -168,7 +168,7 @@
      MODAL: RUN ALL (INIT + REBALANCES) WITH RECURRING STEP-UP CAPITAL
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="runAllRebalanceModal" style="display: none;" onclick="if(event.target === this) closeRunAllModal()">
-    <div class="modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
+    <div class="modal-container msc-modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
         <div class="msc-modal-header">
             <h3 class="msc-modal-title" style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 15px;">
@@ -327,7 +327,7 @@
 
 <!-- View Manual Index Modal -->
 <div class="modal-backdrop msc-modal-backdrop" id="momentumIndexViewModal" style="display: none;" onclick="if(event.target === this) closeMomentumViewModal()">
-    <div class="modal-container msc-modal-container-lg" role="dialog" aria-modal="true">
+    <div class="modal-container msc-modal-container msc-modal-container-lg" role="dialog" aria-modal="true">
         <div class="msc-modal-header">
             <div style="display: flex; align-items: center; gap: 9px; overflow: hidden;">
                 <span style="font-size: 20px;">📋</span>
@@ -395,7 +395,7 @@
 
 <!-- Delete Confirmation Modal (Indices & Strategies) -->
 <div class="modal-backdrop msc-modal-backdrop" id="momentumIndexDeleteModal" style="display: none;" onclick="if(event.target === this) closeMomentumDeleteModal()">
-    <div class="modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
+    <div class="modal-container msc-modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
         <div class="msc-modal-header" style="border-bottom-color: rgba(239, 68, 68, 0.2);">
             <h3 class="msc-modal-title" style="color: #ef4444;">
                 <span>🗑️</span> <span id="mscDeleteModalHeader">Delete Item</span>
@@ -429,7 +429,7 @@
      supports negative returns, and displays consolidated totals at the bottom.
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="consolidatedStocksModal" style="display: none;" onclick="if(event.target === this) closeConsolidatedStocksModal()">
-    <div class="modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1180px; width: 96%; max-height: 92vh;">
+    <div class="modal-container msc-modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1180px; width: 96%; max-height: 92vh;">
         <div class="msc-modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span style="font-size: 20px;">📊</span>
@@ -539,7 +539,7 @@
      MODAL: WALLET ACTIVITY LOG TRANSACTIONS (ALL STOCKS BUY/SELL DETAILS)
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="walletLogTransactionsModal" style="display: none;" onclick="if(event.target === this) closeLogTransactionsModal()">
-    <div class="modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1100px; width: 95%; max-height: 90vh;">
+    <div class="modal-container msc-modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1100px; width: 95%; max-height: 90vh;">
         <div class="msc-modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 16px;">
@@ -657,7 +657,7 @@
      MODAL: PERFORMANCE GRAPH & VALUATION DRILLDOWN (FULL SIZE + MINIMIZE)
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="performanceGraphModal" style="display: none;" onclick="if(event.target === this) closePerformanceGraphModal()">
-    <div class="modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1360px; width: 96%; height: 92vh; display: flex; flex-direction: column;">
+    <div class="modal-container msc-modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1360px; width: 96%; height: 92vh; display: flex; flex-direction: column;">
         <div class="msc-modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 18px;">

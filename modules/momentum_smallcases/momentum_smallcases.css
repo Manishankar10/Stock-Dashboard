@@ -22,6 +22,8 @@ body > .msc-modal-backdrop {
     padding: 16px !important;
     box-sizing: border-box !important;
     margin: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 .msc-modal-backdrop[style*="display: flex"],
@@ -49,7 +51,10 @@ body > .msc-modal-backdrop[style*="none"] {
     background: rgba(0, 0, 0, 0.85) !important;
 }
 
-.msc-modal-container {
+.msc-modal-container,
+.msc-modal-container-lg,
+.msc-modal-container-xl,
+.msc-modal-container-sm {
     background: var(--bg-card, #1e222d);
     color: var(--text-primary, #d1d4dc);
     border: 1px solid var(--border-color, #2a2e39);
@@ -59,7 +64,7 @@ body > .msc-modal-backdrop[style*="none"] {
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
+    max-height: min(92vh, calc(100vh - 32px));
     overflow: hidden;
     position: relative;
     margin: auto !important;
@@ -295,6 +300,8 @@ body > .msc-global-process-loader[style*="none"] {
     padding: 20px;
     overflow-y: auto;
     flex: 1 1 auto;
+    max-height: 100%;
+    overscroll-behavior: contain;
 }
 
 .msc-modal-footer {
