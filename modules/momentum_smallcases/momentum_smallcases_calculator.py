@@ -1310,6 +1310,9 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         price = item["current_price"]
 
         if final_q < prev_q:
+            if not trim_existing:
+                # Retained stocks must never generate TRIM_SELL when trim_existing is False
+                continue
             # Overweight trim (SELL)
             trim_qty = prev_q - final_q
             sell_amt = round(trim_qty * price, 2)

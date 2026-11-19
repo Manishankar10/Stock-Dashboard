@@ -17,6 +17,7 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     get_user_strategy,
     create_user_strategy,
     update_user_strategy_formula,
+    update_user_strategy_settings,
     run_strategy_init,
     run_strategy_rebalance,
     run_strategy_all_rebalances,
@@ -309,19 +310,51 @@ def export_ranked_stocks_excel_api(strategy_id, run_index=None):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/formula", methods=["PUT"])
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/formula", methods=["PUT", "POST"])
 def update_formula_api(strategy_id):
-    """Updates formula for a strategy."""
+    """Updates formula and optional settings for a strategy."""
     try:
         user = session.get("username") or "admin"
         body = request.get_json(silent=True) or {}
         formula = body.get("formula")
-        updated = update_user_strategy_formula(strategy_id, formula, username=user)
-        return jsonify({"success": True, "strategy": updated, "message": "Formula updated successfully"})
+        trim_existing = body.get("trim_existing")
+        trading_days = body.get("trading_days_per_month")
+        updated = update_user_strategy_settings(
+            strategy_id,
+            formula=formula,
+            trim_existing=trim_existing,
+            trading_days_per_month=trading_days,
+            username=user
+        )
+        return jsonify({"success": True, "strategy": updated, "message": "Formula & settings updated successfully"})
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
         logger.error(f"Error updating formula for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/settings", methods=["PUT", "PATCH", "POST"])
+def update_settings_api(strategy_id):
+    """Updates settings (formula, trim_existing, trading_days_per_month) for a strategy."""
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        formula = body.get("formula")
+        trim_existing = body.get("trim_existing")
+        trading_days = body.get("trading_days_per_month")
+        updated = update_user_strategy_settings(
+            strategy_id,
+            formula=formula,
+            trim_existing=trim_existing,
+            trading_days_per_month=trading_days,
+            username=user
+        )
+        return jsonify({"success": True, "strategy": updated, "message": "Settings updated successfully"})
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error updating settings for '{strategy_id}': {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -354,21 +387,22 @@ def run_init_api(strategy_id):
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/run-rebalance", methods=["POST"])
 def run_rebalance_api(strategy_id):
-    """Executes rebalance calculation & allocation, with optional step-up capital."""
+    """Executes rebalance calculation & allocation, with optional step-up capital and trim override."""
     try:
         user = session.get("username") or "admin"
         body = request.get_json(silent=True) or {}
         stepup = float(body.get("stepup_amount") or 0.0)
+        trim_existing = body.get("trim_existing")
         
         if request.args.get("sync") == "1":
-            updated = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=user)
+            updated = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=user, trim_existing=trim_existing)
             return jsonify({
                 "success": True,
                 "strategy": updated,
                 "message": "Rebalance execution completed successfully"
             })
         
-        job_id = start_async_execution_job("REBALANCE", strategy_id, username=user, stepup_amount=stepup)
+        job_id = start_async_execution_job("REBALANCE", strategy_id, username=user, stepup_amount=stepup, trim_existing=trim_existing)
         return jsonify({
             "success": True,
             "async": True,
@@ -390,13 +424,15 @@ def run_all_strategy_api(strategy_id):
         body = request.get_json(silent=True) or {}
         stepup = float(body.get("stepup_amount") or body.get("stepup_per_rebalance") or 0.0)
         up_to = body.get("up_to_date")
+        trim_existing = body.get("trim_existing")
         
         if request.args.get("sync") == "1":
             result = run_strategy_all_rebalances(
                 strategy_id=strategy_id,
                 stepup_per_rebalance=stepup,
                 up_to_date=up_to,
-                username=user
+                username=user,
+                trim_existing=trim_existing
             )
             return jsonify({
                 "success": True,
@@ -407,7 +443,7 @@ def run_all_strategy_api(strategy_id):
                 "message": result["message"]
             })
         
-        job_id = start_async_execution_job("RUN_ALL", strategy_id, username=user, stepup_per_rebalance=stepup, up_to_date=up_to)
+        job_id = start_async_execution_job("RUN_ALL", strategy_id, username=user, stepup_per_rebalance=stepup, up_to_date=up_to, trim_existing=trim_existing)
         return jsonify({
             "success": True,
             "async": True,

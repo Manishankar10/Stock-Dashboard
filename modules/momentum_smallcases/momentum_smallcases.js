@@ -1771,6 +1771,11 @@
             }
         }
 
+        const trimSel = document.getElementById('rebalTrimSelect');
+        if (trimSel) {
+            trimSel.value = (currentStrategy.trim_existing === false) ? 'no' : 'yes';
+        }
+
         const modal = document.getElementById('runRebalanceModal');
         if (modal) modal.style.display = 'flex';
         setTimeout(() => {
@@ -1803,6 +1808,8 @@
             return;
         }
 
+        const trimVal = (document.getElementById('rebalTrimSelect')?.value === 'no') ? false : true;
+
         const btn = document.getElementById('rebalConfirmSubmitBtn');
         const origText = btn ? btn.innerText : 'Confirm';
         if (btn) {
@@ -1823,7 +1830,8 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    stepup_amount: stepupVal
+                    stepup_amount: stepupVal,
+                    trim_existing: trimVal
                 })
             });
 
@@ -1917,6 +1925,11 @@
             }
         }
 
+        const runAllTrim = document.getElementById('runAllTrimSelect');
+        if (runAllTrim) {
+            runAllTrim.value = (currentStrategy.trim_existing === false) ? 'no' : 'yes';
+        }
+
         if (modal) modal.style.display = 'flex';
         setTimeout(() => {
             if (stepupInput) stepupInput.focus();
@@ -1939,6 +1952,8 @@
             alertToast('Step-up amount cannot be negative', 'warning');
             return;
         }
+
+        const trimVal = (document.getElementById('runAllTrimSelect')?.value === 'no') ? false : true;
 
         const cutoffVal = document.getElementById('runAllCutoffDateInput')?.value || '';
         const todayStr = new Date().toISOString().substring(0, 10);
@@ -1975,7 +1990,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     stepup_amount: stepupVal,
-                    up_to_date: cutoffVal
+                    up_to_date: cutoffVal,
+                    trim_existing: trimVal
                 })
             });
 
@@ -2016,13 +2032,17 @@
     }
 
     // =========================================================================
-    // 5. FORMULA EDIT MODAL
+    // 5. FORMULA & SETTINGS EDIT MODAL
     // =========================================================================
     function openEditFormulaModal() {
         if (!currentStrategy) return;
         ensureModalsAttachedToBody();
         setSmallcaseModalLoader('editFormulaModal', false);
         document.getElementById('formulaEditInput').value = currentStrategy.formula || '';
+        const trimSel = document.getElementById('formulaTrimExistingSelect');
+        if (trimSel) {
+            trimSel.value = (currentStrategy.trim_existing === false) ? 'no' : 'yes';
+        }
         const modal = document.getElementById('editFormulaModal');
         if (modal) modal.style.display = 'flex';
         setTimeout(() => {
@@ -2046,8 +2066,10 @@
             return;
         }
 
+        const trimVal = (document.getElementById('formulaTrimExistingSelect')?.value === 'no') ? false : true;
+
         const btn = document.getElementById('formulaSaveSubmitBtn');
-        const origText = btn ? btn.innerText : 'Save';
+        const origText = btn ? btn.innerText : 'Save Settings';
         if (btn) {
             btn.disabled = true;
             btn.innerText = 'Saving...';
@@ -2055,33 +2077,90 @@
         isSubmitting = true;
 
         setSmallcaseModalLoader('editFormulaModal', true, {
-            title: 'Saving Momentum Formula...',
-            badge: 'Formula Editor',
-            subtitle: 'Updating momentum ranking formula for future rebalances...'
+            title: 'Saving Smallcase Settings...',
+            badge: 'Settings Editor',
+            subtitle: 'Updating momentum formula & stock trim behavior for future rebalances...'
         });
 
         try {
-            const data = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/formula`, {
+            const data = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/settings`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ formula: formula })
+                body: JSON.stringify({
+                    formula: formula,
+                    trim_existing: trimVal
+                })
             });
 
             if (!data.success) {
-                alertToast(data.error || 'Failed to update formula', 'error');
+                alertToast(data.error || 'Failed to update settings', 'error');
                 return;
             }
 
-            currentStrategy.formula = formula;
-            document.getElementById('sd-formula-text').innerText = formula;
+            if (data.strategy) {
+                currentStrategy = data.strategy;
+            } else {
+                currentStrategy.formula = formula;
+                currentStrategy.trim_existing = trimVal;
+            }
+
+            const formulaEl = document.getElementById('sd-formula-text');
+            if (formulaEl) formulaEl.innerText = formula;
+            const trimEl = document.getElementById('sd-trim-existing');
+            if (trimEl) {
+                trimEl.innerText = (currentStrategy.trim_existing === false) ? 'No' : 'Yes';
+                trimEl.style.color = (currentStrategy.trim_existing === false) ? '#eab308' : 'var(--text-primary)';
+            }
+
             closeEditFormulaModal();
-            alertToast('Formula updated successfully', 'success');
+            alertToast('Formula & settings updated successfully', 'success');
         } catch (err) {
-            console.error('Error saving formula:', err);
-            alertToast('Error saving formula: ' + err.message, 'error');
+            console.error('Error saving settings:', err);
+            alertToast('Error saving settings: ' + err.message, 'error');
         } finally {
             isSubmitting = false;
             setSmallcaseModalLoader('editFormulaModal', false);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = origText;
+            }
+        }
+    }
+
+    async function toggleStrategyTrimExisting() {
+        if (!currentStrategy || isSubmitting) return;
+        const currentTrim = (currentStrategy.trim_existing !== false);
+        const newTrim = !currentTrim;
+
+        try {
+            isSubmitting = true;
+            const res = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trim_existing: newTrim })
+            });
+            if (res.success && res.strategy) {
+                currentStrategy = res.strategy;
+                const trimEl = document.getElementById('sd-trim-existing');
+                if (trimEl) {
+                    trimEl.innerText = newTrim ? 'Yes' : 'No';
+                    trimEl.style.color = newTrim ? 'var(--text-primary)' : '#eab308';
+                }
+                alertToast(
+                    newTrim
+                        ? 'Trim Overweight set to YES: Overweight stocks will be trimmed to target weight on rebalance.'
+                        : 'Trim Overweight set to NO: Retained stock sizes will NEVER be decreased on rebalance.',
+                    'info'
+                );
+            } else {
+                alertToast(res.error || 'Failed to update trim setting', 'error');
+            }
+        } catch (e) {
+            alertToast('Failed to update trim setting: ' + e.message, 'error');
+        } finally {
+            isSubmitting = false;
+        }
+    }
             if (btn) {
                 btn.disabled = false;
                 btn.innerText = origText;
@@ -4334,6 +4413,7 @@
     window.openEditFormulaModal = openEditFormulaModal;
     window.closeEditFormulaModal = closeEditFormulaModal;
     window.saveEditedFormula = saveEditedFormula;
+    window.toggleStrategyTrimExisting = toggleStrategyTrimExisting;
     window.openDeleteStrategyModal = openDeleteStrategyModal;
     window.promptDeleteCurrentStrategy = promptDeleteCurrentStrategy;
     window.checkStratDateAndIndexMatch = checkStratDateAndIndexMatch;

@@ -659,6 +659,34 @@ def update_user_strategy_formula(strategy_id, formula, username=None):
     return target
 
 
+def update_user_strategy_settings(strategy_id, formula=None, trim_existing=None, trading_days_per_month=None, username=None):
+    """Updates settings (formula, trim_existing, trading_days_per_month) for a strategy."""
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    if not target:
+        raise ValueError("Strategy not found")
+
+    if formula is not None:
+        f = (formula or "").strip()
+        if f:
+            target["formula"] = f
+
+    if trim_existing is not None:
+        trim_val = False if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0") else True
+        target["trim_existing"] = trim_val
+
+    if trading_days_per_month is not None:
+        try:
+            target["trading_days_per_month"] = 21 if int(trading_days_per_month) == 21 else 30
+        except Exception:
+            pass
+
+    target["updated_at"] = datetime.now().isoformat()
+    save_user_momentum_smallcases(data, username)
+    return target
+
+
 def run_strategy_init(strategy_id, username=None):
     """
     Executes the initial portfolio run for the strategy:
@@ -818,7 +846,7 @@ def run_strategy_init(strategy_id, username=None):
     return target
 
 
-def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_cache=True):
+def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_cache=True, trim_existing=None):
     """
     Executes a rebalance run for the strategy:
     1. Advances to next rebalance trading date.
@@ -932,7 +960,18 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         raise ValueError(f"Could not calculate momentum metrics for rebalance date ({failed_str}).")
 
     # Execute rebalance equal weight allocation
-    trim_existing = bool(target.get("trim_existing", True))
+    if trim_existing is None:
+        t_trim = target.get("trim_existing")
+        if t_trim is None:
+            trim_existing_eff = True
+        elif isinstance(t_trim, str):
+            trim_existing_eff = t_trim.strip().lower() not in ("no", "false", "0")
+        else:
+            trim_existing_eff = bool(t_trim)
+    else:
+        trim_existing_eff = False if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0") else True
+        target["trim_existing"] = trim_existing_eff
+
     portfolio = execute_rebalance_run(
         ranked_stocks=ranked_stocks,
         previous_holdings=prev_holdings,
@@ -943,7 +982,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         target_date=exec_date,
         all_universe_stocks=meta.get("all_stocks"),
         total_capital=float(target.get("amount_to_invest", 0.0)),
-        trim_existing=trim_existing
+        trim_existing=trim_existing_eff
     )
 
     # Next future rebalance date
@@ -1000,7 +1039,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     return target
 
 
-def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None):
+def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None, trim_existing=None):
     """
     Executes Init (if strategy is in DRAFT status) and then sequentially executes
     all scheduled monthly rebalances up to up_to_date (defaults to today).
@@ -1020,6 +1059,19 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
     target = next((x for x in strategies if x.get("id") == strategy_id), None)
     if not target:
         raise ValueError("Strategy not found")
+
+    if trim_existing is not None:
+        trim_existing_eff = False if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0") else True
+        target["trim_existing"] = trim_existing_eff
+        save_user_momentum_smallcases(data, username)
+    else:
+        t_trim = target.get("trim_existing")
+        if t_trim is None:
+            trim_existing_eff = True
+        elif isinstance(t_trim, str):
+            trim_existing_eff = t_trim.strip().lower() not in ("no", "false", "0")
+        else:
+            trim_existing_eff = bool(t_trim)
 
     if up_to_date:
         if isinstance(up_to_date, str):
@@ -1101,7 +1153,8 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
                 strategy_id,
                 stepup_amount=float(stepup_per_rebalance or 0.0),
                 username=username,
-                save_cache=False
+                save_cache=False,
+                trim_existing=trim_existing_eff
             )
             rebalances_executed += 1
             last_processed_date = rebal_d
@@ -1534,11 +1587,13 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
                 res = run_strategy_init(strategy_id, username=username)
             elif job_type == "REBALANCE":
                 stepup = kwargs.get("stepup_amount", 0.0)
-                res = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=username)
+                trim_override = kwargs.get("trim_existing")
+                res = run_strategy_rebalance(strategy_id, stepup_amount=stepup, username=username, trim_existing=trim_override)
             elif job_type == "RUN_ALL":
                 stepup = kwargs.get("stepup_per_rebalance", 0.0)
                 up_to = kwargs.get("up_to_date")
-                res = run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=stepup, up_to_date=up_to, username=username)
+                trim_override = kwargs.get("trim_existing")
+                res = run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=stepup, up_to_date=up_to, username=username, trim_existing=trim_override)
             else:
                 raise ValueError(f"Unknown job type: {job_type}")
 

@@ -35,7 +35,7 @@ body > .msc-modal-backdrop {
 body > .msc-modal-backdrop[style*="display: flex"],
 body > .msc-modal-backdrop[style*="display: block"] {
     display: flex !important;
-    align-items: center !important;
+    align-items: safe center !important;
     justify-content: center !important;
 }
 
@@ -62,10 +62,11 @@ body > .msc-modal-backdrop[style*="none"] {
     width: 100%;
     max-width: 580px;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
-    display: flex;
-    flex-direction: column;
-    max-height: min(92vh, calc(100vh - 32px));
-    overflow: hidden;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: min(92vh, calc(100vh - 32px)) !important;
+    height: auto !important;
+    overflow: hidden !important;
     position: relative;
     margin: auto !important;
     animation: mscFadeIn 0.18s ease-out;
@@ -264,14 +265,15 @@ body > .msc-global-process-loader[style*="none"] {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: 13px 20px;
     border-bottom: 1px solid var(--border-color, #2a2e39);
-    flex-shrink: 0;
+    background: var(--bg-card, #1e222d);
+    flex-shrink: 0 !important;
 }
 
 .msc-modal-title {
     margin: 0;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
     display: flex;
@@ -297,10 +299,12 @@ body > .msc-global-process-loader[style*="none"] {
 }
 
 .msc-modal-body {
-    padding: 20px;
-    overflow-y: auto;
-    flex: 1 1 auto;
-    max-height: 100%;
+    padding: 16px 20px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
     overscroll-behavior: contain;
 }
 
@@ -309,10 +313,10 @@ body > .msc-global-process-loader[style*="none"] {
     justify-content: flex-end;
     align-items: center;
     gap: 10px;
-    padding: 14px 20px;
+    padding: 12px 20px;
     border-top: 1px solid var(--border-color, #2a2e39);
     background: var(--bg-subtle, rgba(0, 0, 0, 0.1));
-    flex-shrink: 0;
+    flex-shrink: 0 !important;
 }
 
 /* Form Controls */

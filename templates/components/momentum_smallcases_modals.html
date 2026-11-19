@@ -15,8 +15,8 @@
             </h3>
             <button type="button" class="msc-modal-close-btn" onclick="closeAddStrategyModal()">✕</button>
         </div>
-        <div class="msc-modal-body" style="overflow-y: auto; flex: 1 1 auto; padding: 16px 22px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;">
+        <div class="msc-modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0; padding: 14px 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px;">
                 <div class="msc-form-group" style="grid-column: span 2; margin-bottom: 0;">
                     <label for="stratNameInput" class="msc-form-label">
                         Smallcase Name <span style="color: #ef4444;">*</span>
@@ -114,7 +114,7 @@
                     <label for="stratFormulaInput" class="msc-form-label">
                         Momentum Formula
                     </label>
-                    <textarea id="stratFormulaInput" class="msc-modal-textarea" rows="2" style="font-family: monospace; font-size: 12.5px;">(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)</textarea>
+                    <textarea id="stratFormulaInput" class="msc-modal-textarea" rows="2" style="font-family: monospace; font-size: 12px; padding: 6px 10px; min-height: 44px;">(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)</textarea>
                 </div>
             </div>
         </div>
@@ -128,11 +128,11 @@
 </div>
 
 <!-- =========================================================================
-     MODAL: RUN REBALANCE (WITH OPTIONAL STEP-UP CAPITAL)
+     MODAL: RUN REBALANCE (WITH OPTIONAL STEP-UP CAPITAL & TRIM OVERWEIGHT)
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="runRebalanceModal" style="display: none;" onclick="if(event.target === this) closeRunRebalanceModal()">
-    <div class="modal-container msc-modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
-        <div class="msc-modal-header">
+    <div class="modal-container msc-modal-container msc-modal-container-sm" role="dialog" aria-modal="true" style="max-height: min(92vh, calc(100vh - 32px)); display: flex; flex-direction: column;">
+        <div class="msc-modal-header" style="flex-shrink: 0;">
             <h3 class="msc-modal-title" style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
@@ -141,11 +141,11 @@
             </h3>
             <button type="button" class="msc-modal-close-btn" onclick="closeRunRebalanceModal()">✕</button>
         </div>
-        <div class="msc-modal-body">
+        <div class="msc-modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0; padding: 16px 20px;">
             <div style="font-size: 13px; color: var(--text-primary); margin-bottom: 12px; line-height: 1.4;">
                 Rebalance smallcase <strong id="rebal-modal-strat-name" style="color: #10b981;">—</strong> on scheduled trading day <strong id="rebal-modal-date">—</strong>.
             </div>
-            <div class="msc-form-group">
+            <div class="msc-form-group" style="margin-bottom: 12px;">
                 <label for="rebalStepupInput" class="msc-form-label">
                     Add Extra / Step-up Amount (₹, optional):
                 </label>
@@ -154,8 +154,20 @@
                     Any extra capital will be credited to wallet and re-allocated with existing capital. 0.10% transaction fees apply.
                 </div>
             </div>
+            <div class="msc-form-group" style="margin-bottom: 6px;">
+                <label for="rebalTrimSelect" class="msc-form-label">
+                    Trim Existing Stock:
+                </label>
+                <select id="rebalTrimSelect" class="msc-modal-input" style="cursor: pointer;">
+                    <option value="yes">Yes (Default - Trim Overweight)</option>
+                    <option value="no">No (Keep Existing Stock Sizes - No Decrease)</option>
+                </select>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                    If No: never decrease retained stock sizes during rebalancing.
+                </div>
+            </div>
         </div>
-        <div class="msc-modal-footer">
+        <div class="msc-modal-footer" style="flex-shrink: 0;">
             <button type="button" class="btn-secondary" onclick="closeRunRebalanceModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
             <button type="button" class="btn-primary" id="rebalConfirmSubmitBtn" onclick="confirmRunRebalance()" style="font-size: 12.5px; padding: 7px 20px;">
                 Confirm & Rebalance
@@ -168,8 +180,8 @@
      MODAL: RUN ALL (INIT + REBALANCES) WITH RECURRING STEP-UP CAPITAL
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="runAllRebalanceModal" style="display: none;" onclick="if(event.target === this) closeRunAllModal()">
-    <div class="modal-container msc-modal-container msc-modal-container-sm" role="dialog" aria-modal="true">
-        <div class="msc-modal-header">
+    <div class="modal-container msc-modal-container msc-modal-container-sm" role="dialog" aria-modal="true" style="max-height: min(92vh, calc(100vh - 32px)); display: flex; flex-direction: column;">
+        <div class="msc-modal-header" style="flex-shrink: 0;">
             <h3 class="msc-modal-title" style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 15px;">
                     ⚡
@@ -178,38 +190,51 @@
             </h3>
             <button type="button" class="msc-modal-close-btn" onclick="closeRunAllModal()">✕</button>
         </div>
-        <div class="msc-modal-body">
-            <div style="font-size: 13px; color: var(--text-primary); margin-bottom: 14px; line-height: 1.5; background: var(--bg-subtle); padding: 12px 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+        <div class="msc-modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0; padding: 16px 20px;">
+            <div style="font-size: 13px; color: var(--text-primary); margin-bottom: 12px; line-height: 1.5; background: var(--bg-subtle); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
                 <div id="runall-modal-desc">
                     Execute all scheduled runs chronologically up to today.
                 </div>
-                <div id="runall-modal-subdesc" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 6px;">
+                <div id="runall-modal-subdesc" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
                     <!-- dynamic details -->
                 </div>
             </div>
 
-            <div class="msc-form-group" style="margin-bottom: 14px;">
+            <div class="msc-form-group" style="margin-bottom: 12px;">
                 <label for="runAllStepupInput" class="msc-form-label" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Step-up Capital per Rebalance (₹):</span>
                     <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">Applied on every rebalance</span>
                 </label>
                 <input type="number" id="runAllStepupInput" class="msc-modal-input" placeholder="0 (Optional)" min="0" step="1000" value="">
-                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                     Optional extra capital added before <em>each</em> rebalance execution. Enter 0 for no additional step-up. (0.10% transaction fees apply).
                 </div>
             </div>
 
-            <div class="msc-form-group">
+            <div class="msc-form-group" style="margin-bottom: 12px;">
+                <label for="runAllTrimSelect" class="msc-form-label">
+                    Trim Existing Stock:
+                </label>
+                <select id="runAllTrimSelect" class="msc-modal-input" style="cursor: pointer;">
+                    <option value="yes">Yes (Default - Trim Overweight)</option>
+                    <option value="no">No (Keep Existing Stock Sizes - No Decrease)</option>
+                </select>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                    If No: never decrease retained stock sizes during batch rebalancing.
+                </div>
+            </div>
+
+            <div class="msc-form-group" style="margin-bottom: 4px;">
                 <label for="runAllCutoffDateInput" class="msc-form-label">
                     Rebalance Up to Date:
                 </label>
                 <input type="date" id="runAllCutoffDateInput" class="msc-modal-input">
-                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                     Defaults to Today. Only scheduled rebalances on or before this date will be executed.
                 </div>
             </div>
         </div>
-        <div class="msc-modal-footer">
+        <div class="msc-modal-footer" style="flex-shrink: 0;">
             <button type="button" class="btn-secondary" onclick="closeRunAllModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
             <button type="button" class="btn-primary" id="runAllConfirmBtn" onclick="confirmRunAllRebalances()" style="font-size: 12.5px; padding: 7px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
                 ⚡ Run All Now
@@ -219,17 +244,17 @@
 </div>
 
 <!-- =========================================================================
-     MODAL: EDIT FORMULA MODAL
+     MODAL: EDIT FORMULA & SETTINGS MODAL
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="editFormulaModal" style="display: none;" onclick="if(event.target === this) closeEditFormulaModal()">
-    <div class="modal-container msc-modal-container" role="dialog" aria-modal="true">
-        <div class="msc-modal-header">
+    <div class="modal-container msc-modal-container" role="dialog" aria-modal="true" style="max-height: min(92vh, calc(100vh - 32px)); display: flex; flex-direction: column;">
+        <div class="msc-modal-header" style="flex-shrink: 0;">
             <h3 class="msc-modal-title">
-                <span>✏️</span> <span>Edit Momentum Formula</span>
+                <span>✏️</span> <span>Edit Formula & Settings</span>
             </h3>
             <button type="button" class="msc-modal-close-btn" onclick="closeEditFormulaModal()">✕</button>
         </div>
-        <div class="msc-modal-body">
+        <div class="msc-modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0; padding: 16px 20px;">
             <div class="msc-form-group">
                 <label for="formulaEditInput" class="msc-form-label">Formula Expression:</label>
                 <textarea id="formulaEditInput" class="msc-modal-textarea" rows="3" style="font-family: monospace; font-size: 13px;"></textarea>
@@ -237,10 +262,20 @@
                     Default format: <code>(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)</code>
                 </div>
             </div>
+            <div class="msc-form-group" style="margin-top: 14px; margin-bottom: 4px;">
+                <label for="formulaTrimExistingSelect" class="msc-form-label">Trim Existing Stock:</label>
+                <select id="formulaTrimExistingSelect" class="msc-modal-input" style="cursor: pointer;">
+                    <option value="yes">Yes (Default - Trim Overweight)</option>
+                    <option value="no">No (Keep Existing Stock Sizes - No Decrease)</option>
+                </select>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                    If No: never decrease retained stock sizes during rebalancing.
+                </div>
+            </div>
         </div>
-        <div class="msc-modal-footer">
+        <div class="msc-modal-footer" style="flex-shrink: 0;">
             <button type="button" class="btn-secondary" onclick="closeEditFormulaModal()" style="font-size: 12.5px; padding: 7px 16px;">Cancel</button>
-            <button type="button" class="btn-primary" id="formulaSaveSubmitBtn" onclick="saveEditedFormula()" style="font-size: 12.5px; padding: 7px 20px;">Save Formula</button>
+            <button type="button" class="btn-primary" id="formulaSaveSubmitBtn" onclick="saveEditedFormula()" style="font-size: 12.5px; padding: 7px 20px;">Save Settings</button>
         </div>
     </div>
 </div>
