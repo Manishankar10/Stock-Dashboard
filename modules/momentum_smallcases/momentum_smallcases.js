@@ -614,9 +614,9 @@
         document.getElementById('stratRebalDayInput').value = '21';
         document.getElementById('stratAmountInput').value = '';
         const trimSelect = document.getElementById('stratTrimExistingSelect');
-        if (trimSelect) trimSelect.value = 'yes';
+        if (trimSelect) trimSelect.value = 'no';
         const tdSelect = document.getElementById('stratTradingDaysPerMonthSelect');
-        if (tdSelect) tdSelect.value = '30';
+        if (tdSelect) tdSelect.value = '21';
         document.getElementById('stratFormulaInput').value =
             '(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)';
 
@@ -769,8 +769,8 @@
         const exitRegime = parseInt(document.getElementById('stratExitRegimeInput')?.value, 10);
         const rebalDay = parseInt(document.getElementById('stratRebalDayInput')?.value, 10);
         const amount = parseFloat(document.getElementById('stratAmountInput')?.value);
-        const trimExisting = (document.getElementById('stratTrimExistingSelect')?.value || 'yes') === 'yes';
-        const tradingDaysPerMonth = parseInt(document.getElementById('stratTradingDaysPerMonthSelect')?.value || '30', 10);
+        const trimExisting = (document.getElementById('stratTrimExistingSelect')?.value || 'no') === 'yes';
+        const tradingDaysPerMonth = parseInt(document.getElementById('stratTradingDaysPerMonthSelect')?.value || '21', 10);
         const formula = (document.getElementById('stratFormulaInput')?.value || '').trim();
 
         if (!name) {

@@ -873,7 +873,7 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
     }
 
 
-def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking, target_date=None, all_universe_stocks=None, total_capital=None, trim_existing=True):
+def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking, target_date=None, all_universe_stocks=None, total_capital=None, trim_existing=False):
     """
     Rebalance execution with pure equal allocation across all stocks (including stepup and existing stocks):
     1. Retain stocks whose rank <= exit_regime_ranking.

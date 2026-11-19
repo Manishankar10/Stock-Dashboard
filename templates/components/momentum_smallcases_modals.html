@@ -89,8 +89,8 @@
                         Trim Existing Stock <span style="color: #ef4444;">*</span>
                     </label>
                     <select id="stratTrimExistingSelect" class="msc-modal-input" style="cursor: pointer;">
-                        <option value="yes" selected>Yes (Default - Trim Overweight)</option>
-                        <option value="no">No (Keep Existing Stock Sizes - No Decrease)</option>
+                        <option value="no" selected>No (Default - Never Decrease Existing Stock Sizes)</option>
+                        <option value="yes">Yes (Trim Overweight to Target)</option>
                     </select>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                         If No: never decrease retained stock sizes during rebalancing.
@@ -102,8 +102,8 @@
                         Trading Days per Month <span style="color: #ef4444;">*</span>
                     </label>
                     <select id="stratTradingDaysPerMonthSelect" class="msc-modal-input" style="cursor: pointer;">
-                        <option value="30" selected>30 Trading Days (Default)</option>
-                        <option value="21">21 Trading Days</option>
+                        <option value="21" selected>21 Trading Days (Default)</option>
+                        <option value="30">30 Trading Days</option>
                     </select>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                         Used for 1M, 2M, 5M, 9M returns &amp; 1M, 3M volatility.
@@ -159,8 +159,8 @@
                     Trim Existing Stock:
                 </label>
                 <select id="rebalTrimSelect" class="msc-modal-input" style="cursor: pointer;">
-                    <option value="yes">Yes (Default - Trim Overweight)</option>
-                    <option value="no">No (Keep Existing Stock Sizes - No Decrease)</option>
+                    <option value="no" selected>No (Default - Never Decrease Existing Stock Sizes)</option>
+                    <option value="yes">Yes (Trim Overweight to Target)</option>
                 </select>
                 <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                     If No: never decrease retained stock sizes during rebalancing.
@@ -216,8 +216,8 @@
                     Trim Existing Stock:
                 </label>
                 <select id="runAllTrimSelect" class="msc-modal-input" style="cursor: pointer;">
-                    <option value="yes">Yes (Default - Trim Overweight)</option>
-                    <option value="no">No (Keep Existing Stock Sizes - No Decrease)</option>
+                    <option value="no" selected>No (Default - Never Decrease Existing Stock Sizes)</option>
+                    <option value="yes">Yes (Trim Overweight to Target)</option>
                 </select>
                 <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                     If No: never decrease retained stock sizes during batch rebalancing.
@@ -265,8 +265,8 @@
             <div class="msc-form-group" style="margin-top: 14px; margin-bottom: 4px;">
                 <label for="formulaTrimExistingSelect" class="msc-form-label">Trim Existing Stock:</label>
                 <select id="formulaTrimExistingSelect" class="msc-modal-input" style="cursor: pointer;">
-                    <option value="yes">Yes (Default - Trim Overweight)</option>
-                    <option value="no">No (Keep Existing Stock Sizes - No Decrease)</option>
+                    <option value="no" selected>No (Default - Never Decrease Existing Stock Sizes)</option>
+                    <option value="yes">Yes (Trim Overweight to Target)</option>
                 </select>
                 <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
                     If No: never decrease retained stock sizes during rebalancing.

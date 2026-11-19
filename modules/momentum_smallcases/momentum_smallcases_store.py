@@ -506,8 +506,8 @@ def create_user_strategy(
     amount_to_invest,
     formula=None,
     username=None,
-    trim_existing=True,
-    trading_days_per_month=30
+    trim_existing=False,
+    trading_days_per_month=21
 ):
     """Creates a new Momentum Smallcase strategy with equal weight allocation."""
     from modules.momentum_smallcases.momentum_smallcases_calculator import (
@@ -566,16 +566,19 @@ def create_user_strategy(
 
     formula = (formula or "").strip() or DEFAULT_FORMULA
 
-    # Parse trim_existing (default True)
-    trim_val = True
-    if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0"):
+    # Parse trim_existing (default False)
+    if trim_existing is True or str(trim_existing).strip().lower() in ("yes", "true", "1"):
+        trim_val = True
+    elif trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0"):
+        trim_val = False
+    else:
         trim_val = False
 
-    # Parse trading_days_per_month (21 or 30, default 30)
+    # Parse trading_days_per_month (21 or 30, default 21)
     try:
-        td_val = 21 if int(trading_days_per_month) == 21 else 30
+        td_val = 30 if int(trading_days_per_month) == 30 else 21
     except Exception:
-        td_val = 30
+        td_val = 21
 
     # Identify index name & type
     all_indices = get_combined_indices_list(username)
