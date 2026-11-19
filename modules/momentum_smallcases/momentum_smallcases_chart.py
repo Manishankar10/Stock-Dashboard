@@ -370,6 +370,15 @@ def _compute_performance_kpis(points):
     overall_peak_val = running_peak_val
     overall_peak_date = running_peak_date
 
+    # Maximum drilldown below cumulative investment amount
+    max_below_inv_pct = 0.0
+    max_below_inv_amt = 0.0
+    max_below_inv_date = None
+    max_below_inv_val = None
+    max_below_inv_capital = None
+    was_ever_below = False
+    below_inv_points = []
+
     for i in range(len(points)):
         pt = points[i]
         val = pt["portfolio_value"]
@@ -378,6 +387,31 @@ def _compute_performance_kpis(points):
 
         pt["pnl"] = round(val - inv, 2)
         pt["pnl_percent"] = round(((val - inv) / inv) * 100.0, 2) if inv > 0 else 0.0
+
+        # Drilldown below investment amount
+        if inv > 0:
+            diff_amt = round(val - inv, 2)
+            diff_pct = round(((val - inv) / inv) * 100.0, 2)
+            if diff_amt < 0:
+                was_ever_below = True
+                pt["below_invested_amount"] = diff_amt
+                pt["below_invested_percent"] = diff_pct
+                below_inv_points.append({
+                    "date": d,
+                    "deficit_percent": diff_pct,
+                    "deficit_amount": diff_amt,
+                    "portfolio_value": val,
+                    "invested": inv
+                })
+                if max_below_inv_date is None or diff_pct < max_below_inv_pct:
+                    max_below_inv_pct = diff_pct
+                    max_below_inv_amt = diff_amt
+                    max_below_inv_date = d
+                    max_below_inv_val = val
+                    max_below_inv_capital = inv
+            else:
+                pt["below_invested_amount"] = 0.0
+                pt["below_invested_percent"] = 0.0
 
         # Running peak and drawdown
         if val > running_peak_val:
@@ -473,6 +507,29 @@ def _compute_performance_kpis(points):
     total_traded_periods = len(changes)
     win_rate = round((positive_days_count / total_traded_periods) * 100.0, 2) if total_traded_periods > 0 else 0.0
 
+    # Top 3 negative drilldowns below investment amount
+    below_inv_points.sort(key=lambda x: x["deficit_percent"])  # Most negative first
+    top_3_below_investment = []
+    for rank, item in enumerate(below_inv_points[:3], 1):
+        top_3_below_investment.append({
+            "rank": rank,
+            "date": item["date"],
+            "deficit_percent": item["deficit_percent"],
+            "deficit_amount": item["deficit_amount"],
+            "portfolio_value": item["portfolio_value"],
+            "invested": item["invested"]
+        })
+
+    max_drilldown_below_investment = {
+        "max_deficit_percent": max_below_inv_pct,
+        "max_deficit_amount": max_below_inv_amt,
+        "date": max_below_inv_date,
+        "portfolio_value": max_below_inv_val,
+        "invested": max_below_inv_capital,
+        "was_ever_below": was_ever_below,
+        "below_investment_days_count": len(below_inv_points)
+    }
+
     return {
         "top_3_negative": top_3_negative,
         "top_3_positive": top_3_positive,
@@ -484,6 +541,8 @@ def _compute_performance_kpis(points):
             "trough_date": max_dd_trough_date,
             "trough_value": max_dd_trough_val
         },
+        "max_drilldown_below_investment": max_drilldown_below_investment,
+        "top_3_below_investment": top_3_below_investment,
         "current_invested": last_pt["invested"],
         "current_value": last_pt["portfolio_value"],
         "total_return_amount": total_ret_amt,

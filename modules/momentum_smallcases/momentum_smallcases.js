@@ -3210,6 +3210,7 @@
         pollTimer: null,
         chartInstance: null,
         data: null,
+        negTab: 'day',
         isMinimized: false,
         elapsedSeconds: 0,
         elapsedTimer: null
@@ -3420,6 +3421,27 @@
             maxDdSubEl.innerText = `Trough on ${formatDateDisplay(dd.trough_date)} (Peak: ₹${formatCurrency(dd.peak_value)})`;
         }
 
+        // New KPI: Maximum Drilldown Below Investment Capital
+        const maxBelowInvEl = document.getElementById('pgKpiMaxBelowInv');
+        const maxBelowInvSubEl = document.getElementById('pgKpiMaxBelowInvSub');
+        const belowInv = kpis.max_drilldown_below_investment || {};
+        if (maxBelowInvEl) {
+            if (belowInv.was_ever_below && belowInv.max_deficit_percent < 0) {
+                maxBelowInvEl.style.color = '#ef4444';
+                maxBelowInvEl.innerText = `${formatPercent(belowInv.max_deficit_percent, true)}`;
+            } else {
+                maxBelowInvEl.style.color = '#10b981';
+                maxBelowInvEl.innerText = '0.00%';
+            }
+        }
+        if (maxBelowInvSubEl) {
+            if (belowInv.was_ever_below && belowInv.max_deficit_percent < 0) {
+                maxBelowInvSubEl.innerText = `Deepest on ${formatDateDisplay(belowInv.date)} (₹${formatCurrency(belowInv.portfolio_value)} vs ₹${formatCurrency(belowInv.invested)})`;
+            } else {
+                maxBelowInvSubEl.innerText = 'Never dropped below investment';
+            }
+        }
+
         const topGainEl = document.getElementById('pgKpiTopGain');
         const topGainSubEl = document.getElementById('pgKpiTopGainSub');
         const topPos = kpis.top_3_positive || [];
@@ -3439,24 +3461,8 @@
             winRateSubEl.innerText = `Win Rate: ${formatPercent(kpis.win_rate || 0)} (${kpis.positive_days_count || 0}+ / ${kpis.negative_days_count || 0}-)`;
         }
 
-        // 3. Top 3 Negative Drilldown Drops Table
-        const negTbody = document.getElementById('pgTopNegativeTbody');
-        if (negTbody) {
-            const topNeg = kpis.top_3_negative || [];
-            if (topNeg.length === 0) {
-                negTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 14px; color: var(--text-secondary);">No negative drilldowns recorded.</td></tr>`;
-            } else {
-                negTbody.innerHTML = topNeg.map(item => `
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="text-align: center; font-weight: 700; color: #ef4444;">#${item.rank}</td>
-                        <td style="font-weight: 600; color: var(--text-primary);">${formatDateDisplay(item.date)}</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;">${formatPercent(item.change_percent, true)}</td>
-                        <td style="text-align: right; font-family: monospace; color: #ef4444;">${formatSignedCurrency(item.change_amount, true)}</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(item.portfolio_value)}</td>
-                    </tr>
-                `).join('');
-            }
-        }
+        // 3. Negative Drilldown Drops / Below Investment Table
+        renderNegativeTable();
 
         // 4. Top 3 Positive Momentum Days Table
         const posTbody = document.getElementById('pgTopPositiveTbody');
@@ -3488,6 +3494,35 @@
             maxDdDetails.innerText = `Peak: ₹${formatCurrency(dd.peak_value)} on ${formatDateDisplay(dd.peak_date)}  ➔  Trough: ₹${formatCurrency(dd.trough_value)} on ${formatDateDisplay(dd.trough_date)}`;
         }
 
+        const maxBelowInvHighlight = document.getElementById('pgMaxBelowInvHighlight');
+        const maxBelowInvDetails = document.getElementById('pgMaxBelowInvDetails');
+        const belowDaysText = document.getElementById('pgBelowInvDaysText');
+
+        if (maxBelowInvHighlight) {
+            if (belowInv.was_ever_below && belowInv.max_deficit_percent < 0) {
+                maxBelowInvHighlight.style.color = '#ef4444';
+                maxBelowInvHighlight.innerText = `${formatPercent(belowInv.max_deficit_percent, true)} (${formatSignedCurrency(belowInv.max_deficit_amount || 0, true)})`;
+            } else {
+                maxBelowInvHighlight.style.color = '#10b981';
+                maxBelowInvHighlight.innerText = '0.00% (₹0.00)';
+            }
+        }
+
+        if (maxBelowInvDetails) {
+            if (belowInv.was_ever_below && belowInv.max_deficit_percent < 0) {
+                maxBelowInvDetails.innerText = `Deepest on ${formatDateDisplay(belowInv.date)} · Val: ₹${formatCurrency(belowInv.portfolio_value)} (Inv: ₹${formatCurrency(belowInv.invested)})`;
+            } else {
+                maxBelowInvDetails.innerText = 'Portfolio was always at or above cumulative capital';
+            }
+        }
+
+        if (belowDaysText) {
+            const count = belowInv.below_investment_days_count || 0;
+            belowDaysText.innerText = count > 0 
+                ? `Days Below Invested: ${count} days` 
+                : 'Days Below Invested: 0 days (100% Above)';
+        }
+
         const peakValText = document.getElementById('pgPeakValuationText');
         if (peakValText) {
             peakValText.innerText = `All-Time Peak: ₹${formatCurrency(kpis.peak_portfolio_value)} (${formatDateDisplay(kpis.peak_date)})`;
@@ -3495,6 +3530,86 @@
 
         // 6. Dual-Line Chart.js
         renderChartJsInstance(data);
+    }
+
+    function renderNegativeTable() {
+        const negTbody = document.getElementById('pgTopNegativeTbody');
+        const tableTitle = document.getElementById('pgNegTableTitle');
+        const colDropHeader = document.getElementById('pgNegColDropHeader');
+        const colChangeHeader = document.getElementById('pgNegColChangeHeader');
+        const colValHeader = document.getElementById('pgNegColValHeader');
+        const btnDay = document.getElementById('pgBtnTabDayDrop');
+        const btnBelow = document.getElementById('pgBtnTabBelowInv');
+
+        if (!negTbody) return;
+
+        const kpis = (currentPerformanceGraphState.data && currentPerformanceGraphState.data.kpis) || {};
+        const isBelowInv = currentPerformanceGraphState.negTab === 'below_inv';
+
+        if (btnDay && btnBelow) {
+            if (isBelowInv) {
+                btnDay.style.background = 'transparent';
+                btnDay.style.color = 'var(--text-secondary)';
+                btnDay.style.fontWeight = '500';
+                btnBelow.style.background = 'var(--primary-color, #3b82f6)';
+                btnBelow.style.color = '#fff';
+                btnBelow.style.fontWeight = '600';
+            } else {
+                btnDay.style.background = 'var(--primary-color, #3b82f6)';
+                btnDay.style.color = '#fff';
+                btnDay.style.fontWeight = '600';
+                btnBelow.style.background = 'transparent';
+                btnBelow.style.color = 'var(--text-secondary)';
+                btnBelow.style.fontWeight = '500';
+            }
+        }
+
+        if (isBelowInv) {
+            if (tableTitle) tableTitle.innerText = 'Top 3 Drilldowns Below Investment Capital';
+            if (colDropHeader) colDropHeader.innerText = 'DEFICIT %';
+            if (colChangeHeader) colChangeHeader.innerText = 'DEFICIT (₹)';
+            if (colValHeader) colValHeader.innerText = 'VALUATION (vs CAPITAL)';
+
+            const list = kpis.top_3_below_investment || [];
+            if (list.length === 0) {
+                negTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 14px; color: #10b981; font-weight: 500;">✨ Portfolio has never dropped below cumulative investment amount!</td></tr>`;
+            } else {
+                negTbody.innerHTML = list.map(item => `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="text-align: center; font-weight: 700; color: #ef4444;">#${item.rank}</td>
+                        <td style="font-weight: 600; color: var(--text-primary);">${formatDateDisplay(item.date)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;">${formatPercent(item.deficit_percent, true)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #ef4444;">${formatSignedCurrency(item.deficit_amount, true)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(item.portfolio_value)} <span style="font-size: 10.5px; color: var(--text-secondary);">(Inv: ₹${formatCurrency(item.invested)})</span></td>
+                    </tr>
+                `).join('');
+            }
+        } else {
+            if (tableTitle) tableTitle.innerText = 'Maximum Top 3 Negative Drilldown %';
+            if (colDropHeader) colDropHeader.innerText = 'DROP %';
+            if (colChangeHeader) colChangeHeader.innerText = 'CHANGE (₹)';
+            if (colValHeader) colValHeader.innerText = 'PORTFOLIO VALUE';
+
+            const list = kpis.top_3_negative || [];
+            if (list.length === 0) {
+                negTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 14px; color: var(--text-secondary);">No negative drilldowns recorded.</td></tr>`;
+            } else {
+                negTbody.innerHTML = list.map(item => `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="text-align: center; font-weight: 700; color: #ef4444;">#${item.rank}</td>
+                        <td style="font-weight: 600; color: var(--text-primary);">${formatDateDisplay(item.date)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;">${formatPercent(item.change_percent, true)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #ef4444;">${formatSignedCurrency(item.change_amount, true)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(item.portfolio_value)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+    }
+
+    function switchPgNegativeTableTab(tabType) {
+        currentPerformanceGraphState.negTab = tabType;
+        renderNegativeTable();
     }
 
     function renderChartJsInstance(data) {
@@ -3589,7 +3704,11 @@
                                 const pnlPct = inv > 0 ? (pnl / inv) * 100 : 0;
                                 const pnlStr = `${pnl >= 0 ? '+' : ''}₹${formatCurrency(pnl)} (${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`;
                                 const dayChangeStr = pt.change_percent !== undefined ? `\n  Period Move: ${pt.change_percent >= 0 ? '+' : ''}${pt.change_percent.toFixed(2)}%` : '';
-                                return `  Net Return: ${pnlStr}${dayChangeStr}`;
+                                let drilldownStr = '';
+                                if (pnl < 0) {
+                                    drilldownStr = `\n  🔻 Deficit Below Capital: -₹${formatCurrency(Math.abs(pnl))} (${pnlPct.toFixed(2)}%)`;
+                                }
+                                return `  Net Return: ${pnlStr}${dayChangeStr}${drilldownStr}`;
                             }
                         }
                     }
@@ -4433,6 +4552,7 @@
     window.closePerformanceGraphModal = closePerformanceGraphModal;
     window.closePerformanceGraphDock = closePerformanceGraphDock;
     window.refreshPerformanceGraph = refreshPerformanceGraph;
+    window.switchPgNegativeTableTab = switchPgNegativeTableTab;
 
     // Manual Indices
     window.openAddManualIndexModal = openAddManualIndexModal;
