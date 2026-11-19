@@ -473,7 +473,7 @@
         }
 
         let html = `
-            <div style="overflow-x: auto;">
+            <div class="msc-table-responsive" style="overflow-x: auto;">
                 <table class="msc-indices-table">
                     <thead>
                         <tr>
@@ -1254,8 +1254,8 @@
 
         let html = `
             <!-- Run Summary Banner -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div>
+            <div class="msc-run-summary-banner" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div class="msc-run-summary-info">
                     <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-flex; align-items: center;">${isInit ? '🎯' : getRebalanceIconSVG(17, 2.4)}</span> <span>${escapeHtml(runTitle)}</span>
                     </div>
@@ -1263,7 +1263,7 @@
                         ${dateNote} &bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong> &bull; Trim Overweight: <strong>${(currentStrategy && currentStrategy.trim_existing === false) ? 'No' : 'Yes'}</strong> &bull; Days/Mo: <strong>${(currentStrategy && currentStrategy.trading_days_per_month) || 30}d</strong>
                     </div>
                 </div>
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div class="msc-run-summary-metrics" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <span style="font-size: 12px; color: var(--text-secondary);">
                         Snapshot Value: <strong style="color: ${snapColor}; font-family: monospace;">₹${formatCurrency(snapVal)}</strong>
                         <span style="font-size: 11px; font-weight: 600; color: ${snapColor}; margin-left: 3px;">(${formatSignedCurrency(snapPnl, true)} / ${formatPercent(snapPnlPct, true)})</span>
@@ -1308,8 +1308,8 @@
             </div>
 
             <!-- Ranked Stocks Formula Evaluation Table -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div class="msc-card-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
+                <div class="msc-section-header msc-ranked-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                             <span>🏆</span> <span>Ranked Stocks by Momentum Formula (Limit: Exit Ranking + 15)</span>
@@ -1320,12 +1320,12 @@
                             Showing top ${rankedStocks.length} stocks
                         </div>
                     </div>
-                    <button type="button" class="btn-secondary" onclick="downloadAllRankedStocksExcel()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'" title="Download Excel covering all eligible universe stocks calculated and ordered by score (.xlsx)">
+                    <button type="button" class="btn-secondary msc-header-btn" onclick="downloadAllRankedStocksExcel()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'" title="Download Excel covering all eligible universe stocks calculated and ordered by score (.xlsx)">
                         <span>📥</span> <span>Download All Ranked Stocks (.xlsx)</span>
                     </button>
                 </div>
 
-                <div style="overflow-x: auto; max-height: 480px;">
+                <div class="msc-table-responsive" style="overflow-x: auto; max-height: 480px;">
                     <table class="msc-indices-table" style="font-size: 12px;">
                         <thead>
                             <tr style="position: sticky; top: 0; z-index: 2; background: var(--bg-subtle);">
@@ -1417,21 +1417,21 @@
             </div>
 
             <!-- Current Portfolio Holdings Snapshot Table -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div class="msc-card-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
+                <div class="msc-section-header msc-holdings-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>💼</span> <span>Portfolio Holdings Snapshot (${holdings.length} stocks)</span>
                     </h4>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <button type="button" class="btn-secondary" onclick="openPerformanceGraphModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'" title="View historical performance line graph of invested capital vs portfolio value with drawdowns and momentum KPIs">
+                    <div class="msc-holdings-header-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn-secondary msc-header-btn" onclick="openPerformanceGraphModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'" title="View historical performance line graph of invested capital vs portfolio value with drawdowns and momentum KPIs">
                             <span>📈</span> <span>Performance Graph</span>
                         </button>
-                        <button type="button" class="btn-secondary" onclick="openConsolidatedStocksModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.22)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.12)'" title="View all participated stocks history with holding durations and consolidated P&amp;L">
+                        <button type="button" class="btn-secondary msc-header-btn" onclick="openConsolidatedStocksModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.22)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.12)'" title="View all participated stocks history with holding durations and consolidated P&amp;L">
                             <span>📊</span> <span>Consolidated Stocks</span>
                         </button>
                     </div>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="msc-table-responsive" style="overflow-x: auto;">
                     <table class="msc-indices-table" style="font-size: 12px;">
                         <thead>
                             <tr style="background: var(--bg-subtle);">
@@ -1537,8 +1537,8 @@
 
             html += `
                 <!-- Exited Stocks Details Table -->
-                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <div class="msc-card-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
+                    <div class="msc-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                             <span style="color: #ef4444;">🚪</span> <span>Exited Stocks (${(exitedStocks || []).length} ${(exitedStocks || []).length === 1 ? 'stock' : 'stocks'})</span>
                         </h4>
@@ -1551,7 +1551,7 @@
                             </div>
                         ` : ''}
                     </div>
-                    <div style="overflow-x: auto;">
+                    <div class="msc-table-responsive" style="overflow-x: auto;">
                         <table class="msc-indices-table" style="font-size: 12px;">
                             <thead>
                                 <tr style="background: var(--bg-subtle);">
@@ -1613,16 +1613,16 @@
 
         html += `
             <!-- Capital & Wallet Audit Logs -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div class="msc-card-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px;">
+                <div class="msc-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>📜</span> <span>Capital &amp; Wallet Activity Logs</span>
                     </h4>
-                    <button type="button" class="btn-sm btn-secondary" onclick="openLogTransactionsModal()" style="padding: 5px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);" title="View all stock buy and sell execution details">
+                    <button type="button" class="btn-sm btn-secondary msc-header-btn" onclick="openLogTransactionsModal()" style="padding: 5px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);" title="View all stock buy and sell execution details">
                         <span>📋</span> <span>Transactions</span>
                     </button>
                 </div>
-                <div style="overflow-x: auto; max-height: 240px;">
+                <div class="msc-table-responsive" style="overflow-x: auto; max-height: 240px;">
                     <table class="msc-indices-table" style="font-size: 12px;">
                         <thead>
                             <tr style="position: sticky; top: 0; z-index: 2; background: var(--bg-subtle);">
@@ -4014,7 +4014,7 @@
         }
 
         let html = `
-            <div style="overflow-x: auto;">
+            <div class="msc-table-responsive" style="overflow-x: auto;">
                 <table class="msc-indices-table">
                     <thead>
                         <tr>

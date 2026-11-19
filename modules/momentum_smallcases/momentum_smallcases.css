@@ -962,3 +962,650 @@ body > .msc-global-process-loader[style*="none"] {
     border: 1px solid rgba(59, 130, 246, 0.35);
 }
 
+/* ==============================================================================
+   MOMENTUM SMALLCASES - MOBILE RESPONSIVE ENGINE & SYSTEM NORMALIZATION
+   ============================================================================== */
+
+/* Base container containment */
+#tab-momentum-smallcases {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+/* Horizontal Table Responsive Containers */
+.msc-table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+    margin-bottom: 4px;
+}
+
+.msc-table-responsive::-webkit-scrollbar {
+    height: 5px;
+}
+
+.msc-table-responsive::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.msc-table-responsive::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+}
+
+/* Meta Badges on Strategy Header */
+.msc-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+
+/* Tablet & Smaller Screens (< 1024px) */
+@media (max-width: 1024px) {
+    .msc-modal-container-xl {
+        max-width: 98% !important;
+        width: 98% !important;
+    }
+
+    .msc-pg-tables-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Mobile & Tablet Portrait (< 768px) */
+@media (max-width: 768px) {
+    /* 1. Sub-Navigation Pill Switcher */
+    .msc-top-subnav-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .msc-subnav-pill-group {
+        width: 100% !important;
+        display: flex !important;
+        box-sizing: border-box !important;
+    }
+
+    .msc-subnav-btn {
+        flex: 1 1 50% !important;
+        justify-content: center !important;
+        text-align: center !important;
+        padding: 7px 10px !important;
+        font-size: 12px !important;
+    }
+
+    #msc-top-actions-slot {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+    }
+
+    /* 2. Top Summary KPI Stats Grid */
+    .summary-grid.msc-summary-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .summary-grid.msc-summary-grid .metric-card {
+        padding: 10px 12px !important;
+    }
+
+    .summary-grid.msc-summary-grid .metric-card .label {
+        font-size: 10px !important;
+        letter-spacing: 0.3px !important;
+    }
+
+    .summary-grid.msc-summary-grid .metric-card .value {
+        font-size: 18px !important;
+        margin-top: 3px !important;
+    }
+
+    /* 3. Main Card & Headers */
+    .card-container.msc-main-card {
+        padding: 14px 12px !important;
+    }
+
+    .msc-card-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        padding-bottom: 12px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .msc-card-actions {
+        width: 100% !important;
+        display: flex !important;
+        gap: 8px !important;
+    }
+
+    .msc-card-actions button {
+        flex: 1 1 50% !important;
+        justify-content: center !important;
+        padding: 7px 10px !important;
+        font-size: 12px !important;
+    }
+
+    /* 4. Filter Toolbar & Search */
+    .msc-filter-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .msc-search-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    #msc-strategies-count-badge,
+    #msc-indices-count-badge {
+        align-self: flex-start !important;
+    }
+
+    /* 5. Strategy Deep View (Overview & Timeline) */
+    .msc-detail-back-bar {
+        gap: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    #sd-strategy-name {
+        font-size: 18px !important;
+    }
+
+    .msc-strat-header {
+        padding-bottom: 12px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .msc-strat-meta-badges {
+        gap: 6px !important;
+        margin-top: 8px !important;
+    }
+
+    .msc-meta-chip {
+        font-size: 11px !important;
+        padding: 3px 6px !important;
+    }
+
+    /* Financial Metrics Grid: 2 columns on mobile */
+    .msc-financial-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .msc-financial-card {
+        padding: 10px 12px !important;
+    }
+
+    .msc-financial-card .label {
+        font-size: 10px !important;
+    }
+
+    .msc-financial-card > div:nth-child(2) {
+        font-size: 16px !important;
+        margin-top: 2px !important;
+    }
+
+    /* Formula Banner */
+    .msc-formula-banner {
+        padding: 10px 12px !important;
+        margin-bottom: 16px !important;
+    }
+
+    #sd-formula-text {
+        font-size: 11.5px !important;
+        padding: 8px 10px !important;
+        max-height: 80px;
+        overflow-y: auto;
+    }
+
+    /* Interactive Execution Timeline */
+    .msc-timeline-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    #sd-timeline-action-slot {
+        width: 100% !important;
+    }
+
+    #sd-timeline-action-slot > div {
+        width: 100% !important;
+        display: flex !important;
+    }
+
+    #sd-timeline-action-slot button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .msc-timeline-wrapper {
+        padding: 12px 8px !important;
+    }
+
+    .msc-timeline-node {
+        min-width: 110px !important;
+        padding: 6px 8px !important;
+    }
+
+    .msc-timeline-icon {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 13px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .msc-timeline-connector {
+        flex: 0 0 20px !important;
+        min-width: 20px !important;
+        top: -10px !important;
+    }
+
+    .msc-timeline-label {
+        font-size: 11.5px !important;
+    }
+
+    .msc-timeline-subtext {
+        font-size: 10px !important;
+    }
+
+    /* Run Results & Sections */
+    .msc-run-summary-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 12px 14px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .msc-run-summary-metrics {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        border-top: 1px solid var(--border-color);
+        padding-top: 8px;
+    }
+
+    .msc-changes-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .msc-change-card {
+        padding: 10px 12px !important;
+    }
+
+    .msc-change-count {
+        font-size: 16px !important;
+    }
+
+    .msc-card-section {
+        padding: 12px 12px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .msc-section-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .msc-header-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .msc-holdings-header-actions {
+        width: 100% !important;
+        display: flex !important;
+        gap: 6px !important;
+    }
+
+    .msc-holdings-header-actions button {
+        flex: 1 1 50% !important;
+        justify-content: center !important;
+        font-size: 11.5px !important;
+        padding: 6px 8px !important;
+    }
+
+    /* 6. Universal Modal Alignment on Mobile Devices */
+    .msc-modal-backdrop,
+    body > .msc-modal-backdrop {
+        padding: 6px !important;
+    }
+
+    .msc-modal-container,
+    .msc-modal-container-lg,
+    .msc-modal-container-xl,
+    .msc-modal-container-sm {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: calc(100vh - 12px) !important;
+        border-radius: 10px !important;
+        margin: auto !important;
+    }
+
+    .msc-modal-header {
+        padding: 10px 14px !important;
+    }
+
+    .msc-modal-title {
+        font-size: 15px !important;
+    }
+
+    .msc-modal-body {
+        padding: 12px 14px !important;
+    }
+
+    .msc-modal-footer {
+        padding: 10px 14px !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    /* Add Smallcase Form Grid: 1 column on mobile */
+    .msc-add-strat-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    .msc-add-strat-grid .msc-form-group {
+        grid-column: span 1 !important;
+    }
+
+    /* Performance Graph Modal Mobile Styles */
+    #performanceGraphModal .modal-container {
+        height: calc(100vh - 12px) !important;
+        max-height: calc(100vh - 12px) !important;
+    }
+
+    .msc-pg-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .msc-pg-header-actions {
+        display: flex !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+    }
+
+    .msc-pg-header-actions button {
+        flex: 1 !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+        padding: 5px 8px !important;
+    }
+
+    .msc-pg-header-actions .msc-modal-close-btn {
+        flex: 0 0 auto !important;
+        padding: 4px 8px !important;
+    }
+
+    .msc-pg-kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .msc-pg-kpi-grid > div:last-child {
+        grid-column: span 2 !important;
+    }
+
+    .msc-pg-chart-container {
+        padding: 10px 12px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .msc-pg-chart-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+
+    .msc-pg-chart-wrap {
+        height: 250px !important;
+    }
+
+    .msc-pg-tables-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .msc-pg-drawdown-box {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+        padding: 10px 12px !important;
+    }
+
+    .msc-pg-dd-col-mid {
+        border-left: none !important;
+        border-top: 1px solid var(--border-color) !important;
+        padding-left: 0 !important;
+        padding-top: 8px !important;
+    }
+
+    .msc-pg-dd-col-right {
+        border-top: 1px solid var(--border-color) !important;
+        padding-top: 8px !important;
+        text-align: left !important;
+        justify-self: start !important;
+        width: 100% !important;
+    }
+
+    .msc-pg-footer {
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .msc-pg-footer button {
+        width: 100% !important;
+    }
+
+    /* Consolidated Stocks Modal Mobile */
+    .msc-cs-kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .msc-cs-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .msc-cs-pills {
+        width: 100% !important;
+        display: flex !important;
+        gap: 4px !important;
+    }
+
+    .msc-cs-pills button {
+        flex: 1 1 33.33% !important;
+        text-align: center !important;
+        font-size: 11px !important;
+        padding: 4px 6px !important;
+    }
+
+    .msc-cs-search {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .msc-cs-footer {
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .msc-cs-footer button {
+        width: 100% !important;
+    }
+
+    /* Wallet Activity Transactions Modal Mobile */
+    .msc-wlt-kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .msc-wlt-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .msc-wlt-controls {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        gap: 8px !important;
+    }
+
+    .msc-wlt-controls select {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .msc-wlt-pills {
+        width: 100% !important;
+        display: flex !important;
+        gap: 4px !important;
+    }
+
+    .msc-wlt-pills button {
+        flex: 1 1 33.33% !important;
+        text-align: center !important;
+        font-size: 11px !important;
+        padding: 4px 6px !important;
+    }
+
+    .msc-wlt-search {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .msc-wlt-footer {
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .msc-wlt-footer button {
+        width: 100% !important;
+    }
+
+    /* Manual Indices Form & Tools */
+    .msc-stocks-input-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+
+    .msc-stocks-tools-pills {
+        width: 100% !important;
+        display: flex !important;
+        gap: 4px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .msc-format-banner {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+    }
+
+    .msc-format-text {
+        white-space: normal !important;
+        word-break: break-all !important;
+    }
+
+    /* Floating Performance Graph Dock Widget on Mobile */
+    #mscPerformanceGraphDock {
+        bottom: 14px !important;
+        right: 14px !important;
+        padding: 6px 12px !important;
+        max-width: calc(100vw - 28px) !important;
+    }
+
+    #mscPerformanceGraphDock #pgDockStratName {
+        font-size: 11px !important;
+        max-width: 130px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #mscPerformanceGraphDock #pgDockStatus {
+        font-size: 10px !important;
+    }
+
+    /* Fullscreen Global Process Loader on Mobile */
+    .msc-global-loader-card {
+        padding: 24px 18px !important;
+        width: 95% !important;
+        gap: 12px !important;
+    }
+
+    .msc-global-loader-card .cd-loader-title {
+        font-size: 15px !important;
+    }
+
+    .msc-global-loader-card .cd-loader-subtitle {
+        font-size: 11.5px !important;
+    }
+}
+
+/* Very Small Mobile Screens (< 380px) */
+@media (max-width: 380px) {
+    .summary-grid.msc-summary-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .msc-financial-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .msc-pg-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .msc-pg-kpi-grid > div:last-child {
+        grid-column: span 1 !important;
+    }
+
+    .msc-cs-kpi-grid,
+    .msc-wlt-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
