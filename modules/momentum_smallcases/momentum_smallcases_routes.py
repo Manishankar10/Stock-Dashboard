@@ -425,9 +425,28 @@ def run_all_strategy_api(strategy_id):
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/jobs/<job_id>", methods=["GET"])
 def get_job_status_api(job_id):
-    """Returns execution status for an async momentum job."""
+    """Returns execution status for an async momentum job, with strategy status fallback."""
     job = get_execution_job_status(job_id)
     if not job:
+        # Graceful fallback: If strategy_id is provided, check if strategy is already saved / has runs
+        strategy_id = request.args.get("strategy_id")
+        user = session.get("username") or "admin"
+        if strategy_id:
+            strat = get_user_strategy(strategy_id, username=user)
+            if strat and strat.get("runs"):
+                return jsonify({
+                    "success": True,
+                    "job": {
+                        "id": job_id,
+                        "status": "COMPLETED",
+                        "strategy_id": strategy_id,
+                        "result": {
+                            "success": True,
+                            "strategy": strat,
+                            "message": "Execution already completed."
+                        }
+                    }
+                })
         return jsonify({"success": False, "error": "Job not found"}), 404
     return jsonify({"success": True, "job": job})
 

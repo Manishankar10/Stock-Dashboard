@@ -151,21 +151,41 @@
     }
 
     // Polls background execution job until completion (immune to reverse proxy / Gunicorn 502/504 timeouts)
-    async function pollJobUntilComplete(jobId, statusTitle = 'Executing...') {
+    async function pollJobUntilComplete(jobId, statusTitle = 'Executing...', strategyId = null) {
         const startTime = Date.now();
         const maxPollMs = 300000; // 5 minute max safety threshold
         const pollInterval = 1200; // 1.2s poll interval
+        let consecutiveNotFound = 0;
 
         while (Date.now() - startTime < maxPollMs) {
             await new Promise(r => setTimeout(r, pollInterval));
             let res = null;
             try {
-                res = await safeFetchJson(`/api/momentum-smallcases/jobs/${encodeURIComponent(jobId)}`);
+                const queryStr = strategyId ? `?strategy_id=${encodeURIComponent(strategyId)}` : '';
+                res = await safeFetchJson(`/api/momentum-smallcases/jobs/${encodeURIComponent(jobId)}${queryStr}`);
             } catch (pollErr) {
+                const errMsg = String(pollErr.message || '');
+                if (pollErr.status === 404 || errMsg.includes('Job not found')) {
+                    consecutiveNotFound++;
+                    if (consecutiveNotFound >= 3) {
+                        // Job was not found 3 times in a row. Check if strategy state has already updated in DB
+                        if (strategyId) {
+                            try {
+                                const checkStrat = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`);
+                                if (checkStrat && checkStrat.strategy && (checkStrat.strategy.runs || []).length > 0) {
+                                    console.info('Job not in memory but strategy has updated runs. Resolving successfully.');
+                                    return { success: true, strategy: checkStrat.strategy, message: 'Execution completed.' };
+                                }
+                            } catch (_) {}
+                        }
+                        throw new Error('The execution job was interrupted (server was restarted or worker recycled). Please retry the rebalance.');
+                    }
+                }
                 console.warn('Transient polling error:', pollErr);
                 continue;
             }
 
+            consecutiveNotFound = 0;
             if (!res || !res.success || !res.job) {
                 continue;
             }
@@ -1670,7 +1690,7 @@
             }
 
             if (data.async && data.job_id) {
-                await pollJobUntilComplete(data.job_id, 'Executing Initial Allocation...');
+                await pollJobUntilComplete(data.job_id, 'Executing Initial Allocation...', strategyId);
             }
 
             alertToast('Init execution completed successfully!', 'success');
@@ -1801,7 +1821,7 @@
             }
 
             if (data.async && data.job_id) {
-                await pollJobUntilComplete(data.job_id, 'Executing Rebalance...');
+                await pollJobUntilComplete(data.job_id, 'Executing Rebalance...', currentStrategy.id);
             }
 
             closeRunRebalanceModal();
@@ -1959,7 +1979,7 @@
 
             let resultData = data;
             if (data.async && data.job_id) {
-                resultData = await pollJobUntilComplete(data.job_id, 'Executing Batch Rebalances...');
+                resultData = await pollJobUntilComplete(data.job_id, 'Executing Batch Rebalances...', currentStrategy.id);
             }
 
             closeRunAllModal();

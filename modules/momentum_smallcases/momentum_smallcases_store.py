@@ -1433,17 +1433,60 @@ def get_strategy_consolidated_stocks(strategy_id, username=None):
 # ==============================================================================
 # ASYNC EXECUTION JOBS (Immune to Gunicorn / Nginx / Reverse Proxy 502 Timeouts)
 # ==============================================================================
+# ASYNC EXECUTION JOBS REGISTRY & PERSISTENCE
+# ==============================================================================
 
 _EXECUTION_JOBS = {}
 _JOBS_LOCK = threading.Lock()
+_JOBS_FILE = os.path.join(_DATA_DIR, 'user_data', 'momentum_execution_jobs.json')
+
+
+def _load_jobs_from_disk_locked():
+    """Loads execution jobs from disk into memory, marking any zombie RUNNING jobs as failed."""
+    global _EXECUTION_JOBS
+    if not os.path.exists(_JOBS_FILE):
+        return
+    try:
+        with open(_JOBS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if isinstance(v, dict):
+                        # If a job was saved as RUNNING before the process restart, its thread died
+                        if v.get("status") == "RUNNING":
+                            v["status"] = "FAILED"
+                            v["error"] = "Execution job was interrupted by server restart. Please re-trigger the rebalance."
+                        _EXECUTION_JOBS[k] = v
+    except Exception as e:
+        logger.warning(f"Error loading momentum execution jobs from disk: {e}")
+
+
+def _save_jobs_to_disk_locked():
+    """Flushes execution jobs to disk atomically."""
+    try:
+        os.makedirs(os.path.dirname(_JOBS_FILE), exist_ok=True)
+        tmp = f"{_JOBS_FILE}.tmp"
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(_EXECUTION_JOBS, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, _JOBS_FILE)
+    except Exception as e:
+        logger.warning(f"Error saving momentum execution jobs to disk: {e}")
+
+
+# Initialize jobs from disk on module import
+try:
+    with _JOBS_LOCK:
+        _load_jobs_from_disk_locked()
+except Exception:
+    pass
 
 
 def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
     """
     Launches an execution job in a background thread and returns immediately with a unique job_id.
     Prevents 502 Bad Gateway timeouts caused by long calculations exceeding proxy limits (e.g. 30s).
+    Persists job state to disk so server restarts don't result in unhandled 'Job not found' errors.
     """
-    import threading
     job_id = f"job_{uuid.uuid4().hex[:12]}"
     with _JOBS_LOCK:
         # Prune old completed jobs if dictionary grows
@@ -1463,6 +1506,7 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
             "result": None,
             "error": None
         }
+        _save_jobs_to_disk_locked()
 
     def _worker():
         try:
@@ -1480,16 +1524,20 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
                 raise ValueError(f"Unknown job type: {job_type}")
 
             with _JOBS_LOCK:
-                _EXECUTION_JOBS[job_id]["status"] = "COMPLETED"
-                _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
-                _EXECUTION_JOBS[job_id]["result"] = res
+                if job_id in _EXECUTION_JOBS:
+                    _EXECUTION_JOBS[job_id]["status"] = "COMPLETED"
+                    _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
+                    _EXECUTION_JOBS[job_id]["result"] = res
+                    _save_jobs_to_disk_locked()
             logger.info(f"Async job {job_id} ({job_type}) completed successfully")
         except Exception as e:
             logger.error(f"Error in async job {job_id} ({job_type}): {e}", exc_info=True)
             with _JOBS_LOCK:
-                _EXECUTION_JOBS[job_id]["status"] = "FAILED"
-                _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
-                _EXECUTION_JOBS[job_id]["error"] = str(e)
+                if job_id in _EXECUTION_JOBS:
+                    _EXECUTION_JOBS[job_id]["status"] = "FAILED"
+                    _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
+                    _EXECUTION_JOBS[job_id]["error"] = str(e)
+                    _save_jobs_to_disk_locked()
 
     thread = threading.Thread(target=_worker, daemon=True)
     thread.start()
@@ -1497,9 +1545,13 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
 
 
 def get_execution_job_status(job_id):
-    """Retrieves current status and result for an async execution job."""
+    """Retrieves current status and result for an async execution job, checking disk if not in memory."""
     with _JOBS_LOCK:
         job = _EXECUTION_JOBS.get(job_id)
+        if not job:
+            # Recheck disk in case another worker process wrote the job
+            _load_jobs_from_disk_locked()
+            job = _EXECUTION_JOBS.get(job_id)
         if not job:
             return None
         return dict(job)
