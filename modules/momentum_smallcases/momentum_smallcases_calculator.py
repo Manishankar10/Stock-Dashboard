@@ -428,13 +428,14 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
 # MOMENTUM FORMULA & METRICS EVALUATION
 # ==============================================================================
 
-def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False):
+def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False, trading_days_per_month=30):
     """
     Calculates 1M, 2M, 5M, 9M price returns and 1M, 3M volatilities for a stock
     at target_date according to the user's trading hours rules:
     - If in trading hours, use previous day's close (T-1 close).
     - Else use today's / target_date's close.
     Gracefully computes metrics even if history is shorter than 9 months.
+    trading_days_per_month: 21 or 30 days (default 30).
     """
     series = fetch_stock_daily_series(symbol, target_cutoff_date=target_date)
     if not series:
@@ -453,13 +454,16 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     n = len(prices)
     curr_price = prices[-1]
 
+    # Trading days per month (21 or 30 days)
+    td = 21 if int(trading_days_per_month or 30) == 21 else 30
+
     # Trading days offsets:
-    # 1M = 30 days, 2M = 60 days, 5M = 150 days, 9M = 270 days
+    # 1M = td days, 2M = 2*td days, 5M = 5*td days, 9M = 9*td days
     # Graceful fallback: use max available days if history is shorter
-    idx_1m = max(0, n - 31)
-    idx_2m = max(0, n - 61)
-    idx_5m = max(0, n - 151)
-    idx_9m = max(0, n - 271)
+    idx_1m = max(0, n - (td + 1))
+    idx_2m = max(0, n - (2 * td + 1))
+    idx_5m = max(0, n - (5 * td + 1))
+    idx_9m = max(0, n - (9 * td + 1))
 
     p_1m = prices[idx_1m]
     p_2m = prices[idx_2m]
@@ -471,8 +475,8 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     r_5m = ((curr_price - p_5m) / p_5m) * 100.0 if p_5m > 0 else 0.0
     r_9m = ((curr_price - p_9m) / p_9m) * 100.0 if p_9m > 0 else 0.0
 
-    # 1M Volatility (up to 30 trading days annualized standard deviation)
-    days_1m = min(30, n - 1)
+    # 1M Volatility (up to td trading days annualized standard deviation)
+    days_1m = min(td, n - 1)
     if days_1m > 1:
         daily_rets_1m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_1m + 1) if prices[-i-1] > 0]
         mean_1m = sum(daily_rets_1m) / len(daily_rets_1m) if daily_rets_1m else 0.0
@@ -481,8 +485,8 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     else:
         vol_1m = 15.0  # sensible neutral default volatility
 
-    # 3M Volatility (up to 90 trading days annualized standard deviation)
-    days_3m = min(90, n - 1)
+    # 3M Volatility (up to 3*td trading days annualized standard deviation)
+    days_3m = min(3 * td, n - 1)
     if days_3m > 1:
         daily_rets_3m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_3m + 1) if prices[-i-1] > 0]
         mean_3m = sum(daily_rets_3m) / len(daily_rets_3m) if daily_rets_3m else 0.0
@@ -612,7 +616,7 @@ def filter_universe_by_date(stock_items, target_date):
     return eligible
 
 
-def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stocks, exit_regime_ranking, return_meta=False, save_cache=True):
+def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stocks, exit_regime_ranking, return_meta=False, save_cache=True, trading_days_per_month=30):
     """
     Calculates formula scores for all eligible stocks, ranks them descending,
     assigns color tiers (green for top N, dark yellow up to exit regime),
@@ -632,7 +636,9 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
 
     def _eval(sym):
         try:
-            metrics = calculate_stock_momentum_metrics(sym, target_date, in_trading_hours)
+            metrics = calculate_stock_momentum_metrics(
+                sym, target_date, in_trading_hours, trading_days_per_month=trading_days_per_month
+            )
             if metrics:
                 score = evaluate_formula_score(metrics, formula_str)
                 metrics["total_score"] = score
@@ -867,7 +873,7 @@ def execute_init_run(ranked_stocks, amount_to_invest, no_of_stocks):
     }
 
 
-def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking, target_date=None, all_universe_stocks=None, total_capital=None):
+def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, stepup_amount, no_of_stocks, exit_regime_ranking, target_date=None, all_universe_stocks=None, total_capital=None, trim_existing=True):
     """
     Rebalance execution with pure equal allocation across all stocks (including stepup and existing stocks):
     1. Retain stocks whose rank <= exit_regime_ranking.
@@ -882,8 +888,9 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     4. Compute total available equity (current market values of retained holdings + wallet cash + stepup + proceeds from exited stocks).
     5. Calculate target equal allocation per stock = total_equity / no_of_stocks.
     6. Rebalance existing stocks and newcomers:
-       - Trim overweight retained stocks (sell excess shares to bring to target allocation).
-       - Buy additional shares for underweight retained stocks to bring to target allocation.
+       - If trim_existing=True: Trim overweight retained stocks (sell excess shares to bring to target allocation).
+       - If trim_existing=False: Do not touch / decrease existing retained stock sizes.
+       - Buy additional shares for underweight retained stocks to bring to target allocation (when need to increase during recalculate can do).
        - Buy newcomer stocks up to target allocation.
     7. Deduct 0.10% transaction fees on all rebalancing trades and track wallet balance.
     """
@@ -988,8 +995,9 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     retained_equity = 0.0
     for sym in retained_symbols:
         h = prev_holdings_map[sym]
-        stk = rank_map[sym]
-        retained_equity += float(h["quantity"]) * float(stk["price"])
+        stk = rank_map.get(sym) or all_stocks_map.get(sym)
+        price = float(stk["price"]) if (stk and stk.get("price")) else float(h.get("current_price", h.get("buy_price", 0.0)))
+        retained_equity += float(h["quantity"]) * price
 
     total_equity = retained_equity + wallet
     target_per_stock = total_equity / float(total_target_stocks_count)
@@ -1001,8 +1009,8 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     # Prepare holding states
     for sym in retained_symbols:
         h = prev_holdings_map[sym]
-        stk = rank_map[sym]
-        price = float(stk["price"])
+        stk = rank_map.get(sym) or all_stocks_map.get(sym)
+        price = float(stk["price"]) if (stk and stk.get("price")) else float(h.get("current_price", h.get("buy_price", 0.0)))
         q_old = int(h["quantity"])
         p_avg = float(h.get("buy_price", price))
         inv_old = float(h.get("invested", q_old * p_avg))
@@ -1027,31 +1035,47 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
             "is_new": True
         }
 
-    # Phase 4A: Trim Overweight Retained Stocks FIRST to free up liquidity
-    for sym, item in holdings_dict.items():
-        price = item["current_price"]
-        q_old = item["quantity"]
-        q_target = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
+    # Phase 4A: Trim Overweight Retained Stocks FIRST to free up liquidity (only if trim_existing is True)
+    if trim_existing:
+        for sym, item in holdings_dict.items():
+            price = item["current_price"]
+            q_old = item["quantity"]
+            q_target = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
 
-        if q_target < q_old:
-            # Overweight: trim excess shares
-            qty_to_sell = q_old - q_target
-            sell_val = round(qty_to_sell * price, 2)
-            fee = round(sell_val * TRANSACTION_FEE_RATE, 2)
-            wallet += (sell_val - fee)
-            total_fees += fee
+            if q_target < q_old:
+                # Overweight: trim excess shares
+                qty_to_sell = q_old - q_target
+                sell_val = round(qty_to_sell * price, 2)
+                fee = round(sell_val * TRANSACTION_FEE_RATE, 2)
+                wallet += (sell_val - fee)
+                total_fees += fee
 
-            # Update item: buy_price per share remains the same on trim
-            item["quantity"] = q_target
-            item["invested"] = round(q_target * item["buy_price"], 2)
+                # Update item: buy_price per share remains the same on trim
+                item["quantity"] = q_target
+                item["invested"] = round(q_target * item["buy_price"], 2)
 
-            stk = rank_map.get(sym)
-            if stk:
-                stk["action"] = "SELL"
-                stk["action_label"] = f"TRIM (-{qty_to_sell})"
-                stk["quantity"] = q_target
-                stk["is_held"] = True
-                stk["allocated_amount"] = round(q_target * price, 2)
+                stk = rank_map.get(sym) or all_stocks_map.get(sym)
+                if stk:
+                    stk["action"] = "SELL"
+                    stk["action_label"] = f"TRIM (-{qty_to_sell})"
+                    stk["quantity"] = q_target
+                    stk["is_held"] = True
+                    stk["allocated_amount"] = round(q_target * price, 2)
+                    stk["fee"] = fee
+    else:
+        # If trim_existing is False: do not touch / decrease existing stock sizes!
+        for sym, item in holdings_dict.items():
+            if not item.get("is_new"):
+                q_old = item["quantity"]
+                price = item["current_price"]
+                stk = rank_map.get(sym) or all_stocks_map.get(sym)
+                if stk:
+                    stk["action"] = "HOLD"
+                    stk["action_label"] = f"HOLD ({q_old})"
+                    stk["quantity"] = q_old
+                    stk["is_held"] = (q_old > 0)
+                    stk["allocated_amount"] = round(q_old * price, 2)
+                    stk["fee"] = 0.0
 
     # Phase 4B: Buy Underweight Retained Stocks and Newcomers
     for sym, item in holdings_dict.items():
@@ -1079,7 +1103,7 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                 item["invested"] = new_invested
                 item["buy_price"] = new_avg_buy_price
 
-                stk = rank_map.get(sym)
+                stk = rank_map.get(sym) or all_stocks_map.get(sym)
                 if stk:
                     if item["is_new"]:
                         stk["action"] = "BUY"
@@ -1093,14 +1117,14 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                     stk["allocated_amount"] = round(new_qty * price, 2)
                     stk["fee"] = fee
             else:
-                stk = rank_map.get(sym)
+                stk = rank_map.get(sym) or all_stocks_map.get(sym)
                 if stk:
                     stk["action"] = "HOLD"
                     stk["action_label"] = f"HOLD ({q_current})"
                     stk["quantity"] = q_current
                     stk["is_held"] = (q_current > 0)
         elif q_target == q_current and not item["is_new"]:
-            stk = rank_map.get(sym)
+            stk = rank_map.get(sym) or all_stocks_map.get(sym)
             if stk and stk.get("action") not in ("SELL", "BUY"):
                 stk["action"] = "HOLD"
                 stk["action_label"] = f"HOLD ({q_current})"

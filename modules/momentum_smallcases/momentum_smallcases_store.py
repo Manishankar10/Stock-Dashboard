@@ -505,7 +505,9 @@ def create_user_strategy(
     rebalance_day,
     amount_to_invest,
     formula=None,
-    username=None
+    username=None,
+    trim_existing=True,
+    trading_days_per_month=30
 ):
     """Creates a new Momentum Smallcase strategy with equal weight allocation."""
     from modules.momentum_smallcases.momentum_smallcases_calculator import (
@@ -564,6 +566,17 @@ def create_user_strategy(
 
     formula = (formula or "").strip() or DEFAULT_FORMULA
 
+    # Parse trim_existing (default True)
+    trim_val = True
+    if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0"):
+        trim_val = False
+
+    # Parse trading_days_per_month (21 or 30, default 30)
+    try:
+        td_val = 21 if int(trading_days_per_month) == 21 else 30
+    except Exception:
+        td_val = 30
+
     # Identify index name & type
     all_indices = get_combined_indices_list(username)
     found_idx = next((x for x in all_indices if x["id"] == index_id), None)
@@ -603,6 +616,8 @@ def create_user_strategy(
         "no_of_stocks": no_of_stocks,
         "exit_regime_ranking": exit_regime,
         "rebalance_day": rebal_day,
+        "trim_existing": trim_val,
+        "trading_days_per_month": td_val,
         "initial_amount": amt,
         "amount_to_invest": amt,
         "current_wallet": amt,
@@ -718,7 +733,8 @@ def run_strategy_init(strategy_id, username=None):
         formula_str=target.get("formula"),
         no_of_stocks=target["no_of_stocks"],
         exit_regime_ranking=target["exit_regime_ranking"],
-        return_meta=True
+        return_meta=True,
+        trading_days_per_month=target.get("trading_days_per_month", 30)
     )
 
     if not ranked_stocks:
@@ -904,7 +920,8 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         no_of_stocks=target["no_of_stocks"],
         exit_regime_ranking=target["exit_regime_ranking"],
         return_meta=True,
-        save_cache=save_cache
+        save_cache=save_cache,
+        trading_days_per_month=target.get("trading_days_per_month", 30)
     )
 
     if not ranked_stocks:
@@ -915,6 +932,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         raise ValueError(f"Could not calculate momentum metrics for rebalance date ({failed_str}).")
 
     # Execute rebalance equal weight allocation
+    trim_existing = bool(target.get("trim_existing", True))
     portfolio = execute_rebalance_run(
         ranked_stocks=ranked_stocks,
         previous_holdings=prev_holdings,
@@ -924,7 +942,8 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         exit_regime_ranking=target["exit_regime_ranking"],
         target_date=exec_date,
         all_universe_stocks=meta.get("all_stocks"),
-        total_capital=float(target.get("amount_to_invest", 0.0))
+        total_capital=float(target.get("amount_to_invest", 0.0)),
+        trim_existing=trim_existing
     )
 
     # Next future rebalance date

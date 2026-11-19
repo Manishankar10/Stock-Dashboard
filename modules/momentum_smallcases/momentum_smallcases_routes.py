@@ -235,6 +235,9 @@ def create_strategy_api():
     try:
         user = session.get("username") or "admin"
         body = request.get_json(silent=True) or {}
+        trim_existing = body.get("trim_existing")
+        trading_days = body.get("trading_days_per_month")
+
         new_strat = create_user_strategy(
             name=body.get("name"),
             start_date=body.get("start_date"),
@@ -244,7 +247,9 @@ def create_strategy_api():
             rebalance_day=body.get("rebalance_day"),
             amount_to_invest=body.get("amount_to_invest"),
             formula=body.get("formula"),
-            username=user
+            username=user,
+            trim_existing=trim_existing,
+            trading_days_per_month=trading_days
         )
         return jsonify({"success": True, "strategy": new_strat, "message": "Momentum Smallcase created successfully"}), 201
     except ValueError as ve:

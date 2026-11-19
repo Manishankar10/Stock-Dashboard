@@ -529,6 +529,9 @@
                             <span style="color: #10b981; font-weight: 700;">${s.no_of_stocks} Top</span> / 
                             <span style="color: #eab308; font-weight: 700;">Exit &le; ${s.exit_regime_ranking}</span>
                         </div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary); margin-top: 3px;">
+                            Trim: <strong style="color: ${s.trim_existing === false ? '#eab308' : 'var(--text-primary)'};">${s.trim_existing === false ? 'No' : 'Yes'}</strong> &bull; <strong>${s.trading_days_per_month || 30}d/mo</strong>
+                        </div>
                     </td>
                     <td>
                         <div style="font-size: 12.5px; color: var(--text-primary);">
@@ -610,6 +613,10 @@
         document.getElementById('stratExitRegimeInput').value = '22';
         document.getElementById('stratRebalDayInput').value = '21';
         document.getElementById('stratAmountInput').value = '';
+        const trimSelect = document.getElementById('stratTrimExistingSelect');
+        if (trimSelect) trimSelect.value = 'yes';
+        const tdSelect = document.getElementById('stratTradingDaysPerMonthSelect');
+        if (tdSelect) tdSelect.value = '30';
         document.getElementById('stratFormulaInput').value =
             '(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)';
 
@@ -762,6 +769,8 @@
         const exitRegime = parseInt(document.getElementById('stratExitRegimeInput')?.value, 10);
         const rebalDay = parseInt(document.getElementById('stratRebalDayInput')?.value, 10);
         const amount = parseFloat(document.getElementById('stratAmountInput')?.value);
+        const trimExisting = (document.getElementById('stratTrimExistingSelect')?.value || 'yes') === 'yes';
+        const tradingDaysPerMonth = parseInt(document.getElementById('stratTradingDaysPerMonthSelect')?.value || '30', 10);
         const formula = (document.getElementById('stratFormulaInput')?.value || '').trim();
 
         if (!name) {
@@ -825,6 +834,8 @@
                     exit_regime_ranking: exitRegime,
                     rebalance_day: rebalDay,
                     amount_to_invest: amount,
+                    trim_existing: trimExisting,
+                    trading_days_per_month: tradingDaysPerMonth,
                     formula: formula
                 })
             });
@@ -915,6 +926,15 @@
             document.getElementById('sd-start-date').innerText = startText;
             document.getElementById('sd-stock-counts').innerText = `Top ${s.no_of_stocks} (Green) / Exit Rank ${s.exit_regime_ranking} (Yellow)`;
             document.getElementById('sd-rebal-day').innerText = `${s.rebalance_day}th monthly`;
+            const trimEl = document.getElementById('sd-trim-existing');
+            if (trimEl) {
+                trimEl.innerText = (s.trim_existing === false) ? 'No' : 'Yes';
+                trimEl.style.color = (s.trim_existing === false) ? '#eab308' : 'var(--text-primary)';
+            }
+            const tdEl = document.getElementById('sd-trading-days');
+            if (tdEl) {
+                tdEl.innerText = `${s.trading_days_per_month || 30}d`;
+            }
             const maxAllocEl = document.getElementById('sd-max-alloc');
             if (maxAllocEl) {
                 maxAllocEl.innerText = 'Equal Weight';
@@ -1240,7 +1260,7 @@
                         <span style="display: inline-flex; align-items: center;">${isInit ? '🎯' : getRebalanceIconSVG(17, 2.4)}</span> <span>${escapeHtml(runTitle)}</span>
                     </div>
                     <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px;">
-                        ${dateNote} &bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong>
+                        ${dateNote} &bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong> &bull; Trim Overweight: <strong>${(currentStrategy && currentStrategy.trim_existing === false) ? 'No' : 'Yes'}</strong> &bull; Days/Mo: <strong>${(currentStrategy && currentStrategy.trading_days_per_month) || 30}d</strong>
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">

@@ -82,7 +82,8 @@ def get_run_all_ranked_stocks(strategy_id, run_index=None, username=None):
         no_of_stocks=strat.get("no_of_stocks", 12),
         exit_regime_ranking=strat.get("exit_regime_ranking", 15),
         return_meta=True,
-        save_cache=True
+        save_cache=True,
+        trading_days_per_month=strat.get("trading_days_per_month", 30)
     )
 
     all_calculated = meta.get("all_stocks") or ranked_displayed or []
