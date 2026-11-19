@@ -2161,12 +2161,6 @@
             isSubmitting = false;
         }
     }
-            if (btn) {
-                btn.disabled = false;
-                btn.innerText = origText;
-            }
-        }
-    }
 
     // =========================================================================
     // 5a. EXCEL EXPORT FOR ALL RANKED STOCKS
