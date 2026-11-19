@@ -454,12 +454,12 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     curr_price = prices[-1]
 
     # Trading days offsets:
-    # 1M = 21 days, 2M = 42 days, 5M = 105 days, 9M = 189 days
+    # 1M = 30 days, 2M = 60 days, 5M = 150 days, 9M = 270 days
     # Graceful fallback: use max available days if history is shorter
-    idx_1m = max(0, n - 22)
-    idx_2m = max(0, n - 43)
-    idx_5m = max(0, n - 106)
-    idx_9m = max(0, n - 190)
+    idx_1m = max(0, n - 31)
+    idx_2m = max(0, n - 61)
+    idx_5m = max(0, n - 151)
+    idx_9m = max(0, n - 271)
 
     p_1m = prices[idx_1m]
     p_2m = prices[idx_2m]
@@ -471,8 +471,8 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     r_5m = ((curr_price - p_5m) / p_5m) * 100.0 if p_5m > 0 else 0.0
     r_9m = ((curr_price - p_9m) / p_9m) * 100.0 if p_9m > 0 else 0.0
 
-    # 1M Volatility (up to 21 trading days annualized standard deviation)
-    days_1m = min(21, n - 1)
+    # 1M Volatility (up to 30 trading days annualized standard deviation)
+    days_1m = min(30, n - 1)
     if days_1m > 1:
         daily_rets_1m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_1m + 1) if prices[-i-1] > 0]
         mean_1m = sum(daily_rets_1m) / len(daily_rets_1m) if daily_rets_1m else 0.0
@@ -481,8 +481,8 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     else:
         vol_1m = 15.0  # sensible neutral default volatility
 
-    # 3M Volatility (up to 63 trading days annualized standard deviation)
-    days_3m = min(63, n - 1)
+    # 3M Volatility (up to 90 trading days annualized standard deviation)
+    days_3m = min(90, n - 1)
     if days_3m > 1:
         daily_rets_3m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_3m + 1) if prices[-i-1] > 0]
         mean_3m = sum(daily_rets_3m) / len(daily_rets_3m) if daily_rets_3m else 0.0
