@@ -587,7 +587,7 @@
         document.getElementById('stratNoOfStocksInput').value = '12';
         document.getElementById('stratExitRegimeInput').value = '22';
         document.getElementById('stratRebalDayInput').value = '21';
-        document.getElementById('stratAmountInput').value = '100000';
+        document.getElementById('stratAmountInput').value = '';
         document.getElementById('stratFormulaInput').value =
             '(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)';
 
@@ -773,7 +773,7 @@
             return;
         }
         if (isNaN(amount) || amount <= 0) {
-            alertToast('Amount to invest must be a positive number', 'warning');
+            alertToast('Please enter an amount to invest (e.g. 100000)', 'warning');
             return;
         }
 
@@ -1666,6 +1666,35 @@
         }
     }
 
+    function getPreviousRebalanceStepup(strategy) {
+        if (!strategy) return null;
+        const runs = strategy.runs || [];
+        const rebalRuns = runs.filter(r => r && r.run_type === 'REBALANCE');
+        if (rebalRuns.length === 0) {
+            // Only Init has been executed (or no runs), so return null (show empty)
+            return null;
+        }
+        // Get step-up amount from the most recent executed rebalance run
+        const lastRebal = rebalRuns[rebalRuns.length - 1];
+        if (lastRebal.stepup_amount !== undefined && lastRebal.stepup_amount !== null) {
+            return Number(lastRebal.stepup_amount);
+        }
+        if (lastRebal.portfolio_snapshot && lastRebal.portfolio_snapshot.stepup_amount !== undefined && lastRebal.portfolio_snapshot.stepup_amount !== null) {
+            return Number(lastRebal.portfolio_snapshot.stepup_amount);
+        }
+        const logs = strategy.capital_logs || [];
+        for (let i = logs.length - 1; i >= 0; i--) {
+            const l = logs[i];
+            if (l.type === 'REBALANCE_EXECUTED' || l.type === 'STEPUP_DEPOSIT') {
+                if (l.amount !== undefined && l.amount !== null) return Number(l.amount);
+            }
+        }
+        if (strategy.last_stepup_amount !== undefined && strategy.last_stepup_amount !== null) {
+            return Number(strategy.last_stepup_amount);
+        }
+        return null;
+    }
+
     function openRunRebalanceModal() {
         if (!currentStrategy) return;
         ensureModalsAttachedToBody();
@@ -1680,7 +1709,17 @@
         setSmallcaseModalLoader('runRebalanceModal', false);
         document.getElementById('rebal-modal-strat-name').innerText = currentStrategy.name;
         document.getElementById('rebal-modal-date').innerText = formatDateDisplay(currentStrategy.next_rebalance_date);
-        document.getElementById('rebalStepupInput').value = '0';
+        
+        // Get step-up amount from previous rebalance time. If only init has run, show empty.
+        const prevStepup = getPreviousRebalanceStepup(currentStrategy);
+        const stepupInput = document.getElementById('rebalStepupInput');
+        if (stepupInput) {
+            if (prevStepup !== null && prevStepup > 0) {
+                stepupInput.value = prevStepup;
+            } else {
+                stepupInput.value = '';
+            }
+        }
 
         const modal = document.getElementById('runRebalanceModal');
         if (modal) modal.style.display = 'flex';
@@ -1706,8 +1745,10 @@
             return;
         }
 
-        const stepupVal = parseFloat(document.getElementById('rebalStepupInput')?.value || 0) || 0;
-        if (stepupVal < 0) {
+        // Empty string means 0
+        const rawStepup = (document.getElementById('rebalStepupInput')?.value || '').trim();
+        const stepupVal = rawStepup === '' ? 0 : parseFloat(rawStepup);
+        if (isNaN(stepupVal) || stepupVal < 0) {
             alertToast('Step-up amount cannot be negative', 'warning');
             return;
         }
@@ -1795,7 +1836,14 @@
         const stepupInput = document.getElementById('runAllStepupInput');
         const cutoffInput = document.getElementById('runAllCutoffDateInput');
 
-        if (stepupInput) stepupInput.value = '0';
+        const prevStepup = getPreviousRebalanceStepup(currentStrategy);
+        if (stepupInput) {
+            if (prevStepup !== null && prevStepup > 0) {
+                stepupInput.value = prevStepup;
+            } else {
+                stepupInput.value = '';
+            }
+        }
         if (cutoffInput) {
             cutoffInput.value = todayStr;
             cutoffInput.max = todayStr;
@@ -1834,8 +1882,10 @@
     async function confirmRunAllRebalances() {
         if (!currentStrategy || isSubmitting) return;
 
-        const stepupVal = parseFloat(document.getElementById('runAllStepupInput')?.value || 0) || 0;
-        if (stepupVal < 0) {
+        // Consider empty means 0
+        const rawStepup = (document.getElementById('runAllStepupInput')?.value || '').trim();
+        const stepupVal = rawStepup === '' ? 0 : parseFloat(rawStepup);
+        if (isNaN(stepupVal) || stepupVal < 0) {
             alertToast('Step-up amount cannot be negative', 'warning');
             return;
         }

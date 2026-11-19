@@ -933,6 +933,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         "run_type": "REBALANCE",
         "run_number": rebal_number,
         "title": f"Rebalance #{rebal_number}",
+        "stepup_amount": stepup,
         "scheduled_date": sched_rebal_str,
         "executed_date": exec_date.isoformat(),
         "is_holiday_adjusted": was_moved,
@@ -954,6 +955,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     target["total_pnl"] = portfolio.get("total_pnl", round(portfolio["total_portfolio_value"] - target["amount_to_invest"], 2))
     target["total_pnl_percent"] = portfolio.get("total_pnl_percent", 0.0)
     target["total_fees_paid"] = round(target.get("total_fees_paid", 0.0) + portfolio["fees_paid"], 2)
+    target["last_stepup_amount"] = stepup
     target["next_rebalance_date"] = next_rebal.isoformat()
     target["updated_at"] = now_iso
 
