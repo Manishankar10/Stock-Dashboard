@@ -1373,6 +1373,97 @@
         #watchlist-selector-mount::-webkit-scrollbar { display: none; }
         .watchlist-selector-row { display:flex; align-items:center; gap:14px; width:100%; min-width:0; }
         .watchlist-selector-row > span { flex:0 0 auto; }
+        .watchlist-source-dropdown-wrap { flex:0 0 auto; position:relative; display:inline-flex; align-items:center; }
+        .wl-source-dropdown-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 14px;
+            background: #141824;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+            cursor: pointer;
+            letter-spacing: 0.6px;
+            transition: all 0.18s ease;
+            user-select: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            outline: none;
+        }
+        [data-theme="light"] .wl-source-dropdown-btn {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #0f172a;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .wl-source-dropdown-btn:hover {
+            border-color: #3b82f6;
+            background: #1c2233;
+            color: #ffffff;
+        }
+        [data-theme="light"] .wl-source-dropdown-btn:hover {
+            background: #e2e8f0;
+            border-color: #3b82f6;
+            color: #0f172a;
+        }
+        .wl-source-dropdown-btn.active {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+        .wl-source-dropdown-arrow {
+            font-size: 10px;
+            color: #94a3b8;
+            transition: transform 0.2s ease;
+            line-height: 1;
+            display: inline-block;
+        }
+        .wl-source-dropdown-btn.active .wl-source-dropdown-arrow {
+            transform: rotate(180deg);
+        }
+        .wl-source-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            min-width: 190px;
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1005;
+            padding: 6px;
+        }
+        [data-theme="light"] .wl-source-dropdown-menu {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+        }
+        .wl-source-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .wl-source-menu-item:hover {
+            background: rgba(59, 130, 246, 0.12);
+            color: #3b82f6;
+        }
+        .wl-source-menu-item.active {
+            background: #2563eb;
+            color: #ffffff;
+        }
+        .wl-source-menu-item .wl-source-item-check {
+            font-size: 12px;
+            font-weight: 700;
+        }
         .watchlist-create-action { flex:0 0 auto; display:flex; align-items:center; }
         .watchlist-create-action button { white-space:nowrap; }
         .selector-dragging { opacity:.45; transform: scale(0.97); transition: transform 0.15s ease, opacity 0.15s ease; }

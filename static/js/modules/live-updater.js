@@ -7,10 +7,18 @@
             const allSymbols = new Set();
 
             if (currentTab === 'watchlists') {
-                const activeSymbols = (watchlistsData && activeWatchlistName && watchlistsData[activeWatchlistName]) || [];
-                activeSymbols.forEach(s => {
-                    if (s) allSymbols.add(s);
-                });
+                if (window.currentWatchlistSourceMode === 'indices') {
+                    const idxStocks = window.activeIndicesStocks || [];
+                    idxStocks.forEach(s => {
+                        const sym = (typeof s === 'string') ? s : (s && s.symbol);
+                        if (sym) allSymbols.add(sym);
+                    });
+                } else {
+                    const activeSymbols = (watchlistsData && activeWatchlistName && watchlistsData[activeWatchlistName]) || [];
+                    activeSymbols.forEach(s => {
+                        if (s) allSymbols.add(s);
+                    });
+                }
             } else if (currentTab === 'portfolios' || !window.portfoliosLoaded) {
                 if (activePortfolioName === 'All' || !activePortfolioName) {
                     Object.values(portfoliosData || {}).forEach(holdings => {

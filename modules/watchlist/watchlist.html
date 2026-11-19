@@ -3,7 +3,23 @@
             <div class="card-container watchlist-top-card" style="padding: 16px 24px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div class="watchlist-selector-row">
-                        <span class="watchlist-label-title" style="font-weight: 600; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.5px;">WATCHLISTS:</span>
+                        <!-- Source Selector Dropdown (Image 2 design: Watchlists vs Indices) -->
+                        <div class="watchlist-source-dropdown-wrap" style="position: relative; display: inline-flex; align-items: center; flex: 0 0 auto;">
+                            <button type="button" class="wl-source-dropdown-btn" id="wl-source-dropdown-btn" onclick="toggleWatchlistSourceDropdown(event)" title="Click to switch between Watchlists and Benchmark Indices">
+                                <span id="wl-source-dropdown-label">WATCHLISTS</span>
+                                <span class="wl-source-dropdown-arrow">▾</span>
+                            </button>
+                            <div class="wl-source-dropdown-menu" id="wl-source-dropdown-menu" style="display: none;">
+                                <div class="wl-source-menu-item active" id="wl-source-opt-watchlists" onclick="selectWatchlistSourceMode('watchlists')">
+                                    <span style="display: flex; align-items: center; gap: 7px;">📋 Watchlists</span>
+                                    <span class="wl-source-item-check" id="wl-check-watchlists">✓</span>
+                                </div>
+                                <div class="wl-source-menu-item" id="wl-source-opt-indices" onclick="selectWatchlistSourceMode('indices')">
+                                    <span style="display: flex; align-items: center; gap: 7px;">📊 Indices</span>
+                                    <span class="wl-source-item-check" id="wl-check-indices" style="display: none;">✓</span>
+                                </div>
+                            </div>
+                        </div>
                         <div class="watchlist-tabs-scroll-wrapper">
                             <button type="button" class="wl-scroll-arrow wl-scroll-arrow-left" id="wl-scroll-left-btn" aria-label="Scroll watchlists left" title="Scroll left" style="display: none;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -13,7 +29,7 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
                         </div>
-                        <div class="watchlist-create-action" style="display: flex; align-items: center; gap: 8px;">
+                        <div class="watchlist-create-action" id="watchlist-create-action" style="display: flex; align-items: center; gap: 8px;">
                             <button onclick="openCreateWatchlistModal()">+ Create Watchlist</button>
                         </div>
                     </div>

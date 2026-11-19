@@ -207,7 +207,576 @@
             document.querySelectorAll('.wl-overflow.open').forEach(menu => menu.classList.remove('open'));
         }
 
+        // =========================================================
+        // WATCHLIST SOURCE MODE & BENCHMARK INDICES CONTROLLER
+        // Allows switching between personal Watchlists and official NSE Indices
+        // =========================================================
+        window.currentWatchlistSourceMode = localStorage.getItem('capital_desk_watchlist_source_mode') || 'watchlists';
+        window.activeIndexKey = localStorage.getItem('capital_desk_active_index') || 'NIFTY_50';
+        window.allIndicesList = [];
+        window.indexConstituentStocks = {};
+        window.activeIndicesStocks = [];
+        window.indexFilterQuery = '';
+
+        function toggleWatchlistSourceDropdown(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const menu = document.getElementById('wl-source-dropdown-menu');
+            const btn = document.getElementById('wl-source-dropdown-btn');
+            if (!menu) return;
+            const isShowing = menu.style.display === 'block';
+            if (isShowing) {
+                closeWatchlistSourceDropdown();
+            } else {
+                menu.style.display = 'block';
+                if (btn) btn.classList.add('active');
+            }
+        }
+        window.toggleWatchlistSourceDropdown = toggleWatchlistSourceDropdown;
+
+        function closeWatchlistSourceDropdown() {
+            const menu = document.getElementById('wl-source-dropdown-menu');
+            const btn = document.getElementById('wl-source-dropdown-btn');
+            if (menu) menu.style.display = 'none';
+            if (btn) btn.classList.remove('active');
+        }
+        window.closeWatchlistSourceDropdown = closeWatchlistSourceDropdown;
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.watchlist-source-dropdown-wrap')) {
+                closeWatchlistSourceDropdown();
+            }
+        });
+
+        function syncWatchlistSourceDropdownUI() {
+            const mode = window.currentWatchlistSourceMode || 'watchlists';
+            const labelEl = document.getElementById('wl-source-dropdown-label');
+            const optWl = document.getElementById('wl-source-opt-watchlists');
+            const optIdx = document.getElementById('wl-source-opt-indices');
+            const chkWl = document.getElementById('wl-check-watchlists');
+            const chkIdx = document.getElementById('wl-check-indices');
+            const createBtn = document.getElementById('watchlist-create-action');
+
+            if (mode === 'indices') {
+                if (labelEl) labelEl.innerText = 'INDICES';
+                if (optWl) optWl.classList.remove('active');
+                if (optIdx) optIdx.classList.add('active');
+                if (chkWl) chkWl.style.display = 'none';
+                if (chkIdx) chkIdx.style.display = 'inline';
+                if (createBtn) createBtn.style.display = 'none';
+            } else {
+                if (labelEl) labelEl.innerText = 'WATCHLISTS';
+                if (optWl) optWl.classList.add('active');
+                if (optIdx) optIdx.classList.remove('active');
+                if (chkWl) chkWl.style.display = 'inline';
+                if (chkIdx) chkIdx.style.display = 'none';
+                if (createBtn) createBtn.style.display = 'flex';
+            }
+        }
+        window.syncWatchlistSourceDropdownUI = syncWatchlistSourceDropdownUI;
+
+        async function selectWatchlistSourceMode(mode, targetIndexKey) {
+            closeWatchlistSourceDropdown();
+            if (!mode) mode = 'watchlists';
+            window.currentWatchlistSourceMode = mode;
+            try {
+                localStorage.setItem('capital_desk_watchlist_source_mode', mode);
+            } catch(e) {}
+            syncWatchlistSourceDropdownUI();
+
+            if (mode === 'indices') {
+                if (targetIndexKey) {
+                    window.activeIndexKey = targetIndexKey;
+                    try { localStorage.setItem('capital_desk_active_index', targetIndexKey); } catch(e) {}
+                } else if (!window.activeIndexKey) {
+                    window.activeIndexKey = 'NIFTY_50';
+                }
+                await renderIndicesView();
+            } else {
+                renderWatchlists();
+            }
+        }
+        window.selectWatchlistSourceMode = selectWatchlistSourceMode;
+
+        async function renderIndicesView() {
+            syncWatchlistSourceDropdownUI();
+            if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
+
+            const selectorMount = document.getElementById('watchlist-selector-mount');
+            const viewMount = document.getElementById('watchlist-view-mount');
+
+            // 1. Fetch official indices list from DB if not already loaded
+            if (!window.allIndicesList || window.allIndicesList.length === 0) {
+                if (selectorMount) {
+                    selectorMount.innerHTML = '<span style="color:var(--text-secondary); font-size:13px; padding: 6px 12px;">Loading official indices...</span>';
+                }
+                try {
+                    const res = await fetch('/api/indices');
+                    const data = await res.json();
+                    if (data && data.success && Array.isArray(data.indices)) {
+                        window.allIndicesList = data.indices;
+                    }
+                } catch (e) {
+                    console.error('Error fetching indices list:', e);
+                }
+            }
+
+            // Fallback list of 10 official indices if API was unreachable
+            if (!window.allIndicesList || window.allIndicesList.length === 0) {
+                window.allIndicesList = [
+                    { key: 'NIFTY_50', name: 'NIFTY 50', official_size: 50 },
+                    { key: 'NIFTY_NEXT_50', name: 'NIFTY NEXT 50', official_size: 50 },
+                    { key: 'NIFTY_MIDCAP_150', name: 'NIFTY MIDCAP 150', official_size: 150 },
+                    { key: 'NIFTY_SMALLCAP_250', name: 'NIFTY SMALLCAP 250', official_size: 250 },
+                    { key: 'NIFTY_MICROCAP_250', name: 'NIFTY MICROCAP 250', official_size: 250 },
+                    { key: 'NIFTY_100', name: 'NIFTY 100', official_size: 100 },
+                    { key: 'NIFTY_LARGEMIDCAP_250', name: 'NIFTY LARGEMIDCAP 250', official_size: 250 },
+                    { key: 'NIFTY_500', name: 'NIFTY 500', official_size: 500 },
+                    { key: 'NIFTY_BANK', name: 'NIFTY BANK', official_size: 12 },
+                    { key: 'NIFTY_FINANCIAL_SERVICES', name: 'NIFTY FINANCIAL SERVICES', official_size: 20 }
+                ];
+            }
+
+            // Ensure activeIndexKey is valid; default strictly to NIFTY_50
+            if (!window.activeIndexKey || !window.allIndicesList.some(i => i.key === window.activeIndexKey)) {
+                window.activeIndexKey = 'NIFTY_50';
+            }
+
+            // 2. Render Index Tabs in Selector Mount
+            if (selectorMount) {
+                selectorMount.innerHTML = '';
+                if (!selectorMount.dataset.wheelBound) {
+                    selectorMount.addEventListener('wheel', event => {
+                        if (selectorMount.scrollWidth > selectorMount.clientWidth && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+                            selectorMount.scrollLeft += event.deltaY;
+                            event.preventDefault();
+                        }
+                    }, { passive: false });
+                    selectorMount.dataset.wheelBound = 'true';
+                }
+
+                window.allIndicesList.forEach(idx => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = `pf-select-btn ${idx.key === window.activeIndexKey ? 'active' : ''}`;
+                    btn.innerText = idx.name || idx.key.replace(/_/g, ' ');
+                    btn.dataset.indexKey = idx.key;
+                    btn.onclick = () => selectIndex(idx.key);
+                    selectorMount.appendChild(btn);
+                });
+
+                if (typeof initWatchlistScrollArrows === 'function') {
+                    initWatchlistScrollArrows();
+                }
+                if (typeof updateWatchlistScrollArrows === 'function') {
+                    requestAnimationFrame(updateWatchlistScrollArrows);
+                    setTimeout(updateWatchlistScrollArrows, 80);
+                }
+            }
+
+            // 3. Render Active Index Constituent Stocks
+            await renderActiveIndexStocks(window.activeIndexKey);
+        }
+        window.renderIndicesView = renderIndicesView;
+
+        async function selectIndex(key) {
+            window.activeIndexKey = key;
+            window.indexFilterQuery = '';
+            try {
+                localStorage.setItem('capital_desk_active_index', key);
+            } catch(e) {}
+
+            const selectorMount = document.getElementById('watchlist-selector-mount');
+            if (selectorMount) {
+                selectorMount.querySelectorAll('.pf-select-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.indexKey === key);
+                });
+            }
+
+            if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
+            await renderActiveIndexStocks(key);
+        }
+        window.selectIndex = selectIndex;
+
+        async function renderActiveIndexStocks(key) {
+            const viewMount = document.getElementById('watchlist-view-mount');
+            if (!viewMount) return;
+
+            const indexMeta = (window.allIndicesList || []).find(i => i.key === key) || { name: key.replace(/_/g, ' '), official_size: 50 };
+            const indexName = indexMeta.name || key;
+
+            // Fetch constituents if not cached
+            if (!window.indexConstituentStocks[key]) {
+                viewMount.innerHTML = `
+                    <div class="card-container" style="text-align: center; padding: 48px 24px; color: var(--text-secondary);">
+                        <div class="skeleton-box" style="width: 140px; height: 16px; margin: 0 auto 16px; border-radius: 4px;"></div>
+                        <div style="font-size: 14px; font-weight: 500;">Loading constituents for ${escapeHtml(indexName)}...</div>
+                    </div>
+                `;
+                startWatchlistSpin();
+                try {
+                    const res = await fetch(`/api/indices/stocks?index=${encodeURIComponent(key)}`);
+                    const data = await res.json();
+                    if (data && data.success && data.index && Array.isArray(data.index.stocks)) {
+                        window.indexConstituentStocks[key] = data.index.stocks;
+                    } else {
+                        window.indexConstituentStocks[key] = [];
+                    }
+                } catch (e) {
+                    console.error(`Error loading constituents for ${key}:`, e);
+                    window.indexConstituentStocks[key] = [];
+                } finally {
+                    stopWatchlistSpin();
+                }
+            }
+
+            const rawStocks = window.indexConstituentStocks[key] || [];
+            window.activeIndicesStocks = rawStocks.map(s => (s.symbol || s));
+
+            // Background price refresh for fresh live quotes
+            if (typeof refreshPrices === 'function') {
+                refreshPrices();
+            }
+
+            let stocks = rawStocks.slice();
+
+            // Apply Index Sorting
+            stocks.sort((a, b) => {
+                const symA = a.symbol || a;
+                const symB = b.symbol || b;
+                const infoA = stockPricesData[symA] || stockPricesData[symA + '.NS'] || stockPricesData[cleanDisplaySymbol(symA)] || {};
+                const infoB = stockPricesData[symB] || stockPricesData[symB + '.NS'] || stockPricesData[cleanDisplaySymbol(symB)] || {};
+
+                let valA, valB;
+                if (wlSortColumn === 'symbol') {
+                    valA = symA;
+                    valB = symB;
+                    return wlSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (wlSortColumn === 'price') {
+                    valA = infoA.price !== undefined ? infoA.price : -Infinity;
+                    valB = infoB.price !== undefined ? infoB.price : -Infinity;
+                } else if (wlSortColumn === 'change') {
+                    valA = infoA.change !== undefined ? infoA.change : -Infinity;
+                    valB = infoB.change !== undefined ? infoB.change : -Infinity;
+                } else if (wlSortColumn === 'change_pct') {
+                    valA = (infoA && infoA.change_pct !== undefined && infoA.change_pct !== null) ? Number(infoA.change_pct) : -Infinity;
+                    valB = (infoB && infoB.change_pct !== undefined && infoB.change_pct !== null) ? Number(infoB.change_pct) : -Infinity;
+                }
+                if (valA === -Infinity && valB === -Infinity) return 0;
+                if (valA === -Infinity) return 1;
+                if (valB === -Infinity) return -1;
+                return wlSortDirection === 'asc' ? valA - valB : valB - valA;
+            });
+
+            // Build Main Card Container
+            const card = document.createElement('div');
+            card.className = 'card-container';
+            card.style.cssText = 'padding: 20px 24px; position: relative;';
+
+            // Top Controls Bar
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'controls';
+            controlsDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;';
+
+            // Filter row
+            const searchRow = document.createElement('div');
+            searchRow.className = 'wl-search-row';
+            searchRow.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1 1 320px; min-width: 240px;';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'autocomplete-wrapper';
+            wrapper.style.width = '100%';
+
+            const filterInput = document.createElement('input');
+            filterInput.type = 'text';
+            filterInput.id = 'wl-index-filter-input';
+            filterInput.className = 'wl-input';
+            filterInput.placeholder = `🔍 Filter ${escapeHtml(indexName)} constituents (e.g. Tata, Reliance)...`;
+            filterInput.value = window.indexFilterQuery || '';
+            filterInput.oninput = (e) => {
+                window.indexFilterQuery = e.target.value.toLowerCase().trim();
+                filterIndexStockRows(window.indexFilterQuery);
+            };
+
+            wrapper.appendChild(filterInput);
+            searchRow.appendChild(wrapper);
+
+            // Responsive Mobile Refresh Button
+            const mobRefreshBtn = document.createElement('button');
+            mobRefreshBtn.type = 'button';
+            mobRefreshBtn.className = 'wl-refresh-btn wl-mobile-refresh-btn';
+            const isMobSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
+            if (isMobSpinning) {
+                mobRefreshBtn.classList.add('refreshing');
+                mobRefreshBtn.setAttribute('aria-busy', 'true');
+            }
+            mobRefreshBtn.title = 'Refresh Index Quotes';
+            mobRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
+            mobRefreshBtn.innerHTML = `
+                <svg class="${isMobSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+            `;
+            mobRefreshBtn.onclick = () => triggerWatchlistRefresh(mobRefreshBtn);
+            searchRow.appendChild(mobRefreshBtn);
+            controlsDiv.appendChild(searchRow);
+
+            // Desktop file & overflow controls
+            const fileControls = document.createElement('div');
+            fileControls.className = 'watchlist-file-controls';
+            fileControls.style.cssText = 'display: flex; gap: 8px; align-items: center; flex-wrap: wrap;';
+
+            // Desktop Refresh Button
+            const deskRefreshBtn = document.createElement('button');
+            deskRefreshBtn.type = 'button';
+            deskRefreshBtn.className = 'wl-refresh-btn wl-desktop-refresh-btn';
+            const isWebSpinning = window._isWlRefreshing || (window._wlActiveApiCount && window._wlActiveApiCount > 0);
+            if (isWebSpinning) {
+                deskRefreshBtn.classList.add('refreshing');
+                deskRefreshBtn.setAttribute('aria-busy', 'true');
+            }
+            deskRefreshBtn.title = 'Refresh Index Quotes';
+            deskRefreshBtn.setAttribute('aria-label', 'Refresh Quotes');
+            deskRefreshBtn.innerHTML = `
+                <svg class="${isWebSpinning ? 'spinning' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+            `;
+            deskRefreshBtn.onclick = () => triggerWatchlistRefresh(deskRefreshBtn);
+            fileControls.appendChild(deskRefreshBtn);
+
+            // Overflow Menu
+            const savedChartMode = localStorage.getItem('capital_desk_watchlist_chart_mode') || 'native';
+            const overflow = document.createElement('div');
+            overflow.className = 'wl-overflow';
+            overflow.id = 'wl-index-overflow-menu';
+            overflow.innerHTML = `
+                <button type="button" class="wl-overflow-trigger" aria-label="Index actions" title="More actions" onclick="toggleActionOverflow(event, 'wl-index-overflow-menu')">⋮</button>
+                <div class="wl-overflow-menu" role="menu">
+                    <div class="wl-menu-section-title">Chart Engine</div>
+                    <button type="button" role="menuitem" onclick="setWatchlistChartMode('native', event)">
+                        <span>📊 Native chart</span>
+                        ${savedChartMode === 'native' ? '<span style="margin-left:auto; color:#10b981; font-weight:700;">✓</span>' : ''}
+                    </button>
+                    <button type="button" role="menuitem" onclick="setWatchlistChartMode('tradingview', event)">
+                        <span>📈 Tradingview chart</span>
+                        ${savedChartMode === 'tradingview' ? '<span style="margin-left:auto; color:#10b981; font-weight:700;">✓</span>' : ''}
+                    </button>
+                    <div class="wl-overflow-divider"></div>
+                    <button type="button" role="menuitem" onclick="openWatchlistOfficialFeeds('${escapeHtml(indexName)}'); closeActionOverflow(event)">
+                        <span>◉ Official Feeds</span>
+                    </button>
+                </div>
+            `;
+            fileControls.appendChild(overflow);
+            controlsDiv.appendChild(fileControls);
+            card.appendChild(controlsDiv);
+
+            // Table of Stocks
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'table-responsive-container wl-table-container';
+
+            const getSortIcon = (col) => {
+                if (wlSortColumn !== col) return '<span style="opacity:0.3; margin-left:4px;">↕</span>';
+                return wlSortDirection === 'asc' ? '<span style="color:#10b981; margin-left:4px;">▲</span>' : '<span style="color:#10b981; margin-left:4px;">▼</span>';
+            };
+
+            const table = document.createElement('table');
+            table.className = 'wl-table';
+
+            const colgroup = document.createElement('colgroup');
+            colgroup.innerHTML = `
+                <col class="wl-cg-symbol" style="width: 30%;">
+                <col class="wl-cg-price" style="width: 22%;">
+                <col class="wl-cg-change-amt" style="width: 20%;">
+                <col class="wl-cg-change-pct" style="width: 18%;">
+                <col class="wl-cg-actions" style="width: 10%;">
+            `;
+            table.appendChild(colgroup);
+
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th class="wl-col-symbol" style="cursor:pointer; user-select:none;" onclick="toggleIndexSort('symbol')" title="Click to sort by Symbol">
+                        <span class="col-lbl-full">Symbol</span><span class="col-lbl-compact">Symbol</span> ${getSortIcon('symbol')}
+                    </th>
+                    <th class="wl-col-price" style="text-align:right; cursor:pointer; user-select:none;" onclick="toggleIndexSort('price')" title="Click to sort by LTP">
+                        <span class="col-lbl-full">LTP (₹)</span><span class="col-lbl-compact">LTP</span> ${getSortIcon('price')}
+                    </th>
+                    <th class="wl-col-change-amt" style="text-align:right; cursor:pointer; user-select:none;" onclick="toggleIndexSort('change')" title="Click to sort by Change Amount">
+                        <span class="col-lbl-full">Change (₹)</span><span class="col-lbl-compact">Chg (₹)</span> ${getSortIcon('change')}
+                    </th>
+                    <th class="wl-col-change-pct" style="text-align:right; cursor:pointer; user-select:none;" onclick="toggleIndexSort('change_pct')" title="Click to sort by Change %">
+                        <span class="col-lbl-full">Change (%)</span><span class="col-lbl-compact">Chg (%)</span> ${getSortIcon('change_pct')}
+                    </th>
+                    <th class="wl-col-actions" style="text-align:center;">
+                        <span class="col-lbl-full">Actions</span><span class="col-lbl-compact">Act</span>
+                    </th>
+                </tr>
+            `;
+
+            const tbody = document.createElement('tbody');
+            if (stocks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding: 30px;">No constituents found for index "${escapeHtml(indexName)}".</td></tr>`;
+            } else {
+                stocks.forEach(item => {
+                    const sym = (typeof item === 'string') ? item : (item.symbol || '');
+                    const cname = (typeof item === 'object' && item.company_name) ? item.company_name : '';
+                    const info = stockPricesData[sym] || stockPricesData[sym + '.NS'] || stockPricesData[cleanDisplaySymbol(sym)];
+                    const hasData = info && !info.error && info.price !== undefined;
+                    const compName = cname || (hasData && info.name ? info.name : cleanDisplaySymbol(sym));
+
+                    const bInfo = getSymbolBadge(sym);
+                    const displaySym = cleanDisplaySymbol(sym);
+
+                    const tr = document.createElement('tr');
+                    tr.id = `row-${sym}`;
+                    tr.className = 'pf-row';
+                    tr.dataset.symbol = sym;
+                    tr.dataset.companyName = compName;
+                    tr.dataset.changePct = (hasData && info.change_pct !== undefined) ? String(info.change_pct) : '0';
+
+                    tr.onclick = (e) => {
+                        if (e.target.closest('.wl-row-menu-btn') || e.target.closest('.menu-dropdown-content') || e.target.closest('button')) return;
+                        if (window._wlMenuJustClosed) return;
+                        handleWatchlistStockClick(sym);
+                    };
+
+                    let nameHtml = compName ? escapeHtml(compName) : '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
+
+                    const currSym = '₹';
+                    const priceVal = hasData 
+                        ? currSym + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) 
+                        : '<span class="skeleton-box" style="width: 60px; height: 14px;"></span>';
+                    const priceCls = (hasData && info.change !== undefined) ? (info.change >= 0 ? 'pos' : 'neg') : '';
+                    const sign = (hasData && info.change !== undefined && info.change >= 0) ? '+' : '';
+                    const amtSign = (hasData && info.change !== undefined) ? (info.change >= 0 ? '+' : '-') : '';
+                    const changeAmtHtml = (hasData && info.change !== undefined)
+                        ? `${amtSign}${currSym}${Math.abs(info.change).toFixed(2)}`
+                        : '<span class="skeleton-box" style="width: 50px; height: 14px;"></span>';
+                    const changePctHtml = (hasData && info.change_pct !== undefined)
+                        ? `${sign}${info.change_pct.toFixed(2)}%`
+                        : '<span class="skeleton-box" style="width: 45px; height: 14px;"></span>';
+                    const subChangeHtml = (hasData && info.change !== undefined && info.change_pct !== undefined)
+                        ? `${sign}${currSym}${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`
+                        : '';
+                    const changeCls = (hasData && info.change !== undefined) ? (info.change >= 0 ? 'pos' : 'neg') : '';
+
+                    const tdSymbol = document.createElement('td');
+                    tdSymbol.className = 'wl-col-symbol';
+                    tdSymbol.innerHTML = `<div class="stock-symbol-row"><span class="stock-symbol" id="sym-${sym}">${escapeHtml(displaySym)}</span><span class="badge ${bInfo.class}">${bInfo.label}</span></div><div class="company-name" id="name-${sym}">${nameHtml}</div>`;
+
+                    const tdPrice = document.createElement('td');
+                    tdPrice.className = 'wl-col-price';
+                    tdPrice.style.textAlign = 'right';
+                    tdPrice.innerHTML = `
+                        <span class="wl-price-val ${priceCls}" id="price-${sym}">${priceVal}</span>
+                        <span class="wl-sub-change ${changeCls}" id="sub-change-${sym}">${subChangeHtml}</span>
+                    `;
+
+                    const tdChangeAmt = document.createElement('td');
+                    tdChangeAmt.className = `wl-col-change-amt ${changeCls}`;
+                    tdChangeAmt.style.textAlign = 'right';
+                    tdChangeAmt.id = `change-amt-${sym}`;
+                    tdChangeAmt.innerHTML = changeAmtHtml;
+
+                    const tdChangePct = document.createElement('td');
+                    tdChangePct.className = `wl-col-change-pct ${changeCls}`;
+                    tdChangePct.style.textAlign = 'right';
+                    tdChangePct.id = `change-pct-${sym}`;
+                    tdChangePct.innerHTML = changePctHtml;
+
+                    const tdActions = document.createElement('td');
+                    tdActions.className = 'wl-col-actions';
+                    tdActions.style.textAlign = 'center';
+                    tdActions.style.position = 'relative';
+
+                    const menuWrapper = document.createElement('div');
+                    menuWrapper.style.position = 'relative';
+                    menuWrapper.style.display = 'inline-block';
+
+                    const menuBtn = document.createElement('button');
+                    menuBtn.type = 'button';
+                    menuBtn.className = 'btn-secondary wl-row-menu-btn';
+                    menuBtn.style.padding = '4px 8px';
+                    menuBtn.style.fontSize = '12px';
+                    menuBtn.style.fontWeight = '600';
+                    menuBtn.title = `Actions for ${cleanDisplaySymbol(sym)}`;
+                    const isMob = window.innerWidth <= 768;
+                    menuBtn.innerHTML = isMob
+                        ? '<span class="wl-setting-icon">⚙️</span>'
+                        : '<span class="wl-setting-icon">⚙️</span><span class="wl-setting-arrow"> ▾</span>';
+                    menuBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleWlRowMenu(e, sym, { hideDelete: true, isIndex: true, item: { symbol: sym, name: compName } });
+                    };
+
+                    menuWrapper.appendChild(menuBtn);
+                    tdActions.appendChild(menuWrapper);
+
+                    tr.appendChild(tdSymbol);
+                    tr.appendChild(tdPrice);
+                    tr.appendChild(tdChangeAmt);
+                    tr.appendChild(tdChangePct);
+                    tr.appendChild(tdActions);
+                    tbody.appendChild(tr);
+                });
+            }
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            scrollContainer.appendChild(table);
+            card.appendChild(scrollContainer);
+
+            viewMount.innerHTML = '';
+            viewMount.appendChild(card);
+
+            if (window.indexFilterQuery) {
+                filterIndexStockRows(window.indexFilterQuery);
+            }
+        }
+        window.renderActiveIndexStocks = renderActiveIndexStocks;
+
+        function toggleIndexSort(col) {
+            if (wlSortColumn === col) {
+                wlSortDirection = wlSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                wlSortColumn = col;
+                wlSortDirection = col === 'symbol' ? 'asc' : 'desc';
+            }
+            if (window.activeIndexKey) {
+                renderActiveIndexStocks(window.activeIndexKey);
+            }
+        }
+        window.toggleIndexSort = toggleIndexSort;
+
+        function filterIndexStockRows(query) {
+            const rows = document.querySelectorAll('#watchlist-view-mount .wl-table tbody tr.pf-row');
+            if (!query) {
+                rows.forEach(r => { r.style.display = ''; });
+                return;
+            }
+            const q = query.toLowerCase().trim();
+            rows.forEach(r => {
+                const sym = (r.dataset.symbol || '').toLowerCase();
+                const comp = (r.dataset.companyName || '').toLowerCase();
+                if (sym.includes(q) || comp.includes(q)) {
+                    r.style.display = '';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+        window.filterIndexStockRows = filterIndexStockRows;
+
         function selectWatchlist(name) {
+            if (window.currentWatchlistSourceMode !== 'watchlists') {
+                window.currentWatchlistSourceMode = 'watchlists';
+                try { localStorage.setItem('capital_desk_watchlist_source_mode', 'watchlists'); } catch(e) {}
+                syncWatchlistSourceDropdownUI();
+            }
             const isSame = (activeWatchlistName === name);
             if (!isSame) {
                 selectedWatchlistStocks.clear();
@@ -933,6 +1502,13 @@
         window.toggleWlMobileChartMode = toggleWlMobileChartMode;
 
         function renderWatchlists() {
+            if (window.currentWatchlistSourceMode === 'indices') {
+                renderIndicesView();
+                return;
+            }
+            if (typeof syncWatchlistSourceDropdownUI === 'function') {
+                syncWatchlistSourceDropdownUI();
+            }
             if (typeof updateMobileHeaderActiveBadge === 'function') updateMobileHeaderActiveBadge();
             // 1. Render Selector Bar
             const selectorMount = document.getElementById('watchlist-selector-mount');
@@ -1609,7 +2185,12 @@
                 document.body.appendChild(modal);
             }
 
-            const currentWl = activeWatchlistName || 'Watchlist';
+            const isIndices = window.currentWatchlistSourceMode === 'indices';
+            const idxObj = isIndices ? (window.allIndicesList || []).find(i => i.key === window.activeIndexKey) : null;
+            const currentTitleName = isIndices 
+                ? (idxObj ? idxObj.name : (window.activeIndexKey ? window.activeIndexKey.replace(/_/g, ' ') : 'NIFTY 50'))
+                : (activeWatchlistName || 'Watchlist');
+            const sheetTitle = isIndices ? `Index Options (${escapeHtml(currentTitleName)})` : `Watchlist Options (${escapeHtml(currentTitleName)})`;
             modal.innerHTML = `
                 <div class="small-modal-content wl-action-sheet-content">
                     <div class="wl-action-sheet-handle"></div>
@@ -1617,7 +2198,7 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 17px;">⚙️</span>
                             <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); font-family: 'Plus Jakarta Sans', sans-serif;">
-                                Watchlist Options (${escapeHtml(currentWl)})
+                                ${sheetTitle}
                             </h3>
                         </div>
                         <span style="font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1; padding: 2px 6px;" onclick="closeWlMobileMenuModal()">&times;</span>
@@ -1661,7 +2242,7 @@
                         </div>
 
                         <!-- 3. Official Feeds -->
-                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWatchlistOfficialFeeds('${escapeHtml(currentWl)}');">
+                        <div class="wl-sheet-item" onclick="closeWlMobileMenuModal(); openWatchlistOfficialFeeds('${escapeHtml(currentTitleName)}');">
                             <div class="wl-sheet-item-left">
                                 <span class="wl-sheet-icon">◉</span>
                                 <div>
@@ -1672,6 +2253,7 @@
                             <span class="wl-sheet-chevron">↗</span>
                         </div>
 
+                        ${!isIndices ? `
                         <!-- 4. Actions (Collapsible: Export, Import, Delete) -->
                         <div class="wl-sheet-item wl-sheet-collapsible-trigger" id="wl-actions-collapse-trigger" onclick="toggleWlActionsCollapse(event)">
                             <div class="wl-sheet-item-left">
@@ -1712,6 +2294,17 @@
 
                             <!-- Delete Watchlist -->
                             <div class="wl-sheet-item wl-sub-sheet-item danger" onclick="closeWlMobileMenuModal(); deleteActiveWatchlist();">
+                                <div class="wl-sheet-item-left">
+                                    <span class="wl-sheet-icon">🗑️</span>
+                                    <div>
+                                        <div class="wl-sheet-title" style="color:#ef4444;">Delete Watchlist</div>
+                                        <div class="wl-sheet-sub">Permanently delete current watchlist</div>
+                                    </div>
+                                </div>
+                                <span class="wl-sheet-chevron">›</span>
+                            </div>
+                        </div>
+                        ` : ''}
                                 <div class="wl-sheet-item-left">
                                     <span class="wl-sheet-icon danger">🗑️</span>
                                     <div>
@@ -1880,7 +2473,7 @@
 
                     const labelSpan = document.createElement('span');
                     labelSpan.style.cssText = 'display: inline-flex; align-items: center; gap: 8px;';
-                    const isPortfolioMenu = !!(options && (options.isPortfolio || options.item));
+                    const isPortfolioMenu = !!(options && (options.isPortfolio || options.item || options.isIndex));
                     const moveLabelText = isPortfolioMenu ? 'Add to Watchlist' : 'Move';
                     labelSpan.innerHTML = `<span>📁</span><span>${moveLabelText}</span>`;
 

@@ -989,9 +989,18 @@
             if (tab === 'portfolios' && activePortfolioName) {
                 badge.innerText = activePortfolioName;
                 badge.style.display = 'inline-block';
-            } else if (tab === 'watchlists' && activeWatchlistName) {
-                badge.innerText = activeWatchlistName;
-                badge.style.display = 'inline-block';
+            } else if (tab === 'watchlists') {
+                if (window.currentWatchlistSourceMode === 'indices') {
+                    const idxObj = (window.allIndicesList || []).find(i => i.key === window.activeIndexKey);
+                    const idxName = idxObj ? idxObj.name : (window.activeIndexKey ? window.activeIndexKey.replace(/_/g, ' ') : 'NIFTY 50');
+                    badge.innerText = idxName;
+                    badge.style.display = 'inline-block';
+                } else if (activeWatchlistName) {
+                    badge.innerText = activeWatchlistName;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
             } else {
                 badge.style.display = 'none';
             }
