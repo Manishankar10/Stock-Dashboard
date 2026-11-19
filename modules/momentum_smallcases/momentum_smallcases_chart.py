@@ -127,7 +127,9 @@ def _calculate_rebalance_milestone_points(strategy, runs, today_d, progress_call
         if progress_callback and (idx % 2 == 0 or idx == len(runs) - 1):
             progress_callback(f"Evaluating milestone {idx + 1} of {len(runs)}...")
 
-        r_date_str = (r.get("executed_date") or r.get("scheduled_date") or "")[:10]
+        r_raw_date = r.get("executed_date") or r.get("scheduled_date") or ""
+        r_d = _parse_date(r_raw_date)
+        r_date_str = r_d.isoformat() if r_d else str(r_raw_date)[:10]
         if not r_date_str:
             continue
 
@@ -151,7 +153,9 @@ def _calculate_rebalance_milestone_points(strategy, runs, today_d, progress_call
 
     # If today is after the last executed run, evaluate current valuation as of today
     last_run = runs[-1]
-    last_date_str = (last_run.get("executed_date") or last_run.get("scheduled_date") or "")[:10]
+    last_raw_date = last_run.get("executed_date") or last_run.get("scheduled_date") or ""
+    last_d = _parse_date(last_raw_date)
+    last_date_str = last_d.isoformat() if last_d else str(last_raw_date)[:10]
     today_str = today_d.isoformat()
 
     if today_str not in seen_dates and today_str > last_date_str:
@@ -169,11 +173,11 @@ def _calculate_rebalance_milestone_points(strategy, runs, today_d, progress_call
             if not sym or qty <= 0:
                 continue
 
-            # 1. DB (stock_closing_prices)
+            # 1. DB (stock_closing_prices) with live fallback
             price = None
-            db_doc = get_stock_closing_prices_from_db(sym, target_cutoff_str=today_str)
-            if db_doc and len(db_doc) > 0:
-                price = float(db_doc[-1][1])
+            series = fetch_stock_daily_series(sym, target_cutoff_date=today_d)
+            if series and len(series) > 0:
+                price = float(series[-1][1])
             else:
                 price = float(h.get("current_price") or h.get("buy_price") or 0.0)
 
@@ -189,7 +193,7 @@ def _calculate_rebalance_milestone_points(strategy, runs, today_d, progress_call
             "run_index": len(runs)
         })
 
-    points.sort(key=lambda x: x["date"])
+    points.sort(key=lambda x: str(x["date"]))
     return points
 
 
@@ -223,7 +227,16 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
         # 1. DB Primary, 2. Live Provider Fallback
         series = fetch_stock_daily_series(sym, target_cutoff_date=today_d)
         if series:
-            p_map = {d: round(float(c), 2) for d, c in series}
+            p_map = {}
+            for d_val, c in series:
+                if isinstance(d_val, (date, datetime)):
+                    d_k = d_val.strftime("%Y-%m-%d")
+                else:
+                    d_k = str(d_val)[:10]
+                try:
+                    p_map[d_k] = round(float(c), 2)
+                except Exception:
+                    continue
             d_keys = sorted(p_map.keys())
             stock_price_dict[sym] = p_map
             stock_date_keys[sym] = d_keys
@@ -238,8 +251,8 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
     # Each run is active from its execution date until the next run
     parsed_runs = []
     for idx, r in enumerate(runs):
-        d_str = (r.get("executed_date") or r.get("scheduled_date") or "")[:10]
-        r_d = _parse_date(d_str)
+        d_raw = r.get("executed_date") or r.get("scheduled_date") or ""
+        r_d = _parse_date(d_raw)
         if r_d:
             snap = r.get("portfolio_snapshot") or {}
             invested = float(snap.get("total_capital") or strategy.get("amount_to_invest") or 0.0)
@@ -249,7 +262,7 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
             parsed_runs.append({
                 "run_index": idx,
                 "date": r_d,
-                "date_str": d_str,
+                "date_str": r_d.isoformat(),
                 "invested": invested,
                 "wallet": float(snap.get("wallet_balance") or 0.0),
                 "holdings": snap.get("holdings") or []
@@ -271,16 +284,21 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
     points = []
     total_td = len(trading_days)
 
-    def _get_close_price(sym_name, target_day_str, fallback_price):
+    def _get_close_price(sym_name, target_day_val, fallback_price):
         p_dict = stock_price_dict.get(sym_name)
         if not p_dict:
             return fallback_price
-        if target_day_str in p_dict:
-            return p_dict[target_day_str]
+        if isinstance(target_day_val, (date, datetime)):
+            target_k = target_day_val.strftime("%Y-%m-%d")
+        else:
+            target_k = str(target_day_val)[:10]
+
+        if target_k in p_dict:
+            return p_dict[target_k]
         keys = stock_date_keys.get(sym_name) or []
         if not keys:
             return fallback_price
-        idx = bisect.bisect_right(keys, target_day_str) - 1
+        idx = bisect.bisect_right(keys, target_k) - 1
         if idx >= 0:
             return p_dict[keys[idx]]
         return fallback_price
