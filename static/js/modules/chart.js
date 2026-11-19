@@ -1558,7 +1558,7 @@
             },
             'measure': {
                 id: 'measure',
-                icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><line x1="5" y1="3" x2="5" y2="6"/><line x1="8" y1="3" x2="8" y2="8"/><line x1="11" y1="3" x2="11" y2="6"/></svg>',
+                icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4Z"/><path d="m16 2 2 2"/><path d="m13 5 2 2"/><path d="m10 8 2 2"/><path d="m7 11 2 2"/><path d="m4 14 2 2"/></svg>',
                 title: 'Measure (Temp Scale)',
                 action: () => activateDrawingTool('measure')
             },
@@ -1596,7 +1596,7 @@
                     if (Array.isArray(parsed)) return parsed;
                 }
             } catch(e) {}
-            return ['trendline', 'support', 'target', 'rectangle', 'pricerange'];
+            return ['trendline', 'support', 'target', 'rectangle', 'pricerange', 'measure'];
         }
 
         function setFavoriteTools(toolsList) {
@@ -2096,8 +2096,8 @@
                 msg = '⛓️ Parallel Channel: Click 1st point of baseline';
                 mobileMsg = '⛓️ Drag or tap baseline';
             } else if (toolType === 'measure') {
-                msg = '📐 Measure: Click 1st point to measure';
-                mobileMsg = '📐 Drag or tap to measure';
+                msg = '📏 Measure: Click 1st point to measure';
+                mobileMsg = '📏 Drag or tap to measure';
             } else if (toolType === 'fib') {
                 msg = '🌀 Fib Retracement: Click swing low/high point';
                 mobileMsg = '🌀 Drag or tap swing point';
@@ -3562,7 +3562,7 @@
                     tempMousePos = null;
                     const mobileHintText = document.getElementById('chartMobileToolHintText');
                     if (mobileHintText) {
-                        mobileHintText.innerText = (activeTool === 'measure') ? '📐 Tap or drag 2nd point to measure' : '📈 Tap or drag 2nd point to finish';
+                        mobileHintText.innerText = (activeTool === 'measure') ? '📏 Tap or drag 2nd point to measure' : '📈 Tap or drag 2nd point to finish';
                     }
                     redrawCanvasOverlay();
                     return true;
