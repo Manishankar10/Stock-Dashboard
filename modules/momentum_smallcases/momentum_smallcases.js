@@ -1594,10 +1594,13 @@
         html += `
             <!-- Capital & Wallet Audit Logs -->
             <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>📜</span> <span>Capital &amp; Wallet Activity Logs</span>
                     </h4>
+                    <button type="button" class="btn-sm btn-secondary" onclick="openLogTransactionsModal()" style="padding: 5px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);" title="View all stock buy and sell execution details">
+                        <span>📋</span> <span>Transactions</span>
+                    </button>
                 </div>
                 <div style="overflow-x: auto; max-height: 240px;">
                     <table class="msc-indices-table" style="font-size: 12px;">
@@ -1608,18 +1611,16 @@
                                 <th style="text-align: right; min-width: 100px;">AMOUNT / STEP-UP</th>
                                 <th style="text-align: right; min-width: 90px;">FEES (0.10%)</th>
                                 <th style="text-align: right; min-width: 100px;">WALLET AFTER</th>
-                                <th style="min-width: 230px;">NOTES</th>
-                                <th style="text-align: right; min-width: 110px;">ACTION</th>
+                                <th style="min-width: 250px;">NOTES</th>
                             </tr>
                         </thead>
                         <tbody>
         `;
 
         if (!capitalLogs || capitalLogs.length === 0) {
-            html += `<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">No capital logs recorded.</td></tr>`;
+            html += `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-secondary);">No capital logs recorded.</td></tr>`;
         } else {
             capitalLogs.slice().reverse().forEach(log => {
-                const canViewTrades = hasLogTransactions(log, currentStrategy);
                 html += `
                     <tr>
                         <td style="font-size: 11.5px; color: var(--text-secondary);">${formatDateTimeDisplay(log.timestamp)}</td>
@@ -1632,15 +1633,6 @@
                         <td style="text-align: right; font-family: monospace; color: var(--text-secondary);">₹${formatCurrency(log.fees || 0)}</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 600; color: #10b981;">₹${formatCurrency(log.wallet_after || 0)}</td>
                         <td style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(log.notes || '—')}</td>
-                        <td style="text-align: right; white-space: nowrap;">
-                            ${canViewTrades ? `
-                                <button type="button" class="btn-sm btn-secondary" onclick="openLogTransactionsModal('${log.id}')" style="padding: 3px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color);" title="View all stock buy and sell execution details for this activity">
-                                    <span>📋</span> <span>Transactions</span>
-                                </button>
-                            ` : `
-                                <span style="font-size: 11.5px; color: var(--text-secondary);">—</span>
-                            `}
-                        </td>
                     </tr>
                 `;
             });
@@ -2642,19 +2634,38 @@
         }
 
         if (!matchedRun) return { run: null, trades: [] };
+        return { run: matchedRun, trades: getTransactionsForRun(matchedRun, strategy) };
+    }
 
-        // Check if pre-calculated transactions exist
-        const snapshot = matchedRun.portfolio_snapshot || {};
+    function getTransactionsForRun(run, strategy) {
+        if (!run || !strategy) return [];
+        const runs = strategy.runs || [];
+        const runIdx = runs.indexOf(run);
+        const snapshot = run.portfolio_snapshot || {};
+        const runDate = formatDateDisplay(run.executed_date || run.scheduled_date || '');
+        const isInit = run.run_type === 'INIT' || runIdx === 0;
+        const runTitle = isInit ? 'Init' : (run.title || `Rebalance #${runIdx}`);
+
+        // 1. Check if pre-calculated transactions exist
         if (snapshot.transactions && Array.isArray(snapshot.transactions) && snapshot.transactions.length > 0) {
-            return { run: matchedRun, trades: snapshot.transactions };
+            return snapshot.transactions.map(t => ({
+                ...t,
+                run_index: runIdx,
+                run_title: runTitle,
+                run_date: runDate
+            }));
         }
-        if (matchedRun.transactions && Array.isArray(matchedRun.transactions) && matchedRun.transactions.length > 0) {
-            return { run: matchedRun, trades: matchedRun.transactions };
+        if (run.transactions && Array.isArray(run.transactions) && run.transactions.length > 0) {
+            return run.transactions.map(t => ({
+                ...t,
+                run_index: runIdx,
+                run_title: runTitle,
+                run_date: runDate
+            }));
         }
 
-        // Fallback: derive trades dynamically from holdings, changes, and exited_stocks
+        // 2. Fallback: derive trades dynamically from holdings, changes, and exited_stocks
         const trades = [];
-        const isInit = matchedRun.run_type === 'INIT' || matchedRun.run_number === 0;
 
         if (isInit) {
             const holdings = snapshot.holdings || [];
@@ -2672,11 +2683,13 @@
                     amount: Math.round(amt * 100) / 100,
                     fee: Math.round(fee * 100) / 100,
                     trade_type: 'INITIAL_BUY',
-                    notes: 'Initial Portfolio Allocation'
+                    notes: 'Initial Portfolio Allocation',
+                    run_index: runIdx,
+                    run_title: runTitle,
+                    run_date: runDate
                 });
             });
         } else {
-            const runIdx = runs.indexOf(matchedRun);
             const prevRun = runIdx > 0 ? runs[runIdx - 1] : null;
             const prevHoldings = (prevRun && prevRun.portfolio_snapshot && prevRun.portfolio_snapshot.holdings) || [];
             const prevMap = {};
@@ -2686,10 +2699,10 @@
             const currMap = {};
             currHoldings.forEach(h => { currMap[h.symbol] = h; });
 
-            const exited = matchedRun.exited_stocks || snapshot.exited_stocks || (snapshot.changes && snapshot.changes.exited_stocks) || [];
+            const exited = run.exited_stocks || snapshot.exited_stocks || (snapshot.changes && snapshot.changes.exited_stocks) || [];
             const exitedSyms = new Set();
 
-            // 1. Exits
+            // Exits
             exited.forEach(ex => {
                 exitedSyms.add(ex.symbol);
                 const qty = Number(ex.quantity || 0);
@@ -2705,7 +2718,10 @@
                     amount: Math.round(amt * 100) / 100,
                     fee: Math.round(fee * 100) / 100,
                     trade_type: 'EXIT_SELL',
-                    notes: 'Exit (Dropped Rank)'
+                    notes: 'Exit (Dropped Rank)',
+                    run_index: runIdx,
+                    run_title: runTitle,
+                    run_date: runDate
                 });
             });
 
@@ -2724,12 +2740,15 @@
                         amount: Math.round(amt * 100) / 100,
                         fee: Math.round(amt * 0.0010 * 100) / 100,
                         trade_type: 'EXIT_SELL',
-                        notes: 'Exit (Dropped Rank)'
+                        notes: 'Exit (Dropped Rank)',
+                        run_index: runIdx,
+                        run_title: runTitle,
+                        run_date: runDate
                     });
                 }
             });
 
-            // 2. Trims and Buys
+            // Trims and Buys
             currHoldings.forEach(currH => {
                 const sym = currH.symbol;
                 const prevH = prevMap[sym];
@@ -2749,7 +2768,10 @@
                         amount: Math.round(amt * 100) / 100,
                         fee: Math.round(amt * 0.0010 * 100) / 100,
                         trade_type: 'TRIM_SELL',
-                        notes: `Trim Overweight (-${trimQty} shares)`
+                        notes: `Trim Overweight (-${trimQty} shares)`,
+                        run_index: runIdx,
+                        run_title: runTitle,
+                        run_date: runDate
                     });
                 } else if (currQ > prevQ) {
                     const buyQty = currQ - prevQ;
@@ -2764,33 +2786,60 @@
                         amount: Math.round(amt * 100) / 100,
                         fee: Math.round(amt * 0.0010 * 100) / 100,
                         trade_type: isNew ? 'NEW_BUY' : 'ADD_BUY',
-                        notes: isNew ? 'New Entry' : `Rebalance Addition (+${buyQty} shares)`
+                        notes: isNew ? 'New Entry' : `Rebalance Addition (+${buyQty} shares)`,
+                        run_index: runIdx,
+                        run_title: runTitle,
+                        run_date: runDate
                     });
                 }
             });
         }
 
-        return { run: matchedRun, trades: trades };
+        return trades;
     }
 
-    function openLogTransactionsModal(logId) {
+    function getAllStrategyTrades(strategy) {
+        if (!strategy) return [];
+        const runs = strategy.runs || [];
+        let all = [];
+        runs.forEach(r => {
+            const list = getTransactionsForRun(r, strategy);
+            all = all.concat(list);
+        });
+        return all;
+    }
+
+    function openLogTransactionsModal(optParam) {
         if (!currentStrategy) return;
         ensureModalsAttachedToBody();
-        const logs = currentStrategy.capital_logs || [];
-        const log = logs.find(l => l.id === logId);
-        if (!log) {
-            alertToast('Log entry not found', 'error');
+
+        const runs = currentStrategy.runs || [];
+        if (runs.length === 0) {
+            alertToast('No strategy runs or transactions recorded yet.', 'warning');
             return;
         }
 
-        const { run, trades } = getLogTransactions(log, currentStrategy);
-        currentLogTradesState = {
-            log: log,
-            run: run,
-            trades: trades || [],
-            filter: 'all',
-            query: ''
-        };
+        // Determine initial run index:
+        // Priority: optParam (if number or logId) -> selectedRunIndex -> latest run
+        let initialRunIdx = null;
+        if (typeof optParam === 'number' && optParam >= 0 && optParam < runs.length) {
+            initialRunIdx = optParam;
+        } else if (typeof optParam === 'string' && optParam.startsWith('log_')) {
+            const logs = currentStrategy.capital_logs || [];
+            const log = logs.find(l => l.id === optParam);
+            if (log) {
+                const { run } = getLogTransactions(log, currentStrategy);
+                if (run) initialRunIdx = runs.indexOf(run);
+            }
+        }
+
+        if (initialRunIdx == null || initialRunIdx < 0 || initialRunIdx >= runs.length) {
+            if (selectedRunIndex != null && selectedRunIndex >= 0 && selectedRunIndex < runs.length) {
+                initialRunIdx = selectedRunIndex;
+            } else {
+                initialRunIdx = runs.length - 1;
+            }
+        }
 
         const modal = document.getElementById('walletLogTransactionsModal');
         if (!modal) return;
@@ -2798,6 +2847,8 @@
         // Reset search & filter
         const searchInput = document.getElementById('wltSearchInput');
         if (searchInput) searchInput.value = '';
+        currentLogTradesState.filter = 'all';
+        currentLogTradesState.query = '';
         ['all', 'buy', 'sell'].forEach(f => {
             const pill = document.getElementById(`wltPill${f.charAt(0).toUpperCase() + f.slice(1)}`);
             if (pill) {
@@ -2806,27 +2857,67 @@
             }
         });
 
-        // Set Badges
-        const evBadge = document.getElementById('wltModalEventBadge');
-        if (evBadge) evBadge.innerText = log.type || 'ACTIVITY';
+        // Populate Scope Dropdown
+        const scopeSelect = document.getElementById('wltScopeSelect');
+        if (scopeSelect) {
+            let optsHtml = `<option value="all">🌐 All Transactions (Entire History)</option>`;
+            runs.forEach((r, idx) => {
+                const isInit = r.run_type === 'INIT' || idx === 0;
+                const title = isInit ? 'Init' : (r.title || `Rebalance #${idx}`);
+                const dateStr = formatDateDisplay(r.executed_date || r.scheduled_date || '');
+                optsHtml += `<option value="${idx}">${isInit ? '🚀' : '🔄'} ${title} (${dateStr})</option>`;
+            });
+            scopeSelect.innerHTML = optsHtml;
+            // Initially select the active/selected rebalance or init milestone
+            scopeSelect.value = String(initialRunIdx);
+        }
 
+        // Load trades for initial scope
+        changeLogTransactionsScope(String(initialRunIdx));
+
+        modal.style.display = 'flex';
+    }
+
+    function changeLogTransactionsScope(scopeVal) {
+        if (!currentStrategy) return;
+        const runs = currentStrategy.runs || [];
+        let trades = [];
+        let badgeText = 'Selected Run';
+        let subText = '';
+
+        if (scopeVal === 'all') {
+            trades = getAllStrategyTrades(currentStrategy);
+            badgeText = `All Transactions (${runs.length} Runs)`;
+            subText = `${currentStrategy.name} · Complete strategy transaction history across all milestones`;
+            currentLogTradesState.scope = 'all';
+            currentLogTradesState.activeRunIndex = null;
+        } else {
+            const runIdx = parseInt(scopeVal, 10);
+            const run = runs[runIdx] || runs[0];
+            trades = getTransactionsForRun(run, currentStrategy);
+            const isInit = run && (run.run_type === 'INIT' || runIdx === 0);
+            const title = isInit ? 'Init' : (run ? run.title || `Rebalance #${runIdx}` : 'Run');
+            const dateStr = run ? formatDateDisplay(run.executed_date || run.scheduled_date || '') : '';
+            badgeText = `${title} (${dateStr})`;
+            subText = `${currentStrategy.name} · Milestone: ${title} · Executed: ${dateStr}`;
+            currentLogTradesState.scope = scopeVal;
+            currentLogTradesState.activeRunIndex = runIdx;
+        }
+
+        currentLogTradesState.trades = trades;
+
+        // Update Modal Badges & Subtitle
         const runBadge = document.getElementById('wltModalRunBadge');
         if (runBadge) {
-            if (run) {
-                runBadge.innerText = run.title || `Run #${run.run_number}`;
-                runBadge.style.display = 'inline-block';
-            } else {
-                runBadge.style.display = 'none';
-            }
+            runBadge.innerText = badgeText;
+            runBadge.style.display = 'inline-block';
         }
-
         const subEl = document.getElementById('wltModalSubtitle');
         if (subEl) {
-            const dateStr = formatDateTimeDisplay(log.timestamp);
-            subEl.innerText = `${currentStrategy.name} · ${dateStr} · Wallet: ₹${formatCurrency(log.wallet_after || 0)}`;
+            subEl.innerText = subText;
         }
 
-        // Set KPI Cards
+        // Update KPI Cards
         const totalTrades = trades.length;
         const buyTrades = trades.filter(t => t.action === 'BUY');
         const sellTrades = trades.filter(t => t.action === 'SELL');
@@ -2849,7 +2940,7 @@
         const chargesEl = document.getElementById('wltSummaryCharges');
         if (chargesEl) chargesEl.innerText = `₹${formatCurrency(totalCharges)}`;
 
-        // Set Pill Counts
+        // Update Pill Counts
         const pAll = document.getElementById('wltPillCountAll');
         if (pAll) pAll.innerText = totalTrades;
         const pBuy = document.getElementById('wltPillCountBuy');
@@ -2859,8 +2950,6 @@
 
         // Render Table & Footer
         renderLogTransactionsTable();
-
-        modal.style.display = 'flex';
     }
 
     function closeLogTransactionsModal() {
@@ -2883,14 +2972,19 @@
             filtered = filtered.filter(t => t.action === 'SELL');
         }
 
-        // 2. Filter by search query
+        // 2. Filter by search query (symbol, action_label, notes, or run_title)
         if (query && query.trim()) {
             const q = query.trim().toUpperCase();
-            filtered = filtered.filter(t => (t.symbol || '').toUpperCase().includes(q));
+            filtered = filtered.filter(t => 
+                (t.symbol || '').toUpperCase().includes(q) ||
+                (t.notes || '').toUpperCase().includes(q) ||
+                (t.action_label || '').toUpperCase().includes(q) ||
+                (t.run_title || '').toUpperCase().includes(q)
+            );
         }
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 28px; color: var(--text-secondary);">No transactions match your search/filter criteria.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 28px; color: var(--text-secondary);">No transactions match your search/filter criteria.</td></tr>`;
             tfoot.innerHTML = '';
             return;
         }
@@ -2933,6 +3027,10 @@
             rowsHtml += `
                 <tr style="border-bottom: 1px solid var(--border-color);">
                     <td style="text-align: center; color: var(--text-secondary); font-size: 11px;">${i + 1}</td>
+                    <td style="font-size: 11.5px; white-space: nowrap;">
+                        <span style="font-weight: 600; color: var(--text-primary);">${escapeHtml(t.run_title || 'Run')}</span>
+                        <div style="font-size: 10px; color: var(--text-secondary);">${escapeHtml(t.run_date || '')}</div>
+                    </td>
                     <td>
                         <strong style="color: var(--text-primary); font-size: 12.5px; font-family: monospace;">${escapeHtml(t.symbol)}</strong>
                     </td>
@@ -2965,7 +3063,7 @@
         // Table Footer with Consolidated Totals
         tfoot.innerHTML = `
             <tr style="background: var(--bg-subtle); border-top: 2px solid var(--border-color); font-weight: 700;">
-                <td colspan="3" style="padding: 10px 14px;">
+                <td colspan="4" style="padding: 10px 14px;">
                     <div style="font-size: 12.5px; color: var(--text-primary); font-weight: 700;">Consolidated Totals</div>
                     <div style="font-size: 11px; font-weight: normal; color: var(--text-secondary); margin-top: 2px;">
                         ${filtered.length} ${filtered.length === 1 ? 'Trade' : 'Trades'} (${buyCount} BUY, ${sellCount} SELL)
@@ -4230,6 +4328,7 @@
     // Activity Log Transactions
     window.openLogTransactionsModal = openLogTransactionsModal;
     window.closeLogTransactionsModal = closeLogTransactionsModal;
+    window.changeLogTransactionsScope = changeLogTransactionsScope;
     window.filterLogTransactionsTable = filterLogTransactionsTable;
     window.handleLogTransactionsSearch = handleLogTransactionsSearch;
 
