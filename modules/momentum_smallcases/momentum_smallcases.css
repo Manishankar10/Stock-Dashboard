@@ -93,6 +93,28 @@ body > .msc-modal-backdrop[style*="none"] {
     font-weight: 700 !important;
 }
 
+/* Floating Performance Graph Dock Widget */
+#mscPerformanceGraphDock {
+    animation: slideUpFade 0.25s ease-out;
+}
+
+#mscPerformanceGraphDock:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6) !important;
+    border-color: #10b981 !important;
+}
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Fullscreen Global Process Loader Overlay */
 .msc-global-process-loader,
 body > .msc-global-process-loader {

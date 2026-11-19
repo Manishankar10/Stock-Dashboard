@@ -26,6 +26,10 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     delete_user_strategy,
     reset_all_momentum_data,
 )
+from modules.momentum_smallcases.momentum_smallcases_chart import (
+    start_performance_graph_job,
+    get_performance_graph_job_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -425,6 +429,39 @@ def get_job_status_api(job_id):
     job = get_execution_job_status(job_id)
     if not job:
         return jsonify({"success": False, "error": "Job not found"}), 404
+    return jsonify({"success": True, "job": job})
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/performance-graph", methods=["POST"])
+def start_performance_graph_api(strategy_id):
+    """
+    Starts an asynchronous background job to evaluate the performance graph.
+    If already calculating for this smallcase, returns already_running=True with the existing job_id.
+    """
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        force = bool(body.get("force_refresh", False))
+
+        job_info = start_performance_graph_job(strategy_id, username=user, force_refresh=force)
+        status_code = 200 if job_info.get("status") == "COMPLETED" or job_info.get("already_running") else 202
+        return jsonify({
+            "success": True,
+            **job_info
+        }), status_code
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error starting performance graph for strategy '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/performance-graph/jobs/<job_id>", methods=["GET"])
+def get_performance_graph_job_api(job_id):
+    """Returns execution status for an async performance graph job."""
+    job = get_performance_graph_job_status(job_id)
+    if not job:
+        return jsonify({"success": False, "error": "Graph job not found"}), 404
     return jsonify({"success": True, "job": job})
 
 

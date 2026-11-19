@@ -35,7 +35,8 @@
         'momentumIndexFormModal',
         'momentumIndexViewModal',
         'momentumIndexDeleteModal',
-        'walletLogTransactionsModal'
+        'walletLogTransactionsModal',
+        'performanceGraphModal'
     ];
 
     function ensureModalsAttachedToBody() {
@@ -1381,9 +1382,14 @@
                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>💼</span> <span>Portfolio Holdings Snapshot (${holdings.length} stocks)</span>
                     </h4>
-                    <button type="button" class="btn-secondary" onclick="openConsolidatedStocksModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.22)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.12)'" title="View all participated stocks history with holding durations and consolidated P&amp;L">
-                        <span>📊</span> <span>Consolidated Stocks</span>
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn-secondary" onclick="openPerformanceGraphModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'" title="View historical performance line graph of invested capital vs portfolio value with drawdowns and momentum KPIs">
+                            <span>📈</span> <span>Performance Graph</span>
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="openConsolidatedStocksModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.22)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.12)'" title="View all participated stocks history with holding durations and consolidated P&amp;L">
+                            <span>📊</span> <span>Consolidated Stocks</span>
+                        </button>
+                    </div>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="msc-indices-table" style="font-size: 12px;">
@@ -2984,6 +2990,498 @@
     }
 
     // =========================================================================
+    // 5C. PERFORMANCE GRAPH & VALUATION DRILLDOWN ENGINE
+    // Evaluates invested capital vs portfolio value with drawdown and momentum KPIs
+    // =========================================================================
+    let currentPerformanceGraphState = {
+        strategyId: null,
+        jobId: null,
+        pollTimer: null,
+        chartInstance: null,
+        data: null,
+        isMinimized: false,
+        elapsedSeconds: 0,
+        elapsedTimer: null
+    };
+
+    async function openPerformanceGraphModal(forceRefresh = false) {
+        if (!currentStrategy) {
+            alertToast('Please select a momentum smallcase strategy first.', 'error');
+            return;
+        }
+
+        const runs = currentStrategy.runs || [];
+        if (runs.length === 0) {
+            alertToast('Cannot generate graph for an uninitialized smallcase. Please run Init first.', 'warning');
+            return;
+        }
+
+        ensureModalsAttachedToBody();
+
+        const modal = document.getElementById('performanceGraphModal');
+        const dock = document.getElementById('mscPerformanceGraphDock');
+        if (!modal) return;
+
+        // Reset state if strategy changed
+        if (currentPerformanceGraphState.strategyId !== currentStrategy.id) {
+            if (currentPerformanceGraphState.pollTimer) clearInterval(currentPerformanceGraphState.pollTimer);
+            if (currentPerformanceGraphState.elapsedTimer) clearInterval(currentPerformanceGraphState.elapsedTimer);
+            currentPerformanceGraphState.jobId = null;
+            currentPerformanceGraphState.data = null;
+            currentPerformanceGraphState.strategyId = currentStrategy.id;
+        }
+
+        currentPerformanceGraphState.isMinimized = false;
+        if (dock) dock.style.display = 'none';
+        modal.style.display = 'flex';
+
+        // Set Badges
+        const stratBadge = document.getElementById('pgModalStratBadge');
+        if (stratBadge) stratBadge.innerText = currentStrategy.name;
+
+        const subEl = document.getElementById('pgModalSubtitle');
+        if (subEl) subEl.innerText = `${currentStrategy.name} · Scheduled Day: ${currentStrategy.rebalance_day}th · Initial Capital: ₹${formatCurrency(currentStrategy.amount_to_invest)}`;
+
+        // If we already have fresh data and not forceRefresh, render immediately
+        if (!forceRefresh && currentPerformanceGraphState.data && currentPerformanceGraphState.data.strategy_id === currentStrategy.id) {
+            renderPerformanceGraph(currentPerformanceGraphState.data);
+            return;
+        }
+
+        // Show Loading State
+        const loadingState = document.getElementById('pgLoadingState');
+        const contentState = document.getElementById('pgContentState');
+        const alreadyNotice = document.getElementById('pgAlreadyRunningNotice');
+        if (loadingState) loadingState.style.display = 'block';
+        if (contentState) contentState.style.display = 'none';
+        if (alreadyNotice) alreadyNotice.style.display = 'none';
+
+        const progressEl = document.getElementById('pgLoadingProgress');
+        if (progressEl) progressEl.innerText = 'Evaluating stock prices (Priority 1: DB, Priority 2: Live Provider)...';
+
+        // Start elapsed seconds timer
+        currentPerformanceGraphState.elapsedSeconds = 0;
+        if (currentPerformanceGraphState.elapsedTimer) clearInterval(currentPerformanceGraphState.elapsedTimer);
+        currentPerformanceGraphState.elapsedTimer = setInterval(() => {
+            currentPerformanceGraphState.elapsedSeconds++;
+            const dockStatus = document.getElementById('pgDockStatus');
+            if (dockStatus && currentPerformanceGraphState.isMinimized) {
+                dockStatus.innerText = `⏳ Calculating... (${currentPerformanceGraphState.elapsedSeconds}s)`;
+            }
+        }, 1000);
+
+        try {
+            const res = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/performance-graph`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ force_refresh: forceRefresh })
+            });
+
+            if (!res.success) {
+                if (progressEl) progressEl.innerText = `❌ Error: ${res.error || 'Failed to start calculation'}`;
+                return;
+            }
+
+            if (res.already_running) {
+                if (alreadyNotice) alreadyNotice.style.display = 'block';
+                if (progressEl) progressEl.innerText = '⏳ Already calculating for smallcase. Attaching to existing background calculation...';
+            }
+
+            // If completed from cache
+            if (res.status === 'COMPLETED' && res.data) {
+                if (currentPerformanceGraphState.elapsedTimer) clearInterval(currentPerformanceGraphState.elapsedTimer);
+                currentPerformanceGraphState.data = res.data;
+                renderPerformanceGraph(res.data);
+                return;
+            }
+
+            // Running in background -> Start 5-second polling loop
+            currentPerformanceGraphState.jobId = res.job_id;
+            startPerformanceGraphPolling();
+
+        } catch (err) {
+            console.error('Error starting performance graph:', err);
+            if (progressEl) progressEl.innerText = `❌ Error: ${err.message || 'Network error'}`;
+        }
+    }
+
+    function startPerformanceGraphPolling() {
+        if (currentPerformanceGraphState.pollTimer) clearInterval(currentPerformanceGraphState.pollTimer);
+
+        // Immediate first check after 1.5s then every 5000ms
+        setTimeout(() => checkPerformanceGraphStatus(), 1500);
+
+        currentPerformanceGraphState.pollTimer = setInterval(() => {
+            checkPerformanceGraphStatus();
+        }, 5000);
+    }
+
+    async function checkPerformanceGraphStatus() {
+        const jobId = currentPerformanceGraphState.jobId;
+        if (!jobId) return;
+
+        try {
+            const res = await safeFetchJson(`/api/momentum-smallcases/performance-graph/jobs/${encodeURIComponent(jobId)}`);
+            if (!res.success || !res.job) return;
+
+            const job = res.job;
+            const progressEl = document.getElementById('pgLoadingProgress');
+
+            if (job.status === 'RUNNING') {
+                if (progressEl && job.progress) {
+                    progressEl.innerText = job.progress;
+                }
+                const dockStatus = document.getElementById('pgDockStatus');
+                if (dockStatus) {
+                    dockStatus.innerText = `⏳ Calculating... (${currentPerformanceGraphState.elapsedSeconds}s)`;
+                }
+            } else if (job.status === 'COMPLETED') {
+                if (currentPerformanceGraphState.pollTimer) clearInterval(currentPerformanceGraphState.pollTimer);
+                if (currentPerformanceGraphState.elapsedTimer) clearInterval(currentPerformanceGraphState.elapsedTimer);
+
+                currentPerformanceGraphState.data = job.result;
+
+                const dockStatus = document.getElementById('pgDockStatus');
+                if (dockStatus) dockStatus.innerText = '✅ Ready - View Graph';
+
+                if (!currentPerformanceGraphState.isMinimized) {
+                    renderPerformanceGraph(job.result);
+                }
+            } else if (job.status === 'FAILED') {
+                if (currentPerformanceGraphState.pollTimer) clearInterval(currentPerformanceGraphState.pollTimer);
+                if (currentPerformanceGraphState.elapsedTimer) clearInterval(currentPerformanceGraphState.elapsedTimer);
+
+                if (progressEl) progressEl.innerText = `❌ Calculation failed: ${job.error || 'Unknown error'}`;
+                const dockStatus = document.getElementById('pgDockStatus');
+                if (dockStatus) dockStatus.innerText = '❌ Failed';
+            }
+        } catch (err) {
+            console.error('Error polling performance graph status:', err);
+        }
+    }
+
+    function renderPerformanceGraph(data) {
+        if (!data) return;
+
+        const loadingState = document.getElementById('pgLoadingState');
+        const contentState = document.getElementById('pgContentState');
+        if (loadingState) loadingState.style.display = 'none';
+        if (contentState) contentState.style.display = 'block';
+
+        const kpis = data.kpis || {};
+
+        // 1. Badges & Headers
+        const granBadge = document.getElementById('pgModalGranularityBadge');
+        if (granBadge) granBadge.innerText = data.granularity_label || data.granularity;
+
+        const subEl = document.getElementById('pgModalSubtitle');
+        if (subEl) {
+            subEl.innerText = `${formatDateDisplay(data.start_date)} → ${formatDateDisplay(data.end_date)} (${data.total_days} days) · ${data.points_count} valuation points`;
+        }
+
+        const dataCountEl = document.getElementById('pgChartDataCount');
+        if (dataCountEl) {
+            dataCountEl.innerText = `${data.points_count} data points (${data.granularity_label || data.granularity})`;
+        }
+
+        // 2. Top Summary KPI Cards
+        const currValEl = document.getElementById('pgKpiCurrentVal');
+        if (currValEl) currValEl.innerText = `₹${formatCurrency(kpis.current_value || 0)}`;
+
+        const retSubEl = document.getElementById('pgKpiReturnSub');
+        if (retSubEl) {
+            const retAmt = kpis.total_return_amount || 0;
+            const retPct = kpis.total_return_percent || 0;
+            const color = retAmt >= 0 ? '#10b981' : '#ef4444';
+            retSubEl.style.color = color;
+            retSubEl.innerText = `${formatSignedCurrency(retAmt, true)} (${formatPercent(retPct, true)})`;
+        }
+
+        const maxDdEl = document.getElementById('pgKpiMaxDd');
+        if (maxDdEl) {
+            const dd = kpis.max_drawdown || {};
+            maxDdEl.innerText = `${formatPercent(dd.max_drawdown_percent || 0, true)}`;
+        }
+
+        const maxDdSubEl = document.getElementById('pgKpiMaxDdSub');
+        if (maxDdSubEl) {
+            const dd = kpis.max_drawdown || {};
+            maxDdSubEl.innerText = `Trough on ${formatDateDisplay(dd.trough_date)} (Peak: ₹${formatCurrency(dd.peak_value)})`;
+        }
+
+        const topGainEl = document.getElementById('pgKpiTopGain');
+        const topGainSubEl = document.getElementById('pgKpiTopGainSub');
+        const topPos = kpis.top_3_positive || [];
+        if (topPos.length > 0) {
+            if (topGainEl) topGainEl.innerText = `+${formatPercent(topPos[0].change_percent, true)}`;
+            if (topGainSubEl) topGainSubEl.innerText = `On ${formatDateDisplay(topPos[0].date)} (+₹${formatCurrency(topPos[0].change_amount)})`;
+        } else {
+            if (topGainEl) topGainEl.innerText = '—';
+            if (topGainSubEl) topGainSubEl.innerText = 'No positive days recorded';
+        }
+
+        const cagrEl = document.getElementById('pgKpiCagr');
+        if (cagrEl) cagrEl.innerText = `${formatPercent(kpis.cagr || 0, true)}`;
+
+        const winRateSubEl = document.getElementById('pgKpiWinRateSub');
+        if (winRateSubEl) {
+            winRateSubEl.innerText = `Win Rate: ${formatPercent(kpis.win_rate || 0)} (${kpis.positive_days_count || 0}+ / ${kpis.negative_days_count || 0}-)`;
+        }
+
+        // 3. Top 3 Negative Drilldown Drops Table
+        const negTbody = document.getElementById('pgTopNegativeTbody');
+        if (negTbody) {
+            const topNeg = kpis.top_3_negative || [];
+            if (topNeg.length === 0) {
+                negTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 14px; color: var(--text-secondary);">No negative drilldowns recorded.</td></tr>`;
+            } else {
+                negTbody.innerHTML = topNeg.map(item => `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="text-align: center; font-weight: 700; color: #ef4444;">#${item.rank}</td>
+                        <td style="font-weight: 600; color: var(--text-primary);">${formatDateDisplay(item.date)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #ef4444;">${formatPercent(item.change_percent, true)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #ef4444;">${formatSignedCurrency(item.change_amount, true)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(item.portfolio_value)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // 4. Top 3 Positive Momentum Days Table
+        const posTbody = document.getElementById('pgTopPositiveTbody');
+        if (posTbody) {
+            if (topPos.length === 0) {
+                posTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 14px; color: var(--text-secondary);">No positive momentum days recorded.</td></tr>`;
+            } else {
+                posTbody.innerHTML = topPos.map(item => `
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="text-align: center; font-weight: 700; color: #10b981;">#${item.rank}</td>
+                        <td style="font-weight: 600; color: var(--text-primary);">${formatDateDisplay(item.date)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #10b981;">+${formatPercent(item.change_percent, true)}</td>
+                        <td style="text-align: right; font-family: monospace; color: #10b981;">+₹${formatCurrency(item.change_amount)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(item.portfolio_value)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // 5. Consolidated Drawdown Breakdown
+        const dd = kpis.max_drawdown || {};
+        const maxDdHighlight = document.getElementById('pgMaxDdHighlight');
+        if (maxDdHighlight) {
+            maxDdHighlight.innerText = `${formatPercent(dd.max_drawdown_percent || 0, true)} (${formatSignedCurrency(dd.drawdown_amount || 0, true)})`;
+        }
+
+        const maxDdDetails = document.getElementById('pgMaxDdDetails');
+        if (maxDdDetails) {
+            maxDdDetails.innerText = `Peak: ₹${formatCurrency(dd.peak_value)} on ${formatDateDisplay(dd.peak_date)}  ➔  Trough: ₹${formatCurrency(dd.trough_value)} on ${formatDateDisplay(dd.trough_date)}`;
+        }
+
+        const peakValText = document.getElementById('pgPeakValuationText');
+        if (peakValText) {
+            peakValText.innerText = `All-Time Peak: ₹${formatCurrency(kpis.peak_portfolio_value)} (${formatDateDisplay(kpis.peak_date)})`;
+        }
+
+        // 6. Dual-Line Chart.js
+        renderChartJsInstance(data);
+    }
+
+    function renderChartJsInstance(data) {
+        const canvas = document.getElementById('mscPerformanceChartCanvas');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        if (currentPerformanceGraphState.chartInstance) {
+            currentPerformanceGraphState.chartInstance.destroy();
+            currentPerformanceGraphState.chartInstance = null;
+        }
+
+        const ctx = canvas.getContext('2d');
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+
+        const labels = (data.dates || []).map(d => formatDateDisplay(d));
+        const portfolioData = data.portfolio_value_series || [];
+        const investedData = data.invested_series || [];
+        const isDense = labels.length > 50;
+
+        // Gradient for portfolio value
+        const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
+
+        currentPerformanceGraphState.chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Portfolio Value (₹)',
+                        data: portfolioData,
+                        borderColor: '#10b981',
+                        borderWidth: 2.2,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: isDense ? 0 : 3.5,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5
+                    },
+                    {
+                        label: 'Invested Capital (₹)',
+                        data: investedData,
+                        borderColor: '#6366f1',
+                        borderWidth: 1.8,
+                        borderDash: [5, 4],
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: isDense ? 0 : 2.5,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: '#6366f1',
+                        pointBorderColor: '#ffffff'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                        titleColor: isDark ? '#ffffff' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#334155',
+                        borderColor: isDark ? '#334155' : '#e2e8f0',
+                        borderWidth: 1,
+                        padding: 12,
+                        boxPadding: 4,
+                        callbacks: {
+                            label: function(context) {
+                                const val = Number(context.raw) || 0;
+                                return `  ${context.dataset.label}: ₹${formatCurrency(val)}`;
+                            },
+                            afterBody: function(tooltipItems) {
+                                if (!tooltipItems || tooltipItems.length === 0) return '';
+                                const idx = tooltipItems[0].dataIndex;
+                                const points = data.points || [];
+                                const pt = points[idx];
+                                if (!pt) return '';
+                                const inv = pt.invested || 0;
+                                const val = pt.portfolio_value || 0;
+                                const pnl = val - inv;
+                                const pnlPct = inv > 0 ? (pnl / inv) * 100 : 0;
+                                const pnlStr = `${pnl >= 0 ? '+' : ''}₹${formatCurrency(pnl)} (${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`;
+                                const dayChangeStr = pt.change_percent !== undefined ? `\n  Period Move: ${pt.change_percent >= 0 ? '+' : ''}${pt.change_percent.toFixed(2)}%` : '';
+                                return `  Net Return: ${pnlStr}${dayChangeStr}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: isDark ? '#94a3b8' : '#64748b',
+                            font: { size: 11 },
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 12
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: isDark ? '#94a3b8' : '#64748b',
+                            font: { size: 11, family: 'monospace' },
+                            callback: function(val) {
+                                return '₹' + formatCurrency(val);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function minimizePerformanceGraphModal() {
+        currentPerformanceGraphState.isMinimized = true;
+        const modal = document.getElementById('performanceGraphModal');
+        const dock = document.getElementById('mscPerformanceGraphDock');
+        if (modal) modal.style.display = 'none';
+        if (dock) {
+            dock.style.display = 'flex';
+            const nameEl = document.getElementById('pgDockStratName');
+            if (nameEl && currentStrategy) nameEl.innerText = `${currentStrategy.name} Graph`;
+            const statusEl = document.getElementById('pgDockStatus');
+            if (statusEl) {
+                if (currentPerformanceGraphState.data) {
+                    statusEl.innerText = '✅ Ready (Click to expand)';
+                } else {
+                    statusEl.innerText = `⏳ Calculating... (${currentPerformanceGraphState.elapsedSeconds}s)`;
+                }
+            }
+        }
+    }
+
+    function restorePerformanceGraphModal() {
+        currentPerformanceGraphState.isMinimized = false;
+        const modal = document.getElementById('performanceGraphModal');
+        const dock = document.getElementById('mscPerformanceGraphDock');
+        if (dock) dock.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'flex';
+            if (currentPerformanceGraphState.data) {
+                renderPerformanceGraph(currentPerformanceGraphState.data);
+            }
+        }
+    }
+
+    function closePerformanceGraphModal() {
+        const modal = document.getElementById('performanceGraphModal');
+        const dock = document.getElementById('mscPerformanceGraphDock');
+        if (modal) modal.style.display = 'none';
+        if (dock) dock.style.display = 'none';
+
+        if (currentPerformanceGraphState.pollTimer) {
+            clearInterval(currentPerformanceGraphState.pollTimer);
+            currentPerformanceGraphState.pollTimer = null;
+        }
+        if (currentPerformanceGraphState.elapsedTimer) {
+            clearInterval(currentPerformanceGraphState.elapsedTimer);
+            currentPerformanceGraphState.elapsedTimer = null;
+        }
+    }
+
+    function closePerformanceGraphDock() {
+        const dock = document.getElementById('mscPerformanceGraphDock');
+        if (dock) dock.style.display = 'none';
+        if (currentPerformanceGraphState.pollTimer) {
+            clearInterval(currentPerformanceGraphState.pollTimer);
+            currentPerformanceGraphState.pollTimer = null;
+        }
+        if (currentPerformanceGraphState.elapsedTimer) {
+            clearInterval(currentPerformanceGraphState.elapsedTimer);
+            currentPerformanceGraphState.elapsedTimer = null;
+        }
+    }
+
+    function refreshPerformanceGraph() {
+        openPerformanceGraphModal(true);
+    }
+
+    // =========================================================================
     // 6. DELETE STRATEGY / INDEX HANDLER
     // =========================================================================
     function openDeleteStrategyModal(strategyId, optName) {
@@ -3714,6 +4212,14 @@
     window.closeLogTransactionsModal = closeLogTransactionsModal;
     window.filterLogTransactionsTable = filterLogTransactionsTable;
     window.handleLogTransactionsSearch = handleLogTransactionsSearch;
+
+    // Performance Graph
+    window.openPerformanceGraphModal = openPerformanceGraphModal;
+    window.minimizePerformanceGraphModal = minimizePerformanceGraphModal;
+    window.restorePerformanceGraphModal = restorePerformanceGraphModal;
+    window.closePerformanceGraphModal = closePerformanceGraphModal;
+    window.closePerformanceGraphDock = closePerformanceGraphDock;
+    window.refreshPerformanceGraph = refreshPerformanceGraph;
 
     // Manual Indices
     window.openAddManualIndexModal = openAddManualIndexModal;
