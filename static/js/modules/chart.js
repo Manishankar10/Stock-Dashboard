@@ -8786,7 +8786,8 @@ function getActiveChartIndicatorKeys() {
             results.forEach((item, idx) => {
                 const isActive = idx === chartSearchActiveIndex;
                 const activeClass = isActive ? 'active' : '';
-                const badgeClass = item.exchange.toUpperCase() === 'BSE' ? 'search-badge-bse' : 'search-badge-nse';
+                const exchUpper = (item.exchange || '').toUpperCase();
+                const badgeClass = exchUpper === 'BSE' ? 'search-badge-bse' : (exchUpper === 'COMMODITY' ? 'search-badge-cmd' : (exchUpper === 'INDEX' ? 'search-badge-idx' : 'search-badge-nse'));
 
                 html += `
                     <div class="chart-search-result-item ${activeClass}" data-index="${idx}" data-symbol="${escapeHtml(item.symbol)}" onclick="selectChartSymbol('${escapeHtml(item.symbol)}')">

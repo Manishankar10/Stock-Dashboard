@@ -115,8 +115,10 @@
                 }
                 const rowEl = document.getElementById(`row-${sym}`);
                 if (rowEl && info.name) rowEl.dataset.companyName = info.name;
+                const isUSD = (info && info.currency === '$') || sym.startsWith('TVC:') || sym.includes('=F') || sym.startsWith('^GSPC') || sym.startsWith('^IXIC') || sym.startsWith('^DJI');
+                const currSym = isUSD ? '$' : '₹';
                 if (priceEl && info.price !== undefined) {
-                    priceEl.innerText = '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    priceEl.innerText = currSym + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2});
                     if (info.change !== undefined) {
                         priceEl.classList.remove('pos', 'neg');
                         priceEl.classList.add(info.change >= 0 ? 'pos' : 'neg');
@@ -127,7 +129,7 @@
                     const sign = info.change >= 0 ? '+' : '';
                     const amtSign = info.change >= 0 ? '+' : '-';
                     if (changeAmtEl) {
-                        changeAmtEl.innerText = `${amtSign}₹${Math.abs(info.change).toFixed(2)}`;
+                        changeAmtEl.innerText = `${amtSign}${currSym}${Math.abs(info.change).toFixed(2)}`;
                         changeAmtEl.classList.remove('pos', 'neg');
                         changeAmtEl.classList.add(info.change >= 0 ? 'pos' : 'neg');
                     }
@@ -137,7 +139,7 @@
                         changePctEl.classList.add(info.change >= 0 ? 'pos' : 'neg');
                     }
                     if (subChangeEl) {
-                        subChangeEl.innerText = `${sign}₹${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`;
+                        subChangeEl.innerText = `${sign}${currSym}${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`;
                         subChangeEl.classList.remove('pos', 'neg');
                         subChangeEl.classList.add(info.change >= 0 ? 'pos' : 'neg');
                     }

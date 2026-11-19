@@ -883,6 +883,9 @@
         window.showCustomPrompt = showCustomPrompt;
 
         const INDEX_DISPLAY_NAMES = {
+            'TVC:GOLD': 'GOLD CFD TVC',
+            'TVC:SILVER': 'SILVER CFD TVC',
+            'GIFTNIFTY': 'GIFT NIFTY',
             '^IXIC': 'NASDAQ',
             '^NSEI': 'NIFTY 50',
             '^BSESN': 'SENSEX',
@@ -1195,10 +1198,10 @@
         function getSymbolBadge(sym, defaultExch = '') {
             if (!sym) return { label: 'NSE', class: 'badge-nse' };
             const s = sym.toUpperCase();
-            if (s.startsWith('^') || defaultExch === 'INDEX') {
+            if (s.startsWith('^') || defaultExch === 'INDEX' || s === 'GIFTNIFTY') {
                 return { label: 'INDEX', class: 'badge-idx' };
             }
-            if (s.includes('=F') || s.includes('GOLDBEES') || s.includes('SILVERBEES') || defaultExch === 'COMMODITY') {
+            if (s.startsWith('TVC:') || s.includes('=F') || s.includes('GOLDBEES') || s.includes('SILVERBEES') || defaultExch === 'COMMODITY') {
                 return { label: 'COMMODITY', class: 'badge-cmd' };
             }
             if (s.endsWith('.BO') || defaultExch === 'BSE') {

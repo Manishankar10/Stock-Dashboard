@@ -504,10 +504,10 @@
         function getSymbolBadge(sym, defaultExch = '') {
             if (!sym) return { label: 'NSE', class: 'badge-nse' };
             const s = sym.toUpperCase();
-            if (s.startsWith('^') || defaultExch === 'INDEX') {
+            if (s.startsWith('^') || defaultExch === 'INDEX' || s === 'GIFTNIFTY') {
                 return { label: 'INDEX', class: 'badge-idx' };
             }
-            if (s.includes('=F') || s.includes('GOLDBEES') || s.includes('SILVERBEES') || defaultExch === 'COMMODITY') {
+            if (s.startsWith('TVC:') || s.includes('=F') || s.includes('GOLDBEES') || s.includes('SILVERBEES') || defaultExch === 'COMMODITY') {
                 return { label: 'COMMODITY', class: 'badge-cmd' };
             }
             if (s.endsWith('.BO') || defaultExch === 'BSE') {
@@ -552,6 +552,9 @@
             if (!sym) return 'NSE:NIFTY';
             let s = String(sym).trim();
             const upper = s.toUpperCase();
+            if (upper === 'TVC:GOLD' || upper === 'GOLD CFD' || upper === 'GOLD CFD TVC' || upper === 'GOLD') return 'TVC:GOLD';
+            if (upper === 'TVC:SILVER' || upper === 'SILVER CFD' || upper === 'SILVER CFD TVC' || upper === 'SILVER') return 'TVC:SILVER';
+            if (upper === 'GIFTNIFTY' || upper === 'GIFT NIFTY' || upper === 'NSEIX:NIFTY1!') return 'NSEIX:NIFTY1!';
             if (upper === '^NSEI' || upper === 'NIFTY' || upper === 'NIFTY 50' || upper === 'NIFTY50') return 'NSE:NIFTY';
             if (upper === '^NSEBANK' || upper === '^BANKNIFTY' || upper === 'BANKNIFTY' || upper === 'NIFTY BANK') return 'NSE:BANKNIFTY';
             if (upper === '^CNXIT' || upper === 'NIFTY IT') return 'NSE:NIFTYIT';
@@ -1423,8 +1426,10 @@
                         nameHtml = '<span class="skeleton-box" style="width: 100px; height: 11px;"></span>';
                     }
 
+                    const isUSD = (bInfo && bInfo.label === 'COMMODITY' && (sym.startsWith('TVC:') || sym.includes('=F') || sym === 'TVC:GOLD' || sym === 'TVC:SILVER' || sym === 'CL=F')) || (info && info.currency === '$') || sym.startsWith('^GSPC') || sym.startsWith('^IXIC') || sym.startsWith('^DJI');
+                    const currSym = isUSD ? '$' : '₹';
                     const priceVal = hasData 
-                        ? '₹' + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) 
+                        ? currSym + info.price.toLocaleString('en-IN', {minimumFractionDigits: 2}) 
                         : '<span class="skeleton-box" style="width: 60px; height: 14px;"></span>';
                     const priceCls = (hasData && info.change !== undefined) 
                         ? (info.change >= 0 ? 'pos' : 'neg') 
@@ -1432,13 +1437,13 @@
                     const sign = (hasData && info.change !== undefined && info.change >= 0) ? '+' : '';
                     const amtSign = (hasData && info.change !== undefined) ? (info.change >= 0 ? '+' : '-') : '';
                     const changeAmtHtml = (hasData && info.change !== undefined)
-                        ? `${amtSign}₹${Math.abs(info.change).toFixed(2)}`
+                        ? `${amtSign}${currSym}${Math.abs(info.change).toFixed(2)}`
                         : '<span class="skeleton-box" style="width: 50px; height: 14px;"></span>';
                     const changePctHtml = (hasData && info.change_pct !== undefined)
                         ? `${sign}${info.change_pct.toFixed(2)}%`
                         : '<span class="skeleton-box" style="width: 45px; height: 14px;"></span>';
                     const subChangeHtml = (hasData && info.change !== undefined && info.change_pct !== undefined)
-                        ? `${sign}₹${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`
+                        ? `${sign}${currSym}${Math.abs(info.change).toFixed(2)} (${sign}${info.change_pct.toFixed(2)}%)`
                         : '';
                     const changeCls = (hasData && info.change !== undefined)
                         ? (info.change >= 0 ? 'pos' : 'neg')

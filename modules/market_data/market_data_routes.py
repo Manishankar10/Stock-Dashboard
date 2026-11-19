@@ -2,6 +2,7 @@ import datetime
 import math
 import difflib
 import time
+import re
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 try:
@@ -29,23 +30,36 @@ def search_symbol():
 
     results = []
     clean_q = query.upper()
+    query_tokens = [t for t in re.split(r'[\s:/\-_]+', clean_q) if t]
 
     # 1. Preset Indices & Commodities Matching
+    preset_matches = []
     for idx in POPULAR_MARKET_INDEXES:
-        match = False
-        if clean_q in idx["symbol"].upper() or clean_q in idx["name"].upper():
-            match = True
-        else:
-            for alias in idx["aliases"]:
-                if clean_q in alias.upper():
-                    match = True
-                    break
-        if match:
-            results.append({
+        sym_u = idx["symbol"].upper()
+        name_u = idx["name"].upper()
+        aliases_u = [a.upper() for a in idx.get("aliases", [])]
+
+        score = 0
+        if clean_q == sym_u or any(clean_q == a for a in aliases_u):
+            score = 4
+        elif sym_u.startswith(clean_q) or any(a.startswith(clean_q) for a in aliases_u) or name_u.startswith(clean_q):
+            score = 3
+        elif clean_q in sym_u or clean_q in name_u or any(clean_q in a for a in aliases_u):
+            score = 2
+        elif query_tokens and all(tok in f"{sym_u} {name_u} {' '.join(aliases_u)}" for tok in query_tokens):
+            score = 2
+        elif any(len(a) >= 4 and a in clean_q for a in aliases_u):
+            score = 1
+
+        if score > 0:
+            preset_matches.append((score, {
                 'symbol': idx["symbol"],
                 'name': idx["name"],
                 'exchange': idx["exchange"]
-            })
+            }))
+
+    preset_matches.sort(key=lambda x: x[0], reverse=True)
+    results = [item for _, item in preset_matches]
 
     # 2. Yahoo Finance Search API
     def do_search(q_str):
@@ -214,6 +228,12 @@ def get_chart_history():
 
     meta = res.get('meta', {})
     name = meta.get('shortName') or meta.get('longName') or symbol
+    if symbol == "TVC:GOLD":
+        name = "Gold Commodity CFD (TVC / USD)"
+    elif symbol == "TVC:SILVER":
+        name = "Silver Commodity CFD (TVC / USD)"
+    elif symbol == "GIFTNIFTY":
+        name = "GIFT Nifty Index"
     
     timestamps = res.get('timestamp', []) or []
     indicators = res.get('indicators', {})

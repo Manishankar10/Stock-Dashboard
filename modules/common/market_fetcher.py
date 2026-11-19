@@ -65,11 +65,11 @@ POPULAR_MARKET_INDEXES = [
     {"symbol": "^CNXIT", "name": "NIFTY IT Index", "exchange": "INDEX", "aliases": ["NIFTYIT", "NIFTY IT"]},
     {"symbol": "^BSESN", "name": "S&P BSE SENSEX Index", "exchange": "INDEX", "aliases": ["SENSEX", "BSESN", "BSE SENSEX"]},
     {"symbol": "^CRSMID", "name": "NIFTY Midcap 100 Index", "exchange": "INDEX", "aliases": ["MIDCAP", "NIFTY MIDCAP"]},
-    {"symbol": "GIFTNIFTY", "name": "GIFT Nifty Index", "exchange": "INDEX", "aliases": ["GIFTNIFTY", "GIFT NIFTY", "GIFT NIFTY INDEX", "NSEIX:NIFTY1!"]},
+    {"symbol": "GIFTNIFTY", "name": "GIFT Nifty Index", "exchange": "INDEX", "aliases": ["GIFTNIFTY", "GIFT NIFTY", "GIFT", "GIFT NIFTY INDEX", "NSEIX:NIFTY1!"]},
     {"symbol": "GOLDBEES.NS", "name": "Nippon India ETF Gold BeES (₹)", "exchange": "COMMODITY", "aliases": ["GOLDBEES", "GOLD BEES", "GOLD ETF"]},
-    {"symbol": "TVC:GOLD", "name": "Gold Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLD SPOT", "GOLD USD", "TVC:GOLD", "GOLD CFD", "GOLD(COMMODITY CFD TVC)", "GC=F"]},
+    {"symbol": "TVC:GOLD", "name": "Gold Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["GOLD", "GOLD SPOT", "GOLD USD", "TVC:GOLD", "GOLD CFD", "GOLD CFD TVC", "GOLD TVC", "TVC GOLD", "CFD GOLD", "GOLD COMMODITY CFD", "GOLD(COMMODITY CFD TVC)", "GC=F", "XAUUSD"]},
     {"symbol": "SILVERBEES.NS", "name": "Nippon India ETF Silver BeES (₹)", "exchange": "COMMODITY", "aliases": ["SILVERBEES", "SILVER BEES", "SILVER ETF"]},
-    {"symbol": "TVC:SILVER", "name": "Silver Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVER SPOT", "SILVER USD", "TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)", "SI=F"]},
+    {"symbol": "TVC:SILVER", "name": "Silver Commodity CFD (TVC / USD)", "exchange": "COMMODITY", "aliases": ["SILVER", "SILVER SPOT", "SILVER USD", "TVC:SILVER", "SILVER CFD", "SILVER CFD TVC", "SILVER TVC", "TVC SILVER", "CFD SILVER", "SILVER COMMODITY CFD", "SILVER(COMMODITY CFD TVC)", "SI=F", "XAGUSD"]},
     {"symbol": "CL=F", "name": "Crude Oil Futures (USD)", "exchange": "COMMODITY", "aliases": ["CRUDE", "CRUDE OIL", "CRUDEOIL"]},
     {"symbol": "^GSPC", "name": "S&P 500 Index (US)", "exchange": "INDEX", "aliases": ["SP500", "S&P 500", "S&P500"]},
     {"symbol": "^IXIC", "name": "NASDAQ Composite Index (US)", "exchange": "INDEX", "aliases": ["NASDAQ", "NASDAQ 100", "NASDAQ100"]}
@@ -79,21 +79,22 @@ def format_financial_symbol(raw_symbol):
     if not raw_symbol:
         return ""
     sym = raw_symbol.strip().upper()
+    sym_no_space = re.sub(r"\s+", "", sym)
     
     # Direct TVC and GIFT alias remappings
-    if sym in ("TVC:GOLD", "GOLD CFD", "GOLD(COMMODITY CFD TVC)"):
+    if sym in ("TVC:GOLD", "GOLD CFD", "GOLD CFD TVC", "GOLD TVC", "TVC GOLD", "CFD GOLD", "GOLD(COMMODITY CFD TVC)", "XAUUSD") or sym_no_space in ("TVC:GOLD", "GOLDCFD", "GOLDCFDTVC", "GOLDTVC", "TVCGOLD", "CFDGOLD"):
         return "TVC:GOLD"
-    if sym in ("TVC:SILVER", "SILVER CFD", "SILVER(COMMODITY CFD TVC)"):
+    if sym in ("TVC:SILVER", "SILVER CFD", "SILVER CFD TVC", "SILVER TVC", "TVC SILVER", "CFD SILVER", "SILVER(COMMODITY CFD TVC)", "XAGUSD") or sym_no_space in ("TVC:SILVER", "SILVERCFD", "SILVERCFDTVC", "SILVERTVC", "TVCSILVER", "CFDSILVER"):
         return "TVC:SILVER"
-    if sym in ("GIFTNIFTY", "GIFT NIFTY", "NSEIX:NIFTY1!"):
+    if sym in ("GIFTNIFTY", "GIFT NIFTY", "GIFT", "GIFT NIFTY INDEX", "NSEIX:NIFTY1!") or sym_no_space in ("GIFTNIFTY", "GIFTNIFTYINDEX", "NSEIX:NIFTY1!"):
         return "GIFTNIFTY"
 
     # Check direct index / commodity alias matches
     for idx_item in POPULAR_MARKET_INDEXES:
-        if sym == idx_item["symbol"].upper():
+        if sym == idx_item["symbol"].upper() or sym_no_space == re.sub(r"\s+", "", idx_item["symbol"].upper()):
             return idx_item["symbol"]
-        for alias in idx_item["aliases"]:
-            if sym == alias.upper():
+        for alias in idx_item.get("aliases", []):
+            if sym == alias.upper() or sym_no_space == re.sub(r"\s+", "", alias.upper()):
                 return idx_item["symbol"]
 
     # Keep as-is if starts with ^, contains =F, or ends with .NS / .BO
@@ -202,6 +203,7 @@ class StockFetcher:
                             "change": change_amt,
                             "change_pct": change_pct,
                             "previous_close": prev_close,
+                            "currency": "$",
                             "mcap_cr": "N/A"
                         }
                         stock_cache.set(ticker, entry, ttl=15)
@@ -239,6 +241,7 @@ class StockFetcher:
                             "change": change_amt,
                             "change_pct": change_pct,
                             "previous_close": prev_close,
+                            "currency": "₹",
                             "mcap_cr": "N/A"
                         }
                         stock_cache.set("GIFTNIFTY", entry, ttl=15)
@@ -282,6 +285,7 @@ class StockFetcher:
                 "change": nifty_info.get("change", 0),
                 "change_pct": nifty_info.get("change_pct", 0),
                 "previous_close": nifty_info.get("previous_close", 0),
+                "currency": "₹",
                 "mcap_cr": "N/A"
             }
             stock_cache.set("GIFTNIFTY", entry, ttl=15)
@@ -290,6 +294,14 @@ class StockFetcher:
         return None
 
     def fetch_stock(self, symbol, use_cache=True):
+        if not symbol:
+            return {"error": True, "message": "Symbol is required"}
+            
+        # Remap / normalize symbol if alias or variant
+        clean_target = format_financial_symbol(symbol)
+        if clean_target and clean_target != symbol:
+            symbol = clean_target
+
         if use_cache:
             cached = stock_cache.get(symbol)
             if cached:
@@ -307,6 +319,7 @@ class StockFetcher:
                 fallback_data = dict(fallback_data)
                 fallback_data["symbol"] = symbol
                 fallback_data["name"] = "Gold Commodity CFD (TVC / USD)" if symbol == "TVC:GOLD" else "Silver Commodity CFD (TVC / USD)"
+                fallback_data["currency"] = "$"
                 if use_cache:
                     stock_cache.set(symbol, fallback_data, ttl=15)
                 return fallback_data
@@ -465,28 +478,35 @@ class StockFetcher:
 fetcher = StockFetcher()
 
 def resolve_watchlist_symbol(raw_symbol):
-    """Resolve an Indian stock symbol against Yahoo Finance.
+    """Resolve an Indian stock or popular market index / commodity symbol.
 
-    The base symbol is cleaned first. NSE is always checked first; if Yahoo
-    has no data for the NSE ticker, BSE is checked next. The resolved Yahoo
-    ticker is returned for storage. Existing index/commodity symbols continue
-    to use the existing formatter.
+    Popular indexes and commodities (e.g. TVC:GOLD, TVC:SILVER, GIFTNIFTY, ^NSEI, etc.)
+    are resolved directly. For Indian equities, NSE is checked first; if Yahoo has
+    no data for the NSE ticker, BSE is checked next. The resolved ticker is returned for storage.
     """
     if raw_symbol is None:
         return None, "INVALID"
 
-    cleaned = str(raw_symbol).strip().upper()
-    cleaned = re.sub(r"\s+", "", cleaned)
-    if not cleaned:
+    raw_str = str(raw_symbol).strip()
+    if not raw_str:
         return None, "INVALID"
 
-    # Preserve the application's existing handling for indexes/commodities.
-    formatted = format_financial_symbol(cleaned)
+    # 1. Preset Popular Indexes & Commodities (TVC:GOLD, TVC:SILVER, GIFTNIFTY, ^NSEI, etc.)
+    formatted = format_financial_symbol(raw_str)
+    for idx_item in POPULAR_MARKET_INDEXES:
+        if formatted == idx_item["symbol"]:
+            stock_data = fetcher.fetch_stock(formatted)
+            if stock_data and not stock_data.get("error"):
+                return formatted, idx_item.get("exchange", "INDEX")
+            return None, "NOT_FOUND"
+
     if formatted.startswith("^") or "=F" in formatted:
-        if not fetcher.fetch_stock(formatted).get("error"):
-            return formatted, "SPECIAL"
+        stock_data = fetcher.fetch_stock(formatted)
+        if stock_data and not stock_data.get("error"):
+            return formatted, "INDEX" if formatted.startswith("^") else "COMMODITY"
         return None, "NOT_FOUND"
 
+    cleaned = re.sub(r"\s+", "", raw_str.upper())
     base = re.sub(r"\.(NS|BO)$", "", cleaned, flags=re.IGNORECASE)
     if not base:
         return None, "INVALID"
