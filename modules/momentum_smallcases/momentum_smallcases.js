@@ -3044,9 +3044,9 @@
         ensureModalsAttachedToBody();
         currentViewingIndex = null;
         setSmallcaseModalLoader('momentumIndexViewModal', true, {
-            title: 'Loading Constituent Quotes...',
-            badge: 'Live Market Data',
-            subtitle: 'Fetching live prices and calculating active tracking days...'
+            title: 'Loading Index Constituents...',
+            badge: 'Constituent Universe',
+            subtitle: 'Retrieving constituent stocks and tracking dates...'
         });
         const modal = document.getElementById('momentumIndexViewModal');
         if (modal) modal.style.display = 'flex';
@@ -3064,12 +3064,12 @@
         if (nameEl) nameEl.innerText = 'Loading Index...';
         if (subEl) subEl.innerText = 'Fetching constituent data...';
         if (descEl) descEl.innerText = '—';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-secondary);">⏳ Loading stocks & live quotes...</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 30px; color: var(--text-secondary);">⏳ Loading constituent stocks...</td></tr>`;
 
         try {
-            const data = await safeFetchJson(`/api/momentum-smallcases/indices/${encodeURIComponent(indexId)}?enrich=1`);
+            const data = await safeFetchJson(`/api/momentum-smallcases/indices/${encodeURIComponent(indexId)}?enrich=0`);
             if (!data.success || !data.index) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 20px;">Could not load index details.</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #ef4444; padding: 20px;">Could not load index details.</td></tr>`;
                 return;
             }
 
@@ -3101,49 +3101,26 @@
             if (counter) counter.innerText = `${stocks.length} ${stocks.length === 1 ? 'constituent' : 'constituents'} (ordered by Date Added ▲ ASC)`;
 
             if (stocks.length === 0) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 30px;">No stocks in this index. Click "Edit Index" to add stocks.</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 30px;">No stocks in this index. Click "Edit Index" to add stocks.</td></tr>`;
             } else {
                 let rowsHtml = '';
                 stocks.forEach((s, i) => {
-                    const priceDisplay = (s.current_price != null && s.current_price > 0) ? `₹${Number(s.current_price).toFixed(2)}` : '—';
-                    let chgDisplay = '—';
-                    let chgClass = 'color: var(--text-secondary);';
-                    if (s.change_percent != null) {
-                        const val = Number(s.change_percent);
-                        if (val > 0) {
-                            chgDisplay = `+${val.toFixed(2)}%`;
-                            chgClass = 'color: #10b981; font-weight: 600;';
-                        } else if (val < 0) {
-                            chgDisplay = `${val.toFixed(2)}%`;
-                            chgClass = 'color: #ef4444; font-weight: 600;';
-                        } else {
-                            chgDisplay = `0.00%`;
-                        }
-                    }
-
                     rowsHtml += `
                         <tr>
-                            <td style="color: var(--text-secondary);">${i + 1}</td>
-                            <td>
+                            <td style="color: var(--text-secondary); padding: 9px 14px; width: 45px;">${i + 1}</td>
+                            <td style="padding: 9px 14px;">
                                 <div style="display: flex; align-items: center; gap: 6px;">
-                                    <strong style="color: var(--text-primary); cursor: pointer;" onclick="if(typeof openInHouseChart==='function') openInHouseChart('${escapeHtml(s.symbol)}');" title="Open chart for ${escapeHtml(s.symbol)}">
+                                    <strong style="color: var(--text-primary); font-size: 13px; cursor: pointer;" onclick="if(typeof openInHouseChart==='function') openInHouseChart('${escapeHtml(s.symbol)}');" title="Open chart for ${escapeHtml(s.symbol)}">
                                         ${escapeHtml(s.symbol)}
                                     </strong>
-                                    ${s.company_name && s.company_name !== s.symbol ? `<span style="font-size: 11px; color: var(--text-secondary);">(${escapeHtml(s.company_name)})</span>` : ''}
+                                    ${s.company_name && s.company_name !== s.symbol ? `<span style="font-size: 11.5px; color: var(--text-secondary);">(${escapeHtml(s.company_name)})</span>` : ''}
                                 </div>
                             </td>
-                            <td>
-                                <span class="badge" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; font-size: 11px; font-weight: 600;">
+                            <td style="padding: 9px 14px;">
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 4px; font-family: monospace;">
                                     📅 ${escapeHtml(s.date_added)}
                                 </span>
                             </td>
-                            <td>
-                                <span style="font-size: 12px; color: var(--text-secondary);">
-                                    ${s.days_active || 0} ${s.days_active === 1 ? 'day' : 'days'}
-                                </span>
-                            </td>
-                            <td style="text-align: right; font-weight: 600; font-family: monospace;">${priceDisplay}</td>
-                            <td style="text-align: right; font-family: monospace; ${chgClass}">${chgDisplay}</td>
                         </tr>
                     `;
                 });
@@ -3151,7 +3128,7 @@
             }
         } catch (err) {
             console.error('Error fetching view details:', err);
-            if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 20px;">Failed to load details: ${escapeHtml(err.message)}</td></tr>`;
+            if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #ef4444; padding: 20px;">Failed to load details: ${escapeHtml(err.message)}</td></tr>`;
         } finally {
             setSmallcaseModalLoader('momentumIndexViewModal', false);
         }
