@@ -1457,9 +1457,10 @@
                 const pnl = Number(h.pnl || 0);
                 const pnlPct = Number(h.pnl_percent || 0);
                 const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+                const capBase = Number(portfolio.total_capital != null ? portfolio.total_capital : (portfolio.invested_value || (currentStrategy && currentStrategy.amount_to_invest) || 1));
                 const weightDisplay = h.weight_percent != null
                     ? `${Number(h.weight_percent).toFixed(1)}%`
-                    : (portfolio.total_portfolio_value > 0 ? `${((h.current_value / portfolio.total_portfolio_value) * 100).toFixed(1)}%` : '—');
+                    : (capBase > 0 ? `${((h.invested / capBase) * 100).toFixed(1)}%` : '—');
 
                 html += `
                     <tr>

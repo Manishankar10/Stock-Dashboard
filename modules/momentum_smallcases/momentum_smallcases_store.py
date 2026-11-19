@@ -966,7 +966,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     if trim_existing is None:
         t_trim = target.get("trim_existing")
         if t_trim is None:
-            trim_existing_eff = True
+            trim_existing_eff = False
         elif isinstance(t_trim, str):
             trim_existing_eff = t_trim.strip().lower() not in ("no", "false", "0")
         else:
@@ -974,6 +974,10 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     else:
         trim_existing_eff = False if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0") else True
         target["trim_existing"] = trim_existing_eff
+
+    # Accumulate total capital with stepup
+    curr_cap = float(target.get("total_capital") if target.get("total_capital") is not None else target.get("amount_to_invest", 0.0))
+    total_cap_effective = round(curr_cap + float(stepup or 0.0), 2)
 
     portfolio = execute_rebalance_run(
         ranked_stocks=ranked_stocks,
@@ -984,7 +988,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         exit_regime_ranking=target["exit_regime_ranking"],
         target_date=exec_date,
         all_universe_stocks=meta.get("all_stocks"),
-        total_capital=float(target.get("amount_to_invest", 0.0)),
+        total_capital=total_cap_effective,
         trim_existing=trim_existing_eff
     )
 
@@ -1070,7 +1074,7 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
     else:
         t_trim = target.get("trim_existing")
         if t_trim is None:
-            trim_existing_eff = True
+            trim_existing_eff = False
         elif isinstance(t_trim, str):
             trim_existing_eff = t_trim.strip().lower() not in ("no", "false", "0")
         else:

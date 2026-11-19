@@ -990,7 +990,12 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     all_target_symbols = list(retained_symbols) + new_candidate_symbols
     total_target_stocks_count = max(1, len(all_target_symbols))
 
-    # Step 3: Compute Total Available Equity
+    # Step 3: Compute Cumulative Investing Capital & Target Allocation per Stock
+    if total_capital is None:
+        total_capital = float(previous_wallet) + sum(float(h.get("invested", 0.0)) for h in previous_holdings) + float(stepup_amount or 0.0)
+    total_cap = round(float(total_capital), 2)
+    target_invest_per_stock = total_cap / float(total_target_stocks_count)
+
     # Market value of held retained stocks + wallet cash (which includes stepup + exit proceeds)
     retained_equity = 0.0
     for sym in retained_symbols:
@@ -1000,7 +1005,7 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         retained_equity += float(h["quantity"]) * price
 
     total_equity = retained_equity + wallet
-    target_per_stock = total_equity / float(total_target_stocks_count)
+    target_per_stock = target_invest_per_stock
 
     # Step 4: Rebalance trades
     holdings_dict = {}
@@ -1040,7 +1045,8 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
         for sym, item in holdings_dict.items():
             price = item["current_price"]
             q_old = item["quantity"]
-            q_target = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
+            cost_per_share = price * (1.0 + TRANSACTION_FEE_RATE)
+            q_target = math.floor(target_invest_per_stock / cost_per_share) if cost_per_share > 0 else q_old
 
             if q_target < q_old:
                 # Overweight: trim excess shares
@@ -1059,82 +1065,100 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                     stk["action"] = "SELL"
                     stk["action_label"] = f"TRIM (-{qty_to_sell})"
                     stk["quantity"] = q_target
-                    stk["is_held"] = True
-                    stk["allocated_amount"] = round(q_target * price, 2)
+                    stk["is_held"] = (q_target > 0)
+                    stk["allocated_amount"] = item["invested"]
                     stk["fee"] = fee
     else:
         # If trim_existing is False: do not touch / decrease existing stock sizes!
         for sym, item in holdings_dict.items():
             if not item.get("is_new"):
                 q_old = item["quantity"]
-                price = item["current_price"]
                 stk = rank_map.get(sym) or all_stocks_map.get(sym)
                 if stk:
                     stk["action"] = "HOLD"
                     stk["action_label"] = f"HOLD ({q_old})"
                     stk["quantity"] = q_old
                     stk["is_held"] = (q_old > 0)
-                    stk["allocated_amount"] = round(q_old * price, 2)
+                    stk["allocated_amount"] = round(item["invested"], 2)
                     stk["fee"] = 0.0
 
-    # Phase 4B: Buy Underweight Retained Stocks and Newcomers
-    for sym, item in holdings_dict.items():
+    # Phase 4B: Buy Underweight Retained Stocks and Newcomers based on Target Allocation of Investing Amount
+    stocks_needing_capital = []
+    for sym in all_target_symbols:
+        item = holdings_dict[sym]
+        curr_inv = item["invested"]
+        needed = max(0.0, target_invest_per_stock - curr_inv)
+        if needed > 0.0:
+            stocks_needing_capital.append((sym, needed))
+
+    for sym, needed_cash in stocks_needing_capital:
+        item = holdings_dict[sym]
         price = item["current_price"]
         q_current = item["quantity"]
-        q_target = math.floor(target_per_stock / (price * (1.0 + TRANSACTION_FEE_RATE)))
+        share_cost_with_fee = price * (1.0 + TRANSACTION_FEE_RATE)
 
-        if q_target > q_current:
-            qty_needed = q_target - q_current
-            share_cost_with_fee = price * (1.0 + TRANSACTION_FEE_RATE)
-            max_affordable = math.floor(wallet / share_cost_with_fee) if share_cost_with_fee > 0 else 0
-            qty_to_buy = min(qty_needed, max(0, max_affordable))
+        qty_needed = math.floor(needed_cash / share_cost_with_fee) if share_cost_with_fee > 0 else 0
+        max_affordable = math.floor(wallet / share_cost_with_fee) if share_cost_with_fee > 0 else 0
+        qty_to_buy = min(qty_needed, max(0, max_affordable))
 
-            if qty_to_buy > 0:
-                cost = round(qty_to_buy * price, 2)
-                fee = round(cost * TRANSACTION_FEE_RATE, 2)
-                wallet -= (cost + fee)
-                total_fees += fee
+        if qty_to_buy > 0:
+            cost = round(qty_to_buy * price, 2)
+            fee = round(cost * TRANSACTION_FEE_RATE, 2)
+            wallet -= (cost + fee)
+            total_fees += fee
 
-                new_qty = q_current + qty_to_buy
-                new_invested = round(item["invested"] + cost, 2)
-                new_avg_buy_price = round(new_invested / new_qty, 2) if new_qty > 0 else price
+            new_qty = q_current + qty_to_buy
+            new_invested = round(item["invested"] + cost, 2)
+            new_avg_buy_price = round(new_invested / new_qty, 2) if new_qty > 0 else price
 
-                item["quantity"] = new_qty
-                item["invested"] = new_invested
-                item["buy_price"] = new_avg_buy_price
+            item["quantity"] = new_qty
+            item["invested"] = new_invested
+            item["buy_price"] = new_avg_buy_price
 
-                stk = rank_map.get(sym) or all_stocks_map.get(sym)
-                if stk:
-                    if item["is_new"]:
-                        stk["action"] = "BUY"
-                        stk["action_label"] = f"BUY ({new_qty})"
+            stk = rank_map.get(sym) or all_stocks_map.get(sym)
+            if stk:
+                if item["is_new"]:
+                    stk["action"] = "BUY"
+                    stk["action_label"] = f"BUY ({new_qty})"
+                    if sym not in added_symbols:
                         added_symbols.append(sym)
-                    else:
-                        stk["action"] = "BUY"
-                        stk["action_label"] = f"BUY (+{qty_to_buy})"
-                    stk["quantity"] = new_qty
-                    stk["is_held"] = True
-                    stk["allocated_amount"] = round(new_qty * price, 2)
-                    stk["fee"] = fee
-            else:
-                stk = rank_map.get(sym) or all_stocks_map.get(sym)
-                if stk:
+                else:
+                    stk["action"] = "BUY"
+                    stk["action_label"] = f"BUY (+{qty_to_buy})"
+                stk["quantity"] = new_qty
+                stk["is_held"] = True
+                stk["allocated_amount"] = new_invested
+                stk["fee"] = fee
+        else:
+            stk = rank_map.get(sym) or all_stocks_map.get(sym)
+            if stk and stk.get("action") not in ("BUY", "SELL"):
+                if item["is_new"]:
+                    stk["action"] = "SKIPPED"
+                    stk["action_label"] = "SKIPPED (0)"
+                    stk["quantity"] = 0
+                    stk["is_held"] = False
+                    stk["allocated_amount"] = 0.0
+                else:
                     stk["action"] = "HOLD"
                     stk["action_label"] = f"HOLD ({q_current})"
                     stk["quantity"] = q_current
                     stk["is_held"] = (q_current > 0)
-        elif q_target == q_current and not item["is_new"]:
-            stk = rank_map.get(sym) or all_stocks_map.get(sym)
-            if stk and stk.get("action") not in ("SELL", "BUY"):
-                stk["action"] = "HOLD"
-                stk["action_label"] = f"HOLD ({q_current})"
-                stk["quantity"] = q_current
-                stk["is_held"] = True
-                stk["allocated_amount"] = round(q_current * price, 2)
+                    stk["allocated_amount"] = round(item["invested"], 2)
 
-    # Phase 4C: If unused wallet cash > 1%, divide and invest in top 3 stocks
+    # For any target stocks that were already at or above target allocation
+    for sym in all_target_symbols:
+        item = holdings_dict[sym]
+        stk = rank_map.get(sym) or all_stocks_map.get(sym)
+        if stk and stk.get("action") not in ("BUY", "SELL"):
+            stk["action"] = "HOLD"
+            stk["action_label"] = f"HOLD ({item['quantity']})"
+            stk["quantity"] = item["quantity"]
+            stk["is_held"] = (item["quantity"] > 0)
+            stk["allocated_amount"] = round(item["invested"], 2)
+
+    # Phase 4C: If unused wallet cash > 1%, divide and invest in top 3 stocks (increasing existing stocks)
     current_portfolio_equity = sum(item["quantity"] * item["current_price"] for item in holdings_dict.values()) + wallet
-    rebal_one_pct_threshold = 0.01 * current_portfolio_equity
+    rebal_one_pct_threshold = 0.01 * (total_cap or current_portfolio_equity)
 
     if wallet > rebal_one_pct_threshold:
         def _get_sym_rank(s_sym):
@@ -1179,18 +1203,11 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                         else:
                             prev_q = int(prev_holdings_map.get(sym, {}).get("quantity", 0))
                             qty_diff = new_qty - prev_q
-                            if qty_diff > 0:
-                                stk["action"] = "BUY"
-                                stk["action_label"] = f"BUY (+{qty_diff})"
-                            elif qty_diff < 0:
-                                stk["action"] = "SELL"
-                                stk["action_label"] = f"TRIM ({qty_diff})"
-                            else:
-                                stk["action"] = "HOLD"
-                                stk["action_label"] = f"HOLD ({new_qty})"
+                            stk["action"] = "BUY" if qty_diff > 0 else "HOLD"
+                            stk["action_label"] = f"BUY (+{qty_diff})" if qty_diff > 0 else f"HOLD ({new_qty})"
                         stk["quantity"] = new_qty
                         stk["is_held"] = True
-                        stk["allocated_amount"] = round(new_qty * price, 2)
+                        stk["allocated_amount"] = new_invested
                         stk["fee"] = round(stk.get("fee", 0.0) + fee, 2)
 
             # Pass 2: If still > 1%, invest in top 3 in rank priority until <= 1% or cannot afford
@@ -1225,18 +1242,11 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                             else:
                                 prev_q = int(prev_holdings_map.get(sym, {}).get("quantity", 0))
                                 qty_diff = new_qty - prev_q
-                                if qty_diff > 0:
-                                    stk["action"] = "BUY"
-                                    stk["action_label"] = f"BUY (+{qty_diff})"
-                                elif qty_diff < 0:
-                                    stk["action"] = "SELL"
-                                    stk["action_label"] = f"TRIM ({qty_diff})"
-                                else:
-                                    stk["action"] = "HOLD"
-                                    stk["action_label"] = f"HOLD ({new_qty})"
+                                stk["action"] = "BUY" if qty_diff > 0 else "HOLD"
+                                stk["action_label"] = f"BUY (+{qty_diff})" if qty_diff > 0 else f"HOLD ({new_qty})"
                             stk["quantity"] = new_qty
                             stk["is_held"] = True
-                            stk["allocated_amount"] = round(new_qty * price, 2)
+                            stk["allocated_amount"] = new_invested
                             stk["fee"] = round(stk.get("fee", 0.0) + fee, 2)
                         bought_any = True
                 if not bought_any:
@@ -1278,9 +1288,16 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
     total_pnl = round(total_val - total_cap, 2)
     total_pnl_pct = round((total_pnl / total_cap) * 100.0, 2) if total_cap > 0 else 0.0
 
-    # Weight percentages
+    # Stock allocation % calculated for investing amount only
     for h in final_holdings:
-        h["weight_percent"] = round((h["current_value"] / max(total_val, 1.0)) * 100.0, 2)
+        h["weight_percent"] = round((h["invested"] / max(total_cap, 1.0)) * 100.0, 2)
+
+    for sym in all_target_symbols:
+        stk = rank_map.get(sym) or all_stocks_map.get(sym)
+        item = holdings_dict.get(sym)
+        if stk and item:
+            stk["allocated_amount"] = round(item["invested"], 2)
+            stk["weight_percent"] = round((item["invested"] / max(total_cap, 1.0)) * 100.0, 2)
 
     # Build detailed transactions list for rebalance
     transactions = []
