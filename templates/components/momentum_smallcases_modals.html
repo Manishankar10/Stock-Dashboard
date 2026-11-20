@@ -909,6 +909,249 @@
 </div>
 
 <!-- =========================================================================
+     MODAL: MULTI-INDEX MOMENTUM COMPARISON (SAME GRAPH, DB HISTORICAL DATA)
+     ========================================================================= -->
+<div class="modal-backdrop msc-modal-backdrop" id="mscIndexComparisonModal" style="display: none;" onclick="if(event.target === this) closeIndexComparisonModal()">
+    <div class="modal-container msc-modal-container msc-comp-modal-container" role="dialog" aria-modal="true" style="max-width: 1400px; width: 96vw; max-height: min(94vh, calc(100vh - 24px)); display: flex; flex-direction: column;">
+        
+        <!-- Modal Header -->
+        <div class="msc-modal-header msc-comp-header" style="padding: 14px 22px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-size: 18px;">
+                    📈
+                </span>
+                <div>
+                    <h3 class="msc-modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        <span>Multi-Index Momentum Comparison</span>
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 10.5px; padding: 2px 8px; border-radius: 12px; font-weight: 600;">
+                            ⚡ DB-Only Engine
+                        </span>
+                    </h3>
+                    <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
+                        Compare multiple index universes on the same graph with identical starting capital and dates. Click any line on the graph to view its detailed KPIs.
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn-secondary" onclick="closeIndexComparisonModal()" style="font-size: 12px; padding: 6px 14px;">
+                    ✕ Close
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="msc-modal-body msc-comp-body" style="padding: 16px 22px; overflow-y: auto; flex: 1;">
+            
+            <!-- 1. Shared / Common Parameters Bar -->
+            <div class="msc-comp-common-bar" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 12.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>⚙️</span> <span>Shared Comparison Parameters (Applied to all indices)</span>
+                    </span>
+                    <span style="font-size: 11px; color: var(--text-secondary); background: rgba(59, 130, 246, 0.08); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        💡 Recommended Start Date: Oct 2025 onwards (DB contains prices from Jan 2025)
+                    </span>
+                </div>
+                <div class="msc-comp-common-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: flex-end;">
+                    <div class="msc-form-group" style="margin-bottom: 0;">
+                        <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">
+                            Start Date <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="date" id="mscCompStartDate" class="msc-modal-input" value="2025-10-01" required style="font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div class="msc-form-group" style="margin-bottom: 0;">
+                        <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">
+                            Investment Amount (₹) <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="number" id="mscCompAmount" class="msc-modal-input" value="100000" min="1000" step="10000" required style="font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div class="msc-form-group" style="margin-bottom: 0;">
+                        <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">
+                            Cutoff / End Date
+                        </label>
+                        <input type="date" id="mscCompCutoffDate" class="msc-modal-input" style="font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div class="msc-form-group" style="margin-bottom: 0;">
+                        <button type="button" class="btn-primary" id="mscCompRunBtn" onclick="runIndexComparisonSimulation()" style="width: 100%; height: 35px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #6366f1; border-color: #6366f1;">
+                            <span id="mscCompRunIcon">▶</span> <span id="mscCompRunText">Run Comparison</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Compared Index Universes Deck -->
+            <div class="msc-comp-indices-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>📑</span> <span>Compared Index Configurations</span>
+                            <span id="mscCompIndexCountBadge" style="font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 700;">2 Indices</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                            First index values serve as default for newly added indices. You can customize each index individually.
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="addComparisonIndexRow()" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 5px 12px; font-weight: 600; color: #10b981; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08);">
+                        <span>➕</span> <span>Add Index to Compare</span>
+                    </button>
+                </div>
+
+                <!-- Dynamic Index Cards List -->
+                <div id="mscCompIndicesList" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Injected dynamically by JS -->
+                </div>
+            </div>
+
+            <!-- 3. Multi-Line Chart Container -->
+            <div class="msc-comp-chart-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 15px;">📊</span>
+                        <div>
+                            <span style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">
+                                Comparative Valuation Trajectory (₹)
+                            </span>
+                            <span style="font-size: 11px; color: var(--text-secondary); margin-left: 6px;">
+                                (Click line or legend pill to inspect detailed KPIs)
+                            </span>
+                        </div>
+                    </div>
+                    <div id="mscCompLegendPills" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <div class="msc-comp-chart-wrap" style="position: relative; height: 380px; width: 100%;">
+                    <canvas id="mscCompChartCanvas"></canvas>
+                    <div id="mscCompChartEmptyNotice" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 6px;">
+                        <span style="font-size: 28px;">⏳</span>
+                        <span style="font-size: 13px; color: var(--text-secondary);" id="mscCompChartEmptyText">Configuring indices... Click 'Run Comparison' to simulate.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Selected Index Interactive KPI Showcase -->
+            <div class="msc-comp-kpi-showcase" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="mscCompActiveDot" style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span>
+                        <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);" id="mscCompActiveTitle">
+                            Selected Index KPI Metrics
+                        </span>
+                        <span id="mscCompActiveBadge" class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                            —
+                        </span>
+                    </div>
+                    <div id="mscCompPillSelector" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <!-- Injected dynamic selector pills -->
+                    </div>
+                </div>
+
+                <!-- 4 KPI stat cards -->
+                <div class="msc-comp-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                    <!-- Card 1: Final Valuation & Return -->
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            Final Portfolio Value
+                        </div>
+                        <div id="compKpiFinalVal" style="font-size: 20px; font-weight: 700; font-family: monospace; color: var(--text-primary); margin-top: 4px;">
+                            ₹0.00
+                        </div>
+                        <div id="compKpiNetPnl" style="font-size: 11.5px; font-weight: 600; color: #10b981; margin-top: 3px;">
+                            +₹0.00 (+0.00%)
+                        </div>
+                    </div>
+
+                    <!-- Card 2: CAGR & Win Rate -->
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            CAGR / Win Rate
+                        </div>
+                        <div id="compKpiCagr" style="font-size: 20px; font-weight: 700; font-family: monospace; color: #10b981; margin-top: 4px;">
+                            0.00%
+                        </div>
+                        <div id="compKpiWinRate" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 3px;">
+                            Win Rate: 0.0% &bull; 0 Rebalances
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Max Drawdown (Peak to Trough) -->
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            Max Drawdown (from Peak)
+                        </div>
+                        <div id="compKpiMaxDd" style="font-size: 20px; font-weight: 700; font-family: monospace; color: #ef4444; margin-top: 4px;">
+                            0.00%
+                        </div>
+                        <div id="compKpiMaxDdDetails" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Peak-to-trough: -₹0.00
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Max Drilldown Below Investment -->
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            Max Below Investment Capital
+                        </div>
+                        <div id="compKpiBelowInv" style="font-size: 20px; font-weight: 700; font-family: monospace; color: #ef4444; margin-top: 4px;">
+                            0.00%
+                        </div>
+                        <div id="compKpiBelowInvDetails" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Deficit: ₹0.00 on —
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Side-by-Side Comparison Summary Table -->
+            <div class="msc-comp-table-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>📋</span> <span>Comparative Performance Leaderboard</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">
+                        Ordered by highest Net P&L %
+                    </div>
+                </div>
+
+                <div class="msc-table-responsive" style="overflow-x: auto;">
+                    <table class="msc-indices-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color);">
+                                <th style="width: 50px; text-align: center;">RANK</th>
+                                <th style="min-width: 160px;">INDEX UNIVERSE</th>
+                                <th style="min-width: 140px;">CONFIGURATION</th>
+                                <th style="text-align: right; min-width: 110px;">FINAL VALUE</th>
+                                <th style="text-align: right; min-width: 110px;">NET P&amp;L</th>
+                                <th style="text-align: right; min-width: 90px;">CAGR</th>
+                                <th style="text-align: right; min-width: 95px;">MAX DD</th>
+                                <th style="text-align: right; min-width: 110px;">MAX BELOW INV</th>
+                                <th style="text-align: right; min-width: 80px;">WIN RATE</th>
+                                <th style="text-align: center; width: 80px;">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mscCompSummaryTbody">
+                            <tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-secondary);">No simulation executed yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="msc-modal-footer msc-comp-footer" style="padding: 10px 22px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                <span>💡</span> <span>All calculations executed purely from SQLite DB (stock_closing_prices). No external live API dependencies.</span>
+            </div>
+            <button type="button" class="btn-secondary" onclick="closeIndexComparisonModal()" style="font-size: 12px; padding: 6px 18px;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
      FLOATING DOCK WIDGET (WHEN PERFORMANCE GRAPH MODAL IS MINIMIZED)
      ========================================================================= -->
 <div id="mscPerformanceGraphDock" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 10050; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 8px 16px; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s ease;" onclick="restorePerformanceGraphModal()">

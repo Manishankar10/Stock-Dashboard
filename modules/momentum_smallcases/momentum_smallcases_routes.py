@@ -565,3 +565,26 @@ def reset_momentum_data_api():
         logger.error(f"Error resetting momentum data: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/compare-indices", methods=["POST"])
+def compare_indices_api():
+    """
+    Simulates and compares multiple index universes in the same graph using only DB closing prices.
+    Shared start_date and amount_to_invest, customizable per-index parameters.
+    """
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        common_config = body.get("common") or {}
+        index_configs = body.get("indices") or []
+
+        from modules.momentum_smallcases.index_comparator import run_index_comparison_simulation
+        res = run_index_comparison_simulation(common_config, index_configs, username=user)
+        return jsonify(res)
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error comparing indices: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+

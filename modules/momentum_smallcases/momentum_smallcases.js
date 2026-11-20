@@ -4504,8 +4504,779 @@
     }
 
     // =========================================================================
+    // MULTI-INDEX MOMENTUM COMPARISON ENGINE (SAME GRAPH, DB DATA ONLY)
+    // =========================================================================
+    const comparisonState = {
+        indicesCatalog: [],
+        indexRows: [],
+        chartInstance: null,
+        simulationResults: null,
+        activeSelectedIndexId: null,
+        isRunning: false
+    };
+
+    const COMPARISON_PALETTE = [
+        '#3b82f6', // Blue
+        '#10b981', // Emerald
+        '#f59e0b', // Amber
+        '#ec4899', // Pink
+        '#8b5cf6', // Purple
+        '#06b6d4', // Cyan
+        '#ef4444', // Red
+        '#14b8a6'  // Teal
+    ];
+
+    async function loadComparisonIndicesCatalog() {
+        if (comparisonState.indicesCatalog && comparisonState.indicesCatalog.length > 0) {
+            return comparisonState.indicesCatalog;
+        }
+        try {
+            const res = await fetch('/api/momentum-smallcases/indices-catalog');
+            const data = await res.json();
+            if (data.success && Array.isArray(data.indices)) {
+                comparisonState.indicesCatalog = data.indices;
+                return data.indices;
+            }
+        } catch (e) {
+            console.error('Error fetching indices catalog for comparison:', e);
+        }
+        return [];
+    }
+
+    async function openIndexComparisonModal() {
+        const modal = document.getElementById('mscIndexComparisonModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        // Set default dates and capital
+        const startInput = document.getElementById('mscCompStartDate');
+        const amountInput = document.getElementById('mscCompAmount');
+        const cutoffInput = document.getElementById('mscCompCutoffDate');
+
+        if (startInput && !startInput.value) startInput.value = '2025-10-01';
+        if (amountInput && !amountInput.value) amountInput.value = '100000';
+        if (cutoffInput) {
+            const now = new Date();
+            cutoffInput.value = now.toISOString().split('T')[0];
+        }
+
+        // Fetch catalog
+        await loadComparisonIndicesCatalog();
+
+        // Initialize default 2 rows if empty
+        if (!comparisonState.indexRows || comparisonState.indexRows.length === 0) {
+            const cat = comparisonState.indicesCatalog || [];
+            const idx1 = cat[0] || { id: 'NIFTY_50', name: 'NIFTY 50', type: 'nifty' };
+            const idx2 = cat[3] || cat[1] || { id: 'NIFTY_SMALLCAP_250', name: 'NIFTY SMALLCAP 250', type: 'nifty' };
+
+            comparisonState.indexRows = [
+                {
+                    id: 'comp_row_1',
+                    index_id: idx1.id,
+                    index_name: idx1.name,
+                    index_type: idx1.type || 'nifty',
+                    no_of_stocks: 12,
+                    exit_regime_ranking: 22,
+                    rebalance_day: 21,
+                    trim_existing: 'no',
+                    trading_days_per_month: 21,
+                    color: COMPARISON_PALETTE[0]
+                },
+                {
+                    id: 'comp_row_2',
+                    index_id: idx2.id,
+                    index_name: idx2.name,
+                    index_type: idx2.type || 'nifty',
+                    no_of_stocks: 12,
+                    exit_regime_ranking: 22,
+                    rebalance_day: 21,
+                    trim_existing: 'no',
+                    trading_days_per_month: 21,
+                    color: COMPARISON_PALETTE[1]
+                }
+            ];
+        }
+
+        renderComparisonIndexRows();
+
+        // Automatically trigger initial simulation so user sees graph right away
+        runIndexComparisonSimulation();
+    }
+
+    function closeIndexComparisonModal() {
+        const modal = document.getElementById('mscIndexComparisonModal');
+        if (modal) modal.style.display = 'none';
+        if (comparisonState.chartInstance) {
+            comparisonState.chartInstance.destroy();
+            comparisonState.chartInstance = null;
+        }
+    }
+
+    function renderComparisonIndexRows() {
+        const container = document.getElementById('mscCompIndicesList');
+        if (!container) return;
+
+        const countBadge = document.getElementById('mscCompIndexCountBadge');
+        if (countBadge) {
+            countBadge.innerText = `${comparisonState.indexRows.length} ${comparisonState.indexRows.length === 1 ? 'Index' : 'Indices'}`;
+        }
+
+        const cat = comparisonState.indicesCatalog || [];
+
+        container.innerHTML = comparisonState.indexRows.map((row, idx) => {
+            const color = row.color || COMPARISON_PALETTE[idx % COMPARISON_PALETTE.length];
+            const isFirst = (idx === 0);
+
+            // Group catalog options
+            const manualIndices = cat.filter(c => c.type === 'manual');
+            const benchmarkIndices = cat.filter(c => c.type !== 'manual');
+
+            const manualOptions = manualIndices.map(c => `
+                <option value="${escapeHtml(c.id)}" data-name="${escapeHtml(c.name)}" data-type="manual" ${c.id === row.index_id ? 'selected' : ''}>
+                    ${escapeHtml(c.name)} (${c.stock_count || (c.stocks && c.stocks.length) || 0} stocks)
+                </option>
+            `).join('');
+
+            const benchmarkOptions = benchmarkIndices.map(c => `
+                <option value="${escapeHtml(c.id)}" data-name="${escapeHtml(c.name)}" data-type="nifty" ${c.id === row.index_id ? 'selected' : ''}>
+                    ${escapeHtml(c.name)}
+                </option>
+            `).join('');
+
+            return `
+                <div class="msc-comp-row-card" data-row-id="${escapeHtml(row.id)}" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-left: 4px solid ${color}; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${color};"></span>
+                            <strong style="font-size: 13px; color: var(--text-primary);">Index #${idx + 1}</strong>
+                            ${isFirst ? '<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 10px; padding: 1px 6px; border-radius: 3px;">Primary / Default Template</span>' : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <button type="button" class="btn-secondary" onclick="removeComparisonIndexRow('${escapeHtml(row.id)}')" ${comparisonState.indexRows.length <= 1 ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : ''} style="font-size: 11px; padding: 3px 8px; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" title="Remove this index from comparison">
+                                🗑️ Remove
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Config Grid -->
+                    <div style="display: grid; grid-template-columns: 2fr repeat(5, 1fr); gap: 10px; align-items: flex-end;" class="msc-comp-config-grid">
+                        <!-- 1. Universe Selection -->
+                        <div class="msc-form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                                Index Universe <span style="color: #ef4444;">*</span>
+                            </label>
+                            <select class="msc-modal-input msc-comp-universe-select" data-row-id="${escapeHtml(row.id)}" onchange="updateComparisonRowUniverse('${escapeHtml(row.id)}', this)" style="font-size: 12px; padding: 5px 8px; cursor: pointer;">
+                                ${manualOptions ? `<optgroup label="Manual Momentum Indices">${manualOptions}</optgroup>` : ''}
+                                ${benchmarkOptions ? `<optgroup label="Official Benchmark Indices">${benchmarkOptions}</optgroup>` : ''}
+                            </select>
+                        </div>
+
+                        <!-- 2. No. of Stocks -->
+                        <div class="msc-form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                                Top Picks
+                            </label>
+                            <input type="number" class="msc-modal-input msc-comp-stocks-input" data-row-id="${escapeHtml(row.id)}" value="${row.no_of_stocks || 12}" min="3" max="50" style="font-size: 12px; padding: 5px 8px;">
+                        </div>
+
+                        <!-- 3. Exit Regime Ranking -->
+                        <div class="msc-form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                                Exit Regime
+                            </label>
+                            <input type="number" class="msc-modal-input msc-comp-exit-input" data-row-id="${escapeHtml(row.id)}" value="${row.exit_regime_ranking || 22}" min="3" max="100" style="font-size: 12px; padding: 5px 8px;">
+                        </div>
+
+                        <!-- 4. Rebalance Day -->
+                        <div class="msc-form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                                Rebalance Day
+                            </label>
+                            <input type="number" class="msc-modal-input msc-comp-rebal-input" data-row-id="${escapeHtml(row.id)}" value="${row.rebalance_day || 21}" min="1" max="31" style="font-size: 12px; padding: 5px 8px;">
+                        </div>
+
+                        <!-- 5. Trim Existing Stock -->
+                        <div class="msc-form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                                Trim Existing
+                            </label>
+                            <select class="msc-modal-input msc-comp-trim-select" data-row-id="${escapeHtml(row.id)}" style="font-size: 12px; padding: 5px 8px; cursor: pointer;">
+                                <option value="no" ${String(row.trim_existing).toLowerCase() !== 'yes' ? 'selected' : ''}>No (Default)</option>
+                                <option value="yes" ${String(row.trim_existing).toLowerCase() === 'yes' ? 'selected' : ''}>Yes</option>
+                            </select>
+                        </div>
+
+                        <!-- 6. Trading Days per Month -->
+                        <div class="msc-form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                                Days / Month
+                            </label>
+                            <select class="msc-modal-input msc-comp-days-select" data-row-id="${escapeHtml(row.id)}" style="font-size: 12px; padding: 5px 8px; cursor: pointer;">
+                                <option value="21" ${Number(row.trading_days_per_month) === 21 ? 'selected' : ''}>21d (Default)</option>
+                                <option value="30" ${Number(row.trading_days_per_month) === 30 ? 'selected' : ''}>30d</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function syncComparisonRowsFromDOM() {
+        comparisonState.indexRows.forEach(row => {
+            const card = document.querySelector(`.msc-comp-row-card[data-row-id="${row.id}"]`);
+            if (!card) return;
+
+            const uSelect = card.querySelector('.msc-comp-universe-select');
+            if (uSelect) {
+                row.index_id = uSelect.value;
+                const opt = uSelect.selectedOptions[0];
+                if (opt) {
+                    row.index_name = opt.getAttribute('data-name') || opt.text.trim();
+                    row.index_type = opt.getAttribute('data-type') || 'nifty';
+                }
+            }
+
+            const stocksIn = card.querySelector('.msc-comp-stocks-input');
+            if (stocksIn) row.no_of_stocks = parseInt(stocksIn.value, 10) || 12;
+
+            const exitIn = card.querySelector('.msc-comp-exit-input');
+            if (exitIn) row.exit_regime_ranking = parseInt(exitIn.value, 10) || 22;
+
+            const rebalIn = card.querySelector('.msc-comp-rebal-input');
+            if (rebalIn) row.rebalance_day = parseInt(rebalIn.value, 10) || 21;
+
+            const trimSel = card.querySelector('.msc-comp-trim-select');
+            if (trimSel) row.trim_existing = trimSel.value === 'yes';
+
+            const daysSel = card.querySelector('.msc-comp-days-select');
+            if (daysSel) row.trading_days_per_month = parseInt(daysSel.value, 10) || 21;
+        });
+    }
+
+    function updateComparisonRowUniverse(rowId, selectEl) {
+        const row = comparisonState.indexRows.find(r => r.id === rowId);
+        if (!row || !selectEl) return;
+        row.index_id = selectEl.value;
+        const opt = selectEl.selectedOptions[0];
+        if (opt) {
+            row.index_name = opt.getAttribute('data-name') || opt.text.trim();
+            row.index_type = opt.getAttribute('data-type') || 'nifty';
+        }
+    }
+
+    function addComparisonIndexRow() {
+        syncComparisonRowsFromDOM();
+
+        // 1. Read first index values as default for the new index
+        const first = comparisonState.indexRows[0] || {};
+        const defStocks = first.no_of_stocks || 12;
+        const defExit = first.exit_regime_ranking || 22;
+        const defRebal = first.rebalance_day || 21;
+        const defTrim = (first.trim_existing === true || String(first.trim_existing).toLowerCase() === 'yes') ? 'yes' : 'no';
+        const defDays = Number(first.trading_days_per_month) || 21;
+
+        // 2. Pick next unused universe from catalog
+        const cat = comparisonState.indicesCatalog || [];
+        const usedIds = new Set(comparisonState.indexRows.map(r => r.index_id));
+        const candidate = cat.find(c => !usedIds.has(c.id)) || cat[0] || { id: 'NIFTY_500', name: 'NIFTY 500', type: 'nifty' };
+
+        const newRowId = `comp_row_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const nextColor = COMPARISON_PALETTE[comparisonState.indexRows.length % COMPARISON_PALETTE.length];
+
+        comparisonState.indexRows.push({
+            id: newRowId,
+            index_id: candidate.id,
+            index_name: candidate.name,
+            index_type: candidate.type || 'nifty',
+            no_of_stocks: defStocks,
+            exit_regime_ranking: defExit,
+            rebalance_day: defRebal,
+            trim_existing: defTrim,
+            trading_days_per_month: defDays,
+            color: nextColor
+        });
+
+        renderComparisonIndexRows();
+        alertToast(`Added index #${comparisonState.indexRows.length} with defaults from Index #1`, 'info');
+    }
+
+    function removeComparisonIndexRow(rowId) {
+        if (comparisonState.indexRows.length <= 1) {
+            alertToast('At least one index is required for comparison.', 'warning');
+            return;
+        }
+        syncComparisonRowsFromDOM();
+        comparisonState.indexRows = comparisonState.indexRows.filter(r => r.id !== rowId);
+        renderComparisonIndexRows();
+    }
+
+    async function runIndexComparisonSimulation() {
+        if (comparisonState.isRunning) return;
+        syncComparisonRowsFromDOM();
+
+        const startInput = document.getElementById('mscCompStartDate');
+        const amountInput = document.getElementById('mscCompAmount');
+        const cutoffInput = document.getElementById('mscCompCutoffDate');
+
+        const startDate = (startInput?.value || '').trim();
+        const amount = parseFloat(amountInput?.value || 100000);
+        const cutoffDate = (cutoffInput?.value || '').trim();
+
+        if (!startDate) {
+            alertToast('Please choose a valid Start Date.', 'warning');
+            return;
+        }
+        if (isNaN(amount) || amount <= 0) {
+            alertToast('Please enter a valid Investment Amount.', 'warning');
+            return;
+        }
+
+        const runBtn = document.getElementById('mscCompRunBtn');
+        const runIcon = document.getElementById('mscCompRunIcon');
+        const runText = document.getElementById('mscCompRunText');
+        const emptyNotice = document.getElementById('mscCompChartEmptyNotice');
+        const emptyText = document.getElementById('mscCompChartEmptyText');
+
+        comparisonState.isRunning = true;
+        if (runBtn) runBtn.disabled = true;
+        if (runIcon) runIcon.innerText = '⏳';
+        if (runText) runText.innerText = 'Simulating...';
+        if (emptyNotice) {
+            emptyNotice.style.display = 'flex';
+            if (emptyText) emptyText.innerText = 'Running multi-index momentum simulation from SQLite DB...';
+        }
+
+        try {
+            const res = await fetch('/api/momentum-smallcases/compare-indices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    common: {
+                        start_date: startDate,
+                        amount_to_invest: amount,
+                        cutoff_date: cutoffDate
+                    },
+                    indices: comparisonState.indexRows
+                })
+            });
+
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to simulate index comparison');
+            }
+
+            comparisonState.simulationResults = data;
+            if (emptyNotice) emptyNotice.style.display = 'none';
+
+            // Render Chart.js multi-line canvas
+            renderComparisonMultiLineChart(data);
+
+            // Render Leaderboard Summary Table
+            renderComparisonSummaryTable(data.summary || []);
+
+            // Automatically select and showcase Rank #1 (or first index)
+            if (data.results && data.results.length > 0) {
+                selectComparedIndexKPI(0);
+            }
+
+            alertToast(`Successfully simulated ${data.results.length} indices using DB historical quotes!`, 'success');
+
+        } catch (e) {
+            console.error('Error during index comparison simulation:', e);
+            alertToast(`Comparison Error: ${e.message}`, 'error');
+            if (emptyNotice) {
+                emptyNotice.style.display = 'flex';
+                if (emptyText) emptyText.innerText = `Simulation failed: ${e.message}`;
+            }
+        } finally {
+            comparisonState.isRunning = false;
+            if (runBtn) runBtn.disabled = false;
+            if (runIcon) runIcon.innerText = '▶';
+            if (runText) runText.innerText = 'Run Comparison';
+        }
+    }
+
+    function renderComparisonMultiLineChart(data) {
+        const canvas = document.getElementById('mscCompChartCanvas');
+        if (!canvas) return;
+
+        if (comparisonState.chartInstance) {
+            comparisonState.chartInstance.destroy();
+            comparisonState.chartInstance = null;
+        }
+
+        const ctx = canvas.getContext('2d');
+        const results = data.results || [];
+        if (results.length === 0) return;
+
+        // Collect all distinct dates sorted ascending
+        const allDatesSet = new Set();
+        results.forEach(res => {
+            (res.points || []).forEach(pt => allDatesSet.add(pt.date));
+        });
+        const sortedDates = Array.from(allDatesSet).sort();
+        const labels = sortedDates.map(d => formatDateDisplay(d));
+
+        const isDark = document.body.classList.contains('dark-theme') || document.documentElement.classList.contains('dark-theme') || true;
+
+        // Build datasets for each index
+        const datasets = results.map((res, resIdx) => {
+            // Map valuations to sortedDates
+            const dateMap = {};
+            (res.points || []).forEach(pt => {
+                dateMap[pt.date] = pt.portfolio_value;
+            });
+
+            let lastVal = data.common.amount_to_invest;
+            const dataSeries = sortedDates.map(d => {
+                if (dateMap[d] !== undefined) {
+                    lastVal = dateMap[d];
+                }
+                return lastVal;
+            });
+
+            return {
+                label: res.index_name,
+                data: dataSeries,
+                borderColor: res.color,
+                backgroundColor: res.color,
+                borderWidth: resIdx === 0 ? 3.0 : 2.0,
+                tension: 0.25,
+                fill: false,
+                pointRadius: sortedDates.length > 40 ? 1.5 : 3.5,
+                pointHoverRadius: 6,
+                pointBackgroundColor: res.color,
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 1.5,
+                indexResultId: res.id,
+                resultIndex: resIdx
+            };
+        });
+
+        // Add Initial Capital Dashed Baseline
+        const baselineData = sortedDates.map(() => data.common.amount_to_invest);
+        datasets.push({
+            label: `Invested Baseline (₹${formatCurrency(data.common.amount_to_invest)})`,
+            data: baselineData,
+            borderColor: '#6366f1',
+            borderWidth: 1.6,
+            borderDash: [5, 4],
+            fill: false,
+            tension: 0,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            isBaseline: true
+        });
+
+        // Create Chart.js instance with interactive onClick handler
+        comparisonState.chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                // WHEN CLICKING GRAPH LINE OR POINT: SHOW APPROPRIATE KPI DATA
+                onClick: function(evt, elements) {
+                    if (!elements || elements.length === 0) return;
+                    const dsIdx = elements[0].datasetIndex;
+                    if (dsIdx < results.length) {
+                        selectComparedIndexKPI(dsIdx);
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                        titleColor: isDark ? '#ffffff' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#334155',
+                        borderColor: isDark ? '#334155' : '#e2e8f0',
+                        borderWidth: 1,
+                        padding: 12,
+                        boxPadding: 4,
+                        callbacks: {
+                            label: function(context) {
+                                const ds = context.dataset;
+                                const val = Number(context.raw) || 0;
+                                if (ds.isBaseline) {
+                                    return `  🏁 ${ds.label}: ₹${formatCurrency(val)}`;
+                                }
+                                const inv = data.common.amount_to_invest;
+                                const pnl = val - inv;
+                                const pnlPct = inv > 0 ? (pnl / inv) * 100 : 0;
+                                const sign = pnl >= 0 ? '+' : '';
+                                return `  ● ${ds.label}: ₹${formatCurrency(val)} (${sign}${formatCurrency(pnl)} / ${sign}${pnlPct.toFixed(2)}%)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            color: isDark ? '#94a3b8' : '#64748b',
+                            font: { size: 11 },
+                            maxRotation: 45
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.07)'
+                        },
+                        ticks: {
+                            color: isDark ? '#94a3b8' : '#64748b',
+                            font: { size: 11, family: 'monospace' },
+                            callback: function(value) {
+                                return '₹' + formatCurrency(value);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Render custom clickable legend pills
+        renderComparisonLegendPills(results);
+    }
+
+    function renderComparisonLegendPills(results) {
+        const legendContainer = document.getElementById('mscCompLegendPills');
+        const selectorContainer = document.getElementById('mscCompPillSelector');
+
+        if (legendContainer) {
+            legendContainer.innerHTML = results.map((res, idx) => `
+                <button type="button" class="msc-comp-pill" data-idx="${idx}" onclick="selectComparedIndexKPI(${idx})" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: rgba(15, 23, 42, 0.6); border: 1.5px solid ${res.color}; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${res.color};"></span>
+                    <strong>${escapeHtml(res.index_name)}</strong>
+                </button>
+            `).join('');
+        }
+
+        if (selectorContainer) {
+            selectorContainer.innerHTML = results.map((res, idx) => `
+                <button type="button" class="msc-comp-select-pill" id="compSelPill_${idx}" data-idx="${idx}" onclick="selectComparedIndexKPI(${idx})" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 4px 12px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: all 0.15s ease;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${res.color};"></span>
+                    <span>${escapeHtml(res.index_name)}</span>
+                </button>
+            `).join('');
+        }
+    }
+
+    function selectComparedIndexKPI(targetIdx) {
+        if (!comparisonState.simulationResults || !comparisonState.simulationResults.results) return;
+        const results = comparisonState.simulationResults.results;
+        if (!results[targetIdx]) return;
+
+        const sel = results[targetIdx];
+        const kpis = sel.kpis || {};
+        const cfg = sel.config || {};
+        const finalVal = kpis.current_value || (sel.points && sel.points[sel.points.length - 1]?.portfolio_value) || 0;
+        const invested = kpis.current_invested || comparisonState.simulationResults.common.amount_to_invest;
+        const pnl = kpis.total_return_amount || (finalVal - invested);
+        const pnlPct = kpis.total_return_percent || (invested > 0 ? (pnl / invested) * 100 : 0);
+        const cagr = kpis.cagr || pnlPct;
+        const winRate = kpis.win_rate || 0;
+
+        const maxDd = kpis.max_drawdown || {};
+        const maxBelow = kpis.max_drilldown_below_investment || {};
+
+        // 1. Highlight chart dataset
+        if (comparisonState.chartInstance) {
+            comparisonState.chartInstance.data.datasets.forEach((ds, dIdx) => {
+                if (ds.isBaseline) return;
+                if (dIdx === targetIdx) {
+                    ds.borderWidth = 3.8;
+                    ds.pointRadius = 4.5;
+                } else {
+                    ds.borderWidth = 1.8;
+                    ds.pointRadius = 2.0;
+                }
+            });
+            comparisonState.chartInstance.update('none');
+        }
+
+        // 2. Update KPI Section Title & Badge
+        const titleEl = document.getElementById('mscCompActiveTitle');
+        const dotEl = document.getElementById('mscCompActiveDot');
+        const badgeEl = document.getElementById('mscCompActiveBadge');
+
+        if (titleEl) titleEl.innerText = `${sel.index_name} (Performance Metrics)`;
+        if (dotEl) dotEl.style.background = sel.color;
+        if (badgeEl) {
+            badgeEl.innerText = `${cfg.no_of_stocks || 12} Picks • Exit ≤ ${cfg.exit_regime_ranking || 22} • Rebal ${cfg.rebalance_day || 21}th • Trim: ${cfg.trim_existing ? 'Yes' : 'No'} • ${cfg.trading_days_per_month || 21}d/mo`;
+            badgeEl.style.color = sel.color;
+            badgeEl.style.background = `${sel.color}22`;
+        }
+
+        // 3. Populate 4 KPI Stat Cards
+        const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+        const sign = pnl >= 0 ? '+' : '';
+
+        const finalValEl = document.getElementById('compKpiFinalVal');
+        const netPnlEl = document.getElementById('compKpiNetPnl');
+        if (finalValEl) finalValEl.innerText = `₹${formatCurrency(finalVal)}`;
+        if (netPnlEl) {
+            netPnlEl.innerHTML = `<span style="color: ${pnlColor};">${sign}₹${formatCurrency(pnl)} (${sign}${pnlPct.toFixed(2)}%)</span> <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal; margin-left: 4px;">(Invested: ₹${formatCurrency(invested)})</span>`;
+        }
+
+        const cagrEl = document.getElementById('compKpiCagr');
+        const winRateEl = document.getElementById('compKpiWinRate');
+        if (cagrEl) {
+            cagrEl.innerText = `${cagr.toFixed(2)}%`;
+            cagrEl.style.color = cagr >= 0 ? '#10b981' : '#ef4444';
+        }
+        if (winRateEl) {
+            winRateEl.innerText = `Win Rate: ${winRate.toFixed(1)}% • ${sel.rebalances_count || 0} Rebalance runs`;
+        }
+
+        const maxDdEl = document.getElementById('compKpiMaxDd');
+        const maxDdDetailsEl = document.getElementById('compKpiMaxDdDetails');
+        if (maxDdEl) {
+            maxDdEl.innerText = `${Number(maxDd.max_drawdown_percent || 0).toFixed(2)}%`;
+        }
+        if (maxDdDetailsEl) {
+            if (maxDd.peak_date && maxDd.trough_date) {
+                maxDdDetailsEl.innerText = `Peak ₹${formatCurrency(maxDd.peak_value)} (${formatDateDisplay(maxDd.peak_date)}) → Trough ₹${formatCurrency(maxDd.trough_value)} (${formatDateDisplay(maxDd.trough_date)})`;
+            } else {
+                maxDdDetailsEl.innerText = `Max drop: -₹${formatCurrency(Math.abs(maxDd.drawdown_amount || 0))}`;
+            }
+        }
+
+        const belowInvEl = document.getElementById('compKpiBelowInv');
+        const belowInvDetailsEl = document.getElementById('compKpiBelowInvDetails');
+        if (belowInvEl) {
+            const deficitPct = Number(maxBelow.max_deficit_percent || 0);
+            belowInvEl.innerText = `${deficitPct.toFixed(2)}%`;
+            belowInvEl.style.color = deficitPct < 0 ? '#ef4444' : '#10b981';
+        }
+        if (belowInvDetailsEl) {
+            if (maxBelow.was_ever_below) {
+                belowInvDetailsEl.innerText = `Deepest deficit: -₹${formatCurrency(Math.abs(maxBelow.max_deficit_amount || 0))} on ${formatDateDisplay(maxBelow.date)}`;
+            } else {
+                belowInvDetailsEl.innerText = '✨ Never dropped below initial invested capital!';
+            }
+        }
+
+        // 4. Update selector pills active state
+        results.forEach((_, pIdx) => {
+            const pEl = document.getElementById(`compSelPill_${pIdx}`);
+            if (pEl) {
+                if (pIdx === targetIdx) {
+                    pEl.style.background = 'rgba(99, 102, 241, 0.18)';
+                    pEl.style.borderColor = sel.color;
+                    pEl.style.color = 'var(--text-primary)';
+                    pEl.style.fontWeight = '700';
+                } else {
+                    pEl.style.background = 'var(--bg-card)';
+                    pEl.style.borderColor = 'var(--border-color)';
+                    pEl.style.color = 'var(--text-secondary)';
+                    pEl.style.fontWeight = 'normal';
+                }
+            }
+        });
+
+        // 5. Highlight row in summary table
+        const tbody = document.getElementById('mscCompSummaryTbody');
+        if (tbody) {
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(r => {
+                if (r.getAttribute('data-index-id') === sel.id) {
+                    r.style.background = 'rgba(99, 102, 241, 0.12)';
+                } else {
+                    r.style.background = 'transparent';
+                }
+            });
+        }
+    }
+
+    function renderComparisonSummaryTable(summaryRows) {
+        const tbody = document.getElementById('mscCompSummaryTbody');
+        if (!tbody) return;
+
+        if (!summaryRows || summaryRows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-secondary);">No simulation executed yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = summaryRows.map((row) => {
+            const pnlColor = row.total_pnl >= 0 ? '#10b981' : '#ef4444';
+            const sign = row.total_pnl >= 0 ? '+' : '';
+            const cagrColor = row.cagr >= 0 ? '#10b981' : '#ef4444';
+            const belowColor = row.max_below_investment_percent < 0 ? '#ef4444' : '#10b981';
+
+            // Find matching index in results array for onclick
+            const resIdx = (comparisonState.simulationResults?.results || []).findIndex(r => r.id === row.id);
+
+            return `
+                <tr data-index-id="${escapeHtml(row.id)}" style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;" onclick="selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'" onmouseout="if(comparisonState.chartInstance && comparisonState.chartInstance.data.datasets[${resIdx}] && comparisonState.chartInstance.data.datasets[${resIdx}].borderWidth < 3.5) this.style.background='transparent'">
+                    <td style="text-align: center; font-weight: 700; color: ${row.color}; font-size: 13px;">
+                        #${row.rank}
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 7px;">
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${row.color};"></span>
+                            <strong style="color: var(--text-primary); font-size: 12.5px;">${escapeHtml(row.index_name)}</strong>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-size: 11px; color: var(--text-secondary);">
+                            <span style="color: #10b981; font-weight: 600;">${row.no_of_stocks} Picks</span> &bull; 
+                            Exit &le; ${row.exit_regime_ranking} &bull; 
+                            ${row.rebalance_day}th rebal &bull; 
+                            Trim: ${row.trim_existing ? 'Yes' : 'No'} &bull; 
+                            ${row.trading_days_per_month}d
+                        </div>
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--text-primary);">
+                        ₹${formatCurrency(row.final_valuation)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
+                        ${sign}₹${formatCurrency(row.total_pnl)} (${sign}${Number(row.total_pnl_percent).toFixed(2)}%)
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 600; color: ${cagrColor};">
+                        ${Number(row.cagr).toFixed(2)}%
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 600; color: #ef4444;">
+                        ${Number(row.max_drawdown_percent).toFixed(2)}%
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 600; color: ${belowColor};">
+                        ${Number(row.max_below_investment_percent).toFixed(2)}%
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">
+                        ${Number(row.win_rate).toFixed(1)}%
+                    </td>
+                    <td style="text-align: center;">
+                        <button type="button" class="btn-secondary" onclick="event.stopPropagation(); selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" style="font-size: 11px; padding: 3px 8px; color: ${row.color}; border-color: ${row.color}55;">
+                            Inspect
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // =========================================================================
     // EXPOSE TO GLOBAL SCOPE
     // =========================================================================
+    window.openIndexComparisonModal = openIndexComparisonModal;
+    window.closeIndexComparisonModal = closeIndexComparisonModal;
+    window.addComparisonIndexRow = addComparisonIndexRow;
+    window.removeComparisonIndexRow = removeComparisonIndexRow;
+    window.updateComparisonRowUniverse = updateComparisonRowUniverse;
+    window.runIndexComparisonSimulation = runIndexComparisonSimulation;
+    window.selectComparedIndexKPI = selectComparedIndexKPI;
+
     window.loadMomentumSmallcasesTab = loadMomentumSmallcasesTab;
     window.switchMomentumSubView = switchMomentumSubView;
 
