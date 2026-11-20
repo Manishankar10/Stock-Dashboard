@@ -38,9 +38,7 @@
         'walletLogTransactionsModal',
         'performanceGraphModal',
         'mscIndexComparisonModal',
-        'mscFloatingDocksContainer',
-        'mscPerformanceGraphDock',
-        'mscIndexComparisonDock'
+        'mscFloatingDocksContainer'
     ];
 
     function ensureModalsAttachedToBody() {
@@ -51,6 +49,17 @@
                 document.body.appendChild(el);
             }
         });
+
+        // Ensure floating docks stay cleanly inside mscFloatingDocksContainer
+        const container = document.getElementById('mscFloatingDocksContainer');
+        if (container) {
+            ['mscIndexComparisonDock', 'mscPerformanceGraphDock'].forEach(dockId => {
+                const dock = document.getElementById(dockId);
+                if (dock && dock.parentElement !== container) {
+                    container.appendChild(dock);
+                }
+            });
+        }
     }
 
     if (typeof document !== 'undefined') {
@@ -3872,6 +3881,7 @@
     }
 
     function minimizePerformanceGraphModal() {
+        ensureModalsAttachedToBody();
         currentPerformanceGraphState.isMinimized = true;
         const modal = document.getElementById('performanceGraphModal');
         const dock = document.getElementById('mscPerformanceGraphDock');
@@ -4771,6 +4781,7 @@
     }
 
     function minimizeIndexComparisonModal() {
+        ensureModalsAttachedToBody();
         comparisonState.isMinimized = true;
         const modal = document.getElementById('mscIndexComparisonModal');
         const dock = document.getElementById('mscIndexComparisonDock');

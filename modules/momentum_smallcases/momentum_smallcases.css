@@ -99,9 +99,38 @@ body > .msc-modal-backdrop[style*="none"] {
     font-weight: 700 !important;
 }
 
-/* Floating Performance Graph & Index Comparison Dock Widgets */
+/* Floating Performance Graph & Index Comparison Dock Widgets Container */
+#mscFloatingDocksContainer {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 10050 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: flex-end !important;
+    pointer-events: none !important;
+    width: auto !important;
+    max-width: calc(100vw - 32px) !important;
+}
+
 #mscPerformanceGraphDock,
 #mscIndexComparisonDock {
+    position: relative !important;
+    pointer-events: auto !important;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    width: max-content !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-color);
+    border-radius: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
     animation: slideUpFade 0.25s ease-out;
 }
 
