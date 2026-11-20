@@ -39,8 +39,8 @@ logger = logging.getLogger("stock_closing_prices")
 
 TELEMETRY_CACHE_FILE = os.path.join(APP_DATA_DIR, "stock_closing_prices_telemetry.json")
 
-# Process start baseline date: all historical dates before Jan 2025 are strictly excluded.
-START_DATE = "2025-01-01"
+# Process start baseline date: all historical dates before Jan 2012 are strictly excluded.
+START_DATE = "2012-01-01"
 
 
 class StockClosingPricesProvider:
@@ -323,13 +323,17 @@ class StockClosingPricesProvider:
             existing_prices = existing_doc.get("prices", [])
             latest_existing_date = existing_doc.get("latest_date", "")
 
-        # Determine range
-        if existing_prices and latest_existing_date and len(existing_prices) >= 400:
-            time_range = "5d"
-        elif existing_prices and latest_existing_date:
-            time_range = "1mo"
+        # Determine query parameters:
+        # If stock already has historical data back to ~2012 (or >= 2500 bars), incremental fetch 5d or 1mo
+        now_ts = int(time.time())
+        if existing_prices and latest_existing_date and len(existing_prices) >= 2500:
+            query_params = "interval=1d&range=5d&includePrePost=false"
+        elif existing_prices and latest_existing_date and existing_doc.get("start_date", "") <= "2013-01-01":
+            query_params = "interval=1d&range=1mo&includePrePost=false"
         else:
-            time_range = "2y"
+            # Full 2012 to present backfill
+            # 1325376000 is 2012-01-01 00:00:00 UTC
+            query_params = f"interval=1d&period1=1325376000&period2={now_ts}&includePrePost=false"
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -338,9 +342,9 @@ class StockClosingPricesProvider:
 
         raw_res = None
         for host in hosts:
-            url = f"https://{host}/v8/finance/chart/{encoded_sym}?interval=1d&range={time_range}&includePrePost=false"
+            url = f"https://{host}/v8/finance/chart/{encoded_sym}?{query_params}"
             try:
-                r = requests.get(url, headers=headers, timeout=10)
+                r = requests.get(url, headers=headers, timeout=12)
                 if r.status_code == 200:
                     data = r.json()
                     results = data.get("chart", {}).get("result")
@@ -374,11 +378,19 @@ class StockClosingPricesProvider:
             return None
 
         # Merge fetched bars with existing prices (idempotent, deduplicated by date)
-        # Strictly exclude any historical data prior to Jan 2025 (START_DATE)
-        price_dict = {p["d"]: p["c"] for p in existing_prices if p.get("d", "") >= START_DATE}
+        # Strictly exclude any historical data prior to Jan 2012 (START_DATE)
+        price_dict = {}
+        for p in existing_prices:
+            d = p.get("d", "")
+            c = p.get("c")
+            if d >= START_DATE and c is not None and float(c) > 0:
+                price_dict[d] = round(float(c), 2)
+
         for b in fetched_bars:
-            if b.get("d", "") >= START_DATE:
-                price_dict[b["d"]] = b["c"]
+            d = b.get("d", "")
+            c = b.get("c")
+            if d >= START_DATE and c is not None and float(c) > 0:
+                price_dict[d] = round(float(c), 2)
 
         # Sort chronologically
         merged_dates = sorted(price_dict.keys())
