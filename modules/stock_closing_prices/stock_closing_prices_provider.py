@@ -561,6 +561,13 @@ class StockClosingPricesProvider:
             self._persist_telemetry()
             logger.info(f"Completed stock closing prices sync: {success_count}/{total_target} stocks updated.")
 
+            # Flush comparison cache so newly synced prices are immediately reflected
+            try:
+                from modules.momentum_smallcases.index_comparator import clear_comparison_cache
+                clear_comparison_cache()
+            except Exception:
+                pass
+
         except Exception as e:
             logger.error(f"Error during stock closing prices sync: {e}", exc_info=True)
             with self._lock:

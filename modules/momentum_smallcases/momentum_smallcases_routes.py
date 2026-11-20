@@ -610,3 +610,16 @@ def compare_indices_api():
         return jsonify({"success": False, "error": f"Simulation failed: {str(e)}"}), 200
 
 
+@momentum_smallcases_bp.route("/api/momentum-smallcases/compare-indices/clear-cache", methods=["POST"])
+def clear_compare_indices_cache_api():
+    """Manually flushes the comparison simulation cache."""
+    try:
+        from modules.momentum_smallcases.index_comparator import clear_comparison_cache
+        count = clear_comparison_cache()
+        return jsonify({"success": True, "cleared_count": count, "message": "Comparison simulation cache cleared successfully."})
+    except Exception as e:
+        logger.error(f"Error clearing comparison cache: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+

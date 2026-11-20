@@ -54,6 +54,70 @@ COMPARISON_PALETTE = [
 # Key: (start_date, cutoff_date, amount, stepup, index_id, no_of_stocks, exit, rebal, trim, days, formula)
 _comparison_sim_cache = {}
 _comparison_sim_cache_lock = threading.Lock()
+_last_cleared_date = None
+
+
+def _get_last_cache_cleared_date():
+    """Retrieves last date when comparison cache was cleared, with persistence in SQLite system_settings."""
+    global _last_cleared_date
+    if _last_cleared_date:
+        return _last_cleared_date
+    try:
+        import sqlite3
+        conn = sqlite3.connect("user_data/capital_desk.db")
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM system_settings WHERE key = 'momentum_comparison_cache_last_date'")
+        row = cur.fetchone()
+        conn.close()
+        if row and row[0]:
+            _last_cleared_date = str(row[0]).strip()
+            return _last_cleared_date
+    except Exception:
+        pass
+    _last_cleared_date = date.today().isoformat()
+    return _last_cleared_date
+
+
+def _set_last_cache_cleared_date(d_str):
+    """Persists last cache cleared date in memory and SQLite system_settings."""
+    global _last_cleared_date
+    _last_cleared_date = d_str
+    try:
+        import sqlite3
+        conn = sqlite3.connect("user_data/capital_desk.db")
+        cur = conn.cursor()
+        cur.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES ('momentum_comparison_cache_last_date', ?)", (d_str,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def check_and_rotate_daily_cache():
+    """
+    Clears the comparison cache once per day when a fresh day is detected (date rollover).
+    Subsequent requests on the same day reuse the cache without re-clearing.
+    """
+    today_str = date.today().isoformat()
+    last_date = _get_last_cache_cleared_date()
+    if last_date != today_str:
+        with _comparison_sim_cache_lock:
+            cached_count = len(_comparison_sim_cache)
+            _comparison_sim_cache.clear()
+            _set_last_cache_cleared_date(today_str)
+            logger.info(f"Fresh day detected ({today_str} vs previous {last_date}). Cleared comparison cache ({cached_count} items) once for today.")
+            return True
+    return False
+
+
+def clear_comparison_cache():
+    """Clears in-memory comparison simulation cache manually and returns count of cleared items."""
+    with _comparison_sim_cache_lock:
+        count = len(_comparison_sim_cache)
+        _comparison_sim_cache.clear()
+        _set_last_cache_cleared_date(date.today().isoformat())
+        logger.info(f"Comparison simulation cache cleared ({count} items).")
+        return count
 
 
 def _parse_date_flexible(d_str, default_date=None):
@@ -96,21 +160,19 @@ def _make_sim_cache_key(start_d, cutoff_d, amount_to_invest, stepup_amount, idx_
     )
 
 
-def clear_comparison_cache():
-    """Clears in-memory comparison simulation cache."""
-    with _comparison_sim_cache_lock:
-        _comparison_sim_cache.clear()
-
-
 def run_index_comparison_simulation(common_config, index_configs, username=None):
     """
     Executes an in-memory simulation comparing multiple index configurations.
     Uses ONLY DB data from collection 'stock_closing_prices'.
     Caches calculated results by parameter signature to reuse existing results and
     only simulate newly added or modified indices.
+    Rotates/clears cache once per day on a fresh day.
     """
     if not index_configs:
         raise ValueError("At least one index configuration is required for comparison.")
+
+    # 0. Check and rotate cache once per day when a fresh day is detected
+    check_and_rotate_daily_cache()
 
     # 1. Parse common settings flexibly
     start_d = _parse_date_flexible(common_config.get("start_date"), date(2024, 1, 1))

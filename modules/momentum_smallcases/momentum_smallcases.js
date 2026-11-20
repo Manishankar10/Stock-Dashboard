@@ -4648,7 +4648,11 @@
         simulationResults: null,
         activeSelectedIndexId: null,
         isRunning: false,
-        isMinimized: false
+        isMinimized: false,
+        cachedIndices: {},
+        lastCacheDate: (function() {
+            try { return localStorage.getItem('msc_comp_cache_date'); } catch(e) { return null; }
+        })()
     };
 
     const COMPARISON_PALETTE = [
@@ -4692,6 +4696,17 @@
         const modal = document.getElementById('mscIndexComparisonModal');
         if (!modal) return;
         modal.style.display = 'flex';
+
+        // Check fresh day rollover: Clear cache once per day when date changes
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (comparisonState.lastCacheDate !== todayStr) {
+            console.log(`[Multi-Index Comparison] Fresh day detected (${todayStr} vs previous ${comparisonState.lastCacheDate}). Clearing cache once for today.`);
+            comparisonState.cachedIndices = {};
+            comparisonState.lastCacheDate = todayStr;
+            try {
+                localStorage.setItem('msc_comp_cache_date', todayStr);
+            } catch (e) {}
+        }
 
         // Set default dates and capital
         const startInput = document.getElementById('mscCompStartDate');
@@ -5189,6 +5204,17 @@
         if (comparisonState.isMinimized) updateIndexComparisonDockUI();
         if (runBtn) runBtn.disabled = true;
         if (runIcon) runIcon.innerText = '⏳';
+
+        // Daily cache check: Clear once per day when a fresh day is detected
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (comparisonState.lastCacheDate !== todayStr) {
+            console.log(`[Multi-Index Comparison] Fresh day detected (${todayStr} vs previous ${comparisonState.lastCacheDate}). Clearing cache once for today.`);
+            comparisonState.cachedIndices = {};
+            comparisonState.lastCacheDate = todayStr;
+            try {
+                localStorage.setItem('msc_comp_cache_date', todayStr);
+            } catch (e) {}
+        }
 
         // Check cache to inform user about incremental simulation
         function getIndexParamKey(common, row) {
