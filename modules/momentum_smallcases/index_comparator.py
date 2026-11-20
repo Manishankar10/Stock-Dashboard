@@ -421,7 +421,9 @@ def _simulate_single_index(
     # Step 2: Scheduled Monthly Rebalances
     current_sim_date = init_d
     rebalance_dates = []
-    max_rebal_runs = 120
+    # Dynamic rebalance limit: allow full historical span from 2012 up to cutoff_date without capping
+    year_diff = max(1, cutoff_date.year - init_d.year + 1)
+    max_rebal_runs = max(240, year_diff * 14)
 
     while len(rebalance_dates) < max_rebal_runs:
         _, next_rebal_d, _ = calculate_strategy_next_rebalance(current_sim_date, rebalance_day)

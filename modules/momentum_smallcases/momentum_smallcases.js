@@ -5142,6 +5142,8 @@
                     comparisonState.chartInstance.destroy();
                     comparisonState.chartInstance = null;
                 }
+                const dateRangeBadge = document.getElementById('mscCompChartDateRangeBadge');
+                if (dateRangeBadge) dateRangeBadge.style.display = 'none';
                 const emptyNotice = document.getElementById('mscCompChartEmptyNotice');
                 const emptyText = document.getElementById('mscCompChartEmptyText');
                 if (emptyNotice) {
@@ -5385,6 +5387,17 @@
         const sortedDates = Array.from(allDatesSet).sort();
         const labels = sortedDates.map(d => formatDateDisplay(d));
 
+        // Update chart header badge with explicit date range and point count
+        const dateRangeBadge = document.getElementById('mscCompChartDateRangeBadge');
+        if (dateRangeBadge && sortedDates.length > 0) {
+            const firstDateDisp = formatDateDisplay(sortedDates[0]);
+            const lastDateDisp = formatDateDisplay(sortedDates[sortedDates.length - 1]);
+            dateRangeBadge.style.display = 'inline-block';
+            dateRangeBadge.innerText = `📅 ${firstDateDisp} → ${lastDateDisp} (${sortedDates.length} milestones)`;
+        } else if (dateRangeBadge) {
+            dateRangeBadge.style.display = 'none';
+        }
+
         const isDark = document.body.classList.contains('dark-theme') || document.documentElement.classList.contains('dark-theme') || true;
 
         // Build datasets for each index
@@ -5513,7 +5526,10 @@
                         ticks: {
                             color: isDark ? '#94a3b8' : '#64748b',
                             font: { size: 11 },
-                            maxRotation: 45
+                            maxRotation: 45,
+                            autoSkip: true,
+                            includeBounds: true,
+                            maxTicksLimit: Math.min(14, labels.length)
                         }
                     },
                     y: {
