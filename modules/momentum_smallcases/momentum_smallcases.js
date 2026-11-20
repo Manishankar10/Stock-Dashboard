@@ -5311,7 +5311,8 @@
             }
 
             if (!data.success) {
-                throw new Error(data.error || 'Failed to simulate index comparison');
+                const errMsg = (data.error || 'Failed to simulate index comparison').replace(/^(?:Simulation failed:\s*)+/i, '').trim();
+                throw new Error(errMsg);
             }
 
             comparisonState.simulationResults = data;
@@ -5349,12 +5350,16 @@
 
         } catch (e) {
             console.error('Error during index comparison simulation:', e);
-            alertToast(`Comparison Error: ${e.message}`, 'error');
+            let cleanMsg = (e.message || 'Unknown error').replace(/^(?:Simulation failed:\s*)+/i, '').trim();
+            if (!cleanMsg || cleanMsg === '1' || cleanMsg === 'true' || /^\d+$/.test(cleanMsg)) {
+                cleanMsg = 'An unexpected calculation issue occurred during index simulation. Please verify date parameters or retry.';
+            }
+            alertToast(`Comparison Error: ${cleanMsg}`, 'error');
             if (emptyNotice) {
                 emptyNotice.style.display = 'flex';
                 const iconSpan = emptyNotice.querySelector('span:first-child');
                 if (iconSpan) iconSpan.innerText = '⚠️';
-                if (emptyText) emptyText.innerText = `Simulation failed: ${e.message}`;
+                if (emptyText) emptyText.innerText = `Simulation failed: ${cleanMsg}`;
             }
             if (comparisonState.isMinimized) updateIndexComparisonDockUI();
         } finally {

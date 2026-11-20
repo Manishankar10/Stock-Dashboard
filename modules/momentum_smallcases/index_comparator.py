@@ -199,6 +199,8 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
 
     with _comparison_sim_cache_lock:
         for i, idx_cfg in enumerate(index_configs):
+            if not isinstance(idx_cfg, dict):
+                continue
             cfg_id = idx_cfg.get("id") or f"idx_{i+1}"
             color = idx_cfg.get("color") or COMPARISON_PALETTE[i % len(COMPARISON_PALETTE)]
             key = _make_sim_cache_key(start_d, cutoff_d, amount_to_invest, stepup_amount, idx_cfg)
@@ -294,10 +296,10 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
         max_below = kpis.get("max_drilldown_below_investment", {})
 
         summary_rows.append({
-            "id": res["id"],
-            "index_id": res["index_id"],
-            "index_name": res["index_name"],
-            "color": res["color"],
+            "id": res.get("id", f"idx_{len(summary_rows)+1}"),
+            "index_id": res.get("index_id", ""),
+            "index_name": res.get("index_name", "Index"),
+            "color": res.get("color", "#3b82f6"),
             "no_of_stocks": cfg.get("no_of_stocks"),
             "exit_regime_ranking": cfg.get("exit_regime_ranking"),
             "rebalance_day": cfg.get("rebalance_day"),
@@ -496,7 +498,11 @@ def _simulate_single_index(
             db_series = get_stock_closing_prices_from_db(sym, cutoff_date.isoformat())
             price = None
             if db_series and len(db_series) > 0:
-                price = db_series[-1][1]
+                last_elem = db_series[-1]
+                if isinstance(last_elem, (list, tuple)) and len(last_elem) > 1:
+                    price = last_elem[1]
+                elif isinstance(last_elem, (int, float)):
+                    price = float(last_elem)
             if price is None:
                 price = float(h.get("current_price", h.get("buy_price", 0.0)))
             cutoff_curr_val += (qty * price)

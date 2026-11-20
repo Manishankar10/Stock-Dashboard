@@ -606,8 +606,14 @@ def compare_indices_api():
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 200
     except BaseException as e:
-        logger.error(f"Error comparing indices: {e}", exc_info=True)
-        return jsonify({"success": False, "error": f"Simulation failed: {str(e)}"}), 200
+        import traceback
+        tb = traceback.format_exc()
+        err_type = type(e).__name__
+        err_msg = str(e).strip()
+        print(f"[COMPARE_INDICES ERROR]: {err_type}: {err_msg}\n{tb}", flush=True)
+        logger.error(f"Error comparing indices: {err_type}: {err_msg}\n{tb}")
+        display_err = f"{err_type}: {err_msg}" if (not err_msg or err_msg.isdigit() or len(err_msg) <= 2) else err_msg
+        return jsonify({"success": False, "error": display_err, "traceback": tb}), 200
 
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/compare-indices/clear-cache", methods=["POST"])
