@@ -305,54 +305,72 @@ class StockClosingPricesProvider:
         symbol: str,
         company_name: str,
         existing_doc: Optional[Dict[str, Any]],
-        full_resync: bool
+        full_resync: bool,
+        target_market_date: str = ""
     ) -> Optional[Dict[str, Any]]:
         """
         Fetches daily closing prices from Yahoo Finance for a single stock.
-        - If existing document exists and not full_resync: fetches '5d' / '1mo' to append only pending dates.
-        - If new or full_resync: fetches '2y' daily history (~500 candles).
-        Maintains chronological sorting and caps history at a rolling 550 candles (~2.2 years).
+        - Incremental sync: updates recent dates starting from the NEXT date after the last date
+          updated in DB for this stock up to the latest market trading date.
+        - Full resync: fetches complete historical daily prices from 2012-01-01 to Present.
+        Maintains chronological sorting with zero duplicate dates.
         """
         sym_clean = symbol.strip().upper()
-        # Encode symbol for URL (e.g. M&M.NS -> M%26M.NS)
-        encoded_sym = urllib.parse.quote(sym_clean + ".NS")
-
         existing_prices = []
         latest_existing_date = ""
         if existing_doc and not full_resync:
             existing_prices = existing_doc.get("prices", [])
             latest_existing_date = existing_doc.get("latest_date", "")
 
-        # Determine query parameters:
-        # If stock already has historical data back to ~2012 (or >= 2500 bars), incremental fetch 5d or 1mo
+        tz_ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         now_ts = int(time.time())
-        if existing_prices and latest_existing_date and len(existing_prices) >= 2500:
-            query_params = "interval=1d&range=5d&includePrePost=false"
-        elif existing_prices and latest_existing_date and existing_doc.get("start_date", "") <= "2013-01-01":
-            query_params = "interval=1d&range=1mo&includePrePost=false"
+
+        # Determine query parameters:
+        # If stock already exists in DB and has historical prices, fetch only recent dates
+        # from the NEXT date after the last date updated (latest_existing_date) up to now.
+        if existing_prices and latest_existing_date and not full_resync:
+            try:
+                last_dt = datetime.datetime.strptime(latest_existing_date, "%Y-%m-%d").date()
+                # Start fetching from the next date after the last date updated
+                next_dt = last_dt + datetime.timedelta(days=1)
+                dt_next_ist = datetime.datetime(next_dt.year, next_dt.month, next_dt.day, 0, 0, 0, tzinfo=tz_ist)
+                period1 = int(dt_next_ist.timestamp())
+
+                # If the next date is in the future relative to current time, stock is already up to date
+                if period1 >= now_ts:
+                    return None
+
+                query_params = f"interval=1d&period1={period1}&period2={now_ts}&includePrePost=false"
+            except Exception as e:
+                logger.warning(f"Error calculating next date for {sym_clean}: {e}")
+                query_params = "interval=1d&range=5d&includePrePost=false"
         else:
-            # Full 2012 to present backfill
-            # 1325376000 is 2012-01-01 00:00:00 UTC
+            # Full 2012 to present backfill (1325376000 is 2012-01-01 00:00:00 UTC)
             query_params = f"interval=1d&period1=1325376000&period2={now_ts}&includePrePost=false"
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         hosts = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]
+        suffixes = [".NS", ".BO"]
 
         raw_res = None
-        for host in hosts:
-            url = f"https://{host}/v8/finance/chart/{encoded_sym}?{query_params}"
-            try:
-                r = requests.get(url, headers=headers, timeout=12)
-                if r.status_code == 200:
-                    data = r.json()
-                    results = data.get("chart", {}).get("result")
-                    if results and len(results) > 0:
-                        raw_res = results[0]
-                        break
-            except Exception:
-                continue
+        for suffix in suffixes:
+            encoded_sym = urllib.parse.quote(sym_clean + suffix)
+            for host in hosts:
+                url = f"https://{host}/v8/finance/chart/{encoded_sym}?{query_params}"
+                try:
+                    r = requests.get(url, headers=headers, timeout=12)
+                    if r.status_code == 200:
+                        data = r.json()
+                        results = data.get("chart", {}).get("result")
+                        if results and len(results) > 0:
+                            raw_res = results[0]
+                            break
+                except Exception:
+                    continue
+            if raw_res:
+                break
 
         if not raw_res:
             return None
@@ -369,10 +387,15 @@ class StockClosingPricesProvider:
                 break
             c_val = closes[i]
             if c_val is not None:
-                # Convert timestamp to YYYY-MM-DD in IST
-                dt_ist = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
-                d_str = dt_ist.strftime("%Y-%m-%d")
-                fetched_bars.append({"d": d_str, "c": round(float(c_val), 2)})
+                try:
+                    c_float = float(c_val)
+                    if c_float > 0:
+                        dt_ist = datetime.datetime.fromtimestamp(ts, tz=tz_ist)
+                        d_str = dt_ist.strftime("%Y-%m-%d")
+                        if d_str >= START_DATE:
+                            fetched_bars.append({"d": d_str, "c": round(c_float, 2)})
+                except (ValueError, TypeError):
+                    continue
 
         if not fetched_bars:
             return None
@@ -443,7 +466,7 @@ class StockClosingPricesProvider:
             target_market_date = self.get_latest_market_trading_date()
 
             # Prepare list of stocks to fetch
-            if not full_resync:
+            if not full_resync and not force:
                 # Sync strictly ONLY pending stocks that do not have the latest market trading date
                 stock_items = [
                     (sym, cname) for sym, cname in stocks_map.items()
@@ -495,7 +518,8 @@ class StockClosingPricesProvider:
                             sym,
                             cname,
                             existing_doc,
-                            full_resync
+                            full_resync,
+                            target_market_date
                         )
                         futures[future] = sym
 
