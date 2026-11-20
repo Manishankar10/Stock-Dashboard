@@ -50,24 +50,21 @@
 
         <!-- Strategies Main Card -->
         <div class="card-container msc-main-card" style="padding: 22px;">
-            <div class="msc-card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 18px;">
-                <div>
-                    <h2 style="margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 9px;">
-                        <span>🚀</span> Momentum Smallcase Strategies
-                    </h2>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
-                        Systematic momentum portfolio engine with automatic equal-weight allocation, exit regimes, and scheduled rebalancing.
-                    </div>
-                </div>
-                <div class="msc-card-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <button type="button" class="btn-secondary" title="Refresh Smallcases" onclick="loadStrategiesList()" style="font-size: 12.5px; padding: 7px 15px; display: inline-flex; align-items: center; gap: 5px;">
-                        <span>↻</span> <span>Refresh</span>
-                    </button>
-                    <button type="button" class="btn-secondary" onclick="openIndexComparisonModal()" style="font-size: 12.5px; padding: 7px 15px; display: inline-flex; align-items: center; gap: 6px; background: rgba(99, 102, 241, 0.12); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 600;" title="Compare performance of multiple index universes in the same graph using DB closing prices">
+            <div class="msc-card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 18px;">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <span>🚀</span> Momentum Smallcase Strategies
+                </h2>
+                <div class="msc-card-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-secondary" onclick="openIndexComparisonModal()" style="font-size: 12.5px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px; background: rgba(99, 102, 241, 0.12); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 600;" title="Compare performance of multiple index universes in the same graph using DB closing prices">
                         <span>📈</span> <span>Compare Indices</span>
                     </button>
-                    <button type="button" class="btn-primary" onclick="openAddStrategyModal()" style="font-size: 12.5px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn-primary" onclick="openAddStrategyModal()" style="font-size: 12.5px; padding: 6px 15px; display: inline-flex; align-items: center; gap: 6px;">
                         <span>➕</span> <span>Add Smallcase</span>
+                    </button>
+                    <button type="button" class="wl-refresh-btn cd-refresh-btn" id="msc-strategies-refresh-btn" onclick="loadStrategiesList()" title="Refresh Smallcases" aria-label="Refresh Smallcases">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
                     </button>
                 </div>
             </div>

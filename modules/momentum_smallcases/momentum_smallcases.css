@@ -1094,11 +1094,20 @@ body > .msc-global-process-loader[style*="none"] {
         gap: 8px !important;
     }
 
-    .msc-card-actions button {
-        flex: 1 1 50% !important;
+    .msc-card-actions button:not(.wl-refresh-btn) {
+        flex: 1 1 40% !important;
         justify-content: center !important;
         padding: 7px 10px !important;
         font-size: 12px !important;
+    }
+
+    .msc-card-actions .wl-refresh-btn {
+        flex: 0 0 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        padding: 0 !important;
     }
 
     /* 4. Filter Toolbar & Search */

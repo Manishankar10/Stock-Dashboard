@@ -401,6 +401,12 @@
         const mount = document.getElementById('momentum-strategies-mount');
         if (!mount) return;
 
+        const refreshBtn = document.getElementById('msc-strategies-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.add('refreshing');
+            refreshBtn.setAttribute('aria-busy', 'true');
+        }
+
         if (typeof window.createBrandLoaderHTML === 'function') {
             mount.innerHTML = window.createBrandLoaderHTML({
                 title: 'Loading Momentum Smallcases...',
@@ -431,6 +437,11 @@
         } catch (err) {
             console.error('Error loading strategies list:', err);
             mount.innerHTML = `<div style="text-align: center; padding: 30px; color: #ef4444;">Failed to load strategies: ${escapeHtml(err.message)}</div>`;
+        } finally {
+            if (refreshBtn) {
+                refreshBtn.classList.remove('refreshing');
+                refreshBtn.removeAttribute('aria-busy');
+            }
         }
     }
 
