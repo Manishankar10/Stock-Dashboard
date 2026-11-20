@@ -9,8 +9,11 @@ Simulates and compares multiple momentum smallcase index universes side-by-side:
 - Evaluates full portfolio milestone series, drawdowns, and KPIs.
 """
 
+import copy
 import logging
 import math
+import re
+import threading
 import uuid
 from datetime import date, datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -47,51 +50,78 @@ COMPARISON_PALETTE = [
     "#14b8a6",  # Teal
 ]
 
+# In-memory thread-safe cache for previously computed index simulation results
+# Key: (start_date, cutoff_date, amount, stepup, index_id, no_of_stocks, exit, rebal, trim, days, formula)
+_comparison_sim_cache = {}
+_comparison_sim_cache_lock = threading.Lock()
+
+
+def _parse_date_flexible(d_str, default_date=None):
+    """Parses date string flexibly supporting YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, etc."""
+    if not d_str:
+        return default_date or date.today()
+    if isinstance(d_str, (date, datetime)):
+        return d_str if isinstance(d_str, date) else d_str.date()
+    s = str(d_str).strip()
+    clean = re.sub(r'[^0-9\-\/\.]', '', s)
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y", "%Y.%m.%d", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(clean[:10], fmt).date()
+        except Exception:
+            pass
+    return default_date or date.today()
+
+
+def _make_sim_cache_key(start_d, cutoff_d, amount_to_invest, stepup_amount, idx_cfg):
+    """Generates an immutable tuple key representing the exact input parameters for one index."""
+    idx_id = str(idx_cfg.get("index_id") or "").strip().upper()
+    no_of_stocks = int(idx_cfg.get("no_of_stocks") or 12)
+    exit_regime = int(idx_cfg.get("exit_regime_ranking") or 22)
+    rebal_day = int(idx_cfg.get("rebalance_day") or 21)
+    trim_existing = idx_cfg.get("trim_existing") in (True, "yes", "true", "1")
+    trading_days = int(idx_cfg.get("trading_days_per_month") or 21)
+    formula_str = str(idx_cfg.get("formula") or DEFAULT_FORMULA).strip()
+    return (
+        start_d.isoformat(),
+        cutoff_d.isoformat(),
+        round(float(amount_to_invest), 2),
+        round(float(stepup_amount), 2),
+        idx_id,
+        no_of_stocks,
+        exit_regime,
+        rebal_day,
+        trim_existing,
+        trading_days,
+        formula_str
+    )
+
+
+def clear_comparison_cache():
+    """Clears in-memory comparison simulation cache."""
+    with _comparison_sim_cache_lock:
+        _comparison_sim_cache.clear()
+
 
 def run_index_comparison_simulation(common_config, index_configs, username=None):
     """
     Executes an in-memory simulation comparing multiple index configurations.
     Uses ONLY DB data from collection 'stock_closing_prices'.
-
-    common_config:
-      - start_date: str (YYYY-MM-DD)
-      - amount_to_invest: float (e.g. 100000.0)
-      - cutoff_date: str (YYYY-MM-DD, optional, defaults to today)
-
-    index_configs: list of dicts:
-      - id: str
-      - index_id: str (e.g. 'NIFTY_50', 'NIFTY_SMALLCAP_250', or 'midx_...')
-      - index_name: str
-      - index_type: str ('nifty' or 'manual')
-      - no_of_stocks: int (default 12)
-      - exit_regime_ranking: int (default 22)
-      - rebalance_day: int (default 21)
-      - trim_existing: bool (default False)
-      - trading_days_per_month: int (default 21)
-      - formula: str (optional)
-      - color: str (optional hex color)
+    Caches calculated results by parameter signature to reuse existing results and
+    only simulate newly added or modified indices.
     """
     if not index_configs:
         raise ValueError("At least one index configuration is required for comparison.")
 
-    # 1. Parse common settings
-    start_date_str = str(common_config.get("start_date", "")).strip()[:10]
-    if not start_date_str:
-        start_date_str = "2025-10-01"
-
-    try:
-        start_d = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-    except Exception:
-        start_d = date(2025, 10, 1)
-
-    cutoff_date_str = str(common_config.get("cutoff_date", "")).strip()[:10]
-    if cutoff_date_str:
-        try:
-            cutoff_d = datetime.strptime(cutoff_date_str, "%Y-%m-%d").date()
-        except Exception:
-            cutoff_d = date.today()
-    else:
-        cutoff_d = date.today()
+    # 1. Parse common settings flexibly
+    start_d = _parse_date_flexible(common_config.get("start_date"), date(2024, 1, 1))
+    cutoff_d = _parse_date_flexible(common_config.get("cutoff_date"), date.today())
+    if start_d > cutoff_d:
+        return {
+            "success": False,
+            "error": f"Start Date ({start_d.strftime('%d-%b-%Y')}) cannot be after Cutoff Date ({cutoff_d.strftime('%d-%b-%Y')}).",
+            "results": [],
+            "summary": []
+        }
 
     amount_to_invest = float(common_config.get("amount_to_invest") or 100000.0)
     if amount_to_invest <= 0:
@@ -101,76 +131,94 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
     if stepup_amount < 0:
         stepup_amount = 0.0
 
-    # 2. Gather all constituent symbols across all compared indices to prewarm DB prices
-    all_constituents_by_index = {}
-    all_symbols_to_warm = set()
+    # 2. Check cache for each index configuration
+    cached_results = {}
+    uncached_indices = []
 
-    for idx_cfg in index_configs:
-        idx_id = idx_cfg.get("index_id")
-        idx_type = idx_cfg.get("index_type")
-        if not idx_type:
-            idx_type = "manual" if str(idx_id).startswith("midx_") else "nifty"
-        constituents = get_strategy_index_constituents(idx_id, idx_type, username=username) or []
-        if not constituents:
-            fallback_type = "nifty" if idx_type == "manual" else "manual"
-            constituents = get_strategy_index_constituents(idx_id, fallback_type, username=username) or []
-        all_constituents_by_index[idx_id] = constituents
+    with _comparison_sim_cache_lock:
+        for i, idx_cfg in enumerate(index_configs):
+            cfg_id = idx_cfg.get("id") or f"idx_{i+1}"
+            color = idx_cfg.get("color") or COMPARISON_PALETTE[i % len(COMPARISON_PALETTE)]
+            key = _make_sim_cache_key(start_d, cutoff_d, amount_to_invest, stepup_amount, idx_cfg)
+            if key in _comparison_sim_cache:
+                cached_item = copy.deepcopy(_comparison_sim_cache[key])
+                cached_item["id"] = cfg_id
+                cached_item["color"] = color
+                cached_results[i] = cached_item
+                logger.info(f"Reusing cached simulation result for index '{idx_cfg.get('index_name') or idx_cfg.get('index_id')}'")
+            else:
+                uncached_indices.append((i, idx_cfg, key, cfg_id, color))
 
-        for c in constituents:
-            if isinstance(c, dict) and c.get("symbol"):
-                all_symbols_to_warm.add(c["symbol"])
-            elif isinstance(c, str):
-                all_symbols_to_warm.add(c)
+    # 3. Only simulate newly added or uncached indices
+    if uncached_indices:
+        all_constituents_by_index = {}
+        all_symbols_to_warm = set()
 
-    # Prewarm DB prices into memory cache in bulk (< 0.5s for hundreds of stocks)
-    logger.info(f"Prewarming DB prices for {len(all_symbols_to_warm)} stocks across {len(index_configs)} indices...")
-    prewarm_stock_prices_cache(all_symbols_to_warm)
+        for (i, idx_cfg, key, cfg_id, color) in uncached_indices:
+            idx_id = idx_cfg.get("index_id")
+            idx_type = idx_cfg.get("index_type")
+            if not idx_type:
+                idx_type = "manual" if str(idx_id).startswith("midx_") else "nifty"
+            constituents = get_strategy_index_constituents(idx_id, idx_type, username=username) or []
+            if not constituents:
+                fallback_type = "nifty" if idx_type == "manual" else "manual"
+                constituents = get_strategy_index_constituents(idx_id, fallback_type, username=username) or []
+            all_constituents_by_index[idx_id] = constituents
 
-    results = []
+            for c in constituents:
+                if isinstance(c, dict) and c.get("symbol"):
+                    all_symbols_to_warm.add(c["symbol"])
+                elif isinstance(c, str):
+                    all_symbols_to_warm.add(c)
 
-    # 3. Simulate each index sequentially
-    for i, idx_cfg in enumerate(index_configs):
-        cfg_id = idx_cfg.get("id") or f"idx_{i+1}"
-        idx_id = idx_cfg.get("index_id")
-        idx_name = idx_cfg.get("index_name") or idx_id
-        idx_type = idx_cfg.get("index_type", "manual")
-        no_of_stocks = int(idx_cfg.get("no_of_stocks") or 12)
-        exit_regime = int(idx_cfg.get("exit_regime_ranking") or 22)
-        rebal_day = int(idx_cfg.get("rebalance_day") or 21)
-        trim_existing = idx_cfg.get("trim_existing") in (True, "yes", "true", "1")
-        trading_days_per_month = int(idx_cfg.get("trading_days_per_month") or 21)
-        formula_str = (idx_cfg.get("formula") or DEFAULT_FORMULA).strip()
-        color = idx_cfg.get("color") or COMPARISON_PALETTE[i % len(COMPARISON_PALETTE)]
+        if all_symbols_to_warm:
+            logger.info(f"Prewarming DB prices for {len(all_symbols_to_warm)} stocks across {len(uncached_indices)} uncached indices...")
+            prewarm_stock_prices_cache(all_symbols_to_warm)
 
-        constituents = all_constituents_by_index.get(idx_id) or []
-        if not constituents:
-            logger.warning(f"No constituents found for index '{idx_name}' ({idx_id}); skipping.")
-            continue
+        for (i, idx_cfg, key, cfg_id, color) in uncached_indices:
+            idx_id = idx_cfg.get("index_id")
+            idx_name = idx_cfg.get("index_name") or idx_id
+            no_of_stocks = int(idx_cfg.get("no_of_stocks") or 12)
+            exit_regime = int(idx_cfg.get("exit_regime_ranking") or 22)
+            rebal_day = int(idx_cfg.get("rebalance_day") or 21)
+            trim_existing = idx_cfg.get("trim_existing") in (True, "yes", "true", "1")
+            trading_days_per_month = int(idx_cfg.get("trading_days_per_month") or 21)
+            formula_str = (idx_cfg.get("formula") or DEFAULT_FORMULA).strip()
 
-        try:
-            sim_result = _simulate_single_index(
-                index_id=idx_id,
-                index_name=idx_name,
-                constituents=constituents,
-                start_date=start_d,
-                cutoff_date=cutoff_d,
-                amount_to_invest=amount_to_invest,
-                no_of_stocks=no_of_stocks,
-                exit_regime_ranking=exit_regime,
-                rebalance_day=rebal_day,
-                trim_existing=trim_existing,
-                trading_days_per_month=trading_days_per_month,
-                formula_str=formula_str,
-                color=color,
-                cfg_id=cfg_id,
-                stepup_amount=stepup_amount
-            )
-            if sim_result:
-                results.append(sim_result)
-        except Exception as e:
-            logger.error(f"Error simulating index '{idx_name}': {e}", exc_info=True)
+            constituents = all_constituents_by_index.get(idx_id) or []
+            if not constituents:
+                logger.warning(f"No constituents found for index '{idx_name}' ({idx_id}); skipping.")
+                continue
 
-    # 4. Build summary comparison matrix
+            try:
+                sim_result = _simulate_single_index(
+                    index_id=idx_id,
+                    index_name=idx_name,
+                    constituents=constituents,
+                    start_date=start_d,
+                    cutoff_date=cutoff_d,
+                    amount_to_invest=amount_to_invest,
+                    no_of_stocks=no_of_stocks,
+                    exit_regime_ranking=exit_regime,
+                    rebalance_day=rebal_day,
+                    trim_existing=trim_existing,
+                    trading_days_per_month=trading_days_per_month,
+                    formula_str=formula_str,
+                    color=color,
+                    cfg_id=cfg_id,
+                    stepup_amount=stepup_amount
+                )
+                if sim_result:
+                    cached_results[i] = sim_result
+                    with _comparison_sim_cache_lock:
+                        _comparison_sim_cache[key] = copy.deepcopy(sim_result)
+            except Exception as e:
+                logger.error(f"Error simulating index '{idx_name}': {e}", exc_info=True)
+
+    # 4. Gather results in original order
+    results = [cached_results[i] for i in range(len(index_configs)) if i in cached_results]
+
+    # 5. Build summary comparison matrix
     summary_rows = []
     for res in results:
         kpis = res.get("kpis", {})
@@ -214,7 +262,7 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
     if not results:
         return {
             "success": False,
-            "error": "No simulation data could be generated for the selected indices and dates. Please ensure the Start Date is between October 2025 and today (database price history starts Jan 2025 for 9-month momentum lookbacks).",
+            "error": f"No simulation data could be generated for the selected indices starting from {start_d.strftime('%d-%b-%Y')}. Please verify that the start date is within the available price history.",
             "results": [],
             "summary": []
         }
@@ -235,7 +283,9 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             "stepup_amount": stepup_amount
         },
         "results": results,
-        "summary": summary_rows
+        "summary": summary_rows,
+        "cached_count": len(cached_results),
+        "computed_count": len(uncached_indices)
     }
 
 

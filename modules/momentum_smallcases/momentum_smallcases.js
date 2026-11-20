@@ -5189,12 +5189,59 @@
         if (comparisonState.isMinimized) updateIndexComparisonDockUI();
         if (runBtn) runBtn.disabled = true;
         if (runIcon) runIcon.innerText = '⏳';
-        if (runText) runText.innerText = 'Simulating...';
+
+        // Check cache to inform user about incremental simulation
+        function getIndexParamKey(common, row) {
+            return [
+                common.start_date,
+                common.cutoff_date,
+                common.amount_to_invest,
+                common.stepup_amount,
+                (row.index_id || '').toUpperCase(),
+                row.no_of_stocks,
+                row.exit_regime_ranking,
+                row.rebalance_day,
+                row.trim_existing ? 'yes' : 'no',
+                row.trading_days_per_month
+            ].join('|');
+        }
+
+        const commonObj = {
+            start_date: startDate,
+            amount_to_invest: amount,
+            stepup_amount: stepup,
+            cutoff_date: cutoffDate
+        };
+
+        if (!comparisonState.cachedIndices) {
+            comparisonState.cachedIndices = {};
+        }
+
+        const uncachedRows = comparisonState.indexRows.filter(r => {
+            const key = getIndexParamKey(commonObj, r);
+            return !comparisonState.cachedIndices[key];
+        });
+        const cachedCount = comparisonState.indexRows.length - uncachedRows.length;
+
+        if (runText) {
+            runText.innerText = (uncachedRows.length > 0 && cachedCount > 0)
+                ? `Simulating (${uncachedRows.length} new)...`
+                : 'Simulating...';
+        }
         if (emptyNotice) {
             emptyNotice.style.display = 'flex';
             const iconSpan = emptyNotice.querySelector('span:first-child');
             if (iconSpan) iconSpan.innerText = '⏳';
-            if (emptyText) emptyText.innerText = 'Running multi-index momentum simulation from SQLite DB...';
+            if (emptyText) {
+                if (uncachedRows.length > 0 && cachedCount > 0) {
+                    const newNames = uncachedRows.map(r => r.index_name || r.index_id).join(', ');
+                    emptyText.innerText = `Simulating newly added index (${newNames})... Reusing ${cachedCount} already calculated index results.`;
+                } else if (cachedCount > 0 && uncachedRows.length === 0) {
+                    emptyText.innerText = `Re-loading ${cachedCount} comparison results from cache...`;
+                } else {
+                    emptyText.innerText = 'Running multi-index momentum simulation from SQLite DB...';
+                }
+            }
         }
 
         try {
@@ -5242,6 +5289,16 @@
             comparisonState.simulationResults = data;
             if (emptyNotice) emptyNotice.style.display = 'none';
 
+            // Cache newly computed index results by parameter key
+            if (data.results && Array.isArray(data.results)) {
+                data.results.forEach(res => {
+                    if (res && res.config) {
+                        const key = getIndexParamKey(data.common, res.config);
+                        comparisonState.cachedIndices[key] = res;
+                    }
+                });
+            }
+
             // Render Chart.js multi-line canvas
             renderComparisonMultiLineChart(data);
 
@@ -5253,7 +5310,13 @@
                 selectComparedIndexKPI(0);
             }
 
-            alertToast(`Successfully simulated ${data.results.length} indices using DB historical quotes!`, 'success');
+            if (data.cached_count && data.cached_count > 0 && data.computed_count > 0) {
+                alertToast(`Simulated successfully! Reused ${data.cached_count} cached index results and simulated ${data.computed_count} new index.`, 'success');
+            } else if (data.cached_count && data.cached_count > 0 && data.computed_count === 0) {
+                alertToast(`Loaded ${data.results.length} index comparison results instantly from cache!`, 'success');
+            } else {
+                alertToast(`Successfully simulated ${data.results.length} indices using DB historical quotes!`, 'success');
+            }
             if (comparisonState.isMinimized) updateIndexComparisonDockUI();
 
         } catch (e) {

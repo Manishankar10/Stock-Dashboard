@@ -604,8 +604,8 @@ def compare_indices_api():
         res = run_index_comparison_simulation(common_config, index_configs, username=user)
         return jsonify(res)
     except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
+        return jsonify({"success": False, "error": str(ve)}), 200
+    except BaseException as e:
         logger.error(f"Error comparing indices: {e}", exc_info=True)
         return jsonify({"success": False, "error": f"Simulation failed: {str(e)}"}), 200
 
