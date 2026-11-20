@@ -938,10 +938,11 @@
                     </div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <button type="button" class="btn-secondary" onclick="closeIndexComparisonModal()" style="font-size: 12px; padding: 6px 14px;">
-                    ✕ Close
+            <div class="msc-comp-header-actions" style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn-secondary" onclick="minimizeIndexComparisonModal()" style="font-size: 11.5px; padding: 5px 12px; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px;" title="Minimize to floating widget and keep running in background">
+                    <span>🗕</span> <span>Minimize</span>
                 </button>
+                <button type="button" class="msc-modal-close-btn" onclick="closeIndexComparisonModal()" style="font-size: 18px; line-height: 1; padding: 4px 8px;" title="Close modal">✕</button>
             </div>
         </div>
 
@@ -1158,24 +1159,47 @@
 </div>
 
 <!-- =========================================================================
-     FLOATING DOCK WIDGET (WHEN PERFORMANCE GRAPH MODAL IS MINIMIZED)
+     FLOATING DOCK WIDGETS CONTAINER (PERFORMANCE GRAPH & INDEX COMPARISON)
+     Stacks minimized modals cleanly in bottom-right corner without overlapping.
      ========================================================================= -->
-<div id="mscPerformanceGraphDock" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 10050; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 8px 16px; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s ease;" onclick="restorePerformanceGraphModal()">
-    <span style="font-size: 16px; display: inline-flex; align-items: center;">📈</span>
-    <div style="display: flex; flex-direction: column;">
-        <span style="font-size: 12px; font-weight: 700; color: var(--text-primary); line-height: 1.2;" id="pgDockStratName">
-            Performance Graph
-        </span>
-        <span style="font-size: 10.5px; color: #10b981; font-weight: 600; line-height: 1.2;" id="pgDockStatus">
-            ⏳ Calculating...
-        </span>
+<div id="mscFloatingDocksContainer" style="position: fixed; bottom: 24px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: none;">
+    <!-- Index Comparison Dock Widget -->
+    <div id="mscIndexComparisonDock" style="display: none; pointer-events: auto; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 8px 16px; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s ease;" onclick="restoreIndexComparisonModal()">
+        <span style="font-size: 16px; display: inline-flex; align-items: center;">📊</span>
+        <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-primary); line-height: 1.2;" id="compDockTitle">
+                Index Comparison
+            </span>
+            <span style="font-size: 10.5px; color: #818cf8; font-weight: 600; line-height: 1.2;" id="compDockStatus">
+                Configured (Click to expand)
+            </span>
+        </div>
+        <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center;" title="Restore Multi-Index Comparison" onclick="event.stopPropagation(); restoreIndexComparisonModal();">
+            🗖
+        </button>
+        <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline-flex; align-items: center;" title="Close and dismiss" onclick="event.stopPropagation(); closeIndexComparisonDock();">
+            ✕
+        </button>
     </div>
-    <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center;" title="Restore full-size modal" onclick="event.stopPropagation(); restorePerformanceGraphModal();">
-        🗖
-    </button>
-    <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline-flex; align-items: center;" title="Close and dismiss" onclick="event.stopPropagation(); closePerformanceGraphDock();">
-        ✕
-    </button>
+
+    <!-- Performance Graph Dock Widget -->
+    <div id="mscPerformanceGraphDock" style="display: none; pointer-events: auto; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 8px 16px; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s ease;" onclick="restorePerformanceGraphModal()">
+        <span style="font-size: 16px; display: inline-flex; align-items: center;">📈</span>
+        <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-primary); line-height: 1.2;" id="pgDockStratName">
+                Performance Graph
+            </span>
+            <span style="font-size: 10.5px; color: #10b981; font-weight: 600; line-height: 1.2;" id="pgDockStatus">
+                ⏳ Calculating...
+            </span>
+        </div>
+        <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center;" title="Restore full-size modal" onclick="event.stopPropagation(); restorePerformanceGraphModal();">
+            🗖
+        </button>
+        <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline-flex; align-items: center;" title="Close and dismiss" onclick="event.stopPropagation(); closePerformanceGraphDock();">
+            ✕
+        </button>
+    </div>
 </div>
 
 <!-- Global Brand Process Loader Overlay (Active during Init, Rebalance, and Engine Recalculations) -->

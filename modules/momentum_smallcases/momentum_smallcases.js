@@ -36,7 +36,11 @@
         'momentumIndexViewModal',
         'momentumIndexDeleteModal',
         'walletLogTransactionsModal',
-        'performanceGraphModal'
+        'performanceGraphModal',
+        'mscIndexComparisonModal',
+        'mscFloatingDocksContainer',
+        'mscPerformanceGraphDock',
+        'mscIndexComparisonDock'
     ];
 
     function ensureModalsAttachedToBody() {
@@ -3278,12 +3282,12 @@
                 </td>
                 <td style="text-align: right; color: var(--text-secondary); padding: 10px 12px;">—</td>
                 <td style="text-align: right; font-family: monospace; padding: 10px 12px;">
-                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">₹${formatCurrency(totAmount)}</div>
-                    <div style="font-size: 10px; font-weight: normal; color: var(--text-secondary); margin-top: 2px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); white-space: nowrap;">₹${formatCurrency(totAmount)}</div>
+                    <div style="font-size: 10px; font-weight: normal; color: var(--text-secondary); margin-top: 2px; white-space: nowrap;">
                         Buy: ₹${formatCurrency(totBuy)} · Sell: ₹${formatCurrency(totSell)}
                     </div>
                     ${hasSells ? `
-                    <div style="font-size: 10.5px; font-weight: 700; color: ${totPnlColor}; margin-top: 3px;">
+                    <div style="font-size: 10.5px; font-weight: 700; color: ${totPnlColor}; margin-top: 3px; white-space: nowrap;">
                         P&L: ${totPnlSign}₹${formatCurrency(totRealizedPnl)} (${totPnlSign}${totPnlPct.toFixed(2)}%)
                     </div>` : ''}
                 </td>
@@ -4633,7 +4637,8 @@
         chartInstance: null,
         simulationResults: null,
         activeSelectedIndexId: null,
-        isRunning: false
+        isRunning: false,
+        isMinimized: false
     };
 
     const COMPARISON_PALETTE = [
@@ -4665,6 +4670,11 @@
     }
 
     async function openIndexComparisonModal() {
+        ensureModalsAttachedToBody();
+        comparisonState.isMinimized = false;
+        const dock = document.getElementById('mscIndexComparisonDock');
+        if (dock) dock.style.display = 'none';
+
         const modal = document.getElementById('mscIndexComparisonModal');
         if (!modal) return;
         modal.style.display = 'flex';
@@ -4720,6 +4730,20 @@
 
         renderComparisonIndexRows();
 
+        // If results already exist and user was minimized or re-opened, render chart/summary
+        if (comparisonState.simulationResults) {
+            const emptyNotice = document.getElementById('mscCompChartEmptyNotice');
+            if (emptyNotice) emptyNotice.style.display = 'none';
+            setTimeout(() => {
+                if (comparisonState.chartInstance) {
+                    comparisonState.chartInstance.resize();
+                } else {
+                    renderComparisonMultiLineChart(comparisonState.simulationResults);
+                }
+            }, 50);
+            return;
+        }
+
         // Show friendly initial placeholder - only run simulation when user clicks 'Run Comparison'
         const emptyNotice = document.getElementById('mscCompChartEmptyNotice');
         const emptyText = document.getElementById('mscCompChartEmptyText');
@@ -4734,11 +4758,74 @@
     }
 
     function closeIndexComparisonModal() {
+        comparisonState.isMinimized = false;
+        const dock = document.getElementById('mscIndexComparisonDock');
+        if (dock) dock.style.display = 'none';
+
         const modal = document.getElementById('mscIndexComparisonModal');
         if (modal) modal.style.display = 'none';
         if (comparisonState.chartInstance) {
             comparisonState.chartInstance.destroy();
             comparisonState.chartInstance = null;
+        }
+    }
+
+    function minimizeIndexComparisonModal() {
+        comparisonState.isMinimized = true;
+        const modal = document.getElementById('mscIndexComparisonModal');
+        const dock = document.getElementById('mscIndexComparisonDock');
+        if (modal) modal.style.display = 'none';
+        if (dock) {
+            dock.style.display = 'flex';
+            updateIndexComparisonDockUI();
+        }
+    }
+
+    function restoreIndexComparisonModal() {
+        comparisonState.isMinimized = false;
+        const modal = document.getElementById('mscIndexComparisonModal');
+        const dock = document.getElementById('mscIndexComparisonDock');
+        if (dock) dock.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'flex';
+            if (comparisonState.simulationResults) {
+                setTimeout(() => {
+                    if (comparisonState.chartInstance) {
+                        comparisonState.chartInstance.resize();
+                    } else {
+                        renderComparisonMultiLineChart(comparisonState.simulationResults);
+                    }
+                }, 50);
+            }
+        }
+    }
+
+    function closeIndexComparisonDock() {
+        comparisonState.isMinimized = false;
+        const dock = document.getElementById('mscIndexComparisonDock');
+        if (dock) dock.style.display = 'none';
+    }
+
+    function updateIndexComparisonDockUI() {
+        const dock = document.getElementById('mscIndexComparisonDock');
+        if (!dock) return;
+        const titleEl = document.getElementById('compDockTitle');
+        const statusEl = document.getElementById('compDockStatus');
+        const count = (comparisonState.indexRows || []).length;
+        if (titleEl) {
+            titleEl.innerText = `Index Comparison (${count} ${count === 1 ? 'Index' : 'Indices'})`;
+        }
+        if (statusEl) {
+            if (comparisonState.isRunning) {
+                statusEl.innerText = '⏳ Simulating...';
+                statusEl.style.color = '#f59e0b';
+            } else if (comparisonState.simulationResults) {
+                statusEl.innerText = '✅ Results Ready (Click to expand)';
+                statusEl.style.color = '#10b981';
+            } else {
+                statusEl.innerText = '📊 Configured (Click to expand)';
+                statusEl.style.color = '#818cf8';
+            }
         }
     }
 
@@ -4969,6 +5056,7 @@
         const emptyText = document.getElementById('mscCompChartEmptyText');
 
         comparisonState.isRunning = true;
+        if (comparisonState.isMinimized) updateIndexComparisonDockUI();
         if (runBtn) runBtn.disabled = true;
         if (runIcon) runIcon.innerText = '⏳';
         if (runText) runText.innerText = 'Simulating...';
@@ -5035,6 +5123,7 @@
             }
 
             alertToast(`Successfully simulated ${data.results.length} indices using DB historical quotes!`, 'success');
+            if (comparisonState.isMinimized) updateIndexComparisonDockUI();
 
         } catch (e) {
             console.error('Error during index comparison simulation:', e);
@@ -5045,8 +5134,10 @@
                 if (iconSpan) iconSpan.innerText = '⚠️';
                 if (emptyText) emptyText.innerText = `Simulation failed: ${e.message}`;
             }
+            if (comparisonState.isMinimized) updateIndexComparisonDockUI();
         } finally {
             comparisonState.isRunning = false;
+            if (comparisonState.isMinimized) updateIndexComparisonDockUI();
             if (runBtn) runBtn.disabled = false;
             if (runIcon) runIcon.innerText = '▶';
             if (runText) runText.innerText = 'Run Comparison';
@@ -5426,7 +5517,10 @@
     // EXPOSE TO GLOBAL SCOPE
     // =========================================================================
     window.openIndexComparisonModal = openIndexComparisonModal;
+    window.minimizeIndexComparisonModal = minimizeIndexComparisonModal;
+    window.restoreIndexComparisonModal = restoreIndexComparisonModal;
     window.closeIndexComparisonModal = closeIndexComparisonModal;
+    window.closeIndexComparisonDock = closeIndexComparisonDock;
     window.addComparisonIndexRow = addComparisonIndexRow;
     window.removeComparisonIndexRow = removeComparisonIndexRow;
     window.updateComparisonRowUniverse = updateComparisonRowUniverse;
