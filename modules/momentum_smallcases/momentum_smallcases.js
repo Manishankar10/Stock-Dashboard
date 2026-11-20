@@ -5029,14 +5029,120 @@
         alertToast(`Added index #${comparisonState.indexRows.length} with defaults from Index #1`, 'info');
     }
 
+    function resetComparisonKPIs() {
+        const titleEl = document.getElementById('mscCompActiveTitle');
+        const dotEl = document.getElementById('mscCompActiveDot');
+        const badgeEl = document.getElementById('mscCompActiveBadge');
+        if (titleEl) titleEl.innerText = 'Index Performance Metrics';
+        if (dotEl) dotEl.style.background = '#6366f1';
+        if (badgeEl) {
+            badgeEl.innerText = 'Select or simulate an index';
+            badgeEl.style.color = 'var(--text-secondary)';
+            badgeEl.style.background = 'var(--bg-subtle)';
+        }
+
+        const finalValEl = document.getElementById('compKpiFinalVal');
+        const netPnlEl = document.getElementById('compKpiNetPnl');
+        if (finalValEl) finalValEl.innerText = '₹0.00';
+        if (netPnlEl) netPnlEl.innerHTML = '<span style="color: var(--text-secondary);">₹0.00 (0.00%)</span>';
+
+        const cagrEl = document.getElementById('compKpiCagr');
+        const winRateEl = document.getElementById('compKpiWinRate');
+        if (cagrEl) {
+            cagrEl.innerText = '0.00%';
+            cagrEl.style.color = 'var(--text-secondary)';
+        }
+        if (winRateEl) winRateEl.innerText = 'Win Rate: 0.0%';
+
+        const maxDdEl = document.getElementById('compKpiMaxDd');
+        const maxDdDetailsEl = document.getElementById('compKpiMaxDdDetails');
+        if (maxDdEl) maxDdEl.innerText = '0.00%';
+        if (maxDdDetailsEl) maxDdDetailsEl.innerText = 'Peak to trough decline';
+
+        const belowInvEl = document.getElementById('compKpiBelowInv');
+        const belowInvDetailsEl = document.getElementById('compKpiBelowInvDetails');
+        if (belowInvEl) {
+            belowInvEl.innerText = '0.00%';
+            belowInvEl.style.color = 'var(--text-secondary)';
+        }
+        if (belowInvDetailsEl) belowInvDetailsEl.innerText = 'Below initial capital';
+
+        const legendContainer = document.getElementById('mscCompLegendPills');
+        const selectorContainer = document.getElementById('mscCompPillSelector');
+        if (legendContainer) legendContainer.innerHTML = '';
+        if (selectorContainer) selectorContainer.innerHTML = '';
+    }
+
     function removeComparisonIndexRow(rowId) {
         if (comparisonState.indexRows.length <= 1) {
             alertToast('At least one index is required for comparison.', 'warning');
             return;
         }
+
+        // Get index name before removing
+        const removedRow = comparisonState.indexRows.find(r => r.id === rowId);
+        const removedName = removedRow?.index_name || 'Index';
+
         syncComparisonRowsFromDOM();
         comparisonState.indexRows = comparisonState.indexRows.filter(r => r.id !== rowId);
         renderComparisonIndexRows();
+
+        // If simulation results are currently active, remove line from graph and update details
+        if (comparisonState.simulationResults) {
+            if (Array.isArray(comparisonState.simulationResults.results)) {
+                comparisonState.simulationResults.results = comparisonState.simulationResults.results.filter(r => r.id !== rowId);
+            }
+
+            if (Array.isArray(comparisonState.simulationResults.summary)) {
+                comparisonState.simulationResults.summary = comparisonState.simulationResults.summary.filter(s => s.id !== rowId);
+                // Re-calculate leaderboard ranks
+                comparisonState.simulationResults.summary.forEach((item, idx) => {
+                    item.rank = idx + 1;
+                });
+            }
+
+            const remainingResults = comparisonState.simulationResults.results || [];
+
+            if (remainingResults.length > 0) {
+                // Re-render Chart.js multi-line canvas with remaining index lines
+                renderComparisonMultiLineChart(comparisonState.simulationResults);
+
+                // Re-render Leaderboard Summary Table
+                renderComparisonSummaryTable(comparisonState.simulationResults.summary || []);
+
+                // Showcase top remaining index (Rank #1) in KPI cards
+                selectComparedIndexKPI(0);
+
+                alertToast(`Removed '${removedName}' from comparison graph and details.`, 'info');
+            } else {
+                // No simulation results remaining
+                comparisonState.simulationResults = null;
+                if (comparisonState.chartInstance) {
+                    comparisonState.chartInstance.destroy();
+                    comparisonState.chartInstance = null;
+                }
+                const emptyNotice = document.getElementById('mscCompChartEmptyNotice');
+                const emptyText = document.getElementById('mscCompChartEmptyText');
+                if (emptyNotice) {
+                    emptyNotice.style.display = 'flex';
+                    const iconSpan = emptyNotice.querySelector('span:first-child');
+                    if (iconSpan) iconSpan.innerText = '📊';
+                }
+                if (emptyText) {
+                    emptyText.innerText = "Configure parameters and indices above, then click 'Run Comparison' to simulate.";
+                }
+                renderComparisonSummaryTable([]);
+                resetComparisonKPIs();
+                alertToast(`Removed '${removedName}'.`, 'info');
+            }
+        } else {
+            alertToast(`Removed '${removedName}' from comparison configuration.`, 'info');
+        }
+
+        // Keep floating dock in sync if minimized
+        if (comparisonState.isMinimized) {
+            updateIndexComparisonDockUI();
+        }
     }
 
     async function runIndexComparisonSimulation() {
