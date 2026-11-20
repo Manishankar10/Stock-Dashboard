@@ -2753,20 +2753,50 @@
 
         // 1. Check if pre-calculated transactions exist
         if (snapshot.transactions && Array.isArray(snapshot.transactions) && snapshot.transactions.length > 0) {
-            return snapshot.transactions.map(t => ({
-                ...t,
-                run_index: runIdx,
-                run_title: runTitle,
-                run_date: runDate
-            }));
+            return snapshot.transactions.map(t => {
+                let pnl = t.pnl;
+                let pnlPct = t.pnl_percent;
+                if (pnl == null && t.action === 'SELL') {
+                    const price = Number(t.price || 0);
+                    const qty = Number(t.quantity || 0);
+                    const buyP = Number(t.buy_price || t.average_price || 0);
+                    if (buyP > 0) {
+                        pnl = (price - buyP) * qty;
+                        pnlPct = ((price - buyP) / buyP) * 100;
+                    }
+                }
+                return {
+                    ...t,
+                    pnl: pnl != null ? Math.round(Number(pnl) * 100) / 100 : null,
+                    pnl_percent: pnlPct != null ? Math.round(Number(pnlPct) * 100) / 100 : null,
+                    run_index: runIdx,
+                    run_title: runTitle,
+                    run_date: runDate
+                };
+            });
         }
         if (run.transactions && Array.isArray(run.transactions) && run.transactions.length > 0) {
-            return run.transactions.map(t => ({
-                ...t,
-                run_index: runIdx,
-                run_title: runTitle,
-                run_date: runDate
-            }));
+            return run.transactions.map(t => {
+                let pnl = t.pnl;
+                let pnlPct = t.pnl_percent;
+                if (pnl == null && t.action === 'SELL') {
+                    const price = Number(t.price || 0);
+                    const qty = Number(t.quantity || 0);
+                    const buyP = Number(t.buy_price || t.average_price || 0);
+                    if (buyP > 0) {
+                        pnl = (price - buyP) * qty;
+                        pnlPct = ((price - buyP) / buyP) * 100;
+                    }
+                }
+                return {
+                    ...t,
+                    pnl: pnl != null ? Math.round(Number(pnl) * 100) / 100 : null,
+                    pnl_percent: pnlPct != null ? Math.round(Number(pnlPct) * 100) / 100 : null,
+                    run_index: runIdx,
+                    run_title: runTitle,
+                    run_date: runDate
+                };
+            });
         }
 
         // 2. Fallback: derive trades dynamically from holdings, changes, and exited_stocks
@@ -2814,6 +2844,13 @@
                 const price = Number(ex.exit_price || ex.average_price || 0);
                 const amt = Number(ex.exit_value || (qty * price));
                 const fee = Number(ex.fee || (amt * 0.0010));
+                const avgPrice = Number(ex.average_price || ex.buy_price || 0);
+                let pnl = ex.pnl;
+                let pnlPct = ex.pnl_percent;
+                if (pnl == null && avgPrice > 0) {
+                    pnl = (price - avgPrice) * qty;
+                    pnlPct = ((price - avgPrice) / avgPrice) * 100;
+                }
                 trades.push({
                     symbol: ex.symbol,
                     action: 'SELL',
@@ -2822,6 +2859,8 @@
                     price: price,
                     amount: Math.round(amt * 100) / 100,
                     fee: Math.round(fee * 100) / 100,
+                    pnl: pnl != null ? Math.round(Number(pnl) * 100) / 100 : null,
+                    pnl_percent: pnlPct != null ? Math.round(Number(pnlPct) * 100) / 100 : null,
                     trade_type: 'EXIT_SELL',
                     notes: 'Exit (Dropped Rank)',
                     run_index: runIdx,
@@ -2836,6 +2875,9 @@
                     const qty = Number(prevH.quantity || 0);
                     const price = Number(prevH.current_price || prevH.buy_price || 0);
                     const amt = Number(qty * price);
+                    const avgPrice = Number(prevH.average_price || prevH.buy_price || price);
+                    const pnl = (price - avgPrice) * qty;
+                    const pnlPct = avgPrice > 0 ? ((price - avgPrice) / avgPrice) * 100 : 0;
                     trades.push({
                         symbol: prevH.symbol,
                         action: 'SELL',
@@ -2844,6 +2886,8 @@
                         price: price,
                         amount: Math.round(amt * 100) / 100,
                         fee: Math.round(amt * 0.0010 * 100) / 100,
+                        pnl: Math.round(pnl * 100) / 100,
+                        pnl_percent: Math.round(pnlPct * 100) / 100,
                         trade_type: 'EXIT_SELL',
                         notes: 'Exit (Dropped Rank)',
                         run_index: runIdx,
@@ -2864,6 +2908,9 @@
                 if (currQ < prevQ) {
                     const trimQty = prevQ - currQ;
                     const amt = trimQty * price;
+                    const avgPrice = Number(prevH ? (prevH.average_price || prevH.buy_price || price) : price);
+                    const pnl = (price - avgPrice) * trimQty;
+                    const pnlPct = avgPrice > 0 ? ((price - avgPrice) / avgPrice) * 100 : 0;
                     trades.push({
                         symbol: sym,
                         action: 'SELL',
@@ -2872,6 +2919,8 @@
                         price: price,
                         amount: Math.round(amt * 100) / 100,
                         fee: Math.round(amt * 0.0010 * 100) / 100,
+                        pnl: Math.round(pnl * 100) / 100,
+                        pnl_percent: Math.round(pnlPct * 100) / 100,
                         trade_type: 'TRIM_SELL',
                         notes: `Trim Overweight (-${trimQty} shares)`,
                         run_index: runIdx,
@@ -3030,6 +3079,12 @@
         const totalSellAmt = sellTrades.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
         const totalCharges = trades.reduce((sum, t) => sum + (Number(t.fee) || 0), 0);
 
+        // Realized P&L from closed positions (exits & trims)
+        const sellTradesWithPnl = sellTrades.filter(t => t.pnl != null);
+        const totalRealizedPnl = sellTradesWithPnl.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
+        const totalSoldCost = sellTradesWithPnl.reduce((sum, t) => sum + (Number(t.amount || 0) - Number(t.pnl || 0)), 0);
+        const totalPnlPct = totalSoldCost > 0 ? ((totalRealizedPnl / totalSoldCost) * 100) : 0;
+
         const countEl = document.getElementById('wltSummaryTradesCount');
         if (countEl) countEl.innerText = `${totalTrades} ${totalTrades === 1 ? 'trade' : 'trades'}`;
 
@@ -3041,6 +3096,22 @@
 
         const sellAmtEl = document.getElementById('wltSummarySellAmount');
         if (sellAmtEl) sellAmtEl.innerText = `₹${formatCurrency(totalSellAmt)}`;
+
+        const pnlEl = document.getElementById('wltSummaryPnl');
+        const pnlSubEl = document.getElementById('wltSummaryPnlSubtitle');
+        if (pnlEl) {
+            if (sellTrades.length === 0) {
+                pnlEl.innerText = '₹0.00';
+                pnlEl.style.color = 'var(--text-secondary)';
+                if (pnlSubEl) pnlSubEl.innerText = 'No closed positions yet';
+            } else {
+                const isPos = totalRealizedPnl >= 0;
+                const sign = isPos ? '+' : '';
+                pnlEl.innerText = `${sign}₹${formatCurrency(totalRealizedPnl)} (${sign}${totalPnlPct.toFixed(2)}%)`;
+                pnlEl.style.color = isPos ? '#10b981' : '#ef4444';
+                if (pnlSubEl) pnlSubEl.innerText = `${sellTrades.length} closed position${sellTrades.length === 1 ? '' : 's'}`;
+            }
+        }
 
         const chargesEl = document.getElementById('wltSummaryCharges');
         if (chargesEl) chargesEl.innerText = `₹${formatCurrency(totalCharges)}`;
@@ -3089,7 +3160,7 @@
         }
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 28px; color: var(--text-secondary);">No transactions match your search/filter criteria.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 28px; color: var(--text-secondary);">No transactions match your search/filter criteria.</td></tr>`;
             tfoot.innerHTML = '';
             return;
         }
@@ -3101,6 +3172,8 @@
         let totFee = 0;
         let totBuy = 0;
         let totSell = 0;
+        let totRealizedPnl = 0;
+        let totSoldCost = 0;
         let buyCount = 0;
         let sellCount = 0;
 
@@ -3111,6 +3184,8 @@
             const price = Number(t.price || 0);
             const amt = Number(t.amount || (qty * price));
             const fee = Number(t.fee || (amt * 0.0010));
+            const pnl = t.pnl != null ? Number(t.pnl) : null;
+            const pnlPct = t.pnl_percent != null ? Number(t.pnl_percent) : null;
 
             totQty += qty;
             totAmount += amt;
@@ -3122,12 +3197,27 @@
             } else if (isSell) {
                 totSell += amt;
                 sellCount++;
+                if (pnl != null) {
+                    totRealizedPnl += pnl;
+                    totSoldCost += (amt - pnl);
+                }
             }
 
             const badgeBg = isBuy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
             const badgeColor = isBuy ? '#10b981' : '#ef4444';
             const badgeBorder = isBuy ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
             const actionLabel = t.action_label || t.action || 'TRADE';
+
+            let pnlHtml = `<span style="color: var(--text-secondary); font-size: 11px;">—</span>`;
+            if (isSell && pnl != null) {
+                const isPnlPos = pnl >= 0;
+                const pColor = isPnlPos ? '#10b981' : '#ef4444';
+                const pSign = isPnlPos ? '+' : '';
+                pnlHtml = `
+                    <div style="font-weight: 700; color: ${pColor};">${pSign}₹${formatCurrency(pnl)}</div>
+                    <div style="font-size: 10px; font-weight: 600; color: ${pColor}; opacity: 0.9;">${pSign}${Number(pnlPct || 0).toFixed(2)}%</div>
+                `;
+            }
 
             rowsHtml += `
                 <tr style="border-bottom: 1px solid var(--border-color);">
@@ -3153,6 +3243,9 @@
                     <td style="text-align: right; font-family: monospace; font-size: 12px; font-weight: 700; color: ${badgeColor};">
                         ₹${formatCurrency(amt)}
                     </td>
+                    <td style="text-align: right; font-family: monospace; font-size: 12px;">
+                        ${pnlHtml}
+                    </td>
                     <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: var(--text-secondary);">
                         ₹${formatCurrency(fee)}
                     </td>
@@ -3165,7 +3258,13 @@
 
         tbody.innerHTML = rowsHtml;
 
-        // Table Footer with Consolidated Totals
+        // Table Footer with Consolidated Totals & P&L
+        const totPnlPct = totSoldCost > 0 ? ((totRealizedPnl / totSoldCost) * 100) : 0;
+        const isTotPos = totRealizedPnl >= 0;
+        const totPnlColor = isTotPos ? '#10b981' : '#ef4444';
+        const totPnlSign = isTotPos ? '+' : '';
+        const hasSells = sellCount > 0;
+
         tfoot.innerHTML = `
             <tr style="background: var(--bg-subtle); border-top: 2px solid var(--border-color); font-weight: 700;">
                 <td colspan="4" style="padding: 10px 14px;">
@@ -3183,6 +3282,17 @@
                     <div style="font-size: 10px; font-weight: normal; color: var(--text-secondary); margin-top: 2px;">
                         Buy: ₹${formatCurrency(totBuy)} · Sell: ₹${formatCurrency(totSell)}
                     </div>
+                    ${hasSells ? `
+                    <div style="font-size: 10.5px; font-weight: 700; color: ${totPnlColor}; margin-top: 3px;">
+                        P&L: ${totPnlSign}₹${formatCurrency(totRealizedPnl)} (${totPnlSign}${totPnlPct.toFixed(2)}%)
+                    </div>` : ''}
+                </td>
+                <td style="text-align: right; font-family: monospace; padding: 10px 12px;">
+                    ${hasSells ? `
+                    <div style="font-size: 13px; font-weight: 700; color: ${totPnlColor};">${totPnlSign}₹${formatCurrency(totRealizedPnl)}</div>
+                    <div style="font-size: 10px; font-weight: 600; color: ${totPnlColor}; margin-top: 2px;">
+                        ${totPnlSign}${totPnlPct.toFixed(2)}%
+                    </div>` : `<span style="color: var(--text-secondary); font-weight: normal; font-size: 11px;">—</span>`}
                 </td>
                 <td style="text-align: right; font-family: monospace; font-size: 13px; color: #f59e0b; font-weight: 700; padding: 10px 12px;">
                     ₹${formatCurrency(totFee)}

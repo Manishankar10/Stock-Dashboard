@@ -595,7 +595,7 @@
 
         <div class="msc-modal-body" style="padding: 16px 20px; overflow-y: auto;">
             <!-- Summary KPI Cards -->
-            <div class="msc-wlt-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+            <div class="msc-wlt-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px;">
                 <div style="background: var(--bg-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
                     <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px;">Total Executed Trades</div>
                     <div id="wltSummaryTradesCount" style="font-size: 18px; font-weight: 700; color: var(--text-primary);">0 trades</div>
@@ -612,8 +612,13 @@
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Exits &amp; trims proceeds</div>
                 </div>
                 <div style="background: var(--bg-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px;">Realized P&amp;L</div>
+                    <div id="wltSummaryPnl" style="font-size: 18px; font-weight: 700; color: #10b981; font-family: monospace;">₹0.00</div>
+                    <div id="wltSummaryPnlSubtitle" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Closed positions gain/loss</div>
+                </div>
+                <div style="background: var(--bg-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
                     <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px;">Total Charges (0.10%)</div>
-                    <div id="wltSummaryCharges" style="font-size: 18px; font-weight: 700; color: var(--text-primary); font-family: monospace;">₹0.00</div>
+                    <div id="wltSummaryCharges" style="font-size: 18px; font-weight: 700; color: #f59e0b; font-family: monospace;">₹0.00</div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Transaction fees</div>
                 </div>
             </div>
@@ -662,6 +667,7 @@
                                 <th style="text-align: right; min-width: 85px;">QUANTITY</th>
                                 <th style="text-align: right; min-width: 105px;">PRICE (₹)</th>
                                 <th style="text-align: right; min-width: 125px;">TOTAL AMOUNT (₹)</th>
+                                <th style="text-align: right; min-width: 120px;">REALIZED P&amp;L (₹)</th>
                                 <th style="text-align: right; min-width: 105px;">CHARGES (0.10%) (₹)</th>
                                 <th style="text-align: left; min-width: 160px;">DETAILS / NOTES</th>
                             </tr>

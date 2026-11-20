@@ -1342,6 +1342,11 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
             trim_qty = prev_q - final_q
             sell_amt = round(trim_qty * price, 2)
             fee = round(sell_amt * TRANSACTION_FEE_RATE, 2)
+            prev_item = prev_holdings_map.get(sym, {})
+            avg_price = float(prev_item.get("average_price") or prev_item.get("buy_price") or price)
+            trim_invested = round(trim_qty * avg_price, 2)
+            trim_pnl = round(sell_amt - trim_invested, 2)
+            trim_pnl_pct = round(((price - avg_price) / avg_price) * 100.0, 2) if avg_price > 0 else 0.0
             transactions.append({
                 "symbol": sym,
                 "action": "SELL",
@@ -1351,6 +1356,8 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                 "amount": sell_amt,
                 "fee": fee,
                 "trade_type": "TRIM_SELL",
+                "pnl": trim_pnl,
+                "pnl_percent": trim_pnl_pct,
                 "notes": f"Trim Overweight (-{trim_qty} shares to target)"
             })
         elif final_q > prev_q:
