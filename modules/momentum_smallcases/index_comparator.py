@@ -97,6 +97,10 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
     if amount_to_invest <= 0:
         amount_to_invest = 100000.0
 
+    stepup_amount = float(common_config.get("stepup_amount") or 0.0)
+    if stepup_amount < 0:
+        stepup_amount = 0.0
+
     # 2. Gather all constituent symbols across all compared indices to prewarm DB prices
     all_constituents_by_index = {}
     all_symbols_to_warm = set()
@@ -158,7 +162,8 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
                 trading_days_per_month=trading_days_per_month,
                 formula_str=formula_str,
                 color=color,
-                cfg_id=cfg_id
+                cfg_id=cfg_id,
+                stepup_amount=stepup_amount
             )
             if sim_result:
                 results.append(sim_result)
@@ -171,9 +176,10 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
         kpis = res.get("kpis", {})
         cfg = res.get("config", {})
         pts = res.get("points", [])
-        final_val = kpis.get("current_value") or (pts[-1]["portfolio_value"] if pts else amount_to_invest)
-        tot_pnl = kpis.get("total_return_amount", round(final_val - amount_to_invest, 2))
-        tot_pnl_pct = kpis.get("total_return_percent", round((tot_pnl / amount_to_invest) * 100.0, 2) if amount_to_invest > 0 else 0.0)
+        total_invested = pts[-1]["invested"] if pts else amount_to_invest
+        final_val = kpis.get("current_value") or (pts[-1]["portfolio_value"] if pts else total_invested)
+        tot_pnl = kpis.get("total_return_amount", round(final_val - total_invested, 2))
+        tot_pnl_pct = kpis.get("total_return_percent", round((tot_pnl / total_invested) * 100.0, 2) if total_invested > 0 else 0.0)
         max_dd = kpis.get("max_drawdown", {})
         max_below = kpis.get("max_drilldown_below_investment", {})
 
@@ -188,6 +194,8 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             "trim_existing": cfg.get("trim_existing"),
             "trading_days_per_month": cfg.get("trading_days_per_month"),
             "final_valuation": round(final_val, 2),
+            "total_invested": round(total_invested, 2),
+            "stepup_amount": stepup_amount,
             "total_pnl": round(tot_pnl, 2),
             "total_pnl_percent": round(tot_pnl_pct, 2),
             "cagr": round(kpis.get("cagr", tot_pnl_pct), 2),
@@ -223,7 +231,8 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
         "common": {
             "start_date": start_d.isoformat(),
             "cutoff_date": cutoff_d.isoformat(),
-            "amount_to_invest": amount_to_invest
+            "amount_to_invest": amount_to_invest,
+            "stepup_amount": stepup_amount
         },
         "results": results,
         "summary": summary_rows
@@ -244,7 +253,8 @@ def _simulate_single_index(
     trading_days_per_month,
     formula_str,
     color,
-    cfg_id
+    cfg_id,
+    stepup_amount=0.0
 ):
     """
     Simulates portfolio evolution for one index from start_date to cutoff_date.
@@ -324,11 +334,14 @@ def _simulate_single_index(
         if not ranked_reb:
             continue
 
+        if stepup_amount > 0:
+            total_capital = round(total_capital + stepup_amount, 2)
+
         rebal_portfolio = execute_rebalance_run(
             ranked_stocks=ranked_reb,
             previous_holdings=current_holdings,
             previous_wallet=current_wallet,
-            stepup_amount=0.0,
+            stepup_amount=stepup_amount,
             no_of_stocks=no_of_stocks,
             exit_regime_ranking=exit_regime_ranking,
             target_date=next_rebal_d,
@@ -349,8 +362,11 @@ def _simulate_single_index(
             "holdings_count": len(current_holdings),
             "milestone_type": "REBALANCE",
             "milestone_label": f"Rebal #{len(rebalance_dates)} ({next_rebal_d.strftime('%d-%b-%Y')})",
-            "pnl": rebal_portfolio.get("total_pnl", 0.0),
-            "pnl_percent": rebal_portfolio.get("total_pnl_percent", 0.0)
+            "stepup_amount": stepup_amount,
+            "pnl": round(rebal_portfolio["total_portfolio_value"] - total_capital, 2),
+            "pnl_percent": round(((rebal_portfolio["total_portfolio_value"] - total_capital) / total_capital) * 100.0, 2) if total_capital > 0 else 0.0,
+            "change_amount": 0.0,
+            "change_percent": 0.0
         })
 
     # Step 3: Latest Cutoff Date Valuation (if later than last milestone)

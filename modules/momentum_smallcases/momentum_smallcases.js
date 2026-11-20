@@ -4692,10 +4692,12 @@
         // Set default dates and capital
         const startInput = document.getElementById('mscCompStartDate');
         const amountInput = document.getElementById('mscCompAmount');
+        const stepupInput = document.getElementById('mscCompStepupAmount');
         const cutoffInput = document.getElementById('mscCompCutoffDate');
 
         if (startInput && !startInput.value) startInput.value = '2025-10-01';
         if (amountInput && !amountInput.value) amountInput.value = '100000';
+        if (stepupInput) stepupInput.value = '';
         if (cutoffInput) {
             const now = new Date();
             cutoffInput.value = now.toISOString().split('T')[0];
@@ -5151,10 +5153,13 @@
 
         const startInput = document.getElementById('mscCompStartDate');
         const amountInput = document.getElementById('mscCompAmount');
+        const stepupInput = document.getElementById('mscCompStepupAmount');
         const cutoffInput = document.getElementById('mscCompCutoffDate');
 
         const startDate = (startInput?.value || '').trim();
         const amount = parseFloat(amountInput?.value || 100000);
+        const rawStepup = (stepupInput?.value || '').trim();
+        const stepup = rawStepup === '' ? 0.0 : parseFloat(rawStepup);
         const cutoffDate = (cutoffInput?.value || '').trim();
 
         if (!startDate) {
@@ -5163,6 +5168,10 @@
         }
         if (isNaN(amount) || amount <= 0) {
             alertToast('Please enter a valid Investment Amount.', 'warning');
+            return;
+        }
+        if (isNaN(stepup) || stepup < 0) {
+            alertToast('Step-up amount must be 0 or positive.', 'warning');
             return;
         }
 
@@ -5192,6 +5201,7 @@
                     common: {
                         start_date: startDate,
                         amount_to_invest: amount,
+                        stepup_amount: stepup,
                         cutoff_date: cutoffDate
                     },
                     indices: comparisonState.indexRows
@@ -5318,10 +5328,29 @@
             };
         });
 
-        // Add Initial Capital Dashed Baseline
-        const baselineData = sortedDates.map(() => data.common.amount_to_invest);
+        // Add Invested Capital Baseline (Dashed, steps up dynamically if step-up configured)
+        const stepupAmt = Number(data.common.stepup_amount || 0);
+        let baselineData;
+        let baselineLabel;
+        if (stepupAmt > 0 && results[0] && Array.isArray(results[0].points)) {
+            const invMap = {};
+            results[0].points.forEach(pt => {
+                if (pt.invested !== undefined) invMap[pt.date] = pt.invested;
+            });
+            let lastInv = data.common.amount_to_invest;
+            baselineData = sortedDates.map(d => {
+                if (invMap[d] !== undefined) lastInv = invMap[d];
+                return lastInv;
+            });
+            const finalInv = baselineData[baselineData.length - 1] || data.common.amount_to_invest;
+            baselineLabel = `Invested Capital (₹${formatCurrency(data.common.amount_to_invest)} + ₹${formatCurrency(stepupAmt)}/mo → ₹${formatCurrency(finalInv)})`;
+        } else {
+            baselineData = sortedDates.map(() => data.common.amount_to_invest);
+            baselineLabel = `Invested Baseline (₹${formatCurrency(data.common.amount_to_invest)})`;
+        }
+
         datasets.push({
-            label: `Invested Baseline (₹${formatCurrency(data.common.amount_to_invest)})`,
+            label: baselineLabel,
             data: baselineData,
             borderColor: '#6366f1',
             borderWidth: 1.6,
@@ -5374,11 +5403,11 @@
                                 if (ds.isBaseline) {
                                     return `  🏁 ${ds.label}: ₹${formatCurrency(val)}`;
                                 }
-                                const inv = data.common.amount_to_invest;
-                                const pnl = val - inv;
-                                const pnlPct = inv > 0 ? (pnl / inv) * 100 : 0;
+                                const currentInv = baselineData[context.dataIndex] !== undefined ? baselineData[context.dataIndex] : data.common.amount_to_invest;
+                                const pnl = val - currentInv;
+                                const pnlPct = currentInv > 0 ? (pnl / currentInv) * 100 : 0;
                                 const sign = pnl >= 0 ? '+' : '';
-                                return `  ● ${ds.label}: ₹${formatCurrency(val)} (${sign}${formatCurrency(pnl)} / ${sign}${pnlPct.toFixed(2)}%)`;
+                                return `  ● ${ds.label}: ₹${formatCurrency(val)} (${sign}₹${formatCurrency(pnl)} / ${sign}${pnlPct.toFixed(2)}%)`;
                             }
                         }
                     }
@@ -5603,7 +5632,8 @@
                         </div>
                     </td>
                     <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--text-primary);">
-                        ₹${formatCurrency(row.final_valuation)}
+                        <div>₹${formatCurrency(row.final_valuation)}</div>
+                        ${row.total_invested ? `<div style="font-size: 10px; color: var(--text-secondary); font-weight: normal; margin-top: 1px;">Inv: ₹${formatCurrency(row.total_invested)}</div>` : ''}
                     </td>
                     <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
                         ${sign}₹${formatCurrency(row.total_pnl)} (${sign}${Number(row.total_pnl_percent).toFixed(2)}%)
