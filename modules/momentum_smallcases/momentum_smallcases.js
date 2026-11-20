@@ -4887,6 +4887,9 @@
             let data;
             if (contentType.includes('application/json')) {
                 data = await res.json();
+                if (!res.ok && !data.error) {
+                    throw new Error(`Server returned HTTP ${res.status}`);
+                }
             } else {
                 const rawText = await res.text();
                 let errMsg = `Server returned HTTP ${res.status}`;

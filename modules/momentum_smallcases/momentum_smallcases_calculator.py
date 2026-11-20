@@ -125,8 +125,10 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
         if fetch_sym in _db_prices_cache:
             series = _db_prices_cache[fetch_sym]
             if series and len(series) > 0:
-                if not target_cutoff_str or series[-1][0] >= target_cutoff_str:
+                if not target_cutoff_str:
                     return series
+                filtered = [p for p in series if p[0] <= target_cutoff_str]
+                return filtered if filtered else series
 
     # 2. Query database collection stock_closing_prices
     try:
@@ -145,8 +147,10 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
                 with _db_cache_lock:
                     _db_prices_cache[fetch_sym] = series
 
-                if not target_cutoff_str or series[-1][0] >= target_cutoff_str:
+                if not target_cutoff_str:
                     return series
+                filtered = [p for p in series if p[0] <= target_cutoff_str]
+                return filtered if filtered else series
     except Exception as e:
         logger.warning(f"Error querying stock_closing_prices from DB for {fetch_sym}: {e}")
 
@@ -275,7 +279,7 @@ def is_in_trading_hours_now():
 # HISTORICAL PRICE FETCHING & CACHING
 # ==============================================================================
 
-def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=False):
+def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=False, db_only=False):
     """
     Fetches daily price series for an NSE stock.
     Priority 1: Database collection 'stock_closing_prices' with in-memory fast caching.
@@ -317,6 +321,10 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
         db_series = get_stock_closing_prices_from_db(fetch_sym, target_cutoff_str)
         if db_series and len(db_series) > 0:
             data_points = db_series
+
+    # If DB-only execution is explicitly requested, skip live external API fallbacks
+    if db_only:
+        return data_points or []
 
     # =========================================================================
     # 2. FALLBACK: IF STOCK OR PRICE NOT AVAILABLE IN DB, FETCH LIVE PROVIDER
@@ -428,7 +436,7 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
 # MOMENTUM FORMULA & METRICS EVALUATION
 # ==============================================================================
 
-def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False, trading_days_per_month=30):
+def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False, trading_days_per_month=30, db_only=False):
     """
     Calculates 1M, 2M, 5M, 9M price returns and 1M, 3M volatilities for a stock
     at target_date according to the user's trading hours rules:
@@ -437,7 +445,7 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     Gracefully computes metrics even if history is shorter than 9 months.
     trading_days_per_month: 21 or 30 days (default 30).
     """
-    series = fetch_stock_daily_series(symbol, target_cutoff_date=target_date)
+    series = fetch_stock_daily_series(symbol, target_cutoff_date=target_date, db_only=db_only)
     if not series:
         return None
 

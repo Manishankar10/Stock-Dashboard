@@ -103,8 +103,13 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
 
     for idx_cfg in index_configs:
         idx_id = idx_cfg.get("index_id")
-        idx_type = idx_cfg.get("index_type", "manual")
+        idx_type = idx_cfg.get("index_type")
+        if not idx_type:
+            idx_type = "manual" if str(idx_id).startswith("midx_") else "nifty"
         constituents = get_strategy_index_constituents(idx_id, idx_type, username=username) or []
+        if not constituents:
+            fallback_type = "nifty" if idx_type == "manual" else "manual"
+            constituents = get_strategy_index_constituents(idx_id, fallback_type, username=username) or []
         all_constituents_by_index[idx_id] = constituents
 
         for c in constituents:
@@ -432,9 +437,9 @@ def _evaluate_universe_db_only(
 
     def _eval(sym):
         try:
-            # calculate_stock_momentum_metrics reads DB cache (db_prices_cache) first
+            # calculate_stock_momentum_metrics reads DB cache (db_prices_cache) first with zero network calls
             metrics = calculate_stock_momentum_metrics(
-                sym, target_date, in_trading_hours=False, trading_days_per_month=trading_days_per_month
+                sym, target_date, in_trading_hours=False, trading_days_per_month=trading_days_per_month, db_only=True
             )
             if metrics:
                 score = evaluate_formula_score(metrics, formula_str)

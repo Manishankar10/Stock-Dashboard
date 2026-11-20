@@ -585,6 +585,6 @@ def compare_indices_api():
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
         logger.error(f"Error comparing indices: {e}", exc_info=True)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": f"Simulation failed: {str(e)}"}), 200
 
 

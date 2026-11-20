@@ -26,8 +26,20 @@ def init_store(fetcher=None, data_dir=None):
         _DATA_DIR = data_dir
 
 
+def _resolve_username(username=None):
+    if username:
+        return str(username).strip()
+    try:
+        from flask import has_request_context, session
+        if has_request_context() and session:
+            return session.get('username') or 'admin'
+    except Exception:
+        pass
+    return 'admin'
+
+
 def _safe_user(username=None):
-    username = username or session.get('username') or 'admin'
+    username = _resolve_username(username)
     return ''.join(c for c in str(username or '') if c.isalnum() or c in ('_', '-')).lower()
 
 
@@ -38,7 +50,7 @@ def _file(username=None):
 
 def load_user_momentum_smallcases(username=None):
     """Loads all momentum indices for the given or current user."""
-    user = username or session.get('username') or 'admin'
+    user = _resolve_username(username)
     path = _file(username)
     try:
         from db_store import load_user_doc_db
@@ -62,7 +74,7 @@ def load_user_momentum_smallcases(username=None):
 
 def save_user_momentum_smallcases(data, username=None):
     """Saves momentum indices data for the given or current user."""
-    user = username or session.get('username') or 'admin'
+    user = _resolve_username(username)
     path = _file(username)
     try:
         from db_store import save_user_doc_db
@@ -346,7 +358,7 @@ def update_user_index(index_id, name, description, stocks_str, username=None):
 
 def delete_user_index(index_id, username=None):
     """Deletes a manual index by ID."""
-    user = username or session.get('username') or 'admin'
+    user = _resolve_username(username)
     data = load_user_momentum_smallcases(user)
     indices = data.get("indices", [])
     initial_len = len(indices)
@@ -422,6 +434,14 @@ def get_strategy_index_constituents(index_id, index_type="manual", username=None
     if index_type == "manual" or str(index_id).startswith("midx_"):
         idx = get_user_index(index_id, username=username)
         if not idx:
+            # Fallback to official nifty benchmark index if not found in user indices
+            try:
+                from modules.index_stocks.index_stocks_provider import index_stocks_provider
+                data = index_stocks_provider.get_index_stocks(index_id)
+                if data and "stocks" in data:
+                    return [{"symbol": s.get("symbol", ""), "date_added": None} for s in data["stocks"] if s.get("symbol")]
+            except Exception:
+                pass
             return []
         return idx.get("stocks", [])
     else:
@@ -433,6 +453,10 @@ def get_strategy_index_constituents(index_id, index_type="manual", username=None
                 return [{"symbol": s.get("symbol", ""), "date_added": None} for s in data["stocks"] if s.get("symbol")]
         except Exception as e:
             logger.warning(f"Error fetching Nifty index constituents for '{index_id}': {e}")
+        # Fallback to user index if not found in Nifty benchmarks
+        idx = get_user_index(index_id, username=username)
+        if idx:
+            return idx.get("stocks", [])
         return []
 
 
@@ -1213,7 +1237,7 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
 
 def delete_user_strategy(strategy_id, username=None):
     """Deletes a strategy by ID."""
-    user = username or session.get('username') or 'admin'
+    user = _resolve_username(username)
     data = load_user_momentum_smallcases(user)
     strategies = data.get("strategies", [])
     initial_len = len(strategies)
@@ -1243,7 +1267,7 @@ def reset_all_momentum_data(username=None):
     Cleans and resets all data related to momentum smallcases (indices, strategies, price caches)
     so user can start fresh from scratch.
     """
-    user = username or session.get('username') or 'admin'
+    user = _resolve_username(username)
     clean_state = {"indices": [], "strategies": []}
     save_user_momentum_smallcases(clean_state, user)
 
