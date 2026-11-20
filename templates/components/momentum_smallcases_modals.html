@@ -949,14 +949,37 @@
         <!-- Modal Body (Scrollable) -->
         <div class="msc-modal-body msc-comp-body" style="padding: 16px 22px; overflow-y: auto; flex: 1;">
             
-            <!-- 1. Shared / Common Parameters Bar -->
+            <!-- 1. Compared Index Universes Deck -->
+            <div class="msc-comp-indices-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>📑</span> <span>Compared Index Configurations</span>
+                            <span id="mscCompIndexCountBadge" style="font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 700;">2 Indices</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                            First index values serve as default for newly added indices. You can customize each index individually.
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="addComparisonIndexRow()" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 5px 12px; font-weight: 600; color: #10b981; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08);">
+                        <span>➕</span> <span>Add Index to Compare</span>
+                    </button>
+                </div>
+
+                <!-- Dynamic Index Cards List -->
+                <div id="mscCompIndicesList" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Injected dynamically by JS -->
+                </div>
+            </div>
+
+            <!-- 2. Shared / Common Parameters Bar (Placed after Compared Index Configurations) -->
             <div class="msc-comp-common-bar" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
                     <span style="font-size: 12.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>⚙️</span> <span>Shared Comparison Parameters (Applied to all indices)</span>
                     </span>
-                    <span style="font-size: 11px; color: var(--text-secondary); background: rgba(59, 130, 246, 0.08); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">
-                        💡 Recommended Start Date: Oct 2025 onwards (DB contains prices from Jan 2025)
+                    <span id="mscCompDataAvailableBadge" style="font-size: 11px; color: var(--text-secondary); background: rgba(59, 130, 246, 0.08); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        💡 Data available from Jan 2012
                     </span>
                 </div>
                 <div class="msc-comp-common-grid" style="display: grid; grid-template-columns: minmax(130px, 1fr) minmax(140px, 1.1fr) minmax(130px, 1fr) minmax(130px, 1fr) auto; gap: 10px; align-items: flex-end;">
@@ -964,7 +987,7 @@
                         <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">
                             Start Date <span style="color: #ef4444;">*</span>
                         </label>
-                        <input type="date" id="mscCompStartDate" class="msc-modal-input" value="2025-10-01" required style="font-size: 12px; padding: 6px 10px;">
+                        <input type="date" id="mscCompStartDate" class="msc-modal-input" value="2024-01-01" required style="font-size: 12px; padding: 6px 10px;">
                     </div>
                     <div class="msc-form-group" style="margin-bottom: 0;">
                         <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">
@@ -989,29 +1012,6 @@
                             <span id="mscCompRunIcon">▶</span> <span id="mscCompRunText">Run Comparison</span>
                         </button>
                     </div>
-                </div>
-            </div>
-
-            <!-- 2. Compared Index Universes Deck -->
-            <div class="msc-comp-indices-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                    <div>
-                        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                            <span>📑</span> <span>Compared Index Configurations</span>
-                            <span id="mscCompIndexCountBadge" style="font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 700;">2 Indices</span>
-                        </div>
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
-                            First index values serve as default for newly added indices. You can customize each index individually.
-                        </div>
-                    </div>
-                    <button type="button" class="btn-secondary" onclick="addComparisonIndexRow()" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 5px 12px; font-weight: 600; color: #10b981; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08);">
-                        <span>➕</span> <span>Add Index to Compare</span>
-                    </button>
-                </div>
-
-                <!-- Dynamic Index Cards List -->
-                <div id="mscCompIndicesList" style="display: flex; flex-direction: column; gap: 10px;">
-                    <!-- Injected dynamically by JS -->
                 </div>
             </div>
 

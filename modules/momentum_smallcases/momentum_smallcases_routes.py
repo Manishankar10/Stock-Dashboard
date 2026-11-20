@@ -190,13 +190,35 @@ def parse_stocks_api():
 # STRATEGY & CALCULATION ENDPOINTS
 # ==============================================================================
 
+def get_earliest_stock_price_month():
+    try:
+        import sqlite3
+        conn = sqlite3.connect("user_data/capital_desk.db")
+        cur = conn.cursor()
+        cur.execute("SELECT MIN(start_date) FROM stock_closing_prices WHERE start_date IS NOT NULL")
+        row = cur.fetchone()
+        conn.close()
+        if row and row[0]:
+            from datetime import datetime
+            d = datetime.strptime(str(row[0])[:10], "%Y-%m-%d")
+            return d.strftime("%b %Y")
+    except Exception:
+        pass
+    return "Jan 2012"
+
+
 @momentum_smallcases_bp.route("/api/momentum-smallcases/indices-catalog", methods=["GET"])
 def get_indices_catalog_api():
     """Returns all available indices: manual indices + official Nifty benchmark indices."""
     try:
         user = session.get("username") or "admin"
         catalog = get_combined_indices_list(user)
-        return jsonify({"success": True, "indices": catalog})
+        earliest_month = get_earliest_stock_price_month()
+        return jsonify({
+            "success": True,
+            "indices": catalog,
+            "earliest_month": earliest_month
+        })
     except Exception as e:
         logger.error(f"Error fetching indices catalog: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500

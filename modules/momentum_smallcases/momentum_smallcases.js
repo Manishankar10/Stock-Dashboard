@@ -4671,6 +4671,10 @@
             const data = await res.json();
             if (data.success && Array.isArray(data.indices)) {
                 comparisonState.indicesCatalog = data.indices;
+                if (data.earliest_month) {
+                    const badge = document.getElementById('mscCompDataAvailableBadge');
+                    if (badge) badge.innerText = `💡 Data available from ${data.earliest_month}`;
+                }
                 return data.indices;
             }
         } catch (e) {
@@ -4695,7 +4699,7 @@
         const stepupInput = document.getElementById('mscCompStepupAmount');
         const cutoffInput = document.getElementById('mscCompCutoffDate');
 
-        if (startInput && !startInput.value) startInput.value = '2025-10-01';
+        if (startInput && !startInput.value) startInput.value = '2024-01-01';
         if (amountInput && !amountInput.value) amountInput.value = '100000';
         if (stepupInput) stepupInput.value = '';
         if (cutoffInput) {
