@@ -4599,8 +4599,17 @@
 
         renderComparisonIndexRows();
 
-        // Automatically trigger initial simulation so user sees graph right away
-        runIndexComparisonSimulation();
+        // Show friendly initial placeholder - only run simulation when user clicks 'Run Comparison'
+        const emptyNotice = document.getElementById('mscCompChartEmptyNotice');
+        const emptyText = document.getElementById('mscCompChartEmptyText');
+        if (emptyNotice) {
+            emptyNotice.style.display = 'flex';
+            const iconSpan = emptyNotice.querySelector('span:first-child');
+            if (iconSpan) iconSpan.innerText = '📊';
+        }
+        if (emptyText) {
+            emptyText.innerText = "Configure parameters and indices above, then click 'Run Comparison' to simulate.";
+        }
     }
 
     function closeIndexComparisonModal() {
@@ -4844,6 +4853,8 @@
         if (runText) runText.innerText = 'Simulating...';
         if (emptyNotice) {
             emptyNotice.style.display = 'flex';
+            const iconSpan = emptyNotice.querySelector('span:first-child');
+            if (iconSpan) iconSpan.innerText = '⏳';
             if (emptyText) emptyText.innerText = 'Running multi-index momentum simulation from SQLite DB...';
         }
 
@@ -4861,7 +4872,26 @@
                 })
             });
 
-            const data = await res.json();
+            const contentType = res.headers.get('content-type') || '';
+            let data;
+            if (contentType.includes('application/json')) {
+                data = await res.json();
+            } else {
+                const rawText = await res.text();
+                let errMsg = `Server returned HTTP ${res.status}`;
+                if (res.status === 404) {
+                    errMsg = 'Comparison endpoint not found (404). Please ensure the backend server has been restarted.';
+                } else if (res.status === 401 || res.status === 403) {
+                    errMsg = 'Session expired (401). Please refresh the page to log in.';
+                } else {
+                    const match = rawText.match(/<title>(.*?)<\/title>/i) || rawText.match(/<h1>(.*?)<\/h1>/i);
+                    if (match && match[1]) {
+                        errMsg += `: ${match[1].trim()}`;
+                    }
+                }
+                throw new Error(errMsg);
+            }
+
             if (!data.success) {
                 throw new Error(data.error || 'Failed to simulate index comparison');
             }
@@ -4887,6 +4917,8 @@
             alertToast(`Comparison Error: ${e.message}`, 'error');
             if (emptyNotice) {
                 emptyNotice.style.display = 'flex';
+                const iconSpan = emptyNotice.querySelector('span:first-child');
+                if (iconSpan) iconSpan.innerText = '⚠️';
                 if (emptyText) emptyText.innerText = `Simulation failed: ${e.message}`;
             }
         } finally {

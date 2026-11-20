@@ -198,6 +198,14 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             "fees_paid": round(res.get("total_fees", 0.0), 2)
         })
 
+    if not results:
+        return {
+            "success": False,
+            "error": "No simulation data could be generated for the selected indices and dates. Please ensure the Start Date is between October 2025 and today (database price history starts Jan 2025 for 9-month momentum lookbacks).",
+            "results": [],
+            "summary": []
+        }
+
     # Sort summary by total_pnl_percent descending
     summary_rows.sort(key=lambda x: x.get("total_pnl_percent", 0.0), reverse=True)
 
