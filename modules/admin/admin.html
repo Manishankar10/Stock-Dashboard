@@ -1989,7 +1989,7 @@
                                 </td>
                             </tr>
 
-                            <!-- 10. Stock Closing Prices (2013 – Present) -->
+                            <!-- 10. Stock Closing Prices (2012 / 2013 – Present) -->
                             <tr id="sync-tbl-row-stock_prices">
                                 <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
                                     <div style="display: flex; align-items: flex-start; gap: 10px;">
@@ -2000,7 +2000,7 @@
                                                 <button type="button" onclick="toggleAdminStockPricesModal(true)" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;">🔍 View 750 Stocks</button>
                                             </div>
                                             <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
-                                                Daily EOD Closes (2013 – Present) • 750 Benchmark Index Constituents (Take only post-market close)
+                                                Daily EOD Closes (2012 / 2013 – Present) • 750 Benchmark Index Constituents (Take only post-market close)
                                             </div>
                                         </div>
                                     </div>
@@ -2015,14 +2015,20 @@
                                     <span id="sync-tbl-badge-stock_prices" class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.25); font-size: 11px;">EOD Ready</span>
                                 </td>
                                 <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                                    <div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-start;">
                                         <button type="button" id="sync-tbl-btn-stock_prices" class="btn" onclick="triggerAdminStockPricesSync()" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
                                             🔄 Sync Pending Closes
                                         </button>
-                                        <label style="display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; font-size: 11px; color: var(--text-secondary); cursor: pointer; margin: 0; user-select: none;">
-                                            <input type="checkbox" id="sync-stock-prices-full-resync" style="margin: 0; width: 13px; height: 13px; accent-color: var(--accent-primary); cursor: pointer;">
-                                            <span>Full Resync (From Jan 2013)</span>
-                                        </label>
+                                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; font-size: 11px; color: var(--text-secondary); cursor: pointer; margin: 0; user-select: none;">
+                                                <input type="checkbox" id="sync-stock-prices-full-resync" style="margin: 0; width: 13px; height: 13px; accent-color: var(--accent-primary); cursor: pointer;">
+                                                <span>Full Resync:</span>
+                                            </label>
+                                            <select id="sync-stock-prices-start-date" onchange="document.getElementById('sync-stock-prices-full-resync').checked = true;" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 600; cursor: pointer; outline: none;">
+                                                <option value="2012-01-01" selected>From Jan 2012 (01-01-2012)</option>
+                                                <option value="2013-01-01">From Jan 2013 (01-01-2013)</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -3589,10 +3595,10 @@
             <div class="modal-header" style="flex-shrink: 0; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
                 <div>
                     <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                        <span>📉</span> Stock Closing Prices (2013 – Present)
+                        <span>📉</span> Stock Closing Prices (2012 / 2013 – Present)
                     </h3>
                     <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
-                        750 Benchmark Index Constituent Stocks • Daily EOD Closes (2013 – Present)
+                        750 Benchmark Index Constituent Stocks • Daily EOD Closes (2012 / 2013 – Present)
                     </p>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -3639,7 +3645,7 @@
                             <th style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--text-secondary);">Latest Close (₹)</th>
                             <th style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--text-secondary);">Change</th>
                             <th style="padding: 10px 14px; text-align: center; font-weight: 700; color: var(--text-secondary);">Latest Date</th>
-                            <th style="padding: 10px 14px; text-align: center; font-weight: 700; color: var(--text-secondary);">Historical Bars (From 2013)</th>
+                            <th style="padding: 10px 14px; text-align: center; font-weight: 700; color: var(--text-secondary);">Historical Bars</th>
                             <th style="padding: 10px 14px; text-align: left; font-weight: 700; color: var(--text-secondary);">Last Synced</th>
                         </tr>
                     </thead>
@@ -7112,6 +7118,8 @@
             const btn = document.getElementById('sync-tbl-btn-stock_prices');
             const fullCheck = document.getElementById('sync-stock-prices-full-resync');
             const isFull = overrideFull || (fullCheck ? fullCheck.checked : false);
+            const dateSelect = document.getElementById('sync-stock-prices-start-date');
+            const startDate = dateSelect ? dateSelect.value : '2012-01-01';
 
             try {
                 if (btn) {
@@ -7122,7 +7130,7 @@
                 if (typeof updateSyncSummaryTableRow === 'function') {
                     updateSyncSummaryTableRow('stock_prices', {
                         isSyncing: true,
-                        message: 'Connecting to exchange closing feed...',
+                        message: isFull ? `Connecting to exchange closing feed (${startDate})...` : 'Connecting to exchange closing feed...',
                         percent: 5
                     });
                 }
@@ -7132,7 +7140,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         full_resync: isFull,
-                        force: isFull
+                        force: isFull,
+                        start_date: startDate
                     })
                 });
                 const data = await res.json();

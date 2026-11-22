@@ -39,8 +39,11 @@ logger = logging.getLogger("stock_closing_prices")
 
 TELEMETRY_CACHE_FILE = os.path.join(APP_DATA_DIR, "stock_closing_prices_telemetry.json")
 
-# Process start baseline date: all historical dates before Jan 2013 are strictly excluded.
-START_DATE = "2013-01-01"
+# Process start baseline dates: supports both Jan 2012 (01-01-2012) and Jan 2013 (01-01-2013).
+DEFAULT_START_DATE = "2012-01-01"
+START_DATE = "2012-01-01"
+START_TIMESTAMP_2012 = 1325376000  # 2012-01-01 00:00:00 UTC
+START_TIMESTAMP_2013 = 1356998400  # 2013-01-01 00:00:00 UTC
 
 
 class StockClosingPricesProvider:
@@ -241,6 +244,16 @@ class StockClosingPricesProvider:
             if check_date:
                 pending_count = sum(1 for sym, rec in summary.items() if (rec.get("latest_date") or "") < check_date)
 
+        # Detect earliest historical date in DB
+        min_start_date = "9999-99-99"
+        if summary:
+            for sym, rec in summary.items():
+                s = rec.get("start_date", "")
+                if s and s < min_start_date:
+                    min_start_date = s
+        if min_start_date == "9999-99-99":
+            min_start_date = DEFAULT_START_DATE
+
         return {
             "is_syncing": self._is_syncing,
             "progress": self._progress,
@@ -248,7 +261,7 @@ class StockClosingPricesProvider:
             "total_stocks": db_count,
             "universe_size": self._total_stocks,
             "pending_count": pending_count,
-            "start_date": START_DATE,
+            "start_date": min_start_date,
             "latest_trading_date": latest_date or "—",
             "last_synced_display": self._last_synced_display,
             "market_closed": market_closed,
@@ -261,11 +274,13 @@ class StockClosingPricesProvider:
         self,
         force: bool = False,
         full_resync: bool = False,
+        start_date: str = "2012-01-01",
         on_init: bool = False
     ) -> Dict[str, Any]:
         """
         Starts asynchronous background synchronization of stock closing prices.
         Enforces 'take only when market closed' unless explicit administrative force is set.
+        Supports full resync starting from 2012-01-01 or 2013-01-01.
         """
         market_closed, market_reason = self.is_market_closed()
 
@@ -285,18 +300,18 @@ class StockClosingPricesProvider:
                 }
             self._is_syncing = True
             self._percent = 0
-            self._progress = "Initializing stock price sync..."
+            self._progress = f"Initializing stock price sync ({'Full from ' + start_date if full_resync else 'Pending closes'})..."
 
         thread = threading.Thread(
             target=self._run_sync,
-            args=(force, full_resync, on_init),
+            args=(force, full_resync, start_date, on_init),
             daemon=True
         )
         thread.start()
 
         return {
             "success": True,
-            "message": "Stock closing prices synchronization started in background.",
+            "message": f"Stock closing prices synchronization started in background ({'Full from ' + start_date if full_resync else 'Pending closes'}).",
             "market_status": "CLOSED" if market_closed else "OPEN (Forced)"
         }
 
@@ -306,13 +321,14 @@ class StockClosingPricesProvider:
         company_name: str,
         existing_doc: Optional[Dict[str, Any]],
         full_resync: bool,
-        target_market_date: str = ""
+        target_market_date: str = "",
+        start_date: str = "2012-01-01"
     ) -> Optional[Dict[str, Any]]:
         """
         Fetches daily closing prices from Yahoo Finance for a single stock.
         - Incremental sync: updates recent dates starting from the NEXT date after the last date
           updated in DB for this stock up to the latest market trading date.
-        - Full resync: fetches complete historical daily prices from 2012-01-01 to Present.
+        - Full resync: fetches complete historical daily prices from start_date (2012-01-01 / 2013-01-01) to Present.
         Maintains chronological sorting with zero duplicate dates.
         """
         sym_clean = symbol.strip().upper()
@@ -324,6 +340,13 @@ class StockClosingPricesProvider:
 
         tz_ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         now_ts = int(time.time())
+        effective_start = start_date or DEFAULT_START_DATE
+
+        try:
+            s_dt = datetime.datetime.strptime(effective_start, "%Y-%m-%d").date()
+            start_ts = int(datetime.datetime(s_dt.year, s_dt.month, s_dt.day, 0, 0, 0, tzinfo=tz_ist).timestamp())
+        except Exception:
+            start_ts = START_TIMESTAMP_2012
 
         # Determine query parameters:
         # If stock already exists in DB and has historical prices, fetch only recent dates
@@ -345,8 +368,8 @@ class StockClosingPricesProvider:
                 logger.warning(f"Error calculating next date for {sym_clean}: {e}")
                 query_params = "interval=1d&range=5d&includePrePost=false"
         else:
-            # Full 2012 to present backfill (1325376000 is 2012-01-01 00:00:00 UTC)
-            query_params = f"interval=1d&period1=1325376000&period2={now_ts}&includePrePost=false"
+            # Full backfill from start_date (e.g. 2012-01-01 or 2013-01-01)
+            query_params = f"interval=1d&period1={start_ts}&period2={now_ts}&includePrePost=false"
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -392,7 +415,7 @@ class StockClosingPricesProvider:
                     if c_float > 0:
                         dt_ist = datetime.datetime.fromtimestamp(ts, tz=tz_ist)
                         d_str = dt_ist.strftime("%Y-%m-%d")
-                        if d_str >= START_DATE:
+                        if d_str >= effective_start:
                             fetched_bars.append({"d": d_str, "c": round(c_float, 2)})
                 except (ValueError, TypeError):
                     continue
@@ -401,18 +424,19 @@ class StockClosingPricesProvider:
             return None
 
         # Merge fetched bars with existing prices (idempotent, deduplicated by date)
-        # Strictly exclude any historical data prior to Jan 2012 (START_DATE)
+        # Strictly exclude any historical data prior to effective_start
         price_dict = {}
-        for p in existing_prices:
-            d = p.get("d", "")
-            c = p.get("c")
-            if d >= START_DATE and c is not None and float(c) > 0:
-                price_dict[d] = round(float(c), 2)
+        if not full_resync:
+            for p in existing_prices:
+                d = p.get("d", "")
+                c = p.get("c")
+                if d >= effective_start and c is not None and float(c) > 0:
+                    price_dict[d] = round(float(c), 2)
 
         for b in fetched_bars:
             d = b.get("d", "")
             c = b.get("c")
-            if d >= START_DATE and c is not None and float(c) > 0:
+            if d >= effective_start and c is not None and float(c) > 0:
                 price_dict[d] = round(float(c), 2)
 
         # Sort chronologically
@@ -447,10 +471,16 @@ class StockClosingPricesProvider:
             "last_synced_display": now_display
         }
 
-    def _run_sync(self, force: bool = False, full_resync: bool = False, on_init: bool = False):
+    def _run_sync(
+        self,
+        force: bool = False,
+        full_resync: bool = False,
+        start_date: str = "2012-01-01",
+        on_init: bool = False
+    ):
         """Worker thread executing parallel stock fetching and batch database updates."""
         try:
-            logger.info("Starting stock closing prices sync...")
+            logger.info(f"Starting stock closing prices sync (full_resync={full_resync}, start_date={start_date})...")
             stocks_map = self.get_unique_index_stocks()
             if not stocks_map:
                 with self._lock:
@@ -490,7 +520,10 @@ class StockClosingPricesProvider:
             total_target = len(stock_items)
 
             with self._lock:
-                self._progress = f"Synchronizing pending dates for {total_target} stocks (Target: {target_market_date})..."
+                if full_resync:
+                    self._progress = f"Full resynchronization from {start_date} for {total_target} stocks..."
+                else:
+                    self._progress = f"Synchronizing pending dates for {total_target} stocks (Target: {target_market_date})..."
                 self._percent = 5
             self._persist_telemetry()
 
@@ -519,7 +552,8 @@ class StockClosingPricesProvider:
                             cname,
                             existing_doc,
                             full_resync,
-                            target_market_date
+                            target_market_date,
+                            start_date
                         )
                         futures[future] = sym
 

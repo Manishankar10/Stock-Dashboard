@@ -111,16 +111,19 @@ def admin_stock_closing_prices_sync():
     STRICT REQUIREMENT: Sync is permitted only when market is closed (post 03:30 PM IST / weekends / holidays).
     Payload parameters:
     - force: bool (optional administrative force override)
-    - full_resync: bool (optional full 2-year reload)
+    - full_resync: bool (optional full reload)
+    - start_date: str (optional baseline date: '2012-01-01' or '2013-01-01')
     """
     try:
         payload = request.get_json(silent=True) or {}
         force = bool(payload.get("force", False))
         full_resync = bool(payload.get("full_resync", False))
+        start_date = payload.get("start_date") or "2012-01-01"
 
         res = stock_closing_prices_provider.start_background_sync(
             force=force,
-            full_resync=full_resync
+            full_resync=full_resync,
+            start_date=start_date
         )
         return jsonify(res)
     except Exception as e:
