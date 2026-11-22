@@ -39,8 +39,8 @@ logger = logging.getLogger("stock_closing_prices")
 
 TELEMETRY_CACHE_FILE = os.path.join(APP_DATA_DIR, "stock_closing_prices_telemetry.json")
 
-# Process start baseline date: all historical dates before Jan 2012 are strictly excluded.
-START_DATE = "2012-01-01"
+# Process start baseline date: all historical dates before Jan 2013 are strictly excluded.
+START_DATE = "2013-01-01"
 
 
 class StockClosingPricesProvider:

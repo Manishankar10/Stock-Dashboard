@@ -204,7 +204,7 @@ def get_earliest_stock_price_month():
             return d.strftime("%b %Y")
     except Exception:
         pass
-    return "Jan 2012"
+    return "Jan 2013"
 
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/indices-catalog", methods=["GET"])

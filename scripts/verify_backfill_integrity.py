@@ -11,7 +11,7 @@ import db_store
 
 def verify():
     print("=" * 70)
-    print("VERIFYING BACKFILL INTEGRITY (2012 to Today)")
+    print("VERIFYING BACKFILL INTEGRITY (2013 to Today)")
     print("=" * 70)
 
     # 1. Check SQLite
@@ -29,7 +29,7 @@ def verify():
     stocks_with_dups = []
     earliest_date_overall = "9999-99-99"
     latest_date_overall = "0000-00-00"
-    stocks_from_2012 = 0
+    stocks_from_2013 = 0
     newer_ipos = 0
 
     for sym, start_d, latest_d, tot, p_json in rows:
@@ -47,16 +47,16 @@ def verify():
         if latest_d and latest_d > latest_date_overall:
             latest_date_overall = latest_d
 
-        if start_d and start_d <= "2012-01-05":
-            stocks_from_2012 += 1
+        if start_d and start_d <= "2013-01-05":
+            stocks_from_2013 += 1
         else:
             newer_ipos += 1
 
     conn.close()
 
     print(f"Total price candles stored in SQLite: {total_price_bars:,}")
-    print(f"Stocks with history from 2012-01-02: {stocks_from_2012}")
-    print(f"Newer IPO stocks (listed post-2012): {newer_ipos}")
+    print(f"Stocks with history from 2013-01-01: {stocks_from_2013}")
+    print(f"Newer IPO stocks (listed post-2013): {newer_ipos}")
     print(f"Earliest market date across all stocks: {earliest_date_overall}")
     print(f"Latest market date across all stocks: {latest_date_overall}")
     print(f"DUPLICATES DETECTED: {duplicate_count}")
