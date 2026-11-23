@@ -236,8 +236,10 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
                     all_symbols_to_warm.add(c)
 
         if all_symbols_to_warm:
-            logger.info(f"Prewarming DB prices for {len(all_symbols_to_warm)} stocks across {len(uncached_indices)} uncached indices...")
-            prewarm_stock_prices_cache(all_symbols_to_warm)
+            import datetime as _dt
+            earliest_needed = (start_d - _dt.timedelta(days=400)).isoformat()
+            logger.info(f"Prewarming DB prices for {len(all_symbols_to_warm)} stocks across {len(uncached_indices)} uncached indices (from {earliest_needed})...")
+            prewarm_stock_prices_cache(all_symbols_to_warm, min_date=earliest_needed)
 
         for (i, idx_cfg, key, cfg_id, color) in uncached_indices:
             idx_id = idx_cfg.get("index_id")
@@ -585,8 +587,8 @@ def _evaluate_universe_db_only(
             logger.warning(f"DB evaluation error for {sym} on {target_date}: {e}")
         return (sym, None)
 
-    # Concurrently evaluate cached prices with worker pool
-    worker_count = min(16, max(4, len(eligible_symbols)))
+    # Concurrently evaluate cached prices with worker pool (cap to 6 workers to preserve cloud container memory)
+    worker_count = min(6, max(2, len(eligible_symbols)))
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         results = executor.map(_eval, eligible_symbols)
         for sym, r in results:

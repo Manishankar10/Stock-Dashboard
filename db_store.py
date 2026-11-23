@@ -1909,27 +1909,43 @@ def get_trading_holidays_telemetry_db():
 # STOCK CLOSING PRICES (750 STOCKS 2-YEAR EOD HISTORY & DAILY CLOSES)
 # ==============================================================================
 
-def load_stock_closing_prices_db(symbol=None, summary_only=False, limit=None):
+def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, limit=None):
     """
     Loads stock closing prices from database:
     1. Primary: MongoDB Atlas collection 'stock_closing_prices'
     2. Local: SQLite database 'capital_desk.db' table 'stock_closing_prices'
-    If symbol is specified, returns single stock document.
+    If symbol is specified as a string, returns single stock document.
+    If symbols (or symbol as list/set) is specified, returns dict of {sym: doc} for only those symbols.
     If summary_only is True, excludes full prices array for high-performance listing.
     """
     import json
+
+    # Normalize inputs
+    single_sym = None
+    target_symbols = None
+    if symbol and isinstance(symbol, str):
+        single_sym = symbol.strip().upper().replace('.NS', '').replace('.BO', '')
+    elif symbol and isinstance(symbol, (list, tuple, set)):
+        target_symbols = [str(s).strip().upper().replace('.NS', '').replace('.BO', '') for s in symbol if s]
+    elif symbols and isinstance(symbols, (list, tuple, set)):
+        target_symbols = [str(s).strip().upper().replace('.NS', '').replace('.BO', '') for s in symbols if s]
+
     # 1. MongoDB Atlas
     if db is not None:
         try:
             col = db["stock_closing_prices"]
-            if symbol:
-                doc = col.find_one({"_id": str(symbol).strip().upper()})
+            if single_sym:
+                doc = col.find_one({"_id": single_sym})
                 if doc:
                     doc.pop("_id", None)
                     return doc
+                return None
             else:
                 projection = {"prices": 0} if summary_only else None
-                cursor = col.find({}, projection)
+                query = {}
+                if target_symbols:
+                    query = {"_id": {"$in": target_symbols}}
+                cursor = col.find(query, projection)
                 if limit and isinstance(limit, int) and limit > 0:
                     cursor = cursor.limit(limit)
                 docs = list(cursor)
@@ -1940,6 +1956,7 @@ def load_stock_closing_prices_db(symbol=None, summary_only=False, limit=None):
                         d.pop("_id", None)
                         res[sym] = d
                     return res
+                return {}
         except Exception as e:
             print(f"MongoDB load_stock_closing_prices error: {e}")
 
@@ -1949,10 +1966,10 @@ def load_stock_closing_prices_db(symbol=None, summary_only=False, limit=None):
         _init_sqlite_db()
         conn = sqlite3.connect(_SQLITE_DB_PATH)
         cursor = conn.cursor()
-        if symbol:
+        if single_sym:
             cursor.execute(
                 "SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, prices_json, last_synced, last_synced_display, updated_at FROM stock_closing_prices WHERE symbol = ?",
-                (str(symbol).strip().upper(),)
+                (single_sym,)
             )
             row = cursor.fetchone()
             if row:
@@ -1972,6 +1989,52 @@ def load_stock_closing_prices_db(symbol=None, summary_only=False, limit=None):
                     "last_synced_display": row[11],
                     "updated_at": row[12]
                 }
+            return None
+        elif target_symbols:
+            res = {}
+            for chunk_start in range(0, len(target_symbols), 400):
+                chunk = target_symbols[chunk_start:chunk_start+400]
+                placeholders = ','.join('?' for _ in chunk)
+                if summary_only:
+                    q = f"SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, last_synced, last_synced_display, updated_at FROM stock_closing_prices WHERE symbol IN ({placeholders})"
+                else:
+                    q = f"SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, prices_json, last_synced, last_synced_display, updated_at FROM stock_closing_prices WHERE symbol IN ({placeholders})"
+                cursor.execute(q, chunk)
+                rows = cursor.fetchall()
+                for row in rows:
+                    if summary_only:
+                        res[row[0]] = {
+                            "symbol": row[0],
+                            "company_name": row[1],
+                            "start_date": row[2],
+                            "latest_date": row[3],
+                            "latest_close": row[4],
+                            "prev_close": row[5],
+                            "change": row[6],
+                            "change_pct": row[7],
+                            "total_records": row[8],
+                            "last_synced": row[9],
+                            "last_synced_display": row[10],
+                            "updated_at": row[11]
+                        }
+                    else:
+                        prices = json.loads(row[9]) if row[9] else []
+                        res[row[0]] = {
+                            "symbol": row[0],
+                            "company_name": row[1],
+                            "start_date": row[2],
+                            "latest_date": row[3],
+                            "latest_close": row[4],
+                            "prev_close": row[5],
+                            "change": row[6],
+                            "change_pct": row[7],
+                            "total_records": row[8],
+                            "prices": prices,
+                            "last_synced": row[10],
+                            "last_synced_display": row[11],
+                            "updated_at": row[12]
+                        }
+            return res
         else:
             if summary_only:
                 query = "SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, last_synced, last_synced_display, updated_at FROM stock_closing_prices"

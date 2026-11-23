@@ -127,8 +127,15 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
             if series and len(series) > 0:
                 if not target_cutoff_str:
                     return series
-                filtered = [p for p in series if p[0] <= target_cutoff_str]
-                return filtered if filtered else series
+                # Binary search for rightmost index where date <= target_cutoff_str
+                lo, hi = 0, len(series)
+                while lo < hi:
+                    mid = (lo + hi) // 2
+                    if series[mid][0] <= target_cutoff_str:
+                        lo = mid + 1
+                    else:
+                        hi = mid
+                return series[:lo] if lo > 0 else series
 
     # 2. Query database collection stock_closing_prices
     try:
@@ -149,42 +156,56 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
 
                 if not target_cutoff_str:
                     return series
-                filtered = [p for p in series if p[0] <= target_cutoff_str]
-                return filtered if filtered else series
+                lo, hi = 0, len(series)
+                while lo < hi:
+                    mid = (lo + hi) // 2
+                    if series[mid][0] <= target_cutoff_str:
+                        lo = mid + 1
+                    else:
+                        hi = mid
+                return series[:lo] if lo > 0 else series
     except Exception as e:
         logger.warning(f"Error querying stock_closing_prices from DB for {fetch_sym}: {e}")
 
     return None
 
 
-def prewarm_stock_prices_cache(symbols=None):
+def prewarm_stock_prices_cache(symbols=None, min_date=None):
     """
     Pre-warms the in-memory cache from database collection 'stock_closing_prices'.
-    Bulk-loads all stock closing prices into memory once so subsequent calculations
-    take < 0.01 ms with zero database round-trips.
+    Efficiently loads ONLY the requested constituent symbols (or uncached ones), optionally
+    filtering historical dates to min_date to prevent RAM explosion on cloud environments (Render).
     """
     try:
         from db_store import load_stock_closing_prices_db
-        with _db_cache_lock:
-            # If already hot with 500+ stocks and all requested symbols present, skip reload
-            if len(_db_prices_cache) >= 500:
-                if not symbols or all(s.strip().upper().replace('.NS', '') in _db_prices_cache for s in symbols):
+        target_syms = None
+        if symbols:
+            with _db_cache_lock:
+                target_syms = [
+                    s.strip().upper().replace('.NS', '').replace('.BO', '')
+                    for s in symbols
+                    if s and s.strip().upper().replace('.NS', '').replace('.BO', '') not in _db_prices_cache
+                ]
+                if not target_syms:
                     return len(_db_prices_cache)
 
-        docs = load_stock_closing_prices_db(summary_only=False)
+        docs = load_stock_closing_prices_db(symbols=target_syms, summary_only=False)
         if not docs:
-            return 0
+            return len(_db_prices_cache)
 
         with _db_cache_lock:
             for sym, doc in docs.items():
                 if doc and doc.get("prices"):
-                    clean_s = sym.strip().upper().replace('.NS', '')
+                    clean_s = sym.strip().upper().replace('.NS', '').replace('.BO', '')
                     series = []
                     for p in doc["prices"]:
                         d = p.get("d")
                         c = p.get("c")
                         if d and c is not None and float(c) > 0:
-                            series.append((str(d)[:10], round(float(c), 2)))
+                            d_str = str(d)[:10]
+                            if min_date and d_str < min_date:
+                                continue
+                            series.append((d_str, round(float(c), 2)))
                     if series:
                         series.sort(key=lambda x: x[0])
                         _db_prices_cache[clean_s] = series
@@ -192,7 +213,7 @@ def prewarm_stock_prices_cache(symbols=None):
         return len(_db_prices_cache)
     except Exception as e:
         logger.warning(f"Error pre-warming stock_closing_prices cache: {e}")
-        return 0
+        return len(_db_prices_cache)
 
 
 # ==============================================================================
@@ -658,8 +679,8 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
     # Pre-warm DB stock closing prices into memory cache for instant <0.01ms evaluations
     prewarm_stock_prices_cache(eligible_symbols)
 
-    # Fetch concurrently with safe worker pool
-    worker_count = min(24, max(4, len(eligible_symbols)))
+    # Fetch concurrently with safe worker pool (cap to 6 to stay lightweight on memory)
+    worker_count = min(6, max(2, len(eligible_symbols)))
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         results = executor.map(_eval, eligible_symbols)
         for sym, r in results:
