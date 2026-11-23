@@ -342,27 +342,27 @@ class StockClosingPricesProvider:
         """
         Directly recomputes monthly average prices and monthly returns for all stocks
         already stored in MongoDB Atlas, updating each document in-place.
-        Zero external network calls (reads existing daily prices from MongoDB).
+        Streams cursor in micro-batches (batch_size=25) to keep memory < 10 MB and avoid OOM.
         """
         if db_store.db is None:
             return {"success": False, "error": "MongoDB Atlas is not connected."}
         
         try:
             col = db_store.db["stock_closing_prices"]
-            cursor = col.find({}, {"_id": 1, "symbol": 1, "prices": 1})
-            docs = list(cursor)
-            if not docs:
+            total_stocks = col.count_documents({})
+            if total_stocks == 0:
                 return {"success": False, "error": "No stocks found in stock_closing_prices collection."}
 
-            total_stocks = len(docs)
-            logger.info(f"Computing monthly averages & returns for {total_stocks} stocks in MongoDB...")
+            logger.info(f"Computing monthly averages & returns for {total_stocks} stocks in MongoDB (streaming mode)...")
             
             from pymongo import UpdateOne
-            batch_size = 100
+            batch_size = 25
             ops = []
             updated_count = 0
 
-            for d in docs:
+            # Stream cursor one document at a time to prevent memory spikes
+            cursor = col.find({}, {"_id": 1, "symbol": 1, "prices": 1}, batch_size=25)
+            for d in cursor:
                 sym = d.get("_id") or d.get("symbol")
                 prices = d.get("prices") or []
                 monthly_prices = compute_stock_monthly_prices(prices)
