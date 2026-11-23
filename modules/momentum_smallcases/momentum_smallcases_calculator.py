@@ -581,6 +581,30 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     }
 
 
+_FORMULA_WEIGHTS_CACHE = {}
+_WEIGHTS_REGEX = re.compile(r'(\d+)\s*%\s*\*\s*(\d+)M', re.IGNORECASE)
+
+def _get_formula_weights(formula_str):
+    if not formula_str:
+        return (0.50, 0.30, 0.10, 0.10)
+    cached = _FORMULA_WEIGHTS_CACHE.get(formula_str)
+    if cached is not None:
+        return cached
+    w1, w2, w3, w4 = 0.50, 0.30, 0.10, 0.10
+    try:
+        m = _WEIGHTS_REGEX.findall(formula_str)
+        if m:
+            weights = {f"{month}M": int(pct) / 100.0 for pct, month in m}
+            if "1M" in weights: w1 = weights["1M"]
+            if "2M" in weights: w2 = weights["2M"]
+            if "5M" in weights: w3 = weights["5M"]
+            if "9M" in weights: w4 = weights["9M"]
+    except Exception:
+        pass
+    res = (w1, w2, w3, w4)
+    _FORMULA_WEIGHTS_CACHE[formula_str] = res
+    return res
+
 def evaluate_formula_score(metrics, formula_str=None):
     """
     Evaluates momentum score from metrics.
@@ -594,26 +618,11 @@ def evaluate_formula_score(metrics, formula_str=None):
     vol_1m = metrics.get("volatility_1m", 0.0)
     vol_3m = metrics.get("volatility_3m", 0.0)
 
-    # Numerator & Denominator for default formula
-    w1, w2, w3, w4 = 0.50, 0.30, 0.10, 0.10
-
-    if formula_str:
-        # Check custom weights if pattern like 50% * 1M ... is found
-        try:
-            m = re.findall(r'(\d+)\s*%\s*\*\s*(\d+)M', formula_str, re.IGNORECASE)
-            weights = {f"{month}M": int(pct) / 100.0 for pct, month in m}
-            if "1M" in weights: w1 = weights["1M"]
-            if "2M" in weights: w2 = weights["2M"]
-            if "5M" in weights: w3 = weights["5M"]
-            if "9M" in weights: w4 = weights["9M"]
-        except Exception:
-            pass
-
+    w1, w2, w3, w4 = _get_formula_weights(formula_str)
     numerator = (w1 * r_1m) + (w2 * r_2m) + (w3 * r_5m) + (w4 * r_9m)
     denominator = max(vol_1m + vol_3m, 0.01)
 
-    score = numerator / denominator
-    return round(score, 4)
+    return round(numerator / denominator, 4)
 
 
 # ==============================================================================
@@ -1001,7 +1010,7 @@ def execute_rebalance_run(ranked_stocks, previous_holdings, previous_wallet, ste
                 exit_price = round(float(univ_stk["price"]), 2)
             else:
                 try:
-                    series = fetch_stock_daily_series(sym, target_cutoff_date=target_date)
+                    series = fetch_stock_daily_series(sym, target_cutoff_date=target_date, db_only=True)
                     if series:
                         exit_price = round(float(series[-1][1]), 2)
                 except Exception as e:
