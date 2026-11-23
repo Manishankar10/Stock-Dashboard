@@ -325,31 +325,9 @@ def _init_sqlite_db():
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_year ON trading_holidays(year)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON trading_holidays(date)")
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS stock_closing_prices (
-                    symbol TEXT PRIMARY KEY,
-                    company_name TEXT,
-                    start_date TEXT,
-                    latest_date TEXT,
-                    latest_close REAL,
-                    prev_close REAL,
-                    change REAL,
-                    change_pct REAL,
-                    total_records INTEGER DEFAULT 0,
-                    prices_json TEXT NOT NULL,
-                    last_synced TEXT,
-                    last_synced_display TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_closing_prices_latest_date ON stock_closing_prices(latest_date)")
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS stock_closing_prices_telemetry (
-                    id TEXT PRIMARY KEY,
-                    data TEXT NOT NULL,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+            # SQLite stock_closing_prices removed: all stock calculations execute purely from MongoDB
+            conn.execute("DROP TABLE IF EXISTS stock_closing_prices")
+            conn.execute("DROP TABLE IF EXISTS stock_closing_prices_telemetry")
             conn.commit()
     except Exception as e:
         print(f"SQLite init error: {e}")
@@ -1909,16 +1887,18 @@ def get_trading_holidays_telemetry_db():
 # STOCK CLOSING PRICES (750 STOCKS 2-YEAR EOD HISTORY & DAILY CLOSES)
 # ==============================================================================
 
-def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, limit=None):
+def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, monthly_only=False, limit=None):
     """
-    Loads stock closing prices from database:
-    1. Primary: MongoDB Atlas collection 'stock_closing_prices'
-    2. Local: SQLite database 'capital_desk.db' table 'stock_closing_prices'
+    Loads stock closing prices strictly and solely from MongoDB Atlas collection 'stock_closing_prices'.
+    SQLite usage is completely deleted per system architecture rules.
     If symbol is specified as a string, returns single stock document.
     If symbols (or symbol as list/set) is specified, returns dict of {sym: doc} for only those symbols.
-    If summary_only is True, excludes full prices array for high-performance listing.
+    If summary_only is True, excludes prices and monthly_prices arrays for high-performance listing.
+    If monthly_only is True, excludes full daily prices array but includes monthly_prices for ultra-fast calculation.
     """
-    import json
+    if db is None:
+        print("Warning: MongoDB Atlas is not connected for load_stock_closing_prices_db.")
+        return {} if not symbol or isinstance(symbol, (list, tuple, set)) else None
 
     # Normalize inputs
     single_sym = None
@@ -1930,176 +1910,50 @@ def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, 
     elif symbols and isinstance(symbols, (list, tuple, set)):
         target_symbols = [str(s).strip().upper().replace('.NS', '').replace('.BO', '') for s in symbols if s]
 
-    # 1. MongoDB Atlas
-    if db is not None:
-        try:
-            col = db["stock_closing_prices"]
-            if single_sym:
-                doc = col.find_one({"_id": single_sym})
-                if doc:
-                    doc.pop("_id", None)
-                    return doc
-                return None
-            else:
-                projection = {"prices": 0} if summary_only else None
-                query = {}
-                if target_symbols:
-                    query = {"_id": {"$in": target_symbols}}
-                cursor = col.find(query, projection)
-                if limit and isinstance(limit, int) and limit > 0:
-                    cursor = cursor.limit(limit)
-                docs = list(cursor)
-                if docs:
-                    res = {}
-                    for d in docs:
-                        sym = d.get("_id") or d.get("symbol")
-                        d.pop("_id", None)
-                        res[sym] = d
-                    return res
-                return {}
-        except Exception as e:
-            print(f"MongoDB load_stock_closing_prices error: {e}")
-
-    # 2. SQLite
-    conn = None
     try:
-        _init_sqlite_db()
-        conn = sqlite3.connect(_SQLITE_DB_PATH)
-        cursor = conn.cursor()
+        col = db["stock_closing_prices"]
         if single_sym:
-            cursor.execute(
-                "SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, prices_json, last_synced, last_synced_display, updated_at FROM stock_closing_prices WHERE symbol = ?",
-                (single_sym,)
-            )
-            row = cursor.fetchone()
-            if row:
-                prices = json.loads(row[9]) if row[9] else []
-                return {
-                    "symbol": row[0],
-                    "company_name": row[1],
-                    "start_date": row[2],
-                    "latest_date": row[3],
-                    "latest_close": row[4],
-                    "prev_close": row[5],
-                    "change": row[6],
-                    "change_pct": row[7],
-                    "total_records": row[8],
-                    "prices": prices,
-                    "last_synced": row[10],
-                    "last_synced_display": row[11],
-                    "updated_at": row[12]
-                }
-            return None
-        elif target_symbols:
-            res = {}
-            for chunk_start in range(0, len(target_symbols), 400):
-                chunk = target_symbols[chunk_start:chunk_start+400]
-                placeholders = ','.join('?' for _ in chunk)
-                if summary_only:
-                    q = f"SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, last_synced, last_synced_display, updated_at FROM stock_closing_prices WHERE symbol IN ({placeholders})"
-                else:
-                    q = f"SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, prices_json, last_synced, last_synced_display, updated_at FROM stock_closing_prices WHERE symbol IN ({placeholders})"
-                cursor.execute(q, chunk)
-                rows = cursor.fetchall()
-                for row in rows:
-                    if summary_only:
-                        res[row[0]] = {
-                            "symbol": row[0],
-                            "company_name": row[1],
-                            "start_date": row[2],
-                            "latest_date": row[3],
-                            "latest_close": row[4],
-                            "prev_close": row[5],
-                            "change": row[6],
-                            "change_pct": row[7],
-                            "total_records": row[8],
-                            "last_synced": row[9],
-                            "last_synced_display": row[10],
-                            "updated_at": row[11]
-                        }
-                    else:
-                        prices = json.loads(row[9]) if row[9] else []
-                        res[row[0]] = {
-                            "symbol": row[0],
-                            "company_name": row[1],
-                            "start_date": row[2],
-                            "latest_date": row[3],
-                            "latest_close": row[4],
-                            "prev_close": row[5],
-                            "change": row[6],
-                            "change_pct": row[7],
-                            "total_records": row[8],
-                            "prices": prices,
-                            "last_synced": row[10],
-                            "last_synced_display": row[11],
-                            "updated_at": row[12]
-                        }
-            return res
-        else:
+            projection = None
             if summary_only:
-                query = "SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, last_synced, last_synced_display, updated_at FROM stock_closing_prices"
-                if limit and isinstance(limit, int) and limit > 0:
-                    query += f" LIMIT {limit}"
-                cursor.execute(query)
-                rows = cursor.fetchall()
-                if rows:
-                    res = {}
-                    for row in rows:
-                        res[row[0]] = {
-                            "symbol": row[0],
-                            "company_name": row[1],
-                            "start_date": row[2],
-                            "latest_date": row[3],
-                            "latest_close": row[4],
-                            "prev_close": row[5],
-                            "change": row[6],
-                            "change_pct": row[7],
-                            "total_records": row[8],
-                            "last_synced": row[9],
-                            "last_synced_display": row[10],
-                            "updated_at": row[11]
-                        }
-                    return res
-            else:
-                query = "SELECT symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, prices_json, last_synced, last_synced_display, updated_at FROM stock_closing_prices"
-                if limit and isinstance(limit, int) and limit > 0:
-                    query += f" LIMIT {limit}"
-                cursor.execute(query)
-                rows = cursor.fetchall()
-                if rows:
-                    res = {}
-                    for row in rows:
-                        prices = json.loads(row[9]) if row[9] else []
-                        res[row[0]] = {
-                            "symbol": row[0],
-                            "company_name": row[1],
-                            "start_date": row[2],
-                            "latest_date": row[3],
-                            "latest_close": row[4],
-                            "prev_close": row[5],
-                            "change": row[6],
-                            "change_pct": row[7],
-                            "total_records": row[8],
-                            "prices": prices,
-                            "last_synced": row[10],
-                            "last_synced_display": row[11],
-                            "updated_at": row[12]
-                        }
-                    return res
-    except Exception as e:
-        print(f"SQLite load_stock_closing_prices error: {e}")
-    finally:
-        if conn:
-            conn.close()
+                projection = {"prices": 0, "monthly_prices": 0}
+            elif monthly_only:
+                projection = {"prices": 0}
+            doc = col.find_one({"_id": single_sym}, projection)
+            if doc:
+                doc.pop("_id", None)
+                return doc
+            return None
+        else:
+            projection = None
+            if summary_only:
+                projection = {"prices": 0, "monthly_prices": 0}
+            elif monthly_only:
+                projection = {"prices": 0}
 
-    return {} if not symbol else None
+            query = {}
+            if target_symbols:
+                query = {"_id": {"$in": target_symbols}}
+            cursor = col.find(query, projection)
+            if limit and isinstance(limit, int) and limit > 0:
+                cursor = cursor.limit(limit)
+            docs = list(cursor)
+            if docs:
+                res = {}
+                for d in docs:
+                    sym = d.get("_id") or d.get("symbol")
+                    d.pop("_id", None)
+                    res[sym] = d
+                return res
+            return {}
+    except Exception as e:
+        print(f"MongoDB load_stock_closing_prices error: {e}")
+        return {} if not single_sym else None
 
 
 def save_stock_closing_prices_db(records):
     """
-    Saves or bulk-upserts stock closing prices into:
-    1. MongoDB Atlas collection 'stock_closing_prices'
-    2. SQLite 'stock_closing_prices' table in capital_desk.db
+    Saves or bulk-upserts stock closing prices strictly into MongoDB Atlas collection 'stock_closing_prices'.
+    Zero SQLite persistence.
     'records' can be a single dict or a list of dicts.
     """
     if not records:
@@ -2117,6 +1971,7 @@ def save_stock_closing_prices_db(records):
             continue
         cname = str(r.get("company_name", sym)).strip()
         prices = r.get("prices", [])
+        monthly_prices = r.get("monthly_prices", [])
         tot = len(prices)
         s_date = r.get("start_date") or (prices[0]["d"] if prices else "")
         l_date = r.get("latest_date") or (prices[-1]["d"] if prices else "")
@@ -2127,7 +1982,7 @@ def save_stock_closing_prices_db(records):
         synced_iso = r.get("last_synced") or now_iso
         synced_disp = r.get("last_synced_display") or now_display
 
-        clean_records.append({
+        doc = {
             "symbol": sym,
             "company_name": cname,
             "start_date": s_date,
@@ -2140,12 +1995,16 @@ def save_stock_closing_prices_db(records):
             "prices": prices,
             "last_synced": synced_iso,
             "last_synced_display": synced_disp
-        })
+        }
+        if monthly_prices:
+            doc["monthly_prices"] = monthly_prices
+
+        clean_records.append(doc)
 
     if not clean_records:
         return {"success": False, "count": 0}
 
-    # 1. MongoDB Atlas Bulk Upsert
+    # MongoDB Atlas Bulk Upsert
     if db is not None:
         try:
             from pymongo import UpdateOne
@@ -2160,53 +2019,19 @@ def save_stock_closing_prices_db(records):
                 try:
                     col.create_index([("latest_date", 1)])
                     col.create_index([("symbol", 1)])
+                    col.create_index([("start_date", 1)])
                 except Exception:
                     pass
+            return {"success": True, "count": len(clean_records)}
         except Exception as e:
             print(f"MongoDB save_stock_closing_prices bulk error: {e}")
+            return {"success": False, "error": str(e)}
 
-    # 2. SQLite Batch Insert / Replace
-    conn = None
-    try:
-        _init_sqlite_db()
-        conn = sqlite3.connect(_SQLITE_DB_PATH)
-        sqlite_params = [
-            (
-                r["symbol"],
-                r["company_name"],
-                r["start_date"],
-                r["latest_date"],
-                r["latest_close"],
-                r["prev_close"],
-                r["change"],
-                r["change_pct"],
-                r["total_records"],
-                json.dumps(r["prices"], ensure_ascii=False),
-                r["last_synced"],
-                r["last_synced_display"]
-            )
-            for r in clean_records
-        ]
-        conn.executemany(
-            """
-            INSERT OR REPLACE INTO stock_closing_prices 
-            (symbol, company_name, start_date, latest_date, latest_close, prev_close, change, change_pct, total_records, prices_json, last_synced, last_synced_display, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            """,
-            sqlite_params
-        )
-        conn.commit()
-    except Exception as e:
-        print(f"SQLite save_stock_closing_prices error: {e}")
-    finally:
-        if conn:
-            conn.close()
-
-    return {"success": True, "count": len(clean_records)}
+    return {"success": False, "error": "MongoDB Atlas is not connected"}
 
 
 def load_stock_closing_prices_telemetry_db():
-    """Returns stored telemetry for stock closing prices sync."""
+    """Returns stored telemetry for stock closing prices sync from MongoDB Atlas."""
     if db is not None:
         try:
             col = db["stock_closing_prices_telemetry"]
@@ -2216,54 +2041,24 @@ def load_stock_closing_prices_telemetry_db():
                 return doc
         except Exception as e:
             print(f"MongoDB load_stock_closing_prices_telemetry error: {e}")
-
-    conn = None
-    try:
-        _init_sqlite_db()
-        conn = sqlite3.connect(_SQLITE_DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT data FROM stock_closing_prices_telemetry WHERE id = 'global_telemetry'")
-        row = cursor.fetchone()
-        if row and row[0]:
-            return json.loads(row[0])
-    except Exception as e:
-        print(f"SQLite load_stock_closing_prices_telemetry error: {e}")
-    finally:
-        if conn:
-            conn.close()
     return None
 
 
 def save_stock_closing_prices_telemetry_db(telemetry_data):
-    """Saves or updates telemetry for stock closing prices sync."""
-    if not telemetry_data:
+    """Saves or updates telemetry for stock closing prices sync in MongoDB Atlas."""
+    if not telemetry_data or db is None:
         return
     data_copy = dict(telemetry_data)
     data_copy["updated_at"] = now_ist().isoformat()
 
-    if db is not None:
-        try:
-            col = db["stock_closing_prices_telemetry"]
-            mongo_doc = dict(data_copy)
-            mongo_doc["_id"] = "global_telemetry"
-            col.replace_one({"_id": "global_telemetry"}, mongo_doc, upsert=True)
-        except Exception as e:
-            print(f"MongoDB save_stock_closing_prices_telemetry error: {e}")
-
-    conn = None
     try:
-        _init_sqlite_db()
-        conn = sqlite3.connect(_SQLITE_DB_PATH)
-        conn.execute(
-            "INSERT OR REPLACE INTO stock_closing_prices_telemetry (id, data, updated_at) VALUES ('global_telemetry', ?, CURRENT_TIMESTAMP)",
-            (json.dumps(data_copy, ensure_ascii=False),)
-        )
-        conn.commit()
+        col = db["stock_closing_prices_telemetry"]
+        mongo_doc = dict(data_copy)
+        mongo_doc["_id"] = "global_telemetry"
+        col.replace_one({"_id": "global_telemetry"}, mongo_doc, upsert=True)
     except Exception as e:
-        print(f"SQLite save_stock_closing_prices_telemetry error: {e}")
-    finally:
-        if conn:
-            conn.close()
+        print(f"MongoDB save_stock_closing_prices_telemetry error: {e}")
+
 
 
 

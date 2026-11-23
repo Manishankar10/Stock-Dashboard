@@ -46,6 +46,74 @@ START_TIMESTAMP_2012 = 1325376000  # 2012-01-01 00:00:00 UTC
 START_TIMESTAMP_2013 = 1356998400  # 2013-01-01 00:00:00 UTC
 
 
+def compute_stock_monthly_prices(prices: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Computes monthly average prices, close-to-close returns, and avg-to-avg returns
+    from chronological daily price series [{'d': 'YYYY-MM-DD', 'c': float}].
+    """
+    if not prices:
+        return []
+
+    months_dict = {}
+    for p in prices:
+        d = p.get("d") or ""
+        c = p.get("c")
+        if not d or c is None:
+            continue
+        try:
+            c_val = float(c)
+            if c_val <= 0:
+                continue
+        except (ValueError, TypeError):
+            continue
+        m_key = d[:7]  # 'YYYY-MM'
+        if m_key not in months_dict:
+            months_dict[m_key] = []
+        months_dict[m_key].append((d, c_val))
+
+    sorted_months = sorted(months_dict.keys())
+    monthly_prices = []
+    prev_last_close = None
+    prev_avg_close = None
+
+    for m in sorted_months:
+        bars = months_dict[m]
+        closes = [b[1] for b in bars]
+        avg_close = round(sum(closes) / len(closes), 2)
+        first_close = round(closes[0], 2)
+        last_close = round(closes[-1], 2)
+        high = round(max(closes), 2)
+        low = round(min(closes), 2)
+
+        if prev_last_close is not None and prev_last_close > 0:
+            return_pct = round(((last_close - prev_last_close) / prev_last_close) * 100.0, 2)
+        else:
+            return_pct = 0.0
+
+        if prev_avg_close is not None and prev_avg_close > 0:
+            avg_return_pct = round(((avg_close - prev_avg_close) / prev_avg_close) * 100.0, 2)
+        else:
+            avg_return_pct = 0.0
+
+        monthly_prices.append({
+            "m": m,
+            "avg_close": avg_close,
+            "return_pct": return_pct,
+            "avg_return_pct": avg_return_pct,
+            "first_close": first_close,
+            "last_close": last_close,
+            "high": high,
+            "low": low,
+            "count": len(closes)
+        })
+
+        prev_last_close = last_close
+        prev_avg_close = avg_close
+
+    return monthly_prices
+
+
+
 class StockClosingPricesProvider:
     def __init__(self):
         self._lock = threading.Lock()
@@ -270,6 +338,74 @@ class StockClosingPricesProvider:
             "can_sync": market_closed and not self._is_syncing
         }
 
+    def sync_monthly_averages_only(self) -> Dict[str, Any]:
+        """
+        Directly recomputes monthly average prices and monthly returns for all stocks
+        already stored in MongoDB Atlas, updating each document in-place.
+        Zero external network calls (reads existing daily prices from MongoDB).
+        """
+        if db_store.db is None:
+            return {"success": False, "error": "MongoDB Atlas is not connected."}
+        
+        try:
+            col = db_store.db["stock_closing_prices"]
+            cursor = col.find({}, {"_id": 1, "symbol": 1, "prices": 1})
+            docs = list(cursor)
+            if not docs:
+                return {"success": False, "error": "No stocks found in stock_closing_prices collection."}
+
+            total_stocks = len(docs)
+            logger.info(f"Computing monthly averages & returns for {total_stocks} stocks in MongoDB...")
+            
+            from pymongo import UpdateOne
+            batch_size = 100
+            ops = []
+            updated_count = 0
+
+            for d in docs:
+                sym = d.get("_id") or d.get("symbol")
+                prices = d.get("prices") or []
+                monthly_prices = compute_stock_monthly_prices(prices)
+                ops.append(UpdateOne(
+                    {"_id": sym},
+                    {"$set": {"monthly_prices": monthly_prices}}
+                ))
+                if len(ops) >= batch_size:
+                    col.bulk_write(ops, ordered=False)
+                    updated_count += len(ops)
+                    ops = []
+
+            if ops:
+                col.bulk_write(ops, ordered=False)
+                updated_count += len(ops)
+
+            now_disp = format_ist_display()
+            logger.info(f"Successfully updated monthly averages for {updated_count}/{total_stocks} stocks in MongoDB Atlas.")
+            
+            # Telemetry update
+            try:
+                db_store.db["stock_closing_prices_telemetry"].update_one(
+                    {"_id": "global_telemetry"},
+                    {"$set": {
+                        "monthly_averages_synced": True,
+                        "monthly_averages_updated_at": format_ist_iso(),
+                        "progress": f"Monthly average prices & returns calculated for all {updated_count} stocks."
+                    }},
+                    upsert=True
+                )
+            except Exception:
+                pass
+
+            return {
+                "success": True,
+                "total_updated": updated_count,
+                "total_stocks": total_stocks,
+                "message": f"Successfully calculated and saved monthly average prices & returns for {updated_count} stocks in MongoDB Atlas."
+            }
+        except Exception as e:
+            logger.error(f"Error computing monthly averages: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
+
     def start_background_sync(
         self,
         force: bool = False,
@@ -455,6 +591,9 @@ class StockClosingPricesProvider:
         now_display = format_ist_display()
         now_iso = now_ist().isoformat()
 
+        # Compute monthly average prices and returns
+        monthly_prices = compute_stock_monthly_prices(merged_prices)
+
         # NOTE: Strictly stock metadata only; NO index details saved!
         return {
             "symbol": sym_clean,
@@ -467,6 +606,7 @@ class StockClosingPricesProvider:
             "change_pct": change_pct,
             "total_records": len(merged_prices),
             "prices": merged_prices,
+            "monthly_prices": monthly_prices,
             "last_synced": now_iso,
             "last_synced_display": now_display
         }

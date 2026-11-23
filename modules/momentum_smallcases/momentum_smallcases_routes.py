@@ -192,16 +192,14 @@ def parse_stocks_api():
 
 def get_earliest_stock_price_month():
     try:
-        import sqlite3
-        conn = sqlite3.connect("user_data/capital_desk.db")
-        cur = conn.cursor()
-        cur.execute("SELECT MIN(start_date) FROM stock_closing_prices WHERE start_date IS NOT NULL")
-        row = cur.fetchone()
-        conn.close()
-        if row and row[0]:
-            from datetime import datetime
-            d = datetime.strptime(str(row[0])[:10], "%Y-%m-%d")
-            return d.strftime("%b %Y")
+        import db_store
+        if db_store.db is not None:
+            col = db_store.db["stock_closing_prices"]
+            doc = col.find_one({"start_date": {"$ne": None}}, sort=[("start_date", 1)], projection={"start_date": 1})
+            if doc and doc.get("start_date"):
+                from datetime import datetime
+                d = datetime.strptime(str(doc["start_date"])[:10], "%Y-%m-%d")
+                return d.strftime("%b %Y")
     except Exception:
         pass
     return "Jan 2013"

@@ -5168,6 +5168,23 @@
         }
     }
 
+    // Helper to enforce start date rule: in 2026 any day allowed; before 2026 only month's first date
+    window.handleComparisonStartDateChange = function(inputEl) {
+        if (!inputEl || !inputEl.value) return;
+        const val = inputEl.value;
+        const parts = val.split('-');
+        if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parts[1];
+            const day = parseInt(parts[2], 10);
+            if (year < 2026 && day !== 1) {
+                const corrected = `${year}-${month}-01`;
+                inputEl.value = corrected;
+                alertToast(`Dates before 2026 are restricted to month's first date (01-MM-YYYY). Set to ${corrected}.`, 'info');
+            }
+        }
+    };
+
     async function runIndexComparisonSimulation() {
         if (comparisonState.isRunning) return;
         syncComparisonRowsFromDOM();
@@ -5177,7 +5194,7 @@
         const stepupInput = document.getElementById('mscCompStepupAmount');
         const cutoffInput = document.getElementById('mscCompCutoffDate');
 
-        const startDate = (startInput?.value || '').trim();
+        let startDate = (startInput?.value || '').trim();
         const amount = parseFloat(amountInput?.value || 100000);
         const rawStepup = (stepupInput?.value || '').trim();
         const stepup = rawStepup === '' ? 0.0 : parseFloat(rawStepup);
@@ -5187,6 +5204,19 @@
             alertToast('Please choose a valid Start Date.', 'warning');
             return;
         }
+
+        // Strict calendar rule: 2026 allows any day; before 2026 allows ONLY the 1st of the month
+        const dateParts = startDate.split('-');
+        if (dateParts.length === 3) {
+            const yr = parseInt(dateParts[0], 10);
+            const day = parseInt(dateParts[2], 10);
+            if (yr < 2026 && day !== 1) {
+                startDate = `${dateParts[0]}-${dateParts[1]}-01`;
+                if (startInput) startInput.value = startDate;
+                alertToast(`Start dates prior to 2026 are restricted to month's first date (${startDate}).`, 'info');
+            }
+        }
+
         if (isNaN(amount) || amount <= 0) {
             alertToast('Please enter a valid Investment Amount.', 'warning');
             return;
@@ -5207,22 +5237,10 @@
         if (runBtn) runBtn.disabled = true;
         if (runIcon) runIcon.innerText = '⏳';
 
-        // Daily cache check: Clear once per day when a fresh day is detected
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (comparisonState.lastCacheDate !== todayStr) {
-            console.log(`[Multi-Index Comparison] Fresh day detected (${todayStr} vs previous ${comparisonState.lastCacheDate}). Clearing cache once for today.`);
-            comparisonState.cachedIndices = {};
-            comparisonState.lastCacheDate = todayStr;
-            try {
-                localStorage.setItem('msc_comp_cache_date', todayStr);
-            } catch (e) {}
-        }
-
-        // Check cache to inform user about incremental simulation
         function getIndexParamKey(common, row) {
             return [
                 common.start_date,
-                common.cutoff_date,
+                common.cutoff_date || '',
                 common.amount_to_invest,
                 common.stepup_amount,
                 (row.index_id || '').toUpperCase(),
@@ -5245,6 +5263,7 @@
             comparisonState.cachedIndices = {};
         }
 
+        // Identify which indices are newly added or not yet calculated in browser memory
         const uncachedRows = comparisonState.indexRows.filter(r => {
             const key = getIndexParamKey(commonObj, r);
             return !comparisonState.cachedIndices[key];
@@ -5263,88 +5282,155 @@
             if (emptyText) {
                 if (uncachedRows.length > 0 && cachedCount > 0) {
                     const newNames = uncachedRows.map(r => r.index_name || r.index_id).join(', ');
-                    emptyText.innerText = `Simulating newly added index (${newNames})... Reusing ${cachedCount} already calculated index results.`;
+                    emptyText.innerText = `Simulating newly added index (${newNames})... Reusing ${cachedCount} results from browser cache.`;
                 } else if (cachedCount > 0 && uncachedRows.length === 0) {
-                    emptyText.innerText = `Re-loading ${cachedCount} comparison results from cache...`;
+                    emptyText.innerText = `Re-rendering ${cachedCount} comparison results instantly from browser cache...`;
                 } else {
-                    emptyText.innerText = 'Running multi-index momentum simulation from SQLite DB...';
+                    emptyText.innerText = 'Running multi-index momentum simulation from MongoDB (stock_closing_prices)...';
                 }
             }
         }
 
         try {
-            const res = await fetch('/api/momentum-smallcases/compare-indices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    common: {
-                        start_date: startDate,
-                        amount_to_invest: amount,
-                        stepup_amount: stepup,
-                        cutoff_date: cutoffDate
-                    },
-                    indices: comparisonState.indexRows
-                })
+            // Only call backend if there are newly added / uncached index universes
+            if (uncachedRows.length > 0) {
+                const res = await fetch('/api/momentum-smallcases/compare-indices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        common: commonObj,
+                        indices: uncachedRows
+                    })
+                });
+
+                const contentType = res.headers.get('content-type') || '';
+                let data;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                    if (!res.ok && !data.error) {
+                        throw new Error(`Server returned HTTP ${res.status}`);
+                    }
+                } else {
+                    const rawText = await res.text();
+                    let errMsg = `Server returned HTTP ${res.status}`;
+                    if (res.status === 404) {
+                        errMsg = 'Comparison endpoint not found (404). Please ensure the backend server has been restarted.';
+                    } else if (res.status === 401 || res.status === 403) {
+                        errMsg = 'Session expired (401). Please refresh the page to log in.';
+                    } else {
+                        const match = rawText.match(/<title>(.*?)<\/title>/i) || rawText.match(/<h1>(.*?)<\/h1>/i);
+                        if (match && match[1]) {
+                            errMsg += `: ${match[1].trim()}`;
+                        }
+                    }
+                    throw new Error(errMsg);
+                }
+
+                if (!data.success) {
+                    const errMsg = (data.error || 'Failed to simulate index comparison').replace(/^(?:Simulation failed:\s*)+/i, '').trim();
+                    throw new Error(errMsg);
+                }
+
+                // Cache newly computed index results in browser memory
+                if (data.results && Array.isArray(data.results)) {
+                    data.results.forEach(item => {
+                        if (item && item.config) {
+                            const key = getIndexParamKey(commonObj, item.config);
+                            comparisonState.cachedIndices[key] = item;
+                        }
+                    });
+                }
+            }
+
+            // Combine all results from browser memory in order of configured index rows
+            const allResults = [];
+            comparisonState.indexRows.forEach((r, idx) => {
+                const key = getIndexParamKey(commonObj, r);
+                const cached = comparisonState.cachedIndices[key];
+                if (cached) {
+                    const item = JSON.parse(JSON.stringify(cached));
+                    item.id = r.id || `idx_${idx + 1}`;
+                    item.color = r.color || item.color;
+                    allResults.push(item);
+                }
             });
 
-            const contentType = res.headers.get('content-type') || '';
-            let data;
-            if (contentType.includes('application/json')) {
-                data = await res.json();
-                if (!res.ok && !data.error) {
-                    throw new Error(`Server returned HTTP ${res.status}`);
-                }
-            } else {
-                const rawText = await res.text();
-                let errMsg = `Server returned HTTP ${res.status}`;
-                if (res.status === 404) {
-                    errMsg = 'Comparison endpoint not found (404). Please ensure the backend server has been restarted.';
-                } else if (res.status === 401 || res.status === 403) {
-                    errMsg = 'Session expired (401). Please refresh the page to log in.';
-                } else {
-                    const match = rawText.match(/<title>(.*?)<\/title>/i) || rawText.match(/<h1>(.*?)<\/h1>/i);
-                    if (match && match[1]) {
-                        errMsg += `: ${match[1].trim()}`;
-                    }
-                }
-                throw new Error(errMsg);
+            if (allResults.length === 0) {
+                throw new Error('No simulation results could be assembled for the configured indices.');
             }
 
-            if (!data.success) {
-                const errMsg = (data.error || 'Failed to simulate index comparison').replace(/^(?:Simulation failed:\s*)+/i, '').trim();
-                throw new Error(errMsg);
-            }
+            // Build Leaderboard Summary Rows from combined results
+            const allSummary = allResults.map((res, idx) => {
+                const kpis = res.kpis || {};
+                const cfg = res.config || {};
+                const pts = res.points || [];
+                const totalInvested = pts.length > 0 ? pts[pts.length - 1].invested : amount;
+                const finalVal = kpis.current_value || (pts.length > 0 ? pts[pts.length - 1].portfolio_value : totalInvested);
+                const totPnl = kpis.total_return_amount !== undefined ? kpis.total_return_amount : (finalVal - totalInvested);
+                const totPnlPct = kpis.total_return_percent !== undefined ? kpis.total_return_percent : (totalInvested > 0 ? (totPnl / totalInvested) * 100 : 0);
+                const maxDd = kpis.max_drawdown || {};
+                const maxBelow = kpis.max_drilldown_below_investment || {};
 
-            comparisonState.simulationResults = data;
+                return {
+                    id: res.id || `idx_${idx + 1}`,
+                    index_id: res.index_id || '',
+                    index_name: res.index_name || 'Index',
+                    color: res.color || '#3b82f6',
+                    no_of_stocks: cfg.no_of_stocks,
+                    exit_regime_ranking: cfg.exit_regime_ranking,
+                    rebalance_day: cfg.rebalance_day,
+                    trim_existing: cfg.trim_existing,
+                    trading_days_per_month: cfg.trading_days_per_month,
+                    final_valuation: Math.round(finalVal * 100) / 100,
+                    total_invested: Math.round(totalInvested * 100) / 100,
+                    stepup_amount: stepup,
+                    total_pnl: Math.round(totPnl * 100) / 100,
+                    total_pnl_percent: Math.round(totPnlPct * 100) / 100,
+                    cagr: Math.round((kpis.cagr !== undefined ? kpis.cagr : totPnlPct) * 100) / 100,
+                    max_drawdown_percent: Math.round((maxDd.max_drawdown_percent || 0) * 100) / 100,
+                    max_drawdown_amount: Math.round((maxDd.drawdown_amount || 0) * 100) / 100,
+                    max_drawdown_peak_date: maxDd.peak_date,
+                    max_drawdown_trough_date: maxDd.trough_date,
+                    max_below_investment_percent: Math.round((maxBelow.max_deficit_percent || 0) * 100) / 100,
+                    max_below_investment_amount: Math.round((maxBelow.max_deficit_amount || 0) * 100) / 100,
+                    max_below_investment_date: maxBelow.date,
+                    win_rate: Math.round((kpis.win_rate || 0) * 100) / 100,
+                    rebalances_count: res.rebalances_count || 0,
+                    fees_paid: Math.round((res.total_fees || 0) * 100) / 100
+                };
+            });
+
+            // Sort summary by highest total PnL %
+            allSummary.sort((a, b) => b.total_pnl_percent - a.total_pnl_percent);
+            allSummary.forEach((r, rIdx) => { r.rank = rIdx + 1; });
+
+            const combinedPayload = {
+                success: true,
+                common: commonObj,
+                results: allResults,
+                summary: allSummary
+            };
+
+            comparisonState.simulationResults = combinedPayload;
             if (emptyNotice) emptyNotice.style.display = 'none';
 
-            // Cache newly computed index results by parameter key
-            if (data.results && Array.isArray(data.results)) {
-                data.results.forEach(res => {
-                    if (res && res.config) {
-                        const key = getIndexParamKey(data.common, res.config);
-                        comparisonState.cachedIndices[key] = res;
-                    }
-                });
-            }
-
             // Render Chart.js multi-line canvas
-            renderComparisonMultiLineChart(data);
+            renderComparisonMultiLineChart(combinedPayload);
 
             // Render Leaderboard Summary Table
-            renderComparisonSummaryTable(data.summary || []);
+            renderComparisonSummaryTable(combinedPayload.summary || []);
 
             // Automatically select and showcase Rank #1 (or first index)
-            if (data.results && data.results.length > 0) {
+            if (combinedPayload.results && combinedPayload.results.length > 0) {
                 selectComparedIndexKPI(0);
             }
 
-            if (data.cached_count && data.cached_count > 0 && data.computed_count > 0) {
-                alertToast(`Simulated successfully! Reused ${data.cached_count} cached index results and simulated ${data.computed_count} new index.`, 'success');
-            } else if (data.cached_count && data.cached_count > 0 && data.computed_count === 0) {
-                alertToast(`Loaded ${data.results.length} index comparison results instantly from cache!`, 'success');
+            if (uncachedRows.length > 0 && cachedCount > 0) {
+                alertToast(`Simulated successfully! Reused ${cachedCount} browser-cached index results and computed ${uncachedRows.length} new index.`, 'success');
+            } else if (uncachedRows.length === 0) {
+                alertToast(`Loaded ${allResults.length} index comparison results instantly from browser cache!`, 'success');
             } else {
-                alertToast(`Successfully simulated ${data.results.length} indices using DB historical quotes!`, 'success');
+                alertToast(`Successfully simulated ${allResults.length} indices from MongoDB Atlas historical quotes!`, 'success');
             }
             if (comparisonState.isMinimized) updateIndexComparisonDockUI();
 

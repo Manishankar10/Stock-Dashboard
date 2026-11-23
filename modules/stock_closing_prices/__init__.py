@@ -131,6 +131,23 @@ def admin_stock_closing_prices_sync():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@stock_closing_prices_bp.route("/api/admin/stock_closing_prices/sync-monthly", methods=["POST"])
+@admin_required
+def admin_stock_closing_prices_sync_monthly():
+    """
+    Directly recomputes monthly average prices and monthly returns for all stocks
+    stored in MongoDB Atlas (stock_closing_prices collection) and saves them in-place.
+    Zero external network calls.
+    """
+    try:
+        res = stock_closing_prices_provider.sync_monthly_averages_only()
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error in admin_stock_closing_prices_sync_monthly: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+
 def init_stock_closing_prices(app):
     """
     Initializes the stock closing prices subsystem on app boot.
