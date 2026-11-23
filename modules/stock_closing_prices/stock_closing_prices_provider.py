@@ -1,11 +1,10 @@
 """
 Stock Closing Prices Provider for Capital Desk.
-Manages 2-year daily EOD historical closing prices and daily incremental synchronization
+Manages daily EOD historical closing prices (from 2012-01-01 to Present) and incremental synchronization
 for all 750 benchmark index constituent stocks (Nifty 50, Next 50, Midcap 150, Smallcap 250, Microcap 250).
 
 Persistence:
-- MongoDB Atlas collection: 'stock_closing_prices' (Primary)
-- SQLite database: 'capital_desk.db' table 'stock_closing_prices' (Local fallback / dual-write)
+- MongoDB Atlas collection: 'stock_closing_prices' (Pure MongoDB Atlas only; zero SQLite usage)
 - Telemetry: 'stock_closing_prices_telemetry'
 
 Constraints:
@@ -340,27 +339,56 @@ class StockClosingPricesProvider:
 
     def sync_monthly_averages_only(self) -> Dict[str, Any]:
         """
-        Directly recomputes monthly average prices and monthly returns for all stocks
-        already stored in MongoDB Atlas, updating each document in-place.
-        Streams cursor in micro-batches (batch_size=25) to keep memory < 10 MB and avoid OOM.
+        Launches asynchronous background thread to recompute monthly average prices and monthly returns
+        for all stocks stored in MongoDB Atlas, updating each document in-place.
+        Returns immediately with HTTP 200 to prevent Gunicorn 30-second worker timeout on Render.
         """
         if db_store.db is None:
             return {"success": False, "error": "MongoDB Atlas is not connected."}
         
+        with self._lock:
+            if self._is_syncing:
+                return {
+                    "success": False,
+                    "is_syncing": True,
+                    "message": "Stock closing prices synchronization or monthly calculation is already running in background."
+                }
+            self._is_syncing = True
+            self._percent = 0
+            self._progress = "Starting monthly average prices & returns calculation in MongoDB..."
+
+        self._persist_telemetry()
+
+        thread = threading.Thread(
+            target=self._run_monthly_sync,
+            daemon=True
+        )
+        thread.start()
+
+        return {
+            "success": True,
+            "message": "Monthly average prices and returns calculation started in background."
+        }
+
+    def _run_monthly_sync(self):
+        """Worker thread executing streaming calculation of monthly average prices and updating MongoDB Atlas."""
         try:
             col = db_store.db["stock_closing_prices"]
             total_stocks = col.count_documents({})
             if total_stocks == 0:
-                return {"success": False, "error": "No stocks found in stock_closing_prices collection."}
+                with self._lock:
+                    self._is_syncing = False
+                    self._progress = "No stocks found in stock_closing_prices collection."
+                self._persist_telemetry()
+                return
 
             logger.info(f"Computing monthly averages & returns for {total_stocks} stocks in MongoDB (streaming mode)...")
-            
             from pymongo import UpdateOne
             batch_size = 25
             ops = []
             updated_count = 0
 
-            # Stream cursor one document at a time to prevent memory spikes
+            # Stream cursor with minimal projection to prevent memory overhead
             cursor = col.find({}, {"_id": 1, "symbol": 1, "prices": 1}, batch_size=25)
             for d in cursor:
                 sym = d.get("_id") or d.get("symbol")
@@ -373,6 +401,11 @@ class StockClosingPricesProvider:
                 if len(ops) >= batch_size:
                     col.bulk_write(ops, ordered=False)
                     updated_count += len(ops)
+                    with self._lock:
+                        self._percent = int((updated_count / total_stocks) * 100)
+                        self._synced_stocks_count = updated_count
+                        self._progress = f"Calculated monthly averages for {updated_count}/{total_stocks} stocks..."
+                    self._persist_telemetry()
                     ops = []
 
             if ops:
@@ -381,8 +414,15 @@ class StockClosingPricesProvider:
 
             now_disp = format_ist_display()
             logger.info(f"Successfully updated monthly averages for {updated_count}/{total_stocks} stocks in MongoDB Atlas.")
-            
-            # Telemetry update
+
+            with self._lock:
+                self._is_syncing = False
+                self._percent = 100
+                self._progress = f"Monthly average prices & returns calculated for all {updated_count} stocks."
+                self._last_synced_display = now_disp
+            self._persist_telemetry()
+
+            # Telemetry update in MongoDB Atlas
             try:
                 db_store.db["stock_closing_prices_telemetry"].update_one(
                     {"_id": "global_telemetry"},
@@ -395,16 +435,12 @@ class StockClosingPricesProvider:
                 )
             except Exception:
                 pass
-
-            return {
-                "success": True,
-                "total_updated": updated_count,
-                "total_stocks": total_stocks,
-                "message": f"Successfully calculated and saved monthly average prices & returns for {updated_count} stocks in MongoDB Atlas."
-            }
         except Exception as e:
             logger.error(f"Error computing monthly averages: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}
+            with self._lock:
+                self._is_syncing = False
+                self._progress = f"Error computing monthly averages: {str(e)}"
+            self._persist_telemetry()
 
     def start_background_sync(
         self,
@@ -708,7 +744,7 @@ class StockClosingPricesProvider:
                         except Exception as ex:
                             logger.debug(f"Error fetching {sym}: {ex}")
 
-                # Save completed chunk batch to MongoDB and SQLite
+                # Save completed chunk batch to MongoDB Atlas
                 if chunk_records:
                     db_store.save_stock_closing_prices_db(chunk_records)
                     success_count += len(chunk_records)

@@ -7176,25 +7176,31 @@
         }
 
         window.triggerAdminSyncMonthlyAverages = async function() {
-            if (!confirm("Calculate monthly average prices and monthly returns for all stocks in MongoDB Atlas?\n\nThis reads all constituent stocks directly from MongoDB Atlas and updates them in-place with monthly averages and returns.")) {
+            if (!confirm("Calculate monthly average prices and monthly returns for all constituent stocks in MongoDB Atlas?\n\nThis streams all constituent stocks directly from MongoDB Atlas and updates them in-place with monthly averages and returns in the background.")) {
                 return;
             }
             const btn = document.getElementById('sync-tbl-btn-monthly-averages');
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Calculating...';
+                btn.innerHTML = '⏳ In Progress...';
             }
             try {
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('stock_prices', {
+                        isSyncing: true,
+                        message: 'Calculating monthly average prices & returns in MongoDB Atlas...',
+                        percent: 5
+                    });
+                }
                 const res = await fetch('/api/admin/stock_closing_prices/sync-monthly', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(`✅ Success: ${data.message || 'Monthly average prices & returns calculated and stored in MongoDB Atlas!'}`);
                     loadAdminStockPricesStatus();
                 } else {
-                    alert(`❌ Error: ${data.error || 'Failed to calculate monthly averages'}`);
+                    alert(`❌ Error: ${data.error || 'Failed to start monthly averages calculation'}`);
                 }
             } catch (e) {
                 alert(`❌ Request Error: ${e.message}`);
