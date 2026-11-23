@@ -141,7 +141,7 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
     try:
         from db_store import load_stock_closing_prices_db
         from modules.stock_closing_prices.stock_closing_prices_provider import compute_stock_monthly_prices
-        doc = load_stock_closing_prices_db(symbol=fetch_sym)
+        doc = load_stock_closing_prices_db(symbol=fetch_sym, slice_prices=250)
         if doc:
             series_dict = {}
             # Use monthly average prices for historical months
@@ -211,7 +211,7 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None):
                 if not target_syms:
                     return len(_db_prices_cache)
 
-        docs = load_stock_closing_prices_db(symbols=target_syms, summary_only=False)
+        docs = load_stock_closing_prices_db(symbols=target_syms, summary_only=False, slice_prices=250)
         if not docs:
             return len(_db_prices_cache)
 

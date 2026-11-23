@@ -517,15 +517,13 @@ def _evaluate_universe_db_only(
             logger.warning(f"DB evaluation error for {sym} on {target_date}: {e}")
         return (sym, None)
 
-    # Concurrently evaluate cached prices with worker pool (cap to 6 workers to preserve cloud container memory)
-    worker_count = min(6, max(2, len(eligible_symbols)))
-    with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        results = executor.map(_eval, eligible_symbols)
-        for sym, r in results:
-            if r:
-                calculated_stocks.append(r)
-            else:
-                failed_symbols.append(sym)
+    # In-memory sequential evaluation (sub-millisecond lookups from _db_prices_cache)
+    for sym in eligible_symbols:
+        s, r = _eval(sym)
+        if r:
+            calculated_stocks.append(r)
+        else:
+            failed_symbols.append(sym)
 
     # Sort descending by momentum formula score
     calculated_stocks.sort(key=lambda x: x["total_score"], reverse=True)

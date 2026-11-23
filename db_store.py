@@ -1887,7 +1887,7 @@ def get_trading_holidays_telemetry_db():
 # STOCK CLOSING PRICES (750 STOCKS 2-YEAR EOD HISTORY & DAILY CLOSES)
 # ==============================================================================
 
-def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, monthly_only=False, limit=None):
+def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, monthly_only=False, slice_prices=None, limit=None):
     """
     Loads stock closing prices strictly and solely from MongoDB Atlas collection 'stock_closing_prices'.
     SQLite usage is completely deleted per system architecture rules.
@@ -1895,6 +1895,7 @@ def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, 
     If symbols (or symbol as list/set) is specified, returns dict of {sym: doc} for only those symbols.
     If summary_only is True, excludes prices and monthly_prices arrays for high-performance listing.
     If monthly_only is True, excludes full daily prices array but includes monthly_prices for ultra-fast calculation.
+    If slice_prices is provided (int), returns only the last N daily prices alongside full monthly_prices.
     """
     if db is None:
         print("Warning: MongoDB Atlas is not connected for load_stock_closing_prices_db.")
@@ -1918,6 +1919,8 @@ def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, 
                 projection = {"prices": 0, "monthly_prices": 0}
             elif monthly_only:
                 projection = {"prices": 0}
+            elif slice_prices and isinstance(slice_prices, int) and slice_prices > 0:
+                projection = {"prices": {"$slice": -slice_prices}}
             doc = col.find_one({"_id": single_sym}, projection)
             if doc:
                 doc.pop("_id", None)
@@ -1929,6 +1932,8 @@ def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, 
                 projection = {"prices": 0, "monthly_prices": 0}
             elif monthly_only:
                 projection = {"prices": 0}
+            elif slice_prices and isinstance(slice_prices, int) and slice_prices > 0:
+                projection = {"prices": {"$slice": -slice_prices}}
 
             query = {}
             if target_symbols:
