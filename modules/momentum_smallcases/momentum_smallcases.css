@@ -1749,6 +1749,16 @@ body > .msc-global-process-loader[style*="none"] {
         padding-right: 12px !important;
     }
 
+    .msc-comp-header {
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+    }
+
+    .msc-comp-badge-engine,
+    .msc-comp-subtitle {
+        display: none !important;
+    }
+
     .msc-comp-common-grid {
         grid-template-columns: 1fr !important;
     }
