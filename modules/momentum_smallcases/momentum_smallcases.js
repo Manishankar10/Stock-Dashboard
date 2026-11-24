@@ -5237,6 +5237,102 @@
         alertToast(`Added index #${comparisonState.indexRows.length} with defaults from Index #1`, 'info');
     }
 
+    // Extract trade statistics (buys, sells, trades, unique stocks) with dynamic milestone points fallback
+    function extractTradeStats(res) {
+        if (!res) return { total_buys: 0, total_sells: 0, total_trades: 0, unique_stocks_count: 0 };
+        const kpis = res.kpis || {};
+        let buys = Number(res.total_buys !== undefined ? res.total_buys : (kpis.total_buys !== undefined ? kpis.total_buys : 0));
+        let sells = Number(res.total_sells !== undefined ? res.total_sells : (kpis.total_sells !== undefined ? kpis.total_sells : 0));
+        let trades = Number(res.total_trades !== undefined ? res.total_trades : (kpis.total_trades !== undefined ? kpis.total_trades : 0));
+        let uniqueCount = Number(res.unique_stocks_count !== undefined ? res.unique_stocks_count : (kpis.unique_stocks_count !== undefined ? kpis.unique_stocks_count : 0));
+
+        if ((buys === 0 && sells === 0) || uniqueCount === 0) {
+            const pts = Array.isArray(res.points) ? res.points : [];
+            const uniqueSet = new Set();
+            let calcBuys = 0;
+            let calcSells = 0;
+
+            const hasTransactions = pts.some(pt => Array.isArray(pt.transactions) && pt.transactions.length > 0);
+            if (hasTransactions) {
+                pts.forEach((pt, pIdx) => {
+                    if (Array.isArray(pt.transactions) && pt.transactions.length > 0) {
+                        pt.transactions.forEach(tx => {
+                            const sym = tx.symbol || tx.stock;
+                            if (sym) uniqueSet.add(sym);
+                            const act = String(tx.action || '').toUpperCase();
+                            if (act === 'BUY') calcBuys++;
+                            else if (act === 'SELL') calcSells++;
+                        });
+                    } else if (pIdx === 0 && Array.isArray(pt.holdings)) {
+                        pt.holdings.forEach(h => {
+                            if (h.symbol && (h.quantity > 0 || h.current_value > 0)) {
+                                uniqueSet.add(h.symbol);
+                                calcBuys++;
+                            }
+                        });
+                    }
+                });
+            } else if (pts.length > 0) {
+                let prevSymbols = new Set();
+                pts.forEach((pt, pIdx) => {
+                    const currHoldings = Array.isArray(pt.holdings) ? pt.holdings : [];
+                    const currSymbols = new Set(
+                        currHoldings.filter(h => h.symbol && (h.quantity > 0 || h.current_value > 0)).map(h => h.symbol)
+                    );
+                    currSymbols.forEach(s => uniqueSet.add(s));
+
+                    if (pIdx === 0) {
+                        calcBuys += currSymbols.size;
+                    } else {
+                        let sellsCount = 0;
+                        prevSymbols.forEach(s => {
+                            if (!currSymbols.has(s)) sellsCount++;
+                        });
+                        let buysCount = 0;
+                        currSymbols.forEach(s => {
+                            if (!prevSymbols.has(s)) buysCount++;
+                        });
+                        calcBuys += buysCount;
+                        calcSells += sellsCount;
+                    }
+                    if (currSymbols.size > 0) {
+                        prevSymbols = currSymbols;
+                    }
+                });
+            }
+
+            // Also ensure any holdings symbol across all points is collected in uniqueSet
+            pts.forEach(pt => {
+                if (Array.isArray(pt.holdings)) {
+                    pt.holdings.forEach(h => {
+                        if (h.symbol && (h.quantity > 0 || h.current_value > 0)) {
+                            uniqueSet.add(h.symbol);
+                        }
+                    });
+                }
+            });
+
+            if (buys === 0 && sells === 0 && (calcBuys > 0 || calcSells > 0)) {
+                buys = calcBuys;
+                sells = calcSells;
+            }
+            if (uniqueCount === 0 && uniqueSet.size > 0) {
+                uniqueCount = uniqueSet.size;
+            }
+        }
+
+        if (trades === 0 && (buys > 0 || sells > 0)) {
+            trades = buys + sells;
+        }
+
+        return {
+            total_buys: buys,
+            total_sells: sells,
+            total_trades: trades,
+            unique_stocks_count: uniqueCount
+        };
+    }
+
     function resetComparisonKPIs() {
         const titleEl = document.getElementById('mscCompActiveTitle');
         const dotEl = document.getElementById('mscCompActiveDot');
@@ -5256,11 +5352,13 @@
 
         const cagrEl = document.getElementById('compKpiCagr');
         const winRateEl = document.getElementById('compKpiWinRate');
+        const tradesCountEl = document.getElementById('compKpiTradesCount');
         if (cagrEl) {
             cagrEl.innerText = '0.00%';
             cagrEl.style.color = 'var(--text-secondary)';
         }
         if (winRateEl) winRateEl.innerText = 'Win Rate: 0.0%';
+        if (tradesCountEl) tradesCountEl.innerHTML = '<span style="color: #10b981; font-weight: 600;">0 Buys</span> / <span style="color: #ef4444; font-weight: 600;">0 Sells</span> &bull; 0 Unique Stocks';
 
         const maxDdEl = document.getElementById('compKpiMaxDd');
         const maxDdDetailsEl = document.getElementById('compKpiMaxDdDetails');
@@ -5555,6 +5653,11 @@
                     const item = JSON.parse(JSON.stringify(cached));
                     item.id = r.id || `idx_${idx + 1}`;
                     item.color = r.color || item.color;
+                    const stats = extractTradeStats(item);
+                    item.total_buys = stats.total_buys;
+                    item.total_sells = stats.total_sells;
+                    item.total_trades = stats.total_trades;
+                    item.unique_stocks_count = stats.unique_stocks_count;
                     allResults.push(item);
                 }
             });
@@ -5574,6 +5677,18 @@
                 const totPnlPct = kpis.total_return_percent !== undefined ? kpis.total_return_percent : (totalInvested > 0 ? (totPnl / totalInvested) * 100 : 0);
                 const maxDd = kpis.max_drawdown || {};
                 const maxBelow = kpis.max_drilldown_below_investment || {};
+                const tradeStats = extractTradeStats(res);
+
+                res.total_buys = tradeStats.total_buys;
+                res.total_sells = tradeStats.total_sells;
+                res.total_trades = tradeStats.total_trades;
+                res.unique_stocks_count = tradeStats.unique_stocks_count;
+                if (res.kpis) {
+                    res.kpis.total_buys = tradeStats.total_buys;
+                    res.kpis.total_sells = tradeStats.total_sells;
+                    res.kpis.total_trades = tradeStats.total_trades;
+                    res.kpis.unique_stocks_count = tradeStats.unique_stocks_count;
+                }
 
                 return {
                     id: res.id || `idx_${idx + 1}`,
@@ -5600,6 +5715,10 @@
                     max_below_investment_date: maxBelow.date,
                     win_rate: Math.round((kpis.win_rate || 0) * 100) / 100,
                     rebalances_count: res.rebalances_count || 0,
+                    total_buys: tradeStats.total_buys,
+                    total_sells: tradeStats.total_sells,
+                    total_trades: tradeStats.total_trades,
+                    unique_stocks_count: tradeStats.unique_stocks_count,
                     fees_paid: Math.round((res.total_fees || 0) * 100) / 100
                 };
             });
@@ -6016,10 +6135,11 @@
         const cagrEl = document.getElementById('compKpiCagr');
         const winRateEl = document.getElementById('compKpiWinRate');
         const tradesCountEl = document.getElementById('compKpiTradesCount');
-        const totalBuys = Number(sel.total_buys || sel.kpis?.total_buys || 0);
-        const totalSells = Number(sel.total_sells || sel.kpis?.total_sells || 0);
-        const totalTrades = Number(sel.total_trades || sel.kpis?.total_trades || (totalBuys + totalSells));
-        const uniqueStocks = Number(sel.unique_stocks_count || sel.kpis?.unique_stocks_count || 0);
+        const tradeStats = extractTradeStats(sel);
+        const totalBuys = tradeStats.total_buys;
+        const totalSells = tradeStats.total_sells;
+        const totalTrades = tradeStats.total_trades;
+        const uniqueStocks = tradeStats.unique_stocks_count;
 
         if (cagrEl) {
             cagrEl.innerText = `${cagr.toFixed(2)}%`;
@@ -6107,8 +6227,16 @@
             const cagrColor = row.cagr >= 0 ? '#10b981' : '#ef4444';
             const belowColor = row.max_below_investment_percent < 0 ? '#ef4444' : '#10b981';
 
-            // Find matching index in results array for onclick
+            // Find matching index in results array for onclick and stats fallback
             const resIdx = (comparisonState.simulationResults?.results || []).findIndex(r => r.id === row.id);
+            const matchingRes = resIdx >= 0 ? comparisonState.simulationResults.results[resIdx] : null;
+            const stats = extractTradeStats(
+                (row.total_buys !== undefined && (row.total_buys > 0 || row.total_sells > 0)) ? row : (matchingRes || row)
+            );
+            const rowBuys = stats.total_buys;
+            const rowSells = stats.total_sells;
+            const rowTrades = stats.total_trades;
+            const rowUnique = stats.unique_stocks_count;
 
             return `
                 <tr data-index-id="${escapeHtml(row.id)}" style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;" onclick="selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'" onmouseout="if(comparisonState.chartInstance && comparisonState.chartInstance.data.datasets[${resIdx}] && comparisonState.chartInstance.data.datasets[${resIdx}].borderWidth < 3.5) this.style.background='transparent'">
@@ -6150,8 +6278,8 @@
                         ${Number(row.win_rate).toFixed(1)}%
                     </td>
                     <td style="text-align: right; font-size: 11px;">
-                        <div><span style="color: #10b981; font-weight: 600;">${row.total_buys || 0}B</span> / <span style="color: #ef4444; font-weight: 600;">${row.total_sells || 0}S</span> <span style="color: var(--text-secondary); font-size: 10px;">(${row.total_trades || ((row.total_buys || 0) + (row.total_sells || 0))})</span></div>
-                        <div style="color: var(--text-secondary); font-size: 10px; margin-top: 1px;">${row.unique_stocks_count || 0} unique stocks</div>
+                        <div><span style="color: #10b981; font-weight: 600;">${rowBuys}B</span> / <span style="color: #ef4444; font-weight: 600;">${rowSells}S</span> <span style="color: var(--text-secondary); font-size: 10px;">(${rowTrades})</span></div>
+                        <div style="color: var(--text-secondary); font-size: 10px; margin-top: 1px;">${rowUnique} unique stocks</div>
                     </td>
                     <td style="text-align: center;">
                         <button type="button" class="btn-secondary" onclick="event.stopPropagation(); selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" style="font-size: 11px; padding: 3px 8px; color: ${row.color}; border-color: ${row.color}55;">
