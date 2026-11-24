@@ -5239,9 +5239,6 @@
             trading_days_per_month: defDays,
             color: nextColor
         });
-            trading_days_per_month: defDays,
-            color: nextColor
-        });
 
         renderComparisonIndexRows();
         alertToast(`Added index #${comparisonState.indexRows.length} with defaults from Index #1`, 'info');
