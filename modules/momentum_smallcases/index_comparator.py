@@ -285,6 +285,10 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             "max_below_investment_date": max_below.get("date"),
             "win_rate": round(kpis.get("win_rate", 0.0), 2),
             "rebalances_count": res.get("rebalances_count", 0),
+            "total_buys": res.get("total_buys", 0),
+            "total_sells": res.get("total_sells", 0),
+            "total_trades": res.get("total_trades", 0),
+            "unique_stocks_count": res.get("unique_stocks_count", 0),
             "fees_paid": round(res.get("total_fees", 0.0), 2)
         })
 
@@ -387,6 +391,11 @@ def _simulate_single_index(
     total_capital = amount_to_invest
     total_fees = init_portfolio.get("fees_paid", 0.0)
 
+    # Track trade counts (buys/sells) and unique transacted stocks
+    total_buys = len([h for h in current_holdings if h.get("quantity", 0) > 0])
+    total_sells = 0
+    unique_stocks = set(h["symbol"] for h in current_holdings if h.get("symbol") and h.get("quantity", 0) > 0)
+
     # Milestone points for time series chart
     points = []
     # If simulation started before actual constituent entry date, record initial cash holding at start_date
@@ -469,6 +478,17 @@ def _simulate_single_index(
         current_wallet = rebal_portfolio["wallet_balance"]
         total_fees += rebal_portfolio.get("fees_paid", 0.0)
 
+        # Track buy/sell transactions and unique stocks from this rebalance
+        for tx in rebal_portfolio.get("transactions", []):
+            act = tx.get("action")
+            sym = tx.get("symbol")
+            if sym:
+                unique_stocks.add(sym)
+            if act == "BUY":
+                total_buys += 1
+            elif act == "SELL":
+                total_sells += 1
+
         points.append({
             "date": next_rebal_d.isoformat(),
             "portfolio_value": rebal_portfolio["total_portfolio_value"],
@@ -525,6 +545,15 @@ def _simulate_single_index(
     # Step 4: Compute Performance KPIs
     kpis = _compute_performance_kpis(points)
 
+    total_trades = total_buys + total_sells
+    unique_stocks_count = len(unique_stocks)
+
+    kpis["total_buys"] = total_buys
+    kpis["total_sells"] = total_sells
+    kpis["total_trades"] = total_trades
+    kpis["unique_stocks_count"] = unique_stocks_count
+    kpis["unique_stocks"] = sorted(list(unique_stocks))
+
     return {
         "id": cfg_id,
         "index_id": index_id,
@@ -543,6 +572,11 @@ def _simulate_single_index(
         "points": points,
         "kpis": kpis,
         "rebalances_count": len(rebalance_dates),
+        "total_buys": total_buys,
+        "total_sells": total_sells,
+        "total_trades": total_trades,
+        "unique_stocks_count": unique_stocks_count,
+        "unique_stocks": sorted(list(unique_stocks)),
         "total_fees": round(total_fees, 2)
     }
 

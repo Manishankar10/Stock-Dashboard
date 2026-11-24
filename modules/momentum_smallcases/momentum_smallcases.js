@@ -5864,12 +5864,21 @@
 
         const cagrEl = document.getElementById('compKpiCagr');
         const winRateEl = document.getElementById('compKpiWinRate');
+        const tradesCountEl = document.getElementById('compKpiTradesCount');
+        const totalBuys = Number(sel.total_buys || sel.kpis?.total_buys || 0);
+        const totalSells = Number(sel.total_sells || sel.kpis?.total_sells || 0);
+        const totalTrades = Number(sel.total_trades || sel.kpis?.total_trades || (totalBuys + totalSells));
+        const uniqueStocks = Number(sel.unique_stocks_count || sel.kpis?.unique_stocks_count || 0);
+
         if (cagrEl) {
             cagrEl.innerText = `${cagr.toFixed(2)}%`;
             cagrEl.style.color = cagr >= 0 ? '#10b981' : '#ef4444';
         }
         if (winRateEl) {
             winRateEl.innerText = `Win Rate: ${winRate.toFixed(1)}% • ${sel.rebalances_count || 0} Rebalance runs`;
+        }
+        if (tradesCountEl) {
+            tradesCountEl.innerHTML = `<span style="color: #10b981; font-weight: 600;">${totalBuys} Buys</span> / <span style="color: #ef4444; font-weight: 600;">${totalSells} Sells</span> <span style="color: var(--text-secondary); font-size: 10px;">(${totalTrades} trades)</span> &bull; <span style="color: var(--text-primary); font-weight: 600;">${uniqueStocks} Unique Stocks</span>`;
         }
 
         const maxDdEl = document.getElementById('compKpiMaxDd');
@@ -5937,7 +5946,7 @@
         if (!tbody) return;
 
         if (!summaryRows || summaryRows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-secondary);">No simulation executed yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: var(--text-secondary);">No simulation executed yet.</td></tr>';
             return;
         }
 
@@ -5988,6 +5997,10 @@
                     </td>
                     <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">
                         ${Number(row.win_rate).toFixed(1)}%
+                    </td>
+                    <td style="text-align: right; font-size: 11px;">
+                        <div><span style="color: #10b981; font-weight: 600;">${row.total_buys || 0}B</span> / <span style="color: #ef4444; font-weight: 600;">${row.total_sells || 0}S</span> <span style="color: var(--text-secondary); font-size: 10px;">(${row.total_trades || ((row.total_buys || 0) + (row.total_sells || 0))})</span></div>
+                        <div style="color: var(--text-secondary); font-size: 10px; margin-top: 1px;">${row.unique_stocks_count || 0} unique stocks</div>
                     </td>
                     <td style="text-align: center;">
                         <button type="button" class="btn-secondary" onclick="event.stopPropagation(); selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" style="font-size: 11px; padding: 3px 8px; color: ${row.color}; border-color: ${row.color}55;">
