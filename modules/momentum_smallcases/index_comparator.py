@@ -41,14 +41,31 @@ from modules.momentum_smallcases.momentum_smallcases_chart import (
 logger = logging.getLogger("momentum_smallcases.comparator")
 
 COMPARISON_PALETTE = [
-    "#3b82f6",  # Blue
-    "#10b981",  # Emerald
-    "#f59e0b",  # Amber
-    "#ec4899",  # Pink
-    "#8b5cf6",  # Purple
-    "#06b6d4",  # Cyan
-    "#ef4444",  # Red
-    "#14b8a6",  # Teal
+    "#3b82f6",  # 0: Blue
+    "#10b981",  # 1: Emerald
+    "#f59e0b",  # 2: Amber
+    "#ec4899",  # 3: Pink
+    "#8b5cf6",  # 4: Purple
+    "#06b6d4",  # 5: Cyan
+    "#ef4444",  # 6: Red
+    "#14b8a6",  # 7: Teal
+    "#f97316",  # 8: Orange
+    "#6366f1",  # 9: Indigo
+    "#84cc16",  # 10: Lime
+    "#d946ef",  # 11: Fuchsia
+    "#0284c7",  # 12: Sky Blue
+    "#e11d48",  # 13: Rose
+    "#eab308",  # 14: Yellow
+    "#22c55e",  # 15: Green
+    "#a855f7",  # 16: Violet
+    "#38bdf8",  # 17: Light Blue
+    "#fb923c",  # 18: Coral
+    "#4ade80",  # 19: Mint
+    "#c084fc",  # 20: Lavender
+    "#f43f5e",  # 21: Watermelon
+    "#2dd4bf",  # 22: Aqua
+    "#fbbf24",  # 23: Marigold
+    "#818cf8",  # 24: Periwinkle
 ]
 
 # Zero server-side memory: comparison simulations are calculated statelessly on-demand.
@@ -78,12 +95,17 @@ def _parse_date_flexible(d_str, default_date=None):
 def _parse_and_validate_start_date(d_str, default_date=None):
     """
     Parses start date and enforces strict business rules:
-    - In 2026: start date can be any date (e.g. 15-02-2026).
-    - Prior to 2026: start date MUST be strictly the first date of the month (YYYY-MM-01).
+    - Start date should strictly be 1st of any month including 2026 (day == 1).
+    - Minimum start date is 2013-01-01; clamped to 2013-01-01 if prior.
+    - Snaps any day != 1 to the 1st of that month.
     """
     parsed = _parse_date_flexible(d_str, default_date or date(2024, 1, 1))
-    if parsed.year < 2026 and parsed.day != 1:
-        logger.info(f"Start date {parsed.isoformat()} is before 2026; snapping to 1st of month: {parsed.year}-{parsed.month:02d}-01")
+    min_date = date(2013, 1, 1)
+    if parsed < min_date:
+        logger.info(f"Start date {parsed.isoformat()} is prior to 2013-01-01; clamping to {min_date.isoformat()}")
+        parsed = min_date
+    if parsed.day != 1:
+        logger.info(f"Start date {parsed.isoformat()} has day != 1; snapping to 1st of month: {parsed.year}-{parsed.month:02d}-01")
         parsed = parsed.replace(day=1)
     return parsed
 
@@ -93,7 +115,7 @@ def _make_sim_cache_key(start_d, cutoff_d, amount_to_invest, stepup_amount, idx_
     idx_id = str(idx_cfg.get("index_id") or "").strip().upper()
     no_of_stocks = int(idx_cfg.get("no_of_stocks") or 12)
     exit_regime = int(idx_cfg.get("exit_regime_ranking") or 22)
-    rebal_day = int(idx_cfg.get("rebalance_day") or 21)
+    rebal_day = 1  # Locked to 1st of month
     trim_existing = idx_cfg.get("trim_existing") in (True, "yes", "true", "1")
     trading_days = int(idx_cfg.get("trading_days_per_month") or 21)
     formula_str = str(idx_cfg.get("formula") or DEFAULT_FORMULA).strip()
@@ -170,16 +192,26 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             earliest_needed = (start_d - _dt.timedelta(days=400)).isoformat()
             prewarm_stock_prices_cache(all_symbols_to_warm, min_date=earliest_needed)
 
+        used_colors = set()
         for i, idx_cfg in enumerate(index_configs):
             if not isinstance(idx_cfg, dict):
                 continue
             cfg_id = idx_cfg.get("id") or f"idx_{i+1}"
-            color = idx_cfg.get("color") or COMPARISON_PALETTE[i % len(COMPARISON_PALETTE)]
+            user_color = (idx_cfg.get("color") or "").strip().lower()
+            if user_color and user_color not in used_colors:
+                color = idx_cfg.get("color")
+            else:
+                color = next((c for c in COMPARISON_PALETTE if c.lower() not in used_colors), None)
+                if not color:
+                    hue = round((i * 137.508) % 360)
+                    color = f"hsl({hue}, 80%, 50%)"
+            used_colors.add(color.lower())
+
             idx_id = idx_cfg.get("index_id")
             idx_name = idx_cfg.get("index_name") or idx_id
             no_of_stocks = int(idx_cfg.get("no_of_stocks") or 12)
             exit_regime = int(idx_cfg.get("exit_regime_ranking") or 22)
-            rebal_day = int(idx_cfg.get("rebalance_day") or 21)
+            rebal_day = 1  # Rebalance day is locked to 1st of month
             trim_existing = idx_cfg.get("trim_existing") in (True, "yes", "true", "1")
             trading_days_per_month = int(idx_cfg.get("trading_days_per_month") or 21)
             formula_str = (idx_cfg.get("formula") or DEFAULT_FORMULA).strip()

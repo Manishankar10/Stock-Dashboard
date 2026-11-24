@@ -574,6 +574,9 @@
                     </td>
                     <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                            <button type="button" class="msc-action-btn run" onclick="openRunAllModal('${escapeHtml(s.id)}')" title="Rebalance All (Init or Remaining Schedules)" style="background: rgba(99, 102, 241, 0.12); color: #818cf8; border-color: rgba(99, 102, 241, 0.3);">
+                                <span>⚡ Rebalance All</span>
+                            </button>
                             <button type="button" class="msc-action-btn view" onclick="openStrategyDetailView('${escapeHtml(s.id)}')" title="View Details & Timeline">
                                 <span>👁️ Details</span>
                             </button>
@@ -1028,8 +1031,11 @@
         if (status === 'DRAFT' || runs.length === 0) {
             actionBtnHtml = `
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <button type="button" class="btn-primary" onclick="runStrategyInit('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);">
+                    <button type="button" class="btn-primary" onclick="runStrategyInit('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);" title="Execute initial portfolio allocation only">
                         <span>${getPlayIconSVG(12)}</span> <span>Run Init Only</span>
+                    </button>
+                    <button type="button" class="btn-primary" onclick="openRunAllModal('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);" title="Run Init and all scheduled monthly rebalances sequentially">
+                        <span>⚡</span> <span>Rebalance All (Init + Schedules)</span>
                     </button>
                 </div>
             `;
@@ -1053,6 +1059,9 @@
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         <button type="button" class="btn-primary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);">
                             <span style="display: inline-flex; align-items: center;">${getRebalanceIconSVG(14, 2.5)}</span> <span>Run Next Rebalance</span>
+                        </button>
+                        <button type="button" class="btn-primary" onclick="openRunAllModal('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);" title="Run all remaining scheduled monthly rebalances sequentially">
+                            <span>⚡</span> <span>Rebalance All Remaining</span>
                         </button>
                     </div>
                 `;
@@ -1987,10 +1996,11 @@
             return;
         }
 
-        const isDraft = currentStrategy.status === 'DRAFT' || !currentStrategy.runs || currentStrategy.runs.length === 0;
+        const effectiveCutoff = cutoffVal || todayStr;
+        let isDraft = currentStrategy.status === 'DRAFT' || !currentStrategy.runs || currentStrategy.runs.length === 0;
         const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
-        if (!isDraft && nextRebalStr && nextRebalStr > todayStr) {
-            alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Smallcase is already up to date.`, 'error');
+        if (!isDraft && nextRebalStr && nextRebalStr > effectiveCutoff) {
+            alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Smallcase is already up to date up to ${formatDateDisplay(effectiveCutoff)}.`, 'info');
             return;
         }
 
@@ -2004,47 +2014,113 @@
 
         // Keep modal open and display brand loader inside it
         setSmallcaseModalLoader('runAllRebalanceModal', true, {
-            title: 'Running All Scheduled Rebalances...',
-            badge: 'Batch Rebalance Engine',
-            subtitle: 'Evaluating chronological universe, liquidating exit stocks, and buying top momentum picks...'
+            title: 'Starting Rebalance All (One-by-One Engine)...',
+            badge: 'Safe Sequential Runner',
+            subtitle: 'Preparing sequential schedule execution...'
         });
 
+        let initExecuted = false;
+        let rebalancesExecuted = 0;
+        let strat = currentStrategy;
+
         try {
-            const data = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/run-all`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    stepup_amount: stepupVal,
-                    up_to_date: cutoffVal,
-                    trim_existing: trimVal
-                })
-            });
-
-            if (!data.success) {
-                alertToast(data.error || 'Failed to complete all rebalances', 'error');
-                if (data.strategy) {
-                    currentStrategy = data.strategy;
-                    selectedRunIndex = (currentStrategy.runs || []).length > 0 ? currentStrategy.runs.length - 1 : null;
-                    await openStrategyDetailView(currentStrategy.id);
+            // STEP 1: Execute Init if DRAFT
+            if (strat.status === 'DRAFT' || !strat.runs || strat.runs.length === 0) {
+                const startStr = (strat.start_date || '').substring(0, 10);
+                if (startStr > effectiveCutoff) {
+                    throw new Error(`Start date (${formatDateDisplay(startStr)}) is after cutoff date (${formatDateDisplay(effectiveCutoff)}). Cannot run Init.`);
                 }
-                return;
+
+                setSmallcaseModalLoader('runAllRebalanceModal', true, {
+                    title: 'Executing Initial Portfolio Allocation (Init)...',
+                    badge: 'Step 1 of Rebalance All',
+                    subtitle: `Allocating initial capital ₹${formatCurrency(strat.amount_to_invest)} on ${formatDateDisplay(strat.start_date)}...`
+                });
+
+                const initData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-init?sync=1`, {
+                    method: 'POST'
+                });
+
+                if (!initData || !initData.success) {
+                    throw new Error((initData && initData.error) || 'Failed to execute Init');
+                }
+
+                strat = initData.strategy || strat;
+                currentStrategy = strat;
+                initExecuted = true;
             }
 
-            let resultData = data;
-            if (data.async && data.job_id) {
-                resultData = await pollJobUntilComplete(data.job_id, 'Executing Batch Rebalances...', currentStrategy.id);
+            // STEP 2: Sequentially execute pending monthly rebalance schedules one by one
+            const maxSchedules = 150; // Guard against infinite loop (12+ years)
+            let lastProcessedDate = null;
+
+            while (rebalancesExecuted < maxSchedules) {
+                const schedRebalStr = (strat.next_rebalance_date || '').substring(0, 10);
+                if (!schedRebalStr) break;
+                if (schedRebalStr > effectiveCutoff) {
+                    // Reached beyond cutoff date or today
+                    break;
+                }
+                if (lastProcessedDate && schedRebalStr <= lastProcessedDate) {
+                    console.warn(`Rebalance date did not advance: ${schedRebalStr} <= ${lastProcessedDate}`);
+                    break;
+                }
+
+                const schedNum = rebalancesExecuted + 1;
+                setSmallcaseModalLoader('runAllRebalanceModal', true, {
+                    title: `Executing Rebalance #${schedNum}...`,
+                    badge: `Schedule ${schedNum}`,
+                    subtitle: `Running rebalance for ${formatDateDisplay(schedRebalStr)}${stepupVal > 0 ? ' with step-up ₹' + formatCurrency(stepupVal) : ''}...`
+                });
+
+                const rebalData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-rebalance?sync=1`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        stepup_amount: stepupVal,
+                        trim_existing: trimVal
+                    })
+                });
+
+                if (!rebalData || !rebalData.success) {
+                    throw new Error((rebalData && rebalData.error) || `Failed during rebalance execution on ${formatDateDisplay(schedRebalStr)}`);
+                }
+
+                strat = rebalData.strategy || strat;
+                currentStrategy = strat;
+                lastProcessedDate = schedRebalStr;
+                rebalancesExecuted++;
             }
 
+            const totalRuns = (initExecuted ? 1 : 0) + rebalancesExecuted;
             closeRunAllModal();
-            alertToast((resultData && resultData.message) || 'All scheduled rebalances completed successfully!', 'success');
+
+            if (totalRuns === 0) {
+                alertToast(`No rebalance schedules due before ${formatDateDisplay(effectiveCutoff)}. Smallcase is already up to date.`, 'info');
+            } else {
+                const parts = [];
+                if (initExecuted) parts.push('Init');
+                if (rebalancesExecuted > 0) parts.push(`${rebalancesExecuted} rebalance(s)`);
+                alertToast(`Rebalance All completed successfully! Executed ${parts.join(' + ')}.`, 'success');
+            }
 
             // Refresh view and select latest run
             selectedRunIndex = null;
             await openStrategyDetailView(currentStrategy.id);
             await loadStrategiesList();
         } catch (err) {
-            console.error('Error running all rebalances:', err);
-            alertToast('Batch run failed: ' + err.message, 'error');
+            console.error('Error running all rebalances one-by-one:', err);
+            const partialDone = [];
+            if (initExecuted) partialDone.push('Init');
+            if (rebalancesExecuted > 0) partialDone.push(`${rebalancesExecuted} rebalance(s)`);
+            const statusSummary = partialDone.length > 0 ? ` (Saved so far: ${partialDone.join(' + ')})` : '';
+            alertToast(`Rebalance All stopped: ${err.message}${statusSummary}`, 'error');
+
+            if (currentStrategy && currentStrategy.id) {
+                selectedRunIndex = null;
+                await openStrategyDetailView(currentStrategy.id);
+                await loadStrategiesList();
+            }
         } finally {
             isSubmitting = false;
             setSmallcaseModalLoader('runAllRebalanceModal', false);
@@ -4656,15 +4732,57 @@
     };
 
     const COMPARISON_PALETTE = [
-        '#3b82f6', // Blue
-        '#10b981', // Emerald
-        '#f59e0b', // Amber
-        '#ec4899', // Pink
-        '#8b5cf6', // Purple
-        '#06b6d4', // Cyan
-        '#ef4444', // Red
-        '#14b8a6'  // Teal
+        '#3b82f6', // 0: Blue
+        '#10b981', // 1: Emerald
+        '#f59e0b', // 2: Amber
+        '#ec4899', // 3: Pink
+        '#8b5cf6', // 4: Purple
+        '#06b6d4', // 5: Cyan
+        '#ef4444', // 6: Red
+        '#14b8a6', // 7: Teal
+        '#f97316', // 8: Bright Orange
+        '#6366f1', // 9: Indigo
+        '#84cc16', // 10: Lime
+        '#d946ef', // 11: Fuchsia
+        '#0284c7', // 12: Sky Blue
+        '#e11d48', // 13: Rose
+        '#eab308', // 14: Yellow
+        '#22c55e', // 15: Green
+        '#a855f7', // 16: Violet
+        '#38bdf8', // 17: Light Blue
+        '#fb923c', // 18: Coral
+        '#4ade80', // 19: Mint
+        '#c084fc', // 20: Lavender
+        '#f43f5e', // 21: Watermelon
+        '#2dd4bf', // 22: Aqua
+        '#fbbf24', // 23: Marigold
+        '#818cf8', // 24: Periwinkle
     ];
+
+    function getUniqueComparisonColor(existingRows) {
+        const usedColors = new Set((existingRows || []).map(r => (r.color || '').trim().toLowerCase()).filter(Boolean));
+        for (const c of COMPARISON_PALETTE) {
+            if (!usedColors.has(c.toLowerCase())) {
+                return c;
+            }
+        }
+        // Fallback: Golden angle HSL generation for theoretically unlimited non-repeating colors
+        const idx = existingRows ? existingRows.length : 0;
+        const hue = Math.round((idx * 137.508) % 360);
+        return `hsl(${hue}, 80%, 50%)`;
+    }
+
+    function ensureUniqueComparisonColors(rows) {
+        if (!rows || !Array.isArray(rows)) return;
+        const seen = new Set();
+        rows.forEach((row, idx) => {
+            const c = (row.color || '').trim().toLowerCase();
+            if (!c || seen.has(c)) {
+                row.color = getUniqueComparisonColor(rows.filter((_, i) => i < idx));
+            }
+            seen.add((row.color || '').trim().toLowerCase());
+        });
+    }
 
     async function loadComparisonIndicesCatalog() {
         if (comparisonState.indicesCatalog && comparisonState.indicesCatalog.length > 0) {
@@ -4714,7 +4832,10 @@
         const stepupInput = document.getElementById('mscCompStepupAmount');
         const cutoffInput = document.getElementById('mscCompCutoffDate');
 
-        if (startInput && !startInput.value) startInput.value = '2024-01-01';
+        if (startInput) {
+            if (!startInput.value) startInput.value = '2024-01-01';
+            startInput.min = '2013-01-01';
+        }
         if (amountInput && !amountInput.value) amountInput.value = '100000';
         if (stepupInput) stepupInput.value = '';
         if (cutoffInput) {
@@ -4739,7 +4860,7 @@
                     index_type: idx1.type || 'nifty',
                     no_of_stocks: 12,
                     exit_regime_ranking: 22,
-                    rebalance_day: 21,
+                    rebalance_day: 1,
                     trim_existing: 'no',
                     trading_days_per_month: 21,
                     color: COMPARISON_PALETTE[0]
@@ -4751,7 +4872,7 @@
                     index_type: idx2.type || 'nifty',
                     no_of_stocks: 12,
                     exit_regime_ranking: 22,
-                    rebalance_day: 21,
+                    rebalance_day: 1,
                     trim_existing: 'no',
                     trading_days_per_month: 21,
                     color: COMPARISON_PALETTE[1]
@@ -4865,6 +4986,9 @@
         const container = document.getElementById('mscCompIndicesList');
         if (!container) return;
 
+        // Ensure every active index row has a distinct non-repeating color
+        ensureUniqueComparisonColors(comparisonState.indexRows);
+
         const countBadge = document.getElementById('mscCompIndexCountBadge');
         if (countBadge) {
             countBadge.innerText = `${comparisonState.indexRows.length} ${comparisonState.indexRows.length === 1 ? 'Index' : 'Indices'}`;
@@ -4873,7 +4997,8 @@
         const cat = comparisonState.indicesCatalog || [];
 
         container.innerHTML = comparisonState.indexRows.map((row, idx) => {
-            const color = row.color || COMPARISON_PALETTE[idx % COMPARISON_PALETTE.length];
+            const color = row.color || getUniqueComparisonColor(comparisonState.indexRows.filter((_, i) => i < idx));
+            row.color = color;
             const isFirst = (idx === 0);
 
             // Group catalog options
@@ -4941,7 +5066,7 @@
                             <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
                                 Rebalance Day
                             </label>
-                            <input type="number" class="msc-modal-input msc-comp-rebal-input" data-row-id="${escapeHtml(row.id)}" value="${row.rebalance_day || 21}" min="1" max="31" style="font-size: 12px; padding: 5px 8px;">
+                            <input type="text" class="msc-modal-input msc-comp-rebal-input" data-row-id="${escapeHtml(row.id)}" value="1st (Monthly)" disabled readonly style="font-size: 12px; padding: 5px 8px; background: rgba(255,255,255,0.04); color: var(--text-secondary); cursor: not-allowed; opacity: 0.9;" title="Rebalance day is locked to 1st of every month for all compared indices">
                         </div>
 
                         <!-- 5. Trim Existing Stock -->
@@ -4992,8 +5117,8 @@
             const exitIn = card.querySelector('.msc-comp-exit-input');
             if (exitIn) row.exit_regime_ranking = parseInt(exitIn.value, 10) || 22;
 
-            const rebalIn = card.querySelector('.msc-comp-rebal-input');
-            if (rebalIn) row.rebalance_day = parseInt(rebalIn.value, 10) || 21;
+            // Rebalance day is strictly 1st of the month
+            row.rebalance_day = 1;
 
             const trimSel = card.querySelector('.msc-comp-trim-select');
             if (trimSel) row.trim_existing = trimSel.value === 'yes';
@@ -5021,7 +5146,7 @@
         const first = comparisonState.indexRows[0] || {};
         const defStocks = first.no_of_stocks || 12;
         const defExit = first.exit_regime_ranking || 22;
-        const defRebal = first.rebalance_day || 21;
+        const defRebal = 1; // Locked to 1st of month
         const defTrim = (first.trim_existing === true || String(first.trim_existing).toLowerCase() === 'yes') ? 'yes' : 'no';
         const defDays = Number(first.trading_days_per_month) || 21;
 
@@ -5031,7 +5156,8 @@
         const candidate = cat.find(c => !usedIds.has(c.id)) || cat[0] || { id: 'NIFTY_500', name: 'NIFTY 500', type: 'nifty' };
 
         const newRowId = `comp_row_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-        const nextColor = COMPARISON_PALETTE[comparisonState.indexRows.length % COMPARISON_PALETTE.length];
+        // Assign a strictly unique non-repeating color
+        const nextColor = getUniqueComparisonColor(comparisonState.indexRows);
 
         comparisonState.indexRows.push({
             id: newRowId,
@@ -5040,7 +5166,7 @@
             index_type: candidate.type || 'nifty',
             no_of_stocks: defStocks,
             exit_regime_ranking: defExit,
-            rebalance_day: defRebal,
+            rebalance_day: 1,
             trim_existing: defTrim,
             trading_days_per_month: defDays,
             color: nextColor
@@ -5168,7 +5294,7 @@
         }
     }
 
-    // Helper to enforce start date rule: in 2026 any day allowed; before 2026 only month's first date
+    // Helper to enforce start date rule: 1st of any month including 2026; disable prior to 2013
     window.handleComparisonStartDateChange = function(inputEl) {
         if (!inputEl || !inputEl.value) return;
         const val = inputEl.value;
@@ -5177,10 +5303,15 @@
             const year = parseInt(parts[0], 10);
             const month = parts[1];
             const day = parseInt(parts[2], 10);
-            if (year < 2026 && day !== 1) {
+            if (year < 2013) {
+                inputEl.value = '2013-01-01';
+                alertToast('Dates prior to 2013 are not available. Minimum start date is 01-01-2013.', 'warning');
+                return;
+            }
+            if (day !== 1) {
                 const corrected = `${year}-${month}-01`;
                 inputEl.value = corrected;
-                alertToast(`Dates before 2026 are restricted to month's first date (01-MM-YYYY). Set to ${corrected}.`, 'info');
+                alertToast(`Start date must strictly be the 1st of the month (01-${month}-${year}).`, 'info');
             }
         }
     };
@@ -5188,6 +5319,7 @@
     async function runIndexComparisonSimulation() {
         if (comparisonState.isRunning) return;
         syncComparisonRowsFromDOM();
+        ensureUniqueComparisonColors(comparisonState.indexRows);
 
         const startInput = document.getElementById('mscCompStartDate');
         const amountInput = document.getElementById('mscCompAmount');
@@ -5205,17 +5337,24 @@
             return;
         }
 
-        // Strict calendar rule: 2026 allows any day; before 2026 allows ONLY the 1st of the month
+        // Strict calendar rule: Must be >= 2013-01-01 and strictly the 1st of the month for all years including 2026
         const dateParts = startDate.split('-');
         if (dateParts.length === 3) {
             const yr = parseInt(dateParts[0], 10);
             const day = parseInt(dateParts[2], 10);
-            if (yr < 2026 && day !== 1) {
+            if (yr < 2013) {
+                startDate = '2013-01-01';
+                if (startInput) startInput.value = startDate;
+                alertToast('Start date clamped to minimum available data date: 01-01-2013.', 'warning');
+            } else if (day !== 1) {
                 startDate = `${dateParts[0]}-${dateParts[1]}-01`;
                 if (startInput) startInput.value = startDate;
-                alertToast(`Start dates prior to 2026 are restricted to month's first date (${startDate}).`, 'info');
+                alertToast(`Start date snapped to 1st of month: ${formatDateDisplay(startDate)}.`, 'info');
             }
         }
+
+        // Lock rebalance_day to 1 on all rows
+        comparisonState.indexRows.forEach(r => { r.rebalance_day = 1; });
 
         if (isNaN(amount) || amount <= 0) {
             alertToast('Please enter a valid Investment Amount.', 'warning');
