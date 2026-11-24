@@ -355,6 +355,24 @@ def _simulate_single_index(
     )
 
     if not ranked_init:
+        # Check if index has delayed start due to constituent stock entered dates / price available dates
+        earliest_eff = meta_init.get("earliest_effective_date") if meta_init else None
+        if earliest_eff and earliest_eff > init_d and earliest_eff <= cutoff_date:
+            logger.info(f"Index '{index_name}' constituents entered / have price data after {init_d}; delayed start to {earliest_eff}")
+            delayed_init_d, _ = get_next_trading_day(earliest_eff)
+            if delayed_init_d <= cutoff_date:
+                ranked_init, eligible_count, meta_init = _evaluate_universe_db_only(
+                    constituents=constituents,
+                    target_date=delayed_init_d,
+                    formula_str=formula_str,
+                    no_of_stocks=no_of_stocks,
+                    exit_regime_ranking=exit_regime_ranking,
+                    trading_days_per_month=trading_days_per_month
+                )
+                if ranked_init:
+                    init_d = delayed_init_d
+
+    if not ranked_init:
         logger.warning(f"No ranked stocks found for index '{index_name}' on init date {init_d}")
         return None
 
@@ -370,7 +388,24 @@ def _simulate_single_index(
     total_fees = init_portfolio.get("fees_paid", 0.0)
 
     # Milestone points for time series chart
-    points = [{
+    points = []
+    # If simulation started before actual constituent entry date, record initial cash holding at start_date
+    if start_date < init_d:
+        points.append({
+            "date": start_date.isoformat(),
+            "portfolio_value": amount_to_invest,
+            "invested": amount_to_invest,
+            "wallet_balance": amount_to_invest,
+            "holdings_count": 0,
+            "milestone_type": "START",
+            "milestone_label": f"Start Cash ({start_date.strftime('%d-%b-%Y')})",
+            "pnl": 0.0,
+            "pnl_percent": 0.0,
+            "change_amount": 0.0,
+            "change_percent": 0.0
+        })
+
+    points.append({
         "date": init_d.isoformat(),
         "portfolio_value": init_portfolio["total_portfolio_value"],
         "invested": total_capital,
@@ -382,7 +417,7 @@ def _simulate_single_index(
         "pnl_percent": 0.0,
         "change_amount": 0.0,
         "change_percent": 0.0
-    }]
+    })
 
     # Step 2: Scheduled Monthly Rebalances
     current_sim_date = init_d

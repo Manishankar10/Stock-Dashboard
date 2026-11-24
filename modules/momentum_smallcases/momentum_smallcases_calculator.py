@@ -108,6 +108,50 @@ def save_price_cache():
 # ==============================================================================
 _db_prices_cache = {}
 _db_cache_lock = threading.Lock()
+_earliest_price_cache = {}
+_earliest_price_lock = threading.Lock()
+
+
+def get_stock_earliest_price_date(symbol):
+    """
+    Returns datetime.date representing the earliest available price date for symbol.
+    Checks in-memory price cache first, then MongoDB Atlas collection 'stock_closing_prices'.
+    """
+    clean_s = symbol.strip().upper().replace('.NS', '').replace('.BO', '')
+    alias_map = {'TATAMOTORS': 'TMPV', 'HDFC': 'HDFCBANK'}
+    fetch_sym = alias_map.get(clean_s, clean_s)
+
+    with _earliest_price_lock:
+        if fetch_sym in _earliest_price_cache:
+            return _earliest_price_cache[fetch_sym]
+
+    # Check _db_prices_cache
+    with _db_cache_lock:
+        if fetch_sym in _db_prices_cache and _db_prices_cache[fetch_sym]:
+            first_d_str = _db_prices_cache[fetch_sym][0][0]
+            try:
+                first_d = datetime.strptime(first_d_str[:10], "%Y-%m-%d").date()
+                with _earliest_price_lock:
+                    _earliest_price_cache[fetch_sym] = first_d
+                return first_d
+            except Exception:
+                pass
+
+    # Check MongoDB collection stock_closing_prices
+    try:
+        from db_store import load_stock_closing_prices_db
+        doc = load_stock_closing_prices_db(symbol=fetch_sym, summary_only=True)
+        if doc:
+            s_date = doc.get("start_date") or doc.get("min_date")
+            if s_date:
+                first_d = datetime.strptime(str(s_date)[:10], "%Y-%m-%d").date()
+                with _earliest_price_lock:
+                    _earliest_price_cache[fetch_sym] = first_d
+                return first_d
+    except Exception as e:
+        logger.debug(f"Could not load earliest price date for {fetch_sym}: {e}")
+
+    return None
 
 
 def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
@@ -135,7 +179,7 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
                         lo = mid + 1
                     else:
                         hi = mid
-                return series[:lo] if lo > 0 else series
+                return series[:lo]
 
     # 2. Query database collection stock_closing_prices
     try:
@@ -169,6 +213,13 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
                 with _db_cache_lock:
                     _db_prices_cache[fetch_sym] = series
 
+                try:
+                    first_d = datetime.strptime(series[0][0][:10], "%Y-%m-%d").date()
+                    with _earliest_price_lock:
+                        _earliest_price_cache[fetch_sym] = first_d
+                except Exception:
+                    pass
+
                 if not target_cutoff_str:
                     return series
                 lo, hi = 0, len(series)
@@ -178,7 +229,7 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
                         lo = mid + 1
                     else:
                         hi = mid
-                return series[:lo] if lo > 0 else series
+                return series[:lo]
     except Exception as e:
         logger.warning(f"Error querying stock_closing_prices from DB for {fetch_sym}: {e}")
 
@@ -189,6 +240,8 @@ def clear_db_prices_cache():
     """Clears temporary in-memory prices cache to ensure zero server-side memory retention."""
     with _db_cache_lock:
         _db_prices_cache.clear()
+    with _earliest_price_lock:
+        _earliest_price_cache.clear()
 
 
 def prewarm_stock_prices_cache(symbols=None, min_date=None):
@@ -248,6 +301,15 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None):
                     series = [(d, series_dict[d]) for d in sorted(series_dict.keys())]
                     if series:
                         _db_prices_cache[clean_s] = series
+                        try:
+                            # Prefer actual earliest stored date in doc if available
+                            s_date = doc.get("start_date") or doc.get("min_date")
+                            first_d_str = str(s_date)[:10] if s_date else series[0][0][:10]
+                            first_d = datetime.strptime(first_d_str, "%Y-%m-%d").date()
+                            with _earliest_price_lock:
+                                _earliest_price_cache[clean_s] = first_d
+                        except Exception:
+                            pass
 
         return len(_db_prices_cache)
     except Exception as e:
@@ -383,13 +445,13 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
             data_points = db_series
 
     # If DB-only execution is explicitly requested, skip live external API fallbacks
-    if db_only:
-        return data_points or []
+    if db_only and not data_points:
+        return []
 
     # =========================================================================
     # 2. FALLBACK: IF STOCK OR PRICE NOT AVAILABLE IN DB, FETCH LIVE PROVIDER
     # =========================================================================
-    if data_points is None:
+    if not db_only and data_points is None:
         cache_key = f"{fetch_sym}_daily"
         cache = load_price_cache()
 
@@ -518,20 +580,60 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     if not eval_series or len(eval_series) < 2:
         return None
 
+    # Ensure all dates are datetime.date objects
+    normalized_series = []
+    for d, p in eval_series:
+        if isinstance(d, str):
+            try:
+                d = datetime.strptime(d[:10], "%Y-%m-%d").date()
+            except Exception:
+                continue
+        elif isinstance(d, datetime):
+            d = d.date()
+        normalized_series.append((d, float(p)))
+
+    if not normalized_series or len(normalized_series) < 2:
+        return None
+
+    eval_series = normalized_series
+    dates = [d for d, _ in eval_series]
     prices = [p for _, p in eval_series]
     n = len(prices)
+    curr_date = dates[-1]
     curr_price = prices[-1]
 
     # Trading days per month (21 or 30 days)
     td = 21 if int(trading_days_per_month or 30) == 21 else 30
 
-    # Trading days offsets:
-    # 1M = td days, 2M = 2*td days, 5M = 5*td days, 9M = 9*td days
-    # Graceful fallback: use max available days if history is shorter
-    idx_1m = max(0, n - (td + 1))
-    idx_2m = max(0, n - (2 * td + 1))
-    idx_5m = max(0, n - (5 * td + 1))
-    idx_9m = max(0, n - (9 * td + 1))
+    # Determine whether the series consists of monthly average bars or daily bars
+    span_days = (dates[-1] - dates[0]).days if len(dates) >= 2 else 0
+    avg_step = (span_days / float(len(dates) - 1)) if len(dates) >= 2 else 1.0
+    is_monthly = (avg_step >= 20.0)
+
+    import bisect
+    import calendar
+
+    def _get_lookback_index(months_back, td_days):
+        if is_monthly:
+            # On pure monthly series, 1 month = 1 bar back
+            return max(0, n - (months_back + 1))
+        # On daily or mixed series, compute target calendar date
+        y = curr_date.year
+        m = curr_date.month - months_back
+        while m <= 0:
+            y -= 1
+            m += 12
+        max_d = calendar.monthrange(y, m)[1]
+        target_d = date(y, m, min(curr_date.day, max_d))
+        pos = bisect.bisect_right(dates, target_d) - 1
+        if pos >= 0:
+            return pos
+        return max(0, n - (td_days + 1))
+
+    idx_1m = _get_lookback_index(1, td)
+    idx_2m = _get_lookback_index(2, 2 * td)
+    idx_5m = _get_lookback_index(5, 5 * td)
+    idx_9m = _get_lookback_index(9, 9 * td)
 
     p_1m = prices[idx_1m]
     p_2m = prices[idx_2m]
@@ -543,25 +645,45 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     r_5m = ((curr_price - p_5m) / p_5m) * 100.0 if p_5m > 0 else 0.0
     r_9m = ((curr_price - p_9m) / p_9m) * 100.0 if p_9m > 0 else 0.0
 
-    # 1M Volatility (up to td trading days annualized standard deviation)
-    days_1m = min(td, n - 1)
-    if days_1m > 1:
-        daily_rets_1m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_1m + 1) if prices[-i-1] > 0]
-        mean_1m = sum(daily_rets_1m) / len(daily_rets_1m) if daily_rets_1m else 0.0
-        var_1m = sum((x - mean_1m)**2 for x in daily_rets_1m) / max(1, len(daily_rets_1m) - 1) if len(daily_rets_1m) > 1 else 0.0
-        vol_1m = math.sqrt(max(0.0, var_1m)) * math.sqrt(252) * 100.0
-    else:
-        vol_1m = 15.0  # sensible neutral default volatility
+    if is_monthly:
+        # On monthly bars, calculate volatility using recent monthly returns annualized by sqrt(12)
+        m_lookback_1 = min(3, n - 1)
+        if m_lookback_1 >= 2:
+            m_rets_1 = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, m_lookback_1 + 1) if prices[-i-1] > 0]
+            mean_1 = sum(m_rets_1) / len(m_rets_1) if m_rets_1 else 0.0
+            var_1 = sum((x - mean_1)**2 for x in m_rets_1) / max(1, len(m_rets_1) - 1) if len(m_rets_1) > 1 else 0.0
+            vol_1m = math.sqrt(max(0.0, var_1)) * math.sqrt(12) * 100.0
+        else:
+            vol_1m = 15.0
 
-    # 3M Volatility (up to 3*td trading days annualized standard deviation)
-    days_3m = min(3 * td, n - 1)
-    if days_3m > 1:
-        daily_rets_3m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_3m + 1) if prices[-i-1] > 0]
-        mean_3m = sum(daily_rets_3m) / len(daily_rets_3m) if daily_rets_3m else 0.0
-        var_3m = sum((x - mean_3m)**2 for x in daily_rets_3m) / max(1, len(daily_rets_3m) - 1) if len(daily_rets_3m) > 1 else 0.0
-        vol_3m = math.sqrt(max(0.0, var_3m)) * math.sqrt(252) * 100.0
+        m_lookback_3 = min(6, n - 1)
+        if m_lookback_3 >= 2:
+            m_rets_3 = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, m_lookback_3 + 1) if prices[-i-1] > 0]
+            mean_3 = sum(m_rets_3) / len(m_rets_3) if m_rets_3 else 0.0
+            var_3 = sum((x - mean_3)**2 for x in m_rets_3) / max(1, len(m_rets_3) - 1) if len(m_rets_3) > 1 else 0.0
+            vol_3m = math.sqrt(max(0.0, var_3)) * math.sqrt(12) * 100.0
+        else:
+            vol_3m = 18.0
     else:
-        vol_3m = 18.0  # sensible neutral default volatility
+        # 1M Volatility (up to td trading days annualized standard deviation)
+        days_1m = min(td, n - 1)
+        if days_1m > 1:
+            daily_rets_1m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_1m + 1) if prices[-i-1] > 0]
+            mean_1m = sum(daily_rets_1m) / len(daily_rets_1m) if daily_rets_1m else 0.0
+            var_1m = sum((x - mean_1m)**2 for x in daily_rets_1m) / max(1, len(daily_rets_1m) - 1) if len(daily_rets_1m) > 1 else 0.0
+            vol_1m = math.sqrt(max(0.0, var_1m)) * math.sqrt(252) * 100.0
+        else:
+            vol_1m = 15.0  # sensible neutral default volatility
+
+        # 3M Volatility (up to 3*td trading days annualized standard deviation)
+        days_3m = min(3 * td, n - 1)
+        if days_3m > 1:
+            daily_rets_3m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_3m + 1) if prices[-i-1] > 0]
+            mean_3m = sum(daily_rets_3m) / len(daily_rets_3m) if daily_rets_3m else 0.0
+            var_3m = sum((x - mean_3m)**2 for x in daily_rets_3m) / max(1, len(daily_rets_3m) - 1) if len(daily_rets_3m) > 1 else 0.0
+            vol_3m = math.sqrt(max(0.0, var_3m)) * math.sqrt(252) * 100.0
+        else:
+            vol_3m = 18.0  # sensible neutral default volatility
 
     return {
         "symbol": symbol.strip().upper(),
@@ -649,58 +771,77 @@ def parse_stock_date_added(date_str):
     return None
 
 
-def filter_universe_by_date_with_meta(stock_items, target_date):
+def filter_universe_by_date_with_meta(stock_items, target_date, check_price_available=True):
     """
-    Filters universe stocks where stock's addition date <= target_date.
-    If stock has no date_added (e.g. Nifty benchmark stocks), it is included by default.
+    Filters universe constituent stocks based on effective date:
+    1) If stock has date_added (e.g. manual index), entered date must be <= target_date.
+    2) If check_price_available is True, earliest price available date must be <= target_date.
+    If any stock entered date or price available date is after target_date,
+    it is excluded on target_date and will be calculated from its effective date onwards.
     Returns: (eligible_symbols_list, meta_dict)
     """
     eligible = []
     if isinstance(target_date, str):
         target_date = datetime.strptime(target_date[:10], "%Y-%m-%d").date()
+    elif isinstance(target_date, datetime):
+        target_date = target_date.date()
 
-    all_dates = []
+    all_effective_dates = []
+    all_dates_added = []
+    stock_effective_map = {}
 
     for item in stock_items:
         sym = item.get("symbol") if isinstance(item, dict) else str(item)
+        clean_s = sym.strip().upper().replace('.NS', '').replace('.BO', '')
         date_added_raw = item.get("date_added") if isinstance(item, dict) else None
 
-        if not date_added_raw:
-            eligible.append(sym)
-            continue
-
-        d_added = parse_stock_date_added(date_added_raw)
+        d_added = parse_stock_date_added(date_added_raw) if date_added_raw else None
         if d_added:
-            all_dates.append(d_added)
-            if d_added <= target_date:
+            all_dates_added.append(d_added)
+
+        d_price = get_stock_earliest_price_date(clean_s) if check_price_available else None
+
+        # Effective date is the later of date_added and earliest price date
+        dates_to_compare = [d for d in [d_added, d_price] if d is not None]
+        if dates_to_compare:
+            eff_date = max(dates_to_compare)
+            all_effective_dates.append(eff_date)
+            stock_effective_map[clean_s] = eff_date
+            if eff_date <= target_date:
                 eligible.append(sym)
         else:
             eligible.append(sym)
 
-    all_dates.sort()
+    all_effective_dates.sort()
+    all_dates_added.sort()
+
     meta = {
         "total_constituents": len(stock_items),
-        "earliest_date_added": all_dates[0] if all_dates else None,
-        "latest_date_added": all_dates[-1] if all_dates else None,
+        "eligible_count": len(eligible),
+        "earliest_effective_date": all_effective_dates[0] if all_effective_dates else None,
+        "latest_effective_date": all_effective_dates[-1] if all_effective_dates else None,
+        "earliest_date_added": all_dates_added[0] if all_dates_added else None,
+        "latest_date_added": all_dates_added[-1] if all_dates_added else None,
+        "stock_effective_map": stock_effective_map,
     }
 
     return list(dict.fromkeys(eligible)), meta
 
 
-def filter_universe_by_date(stock_items, target_date):
+def filter_universe_by_date(stock_items, target_date, check_price_available=True):
     """Legacy compatibility helper."""
-    eligible, _ = filter_universe_by_date_with_meta(stock_items, target_date)
+    eligible, _ = filter_universe_by_date_with_meta(stock_items, target_date, check_price_available=check_price_available)
     return eligible
 
 
-def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stocks, exit_regime_ranking, return_meta=False, save_cache=True, trading_days_per_month=30):
+def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stocks, exit_regime_ranking, return_meta=False, save_cache=True, trading_days_per_month=30, check_price_available=True):
     """
     Calculates formula scores for all eligible stocks, ranks them descending,
     assigns color tiers (green for top N, dark yellow up to exit regime),
     and limits the output to exit_regime_ranking + 15 stocks.
     Returns: (displayed_stocks, eligible_count, [meta_dict if return_meta=True])
     """
-    eligible_symbols, date_info = filter_universe_by_date_with_meta(stock_items, target_date)
+    eligible_symbols, date_info = filter_universe_by_date_with_meta(stock_items, target_date, check_price_available=check_price_available)
     if not eligible_symbols:
         if return_meta:
             return [], 0, date_info

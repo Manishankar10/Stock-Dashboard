@@ -794,14 +794,14 @@ def run_strategy_init(strategy_id, username=None):
 
     if not ranked_stocks:
         if eligible_count == 0:
-            earliest = meta.get("earliest_date_added")
+            earliest = meta.get("earliest_effective_date") or meta.get("earliest_date_added")
             earliest_str = earliest.strftime("%d/%m/%Y") if earliest else "N/A"
-            latest = meta.get("latest_date_added")
+            latest = meta.get("latest_effective_date") or meta.get("latest_date_added")
             latest_str = latest.strftime("%d/%m/%Y") if latest else "N/A"
             exec_fmt = exec_date.strftime("%d/%m/%Y")
             raise ValueError(
                 f"No constituent stocks in index '{target.get('index_name')}' were eligible on or before the Smallcase Start Date ({exec_fmt}). "
-                f"Found {len(constituents)} stocks in this index, but their Date Added is between {earliest_str} and {latest_str} (after start date {exec_fmt}). "
+                f"Found {len(constituents)} stocks in this index, but their effective entry/price date is between {earliest_str} and {latest_str} (after start date {exec_fmt}). "
                 f"Please set your Smallcase Start Date to {earliest_str} or later, or adjust the Date Added of stocks in Manual Indices."
             )
         else:
