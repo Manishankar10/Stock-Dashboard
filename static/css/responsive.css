@@ -3664,7 +3664,7 @@
         inset: 0 !important;
         width: 100vw !important;
         height: 100vh !important;
-        z-index: 100050 !important;
+        z-index: 9999995 !important; /* Above all feature modals and backdrops */
         align-items: center !important;
         justify-content: center !important;
         padding: 16px !important;
@@ -4141,9 +4141,10 @@
 @media (max-width: 768px) {
     .app-bottom-toast-container,
     #appBottomToastContainer {
-        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-        max-width: calc(100vw - 32px);
-        width: max-content;
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+        max-width: calc(100vw - 32px) !important;
+        width: max-content !important;
+        z-index: 9999999 !important;
     }
     .app-bottom-toast {
         padding: 9px 15px;

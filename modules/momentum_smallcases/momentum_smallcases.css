@@ -1782,5 +1782,22 @@ body > .msc-global-process-loader[style*="none"] {
     }
 }
 
+/* Ensure toast notifications and system alerts ALWAYS render above momentum modals and loaders */
+#appBottomToastContainer,
+.app-bottom-toast-container {
+    z-index: 9999999 !important;
+}
+
+#customModalOverlay {
+    z-index: 9999995 !important;
+}
+
+/* Compare Index Popup Top Error Banner */
+.msc-comp-top-alert {
+    animation: mscFadeIn 0.2s ease;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);
+}
+
+
 
 

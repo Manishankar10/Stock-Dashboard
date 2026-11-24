@@ -949,6 +949,22 @@
         <!-- Modal Body (Scrollable) -->
         <div class="msc-modal-body msc-comp-body" style="padding: 16px 22px; overflow-y: auto; flex: 1;">
             
+            <!-- Top Error Alert Banner (Prominently displayed at top of popup) -->
+            <div id="mscCompTopErrorAlert" class="msc-comp-top-alert" style="display: none; background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.45); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; align-items: flex-start; justify-content: space-between; gap: 12px; animation: mscFadeIn 0.2s ease;">
+                <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1;">
+                    <span style="font-size: 18px; line-height: 1.2; flex-shrink: 0;">⚠️</span>
+                    <div style="flex: 1;">
+                        <div style="font-size: 13px; font-weight: 700; color: #ef4444; margin-bottom: 2px;" id="mscCompTopErrorTitle">
+                            Comparison Error
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-primary); line-height: 1.45;" id="mscCompTopErrorMsg">
+                            <!-- Injected error text -->
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="hideComparisonTopError()" style="background: none; border: none; color: var(--text-secondary); font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color 0.15s ease;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'" title="Dismiss error">✕</button>
+            </div>
+
             <!-- 1. Compared Index Universes Deck -->
             <div class="msc-comp-indices-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">

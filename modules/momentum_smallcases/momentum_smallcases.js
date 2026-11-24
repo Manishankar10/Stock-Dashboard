@@ -60,6 +60,12 @@
                 }
             });
         }
+
+        // Ensure global toast notification container stays at the very end of body (highest in stacking context)
+        const toastCont = document.getElementById('appBottomToastContainer');
+        if (toastCont) {
+            document.body.appendChild(toastCont);
+        }
     }
 
     if (typeof document !== 'undefined') {
@@ -4705,8 +4711,51 @@
         document.body.removeChild(ta);
     }
 
-    // Unified Toast / Alert
+    // Compare Index Top Error Alert helpers
+    function showComparisonTopError(msg, title = 'Comparison Error') {
+        const banner = document.getElementById('mscCompTopErrorAlert');
+        const msgEl = document.getElementById('mscCompTopErrorMsg');
+        const titleEl = document.getElementById('mscCompTopErrorTitle');
+        const body = document.querySelector('.msc-comp-body');
+        if (msgEl) msgEl.innerText = msg;
+        if (titleEl) titleEl.innerText = title;
+        if (banner) {
+            banner.style.display = 'flex';
+            if (body) {
+                try {
+                    body.scrollTo({ top: 0, behavior: 'smooth' });
+                } catch (_) {
+                    body.scrollTop = 0;
+                }
+            }
+        }
+    }
+
+    function hideComparisonTopError() {
+        const banner = document.getElementById('mscCompTopErrorAlert');
+        if (banner) banner.style.display = 'none';
+    }
+
+    window.showComparisonTopError = showComparisonTopError;
+    window.hideComparisonTopError = hideComparisonTopError;
+
+    // Unified Toast / Alert (Guaranteed to always show on top of any active popup)
     function alertToast(msg, type = 'info') {
+        const compModal = document.getElementById('mscIndexComparisonModal');
+        const isCompOpen = compModal && compModal.style.display !== 'none' && !comparisonState.isMinimized;
+        if (isCompOpen && (type === 'error' || type === 'warning')) {
+            showComparisonTopError(msg, type === 'error' ? 'Comparison Error' : 'Validation Notice');
+        }
+
+        // Always re-append toast container to body so it stays at the top of the stacking tree
+        const toastCont = document.getElementById('appBottomToastContainer');
+        if (toastCont && toastCont.parentElement) {
+            toastCont.style.zIndex = '9999999';
+            if (toastCont.parentElement !== document.body) {
+                document.body.appendChild(toastCont);
+            }
+        }
+
         if (typeof window.showToast === 'function') {
             window.showToast(msg, type);
         } else {
@@ -4910,6 +4959,7 @@
     }
 
     function closeIndexComparisonModal() {
+        hideComparisonTopError();
         comparisonState.isMinimized = false;
         const dock = document.getElementById('mscIndexComparisonDock');
         if (dock) dock.style.display = 'none';
@@ -5318,6 +5368,7 @@
 
     async function runIndexComparisonSimulation() {
         if (comparisonState.isRunning) return;
+        hideComparisonTopError();
         syncComparisonRowsFromDOM();
         ensureUniqueComparisonColors(comparisonState.indexRows);
 
@@ -5333,6 +5384,7 @@
         const cutoffDate = (cutoffInput?.value || '').trim();
 
         if (!startDate) {
+            showComparisonTopError('Please choose a valid Start Date.', 'Validation Notice');
             alertToast('Please choose a valid Start Date.', 'warning');
             return;
         }
@@ -5357,10 +5409,12 @@
         comparisonState.indexRows.forEach(r => { r.rebalance_day = 1; });
 
         if (isNaN(amount) || amount <= 0) {
+            showComparisonTopError('Please enter a valid Investment Amount.', 'Validation Notice');
             alertToast('Please enter a valid Investment Amount.', 'warning');
             return;
         }
         if (isNaN(stepup) || stepup < 0) {
+            showComparisonTopError('Step-up amount must be 0 or positive.', 'Validation Notice');
             alertToast('Step-up amount must be 0 or positive.', 'warning');
             return;
         }
@@ -5564,6 +5618,8 @@
                 selectComparedIndexKPI(0);
             }
 
+            hideComparisonTopError();
+
             if (uncachedRows.length > 0 && cachedCount > 0) {
                 alertToast(`Simulated successfully! Reused ${cachedCount} browser-cached index results and computed ${uncachedRows.length} new index.`, 'success');
             } else if (uncachedRows.length === 0) {
@@ -5579,6 +5635,7 @@
             if (!cleanMsg || cleanMsg === '1' || cleanMsg === 'true' || /^\d+$/.test(cleanMsg)) {
                 cleanMsg = 'An unexpected calculation issue occurred during index simulation. Please verify date parameters or retry.';
             }
+            showComparisonTopError(cleanMsg, 'Simulation Failed');
             alertToast(`Comparison Error: ${cleanMsg}`, 'error');
             if (emptyNotice) {
                 emptyNotice.style.display = 'flex';

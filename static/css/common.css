@@ -1632,12 +1632,12 @@
            ========================================================= */
         .app-bottom-toast-container,
         #appBottomToastContainer {
-            position: fixed;
-            bottom: 26px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100095;
-            display: flex;
+            position: fixed !important;
+            bottom: 26px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 9999999 !important; /* Always on top of all modals, overlays, and loaders */
+            display: flex !important;
             flex-direction: column-reverse;
             align-items: center;
             gap: 8px;
