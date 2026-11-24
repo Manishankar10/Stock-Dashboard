@@ -414,6 +414,30 @@ def _simulate_single_index(
             "change_percent": 0.0
         })
 
+    init_holdings_summary = [
+        {
+            "symbol": h["symbol"],
+            "quantity": h["quantity"],
+            "buy_price": h["buy_price"],
+            "current_price": h["current_price"],
+            "invested": h["invested"],
+            "current_value": h["current_value"],
+            "weight_percent": h.get("weight_percent", 0)
+        }
+        for h in current_holdings
+    ]
+    init_txs = [
+        {
+            "symbol": h["symbol"],
+            "action": "BUY",
+            "action_label": f"BUY ({h['quantity']})",
+            "quantity": h["quantity"],
+            "price": h["buy_price"],
+            "amount": h["invested"]
+        }
+        for h in current_holdings
+    ]
+
     points.append({
         "date": init_d.isoformat(),
         "portfolio_value": init_portfolio["total_portfolio_value"],
@@ -425,7 +449,9 @@ def _simulate_single_index(
         "pnl": 0.0,
         "pnl_percent": 0.0,
         "change_amount": 0.0,
-        "change_percent": 0.0
+        "change_percent": 0.0,
+        "holdings": init_holdings_summary,
+        "transactions": init_txs
     })
 
     # Step 2: Scheduled Monthly Rebalances
@@ -489,6 +515,19 @@ def _simulate_single_index(
             elif act == "SELL":
                 total_sells += 1
 
+        rebal_holdings_summary = [
+            {
+                "symbol": h["symbol"],
+                "quantity": h["quantity"],
+                "buy_price": h.get("buy_price", 0),
+                "current_price": h["current_price"],
+                "invested": h["invested"],
+                "current_value": h["current_value"],
+                "weight_percent": h.get("weight_percent", 0)
+            }
+            for h in current_holdings
+        ]
+
         points.append({
             "date": next_rebal_d.isoformat(),
             "portfolio_value": rebal_portfolio["total_portfolio_value"],
@@ -501,7 +540,10 @@ def _simulate_single_index(
             "pnl": round(rebal_portfolio["total_portfolio_value"] - total_capital, 2),
             "pnl_percent": round(((rebal_portfolio["total_portfolio_value"] - total_capital) / total_capital) * 100.0, 2) if total_capital > 0 else 0.0,
             "change_amount": 0.0,
-            "change_percent": 0.0
+            "change_percent": 0.0,
+            "holdings": rebal_holdings_summary,
+            "transactions": rebal_portfolio.get("transactions", []),
+            "changes": rebal_portfolio.get("changes", {})
         })
 
     # Step 3: Latest Cutoff Date Valuation (if later than last milestone)
