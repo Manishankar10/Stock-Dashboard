@@ -3909,6 +3909,15 @@
                                 const val = Number(context.raw) || 0;
                                 return `  ${context.dataset.label}: ₹${formatCurrency(val)}`;
                             },
+                            labelTextColor: function(context) {
+                                const idx = context.dataIndex;
+                                const points = data.points || [];
+                                const pt = points[idx];
+                                if (!pt) return '#ffffff';
+                                const inv = pt.invested || 0;
+                                const val = pt.portfolio_value || 0;
+                                return (val - inv) >= 0 ? '#10b981' : '#ef4444';
+                            },
                             afterBody: function(tooltipItems) {
                                 if (!tooltipItems || tooltipItems.length === 0) return '';
                                 const idx = tooltipItems[0].dataIndex;
@@ -4960,6 +4969,8 @@
 
     function closeIndexComparisonModal() {
         hideComparisonTopError();
+        const existingCustomTip = document.getElementById('mscCompChartCustomTooltip');
+        if (existingCustomTip) existingCustomTip.remove();
         comparisonState.isMinimized = false;
         const dock = document.getElementById('mscIndexComparisonDock');
         if (dock) dock.style.display = 'none';
@@ -5661,6 +5672,8 @@
             comparisonState.chartInstance.destroy();
             comparisonState.chartInstance = null;
         }
+        const existingCustomTip = document.getElementById('mscCompChartCustomTooltip');
+        if (existingCustomTip) existingCustomTip.remove();
 
         const ctx = canvas.getContext('2d');
         const results = data.results || [];
@@ -5782,26 +5795,107 @@
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                        titleColor: isDark ? '#ffffff' : '#0f172a',
-                        bodyColor: isDark ? '#cbd5e1' : '#334155',
-                        borderColor: isDark ? '#334155' : '#e2e8f0',
-                        borderWidth: 1,
-                        padding: 12,
-                        boxPadding: 4,
-                        callbacks: {
-                            label: function(context) {
-                                const ds = context.dataset;
-                                const val = Number(context.raw) || 0;
-                                if (ds.isBaseline) {
-                                    return `  🏁 ${ds.label}: ₹${formatCurrency(val)}`;
-                                }
-                                const currentInv = baselineData[context.dataIndex] !== undefined ? baselineData[context.dataIndex] : data.common.amount_to_invest;
-                                const pnl = val - currentInv;
-                                const pnlPct = currentInv > 0 ? (pnl / currentInv) * 100 : 0;
-                                const sign = pnl >= 0 ? '+' : '';
-                                return `  ● ${ds.label}: ₹${formatCurrency(val)} (${sign}₹${formatCurrency(pnl)} / ${sign}${pnlPct.toFixed(2)}%)`;
+                        enabled: false,
+                        external: function(context) {
+                            const { chart, tooltip } = context;
+                            let tooltipEl = document.getElementById('mscCompChartCustomTooltip');
+                            if (!tooltipEl) {
+                                tooltipEl = document.createElement('div');
+                                tooltipEl.id = 'mscCompChartCustomTooltip';
+                                tooltipEl.style.position = 'absolute';
+                                tooltipEl.style.pointerEvents = 'none';
+                                tooltipEl.style.zIndex = '30';
+                                tooltipEl.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
+                                tooltipEl.style.background = 'rgba(15, 23, 42, 0.96)';
+                                tooltipEl.style.border = '1px solid rgba(255, 255, 255, 0.16)';
+                                tooltipEl.style.borderRadius = '8px';
+                                tooltipEl.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.6)';
+                                tooltipEl.style.backdropFilter = 'blur(10px)';
+                                tooltipEl.style.webkitBackdropFilter = 'blur(10px)';
+                                tooltipEl.style.padding = '10px 14px';
+                                tooltipEl.style.minWidth = '220px';
+                                tooltipEl.style.maxWidth = '380px';
+                                tooltipEl.style.boxSizing = 'border-box';
+                                chart.canvas.parentNode.appendChild(tooltipEl);
                             }
+
+                            if (tooltip.opacity === 0) {
+                                tooltipEl.style.opacity = '0';
+                                tooltipEl.style.display = 'none';
+                                return;
+                            }
+
+                            if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                                const dataIndex = tooltip.dataPoints[0].dataIndex;
+                                const dateLabel = labels[dataIndex] || (tooltip.title ? tooltip.title[0] : '');
+
+                                let innerHtml = `<div style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+                                    <span>📅 ${escapeHtml(dateLabel)}</span>
+                                </div>`;
+
+                                innerHtml += `<div style="display: flex; flex-direction: column; gap: 6px;">`;
+
+                                tooltip.dataPoints.forEach(dp => {
+                                    const ds = dp.dataset;
+                                    const val = Number(dp.raw) || 0;
+                                    if (ds.isBaseline) {
+                                        innerHtml += `
+                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; color: #94a3b8; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                                                <span style="display: flex; align-items: center; gap: 5px;">
+                                                    <span>🏁</span> <span>Invested Capital</span>
+                                                </span>
+                                                <span style="font-family: monospace; font-weight: 600; color: #cbd5e1;">₹${formatCurrency(val)}</span>
+                                            </div>
+                                        `;
+                                    } else {
+                                        const currentInv = baselineData[dataIndex] !== undefined ? baselineData[dataIndex] : data.common.amount_to_invest;
+                                        const pnl = val - currentInv;
+                                        const pnlPct = currentInv > 0 ? (pnl / currentInv) * 100 : 0;
+                                        const isPos = pnl >= 0;
+                                        const sign = isPos ? '+' : '';
+                                        const pnlColor = isPos ? '#10b981' : '#ef4444';
+                                        const pnlBg = isPos ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)';
+                                        const pnlBorder = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+
+                                        innerHtml += `
+                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px;">
+                                                <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${ds.borderColor}; flex-shrink: 0;"></span>
+                                                    <span style="font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${escapeHtml(ds.label)}">${escapeHtml(ds.label)}</span>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                                    <span style="font-family: monospace; color: #e2e8f0; font-size: 11.5px; font-weight: 500;">₹${formatCurrency(val)}</span>
+                                                    <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pnlColor}; background: ${pnlBg}; border: 1px solid ${pnlBorder}; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">
+                                                        ${sign}${pnlPct.toFixed(2)}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }
+                                });
+
+                                innerHtml += `</div>`;
+                                tooltipEl.innerHTML = innerHtml;
+                            }
+
+                            const wrapRect = chart.canvas.parentNode.getBoundingClientRect();
+                            const x = tooltip.caretX;
+                            const y = tooltip.caretY;
+
+                            if (x > wrapRect.width - 200) {
+                                tooltipEl.style.left = (x - 12) + 'px';
+                                tooltipEl.style.transform = 'translate(-100%, -50%)';
+                            } else if (x < 120) {
+                                tooltipEl.style.left = (x + 12) + 'px';
+                                tooltipEl.style.transform = 'translate(0, -50%)';
+                            } else {
+                                tooltipEl.style.left = x + 'px';
+                                tooltipEl.style.transform = y < 140 ? 'translate(-50%, 15px)' : 'translate(-50%, -105%)';
+                            }
+
+                            tooltipEl.style.top = y + 'px';
+                            tooltipEl.style.display = 'block';
+                            tooltipEl.style.opacity = '1';
                         }
                     }
                 },
