@@ -185,28 +185,24 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
     try:
         from db_store import load_stock_closing_prices_db
         from modules.stock_closing_prices.stock_closing_prices_provider import compute_stock_monthly_prices
-        doc = load_stock_closing_prices_db(symbol=fetch_sym, slice_prices=250)
+        doc = load_stock_closing_prices_db(symbol=fetch_sym, max_date=target_cutoff_str)
         if doc:
             series_dict = {}
-            # Use monthly average prices for historical months
-            m_prices = doc.get("monthly_prices")
-            if not m_prices and doc.get("prices"):
-                m_prices = compute_stock_monthly_prices(doc["prices"])
-
-            if m_prices:
-                for item in m_prices:
-                    m = item.get("m")
-                    avg_c = item.get("avg_close")
-                    if m and avg_c and float(avg_c) > 0:
-                        series_dict[f"{m}-01"] = round(float(avg_c), 2)
-
-            # For year 2026: include daily bars for flexible dates (e.g. 15-02-2026)
+            # Priority 1: Exact daily closing prices from DB
             raw_prices = doc.get("prices") or []
             for p in raw_prices:
                 d = str(p.get("d") or "")[:10]
                 c = p.get("c")
-                if d >= "2026-01-01" and c is not None and float(c) > 0:
+                if d and c is not None and float(c) > 0:
                     series_dict[d] = round(float(c), 2)
+
+            # Fallback to monthly prices only if daily prices were completely unavailable
+            if not series_dict and doc.get("monthly_prices"):
+                for item in doc.get("monthly_prices", []):
+                    m = item.get("m")
+                    fc = item.get("first_close") or item.get("avg_close")
+                    if m and fc and float(fc) > 0:
+                        series_dict[f"{m}-01"] = round(float(fc), 2)
 
             series = [(d, series_dict[d]) for d in sorted(series_dict.keys())]
             if series:
@@ -244,11 +240,11 @@ def clear_db_prices_cache():
         _earliest_price_cache.clear()
 
 
-def prewarm_stock_prices_cache(symbols=None, min_date=None):
+def prewarm_stock_prices_cache(symbols=None, min_date=None, max_date=None):
     """
     Pre-warms the in-memory cache from database collection 'stock_closing_prices'.
-    Uses monthly average prices for dates prior to 2026 and daily prices for 2026,
-    minimizing RAM footprint and eliminating cloud container timeouts.
+    Pattern 2: Uses MongoDB server-side $filter projection to fetch only the requested
+    date window of daily prices, delivering pin-point daily accuracy with zero timeouts.
     """
     try:
         from db_store import load_stock_closing_prices_db
@@ -264,7 +260,12 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None):
                 if not target_syms:
                     return len(_db_prices_cache)
 
-        docs = load_stock_closing_prices_db(symbols=target_syms, summary_only=False, slice_prices=250)
+        docs = load_stock_closing_prices_db(
+            symbols=target_syms,
+            summary_only=False,
+            min_date=min_date,
+            max_date=max_date
+        )
         if not docs:
             return len(_db_prices_cache)
 
@@ -274,29 +275,29 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None):
                     clean_s = sym.strip().upper().replace('.NS', '').replace('.BO', '')
                     series_dict = {}
 
-                    # Monthly averages for historical months
-                    m_prices = doc.get("monthly_prices")
-                    if not m_prices and doc.get("prices"):
-                        m_prices = compute_stock_monthly_prices(doc["prices"])
-
-                    if m_prices:
-                        for item in m_prices:
-                            m = item.get("m")
-                            avg_c = item.get("avg_close")
-                            if m and avg_c and float(avg_c) > 0:
-                                d_m = f"{m}-01"
-                                if min_date and d_m < min_date[:7] + "-01":
-                                    continue
-                                series_dict[d_m] = round(float(avg_c), 2)
-
-                    # Daily prices for 2026
+                    # Pattern 2: Exact daily prices from server-side filtered window
                     for p in doc.get("prices", []):
                         d = str(p.get("d") or "")[:10]
                         c = p.get("c")
-                        if d >= "2026-01-01" and c is not None and float(c) > 0:
+                        if d and c is not None and float(c) > 0:
                             if min_date and d < min_date:
                                 continue
+                            if max_date and d > max_date:
+                                continue
                             series_dict[d] = round(float(c), 2)
+
+                    # Fallback to monthly prices only if daily prices were completely empty
+                    if not series_dict and doc.get("monthly_prices"):
+                        for item in doc.get("monthly_prices", []):
+                            m = item.get("m")
+                            fc = item.get("first_close") or item.get("avg_close")
+                            if m and fc and float(fc) > 0:
+                                d_m = f"{m}-01"
+                                if min_date and d_m < min_date[:7] + "-01":
+                                    continue
+                                if max_date and d_m > max_date[:7] + "-28":
+                                    continue
+                                series_dict[d_m] = round(float(fc), 2)
 
                     series = [(d, series_dict[d]) for d in sorted(series_dict.keys())]
                     if series:

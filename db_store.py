@@ -1887,7 +1887,7 @@ def get_trading_holidays_telemetry_db():
 # STOCK CLOSING PRICES (750 STOCKS 2-YEAR EOD HISTORY & DAILY CLOSES)
 # ==============================================================================
 
-def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, monthly_only=False, slice_prices=None, limit=None):
+def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, monthly_only=False, slice_prices=None, min_date=None, max_date=None, limit=None):
     """
     Loads stock closing prices strictly and solely from MongoDB Atlas collection 'stock_closing_prices'.
     SQLite usage is completely deleted per system architecture rules.
@@ -1896,6 +1896,8 @@ def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, 
     If summary_only is True, excludes prices and monthly_prices arrays for high-performance listing.
     If monthly_only is True, excludes full daily prices array but includes monthly_prices for ultra-fast calculation.
     If slice_prices is provided (int), returns only the last N daily prices alongside full monthly_prices.
+    If min_date and/or max_date is provided (Pattern 2), uses MongoDB server-side $filter projection
+    to return ONLY the exact daily price bars within the date range, minimizing network payload and eliminating timeouts.
     """
     if db is None:
         print("Warning: MongoDB Atlas is not connected for load_stock_closing_prices_db.")
@@ -1913,6 +1915,64 @@ def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, 
 
     try:
         col = db["stock_closing_prices"]
+
+        # Pattern 2: Server-side $filter projection for requested date window
+        if min_date or max_date:
+            cond_list = []
+            if min_date:
+                cond_list.append({"$gte": ["$$p.d", str(min_date)[:10]]})
+            if max_date:
+                cond_list.append({"$lte": ["$$p.d", str(max_date)[:10]]})
+            cond_expr = cond_list[0] if len(cond_list) == 1 else {"$and": cond_list}
+
+            prices_filter = {
+                "$filter": {
+                    "input": {"$ifNull": ["$prices", []]},
+                    "as": "p",
+                    "cond": cond_expr
+                }
+            }
+
+            projection = {
+                "symbol": 1,
+                "company_name": 1,
+                "start_date": 1,
+                "min_date": 1,
+                "latest_date": 1,
+                "monthly_prices": 1,
+                "prices": prices_filter
+            }
+
+            if single_sym:
+                pipeline = [
+                    {"$match": {"_id": single_sym}},
+                    {"$project": projection}
+                ]
+                docs = list(col.aggregate(pipeline))
+                if docs:
+                    doc = docs[0]
+                    doc.pop("_id", None)
+                    return doc
+                return None
+            else:
+                pipeline = []
+                if target_symbols:
+                    pipeline.append({"$match": {"_id": {"$in": target_symbols}}})
+                if limit and isinstance(limit, int) and limit > 0:
+                    pipeline.append({"$limit": limit})
+                pipeline.append({"$project": projection})
+
+                docs = list(col.aggregate(pipeline))
+                if docs:
+                    res = {}
+                    for d in docs:
+                        sym = d.get("_id") or d.get("symbol")
+                        d.pop("_id", None)
+                        res[sym] = d
+                    return res
+                return {}
+
+        # Default query paths (summary_only, monthly_only, slice_prices, or full)
         if single_sym:
             projection = None
             if summary_only:

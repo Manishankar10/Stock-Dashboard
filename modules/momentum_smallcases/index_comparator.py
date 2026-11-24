@@ -94,19 +94,15 @@ def _parse_date_flexible(d_str, default_date=None):
 
 def _parse_and_validate_start_date(d_str, default_date=None):
     """
-    Parses start date and enforces strict business rules:
-    - Start date should strictly be 1st of any month including 2026 (day == 1).
-    - Minimum start date is 2013-01-01; clamped to 2013-01-01 if prior.
-    - Snaps any day != 1 to the 1st of that month.
+    Parses start date and enforces business rules:
+    - Minimum start date is 2013-01-01 (data availability); clamped to 2013-01-01 if prior.
+    - Supports ANY calendar day of the month (Pattern 2 daily bars).
     """
     parsed = _parse_date_flexible(d_str, default_date or date(2024, 1, 1))
     min_date = date(2013, 1, 1)
     if parsed < min_date:
         logger.info(f"Start date {parsed.isoformat()} is prior to 2013-01-01; clamping to {min_date.isoformat()}")
         parsed = min_date
-    if parsed.day != 1:
-        logger.info(f"Start date {parsed.isoformat()} has day != 1; snapping to 1st of month: {parsed.year}-{parsed.month:02d}-01")
-        parsed = parsed.replace(day=1)
     return parsed
 
 
@@ -115,7 +111,7 @@ def _make_sim_cache_key(start_d, cutoff_d, amount_to_invest, stepup_amount, idx_
     idx_id = str(idx_cfg.get("index_id") or "").strip().upper()
     no_of_stocks = int(idx_cfg.get("no_of_stocks") or 12)
     exit_regime = int(idx_cfg.get("exit_regime_ranking") or 22)
-    rebal_day = 1  # Locked to 1st of month
+    rebal_day = int(idx_cfg.get("rebalance_day") or 21)
     trim_existing = idx_cfg.get("trim_existing") in (True, "yes", "true", "1")
     trading_days = int(idx_cfg.get("trading_days_per_month") or 21)
     formula_str = str(idx_cfg.get("formula") or DEFAULT_FORMULA).strip()
@@ -137,14 +133,14 @@ def _make_sim_cache_key(start_d, cutoff_d, amount_to_invest, stepup_amount, idx_
 def run_index_comparison_simulation(common_config, index_configs, username=None):
     """
     Executes an in-memory stateless simulation comparing multiple index configurations.
-    Uses ONLY MongoDB data from collection 'stock_closing_prices' with monthly average prices.
+    Uses Pattern 2: MongoDB server-side $filter projection for exact daily prices in window.
     Zero server-side caching: newly searched indices are requested by client browser and combined there.
     Frees all temporary prices from server memory immediately upon completion.
     """
     if not index_configs:
         raise ValueError("At least one index configuration is required for comparison.")
 
-    # 1. Parse common settings flexibly with strict business rule for start date
+    # 1. Parse common settings flexibly
     start_d = _parse_and_validate_start_date(common_config.get("start_date"), date(2024, 1, 1))
     cutoff_d = _parse_date_flexible(common_config.get("cutoff_date"), date.today())
     if start_d > cutoff_d:
@@ -190,7 +186,8 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
         if all_symbols_to_warm:
             import datetime as _dt
             earliest_needed = (start_d - _dt.timedelta(days=400)).isoformat()
-            prewarm_stock_prices_cache(all_symbols_to_warm, min_date=earliest_needed)
+            cutoff_needed = cutoff_d.isoformat()
+            prewarm_stock_prices_cache(all_symbols_to_warm, min_date=earliest_needed, max_date=cutoff_needed)
 
         used_colors = set()
         for i, idx_cfg in enumerate(index_configs):
@@ -211,7 +208,8 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             idx_name = idx_cfg.get("index_name") or idx_id
             no_of_stocks = int(idx_cfg.get("no_of_stocks") or 12)
             exit_regime = int(idx_cfg.get("exit_regime_ranking") or 22)
-            rebal_day = 1  # Rebalance day is locked to 1st of month
+            rebal_day = int(idx_cfg.get("rebalance_day") or 21)
+            rebal_day = max(1, min(28, rebal_day))
             trim_existing = idx_cfg.get("trim_existing") in (True, "yes", "true", "1")
             trading_days_per_month = int(idx_cfg.get("trading_days_per_month") or 21)
             formula_str = (idx_cfg.get("formula") or DEFAULT_FORMULA).strip()

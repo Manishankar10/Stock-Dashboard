@@ -998,26 +998,17 @@
                         <span id="mscCompDataAvailableBadge" style="font-size: 11px; color: var(--text-secondary); background: rgba(59, 130, 246, 0.08); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">
                             💡 Data available from Jan 2013
                         </span>
-                        <span id="mscCompStartDateNotice" style="font-size: 11px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-color);" title="Start date must strictly be the 1st of any month (from Jan 2013 onwards)">
-                            📅 1st of month only &bull; Min: 01-01-2013
-                        </span>
-                        <span id="mscCompRebalDayNotice" style="font-size: 11px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-color);" title="Rebalance day is locked to the 1st of every month for all compared indices">
-                            🔒 Locked to 1st
+                        <span id="mscCompStartDateNotice" style="font-size: 11px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-color);" title="Start date supports any day from 01-01-2013 onwards">
+                            📅 Min: 01-01-2013
                         </span>
                     </div>
                 </div>
-                <div class="msc-comp-common-grid" style="display: grid; grid-template-columns: minmax(130px, 1fr) minmax(110px, 0.9fr) minmax(140px, 1.1fr) minmax(130px, 1fr) minmax(130px, 1fr) auto; gap: 10px; align-items: flex-end;">
+                <div class="msc-comp-common-grid" style="display: grid; grid-template-columns: minmax(130px, 1fr) minmax(140px, 1.1fr) minmax(130px, 1fr) minmax(130px, 1fr) auto; gap: 10px; align-items: flex-end;">
                     <div class="msc-form-group" style="margin-bottom: 0;">
                         <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">
                             Start Date <span style="color: #ef4444;">*</span>
                         </label>
                         <input type="date" id="mscCompStartDate" class="msc-modal-input" value="2024-01-01" min="2013-01-01" required onchange="handleComparisonStartDateChange(this)" oninput="handleComparisonStartDateChange(this)" style="font-size: 12px; padding: 6px 10px;">
-                    </div>
-                    <div class="msc-form-group" style="margin-bottom: 0;">
-                        <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">
-                            Rebalance Day
-                        </label>
-                        <input type="text" id="mscCompRebalDay" class="msc-modal-input" value="1st (Monthly)" disabled readonly style="font-size: 12px; padding: 6px 10px; background: rgba(255, 255, 255, 0.04); color: var(--text-secondary); cursor: not-allowed; opacity: 0.9;" title="Rebalance day is locked to the 1st of every month for all compared indices">
                     </div>
                     <div class="msc-form-group" style="margin-bottom: 0;">
                         <label class="msc-form-label" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">

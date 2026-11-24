@@ -4922,7 +4922,7 @@
                     index_type: idx1.type || 'nifty',
                     no_of_stocks: 12,
                     exit_regime_ranking: 22,
-                    rebalance_day: 1,
+                    rebalance_day: 21,
                     trim_existing: 'no',
                     trading_days_per_month: 21,
                     color: COMPARISON_PALETTE[0]
@@ -4934,7 +4934,7 @@
                     index_type: idx2.type || 'nifty',
                     no_of_stocks: 12,
                     exit_regime_ranking: 22,
-                    rebalance_day: 1,
+                    rebalance_day: 21,
                     trim_existing: 'no',
                     trading_days_per_month: 21,
                     color: COMPARISON_PALETTE[1]
@@ -5131,7 +5131,7 @@
                             <label style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
                                 Rebalance Day
                             </label>
-                            <input type="text" class="msc-modal-input msc-comp-rebal-input" data-row-id="${escapeHtml(row.id)}" value="1st (Monthly)" disabled readonly style="font-size: 12px; padding: 5px 8px; background: rgba(255,255,255,0.04); color: var(--text-secondary); cursor: not-allowed; opacity: 0.9;" title="Rebalance day is locked to 1st of every month for all compared indices">
+                            <input type="number" class="msc-modal-input msc-comp-rebal-input" data-row-id="${escapeHtml(row.id)}" value="${row.rebalance_day || 21}" min="1" max="28" style="font-size: 12px; padding: 5px 8px; cursor: pointer;" title="Rebalance day of month (1 to 28)">
                         </div>
 
                         <!-- 5. Trim Existing Stock -->
@@ -5182,8 +5182,11 @@
             const exitIn = card.querySelector('.msc-comp-exit-input');
             if (exitIn) row.exit_regime_ranking = parseInt(exitIn.value, 10) || 22;
 
-            // Rebalance day is strictly 1st of the month
-            row.rebalance_day = 1;
+            const rebalIn = card.querySelector('.msc-comp-rebal-input');
+            if (rebalIn) {
+                const parsedVal = parseInt(rebalIn.value, 10);
+                row.rebalance_day = (!isNaN(parsedVal) && parsedVal >= 1 && parsedVal <= 28) ? parsedVal : (row.rebalance_day || 21);
+            }
 
             const trimSel = card.querySelector('.msc-comp-trim-select');
             if (trimSel) row.trim_existing = trimSel.value === 'yes';
@@ -5211,7 +5214,7 @@
         const first = comparisonState.indexRows[0] || {};
         const defStocks = first.no_of_stocks || 12;
         const defExit = first.exit_regime_ranking || 22;
-        const defRebal = 1; // Locked to 1st of month
+        const defRebal = first.rebalance_day || 21;
         const defTrim = (first.trim_existing === true || String(first.trim_existing).toLowerCase() === 'yes') ? 'yes' : 'no';
         const defDays = Number(first.trading_days_per_month) || 21;
 
@@ -5231,8 +5234,11 @@
             index_type: candidate.type || 'nifty',
             no_of_stocks: defStocks,
             exit_regime_ranking: defExit,
-            rebalance_day: 1,
+            rebalance_day: defRebal,
             trim_existing: defTrim,
+            trading_days_per_month: defDays,
+            color: nextColor
+        });
             trading_days_per_month: defDays,
             color: nextColor
         });
@@ -5457,24 +5463,16 @@
         }
     }
 
-    // Helper to enforce start date rule: 1st of any month including 2026; disable prior to 2013
+    // Helper to enforce start date rule: minimum available date 01-01-2013 (supports any day with Pattern 2 daily bars)
     window.handleComparisonStartDateChange = function(inputEl) {
         if (!inputEl || !inputEl.value) return;
         const val = inputEl.value;
         const parts = val.split('-');
         if (parts.length === 3) {
             const year = parseInt(parts[0], 10);
-            const month = parts[1];
-            const day = parseInt(parts[2], 10);
             if (year < 2013) {
                 inputEl.value = '2013-01-01';
                 alertToast('Dates prior to 2013 are not available. Minimum start date is 01-01-2013.', 'warning');
-                return;
-            }
-            if (day !== 1) {
-                const corrected = `${year}-${month}-01`;
-                inputEl.value = corrected;
-                alertToast(`Start date must strictly be the 1st of the month (01-${month}-${year}).`, 'info');
             }
         }
     };
@@ -5502,24 +5500,16 @@
             return;
         }
 
-        // Strict calendar rule: Must be >= 2013-01-01 and strictly the 1st of the month for all years including 2026
+        // Calendar rule: Must be >= 2013-01-01 (supports any day of month)
         const dateParts = startDate.split('-');
         if (dateParts.length === 3) {
             const yr = parseInt(dateParts[0], 10);
-            const day = parseInt(dateParts[2], 10);
             if (yr < 2013) {
                 startDate = '2013-01-01';
                 if (startInput) startInput.value = startDate;
                 alertToast('Start date clamped to minimum available data date: 01-01-2013.', 'warning');
-            } else if (day !== 1) {
-                startDate = `${dateParts[0]}-${dateParts[1]}-01`;
-                if (startInput) startInput.value = startDate;
-                alertToast(`Start date snapped to 1st of month: ${formatDateDisplay(startDate)}.`, 'info');
             }
         }
-
-        // Lock rebalance_day to 1 on all rows
-        comparisonState.indexRows.forEach(r => { r.rebalance_day = 1; });
 
         if (isNaN(amount) || amount <= 0) {
             showComparisonTopError('Please enter a valid Investment Amount.', 'Validation Notice');
