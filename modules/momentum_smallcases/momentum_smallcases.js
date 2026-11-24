@@ -3907,7 +3907,11 @@
                         callbacks: {
                             label: function(context) {
                                 const val = Number(context.raw) || 0;
-                                return `  ${context.dataset.label}: ₹${formatCurrency(val)}`;
+                                const idx = context.dataIndex;
+                                const points = data.points || [];
+                                const pt = points[idx];
+                                const eligStr = (context.datasetIndex === 0 && pt && pt.eligible_count) ? ` (${pt.eligible_count})` : '';
+                                return `  ${context.dataset.label}${eligStr}: ₹${formatCurrency(val)}`;
                             },
                             labelTextColor: function(context) {
                                 const idx = context.dataIndex;
@@ -5821,13 +5825,32 @@
 
         // Build datasets for each index
         const datasets = results.map((res, resIdx) => {
-            // Map valuations to sortedDates
+            // Map valuations and eligible stock counts to sortedDates
             const dateMap = {};
+            const eligibleMap = {};
             (res.points || []).forEach(pt => {
                 dateMap[pt.date] = pt.portfolio_value;
+                if (pt.eligible_count !== undefined && pt.eligible_count !== null) {
+                    eligibleMap[pt.date] = pt.eligible_count;
+                }
             });
 
+            // Fallback default eligible count from points, constituents_count, or catalog
+            const catalogItem = (comparisonState.indicesCatalog || []).find(c => c.id === res.index_id || c.name === res.index_name);
+            const defaultEligible = (res.points || []).find(pt => pt.eligible_count !== undefined && pt.eligible_count > 0)?.eligible_count
+                || res.constituents_count
+                || (catalogItem ? catalogItem.stock_count : null);
+
             let lastVal = data.common.amount_to_invest;
+            let lastEligible = defaultEligible;
+
+            const eligibleSeries = sortedDates.map(d => {
+                if (eligibleMap[d] !== undefined) {
+                    lastEligible = eligibleMap[d];
+                }
+                return (lastEligible !== null && lastEligible !== undefined) ? lastEligible : defaultEligible;
+            });
+
             const dataSeries = sortedDates.map(d => {
                 if (dateMap[d] !== undefined) {
                     lastVal = dateMap[d];
@@ -5838,6 +5861,7 @@
             return {
                 label: res.index_name,
                 data: dataSeries,
+                eligibleCounts: eligibleSeries,
                 borderColor: res.color,
                 backgroundColor: res.color,
                 borderWidth: resIdx === 0 ? 3.0 : 2.0,
@@ -5932,8 +5956,8 @@
                                 tooltipEl.style.backdropFilter = 'blur(10px)';
                                 tooltipEl.style.webkitBackdropFilter = 'blur(10px)';
                                 tooltipEl.style.padding = '10px 14px';
-                                tooltipEl.style.minWidth = '220px';
-                                tooltipEl.style.maxWidth = '380px';
+                                tooltipEl.style.minWidth = '240px';
+                                tooltipEl.style.maxWidth = '420px';
                                 tooltipEl.style.boxSizing = 'border-box';
                                 chart.canvas.parentNode.appendChild(tooltipEl);
                             }
@@ -5976,11 +6000,17 @@
                                         const pnlBg = isPos ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)';
                                         const pnlBorder = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
 
+                                        // Eligible stocks count at this date, e.g. "Nifty50 (49)"
+                                        const elig = (ds.eligibleCounts && ds.eligibleCounts[dataIndex] !== undefined && ds.eligibleCounts[dataIndex] !== null)
+                                            ? ds.eligibleCounts[dataIndex]
+                                            : null;
+                                        const displayLabel = elig !== null ? `${ds.label} (${elig})` : ds.label;
+
                                         innerHtml += `
                                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px;">
                                                 <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
                                                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${ds.borderColor}; flex-shrink: 0;"></span>
-                                                    <span style="font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${escapeHtml(ds.label)}">${escapeHtml(ds.label)}</span>
+                                                    <span style="font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px;" title="${escapeHtml(displayLabel)}">${escapeHtml(displayLabel)}</span>
                                                 </div>
                                                 <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                                                     <span style="font-family: monospace; color: #e2e8f0; font-size: 11.5px; font-weight: 500;">₹${formatCurrency(val)}</span>

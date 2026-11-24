@@ -289,6 +289,7 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             "total_sells": res.get("total_sells", 0),
             "total_trades": res.get("total_trades", 0),
             "unique_stocks_count": res.get("unique_stocks_count", 0),
+            "constituents_count": res.get("constituents_count", 0),
             "fees_paid": round(res.get("total_fees", 0.0), 2)
         })
 
@@ -406,6 +407,7 @@ def _simulate_single_index(
             "invested": amount_to_invest,
             "wallet_balance": amount_to_invest,
             "holdings_count": 0,
+            "eligible_count": 0,
             "milestone_type": "START",
             "milestone_label": f"Start Cash ({start_date.strftime('%d-%b-%Y')})",
             "pnl": 0.0,
@@ -444,6 +446,7 @@ def _simulate_single_index(
         "invested": total_capital,
         "wallet_balance": current_wallet,
         "holdings_count": len(current_holdings),
+        "eligible_count": eligible_count,
         "milestone_type": "INIT",
         "milestone_label": f"Init ({init_d.strftime('%d-%b-%Y')})",
         "pnl": 0.0,
@@ -472,7 +475,7 @@ def _simulate_single_index(
         current_sim_date = next_rebal_d
 
         # Rank universe on rebalance date using DB closing prices
-        ranked_reb, _, meta_reb = _evaluate_universe_db_only(
+        ranked_reb, eligible_count_reb, meta_reb = _evaluate_universe_db_only(
             constituents=constituents,
             target_date=next_rebal_d,
             formula_str=formula_str,
@@ -534,6 +537,7 @@ def _simulate_single_index(
             "invested": total_capital,
             "wallet_balance": current_wallet,
             "holdings_count": len(current_holdings),
+            "eligible_count": eligible_count_reb,
             "milestone_type": "REBALANCE",
             "milestone_label": f"Rebal #{len(rebalance_dates)} ({next_rebal_d.strftime('%d-%b-%Y')})",
             "stepup_amount": stepup_amount,
@@ -578,6 +582,7 @@ def _simulate_single_index(
             "invested": cutoff_invested,
             "wallet_balance": current_wallet,
             "holdings_count": len(current_holdings),
+            "eligible_count": points[-1].get("eligible_count", len(constituents)) if points else len(constituents),
             "milestone_type": "LATEST",
             "milestone_label": f"Latest ({cutoff_date.strftime('%d-%b-%Y')})",
             "pnl": cutoff_pnl,
@@ -619,6 +624,7 @@ def _simulate_single_index(
         "total_trades": total_trades,
         "unique_stocks_count": unique_stocks_count,
         "unique_stocks": sorted(list(unique_stocks)),
+        "constituents_count": len(constituents),
         "total_fees": round(total_fees, 2)
     }
 
