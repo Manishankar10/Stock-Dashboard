@@ -2015,29 +2015,13 @@
                                     <span id="sync-tbl-badge-stock_prices" class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.25); font-size: 11px;">EOD Ready</span>
                                 </td>
                                 <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-start;">
-                                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                            <button type="button" id="sync-tbl-btn-stock_prices" class="btn" onclick="triggerAdminStockPricesSync()" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
-                                                🔄 Sync Pending Closes
-                                            </button>
-                                            <button type="button" id="sync-tbl-btn-monthly-averages" class="btn" onclick="triggerAdminSyncMonthlyAverages()" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Calculates monthly average prices and monthly returns for all constituent stocks and stores in MongoDB Atlas">
-                                                ⚡ Sync Monthly Averages (MongoDB)
-                                            </button>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; font-size: 11px; color: var(--text-secondary); cursor: pointer; margin: 0; user-select: none;">
-                                                <input type="checkbox" id="sync-stock-prices-full-resync" style="margin: 0; width: 13px; height: 13px; accent-color: var(--accent-primary); cursor: pointer;">
-                                                <span>Full Resync:</span>
-                                            </label>
-                                            <select id="sync-stock-prices-start-date" onchange="document.getElementById('sync-stock-prices-full-resync').checked = true;" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 600; cursor: pointer; outline: none;">
-                                                <option value="2012-01-01" selected>From Jan 2012 (01-01-2012)</option>
-                                                <option value="2013-01-01">From Jan 2013 (01-01-2013)</option>
-                                            </select>
-                                            <label style="display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; font-size: 11px; color: var(--text-secondary); cursor: pointer; margin: 0; user-select: none;" title="Compute every month return and store in MongoDB Atlas (stock_closing_prices)">
-                                                <input type="checkbox" id="sync-stock-prices-calc-monthly" checked style="margin: 0; width: 13px; height: 13px; accent-color: var(--accent-primary); cursor: pointer;">
-                                                <span>Calc Monthly Avg &amp; Returns</span>
-                                            </label>
-                                        </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <button type="button" id="sync-tbl-btn-stock_prices" class="btn" onclick="triggerAdminStockPricesSync()" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Captures latest daily exchange closing prices for all 750 benchmark stocks">
+                                            🔄 Sync Latest Closing Prices
+                                        </button>
+                                        <button type="button" id="sync-tbl-btn-monthly-averages" class="btn" onclick="triggerAdminSyncMonthlyAverages()" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Calculates monthly average prices and monthly returns for all constituent stocks and stores in MongoDB Atlas">
+                                            ⚡ Calc Monthly Averages
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -4637,7 +4621,7 @@
             } else {
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = (key === 'stock_prices') ? '🔄 Sync Pending Closes' : '⚡ Sync';
+                    btn.innerHTML = (key === 'stock_prices') ? '🔄 Sync Latest Closing Prices' : '⚡ Sync';
                     btn.style.opacity = '1';
                 }
 

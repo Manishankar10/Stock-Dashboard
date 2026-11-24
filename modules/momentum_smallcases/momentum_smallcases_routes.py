@@ -21,6 +21,7 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     run_strategy_init,
     run_strategy_rebalance,
     run_strategy_all_rebalances,
+    run_strategy_withdrawal,
     start_async_execution_job,
     get_execution_job_status,
     get_strategy_consolidated_stocks,
@@ -311,12 +312,13 @@ def get_strategy_consolidated_stocks_api(strategy_id):
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/export-ranked-excel", methods=["GET"])
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/runs/<int:run_index>/export-ranked-excel", methods=["GET"])
 def export_ranked_stocks_excel_api(strategy_id, run_index=None):
-    """Exports an Excel workbook (.xlsx) containing all eligible stocks ranked by momentum formula score."""
+    """Exports an Excel workbook (.xlsx) containing ranked stocks."""
     try:
-        from flask import send_file
+        from flask import send_file, request
         from modules.momentum_smallcases.momentum_smallcases_excel import export_ranked_stocks_to_bytes
         user = session.get("username") or "admin"
-        filename, bio = export_ranked_stocks_to_bytes(strategy_id, run_index=run_index, username=user)
+        scope = request.args.get("scope", "current").lower()
+        filename, bio = export_ranked_stocks_to_bytes(strategy_id, run_index=run_index, username=user, scope=scope)
         return send_file(
             bio,
             as_attachment=True,
@@ -433,6 +435,32 @@ def run_rebalance_api(strategy_id):
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
         logger.error(f"Error running rebalance for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/withdraw", methods=["POST"])
+def withdraw_strategy_api(strategy_id):
+    """Executes partial or full liquidation / withdrawal of holdings from a strategy."""
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        withdrawals = body.get("withdrawals") or body.get("items") or []
+        comments = str(body.get("comments") or "").strip()
+
+        if not withdrawals:
+            return jsonify({"success": False, "error": "No withdrawal quantities provided."}), 400
+
+        result = run_strategy_withdrawal(
+            strategy_id=strategy_id,
+            withdrawals=withdrawals,
+            comments=comments,
+            username=user
+        )
+        return jsonify(result)
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error executing withdrawal for '{strategy_id}': {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

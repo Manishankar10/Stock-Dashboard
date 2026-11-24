@@ -1070,6 +1070,183 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     return target
 
 
+def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None):
+    """
+    Executes a partial or full withdrawal from active strategy holdings.
+    - withdrawals: list of dicts: [{"symbol": "INFY", "quantity": 5, "price": 1820.0}, ...]
+    - Validates holdings and quantities
+    - Calculates realized P&L, fees, and updated holdings
+    - Creates SELL transactions with type 'WITHDRAWAL'
+    - Updates strategy portfolio value and total capital
+    - Appends a WITHDRAWAL run entry to strategy['runs']
+    - Saves updated strategy to MongoDB Atlas
+    """
+    data = load_user_momentum_smallcases(username)
+    strategies = data.get("strategies", [])
+    target = next((s for s in strategies if s["id"] == strategy_id), None)
+    if not target:
+        raise ValueError("Strategy not found.")
+
+    if target.get("status") not in ("ACTIVE", "PAUSED"):
+        raise ValueError("Cannot withdraw from a strategy that is not active.")
+
+    current_holdings = target.get("holdings", [])
+    if not current_holdings:
+        raise ValueError("No active holdings found in strategy to withdraw.")
+
+    if not withdrawals or not isinstance(withdrawals, list):
+        raise ValueError("No stock withdrawals specified.")
+
+    now_dt = now_ist()
+    now_iso = now_dt.isoformat()
+    now_date_str = now_dt.strftime("%Y-%m-%d")
+
+    holdings_by_sym = {h["symbol"].strip().upper(): h for h in current_holdings}
+
+    transactions = []
+    total_withdrawn_amount = 0.0
+    total_withdrawn_cost = 0.0
+    total_withdrawn_pnl = 0.0
+    total_withdrawn_fees = 0.0
+
+    runs = target.setdefault("runs", [])
+    withdrawal_num = len([r for r in runs if r.get("run_type") == "WITHDRAWAL"]) + 1
+
+    for item in withdrawals:
+        sym = str(item.get("symbol") or "").strip().upper()
+        if not sym or sym not in holdings_by_sym:
+            continue
+        h = holdings_by_sym[sym]
+        avail_qty = int(h.get("quantity", 0))
+        req_qty = int(item.get("quantity", 0))
+        if req_qty <= 0:
+            continue
+        if req_qty > avail_qty:
+            raise ValueError(f"Withdrawal quantity ({req_qty}) exceeds available holdings ({avail_qty}) for {sym}.")
+
+        buy_price = float(h.get("buy_price") or 0.0)
+        curr_price = float(item.get("price") or h.get("current_price") or buy_price)
+        amt = round(req_qty * curr_price, 2)
+        cost = round(req_qty * buy_price, 2)
+        pnl = round(amt - cost, 2)
+        pnl_pct = round((pnl / cost) * 100.0, 2) if cost > 0 else 0.0
+        fee = round(amt * 0.0010, 2)  # 0.10% transaction fee
+
+        total_withdrawn_amount += amt
+        total_withdrawn_cost += cost
+        total_withdrawn_pnl += pnl
+        total_withdrawn_fees += fee
+
+        tx = {
+            "transaction_id": f"tx_wdr_{uuid.uuid4().hex[:10]}",
+            "symbol": sym,
+            "company_name": h.get("company_name") or sym,
+            "action": "SELL",
+            "action_label": f"WITHDRAW ({req_qty})",
+            "quantity": req_qty,
+            "price": round(curr_price, 2),
+            "amount": amt,
+            "buy_price": round(buy_price, 2),
+            "pnl": pnl,
+            "pnl_percent": pnl_pct,
+            "fee": fee,
+            "type": "WITHDRAWAL",
+            "comments": comments or "Portfolio Withdrawal",
+            "date": now_date_str,
+            "run_title": f"Withdrawal #{withdrawal_num}",
+            "timestamp": now_iso
+        }
+        transactions.append(tx)
+
+        # Update or reduce holding quantity
+        rem_qty = avail_qty - req_qty
+        if rem_qty > 0:
+            h["quantity"] = rem_qty
+            h["invested"] = round(rem_qty * buy_price, 2)
+            h["current_value"] = round(rem_qty * curr_price, 2)
+            h["pnl"] = round(h["current_value"] - h["invested"], 2)
+            h["pnl_percent"] = round((h["pnl"] / h["invested"]) * 100.0, 2) if h["invested"] > 0 else 0.0
+        else:
+            h["quantity"] = 0
+            h["current_value"] = 0.0
+            h["invested"] = 0.0
+
+    if not transactions:
+        raise ValueError("No valid stock quantities were selected for withdrawal.")
+
+    # Filter out holdings that now have 0 quantity
+    updated_holdings = [h for h in current_holdings if h.get("quantity", 0) > 0]
+
+    # Recalculate weights for remaining holdings
+    total_remaining_val = sum(h.get("current_value", 0.0) for h in updated_holdings)
+    for h in updated_holdings:
+        h["weight_percent"] = round((h["current_value"] / total_remaining_val) * 100.0, 2) if total_remaining_val > 0 else 0.0
+
+    # Adjust strategy invested capital and valuation
+    curr_cap = float(target.get("total_capital") if target.get("total_capital") is not None else target.get("amount_to_invest", 0.0))
+    new_cap = max(0.0, round(curr_cap - total_withdrawn_cost, 2))
+    target["total_capital"] = new_cap
+    target["amount_to_invest"] = new_cap
+
+    wallet_bal = float(target.get("current_wallet") or 0.0)
+    target["holdings"] = updated_holdings
+    target["current_portfolio_value"] = round(total_remaining_val + wallet_bal, 2)
+    target["total_fees_paid"] = round(target.get("total_fees_paid", 0.0) + total_withdrawn_fees, 2)
+    target["total_pnl"] = round(target["current_portfolio_value"] - new_cap, 2)
+    target["total_pnl_percent"] = round((target["total_pnl"] / new_cap) * 100.0, 2) if new_cap > 0 else 0.0
+    target["updated_at"] = now_iso
+
+    # Append WITHDRAWAL run entry
+    run_entry = {
+        "run_id": f"run_wdr_{uuid.uuid4().hex[:10]}",
+        "run_type": "WITHDRAWAL",
+        "run_number": len(runs) + 1,
+        "title": f"Withdrawal #{withdrawal_num}",
+        "scheduled_date": now_date_str,
+        "executed_date": now_date_str,
+        "comments": comments,
+        "total_withdrawn_amount": round(total_withdrawn_amount, 2),
+        "total_withdrawn_pnl": round(total_withdrawn_pnl, 2),
+        "total_withdrawn_cost": round(total_withdrawn_cost, 2),
+        "fees_paid": round(total_withdrawn_fees, 2),
+        "transactions": transactions,
+        "portfolio_snapshot": {
+            "holdings": updated_holdings,
+            "wallet_balance": wallet_bal,
+            "total_portfolio_value": target["current_portfolio_value"],
+            "total_capital": new_cap,
+            "total_pnl": target["total_pnl"],
+            "total_pnl_percent": target["total_pnl_percent"]
+        },
+        "executed_at": now_iso
+    }
+    runs.append(run_entry)
+
+    # Capital audit log for withdrawal
+    target.setdefault("capital_logs", []).append({
+        "id": f"clog_{uuid.uuid4().hex[:8]}",
+        "timestamp": now_iso,
+        "type": "WITHDRAWAL",
+        "run_id": run_entry["run_id"],
+        "amount": round(total_withdrawn_amount, 2),
+        "realized_pnl": round(total_withdrawn_pnl, 2),
+        "fees": round(total_withdrawn_fees, 2),
+        "wallet_after": wallet_bal,
+        "notes": f"Withdrawal #{withdrawal_num}: Withdrawn ₹{total_withdrawn_amount:,.2f} across {len(transactions)} stocks. Realized P&L: ₹{total_withdrawn_pnl:,.2f}. {comments}".strip()
+    })
+
+    save_user_momentum_smallcases(data, username)
+    return {
+        "success": True,
+        "strategy": target,
+        "run": run_entry,
+        "withdrawn_amount": round(total_withdrawn_amount, 2),
+        "withdrawn_pnl": round(total_withdrawn_pnl, 2),
+        "withdrawn_count": len(transactions),
+        "message": f"Successfully withdrawn ₹{total_withdrawn_amount:,.2f} across {len(transactions)} stocks."
+    }
+
+
 def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None, trim_existing=None):
     """
     Executes Init (if strategy is in DRAFT status) and then sequentially executes

@@ -37,6 +37,7 @@
         'momentumIndexDeleteModal',
         'walletLogTransactionsModal',
         'performanceGraphModal',
+        'strategyWithdrawalModal',
         'mscIndexComparisonModal',
         'mscFloatingDocksContainer'
     ];
@@ -66,6 +67,13 @@
         if (toastCont) {
             document.body.appendChild(toastCont);
         }
+
+        // Enforce max date on start date pickers to prevent selecting future dates
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const sDate = document.getElementById('stratStartDateInput');
+        if (sDate) sDate.max = todayStr;
+        const cDate = document.getElementById('mscCompStartDate');
+        if (cDate) cDate.max = todayStr;
     }
 
     if (typeof document !== 'undefined') {
@@ -1048,6 +1056,12 @@
         } else {
             const todayStr = new Date().toISOString().substring(0, 10);
             const isNextRebalFuture = nextRebalDate && nextRebalDate.substring(0, 10) > todayStr;
+            const hasHoldings = Array.isArray(currentStrategy?.holdings) && currentStrategy.holdings.length > 0;
+            const withdrawBtnHtml = hasHoldings ? `
+                <button type="button" class="btn-secondary" onclick="openStrategyWithdrawalModal()" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(245, 158, 11, 0.2)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.12)'" title="Withdraw and liquidate shares from active smallcase holdings">
+                    <span>💸</span> <span>Withdraw</span>
+                </button>
+            ` : '';
 
             if (isNextRebalFuture) {
                 actionBtnHtml = `
@@ -1058,6 +1072,7 @@
                         <button type="button" class="btn-secondary" onclick="openRunRebalanceModal()" style="font-size: 13px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px; opacity: 0.7;" title="Next scheduled rebalance on ${formatDateDisplay(nextRebalDate)} is in the future">
                             <span style="display: inline-flex; align-items: center;">${getClockIconSVG(14)}</span> <span>Next: ${formatDateDisplay(nextRebalDate)}</span>
                         </button>
+                        ${withdrawBtnHtml}
                     </div>
                 `;
             } else {
@@ -1069,6 +1084,7 @@
                         <button type="button" class="btn-primary" onclick="openRunAllModal('${escapeHtml(currentStrategy.id)}')" style="font-size: 13px; padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);" title="Run all remaining scheduled monthly rebalances sequentially">
                             <span>⚡</span> <span>Rebalance All Remaining</span>
                         </button>
+                        ${withdrawBtnHtml}
                     </div>
                 `;
             }
@@ -1096,17 +1112,23 @@
             runs.forEach((r, idx) => {
                 const isSelected = idx === selectedRunIndex;
                 const isInit = r.run_type === 'INIT';
-                const label = isInit ? 'Init' : (r.title || `Rebalance #${r.run_number || idx}`);
+                const isWithdrawal = r.run_type === 'WITHDRAWAL';
+                const label = isInit ? 'Init' : (isWithdrawal ? (r.title || 'Withdrawal') : (r.title || `Rebalance #${r.run_number || idx}`));
                 const execDate = formatDateDisplay(r.executed_date || r.scheduled_date);
                 const holidayNote = r.is_holiday_adjusted ? ' (Adj)' : '';
 
-                // Clean vector icons for completed timeline milestones:
-                // Checkmark for initial setup, crisp circular dual-arrows for rebalancing runs
-                const nodeIcon = isInit ? getCheckIconSVG(16, 2.8) : getRebalanceIconSVG(16, 2.4);
+                let nodeIcon = getRebalanceIconSVG(16, 2.4);
+                let iconClass = 'completed';
+                if (isInit) {
+                    nodeIcon = getCheckIconSVG(16, 2.8);
+                } else if (isWithdrawal) {
+                    nodeIcon = '💸';
+                    iconClass = 'completed withdrawal';
+                }
 
                 html += `
                     <div class="msc-timeline-node ${isSelected ? 'selected' : ''}" onclick="selectTimelineRun(${idx})" title="Click to view run results on ${execDate}">
-                        <div class="msc-timeline-icon completed">${nodeIcon}</div>
+                        <div class="msc-timeline-icon ${iconClass}">${nodeIcon}</div>
                         <div class="msc-timeline-label">${escapeHtml(label)}</div>
                         <div class="msc-timeline-subtext">${execDate}${holidayNote}</div>
                     </div>
@@ -1277,7 +1299,8 @@
 
         // Header info of selected run
         const isInit = run.run_type === 'INIT';
-        const runTitle = isInit ? 'Initial Run (Init)' : (run.title || 'Rebalance Run');
+        const isWithdrawal = run.run_type === 'WITHDRAWAL';
+        const runTitle = isInit ? 'Initial Run (Init)' : (isWithdrawal ? (run.title || 'Withdrawal') : (run.title || 'Rebalance Run'));
         const execDate = formatDateDisplay(run.executed_date);
         const schedDate = formatDateDisplay(run.scheduled_date);
         let dateNote = `Executed: <strong>${execDate}</strong>`;
@@ -1296,10 +1319,10 @@
             <div class="msc-run-summary-banner" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div class="msc-run-summary-info">
                     <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                        <span style="display: inline-flex; align-items: center;">${isInit ? '🎯' : getRebalanceIconSVG(17, 2.4)}</span> <span>${escapeHtml(runTitle)}</span>
+                        <span style="display: inline-flex; align-items: center;">${isInit ? '🎯' : (isWithdrawal ? '💸' : getRebalanceIconSVG(17, 2.4))}</span> <span>${escapeHtml(runTitle)}</span>
                     </div>
                     <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px;">
-                        ${dateNote} &bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong> &bull; Trim Overweight: <strong>${(currentStrategy && currentStrategy.trim_existing === false) ? 'No' : 'Yes'}</strong> &bull; Days/Mo: <strong>${(currentStrategy && currentStrategy.trading_days_per_month) || 30}d</strong>
+                        ${dateNote} ${isWithdrawal ? `&bull; Withdrawn: <strong style="color: #3b82f6;">₹${formatCurrency(run.total_withdrawn_amount || 0)}</strong> &bull; Realized P&L: <strong style="color: ${(run.total_withdrawn_pnl || 0) >= 0 ? '#10b981' : '#ef4444'};">${(run.total_withdrawn_pnl || 0) >= 0 ? '+' : ''}₹${formatCurrency(run.total_withdrawn_pnl || 0)}</strong>` : `&bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong> &bull; Trim Overweight: <strong>${(currentStrategy && currentStrategy.trim_existing === false) ? 'No' : 'Yes'}</strong> &bull; Days/Mo: <strong>${(currentStrategy && currentStrategy.trading_days_per_month) || 30}d</strong>`}
                     </div>
                 </div>
                 <div class="msc-run-summary-metrics" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
@@ -1311,8 +1334,69 @@
                         Cash in Wallet: <strong style="color: var(--text-primary); font-family: monospace;">₹${formatCurrency(portfolio.wallet_balance || 0)}</strong>
                     </span>
                 </div>
-            </div>
+            </div>`;
 
+        if (isWithdrawal) {
+            html += `
+                <!-- Withdrawn Stocks Detail Box -->
+                <div class="msc-card-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; gap: 6px;">
+                                <span>💸</span> <span>Liquidated Positions (${(run.transactions || []).length} stocks)</span>
+                            </h4>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 3px;">
+                                Capital proceeds withdrawn from smallcase portfolio at CMP.
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12px;">
+                            <span style="color: var(--text-secondary);">Withdrawn: <strong style="color: #3b82f6; font-family: monospace;">₹${formatCurrency(run.total_withdrawn_amount || 0)}</strong></span>
+                            <span style="color: var(--text-secondary);">Realized P&L: <strong style="color: ${(run.total_withdrawn_pnl || 0) >= 0 ? '#10b981' : '#ef4444'}; font-family: monospace;">${(run.total_withdrawn_pnl || 0) >= 0 ? '+' : ''}₹${formatCurrency(run.total_withdrawn_pnl || 0)}</strong></span>
+                            <span style="color: var(--text-secondary);">Fees: <strong style="color: var(--text-primary); font-family: monospace;">₹${formatCurrency(run.fees_paid || 0)}</strong></span>
+                        </div>
+                    </div>
+                    ${run.comments ? `<div style="font-size: 12px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.03); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 14px;"><strong>Comments:</strong> ${escapeHtml(run.comments)}</div>` : ''}
+                    <div style="overflow-x: auto;">
+                        <table class="table msc-indices-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <thead>
+                                <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color); color: var(--text-secondary); font-size: 11px;">
+                                    <th style="padding: 9px 12px;">STOCK</th>
+                                    <th style="padding: 9px 12px; text-align: right;">WITHDRAWN QTY</th>
+                                    <th style="padding: 9px 12px; text-align: right;">BUY PRICE</th>
+                                    <th style="padding: 9px 12px; text-align: right;">SELL CMP</th>
+                                    <th style="padding: 9px 12px; text-align: right;">PROCEEDS</th>
+                                    <th style="padding: 9px 12px; text-align: right;">REALIZED P&L</th>
+                                    <th style="padding: 9px 12px; text-align: right;">CHARGES</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${(run.transactions || []).map(tx => {
+                                    const txPnl = Number(tx.pnl || 0);
+                                    const txPos = txPnl >= 0;
+                                    return `
+                                        <tr style="border-bottom: 1px solid var(--border-color);">
+                                            <td style="padding: 9px 12px;">
+                                                <strong style="color: var(--text-primary);">${escapeHtml(tx.symbol)}</strong>
+                                                ${tx.company_name && tx.company_name !== tx.symbol ? `<div style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(tx.company_name)}</div>` : ''}
+                                            </td>
+                                            <td style="padding: 9px 12px; text-align: right; font-family: monospace; font-weight: 600;">${tx.quantity}</td>
+                                            <td style="padding: 9px 12px; text-align: right; font-family: monospace; color: var(--text-secondary);">₹${formatCurrency(tx.buy_price)}</td>
+                                            <td style="padding: 9px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(tx.price)}</td>
+                                            <td style="padding: 9px 12px; text-align: right; font-family: monospace; font-weight: 700; color: #3b82f6;">₹${formatCurrency(tx.amount)}</td>
+                                            <td style="padding: 9px 12px; text-align: right; font-family: monospace; font-weight: 700; color: ${txPos ? '#10b981' : '#ef4444'};">
+                                                ${txPos ? '+' : ''}₹${formatCurrency(txPnl)} (${txPos ? '+' : ''}${Number(tx.pnl_percent || 0).toFixed(2)}%)
+                                            </td>
+                                            <td style="padding: 9px 12px; text-align: right; font-family: monospace; color: var(--text-secondary);">₹${formatCurrency(tx.fee || 0)}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
             <!-- Comparison & Changes Box -->
             <div class="msc-changes-grid">
                 <div class="msc-change-card added">
@@ -1359,9 +1443,15 @@
                             Showing top ${rankedStocks.length} stocks
                         </div>
                     </div>
-                    <button type="button" class="btn-secondary msc-header-btn" onclick="downloadAllRankedStocksExcel()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; font-weight: 600; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.35); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'" title="Download Excel covering all eligible universe stocks calculated and ordered by score (.xlsx)">
-                        <span>📥</span> <span>Download All Ranked Stocks (.xlsx)</span>
-                    </button>
+                    <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; padding: 2px 4px;">
+                        <select id="mscRankedExportScope" style="font-size: 11px; font-weight: 700; background: var(--bg-card); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 4px; padding: 3px 6px; cursor: pointer; outline: none;" title="Choose whether to download the Current run or All runs as separate tabs">
+                            <option value="current" selected>Current</option>
+                            <option value="all">All</option>
+                        </select>
+                        <button type="button" class="btn-secondary msc-header-btn" onclick="downloadAllRankedStocksExcel()" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 5px 12px; font-weight: 600; border-radius: 4px; background: #3b82f6; color: #ffffff; border: none; cursor: pointer; transition: all 0.15s ease;" title="Download Excel covering ranked stocks (.xlsx)">
+                            <span>📥</span> <span>Download Ranked Stocks (.xlsx)</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="msc-table-responsive" style="overflow-x: auto; max-height: 480px;">
@@ -1454,7 +1544,10 @@
                     </table>
                 </div>
             </div>
+        `;
+        }
 
+        html += `
             <!-- Current Portfolio Holdings Snapshot Table -->
             <div class="msc-card-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
                 <div class="msc-section-header msc-holdings-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
@@ -2139,6 +2232,246 @@
     }
 
     // =========================================================================
+    // 4D. STRATEGY WITHDRAWAL POPUP & LOGIC
+    // =========================================================================
+    function openStrategyWithdrawalModal() {
+        if (!currentStrategy) {
+            alertToast('No active smallcase selected.', 'error');
+            return;
+        }
+        ensureModalsAttachedToBody();
+
+        const holdings = currentStrategy.holdings || [];
+        if (holdings.length === 0) {
+            alertToast('Current smallcase has no active holdings to withdraw.', 'error');
+            return;
+        }
+
+        const badgeEl = document.getElementById('mscWithdrawalStratBadge');
+        if (badgeEl) badgeEl.innerText = currentStrategy.name || 'Smallcase';
+
+        const commentsInput = document.getElementById('mscWithdrawalComments');
+        if (commentsInput) commentsInput.value = '';
+
+        const tbody = document.getElementById('mscWithdrawalTbody');
+        if (!tbody) return;
+
+        tbody.innerHTML = holdings.map((h, idx) => {
+            const sym = h.symbol || 'STOCK';
+            const company = h.company_name || sym;
+            const qty = Number(h.quantity || 0);
+            const buyPrice = Number(h.buy_price || 0);
+            const cmp = Number(h.current_price || buyPrice);
+            const pnl = Number(h.pnl != null ? h.pnl : ((cmp - buyPrice) * qty));
+            const pnlPct = Number(h.pnl_percent != null ? h.pnl_percent : (buyPrice > 0 ? ((cmp - buyPrice) / buyPrice * 100) : 0));
+            const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+            const sign = pnl >= 0 ? '+' : '';
+
+            return `
+                <tr data-index="${idx}" data-symbol="${escapeHtml(sym)}" data-max-qty="${qty}" data-buy-price="${buyPrice}" data-cmp="${cmp}" style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
+                    <td style="padding: 10px 12px; color: var(--text-secondary);">${idx + 1}</td>
+                    <td style="padding: 10px 12px;">
+                        <div style="font-weight: 700; color: var(--text-primary);">${escapeHtml(sym)}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">${escapeHtml(company)}</div>
+                    </td>
+                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">${qty}</td>
+                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; color: var(--text-secondary);">₹${formatCurrency(buyPrice)}</td>
+                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(cmp)}</td>
+                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: ${pnlColor};">
+                        ${sign}₹${formatCurrency(pnl)}<br>
+                        <span style="font-size: 10px;">(${sign}${pnlPct.toFixed(2)}%)</span>
+                    </td>
+                    <td style="padding: 10px 12px; text-align: center;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <input type="number" min="0" max="${qty}" step="1" value="0" class="msc-modal-input msc-withdraw-qty-input" data-index="${idx}" oninput="updateWithdrawalSummary()" style="width: 75px; padding: 5px 8px; font-family: monospace; font-size: 12px; text-align: right;">
+                            <button type="button" class="btn-secondary" onclick="setWithdrawalMax(${idx}, ${qty})" style="padding: 4px 7px; font-size: 10px; font-weight: 600; border-radius: 4px; cursor: pointer;">Max</button>
+                        </div>
+                    </td>
+                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">
+                        <span id="mscWithdrawVal_${idx}">₹0.00</span>
+                    </td>
+                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-secondary);">
+                        <span id="mscWithdrawPnl_${idx}">₹0.00</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        updateWithdrawalSummary();
+        const modal = document.getElementById('strategyWithdrawalModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeStrategyWithdrawalModal() {
+        const modal = document.getElementById('strategyWithdrawalModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function setWithdrawalMax(idx, maxQty) {
+        const input = document.querySelector(`.msc-withdraw-qty-input[data-index="${idx}"]`);
+        if (input) {
+            input.value = maxQty;
+            updateWithdrawalSummary();
+        }
+    }
+
+    function updateWithdrawalSummary() {
+        const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
+        let totalStocks = 0;
+        let totalShares = 0;
+        let totalAmount = 0.0;
+        let totalCost = 0.0;
+        let totalPnl = 0.0;
+
+        rows.forEach(tr => {
+            const idx = tr.getAttribute('data-index');
+            const maxQty = parseInt(tr.getAttribute('data-max-qty'), 10) || 0;
+            const buyPrice = parseFloat(tr.getAttribute('data-buy-price')) || 0;
+            const cmp = parseFloat(tr.getAttribute('data-cmp')) || buyPrice;
+            const input = tr.querySelector('.msc-withdraw-qty-input');
+            const valSpan = document.getElementById(`mscWithdrawVal_${idx}`);
+            const pnlSpan = document.getElementById(`mscWithdrawPnl_${idx}`);
+
+            let reqQty = parseInt(input?.value, 10) || 0;
+            if (reqQty < 0) reqQty = 0;
+            if (reqQty > maxQty) {
+                reqQty = maxQty;
+                if (input) input.value = maxQty;
+            }
+
+            const rowVal = reqQty * cmp;
+            const rowCost = reqQty * buyPrice;
+            const rowPnl = rowVal - rowCost;
+
+            if (valSpan) valSpan.innerText = reqQty > 0 ? `₹${formatCurrency(rowVal)}` : '₹0.00';
+            if (pnlSpan) {
+                if (reqQty > 0) {
+                    const isPos = rowPnl >= 0;
+                    pnlSpan.innerText = `${isPos ? '+' : ''}₹${formatCurrency(rowPnl)}`;
+                    pnlSpan.style.color = isPos ? '#10b981' : '#ef4444';
+                } else {
+                    pnlSpan.innerText = '₹0.00';
+                    pnlSpan.style.color = 'var(--text-secondary)';
+                }
+            }
+
+            if (reqQty > 0) {
+                totalStocks += 1;
+                totalShares += reqQty;
+                totalAmount += rowVal;
+                totalCost += rowCost;
+                totalPnl += rowPnl;
+            }
+        });
+
+        const stocksEl = document.getElementById('mscWithdrawTotalStocks');
+        const sharesEl = document.getElementById('mscWithdrawTotalShares');
+        const amountEl = document.getElementById('mscWithdrawTotalAmount');
+        const pnlEl = document.getElementById('mscWithdrawTotalPnl');
+        const submitBtn = document.getElementById('mscSubmitWithdrawalBtn');
+
+        if (stocksEl) stocksEl.innerText = totalStocks;
+        if (sharesEl) sharesEl.innerText = totalShares;
+        if (amountEl) amountEl.innerText = `₹${formatCurrency(totalAmount)}`;
+        if (pnlEl) {
+            const isPos = totalPnl >= 0;
+            const sign = isPos ? '+' : '';
+            const pnlPct = totalCost > 0 ? (totalPnl / totalCost * 100) : 0;
+            pnlEl.innerText = `${sign}₹${formatCurrency(totalPnl)} (${sign}${pnlPct.toFixed(2)}%)`;
+            pnlEl.style.color = totalShares > 0 ? (isPos ? '#10b981' : '#ef4444') : 'var(--text-secondary)';
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = totalShares === 0;
+        }
+    }
+
+    async function submitStrategyWithdrawal() {
+        if (!currentStrategy) return;
+
+        const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
+        const withdrawals = [];
+
+        rows.forEach(tr => {
+            const sym = tr.getAttribute('data-symbol');
+            const maxQty = parseInt(tr.getAttribute('data-max-qty'), 10) || 0;
+            const cmp = parseFloat(tr.getAttribute('data-cmp')) || 0;
+            const input = tr.querySelector('.msc-withdraw-qty-input');
+            const reqQty = parseInt(input?.value, 10) || 0;
+
+            if (reqQty > 0 && reqQty <= maxQty) {
+                withdrawals.push({
+                    symbol: sym,
+                    quantity: reqQty,
+                    price: cmp
+                });
+            }
+        });
+
+        if (withdrawals.length === 0) {
+            alertToast('Please enter a quantity greater than 0 for at least one stock.', 'warning');
+            return;
+        }
+
+        const comments = (document.getElementById('mscWithdrawalComments')?.value || '').trim();
+
+        const submitBtn = document.getElementById('mscSubmitWithdrawalBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>⏳</span> <span>Executing Withdrawal...</span>';
+        }
+
+        showSmallcaseGlobalLoader({
+            title: 'Processing Withdrawal...',
+            badge: 'Portfolio Liquidation',
+            subtitle: `Selling ${withdrawals.length} positions and updating smallcase capital & cash flows...`
+        });
+
+        try {
+            const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/withdraw`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    withdrawals: withdrawals,
+                    comments: comments
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to execute withdrawal.');
+            }
+
+            closeStrategyWithdrawalModal();
+            alertToast(data.message || `Withdrawn ₹${formatCurrency(data.withdrawn_amount || 0)} successfully!`, 'success');
+
+            // Refresh strategy state from returned strategy
+            currentStrategy = data.strategy;
+            renderStrategyDetails(currentStrategy);
+
+            // Select the newly added WITHDRAWAL run on timeline
+            if (currentStrategy.runs && currentStrategy.runs.length > 0) {
+                selectTimelineRun(currentStrategy.runs.length - 1);
+            }
+        } catch (e) {
+            console.error('Withdrawal error:', e);
+            alertToast(`Withdrawal Error: ${e.message}`, 'error');
+        } finally {
+            hideSmallcaseGlobalLoader();
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>💸</span> <span>Confirm Withdrawal</span>';
+            }
+        }
+    }
+
+    window.openStrategyWithdrawalModal = openStrategyWithdrawalModal;
+    window.closeStrategyWithdrawalModal = closeStrategyWithdrawalModal;
+    window.setWithdrawalMax = setWithdrawalMax;
+    window.updateWithdrawalSummary = updateWithdrawalSummary;
+    window.submitStrategyWithdrawal = submitStrategyWithdrawal;
+
+    // =========================================================================
     // 5. FORMULA & SETTINGS EDIT MODAL
     // =========================================================================
     function openEditFormulaModal() {
@@ -2270,7 +2603,7 @@
     }
 
     // =========================================================================
-    // 5a. EXCEL EXPORT FOR ALL RANKED STOCKS
+    // 5a. EXCEL EXPORT FOR ALL / CURRENT RANKED STOCKS
     // =========================================================================
     function downloadAllRankedStocksExcel() {
         if (!currentStrategy) {
@@ -2279,9 +2612,11 @@
         }
 
         const runIdx = (selectedRunIndex != null) ? selectedRunIndex : (currentStrategy.runs ? currentStrategy.runs.length - 1 : 0);
-        const url = `/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/runs/${encodeURIComponent(runIdx)}/export-ranked-excel`;
+        const scopeSelect = document.getElementById('mscRankedExportScope');
+        const scope = (scopeSelect ? scopeSelect.value : 'current') || 'current';
+        const url = `/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/runs/${encodeURIComponent(runIdx)}/export-ranked-excel?scope=${encodeURIComponent(scope)}`;
 
-        alertToast('Downloading Excel workbook for all eligible stocks...', 'info');
+        alertToast(scope === 'all' ? 'Downloading Excel workbook for all runs (separate tabs)...' : 'Downloading Excel workbook for current run...', 'info');
         window.location.href = url;
     }
 
@@ -2789,7 +3124,10 @@
         run: null,
         trades: [],
         filter: 'all',
-        query: ''
+        query: '',
+        fromDate: null,
+        toDate: null,
+        scope: 'all'
     };
 
     function hasLogTransactions(log, strategy) {
@@ -3121,6 +3459,14 @@
             scopeSelect.value = String(initialRunIdx);
         }
 
+        // Reset date filter
+        const fromInput = document.getElementById('wltFromDate');
+        const toInput = document.getElementById('wltToDate');
+        if (fromInput) fromInput.value = '';
+        if (toInput) toInput.value = '';
+        currentLogTradesState.fromDate = null;
+        currentLogTradesState.toDate = null;
+
         // Load trades for initial scope
         changeLogTransactionsScope(String(initialRunIdx));
 
@@ -3134,12 +3480,14 @@
         let badgeText = 'Selected Run';
         let subText = '';
 
+        const dateRangeEl = document.getElementById('wltDateRangeContainer');
         if (scopeVal === 'all') {
             trades = getAllStrategyTrades(currentStrategy);
             badgeText = `All Transactions (${runs.length} Runs)`;
             subText = `${currentStrategy.name} · Complete strategy transaction history across all milestones`;
             currentLogTradesState.scope = 'all';
             currentLogTradesState.activeRunIndex = null;
+            if (dateRangeEl) dateRangeEl.style.display = 'inline-flex';
         } else {
             const runIdx = parseInt(scopeVal, 10);
             const run = runs[runIdx] || runs[0];
@@ -3151,6 +3499,7 @@
             subText = `${currentStrategy.name} · Milestone: ${title} · Executed: ${dateStr}`;
             currentLogTradesState.scope = scopeVal;
             currentLogTradesState.activeRunIndex = runIdx;
+            if (dateRangeEl) dateRangeEl.style.display = 'none';
         }
 
         currentLogTradesState.trades = trades;
@@ -3166,10 +3515,32 @@
             subEl.innerText = subText;
         }
 
-        // Update KPI Cards
+        // Render Table & Footer
+        renderLogTransactionsTable();
+    }
+
+    function handleLogTransactionsDateChange() {
+        const fromInput = document.getElementById('wltFromDate');
+        const toInput = document.getElementById('wltToDate');
+        currentLogTradesState.fromDate = fromInput ? fromInput.value.trim() : null;
+        currentLogTradesState.toDate = toInput ? toInput.value.trim() : null;
+        renderLogTransactionsTable();
+    }
+
+    function clearLogTransactionsDateFilter() {
+        const fromInput = document.getElementById('wltFromDate');
+        const toInput = document.getElementById('wltToDate');
+        if (fromInput) fromInput.value = '';
+        if (toInput) toInput.value = '';
+        currentLogTradesState.fromDate = null;
+        currentLogTradesState.toDate = null;
+        renderLogTransactionsTable();
+    }
+
+    function updateLogTransactionsKPIs(trades) {
         const totalTrades = trades.length;
         const buyTrades = trades.filter(t => t.action === 'BUY');
-        const sellTrades = trades.filter(t => t.action === 'SELL');
+        const sellTrades = trades.filter(t => t.action === 'SELL' || t.type === 'WITHDRAWAL' || t.action === 'WITHDRAW');
         const totalBuyAmt = buyTrades.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
         const totalSellAmt = sellTrades.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
         const totalCharges = trades.reduce((sum, t) => sum + (Number(t.fee) || 0), 0);
@@ -3218,9 +3589,6 @@
         if (pBuy) pBuy.innerText = buyTrades.length;
         const pSell = document.getElementById('wltPillCountSell');
         if (pSell) pSell.innerText = sellTrades.length;
-
-        // Render Table & Footer
-        renderLogTransactionsTable();
     }
 
     function closeLogTransactionsModal() {
@@ -3233,17 +3601,36 @@
         const tfoot = document.getElementById('wltTransactionsTfoot');
         if (!tbody || !tfoot) return;
 
-        const { trades, filter, query } = currentLogTradesState;
+        const { trades, filter, query, fromDate, toDate, scope } = currentLogTradesState;
         let filtered = trades.slice();
 
-        // 1. Filter by BUY / SELL
+        // 1. Filter by Date Range (when scope is all transactions)
+        if (scope === 'all') {
+            if (fromDate) {
+                filtered = filtered.filter(t => {
+                    const d = (t.date || t.run_date || t.executed_date || '').substring(0, 10);
+                    return !d || d >= fromDate;
+                });
+            }
+            if (toDate) {
+                filtered = filtered.filter(t => {
+                    const d = (t.date || t.run_date || t.executed_date || '').substring(0, 10);
+                    return !d || d <= toDate;
+                });
+            }
+        }
+
+        // Update KPI Cards and Pill Counts for active date-filtered trades
+        updateLogTransactionsKPIs(filtered);
+
+        // 2. Filter by BUY / SELL
         if (filter === 'buy') {
             filtered = filtered.filter(t => t.action === 'BUY');
         } else if (filter === 'sell') {
-            filtered = filtered.filter(t => t.action === 'SELL');
+            filtered = filtered.filter(t => t.action === 'SELL' || t.type === 'WITHDRAWAL' || t.action === 'WITHDRAW');
         }
 
-        // 2. Filter by search query (symbol, action_label, notes, or run_title)
+        // 3. Filter by search query (symbol, action_label, notes, or run_title)
         if (query && query.trim()) {
             const q = query.trim().toUpperCase();
             filtered = filtered.filter(t => 
@@ -3274,7 +3661,8 @@
 
         filtered.forEach((t, i) => {
             const isBuy = t.action === 'BUY';
-            const isSell = t.action === 'SELL';
+            const isWithdraw = t.type === 'WITHDRAWAL' || t.action === 'WITHDRAW' || (t.action_label && t.action_label.includes('WITHDRAW'));
+            const isSell = t.action === 'SELL' || isWithdraw;
             const qty = Number(t.quantity || 0);
             const price = Number(t.price || 0);
             const amt = Number(t.amount || (qty * price));
@@ -3298,10 +3686,15 @@
                 }
             }
 
-            const badgeBg = isBuy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
-            const badgeColor = isBuy ? '#10b981' : '#ef4444';
-            const badgeBorder = isBuy ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
-            const actionLabel = t.action_label || t.action || 'TRADE';
+            let badgeBg = isBuy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+            let badgeColor = isBuy ? '#10b981' : '#ef4444';
+            let badgeBorder = isBuy ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+            if (isWithdraw) {
+                badgeBg = 'rgba(245, 158, 11, 0.15)';
+                badgeColor = '#f59e0b';
+                badgeBorder = 'rgba(245, 158, 11, 0.35)';
+            }
+            const actionLabel = isWithdraw ? (t.action_label || 'WITHDRAW') : (t.action_label || t.action || 'TRADE');
 
             let pnlHtml = `<span style="color: var(--text-secondary); font-size: 11px;">—</span>`;
             if (isSell && pnl != null) {
@@ -3847,8 +4240,9 @@
         const isDense = labels.length > 50;
 
         // Gradient for portfolio value
-        const gradient = ctx.createLinearGradient(0, 0, 0, 350);
-        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 360);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+        gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.12)');
         gradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
 
         currentPerformanceGraphState.chartInstance = new Chart(ctx, {
@@ -3860,28 +4254,31 @@
                         label: 'Portfolio Value (₹)',
                         data: portfolioData,
                         borderColor: '#10b981',
-                        borderWidth: 2.2,
+                        borderWidth: 2.8,
                         backgroundColor: gradient,
                         fill: true,
-                        tension: 0.2,
-                        pointRadius: isDense ? 0 : 3.5,
-                        pointHoverRadius: 6,
+                        tension: 0.22,
+                        pointRadius: isDense ? 0 : 4,
+                        pointHoverRadius: 7,
+                        pointHitRadius: 12,
                         pointBackgroundColor: '#10b981',
                         pointBorderColor: '#ffffff',
-                        pointBorderWidth: 1.5
+                        pointBorderWidth: 2
                     },
                     {
                         label: 'Invested Capital (₹)',
                         data: investedData,
-                        borderColor: '#6366f1',
-                        borderWidth: 1.8,
-                        borderDash: [5, 4],
+                        borderColor: '#818cf8',
+                        borderWidth: 2.0,
+                        borderDash: [6, 4],
                         fill: false,
                         tension: 0.1,
-                        pointRadius: isDense ? 0 : 2.5,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: '#6366f1',
-                        pointBorderColor: '#ffffff'
+                        pointRadius: isDense ? 0 : 3,
+                        pointHoverRadius: 6,
+                        pointHitRadius: 10,
+                        pointBackgroundColor: '#818cf8',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5
                     }
                 ]
             },
@@ -3897,12 +4294,14 @@
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)',
                         titleColor: isDark ? '#ffffff' : '#0f172a',
                         bodyColor: isDark ? '#cbd5e1' : '#334155',
-                        borderColor: isDark ? '#334155' : '#e2e8f0',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
                         borderWidth: 1,
-                        padding: 12,
+                        padding: 14,
+                        boxPadding: 6,
+                        cornerRadius: 8,
                         boxPadding: 4,
                         callbacks: {
                             label: function(context) {
@@ -4897,6 +5296,7 @@
         if (startInput) {
             if (!startInput.value) startInput.value = '2024-01-01';
             startInput.min = '2013-01-01';
+            startInput.max = new Date().toISOString().slice(0, 10);
         }
         if (amountInput && !amountInput.value) amountInput.value = '100000';
         if (stepupInput) stepupInput.value = '';
@@ -5248,68 +5648,51 @@
     function extractTradeStats(res) {
         if (!res) return { total_buys: 0, total_sells: 0, total_trades: 0, unique_stocks_count: 0 };
         const kpis = res.kpis || {};
-        let buys = Number(res.total_buys !== undefined ? res.total_buys : (kpis.total_buys !== undefined ? kpis.total_buys : 0));
-        let sells = Number(res.total_sells !== undefined ? res.total_sells : (kpis.total_sells !== undefined ? kpis.total_sells : 0));
-        let trades = Number(res.total_trades !== undefined ? res.total_trades : (kpis.total_trades !== undefined ? kpis.total_trades : 0));
-        let uniqueCount = Number(res.unique_stocks_count !== undefined ? res.unique_stocks_count : (kpis.unique_stocks_count !== undefined ? kpis.unique_stocks_count : 0));
+        let buys = Number(res.total_buys != null ? res.total_buys : (kpis.total_buys != null ? kpis.total_buys : 0));
+        let sells = Number(res.total_sells != null ? res.total_sells : (kpis.total_sells != null ? kpis.total_sells : 0));
+        let trades = Number(res.total_trades != null ? res.total_trades : (kpis.total_trades != null ? kpis.total_trades : 0));
+        let uniqueCount = Number(res.unique_stocks_count != null ? res.unique_stocks_count : (kpis.unique_stocks_count != null ? kpis.unique_stocks_count : 0));
 
-        if ((buys === 0 && sells === 0) || uniqueCount === 0) {
-            const pts = Array.isArray(res.points) ? res.points : [];
-            const uniqueSet = new Set();
-            let calcBuys = 0;
-            let calcSells = 0;
-
-            const hasTransactions = pts.some(pt => Array.isArray(pt.transactions) && pt.transactions.length > 0);
-            if (hasTransactions) {
-                pts.forEach((pt, pIdx) => {
-                    if (Array.isArray(pt.transactions) && pt.transactions.length > 0) {
-                        pt.transactions.forEach(tx => {
-                            const sym = tx.symbol || tx.stock;
-                            if (sym) uniqueSet.add(sym);
-                            const act = String(tx.action || '').toUpperCase();
-                            if (act === 'BUY') calcBuys++;
-                            else if (act === 'SELL') calcSells++;
-                        });
-                    } else if (pIdx === 0 && Array.isArray(pt.holdings)) {
-                        pt.holdings.forEach(h => {
-                            if (h.symbol && (h.quantity > 0 || h.current_value > 0)) {
-                                uniqueSet.add(h.symbol);
-                                calcBuys++;
-                            }
-                        });
-                    }
-                });
-            } else if (pts.length > 0) {
-                let prevSymbols = new Set();
-                pts.forEach((pt, pIdx) => {
-                    const currHoldings = Array.isArray(pt.holdings) ? pt.holdings : [];
-                    const currSymbols = new Set(
-                        currHoldings.filter(h => h.symbol && (h.quantity > 0 || h.current_value > 0)).map(h => h.symbol)
-                    );
-                    currSymbols.forEach(s => uniqueSet.add(s));
-
-                    if (pIdx === 0) {
-                        calcBuys += currSymbols.size;
-                    } else {
-                        let sellsCount = 0;
-                        prevSymbols.forEach(s => {
-                            if (!currSymbols.has(s)) sellsCount++;
-                        });
-                        let buysCount = 0;
-                        currSymbols.forEach(s => {
-                            if (!prevSymbols.has(s)) buysCount++;
-                        });
-                        calcBuys += buysCount;
-                        calcSells += sellsCount;
-                    }
-                    if (currSymbols.size > 0) {
-                        prevSymbols = currSymbols;
-                    }
-                });
+        // If buys or sells already exist from backend calculation, use them directly
+        if (buys > 0 || sells > 0) {
+            if (uniqueCount === 0) {
+                if (Array.isArray(res.unique_stocks) && res.unique_stocks.length > 0) {
+                    uniqueCount = res.unique_stocks.length;
+                } else if (Array.isArray(kpis.unique_stocks) && kpis.unique_stocks.length > 0) {
+                    uniqueCount = kpis.unique_stocks.length;
+                } else if (res.constituents_count > 0) {
+                    uniqueCount = Math.min(buys, res.constituents_count);
+                } else {
+                    uniqueCount = buys;
+                }
             }
+            if (trades === 0) trades = buys + sells;
+            return {
+                total_buys: buys,
+                total_sells: sells,
+                total_trades: trades,
+                unique_stocks_count: uniqueCount
+            };
+        }
 
-            // Also ensure any holdings symbol across all points is collected in uniqueSet
-            pts.forEach(pt => {
+        // Fallback: Calculate from points array only if buys and sells are both 0
+        const pts = Array.isArray(res.points) ? res.points : [];
+        const uniqueSet = new Set();
+        let calcBuys = 0;
+        let calcSells = 0;
+
+        const hasTransactions = pts.some(pt => Array.isArray(pt.transactions) && pt.transactions.length > 0);
+        if (hasTransactions) {
+            pts.forEach((pt) => {
+                if (Array.isArray(pt.transactions) && pt.transactions.length > 0) {
+                    pt.transactions.forEach(tx => {
+                        const sym = tx.symbol || tx.stock;
+                        if (sym) uniqueSet.add(sym);
+                        const act = String(tx.action || '').toUpperCase();
+                        if (act === 'BUY') calcBuys++;
+                        else if (act === 'SELL') calcSells++;
+                    });
+                }
                 if (Array.isArray(pt.holdings)) {
                     pt.holdings.forEach(h => {
                         if (h.symbol && (h.quantity > 0 || h.current_value > 0)) {
@@ -5318,14 +5701,51 @@
                     });
                 }
             });
+        } else if (pts.length > 0) {
+            let prevSymbols = new Set();
+            pts.forEach((pt, pIdx) => {
+                const currHoldings = Array.isArray(pt.holdings) ? pt.holdings : [];
+                const currSymbols = new Set(
+                    currHoldings.filter(h => h.symbol && (h.quantity > 0 || h.current_value > 0)).map(h => h.symbol)
+                );
+                currSymbols.forEach(s => uniqueSet.add(s));
 
-            if (buys === 0 && sells === 0 && (calcBuys > 0 || calcSells > 0)) {
-                buys = calcBuys;
-                sells = calcSells;
+                if (pIdx === 0 || (pIdx === 1 && prevSymbols.size === 0)) {
+                    calcBuys += currSymbols.size;
+                } else if (currSymbols.size > 0 && prevSymbols.size > 0) {
+                    let sellsCount = 0;
+                    prevSymbols.forEach(s => {
+                        if (!currSymbols.has(s)) sellsCount++;
+                    });
+                    let buysCount = 0;
+                    currSymbols.forEach(s => {
+                        if (!prevSymbols.has(s)) buysCount++;
+                    });
+                    calcBuys += buysCount;
+                    calcSells += sellsCount;
+                }
+                if (currSymbols.size > 0) {
+                    prevSymbols = currSymbols;
+                }
+            });
+        }
+
+        pts.forEach(pt => {
+            if (Array.isArray(pt.holdings)) {
+                pt.holdings.forEach(h => {
+                    if (h.symbol && (h.quantity > 0 || h.current_value > 0)) {
+                        uniqueSet.add(h.symbol);
+                    }
+                });
             }
-            if (uniqueCount === 0 && uniqueSet.size > 0) {
-                uniqueCount = uniqueSet.size;
-            }
+        });
+
+        if (buys === 0 && sells === 0 && (calcBuys > 0 || calcSells > 0)) {
+            buys = calcBuys;
+            sells = calcSells;
+        }
+        if (uniqueCount === 0 && uniqueSet.size > 0) {
+            uniqueCount = uniqueSet.size;
         }
 
         if (trades === 0 && (buys > 0 || sells > 0)) {
@@ -5336,7 +5756,7 @@
             total_buys: buys,
             total_sells: sells,
             total_trades: trades,
-            unique_stocks_count: uniqueCount
+            unique_stocks_count: uniqueCount || (buys > 0 ? buys : 0)
         };
     }
 
@@ -5531,6 +5951,7 @@
         if (runIcon) runIcon.innerText = '⏳';
 
         function getIndexParamKey(common, row) {
+            const trimVal = (row.trim_existing === true || String(row.trim_existing).toLowerCase() === 'yes' || row.trim_existing === 'true') ? 'yes' : 'no';
             return [
                 common.start_date,
                 common.cutoff_date || '',
@@ -5540,7 +5961,7 @@
                 row.no_of_stocks,
                 row.exit_regime_ranking,
                 row.rebalance_day,
-                row.trim_existing ? 'yes' : 'no',
+                trimVal,
                 row.trading_days_per_month
             ].join('|');
         }
@@ -5851,14 +6272,16 @@
                 eligibleCounts: eligibleSeries,
                 borderColor: res.color,
                 backgroundColor: res.color,
-                borderWidth: resIdx === 0 ? 3.0 : 2.0,
-                tension: 0.25,
+                borderWidth: resIdx === 0 ? 3.2 : 2.8,
+                tension: 0.22,
                 fill: false,
-                pointRadius: sortedDates.length > 40 ? 1.5 : 3.5,
-                pointHoverRadius: 6,
+                spanGaps: true,
+                pointRadius: sortedDates.length > 50 ? 2.5 : 4.5,
+                pointHoverRadius: 8,
+                pointHitRadius: 14,
                 pointBackgroundColor: res.color,
                 pointBorderColor: '#ffffff',
-                pointBorderWidth: 1.5,
+                pointBorderWidth: 1.8,
                 indexResultId: res.id,
                 resultIndex: resIdx
             };
@@ -5888,9 +6311,9 @@
         datasets.push({
             label: baselineLabel,
             data: baselineData,
-            borderColor: '#6366f1',
-            borderWidth: 1.6,
-            borderDash: [5, 4],
+            borderColor: '#818cf8',
+            borderWidth: 1.8,
+            borderDash: [6, 4],
             fill: false,
             tension: 0,
             pointRadius: 0,
@@ -5955,6 +6378,20 @@
                                 return;
                             }
 
+                            const activeEls = chart.getActiveElements();
+                            let dotX = tooltip.caretX;
+                            let dotY = tooltip.caretY;
+                            let activeDsIdx = -1;
+
+                            if (activeEls && activeEls.length > 0) {
+                                const ptEl = activeEls[0].element;
+                                if (ptEl && typeof ptEl.x === 'number' && typeof ptEl.y === 'number') {
+                                    dotX = ptEl.x;
+                                    dotY = ptEl.y;
+                                }
+                                activeDsIdx = activeEls[0].datasetIndex;
+                            }
+
                             if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
                                 const dataIndex = tooltip.dataPoints[0].dataIndex;
                                 const dateLabel = labels[dataIndex] || (tooltip.title ? tooltip.title[0] : '');
@@ -5968,6 +6405,7 @@
                                 tooltip.dataPoints.forEach(dp => {
                                     const ds = dp.dataset;
                                     const val = Number(dp.raw) || 0;
+                                    const isHoveredLine = (dp.datasetIndex === activeDsIdx);
                                     if (ds.isBaseline) {
                                         innerHtml += `
                                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; color: #94a3b8; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.1);">
@@ -5992,12 +6430,15 @@
                                             ? ds.eligibleCounts[dataIndex]
                                             : null;
                                         const displayLabel = elig !== null ? `${ds.label} (${elig})` : ds.label;
+                                        const rowHighlightStyle = isHoveredLine 
+                                            ? `background: rgba(255, 255, 255, 0.08); border-radius: 5px; padding: 3px 6px; border-left: 3px solid ${ds.borderColor};` 
+                                            : `padding: 2px 0;`;
 
                                         innerHtml += `
-                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px;">
+                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px; ${rowHighlightStyle}">
                                                 <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${ds.borderColor}; flex-shrink: 0;"></span>
-                                                    <span style="font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px;" title="${escapeHtml(displayLabel)}">${escapeHtml(displayLabel)}</span>
+                                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${ds.borderColor}; flex-shrink: 0; ${isHoveredLine ? 'box-shadow: 0 0 6px ' + ds.borderColor + ';' : ''}"></span>
+                                                    <span style="font-weight: ${isHoveredLine ? '700' : '600'}; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px;" title="${escapeHtml(displayLabel)}">${isHoveredLine ? '▸ ' : ''}${escapeHtml(displayLabel)}</span>
                                                 </div>
                                                 <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                                                     <span style="font-family: monospace; color: #e2e8f0; font-size: 11.5px; font-weight: 500;">₹${formatCurrency(val)}</span>
@@ -6015,21 +6456,20 @@
                             }
 
                             const wrapRect = chart.canvas.parentNode.getBoundingClientRect();
-                            const x = tooltip.caretX;
-                            const y = tooltip.caretY;
+                            const isNearTop = dotY < 150;
 
-                            if (x > wrapRect.width - 200) {
-                                tooltipEl.style.left = (x - 12) + 'px';
-                                tooltipEl.style.transform = 'translate(-100%, -50%)';
-                            } else if (x < 120) {
-                                tooltipEl.style.left = (x + 12) + 'px';
-                                tooltipEl.style.transform = 'translate(0, -50%)';
+                            if (dotX > wrapRect.width - 210) {
+                                tooltipEl.style.left = (dotX - 10) + 'px';
+                                tooltipEl.style.transform = isNearTop ? 'translate(-100%, 14px)' : 'translate(-100%, -100%)';
+                            } else if (dotX < 130) {
+                                tooltipEl.style.left = (dotX + 10) + 'px';
+                                tooltipEl.style.transform = isNearTop ? 'translate(0, 14px)' : 'translate(0, -100%)';
                             } else {
-                                tooltipEl.style.left = x + 'px';
-                                tooltipEl.style.transform = y < 140 ? 'translate(-50%, 15px)' : 'translate(-50%, -105%)';
+                                tooltipEl.style.left = dotX + 'px';
+                                tooltipEl.style.transform = isNearTop ? 'translate(-50%, 14px)' : 'translate(-50%, -100%)';
                             }
 
-                            tooltipEl.style.top = y + 'px';
+                            tooltipEl.style.top = isNearTop ? (dotY + 'px') : ((dotY - 10) + 'px');
                             tooltipEl.style.display = 'block';
                             tooltipEl.style.opacity = '1';
                         }
@@ -6245,15 +6685,14 @@
             const belowColor = row.max_below_investment_percent < 0 ? '#ef4444' : '#10b981';
 
             // Find matching index in results array for onclick and stats fallback
-            const resIdx = (comparisonState.simulationResults?.results || []).findIndex(r => r.id === row.id);
+            const resIdx = (comparisonState.simulationResults?.results || []).findIndex(r => r.id === row.id || (r.index_id && r.index_id === row.index_id));
             const matchingRes = resIdx >= 0 ? comparisonState.simulationResults.results[resIdx] : null;
-            const stats = extractTradeStats(
-                (row.total_buys !== undefined && (row.total_buys > 0 || row.total_sells > 0)) ? row : (matchingRes || row)
-            );
-            const rowBuys = stats.total_buys;
-            const rowSells = stats.total_sells;
-            const rowTrades = stats.total_trades;
-            const rowUnique = stats.unique_stocks_count;
+            const sourceObj = matchingRes || row;
+            const stats = extractTradeStats(sourceObj);
+            const rowBuys = Number(row.total_buys != null && row.total_buys > 0 ? row.total_buys : (matchingRes?.total_buys || stats.total_buys || 0));
+            const rowSells = Number(row.total_sells != null && row.total_sells > 0 ? row.total_sells : (matchingRes?.total_sells || stats.total_sells || 0));
+            const rowTrades = Number(row.total_trades != null && row.total_trades > 0 ? row.total_trades : (matchingRes?.total_trades || stats.total_trades || (rowBuys + rowSells)));
+            const rowUnique = Number(row.unique_stocks_count != null && row.unique_stocks_count > 0 ? row.unique_stocks_count : (matchingRes?.unique_stocks_count || stats.unique_stocks_count || (rowBuys > 0 ? rowBuys : 0)));
 
             return `
                 <tr data-index-id="${escapeHtml(row.id)}" style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;" onclick="selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'" onmouseout="if(comparisonState.chartInstance && comparisonState.chartInstance.data.datasets[${resIdx}] && comparisonState.chartInstance.data.datasets[${resIdx}].borderWidth < 3.5) this.style.background='transparent'">
@@ -6359,6 +6798,8 @@
     window.openLogTransactionsModal = openLogTransactionsModal;
     window.closeLogTransactionsModal = closeLogTransactionsModal;
     window.changeLogTransactionsScope = changeLogTransactionsScope;
+    window.handleLogTransactionsDateChange = handleLogTransactionsDateChange;
+    window.clearLogTransactionsDateFilter = clearLogTransactionsDateFilter;
     window.filterLogTransactionsTable = filterLogTransactionsTable;
     window.handleLogTransactionsSearch = handleLogTransactionsSearch;
 

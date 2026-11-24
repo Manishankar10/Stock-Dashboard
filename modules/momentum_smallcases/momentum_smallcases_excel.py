@@ -125,16 +125,41 @@ def get_run_all_ranked_stocks(strategy_id, run_index=None, username=None):
     return strat, target_run, all_calculated
 
 
-def generate_ranked_stocks_workbook(strategy, run, all_stocks):
-    """
-    Builds an openpyxl Workbook with formatting for all eligible stocks
-    ordered descending by momentum score.
-    """
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Ranked Stocks"
+def format_run_sheet_title(run, run_index=None, used_titles=None):
+    """Formats sheet title like '#1 Jan 25' or 'Init Jan 25' conforming to Excel's 31-char limit."""
+    exec_date_str = run.get("executed_date") or run.get("scheduled_date") or ""
+    try:
+        dt = datetime.strptime(str(exec_date_str)[:10], "%Y-%m-%d")
+        month_yr = dt.strftime("%b %y")
+    except Exception:
+        month_yr = "Date"
 
-    # Make gridlines visible
+    r_num = run.get("run_number")
+    if r_num is None and run_index is not None:
+        r_num = run_index
+
+    is_init = (run.get("run_type") == "INIT" or r_num == 0 or r_num is None)
+    if is_init:
+        base_title = f"#0 {month_yr}" if r_num == 0 else f"Init {month_yr}"
+    else:
+        base_title = f"#{r_num} {month_yr}"
+
+    base_title = re.sub(r'[\:\\\/\?\*\[\]]', '', base_title).strip()[:28]
+
+    if used_titles is not None:
+        title = base_title
+        counter = 1
+        while title in used_titles:
+            title = f"{base_title}_{counter}"[:31]
+            counter += 1
+        used_titles.add(title)
+        return title
+    return base_title[:31]
+
+
+def populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=None):
+    """Populates an openpyxl Worksheet with formatted ranked stocks for a specific run."""
+    ws.title = sheet_title or format_run_sheet_title(run)
     ws.views.sheetView[0].showGridLines = True
 
     # Palettes & Styling
@@ -445,15 +470,49 @@ def generate_ranked_stocks_workbook(strategy, run, all_stocks):
         col_letter = get_column_letter(col_idx)
         ws.column_dimensions[col_letter].width = width
 
+    return ws
+
+
+def generate_ranked_stocks_workbook(strategy, run, all_stocks, sheet_title=None):
+    """
+    Builds an openpyxl Workbook with formatting for all eligible stocks
+    ordered descending by momentum score.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=sheet_title)
     return wb
 
 
-def export_ranked_stocks_to_bytes(strategy_id, run_index=None, username=None):
+def export_ranked_stocks_to_bytes(strategy_id, run_index=None, username=None, scope="current"):
     """
     Returns (filename, BytesIO) containing the Excel workbook.
+    If scope == 'all': creates a multi-sheet workbook where each run gets its own tab (e.g. '#1 Jan 25').
+    If scope == 'current': creates a single-sheet workbook titled with that run (e.g. '#1 Jan 25').
     """
+    if str(scope).lower() == "all":
+        data = load_user_momentum_smallcases(username)
+        strat = next((s for s in data.get("strategies", []) if s.get("id") == strategy_id), None)
+        runs = strat.get("runs", []) if strat else []
+        if runs:
+            wb = openpyxl.Workbook()
+            used_titles = set()
+            for idx, r in enumerate(runs):
+                _, target_run, all_stocks = get_run_all_ranked_stocks(strategy_id, run_index=idx, username=username)
+                ws = wb.active if idx == 0 else wb.create_sheet()
+                st_title = format_run_sheet_title(target_run, idx, used_titles)
+                populate_ranked_stocks_worksheet(ws, strat, target_run, all_stocks, sheet_title=st_title)
+
+            clean_strat_name = re.sub(r'[^a-zA-Z0-9_\-]+', '_', strat.get("name", "Strategy")).strip('_')
+            filename = f"Ranked_Stocks_{clean_strat_name}_ALL_RUNS.xlsx"
+            bio = io.BytesIO()
+            wb.save(bio)
+            bio.seek(0)
+            return filename, bio
+
     strategy, run, all_stocks = get_run_all_ranked_stocks(strategy_id, run_index=run_index, username=username)
-    wb = generate_ranked_stocks_workbook(strategy, run, all_stocks)
+    sheet_title = format_run_sheet_title(run, run_index)
+    wb = generate_ranked_stocks_workbook(strategy, run, all_stocks, sheet_title=sheet_title)
     
     clean_strat_name = re.sub(r'[^a-zA-Z0-9_\-]+', '_', strategy.get("name", "Strategy")).strip('_')
     exec_date = str(run.get("executed_date") or run.get("scheduled_date") or "run")[:10]
