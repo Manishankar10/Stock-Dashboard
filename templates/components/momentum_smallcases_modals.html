@@ -1185,10 +1185,232 @@
 </div>
 
 <!-- =========================================================================
+     MODAL: COMPARE CREATED SMALLCASES (EXISTING CALCULATED DATA ONLY)
+     ========================================================================= -->
+<div class="modal-backdrop msc-modal-backdrop" id="mscCompareSmallcasesModal" style="display: none;" onclick="if(event.target === this) closeCompareSmallcasesModal()">
+    <div class="modal-container msc-modal-container msc-comp-modal-container" role="dialog" aria-modal="true" style="max-width: 1400px; width: 96vw; max-height: min(94vh, calc(100vh - 24px)); display: flex; flex-direction: column;">
+
+        <!-- Modal Header -->
+        <div class="msc-modal-header msc-comp-header" style="padding: 14px 22px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 18px;">
+                    📊
+                </span>
+                <div>
+                    <h3 class="msc-modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span>Compare Created Smallcases</span>
+                        <span class="badge msc-comp-badge-engine" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 10.5px; padding: 2px 8px; border-radius: 12px; font-weight: 600;">
+                            ⚡ Existing Calculated Data Only
+                        </span>
+                    </h3>
+                    <div class="msc-comp-subtitle" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
+                        Compare already executed smallcases on the same graph directly from their saved portfolio runs. Zero extra calculations.
+                    </div>
+                </div>
+            </div>
+            <div class="msc-comp-header-actions" style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn-secondary" onclick="minimizeCompareSmallcasesModal()" style="font-size: 11.5px; padding: 5px 12px; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px;" title="Minimize to floating widget">
+                    <span>🗕</span> <span>Minimize</span>
+                </button>
+                <button type="button" class="msc-modal-close-btn" onclick="closeCompareSmallcasesModal()" style="font-size: 18px; line-height: 1; padding: 4px 8px;" title="Close modal">✕</button>
+            </div>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="msc-modal-body msc-comp-body" style="padding: 16px 22px; overflow-y: auto; flex: 1;">
+
+            <!-- 1. Created Smallcases Selection Deck -->
+            <div class="msc-comp-indices-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>🚀</span> <span>Select Created Smallcases to Compare</span>
+                            <span id="mscStratCompCountBadge" style="font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700;">0 Selected</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                            Toggle smallcases below to plot their stored valuations immediately. Only executed (ACTIVE) smallcases with saved runs can be plotted.
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div style="display: inline-flex; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; background: var(--bg-subtle);">
+                            <button type="button" id="mscStratCompModeValueBtn" onclick="setCompareSmallcasesMetricMode('value')" style="border: none; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; background: #6366f1; color: #fff;">₹ Value</button>
+                            <button type="button" id="mscStratCompModePctBtn" onclick="setCompareSmallcasesMetricMode('return_pct')" style="border: none; padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-secondary);">% Return</button>
+                        </div>
+                        <button type="button" class="btn-secondary" onclick="selectAllCompareSmallcases()" style="font-size: 11.5px; padding: 5px 11px; font-weight: 600; color: #10b981; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08);">
+                            ✓ Select All Executed
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="clearCompareSmallcases()" style="font-size: 11.5px; padding: 5px 11px; font-weight: 600;">
+                            ✕ Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dynamic Created Smallcases Cards Grid -->
+                <div id="mscStratCompSelectorList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;">
+                    <!-- Populated dynamically from strategiesCache -->
+                </div>
+            </div>
+
+            <!-- 2. Multi-Line Chart Container -->
+            <div class="msc-comp-chart-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 15px;">📊</span>
+                        <div>
+                            <span id="mscStratCompChartTitle" style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">
+                                Comparative Valuation Trajectory (₹)
+                            </span>
+                            <span id="mscStratCompChartDateRangeBadge" style="display: none; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 600; margin-left: 8px;">
+                            </span>
+                        </div>
+                    </div>
+                    <div id="mscStratCompLegendPills" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <div class="msc-comp-chart-wrap" style="position: relative; height: 380px; width: 100%;">
+                    <canvas id="mscStratCompChartCanvas"></canvas>
+                    <div id="mscStratCompChartEmptyNotice" style="display: flex; position: absolute; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 8px; background: rgba(15, 23, 42, 0.85); border-radius: 6px; z-index: 5;">
+                        <span style="font-size: 28px;">📊</span>
+                        <span style="font-size: 13px; color: var(--text-secondary); text-align: center; max-width: 80%;" id="mscStratCompChartEmptyText">Select one or more executed smallcases above to compare them on the graph.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Selected Smallcase Interactive KPI Showcase -->
+            <div class="msc-comp-kpi-showcase" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span id="mscStratCompActiveDot" style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span>
+                        <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);" id="mscStratCompActiveTitle">
+                            Selected Smallcase KPI Metrics
+                        </span>
+                        <span id="mscStratCompActiveBadge" class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                            —
+                        </span>
+                    </div>
+                    <div id="mscStratCompPillSelector" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <!-- Injected dynamic selector pills -->
+                    </div>
+                </div>
+
+                <!-- 4 KPI stat cards -->
+                <div class="msc-comp-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            Final Portfolio Value
+                        </div>
+                        <div id="stratCompKpiFinalVal" style="font-size: 20px; font-weight: 700; font-family: monospace; color: var(--text-primary); margin-top: 4px;">
+                            ₹0.00
+                        </div>
+                        <div id="stratCompKpiNetPnl" style="font-size: 11.5px; font-weight: 600; color: #10b981; margin-top: 3px;">
+                            +₹0.00 (+0.00%)
+                        </div>
+                    </div>
+
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            CAGR / Win Rate
+                        </div>
+                        <div id="stratCompKpiCagr" style="font-size: 20px; font-weight: 700; font-family: monospace; color: #10b981; margin-top: 4px;">
+                            0.00%
+                        </div>
+                        <div id="stratCompKpiWinRate" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 3px;">
+                            Win Rate: 0.0% &bull; 0 Rebalance runs
+                        </div>
+                        <div id="stratCompKpiTradesCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            <span style="color: #10b981; font-weight: 600;">0 Buys</span> / <span style="color: #ef4444; font-weight: 600;">0 Sells</span> &bull; 0 Unique Stocks
+                        </div>
+                    </div>
+
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            Max Drawdown (from Peak)
+                        </div>
+                        <div id="stratCompKpiMaxDd" style="font-size: 20px; font-weight: 700; font-family: monospace; color: #ef4444; margin-top: 4px;">
+                            0.00%
+                        </div>
+                        <div id="stratCompKpiMaxDdDetails" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Peak-to-trough: -₹0.00
+                        </div>
+                    </div>
+
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">
+                            Max Below Investment Capital
+                        </div>
+                        <div id="stratCompKpiBelowInv" style="font-size: 20px; font-weight: 700; font-family: monospace; color: #ef4444; margin-top: 4px;">
+                            0.00%
+                        </div>
+                        <div id="stratCompKpiBelowInvDetails" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                            Deficit: ₹0.00 on —
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Side-by-Side Comparison Summary Table -->
+            <div class="msc-comp-table-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>📋</span> <span>Comparative Performance Leaderboard</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">
+                        Ordered by highest Net P&amp;L % (from existing saved runs)
+                    </div>
+                </div>
+
+                <div class="msc-table-responsive" style="overflow-x: auto;">
+                    <table class="msc-indices-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color);">
+                                <th style="width: 50px; text-align: center;">RANK</th>
+                                <th style="min-width: 170px;">SMALLCASE / INDEX</th>
+                                <th style="min-width: 150px;">CONFIGURATION</th>
+                                <th style="text-align: right; min-width: 110px;">FINAL VALUE</th>
+                                <th style="text-align: right; min-width: 110px;">NET P&amp;L</th>
+                                <th style="text-align: right; min-width: 90px;">CAGR</th>
+                                <th style="text-align: right; min-width: 95px;">MAX DD</th>
+                                <th style="text-align: right; min-width: 110px;">MAX BELOW INV</th>
+                                <th style="text-align: right; min-width: 80px;">WIN RATE</th>
+                                <th style="text-align: right; min-width: 120px;">TRADES / STOCKS</th>
+                                <th style="text-align: center; width: 80px;">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mscStratCompSummaryTbody">
+                            <tr><td colspan="11" style="text-align: center; padding: 20px; color: var(--text-secondary);">Select smallcases above to compare.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
      FLOATING DOCK WIDGETS CONTAINER (PERFORMANCE GRAPH & INDEX COMPARISON)
      Stacks minimized modals cleanly in bottom-right corner without overlapping.
      ========================================================================= -->
 <div id="mscFloatingDocksContainer" style="position: fixed; bottom: 24px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: none;">
+    <!-- Created Smallcases Comparison Dock Widget -->
+    <div id="mscCompareSmallcasesDock" style="display: none; pointer-events: auto; width: max-content; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 8px 16px; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s ease;" onclick="restoreCompareSmallcasesModal()">
+        <span style="font-size: 16px; display: inline-flex; align-items: center;">📊</span>
+        <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-primary); line-height: 1.2;">
+                Compare Smallcases
+            </span>
+            <span style="font-size: 10.5px; color: #10b981; font-weight: 600; line-height: 1.2;" id="stratCompDockStatus">
+                Ready (Click to expand)
+            </span>
+        </div>
+        <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center;" title="Restore Compare Smallcases" onclick="event.stopPropagation(); restoreCompareSmallcasesModal();">
+            🗖
+        </button>
+        <button type="button" style="background: none; border: none; color: var(--text-secondary); font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline-flex; align-items: center;" title="Close and dismiss" onclick="event.stopPropagation(); closeCompareSmallcasesDock();">
+            ✕
+        </button>
+    </div>
     <!-- Index Comparison Dock Widget -->
     <div id="mscIndexComparisonDock" style="display: none; pointer-events: auto; width: max-content; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 8px 16px; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s ease;" onclick="restoreIndexComparisonModal()">
         <span style="font-size: 16px; display: inline-flex; align-items: center;">📊</span>

@@ -39,6 +39,7 @@
         'performanceGraphModal',
         'strategyWithdrawalModal',
         'mscIndexComparisonModal',
+        'mscCompareSmallcasesModal',
         'mscFloatingDocksContainer'
     ];
 
@@ -71,7 +72,7 @@
         // Ensure floating docks stay cleanly inside mscFloatingDocksContainer
         const container = document.getElementById('mscFloatingDocksContainer');
         if (container) {
-            ['mscIndexComparisonDock', 'mscPerformanceGraphDock'].forEach(dockId => {
+            ['mscCompareSmallcasesDock', 'mscIndexComparisonDock', 'mscPerformanceGraphDock'].forEach(dockId => {
                 const dock = document.getElementById(dockId);
                 if (dock && dock.parentElement !== container) {
                     container.appendChild(dock);
@@ -6489,31 +6490,34 @@
         }
     }
 
-    function renderComparisonMultiLineChart(data) {
-        const canvas = document.getElementById('mscCompChartCanvas');
-        if (!canvas) return;
+    function renderComparisonLineChartWithConfig(cfg, data) {
+        const canvas = document.getElementById(cfg.canvasId);
+        if (!canvas) return null;
 
-        if (comparisonState.chartInstance) {
-            comparisonState.chartInstance.destroy();
-            comparisonState.chartInstance = null;
+        if (cfg.prevChart) {
+            cfg.prevChart.destroy();
         }
-        const existingCustomTip = document.getElementById('mscCompChartCustomTooltip');
+        const existingCustomTip = document.getElementById(cfg.tooltipId);
         if (existingCustomTip) existingCustomTip.remove();
 
         const ctx = canvas.getContext('2d');
         const results = data.results || [];
-        if (results.length === 0) return;
+        if (results.length === 0) return null;
+
+        const metricMode = cfg.metricMode === 'return_pct' ? 'return_pct' : 'value';
+        const preserveStartDates = Boolean(cfg.preserveStartDates);
 
         // Collect all distinct dates sorted ascending
         const allDatesSet = new Set();
         results.forEach(res => {
-            (res.points || []).forEach(pt => allDatesSet.add(pt.date));
+            (res.points || []).forEach(pt => {
+                if (pt.date) allDatesSet.add(pt.date);
+            });
         });
         const sortedDates = Array.from(allDatesSet).sort();
         const labels = sortedDates.map(d => formatDateDisplay(d));
 
-        // Update chart header badge with explicit date range and point count
-        const dateRangeBadge = document.getElementById('mscCompChartDateRangeBadge');
+        const dateRangeBadge = document.getElementById(cfg.dateRangeBadgeId);
         if (dateRangeBadge && sortedDates.length > 0) {
             const firstDateDisp = formatDateDisplay(sortedDates[0]);
             const lastDateDisp = formatDateDisplay(sortedDates[sortedDates.length - 1]);
@@ -6525,44 +6529,72 @@
 
         const isDark = document.body.classList.contains('dark-theme') || document.documentElement.classList.contains('dark-theme') || true;
 
-        // Build datasets for each index
+        // Build per-strategy/index aligned series
         const datasets = results.map((res, resIdx) => {
-            // Map valuations and eligible stock counts to sortedDates
-            const dateMap = {};
+            const dateValMap = {};
+            const dateInvMap = {};
             const eligibleMap = {};
+            let firstPtDate = null;
+
             (res.points || []).forEach(pt => {
-                dateMap[pt.date] = pt.portfolio_value;
+                if (!pt.date) return;
+                if (!firstPtDate || pt.date < firstPtDate) firstPtDate = pt.date;
+                dateValMap[pt.date] = Number(pt.portfolio_value || 0);
+                if (pt.invested !== undefined && pt.invested !== null) {
+                    dateInvMap[pt.date] = Number(pt.invested);
+                }
                 if (pt.eligible_count !== undefined && pt.eligible_count !== null) {
                     eligibleMap[pt.date] = pt.eligible_count;
                 }
             });
 
-            // Fallback default eligible count from points, constituents_count, or catalog
             const catalogItem = (comparisonState.indicesCatalog || []).find(c => c.id === res.index_id || c.name === res.index_name);
             const defaultEligible = (res.points || []).find(pt => pt.eligible_count !== undefined && pt.eligible_count > 0)?.eligible_count
                 || res.constituents_count
                 || (catalogItem ? catalogItem.stock_count : null);
 
-            let lastVal = data.common.amount_to_invest;
+            const baseAmt = Number((res.points && res.points[0] && res.points[0].invested) ?? data.common?.amount_to_invest ?? 0);
+            let lastVal = preserveStartDates ? null : (data.common?.amount_to_invest ?? baseAmt);
+            let lastInv = preserveStartDates ? null : baseAmt;
             let lastEligible = defaultEligible;
 
-            const eligibleSeries = sortedDates.map(d => {
-                if (eligibleMap[d] !== undefined) {
-                    lastEligible = eligibleMap[d];
-                }
-                return (lastEligible !== null && lastEligible !== undefined) ? lastEligible : defaultEligible;
-            });
+            const rawValSeries = [];
+            const rawInvSeries = [];
+            const eligibleSeries = [];
+            const plotSeries = [];
 
-            const dataSeries = sortedDates.map(d => {
-                if (dateMap[d] !== undefined) {
-                    lastVal = dateMap[d];
+            sortedDates.forEach(d => {
+                if (preserveStartDates && firstPtDate && d < firstPtDate) {
+                    rawValSeries.push(null);
+                    rawInvSeries.push(null);
+                    eligibleSeries.push(null);
+                    plotSeries.push(null);
+                    return;
                 }
-                return lastVal;
+                if (dateValMap[d] !== undefined) lastVal = dateValMap[d];
+                if (dateInvMap[d] !== undefined) lastInv = dateInvMap[d];
+                if (eligibleMap[d] !== undefined) lastEligible = eligibleMap[d];
+
+                const v = lastVal;
+                const inv = lastInv != null ? lastInv : baseAmt;
+                rawValSeries.push(v);
+                rawInvSeries.push(inv);
+                eligibleSeries.push((lastEligible !== null && lastEligible !== undefined) ? lastEligible : defaultEligible);
+                if (v == null) {
+                    plotSeries.push(null);
+                } else if (metricMode === 'return_pct') {
+                    const pct = inv > 0 ? ((v - inv) / inv) * 100 : 0;
+                    plotSeries.push(Math.round(pct * 100) / 100);
+                } else {
+                    plotSeries.push(v);
+                }
             });
 
             return {
-                label: res.index_name,
-                data: dataSeries,
+                label: res.index_name || res.name,
+                data: plotSeries,
+                rawValues: rawValSeries,
+                rawInvested: rawInvSeries,
                 eligibleCounts: eligibleSeries,
                 borderColor: res.color,
                 backgroundColor: res.color,
@@ -6581,42 +6613,72 @@
             };
         });
 
-        // Add Invested Capital Baseline (Dashed, steps up dynamically if step-up configured)
-        const stepupAmt = Number(data.common.stepup_amount || 0);
-        let baselineData;
-        let baselineLabel;
-        if (stepupAmt > 0 && results[0] && Array.isArray(results[0].points)) {
-            const invMap = {};
-            results[0].points.forEach(pt => {
-                if (pt.invested !== undefined) invMap[pt.date] = pt.invested;
+        // Baseline: 0% break-even line in % Return mode, OR shared Invested Capital baseline when uniform
+        let baselineData = null;
+        if (metricMode === 'return_pct') {
+            baselineData = sortedDates.map(() => 0);
+            datasets.push({
+                label: 'Break-even Baseline (0.00%)',
+                data: baselineData,
+                borderColor: '#818cf8',
+                borderWidth: 1.8,
+                borderDash: [6, 4],
+                fill: false,
+                tension: 0,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                isBaseline: true
             });
-            let lastInv = data.common.amount_to_invest;
-            baselineData = sortedDates.map(d => {
-                if (invMap[d] !== undefined) lastInv = invMap[d];
-                return lastInv;
+        } else if (data.common && data.common.amount_to_invest != null && !preserveStartDates) {
+            const stepupAmt = Number(data.common.stepup_amount || 0);
+            let baselineLabel;
+            if (stepupAmt > 0 && results[0] && Array.isArray(results[0].points)) {
+                const invMap = {};
+                results[0].points.forEach(pt => {
+                    if (pt.invested !== undefined) invMap[pt.date] = pt.invested;
+                });
+                let lastInv = data.common.amount_to_invest;
+                baselineData = sortedDates.map(d => {
+                    if (invMap[d] !== undefined) lastInv = invMap[d];
+                    return lastInv;
+                });
+                const finalInv = baselineData[baselineData.length - 1] || data.common.amount_to_invest;
+                baselineLabel = `Invested Capital (₹${formatCurrency(data.common.amount_to_invest)} + ₹${formatCurrency(stepupAmt)}/mo → ₹${formatCurrency(finalInv)})`;
+            } else {
+                baselineData = sortedDates.map(() => data.common.amount_to_invest);
+                baselineLabel = `Invested Baseline (₹${formatCurrency(data.common.amount_to_invest)})`;
+            }
+
+            datasets.push({
+                label: baselineLabel,
+                data: baselineData,
+                borderColor: '#818cf8',
+                borderWidth: 1.8,
+                borderDash: [6, 4],
+                fill: false,
+                tension: 0,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                isBaseline: true
             });
-            const finalInv = baselineData[baselineData.length - 1] || data.common.amount_to_invest;
-            baselineLabel = `Invested Capital (₹${formatCurrency(data.common.amount_to_invest)} + ₹${formatCurrency(stepupAmt)}/mo → ₹${formatCurrency(finalInv)})`;
-        } else {
-            baselineData = sortedDates.map(() => data.common.amount_to_invest);
-            baselineLabel = `Invested Baseline (₹${formatCurrency(data.common.amount_to_invest)})`;
+        } else if (datasets.length === 1 && datasets[0].rawInvested) {
+            // Single strategy selected in value mode: show its own Invested Capital curve cleanly
+            baselineData = datasets[0].rawInvested;
+            datasets.push({
+                label: 'Invested Capital',
+                data: baselineData,
+                borderColor: '#818cf8',
+                borderWidth: 1.8,
+                borderDash: [6, 4],
+                fill: false,
+                tension: 0,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                isBaseline: true
+            });
         }
 
-        datasets.push({
-            label: baselineLabel,
-            data: baselineData,
-            borderColor: '#818cf8',
-            borderWidth: 1.8,
-            borderDash: [6, 4],
-            fill: false,
-            tension: 0,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            isBaseline: true
-        });
-
-        // Create Chart.js instance with interactive onClick handler
-        comparisonState.chartInstance = new Chart(ctx, {
+        const chartObj = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
@@ -6629,12 +6691,11 @@
                     mode: 'index',
                     intersect: false
                 },
-                // WHEN CLICKING GRAPH LINE OR POINT: SHOW APPROPRIATE KPI DATA
                 onClick: function(evt, elements) {
                     if (!elements || elements.length === 0) return;
                     const dsIdx = elements[0].datasetIndex;
-                    if (dsIdx < results.length) {
-                        selectComparedIndexKPI(dsIdx);
+                    if (dsIdx < results.length && typeof cfg.onSelectKpi === 'function') {
+                        cfg.onSelectKpi(dsIdx);
                     }
                 },
                 plugins: {
@@ -6645,10 +6706,10 @@
                         enabled: false,
                         external: function(context) {
                             const { chart, tooltip } = context;
-                            let tooltipEl = document.getElementById('mscCompChartCustomTooltip');
+                            let tooltipEl = document.getElementById(cfg.tooltipId);
                             if (!tooltipEl) {
                                 tooltipEl = document.createElement('div');
-                                tooltipEl.id = 'mscCompChartCustomTooltip';
+                                tooltipEl.id = cfg.tooltipId;
                                 tooltipEl.style.position = 'absolute';
                                 tooltipEl.style.pointerEvents = 'none';
                                 tooltipEl.style.zIndex = '30';
@@ -6660,8 +6721,9 @@
                                 tooltipEl.style.backdropFilter = 'blur(10px)';
                                 tooltipEl.style.webkitBackdropFilter = 'blur(10px)';
                                 tooltipEl.style.padding = '10px 14px';
-                                tooltipEl.style.minWidth = '240px';
-                                tooltipEl.style.maxWidth = '420px';
+                                tooltipEl.style.minWidth = '260px';
+                                tooltipEl.style.width = 'max-content';
+                                tooltipEl.style.whiteSpace = 'nowrap';
                                 tooltipEl.style.boxSizing = 'border-box';
                                 chart.canvas.parentNode.appendChild(tooltipEl);
                             }
@@ -6686,85 +6748,95 @@
                                 activeDsIdx = activeEls[0].datasetIndex;
                             }
 
-                            if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                            if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
                                 const dataIndex = tooltip.dataPoints[0].dataIndex;
                                 const dateLabel = labels[dataIndex] || (tooltip.title ? tooltip.title[0] : '');
 
                                 let innerHtml = `<div style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
                                     <span>📅 ${escapeHtml(dateLabel)}</span>
                                 </div>`;
-
                                 innerHtml += `<div style="display: flex; flex-direction: column; gap: 6px;">`;
 
                                 tooltip.dataPoints.forEach(dp => {
                                     const ds = dp.dataset;
-                                    const val = Number(dp.raw) || 0;
-                                    const isHoveredLine = (dp.datasetIndex === activeDsIdx);
                                     if (ds.isBaseline) {
-                                        innerHtml += `
-                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; color: #94a3b8; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                                                <span style="display: flex; align-items: center; gap: 5px;">
-                                                    <span>🏁</span> <span>Invested Capital</span>
-                                                </span>
-                                                <span style="font-family: monospace; font-weight: 600; color: #cbd5e1;">₹${formatCurrency(val)}</span>
-                                            </div>
-                                        `;
-                                    } else {
-                                        const currentInv = baselineData[dataIndex] !== undefined ? baselineData[dataIndex] : data.common.amount_to_invest;
-                                        const pnl = val - currentInv;
-                                        const pnlPct = currentInv > 0 ? (pnl / currentInv) * 100 : 0;
-                                        const isPos = pnl >= 0;
-                                        const sign = isPos ? '+' : '';
-                                        const pnlColor = isPos ? '#10b981' : '#ef4444';
-                                        const pnlBg = isPos ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)';
-                                        const pnlBorder = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
-
-                                        // Eligible stocks count at this date, e.g. "Nifty50 (49)"
-                                        const elig = (ds.eligibleCounts && ds.eligibleCounts[dataIndex] !== undefined && ds.eligibleCounts[dataIndex] !== null)
-                                            ? ds.eligibleCounts[dataIndex]
-                                            : null;
-                                        const displayLabel = elig !== null ? `${ds.label} (${elig})` : ds.label;
-                                        const rowHighlightStyle = isHoveredLine 
-                                            ? `background: rgba(255, 255, 255, 0.08); border-radius: 5px; padding: 3px 6px; border-left: 3px solid ${ds.borderColor};` 
-                                            : `padding: 2px 0;`;
-
-                                        innerHtml += `
-                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px; ${rowHighlightStyle}">
-                                                <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${ds.borderColor}; flex-shrink: 0; ${isHoveredLine ? 'box-shadow: 0 0 6px ' + ds.borderColor + ';' : ''}"></span>
-                                                    <span style="font-weight: ${isHoveredLine ? '700' : '600'}; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px;" title="${escapeHtml(displayLabel)}">${isHoveredLine ? '▸ ' : ''}${escapeHtml(displayLabel)}</span>
-                                                </div>
-                                                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                                                    <span style="font-family: monospace; color: #e2e8f0; font-size: 11.5px; font-weight: 500;">₹${formatCurrency(val)}</span>
-                                                    <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pnlColor}; background: ${pnlBg}; border: 1px solid ${pnlBorder}; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">
-                                                        ${sign}${pnlPct.toFixed(2)}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        `;
+                                        if (metricMode === 'value') {
+                                            const bVal = Number(dp.raw);
+                                            if (!isNaN(bVal)) {
+                                                innerHtml += `
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; color: #94a3b8; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                                                        <span style="display: flex; align-items: center; gap: 5px;">
+                                                            <span>🏁</span> <span>Invested Capital</span>
+                                                        </span>
+                                                        <span style="font-family: monospace; font-weight: 600; color: #cbd5e1;">₹${formatCurrency(bVal)}</span>
+                                                    </div>
+                                                `;
+                                            }
+                                        }
+                                        return;
                                     }
+
+                                    const rawVal = (ds.rawValues && ds.rawValues[dataIndex] !== undefined) ? ds.rawValues[dataIndex] : dp.raw;
+                                    if (rawVal === null || rawVal === undefined) return;
+
+                                    const val = Number(rawVal) || 0;
+                                    const invFromDs = (ds.rawInvested && ds.rawInvested[dataIndex] != null) ? Number(ds.rawInvested[dataIndex]) : null;
+                                    const currentInv = invFromDs !== null
+                                        ? invFromDs
+                                        : ((baselineData && baselineData[dataIndex] != null) ? Number(baselineData[dataIndex]) : Number(data.common?.amount_to_invest || 0));
+
+                                    const pnl = val - currentInv;
+                                    const pnlPct = currentInv > 0 ? (pnl / currentInv) * 100 : 0;
+                                    const isPos = pnl >= 0;
+                                    const sign = isPos ? '+' : '';
+                                    const pnlColor = isPos ? '#10b981' : '#ef4444';
+                                    const pnlBg = isPos ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)';
+                                    const pnlBorder = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+
+                                    const elig = (ds.eligibleCounts && ds.eligibleCounts[dataIndex] != null) ? ds.eligibleCounts[dataIndex] : null;
+                                    const displayLabel = elig !== null ? `${ds.label} (${elig})` : ds.label;
+                                    const isHoveredLine = (dp.datasetIndex === activeDsIdx);
+                                    const rowHighlightStyle = isHoveredLine
+                                        ? `background: rgba(255, 255, 255, 0.08); border-radius: 5px; padding: 3px 6px; border-left: 3px solid ${ds.borderColor};`
+                                        : `padding: 2px 0;`;
+
+                                    innerHtml += `
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px; ${rowHighlightStyle}">
+                                            <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${ds.borderColor}; flex-shrink: 0; ${isHoveredLine ? 'box-shadow: 0 0 6px ' + ds.borderColor + ';' : ''}"></span>
+                                                <span style="font-weight: ${isHoveredLine ? '700' : '600'}; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 195px;" title="${escapeHtml(displayLabel)}">${isHoveredLine ? '▸ ' : ''}${escapeHtml(displayLabel)}</span>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                                <span style="font-family: monospace; color: #e2e8f0; font-size: 11.5px; font-weight: 500;">₹${formatCurrency(val)}</span>
+                                                <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pnlColor}; background: ${pnlBg}; border: 1px solid ${pnlBorder}; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">
+                                                    ${sign}${pnlPct.toFixed(2)}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    `;
                                 });
 
                                 innerHtml += `</div>`;
                                 tooltipEl.innerHTML = innerHtml;
                             }
 
+                            tooltipEl.style.display = 'block';
                             const wrapRect = chart.canvas.parentNode.getBoundingClientRect();
+                            const wrapWidth = wrapRect.width || chart.canvas.parentNode.clientWidth || 600;
+                            const tipW = tooltipEl.offsetWidth || 280;
                             const isNearTop = dotY < 150;
 
-                            if (dotX > wrapRect.width - 210) {
-                                tooltipEl.style.left = (dotX - 10) + 'px';
-                                tooltipEl.style.transform = isNearTop ? 'translate(-100%, 14px)' : 'translate(-100%, -100%)';
-                            } else if (dotX < 130) {
-                                tooltipEl.style.left = (dotX + 10) + 'px';
-                                tooltipEl.style.transform = isNearTop ? 'translate(0, 14px)' : 'translate(0, -100%)';
-                            } else {
-                                tooltipEl.style.left = dotX + 'px';
-                                tooltipEl.style.transform = isNearTop ? 'translate(-50%, 14px)' : 'translate(-50%, -100%)';
+                            let tipLeft = dotX - (tipW / 2);
+                            if (dotX > wrapWidth - (tipW * 0.65)) {
+                                tipLeft = dotX - tipW - 10;
+                            } else if (dotX < (tipW * 0.65)) {
+                                tipLeft = dotX + 10;
                             }
+                            tipLeft = Math.max(8, Math.min(tipLeft, wrapWidth - tipW - 8));
 
-                            tooltipEl.style.top = isNearTop ? (dotY + 'px') : ((dotY - 10) + 'px');
-                            tooltipEl.style.display = 'block';
+                            tooltipEl.style.left = tipLeft + 'px';
+                            tooltipEl.style.top = isNearTop ? ((dotY + 14) + 'px') : ((dotY - 10) + 'px');
+                            tooltipEl.style.transform = isNearTop ? 'translateY(0)' : 'translateY(-100%)';
                             tooltipEl.style.opacity = '1';
                         }
                     }
@@ -6791,6 +6863,10 @@
                             color: isDark ? '#94a3b8' : '#64748b',
                             font: { size: 11, family: 'monospace' },
                             callback: function(value) {
+                                if (metricMode === 'return_pct') {
+                                    const num = Number(value) || 0;
+                                    return (num >= 0 ? '+' : '') + num.toFixed(1) + '%';
+                                }
                                 return '₹' + formatCurrency(value);
                             }
                         }
@@ -6799,54 +6875,50 @@
             }
         });
 
-        // Render custom clickable legend pills
-        renderComparisonLegendPills(results);
+        renderComparisonLegendPillsWithConfig(results, cfg.legendContainerId, cfg.pillSelectorId, cfg.selectFnName, cfg.selectPillPrefix);
+        return chartObj;
     }
 
-    function renderComparisonLegendPills(results) {
-        const legendContainer = document.getElementById('mscCompLegendPills');
-        const selectorContainer = document.getElementById('mscCompPillSelector');
+    function renderComparisonLegendPillsWithConfig(results, legendContainerId, selectorContainerId, selectFnName, pillPrefix) {
+        const legendContainer = document.getElementById(legendContainerId);
+        const selectorContainer = document.getElementById(selectorContainerId);
 
         if (legendContainer) {
             legendContainer.innerHTML = results.map((res, idx) => `
-                <button type="button" class="msc-comp-pill" data-idx="${idx}" onclick="selectComparedIndexKPI(${idx})" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: rgba(15, 23, 42, 0.6); border: 1.5px solid ${res.color}; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
+                <button type="button" class="msc-comp-pill" data-idx="${idx}" onclick="${selectFnName}(${idx})" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: rgba(15, 23, 42, 0.6); border: 1.5px solid ${res.color}; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${res.color};"></span>
-                    <strong>${escapeHtml(res.index_name)}</strong>
+                    <strong>${escapeHtml(res.index_name || res.name)}</strong>
                 </button>
             `).join('');
         }
 
         if (selectorContainer) {
             selectorContainer.innerHTML = results.map((res, idx) => `
-                <button type="button" class="msc-comp-select-pill" id="compSelPill_${idx}" data-idx="${idx}" onclick="selectComparedIndexKPI(${idx})" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 4px 12px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: all 0.15s ease;">
+                <button type="button" class="msc-comp-select-pill" id="${pillPrefix}_${idx}" data-idx="${idx}" onclick="${selectFnName}(${idx})" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 4px 12px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: all 0.15s ease;">
                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${res.color};"></span>
-                    <span>${escapeHtml(res.index_name)}</span>
+                    <span>${escapeHtml(res.index_name || res.name)}</span>
                 </button>
             `).join('');
         }
     }
 
-    function selectComparedIndexKPI(targetIdx) {
-        if (!comparisonState.simulationResults || !comparisonState.simulationResults.results) return;
-        const results = comparisonState.simulationResults.results;
-        if (!results[targetIdx]) return;
-
+    function populateComparisonKpiCardsWithConfig(dom, results, targetIdx, fallbackAmount, chartInstance) {
+        if (!results || !results[targetIdx]) return;
         const sel = results[targetIdx];
         const kpis = sel.kpis || {};
         const cfg = sel.config || {};
-        const finalVal = kpis.current_value || (sel.points && sel.points[sel.points.length - 1]?.portfolio_value) || 0;
-        const invested = kpis.current_invested || comparisonState.simulationResults.common.amount_to_invest;
-        const pnl = kpis.total_return_amount || (finalVal - invested);
-        const pnlPct = kpis.total_return_percent || (invested > 0 ? (pnl / invested) * 100 : 0);
-        const cagr = kpis.cagr || pnlPct;
+        const finalVal = kpis.current_value != null ? kpis.current_value : ((sel.points && sel.points[sel.points.length - 1]?.portfolio_value) || 0);
+        const invested = kpis.current_invested != null ? kpis.current_invested : fallbackAmount;
+        const pnl = kpis.total_return_amount != null ? kpis.total_return_amount : (finalVal - invested);
+        const pnlPct = kpis.total_return_percent != null ? kpis.total_return_percent : (invested > 0 ? (pnl / invested) * 100 : 0);
+        const cagr = kpis.cagr != null ? kpis.cagr : pnlPct;
         const winRate = kpis.win_rate || 0;
 
         const maxDd = kpis.max_drawdown || {};
         const maxBelow = kpis.max_drilldown_below_investment || {};
 
-        // 1. Highlight chart dataset
-        if (comparisonState.chartInstance) {
-            comparisonState.chartInstance.data.datasets.forEach((ds, dIdx) => {
+        if (chartInstance) {
+            chartInstance.data.datasets.forEach((ds, dIdx) => {
                 if (ds.isBaseline) return;
                 if (dIdx === targetIdx) {
                     ds.borderWidth = 3.8;
@@ -6856,55 +6928,51 @@
                     ds.pointRadius = 2.0;
                 }
             });
-            comparisonState.chartInstance.update('none');
+            chartInstance.update('none');
         }
 
-        // 2. Update KPI Section Title & Badge
-        const titleEl = document.getElementById('mscCompActiveTitle');
-        const dotEl = document.getElementById('mscCompActiveDot');
-        const badgeEl = document.getElementById('mscCompActiveBadge');
+        const titleEl = document.getElementById(dom.titleId);
+        const dotEl = document.getElementById(dom.dotId);
+        const badgeEl = document.getElementById(dom.badgeId);
+        const displayName = sel.index_name || sel.name || 'Strategy';
 
-        if (titleEl) titleEl.innerText = `${sel.index_name} (Performance Metrics)`;
+        if (titleEl) titleEl.innerText = `${displayName} (Performance Metrics)`;
         if (dotEl) dotEl.style.background = sel.color;
         if (badgeEl) {
-            badgeEl.innerText = `${cfg.no_of_stocks || 12} Picks • Exit ≤ ${cfg.exit_regime_ranking || 22} • Rebal ${cfg.rebalance_day || 21}th • Trim: ${cfg.trim_existing ? 'Yes' : 'No'} • ${cfg.trading_days_per_month || 21}d/mo`;
+            const subPrefix = cfg.index_label ? `${cfg.index_label} • ` : '';
+            badgeEl.innerText = `${subPrefix}${cfg.no_of_stocks || 12} Picks • Exit ≤ ${cfg.exit_regime_ranking || 22} • Rebal ${cfg.rebalance_day || 1}th • Trim: ${cfg.trim_existing ? 'Yes' : 'No'} • ${cfg.trading_days_per_month || 21}d/mo`;
             badgeEl.style.color = sel.color;
             badgeEl.style.background = `${sel.color}22`;
         }
 
-        // 3. Populate 4 KPI Stat Cards
         const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
         const sign = pnl >= 0 ? '+' : '';
 
-        const finalValEl = document.getElementById('compKpiFinalVal');
-        const netPnlEl = document.getElementById('compKpiNetPnl');
+        const finalValEl = document.getElementById(dom.finalValId);
+        const netPnlEl = document.getElementById(dom.netPnlId);
         if (finalValEl) finalValEl.innerText = `₹${formatCurrency(finalVal)}`;
         if (netPnlEl) {
             netPnlEl.innerHTML = `<span style="color: ${pnlColor};">${sign}₹${formatCurrency(pnl)} (${sign}${pnlPct.toFixed(2)}%)</span> <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal; margin-left: 4px;">(Invested: ₹${formatCurrency(invested)})</span>`;
         }
 
-        const cagrEl = document.getElementById('compKpiCagr');
-        const winRateEl = document.getElementById('compKpiWinRate');
-        const tradesCountEl = document.getElementById('compKpiTradesCount');
+        const cagrEl = document.getElementById(dom.cagrId);
+        const winRateEl = document.getElementById(dom.winRateId);
+        const tradesCountEl = document.getElementById(dom.tradesCountId);
         const tradeStats = extractTradeStats(sel);
-        const totalBuys = tradeStats.total_buys;
-        const totalSells = tradeStats.total_sells;
-        const totalTrades = tradeStats.total_trades;
-        const uniqueStocks = tradeStats.unique_stocks_count;
 
         if (cagrEl) {
-            cagrEl.innerText = `${cagr.toFixed(2)}%`;
+            cagrEl.innerText = `${Number(cagr).toFixed(2)}%`;
             cagrEl.style.color = cagr >= 0 ? '#10b981' : '#ef4444';
         }
         if (winRateEl) {
-            winRateEl.innerText = `Win Rate: ${winRate.toFixed(1)}% • ${sel.rebalances_count || 0} Rebalance runs`;
+            winRateEl.innerText = `Win Rate: ${Number(winRate).toFixed(1)}% • ${sel.rebalances_count || 0} Rebalance runs`;
         }
         if (tradesCountEl) {
-            tradesCountEl.innerHTML = `<span style="color: #10b981; font-weight: 600;">${totalBuys} Buys</span> / <span style="color: #ef4444; font-weight: 600;">${totalSells} Sells</span> <span style="color: var(--text-secondary); font-size: 10px;">(${totalTrades} trades)</span> &bull; <span style="color: var(--text-primary); font-weight: 600;">${uniqueStocks} Unique Stocks</span>`;
+            tradesCountEl.innerHTML = `<span style="color: #10b981; font-weight: 600;">${tradeStats.total_buys} Buys</span> / <span style="color: #ef4444; font-weight: 600;">${tradeStats.total_sells} Sells</span> <span style="color: var(--text-secondary); font-size: 10px;">(${tradeStats.total_trades} trades)</span> &bull; <span style="color: var(--text-primary); font-weight: 600;">${tradeStats.unique_stocks_count} Unique Stocks</span>`;
         }
 
-        const maxDdEl = document.getElementById('compKpiMaxDd');
-        const maxDdDetailsEl = document.getElementById('compKpiMaxDdDetails');
+        const maxDdEl = document.getElementById(dom.maxDdId);
+        const maxDdDetailsEl = document.getElementById(dom.maxDdDetailsId);
         if (maxDdEl) {
             maxDdEl.innerText = `${Number(maxDd.max_drawdown_percent || 0).toFixed(2)}%`;
         }
@@ -6916,8 +6984,8 @@
             }
         }
 
-        const belowInvEl = document.getElementById('compKpiBelowInv');
-        const belowInvDetailsEl = document.getElementById('compKpiBelowInvDetails');
+        const belowInvEl = document.getElementById(dom.belowInvId);
+        const belowInvDetailsEl = document.getElementById(dom.belowInvDetailsId);
         if (belowInvEl) {
             const deficitPct = Number(maxBelow.max_deficit_percent || 0);
             belowInvEl.innerText = `${deficitPct.toFixed(2)}%`;
@@ -6927,13 +6995,12 @@
             if (maxBelow.was_ever_below) {
                 belowInvDetailsEl.innerText = `Deepest deficit: -₹${formatCurrency(Math.abs(maxBelow.max_deficit_amount || 0))} on ${formatDateDisplay(maxBelow.date)}`;
             } else {
-                belowInvDetailsEl.innerText = '✨ Never dropped below initial invested capital!';
+                belowInvDetailsEl.innerText = '✨ Never dropped below invested capital!';
             }
         }
 
-        // 4. Update selector pills active state
         results.forEach((_, pIdx) => {
-            const pEl = document.getElementById(`compSelPill_${pIdx}`);
+            const pEl = document.getElementById(`${dom.pillPrefix}_${pIdx}`);
             if (pEl) {
                 if (pIdx === targetIdx) {
                     pEl.style.background = 'rgba(99, 102, 241, 0.18)';
@@ -6949,26 +7016,21 @@
             }
         });
 
-        // 5. Highlight row in summary table
-        const tbody = document.getElementById('mscCompSummaryTbody');
+        const tbody = document.getElementById(dom.tbodyId);
         if (tbody) {
             const rows = tbody.querySelectorAll('tr');
             rows.forEach(r => {
-                if (r.getAttribute('data-index-id') === sel.id) {
-                    r.style.background = 'rgba(99, 102, 241, 0.12)';
-                } else {
-                    r.style.background = 'transparent';
-                }
+                r.style.background = (r.getAttribute('data-index-id') === sel.id) ? 'rgba(99, 102, 241, 0.12)' : 'transparent';
             });
         }
     }
 
-    function renderComparisonSummaryTable(summaryRows) {
-        const tbody = document.getElementById('mscCompSummaryTbody');
+    function renderComparisonLeaderboardRows(tbodyId, summaryRows, results, selectFnName, chartVarPath) {
+        const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
 
         if (!summaryRows || summaryRows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: var(--text-secondary);">No simulation executed yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: var(--text-secondary);">No comparison items selected.</td></tr>';
             return;
         }
 
@@ -6978,9 +7040,8 @@
             const cagrColor = row.cagr >= 0 ? '#10b981' : '#ef4444';
             const belowColor = row.max_below_investment_percent < 0 ? '#ef4444' : '#10b981';
 
-            // Find matching index in results array for onclick and stats fallback
-            const resIdx = (comparisonState.simulationResults?.results || []).findIndex(r => r.id === row.id || (r.index_id && r.index_id === row.index_id));
-            const matchingRes = resIdx >= 0 ? comparisonState.simulationResults.results[resIdx] : null;
+            const resIdx = (results || []).findIndex(r => r.id === row.id || (r.index_id && !row.is_strategy && r.index_id === row.index_id));
+            const matchingRes = resIdx >= 0 ? results[resIdx] : null;
             const sourceObj = matchingRes || row;
             const stats = extractTradeStats(sourceObj);
             const rowBuys = Number(row.total_buys != null && row.total_buys > 0 ? row.total_buys : (matchingRes?.total_buys || stats.total_buys || 0));
@@ -6989,22 +7050,25 @@
             const rowUnique = Number(row.unique_stocks_count != null && row.unique_stocks_count > 0 ? row.unique_stocks_count : (matchingRes?.unique_stocks_count || stats.unique_stocks_count || (rowBuys > 0 ? rowBuys : 0)));
 
             return `
-                <tr data-index-id="${escapeHtml(row.id)}" style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;" onclick="selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'" onmouseout="if(comparisonState.chartInstance && comparisonState.chartInstance.data.datasets[${resIdx}] && comparisonState.chartInstance.data.datasets[${resIdx}].borderWidth < 3.5) this.style.background='transparent'">
+                <tr data-index-id="${escapeHtml(row.id)}" style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;" onclick="${selectFnName}(${resIdx >= 0 ? resIdx : 0})" onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'" onmouseout="if(${chartVarPath} && ${chartVarPath}.data.datasets[${resIdx}] && ${chartVarPath}.data.datasets[${resIdx}].borderWidth < 3.5) this.style.background='transparent'">
                     <td style="text-align: center; font-weight: 700; color: ${row.color}; font-size: 13px;">
                         #${row.rank}
                     </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 7px;">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${row.color};"></span>
-                            <strong style="color: var(--text-primary); font-size: 12.5px;">${escapeHtml(row.index_name)}</strong>
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${row.color}; flex-shrink: 0;"></span>
+                            <div>
+                                <strong style="color: var(--text-primary); font-size: 12.5px;">${escapeHtml(row.index_name)}</strong>
+                                ${row.sublabel ? `<div style="font-size: 10px; color: var(--text-secondary); margin-top: 1px;">${escapeHtml(row.sublabel)}</div>` : ''}
+                            </div>
                         </div>
                     </td>
                     <td>
                         <div style="font-size: 11px; color: var(--text-secondary);">
-                            <span style="color: #10b981; font-weight: 600;">${row.no_of_stocks} Picks</span> &bull; 
-                            Exit &le; ${row.exit_regime_ranking} &bull; 
-                            ${row.rebalance_day}th rebal &bull; 
-                            Trim: ${row.trim_existing ? 'Yes' : 'No'} &bull; 
+                            <span style="color: #10b981; font-weight: 600;">${row.no_of_stocks} Picks</span> &bull;
+                            Exit &le; ${row.exit_regime_ranking} &bull;
+                            ${row.rebalance_day}th rebal &bull;
+                            Trim: ${row.trim_existing ? 'Yes' : 'No'} &bull;
                             ${row.trading_days_per_month}d
                         </div>
                     </td>
@@ -7032,7 +7096,7 @@
                         <div style="color: var(--text-secondary); font-size: 10px; margin-top: 1px;">${rowUnique} unique stocks</div>
                     </td>
                     <td style="text-align: center;">
-                        <button type="button" class="btn-secondary" onclick="event.stopPropagation(); selectComparedIndexKPI(${resIdx >= 0 ? resIdx : 0})" style="font-size: 11px; padding: 3px 8px; color: ${row.color}; border-color: ${row.color}55;">
+                        <button type="button" class="btn-secondary" onclick="event.stopPropagation(); ${selectFnName}(${resIdx >= 0 ? resIdx : 0})" style="font-size: 11px; padding: 3px 8px; color: ${row.color}; border-color: ${row.color}55;">
                             Inspect
                         </button>
                     </td>
@@ -7041,9 +7105,570 @@
         }).join('');
     }
 
+    function renderComparisonMultiLineChart(data) {
+        comparisonState.chartInstance = renderComparisonLineChartWithConfig({
+            canvasId: 'mscCompChartCanvas',
+            tooltipId: 'mscCompChartCustomTooltip',
+            dateRangeBadgeId: 'mscCompChartDateRangeBadge',
+            legendContainerId: 'mscCompLegendPills',
+            pillSelectorId: 'mscCompPillSelector',
+            selectFnName: 'selectComparedIndexKPI',
+            selectPillPrefix: 'compSelPill',
+            prevChart: comparisonState.chartInstance,
+            metricMode: 'value',
+            preserveStartDates: false,
+            onSelectKpi: selectComparedIndexKPI
+        }, data);
+    }
+
+    function renderComparisonLegendPills(results) {
+        renderComparisonLegendPillsWithConfig(results, 'mscCompLegendPills', 'mscCompPillSelector', 'selectComparedIndexKPI', 'compSelPill');
+    }
+
+    function selectComparedIndexKPI(targetIdx) {
+        if (!comparisonState.simulationResults || !comparisonState.simulationResults.results) return;
+        populateComparisonKpiCardsWithConfig({
+            titleId: 'mscCompActiveTitle',
+            dotId: 'mscCompActiveDot',
+            badgeId: 'mscCompActiveBadge',
+            finalValId: 'compKpiFinalVal',
+            netPnlId: 'compKpiNetPnl',
+            cagrId: 'compKpiCagr',
+            winRateId: 'compKpiWinRate',
+            tradesCountId: 'compKpiTradesCount',
+            maxDdId: 'compKpiMaxDd',
+            maxDdDetailsId: 'compKpiMaxDdDetails',
+            belowInvId: 'compKpiBelowInv',
+            belowInvDetailsId: 'compKpiBelowInvDetails',
+            pillPrefix: 'compSelPill',
+            tbodyId: 'mscCompSummaryTbody'
+        }, comparisonState.simulationResults.results, targetIdx, comparisonState.simulationResults.common.amount_to_invest, comparisonState.chartInstance);
+    }
+
+    function renderComparisonSummaryTable(summaryRows) {
+        renderComparisonLeaderboardRows(
+            'mscCompSummaryTbody',
+            summaryRows,
+            comparisonState.simulationResults?.results || [],
+            'selectComparedIndexKPI',
+            'window.__mscIndexCompChart'
+        );
+        window.__mscIndexCompChart = comparisonState.chartInstance;
+    }
+
+    // =========================================================================
+    // 9B. COMPARE CREATED SMALLCASES (ZERO EXTRA CALC, SAVED RUNS ONLY)
+    // =========================================================================
+    const compareSmallcasesState = {
+        selectedIds: [],
+        colorMap: {},
+        metricMode: 'value', // 'value' | 'return_pct'
+        chartInstance: null,
+        comparisonData: null,
+        isMinimized: false
+    };
+
+    function buildCreatedSmallcaseComparisonItem(strat, color) {
+        const runs = Array.isArray(strat.runs) ? strat.runs : [];
+        const pointsByDate = {};
+        const pointOrder = [];
+
+        runs.forEach((r, idx) => {
+            const dStr = String(r.executed_date || r.scheduled_date || strat.start_date || '').substring(0, 10);
+            if (!dStr) return;
+            const snap = r.portfolio_snapshot || {};
+            const inv = Number(snap.total_capital != null ? snap.total_capital : (strat.total_capital != null ? strat.total_capital : (strat.amount_to_invest || 0)));
+            const val = Number(snap.total_portfolio_value != null ? snap.total_portfolio_value : (strat.current_portfolio_value != null ? strat.current_portfolio_value : inv));
+            const pnl = snap.total_pnl != null ? Number(snap.total_pnl) : (val - inv);
+            const pnlPct = snap.total_pnl_percent != null ? Number(snap.total_pnl_percent) : (inv > 0 ? (pnl / inv) * 100 : 0);
+
+            const pt = {
+                date: dStr,
+                invested: Math.round(inv * 100) / 100,
+                portfolio_value: Math.round(val * 100) / 100,
+                pnl: Math.round(pnl * 100) / 100,
+                pnl_percent: Math.round(pnlPct * 100) / 100,
+                eligible_count: r.eligible_stocks_count != null ? r.eligible_stocks_count : null,
+                milestone: r.title || r.run_type || `Run #${idx + 1}`,
+                transactions: Array.isArray(r.transactions) ? r.transactions : [],
+                holdings: Array.isArray(snap.holdings) ? snap.holdings : []
+            };
+
+            if (!pointsByDate[dStr]) {
+                pointOrder.push(dStr);
+            } else if (pt.transactions.length > 0 && Array.isArray(pointsByDate[dStr].transactions)) {
+                pt.transactions = pointsByDate[dStr].transactions.concat(pt.transactions);
+            }
+            pointsByDate[dStr] = pt;
+        });
+
+        pointOrder.sort();
+        const points = pointOrder.map(d => pointsByDate[d]);
+        const lastPt = points[points.length - 1] || {};
+        const firstPt = points[0] || {};
+
+        const finalVal = Number(strat.current_portfolio_value != null ? strat.current_portfolio_value : (lastPt.portfolio_value || 0));
+        const invested = Number(strat.total_capital != null ? strat.total_capital : (lastPt.invested || strat.amount_to_invest || 0));
+        const pnl = finalVal - invested;
+        const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
+
+        let cagr = pnlPct;
+        if (firstPt.date && lastPt.date && invested > 0 && finalVal > 0) {
+            const d0 = new Date(firstPt.date + 'T00:00:00');
+            const d1 = new Date(lastPt.date + 'T00:00:00');
+            const days = (d1 - d0) / 86400000;
+            if (days >= 1) {
+                cagr = (Math.pow(finalVal / invested, 365.25 / days) - 1) * 100;
+            }
+        }
+
+        // Compute Peak Drawdown & Max Below Investment from saved run snapshots
+        let peakVal = -Infinity;
+        let peakDate = null;
+        let maxDdPct = 0;
+        let maxDdAmt = 0;
+        let maxDdPeakDate = null;
+        let maxDdTroughDate = null;
+        let maxDdPeakVal = 0;
+        let maxDdTroughVal = 0;
+
+        let maxDefPct = 0;
+        let maxDefAmt = 0;
+        let maxDefDate = null;
+        let wasEverBelow = false;
+
+        let winIntervals = 0;
+        let totalIntervals = 0;
+
+        points.forEach((pt, idx) => {
+            if (pt.portfolio_value > peakVal) {
+                peakVal = pt.portfolio_value;
+                peakDate = pt.date;
+            }
+            if (peakVal > 0) {
+                const ddAmt = pt.portfolio_value - peakVal;
+                const ddPct = (ddAmt / peakVal) * 100;
+                if (ddPct < maxDdPct) {
+                    maxDdPct = ddPct;
+                    maxDdAmt = ddAmt;
+                    maxDdPeakDate = peakDate;
+                    maxDdTroughDate = pt.date;
+                    maxDdPeakVal = peakVal;
+                    maxDdTroughVal = pt.portfolio_value;
+                }
+            }
+
+            if (pt.invested > 0) {
+                const defAmt = pt.portfolio_value - pt.invested;
+                const defPct = (defAmt / pt.invested) * 100;
+                if (defAmt < 0) {
+                    wasEverBelow = true;
+                    if (defPct < maxDefPct) {
+                        maxDefPct = defPct;
+                        maxDefAmt = defAmt;
+                        maxDefDate = pt.date;
+                    }
+                }
+            }
+
+            if (idx > 0) {
+                const prev = points[idx - 1];
+                const netGainDelta = (pt.portfolio_value - pt.invested) - (prev.portfolio_value - prev.invested);
+                totalIntervals++;
+                if (netGainDelta > 0) winIntervals++;
+            }
+        });
+
+        const winRate = totalIntervals > 0 ? (winIntervals / totalIntervals) * 100 : (pnl > 0 ? 100 : 0);
+        const rebalCount = runs.filter(r => r && r.run_type === 'REBALANCE').length;
+        const tradeStats = extractTradeStats({ points });
+
+        const itemObj = {
+            id: strat.id,
+            index_id: strat.index_id,
+            index_name: strat.name,
+            name: strat.name,
+            sublabel: strat.index_name || strat.index_id || '',
+            is_strategy: true,
+            color: color,
+            points: points,
+            rebalances_count: rebalCount,
+            total_fees: Number(strat.total_fees_paid || 0),
+            total_buys: tradeStats.total_buys,
+            total_sells: tradeStats.total_sells,
+            total_trades: tradeStats.total_trades,
+            unique_stocks_count: tradeStats.unique_stocks_count,
+            constituents_count: (points[0] && points[0].eligible_count) || 0,
+            config: {
+                index_label: strat.index_name || strat.index_id,
+                no_of_stocks: strat.no_of_stocks,
+                exit_regime_ranking: strat.exit_regime_ranking,
+                rebalance_day: strat.rebalance_day,
+                trim_existing: strat.trim_existing !== false,
+                trading_days_per_month: strat.trading_days_per_month || 21
+            },
+            kpis: {
+                current_value: Math.round(finalVal * 100) / 100,
+                current_invested: Math.round(invested * 100) / 100,
+                total_return_amount: Math.round(pnl * 100) / 100,
+                total_return_percent: Math.round(pnlPct * 100) / 100,
+                cagr: Math.round(cagr * 100) / 100,
+                win_rate: Math.round(winRate * 100) / 100,
+                max_drawdown: {
+                    max_drawdown_percent: Math.round(maxDdPct * 100) / 100,
+                    drawdown_amount: Math.round(maxDdAmt * 100) / 100,
+                    peak_date: maxDdPeakDate,
+                    trough_date: maxDdTroughDate,
+                    peak_value: Math.round(maxDdPeakVal * 100) / 100,
+                    trough_value: Math.round(maxDdTroughVal * 100) / 100
+                },
+                max_drilldown_below_investment: {
+                    was_ever_below: wasEverBelow,
+                    max_deficit_percent: Math.round(maxDefPct * 100) / 100,
+                    max_deficit_amount: Math.round(maxDefAmt * 100) / 100,
+                    date: maxDefDate
+                }
+            }
+        };
+
+        return itemObj;
+    }
+
+    function assignColorsForCreatedSmallcases(strategies) {
+        const usedColors = [];
+        strategies.forEach(s => {
+            if (!compareSmallcasesState.colorMap[s.id]) {
+                const c = getUniqueComparisonColor(usedColors.map(col => ({ color: col })));
+                compareSmallcasesState.colorMap[s.id] = c;
+            }
+            usedColors.push(compareSmallcasesState.colorMap[s.id]);
+        });
+    }
+
+    async function openCompareSmallcasesModal() {
+        ensureModalsAttachedToBody();
+        compareSmallcasesState.isMinimized = false;
+        const dock = document.getElementById('mscCompareSmallcasesDock');
+        if (dock) dock.style.display = 'none';
+
+        const modal = document.getElementById('mscCompareSmallcasesModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        if (!strategiesCache || strategiesCache.length === 0) {
+            await loadStrategiesList();
+        }
+
+        const allStrats = Array.isArray(strategiesCache) ? strategiesCache : [];
+        assignColorsForCreatedSmallcases(allStrats);
+
+        const executedStrats = allStrats.filter(s => Array.isArray(s.runs) && s.runs.length > 0);
+        const validIds = new Set(executedStrats.map(s => s.id));
+        compareSmallcasesState.selectedIds = (compareSmallcasesState.selectedIds || []).filter(id => validIds.has(id));
+
+        if (compareSmallcasesState.selectedIds.length === 0 && executedStrats.length > 0) {
+            compareSmallcasesState.selectedIds = executedStrats.slice(0, 6).map(s => s.id);
+        }
+
+        renderCompareSmallcasesSelector();
+        refreshCompareSmallcasesView();
+    }
+
+    function closeCompareSmallcasesModal() {
+        compareSmallcasesState.isMinimized = false;
+        const modal = document.getElementById('mscCompareSmallcasesModal');
+        if (modal) modal.style.display = 'none';
+        const dock = document.getElementById('mscCompareSmallcasesDock');
+        if (dock) dock.style.display = 'none';
+        if (compareSmallcasesState.chartInstance) {
+            compareSmallcasesState.chartInstance.destroy();
+            compareSmallcasesState.chartInstance = null;
+        }
+        window.__mscStratCompChart = null;
+    }
+
+    function minimizeCompareSmallcasesModal() {
+        compareSmallcasesState.isMinimized = true;
+        const modal = document.getElementById('mscCompareSmallcasesModal');
+        if (modal) modal.style.display = 'none';
+        const dock = document.getElementById('mscCompareSmallcasesDock');
+        if (dock) dock.style.display = 'flex';
+        const statusEl = document.getElementById('stratCompDockStatus');
+        if (statusEl) {
+            const cnt = (compareSmallcasesState.selectedIds || []).length;
+            statusEl.innerText = `${cnt} Smallcase${cnt === 1 ? '' : 's'} compared (Click to expand)`;
+        }
+    }
+
+    function restoreCompareSmallcasesModal() {
+        compareSmallcasesState.isMinimized = false;
+        const dock = document.getElementById('mscCompareSmallcasesDock');
+        if (dock) dock.style.display = 'none';
+        const modal = document.getElementById('mscCompareSmallcasesModal');
+        if (modal) modal.style.display = 'flex';
+        if (compareSmallcasesState.comparisonData) {
+            setTimeout(() => {
+                if (compareSmallcasesState.chartInstance) {
+                    compareSmallcasesState.chartInstance.resize();
+                } else {
+                    refreshCompareSmallcasesView();
+                }
+            }, 50);
+        }
+    }
+
+    function closeCompareSmallcasesDock() {
+        compareSmallcasesState.isMinimized = false;
+        const dock = document.getElementById('mscCompareSmallcasesDock');
+        if (dock) dock.style.display = 'none';
+    }
+
+    function setCompareSmallcasesMetricMode(mode) {
+        compareSmallcasesState.metricMode = mode === 'return_pct' ? 'return_pct' : 'value';
+        const valBtn = document.getElementById('mscStratCompModeValueBtn');
+        const pctBtn = document.getElementById('mscStratCompModePctBtn');
+        const chartTitle = document.getElementById('mscStratCompChartTitle');
+        if (valBtn && pctBtn) {
+            const isPct = compareSmallcasesState.metricMode === 'return_pct';
+            valBtn.style.background = isPct ? 'transparent' : '#6366f1';
+            valBtn.style.color = isPct ? 'var(--text-secondary)' : '#fff';
+            valBtn.style.fontWeight = isPct ? '600' : '700';
+            pctBtn.style.background = isPct ? '#6366f1' : 'transparent';
+            pctBtn.style.color = isPct ? '#fff' : 'var(--text-secondary)';
+            pctBtn.style.fontWeight = isPct ? '700' : '600';
+        }
+        if (chartTitle) {
+            chartTitle.innerText = compareSmallcasesState.metricMode === 'return_pct'
+                ? 'Comparative Net Return Trajectory (%)'
+                : 'Comparative Valuation Trajectory (₹)';
+        }
+        refreshCompareSmallcasesView();
+    }
+
+    function toggleCompareSmallcaseSelection(strategyId) {
+        const idx = compareSmallcasesState.selectedIds.indexOf(strategyId);
+        if (idx >= 0) {
+            compareSmallcasesState.selectedIds.splice(idx, 1);
+        } else {
+            compareSmallcasesState.selectedIds.push(strategyId);
+        }
+        renderCompareSmallcasesSelector();
+        refreshCompareSmallcasesView();
+    }
+
+    function selectAllCompareSmallcases() {
+        const executed = (strategiesCache || []).filter(s => Array.isArray(s.runs) && s.runs.length > 0);
+        compareSmallcasesState.selectedIds = executed.map(s => s.id);
+        renderCompareSmallcasesSelector();
+        refreshCompareSmallcasesView();
+    }
+
+    function clearCompareSmallcases() {
+        compareSmallcasesState.selectedIds = [];
+        renderCompareSmallcasesSelector();
+        refreshCompareSmallcasesView();
+    }
+
+    function renderCompareSmallcasesSelector() {
+        const listEl = document.getElementById('mscStratCompSelectorList');
+        const countBadge = document.getElementById('mscStratCompCountBadge');
+        if (!listEl) return;
+
+        const allStrats = Array.isArray(strategiesCache) ? strategiesCache : [];
+        const selSet = new Set(compareSmallcasesState.selectedIds || []);
+
+        if (countBadge) {
+            countBadge.innerText = `${selSet.size} Selected`;
+        }
+
+        if (allStrats.length === 0) {
+            listEl.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 16px; color: var(--text-secondary); font-size: 12.5px;">No smallcases created yet. Create and run a smallcase first to compare.</div>`;
+            return;
+        }
+
+        listEl.innerHTML = allStrats.map(s => {
+            const runs = Array.isArray(s.runs) ? s.runs : [];
+            const hasRuns = runs.length > 0;
+            const isSelected = hasRuns && selSet.has(s.id);
+            const color = compareSmallcasesState.colorMap[s.id] || '#3b82f6';
+            const invested = Number(s.total_capital != null ? s.total_capital : (s.amount_to_invest || 0));
+            const currVal = Number(s.current_portfolio_value != null ? s.current_portfolio_value : invested);
+            const pnl = currVal - invested;
+            const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
+            const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+            const sign = pnl >= 0 ? '+' : '';
+            const rebalCnt = runs.filter(r => r && r.run_type === 'REBALANCE').length;
+
+            const borderStyle = isSelected ? `1.5px solid ${color}` : '1px solid var(--border-color)';
+            const bgStyle = isSelected ? `${color}14` : 'var(--bg-subtle)';
+            const opacityStyle = hasRuns ? '1' : '0.55';
+            const cursorStyle = hasRuns ? 'pointer' : 'not-allowed';
+
+            return `
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; border: ${borderStyle}; background: ${bgStyle}; opacity: ${opacityStyle}; cursor: ${cursorStyle}; transition: all 0.15s ease; user-select: none;">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} ${hasRuns ? '' : 'disabled'} onchange="toggleCompareSmallcaseSelection('${escapeHtml(s.id)}')" style="margin-top: 3px; accent-color: ${color}; cursor: ${cursorStyle}; width: 15px; height: 15px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <span style="width: 9px; height: 9px; border-radius: 50%; background: ${hasRuns ? color : '#64748b'}; flex-shrink: 0;"></span>
+                                <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.name)}</span>
+                            </span>
+                            ${hasRuns
+                                ? `<span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pnlColor}; flex-shrink: 0;">${sign}${pnlPct.toFixed(1)}%</span>`
+                                : `<span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(148, 163, 184, 0.2); color: #94a3b8; font-weight: 600;">DRAFT</span>`
+                            }
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${escapeHtml(s.index_name || s.index_id)} &bull; Top ${s.no_of_stocks} / Exit &le; ${s.exit_regime_ranking}
+                        </div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary); margin-top: 2px; font-family: monospace;">
+                            ${hasRuns ? `₹${formatCurrency(currVal)} (Inv: ₹${formatCurrency(invested)}) &bull; ${rebalCnt} rebal` : `Start: ${formatDateDisplay(s.start_date)} • Run Init first`}
+                        </div>
+                    </div>
+                </label>
+            `;
+        }).join('');
+    }
+
+    function refreshCompareSmallcasesView() {
+        const emptyNotice = document.getElementById('mscStratCompChartEmptyNotice');
+        const emptyText = document.getElementById('mscStratCompChartEmptyText');
+        const dateRangeBadge = document.getElementById('mscStratCompChartDateRangeBadge');
+        const legendEl = document.getElementById('mscStratCompLegendPills');
+        const pillEl = document.getElementById('mscStratCompPillSelector');
+
+        const selectedSet = new Set(compareSmallcasesState.selectedIds || []);
+        const selectedStrats = (strategiesCache || []).filter(s => selectedSet.has(s.id) && Array.isArray(s.runs) && s.runs.length > 0);
+
+        if (selectedStrats.length === 0) {
+            if (compareSmallcasesState.chartInstance) {
+                compareSmallcasesState.chartInstance.destroy();
+                compareSmallcasesState.chartInstance = null;
+            }
+            window.__mscStratCompChart = null;
+            compareSmallcasesState.comparisonData = null;
+            if (dateRangeBadge) dateRangeBadge.style.display = 'none';
+            if (legendEl) legendEl.innerHTML = '';
+            if (pillEl) pillEl.innerHTML = '';
+            if (emptyNotice) emptyNotice.style.display = 'flex';
+            if (emptyText) {
+                const anyExecuted = (strategiesCache || []).some(s => Array.isArray(s.runs) && s.runs.length > 0);
+                emptyText.innerText = anyExecuted
+                    ? 'Select one or more executed smallcases above to plot their existing calculated valuations.'
+                    : 'No executed smallcases found yet. Run Init / Rebalance on a smallcase first to compare.';
+            }
+            renderComparisonLeaderboardRows('mscStratCompSummaryTbody', [], [], 'selectComparedSmallcaseKPI', 'window.__mscStratCompChart');
+            return;
+        }
+
+        const results = selectedStrats.map(s => buildCreatedSmallcaseComparisonItem(s, compareSmallcasesState.colorMap[s.id] || '#3b82f6'));
+        const summaryRows = results.map(r => {
+            const kpis = r.kpis;
+            const cfg = r.config;
+            const maxDd = kpis.max_drawdown;
+            const maxBelow = kpis.max_drilldown_below_investment;
+            return {
+                id: r.id,
+                index_id: r.index_id,
+                index_name: r.name,
+                sublabel: r.sublabel,
+                is_strategy: true,
+                color: r.color,
+                no_of_stocks: cfg.no_of_stocks,
+                exit_regime_ranking: cfg.exit_regime_ranking,
+                rebalance_day: cfg.rebalance_day,
+                trim_existing: cfg.trim_existing,
+                trading_days_per_month: cfg.trading_days_per_month,
+                final_valuation: kpis.current_value,
+                total_invested: kpis.current_invested,
+                total_pnl: kpis.total_return_amount,
+                total_pnl_percent: kpis.total_return_percent,
+                cagr: kpis.cagr,
+                max_drawdown_percent: maxDd.max_drawdown_percent,
+                max_below_investment_percent: maxBelow.max_deficit_percent,
+                win_rate: kpis.win_rate,
+                rebalances_count: r.rebalances_count,
+                total_buys: r.total_buys,
+                total_sells: r.total_sells,
+                total_trades: r.total_trades,
+                unique_stocks_count: r.unique_stocks_count
+            };
+        });
+
+        summaryRows.sort((a, b) => b.total_pnl_percent - a.total_pnl_percent);
+        summaryRows.forEach((row, idx) => { row.rank = idx + 1; });
+
+        const payload = {
+            common: { amount_to_invest: results[0]?.kpis?.current_invested || 0, stepup_amount: 0 },
+            results: results,
+            summary: summaryRows
+        };
+        compareSmallcasesState.comparisonData = payload;
+
+        if (emptyNotice) emptyNotice.style.display = 'none';
+
+        compareSmallcasesState.chartInstance = renderComparisonLineChartWithConfig({
+            canvasId: 'mscStratCompChartCanvas',
+            tooltipId: 'mscStratCompChartCustomTooltip',
+            dateRangeBadgeId: 'mscStratCompChartDateRangeBadge',
+            legendContainerId: 'mscStratCompLegendPills',
+            pillSelectorId: 'mscStratCompPillSelector',
+            selectFnName: 'selectComparedSmallcaseKPI',
+            selectPillPrefix: 'stratCompSelPill',
+            prevChart: compareSmallcasesState.chartInstance,
+            metricMode: compareSmallcasesState.metricMode,
+            preserveStartDates: true,
+            onSelectKpi: selectComparedSmallcaseKPI
+        }, payload);
+        window.__mscStratCompChart = compareSmallcasesState.chartInstance;
+
+        renderComparisonLeaderboardRows(
+            'mscStratCompSummaryTbody',
+            summaryRows,
+            results,
+            'selectComparedSmallcaseKPI',
+            'window.__mscStratCompChart'
+        );
+
+        // Auto-select Rank #1 in KPI showcase
+        const bestId = summaryRows[0]?.id;
+        const bestIdx = results.findIndex(r => r.id === bestId);
+        selectComparedSmallcaseKPI(bestIdx >= 0 ? bestIdx : 0);
+    }
+
+    function selectComparedSmallcaseKPI(targetIdx) {
+        if (!compareSmallcasesState.comparisonData || !compareSmallcasesState.comparisonData.results) return;
+        populateComparisonKpiCardsWithConfig({
+            titleId: 'mscStratCompActiveTitle',
+            dotId: 'mscStratCompActiveDot',
+            badgeId: 'mscStratCompActiveBadge',
+            finalValId: 'stratCompKpiFinalVal',
+            netPnlId: 'stratCompKpiNetPnl',
+            cagrId: 'stratCompKpiCagr',
+            winRateId: 'stratCompKpiWinRate',
+            tradesCountId: 'stratCompKpiTradesCount',
+            maxDdId: 'stratCompKpiMaxDd',
+            maxDdDetailsId: 'stratCompKpiMaxDdDetails',
+            belowInvId: 'stratCompKpiBelowInv',
+            belowInvDetailsId: 'stratCompKpiBelowInvDetails',
+            pillPrefix: 'stratCompSelPill',
+            tbodyId: 'mscStratCompSummaryTbody'
+        }, compareSmallcasesState.comparisonData.results, targetIdx, 0, compareSmallcasesState.chartInstance);
+    }
+
     // =========================================================================
     // EXPOSE TO GLOBAL SCOPE
     // =========================================================================
+    window.openCompareSmallcasesModal = openCompareSmallcasesModal;
+    window.closeCompareSmallcasesModal = closeCompareSmallcasesModal;
+    window.minimizeCompareSmallcasesModal = minimizeCompareSmallcasesModal;
+    window.restoreCompareSmallcasesModal = restoreCompareSmallcasesModal;
+    window.closeCompareSmallcasesDock = closeCompareSmallcasesDock;
+    window.toggleCompareSmallcaseSelection = toggleCompareSmallcaseSelection;
+    window.selectAllCompareSmallcases = selectAllCompareSmallcases;
+    window.clearCompareSmallcases = clearCompareSmallcases;
+    window.setCompareSmallcasesMetricMode = setCompareSmallcasesMetricMode;
+    window.selectComparedSmallcaseKPI = selectComparedSmallcaseKPI;
     window.openIndexComparisonModal = openIndexComparisonModal;
     window.minimizeIndexComparisonModal = minimizeIndexComparisonModal;
     window.restoreIndexComparisonModal = restoreIndexComparisonModal;
