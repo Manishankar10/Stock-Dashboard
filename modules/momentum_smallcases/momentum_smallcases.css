@@ -1545,17 +1545,15 @@ body > .msc-global-process-loader[style*="none"] {
         max-width: 100% !important;
     }
 
-    .msc-wlt-pills {
+    #wltDateRangeContainer {
         width: 100% !important;
-        display: flex !important;
-        gap: 4px !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
     }
 
-    .msc-wlt-pills button {
-        flex: 1 1 33.33% !important;
-        text-align: center !important;
-        font-size: 11px !important;
-        padding: 4px 6px !important;
+    #wltDateRangeContainer input[type="date"] {
+        flex: 1 1 110px !important;
+        width: auto !important;
     }
 
     .msc-wlt-search {
@@ -1802,6 +1800,13 @@ body > .msc-global-process-loader[style*="none"] {
 .msc-comp-top-alert {
     animation: mscFadeIn 0.2s ease;
     box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);
+}
+
+@media (max-width: 960px) and (min-width: 769px) {
+    .msc-wlt-toolbar,
+    .msc-wlt-controls {
+        flex-wrap: wrap !important;
+    }
 }
 
 

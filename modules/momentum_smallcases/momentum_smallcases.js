@@ -295,6 +295,46 @@
         return isoOrStr;
     }
 
+    function normalizeToIsoYMD(val) {
+        if (!val) return '';
+        const s = String(val).trim();
+        if (!s || s === '—') return '';
+        // 1. YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS...
+        let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) {
+            const yr = parseInt(m[1], 10);
+            if (yr < 1990 || yr > 2100) return '';
+            return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+        }
+        // 2. DD/MM/YYYY or DD-MM-YYYY
+        m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (m) {
+            const yr = parseInt(m[3], 10);
+            if (yr < 1990 || yr > 2100) return '';
+            return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        }
+        // 3. DD Mon YYYY (e.g. "21 Jan 2025")
+        m = s.match(/^(\d{1,2})[\s\-]([A-Za-z]{3,})[\s\-,]+(\d{4})/);
+        if (m) {
+            const months = { jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06', jul:'07', aug:'08', sep:'09', oct:'10', nov:'11', dec:'12' };
+            const monKey = m[2].substring(0, 3).toLowerCase();
+            if (months[monKey]) {
+                return `${m[3]}-${months[monKey]}-${m[1].padStart(2, '0')}`;
+            }
+        }
+        // 4. General Date fallback
+        try {
+            const dt = new Date(s);
+            if (!isNaN(dt.getTime()) && dt.getFullYear() >= 1990 && dt.getFullYear() <= 2100) {
+                const y = dt.getFullYear();
+                const mo = String(dt.getMonth() + 1).padStart(2, '0');
+                const da = String(dt.getDate()).padStart(2, '0');
+                return `${y}-${mo}-${da}`;
+            }
+        } catch (_) {}
+        return '';
+    }
+
     // Helper to parse DD/MM/YYYY into timestamp for chronological sorting
     function parseDateAddedForSort(dtStr) {
         if (!dtStr || typeof dtStr !== 'string') return 0;
@@ -3241,7 +3281,7 @@
         const runs = strategy.runs || [];
         const runIdx = runs.indexOf(run);
         const snapshot = run.portfolio_snapshot || {};
-        const runIsoDate = (run.executed_date || run.scheduled_date || '').substring(0, 10);
+        const runIsoDate = normalizeToIsoYMD(run.executed_date || run.scheduled_date || '');
         const runDate = formatDateDisplay(run.executed_date || run.scheduled_date || '');
         const isInit = run.run_type === 'INIT' || runIdx === 0;
         const isWithdraw = run.run_type === 'WITHDRAWAL';
@@ -3447,7 +3487,10 @@
             });
         }
 
-        return trades;
+        return trades.map(t => ({
+            ...t,
+            run_iso_date: t.run_iso_date || runIsoDate
+        }));
     }
 
     function getAllStrategyTrades(strategy) {
@@ -3501,13 +3544,8 @@
         if (searchInput) searchInput.value = '';
         currentLogTradesState.filter = 'all';
         currentLogTradesState.query = '';
-        ['all', 'buy', 'sell'].forEach(f => {
-            const pill = document.getElementById(`wltPill${f.charAt(0).toUpperCase() + f.slice(1)}`);
-            if (pill) {
-                if (f === 'all') pill.classList.add('active');
-                else pill.classList.remove('active');
-            }
-        });
+        const typeSelect = document.getElementById('wltTypeFilterSelect');
+        if (typeSelect) typeSelect.value = 'all';
 
         // Populate Scope Dropdown
         const scopeSelect = document.getElementById('wltScopeSelect');
@@ -3649,13 +3687,13 @@
         const chargesEl = document.getElementById('wltSummaryCharges');
         if (chargesEl) chargesEl.innerText = `₹${formatCurrency(totalCharges)}`;
 
-        // Update Pill Counts
-        const pAll = document.getElementById('wltPillCountAll');
-        if (pAll) pAll.innerText = totalTrades;
-        const pBuy = document.getElementById('wltPillCountBuy');
-        if (pBuy) pBuy.innerText = buyTrades.length;
-        const pSell = document.getElementById('wltPillCountSell');
-        if (pSell) pSell.innerText = sellTrades.length;
+        // Update Dropdown Option Counts
+        const optAll = document.getElementById('wltOptAll');
+        if (optAll) optAll.textContent = `All (${totalTrades})`;
+        const optBuy = document.getElementById('wltOptBuy');
+        if (optBuy) optBuy.textContent = `Buy (${buyTrades.length})`;
+        const optSell = document.getElementById('wltOptSell');
+        if (optSell) optSell.textContent = `Sell (${sellTrades.length})`;
     }
 
     function closeLogTransactionsModal() {
@@ -3673,16 +3711,18 @@
 
         // 1. Filter by Date Range (when scope is all transactions)
         if (scope === 'all') {
-            if (fromDate) {
+            const fromIso = normalizeToIsoYMD(fromDate);
+            const toIso = normalizeToIsoYMD(toDate);
+            if (fromIso) {
                 filtered = filtered.filter(t => {
-                    const d = (t.date || t.run_iso_date || t.executed_date || '').substring(0, 10);
-                    return !d || d >= fromDate;
+                    const d = normalizeToIsoYMD(t.run_iso_date || t.date || t.executed_date || t.run_date);
+                    return !d || d >= fromIso;
                 });
             }
-            if (toDate) {
+            if (toIso) {
                 filtered = filtered.filter(t => {
-                    const d = (t.date || t.run_iso_date || t.executed_date || '').substring(0, 10);
-                    return !d || d <= toDate;
+                    const d = normalizeToIsoYMD(t.run_iso_date || t.date || t.executed_date || t.run_date);
+                    return !d || d <= toIso;
                 });
             }
         }
@@ -3861,14 +3901,11 @@
     }
 
     function filterLogTransactionsTable(type) {
-        currentLogTradesState.filter = type;
-        ['all', 'buy', 'sell'].forEach(f => {
-            const pill = document.getElementById(`wltPill${f.charAt(0).toUpperCase() + f.slice(1)}`);
-            if (pill) {
-                if (f === type) pill.classList.add('active');
-                else pill.classList.remove('active');
-            }
-        });
+        currentLogTradesState.filter = type || 'all';
+        const sel = document.getElementById('wltTypeFilterSelect');
+        if (sel && sel.value !== currentLogTradesState.filter) {
+            sel.value = currentLogTradesState.filter;
+        }
         renderLogTransactionsTable();
     }
 

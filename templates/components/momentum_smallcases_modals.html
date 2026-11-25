@@ -574,7 +574,7 @@
      MODAL: WALLET ACTIVITY LOG TRANSACTIONS (ALL STOCKS BUY/SELL DETAILS)
      ========================================================================= -->
 <div class="modal-backdrop msc-modal-backdrop" id="walletLogTransactionsModal" style="display: none;" onclick="if(event.target === this) closeLogTransactionsModal()">
-    <div class="modal-container msc-modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1100px; width: 95%; max-height: 90vh;">
+    <div class="modal-container msc-modal-container msc-modal-container-xl" role="dialog" aria-modal="true" style="max-width: 1180px; width: 96%; max-height: 90vh;">
         <div class="msc-modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 16px;">
@@ -624,42 +624,36 @@
             </div>
 
             <!-- Filter & Search Toolbar -->
-            <div class="msc-wlt-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
-                <div class="msc-wlt-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div class="msc-wlt-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: nowrap;">
+                <div class="msc-wlt-controls" style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; flex: 0 1 auto;">
                     <!-- Scope Selector: Selected Run vs All Transactions vs Specific Runs -->
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label for="wltScopeSelect" style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Scope:</label>
-                        <select id="wltScopeSelect" onchange="changeLogTransactionsScope(this.value)" style="font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); cursor: pointer; max-width: 280px;">
+                    <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                        <label for="wltScopeSelect" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; white-space: nowrap;">Scope:</label>
+                        <select id="wltScopeSelect" onchange="changeLogTransactionsScope(this.value)" style="font-size: 12px; font-weight: 600; padding: 5px 8px; border-radius: 6px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); cursor: pointer; max-width: 230px;">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
 
-                    <!-- Buy / Sell / All Filter Pills -->
-                    <div class="msc-wlt-pills" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                        <button type="button" class="btn-secondary wlt-filter-btn active" id="wltPillAll" onclick="filterLogTransactionsTable('all')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px;">
-                            All (<span id="wltPillCountAll">0</span>)
-                        </button>
-                        <button type="button" class="btn-secondary wlt-filter-btn" id="wltPillBuy" onclick="filterLogTransactionsTable('buy')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px;">
-                            Buy (<span id="wltPillCountBuy">0</span>)
-                        </button>
-                        <button type="button" class="btn-secondary wlt-filter-btn" id="wltPillSell" onclick="filterLogTransactionsTable('sell')" style="font-size: 11.5px; padding: 5px 12px; border-radius: 6px;">
-                            Sell (<span id="wltPillCountSell">0</span>)
-                        </button>
-                    </div>
+                    <!-- Buy / Sell / All Dropdown Filter -->
+                    <select id="wltTypeFilterSelect" onchange="filterLogTransactionsTable(this.value)" style="font-size: 12px; font-weight: 600; padding: 5px 8px; border-radius: 6px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); cursor: pointer; flex-shrink: 0;">
+                        <option id="wltOptAll" value="all" selected>All (0)</option>
+                        <option id="wltOptBuy" value="buy">Buy (0)</option>
+                        <option id="wltOptSell" value="sell">Sell (0)</option>
+                    </select>
 
                     <!-- Date Range Filter: From & To Calendars (Visible strictly when scope is All Transactions) -->
-                    <div id="wltDateRangeContainer" style="display: none; align-items: center; gap: 6px; flex-wrap: wrap; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); padding: 3px 8px; border-radius: 6px;">
+                    <div id="wltDateRangeContainer" style="display: none; align-items: center; gap: 5px; flex-wrap: nowrap; flex-shrink: 0; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 6px;">
                         <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">From:</span>
-                        <input type="date" id="wltFromDate" class="msc-modal-input" onchange="handleLogTransactionsDateChange()" style="font-size: 11.5px; padding: 3px 6px; border-radius: 4px; width: 125px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <input type="date" id="wltFromDate" class="msc-modal-input" oninput="handleLogTransactionsDateChange()" onchange="handleLogTransactionsDateChange()" style="font-size: 11.5px; padding: 3px 5px; border-radius: 4px; width: 118px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color);">
                         <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">To:</span>
-                        <input type="date" id="wltToDate" class="msc-modal-input" onchange="handleLogTransactionsDateChange()" style="font-size: 11.5px; padding: 3px 6px; border-radius: 4px; width: 125px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <input type="date" id="wltToDate" class="msc-modal-input" oninput="handleLogTransactionsDateChange()" onchange="handleLogTransactionsDateChange()" style="font-size: 11.5px; padding: 3px 5px; border-radius: 4px; width: 118px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color);">
                         <button type="button" class="btn-secondary" onclick="clearLogTransactionsDateFilter()" title="Clear date filter" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; cursor: pointer;">✕</button>
                     </div>
                 </div>
 
                 <!-- Search Input -->
-                <div class="msc-wlt-search" style="display: flex; align-items: center; gap: 8px; min-width: 200px; flex-grow: 1; max-width: 280px;">
-                    <input type="text" id="wltSearchInput" class="msc-modal-input" placeholder="🔍 Search stock symbol..." oninput="handleLogTransactionsSearch()" style="font-size: 12px; padding: 6px 12px; border-radius: 6px; width: 100%;">
+                <div class="msc-wlt-search" style="display: flex; align-items: center; gap: 6px; flex: 1 1 150px; min-width: 135px; max-width: 240px;">
+                    <input type="text" id="wltSearchInput" class="msc-modal-input" placeholder="🔍 Search stock symbol..." oninput="handleLogTransactionsSearch()" style="font-size: 12px; padding: 5px 10px; border-radius: 6px; width: 100%;">
                 </div>
             </div>
 
