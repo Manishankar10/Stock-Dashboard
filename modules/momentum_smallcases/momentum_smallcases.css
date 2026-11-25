@@ -765,6 +765,12 @@ body > .msc-global-process-loader[style*="none"] {
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
+.msc-timeline-icon.completed.withdrawal {
+    background: #f59e0b;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);
+}
+
 .msc-timeline-icon.current {
     background: #3b82f6;
     color: #ffffff;

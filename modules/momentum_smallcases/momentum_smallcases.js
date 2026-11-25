@@ -535,7 +535,7 @@
                 : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700;">ACTIVE</span>`;
 
             const invested = Number(s.total_capital != null ? s.total_capital : (s.amount_to_invest || 0));
-            const currVal = Number(s.current_portfolio_value || invested);
+            const currVal = Number(s.current_portfolio_value != null ? s.current_portfolio_value : invested);
             const pnl = s.total_pnl != null ? Number(s.total_pnl) : (currVal - invested);
             const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
 
@@ -983,7 +983,7 @@
 
             // Render Financial Metrics
             const capVal = Number(s.total_capital != null ? s.total_capital : (s.amount_to_invest || 0));
-            const portVal = Number(s.current_portfolio_value || capVal);
+            const portVal = Number(s.current_portfolio_value != null ? s.current_portfolio_value : capVal);
             const walletVal = Number(s.current_wallet || 0);
             const feesVal = Number(s.total_fees_paid || 0);
             const holdingsCount = (s.holdings || []).length;
@@ -1367,6 +1367,7 @@
                                     <th style="padding: 9px 12px; text-align: right;">PROCEEDS</th>
                                     <th style="padding: 9px 12px; text-align: right;">REALIZED P&L</th>
                                     <th style="padding: 9px 12px; text-align: right;">CHARGES</th>
+                                    <th style="padding: 9px 12px;">COMMENTS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1387,6 +1388,7 @@
                                                 ${txPos ? '+' : ''}₹${formatCurrency(txPnl)} (${txPos ? '+' : ''}${Number(tx.pnl_percent || 0).toFixed(2)}%)
                                             </td>
                                             <td style="padding: 9px 12px; text-align: right; font-family: monospace; color: var(--text-secondary);">₹${formatCurrency(tx.fee || 0)}</td>
+                                            <td style="padding: 9px 12px; font-size: 11.5px; color: var(--text-secondary);">${escapeHtml(tx.comments || tx.notes || '—')}</td>
                                         </tr>
                                     `;
                                 }).join('')}
@@ -1627,7 +1629,7 @@
         `;
 
         // In every rebalancing after Portfolio Holdings Snapshot: show Exited Stocks Details
-        if (!isInit) {
+        if (!isInit && !isWithdrawal) {
             let exitedStocks = run.exited_stocks || portfolio.exited_stocks || (changes && changes.exited_stocks) || [];
 
             // Fallback derivation for any previous runs
@@ -2250,8 +2252,24 @@
         const badgeEl = document.getElementById('mscWithdrawalStratBadge');
         if (badgeEl) badgeEl.innerText = currentStrategy.name || 'Smallcase';
 
+        const capVal = Number(currentStrategy.total_capital != null ? currentStrategy.total_capital : (currentStrategy.amount_to_invest || 0));
+        const portVal = Number(currentStrategy.current_portfolio_value != null ? currentStrategy.current_portfolio_value : capVal);
+        const capEl = document.getElementById('mscWithdrawCurrentCap');
+        if (capEl) capEl.innerText = `₹${formatCurrency(capVal)}`;
+        const portEl = document.getElementById('mscWithdrawPortfolioVal');
+        if (portEl) {
+            portEl.innerText = `₹${formatCurrency(portVal)}`;
+            portEl.style.color = portVal >= capVal ? '#10b981' : '#ef4444';
+        }
+
         const commentsInput = document.getElementById('mscWithdrawalComments');
         if (commentsInput) commentsInput.value = '';
+
+        const submitBtn = document.getElementById('mscSubmitWithdrawalBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>💸</span> <span>Confirm Withdrawal</span>';
+        }
 
         const tbody = document.getElementById('mscWithdrawalTbody');
         if (!tbody) return;
@@ -2268,30 +2286,35 @@
             const sign = pnl >= 0 ? '+' : '';
 
             return `
-                <tr data-index="${idx}" data-symbol="${escapeHtml(sym)}" data-max-qty="${qty}" data-buy-price="${buyPrice}" data-cmp="${cmp}" style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
-                    <td style="padding: 10px 12px; color: var(--text-secondary);">${idx + 1}</td>
-                    <td style="padding: 10px 12px;">
-                        <div style="font-weight: 700; color: var(--text-primary);">${escapeHtml(sym)}</div>
-                        <div style="font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">${escapeHtml(company)}</div>
+                <tr data-index="${idx}" data-symbol="${escapeHtml(sym)}" data-max-qty="${qty}" data-buy-price="${buyPrice}" data-cmp="${cmp}">
+                    <td style="text-align: center; color: var(--text-secondary); font-size: 11px;">${idx + 1}</td>
+                    <td>
+                        <strong style="color: var(--text-primary); font-family: monospace; font-size: 12.5px;">${escapeHtml(sym)}</strong>
+                        ${company && company !== sym ? `<div style="font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">${escapeHtml(company)}</div>` : ''}
                     </td>
-                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">${qty}</td>
-                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; color: var(--text-secondary);">₹${formatCurrency(buyPrice)}</td>
-                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(cmp)}</td>
-                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: ${pnlColor};">
-                        ${sign}₹${formatCurrency(pnl)}<br>
-                        <span style="font-size: 10px;">(${sign}${pnlPct.toFixed(2)}%)</span>
+                    <td style="text-align: right; font-family: monospace;">
+                        <div style="font-weight: 700; color: var(--text-primary);">${qty.toLocaleString('en-IN')}</div>
+                        <div style="font-size: 10.5px; color: var(--text-secondary);">Avg: ₹${formatCurrency(buyPrice)}</div>
                     </td>
-                    <td style="padding: 10px 12px; text-align: center;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                            <input type="number" min="0" max="${qty}" step="1" value="0" class="msc-modal-input msc-withdraw-qty-input" data-index="${idx}" oninput="updateWithdrawalSummary()" style="width: 75px; padding: 5px 8px; font-family: monospace; font-size: 12px; text-align: right;">
-                            <button type="button" class="btn-secondary" onclick="setWithdrawalMax(${idx}, ${qty})" style="padding: 4px 7px; font-size: 10px; font-weight: 600; border-radius: 4px; cursor: pointer;">Max</button>
+                    <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--text-primary);">
+                        ₹${formatCurrency(cmp)}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
+                        <div>${sign}₹${formatCurrency(pnl)}</div>
+                        <div style="font-size: 10.5px; font-weight: 600;">${sign}${pnlPct.toFixed(2)}%</div>
+                    </td>
+                    <td style="text-align: center;">
+                        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px;">
+                            <input type="number" min="0" max="${qty}" step="1" value="0" class="msc-modal-input msc-withdraw-qty-input" data-index="${idx}" oninput="updateWithdrawalSummary()" onchange="updateWithdrawalSummary()" style="width: 78px; padding: 5px 8px; font-family: monospace; font-size: 12px; text-align: right;">
+                            <button type="button" class="btn-secondary" onclick="setWithdrawalMax(${idx}, ${qty})" style="padding: 4px 8px; font-size: 10.5px; font-weight: 600; border-radius: 4px; cursor: pointer;" title="Withdraw all ${qty} shares of ${escapeHtml(sym)}">Max</button>
                         </div>
                     </td>
-                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">
-                        <span id="mscWithdrawVal_${idx}">₹0.00</span>
+                    <td style="text-align: right; font-family: monospace;">
+                        <div id="mscWithdrawVal_${idx}" style="font-weight: 700; color: var(--text-primary);">₹0.00</div>
+                        <div id="mscWithdrawPnl_${idx}" style="font-size: 10.5px; font-weight: 600; color: var(--text-secondary);">₹0.00 (0.00%)</div>
                     </td>
-                    <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 600; color: var(--text-secondary);">
-                        <span id="mscWithdrawPnl_${idx}">₹0.00</span>
+                    <td>
+                        <input type="text" class="msc-modal-input msc-withdraw-comment-input" data-index="${idx}" placeholder="Stock note / comment..." style="width: 100%; min-width: 145px; padding: 5px 8px; font-size: 11.5px;">
                     </td>
                 </tr>
             `;
@@ -2315,6 +2338,29 @@
         }
     }
 
+    function withdrawAllHoldingsMax() {
+        const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
+        rows.forEach(tr => {
+            const maxQty = parseInt(tr.getAttribute('data-max-qty'), 10) || 0;
+            const input = tr.querySelector('.msc-withdraw-qty-input');
+            if (input) input.value = maxQty;
+        });
+        updateWithdrawalSummary();
+    }
+
+    function resetWithdrawalInputs() {
+        const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
+        rows.forEach(tr => {
+            const qtyIn = tr.querySelector('.msc-withdraw-qty-input');
+            const cmtIn = tr.querySelector('.msc-withdraw-comment-input');
+            if (qtyIn) qtyIn.value = '0';
+            if (cmtIn) cmtIn.value = '';
+        });
+        const genCmt = document.getElementById('mscWithdrawalComments');
+        if (genCmt) genCmt.value = '';
+        updateWithdrawalSummary();
+    }
+
     function updateWithdrawalSummary() {
         const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
         let totalStocks = 0;
@@ -2332,8 +2378,8 @@
             const valSpan = document.getElementById(`mscWithdrawVal_${idx}`);
             const pnlSpan = document.getElementById(`mscWithdrawPnl_${idx}`);
 
-            let reqQty = parseInt(input?.value, 10) || 0;
-            if (reqQty < 0) reqQty = 0;
+            let reqQty = parseInt(input?.value, 10);
+            if (isNaN(reqQty) || reqQty < 0) reqQty = 0;
             if (reqQty > maxQty) {
                 reqQty = maxQty;
                 if (input) input.value = maxQty;
@@ -2342,15 +2388,20 @@
             const rowVal = reqQty * cmp;
             const rowCost = reqQty * buyPrice;
             const rowPnl = rowVal - rowCost;
+            const rowPnlPct = rowCost > 0 ? (rowPnl / rowCost * 100) : 0;
 
-            if (valSpan) valSpan.innerText = reqQty > 0 ? `₹${formatCurrency(rowVal)}` : '₹0.00';
+            if (valSpan) {
+                valSpan.innerText = reqQty > 0 ? `₹${formatCurrency(rowVal)}` : '₹0.00';
+                valSpan.style.color = reqQty > 0 ? '#3b82f6' : 'var(--text-primary)';
+            }
             if (pnlSpan) {
                 if (reqQty > 0) {
                     const isPos = rowPnl >= 0;
-                    pnlSpan.innerText = `${isPos ? '+' : ''}₹${formatCurrency(rowPnl)}`;
+                    const sign = isPos ? '+' : '';
+                    pnlSpan.innerText = `${sign}₹${formatCurrency(rowPnl)} (${sign}${rowPnlPct.toFixed(2)}%)`;
                     pnlSpan.style.color = isPos ? '#10b981' : '#ef4444';
                 } else {
-                    pnlSpan.innerText = '₹0.00';
+                    pnlSpan.innerText = '₹0.00 (0.00%)';
                     pnlSpan.style.color = 'var(--text-secondary)';
                 }
             }
@@ -2364,20 +2415,25 @@
             }
         });
 
+        const totalFee = Math.round(totalAmount * 0.0010 * 100) / 100;
         const stocksEl = document.getElementById('mscWithdrawTotalStocks');
         const sharesEl = document.getElementById('mscWithdrawTotalShares');
         const amountEl = document.getElementById('mscWithdrawTotalAmount');
+        const feeEl = document.getElementById('mscWithdrawTotalFee');
         const pnlEl = document.getElementById('mscWithdrawTotalPnl');
         const submitBtn = document.getElementById('mscSubmitWithdrawalBtn');
 
-        if (stocksEl) stocksEl.innerText = totalStocks;
-        if (sharesEl) sharesEl.innerText = totalShares;
+        if (stocksEl) stocksEl.innerText = `${totalStocks} ${totalStocks === 1 ? 'stock' : 'stocks'}`;
+        if (sharesEl) sharesEl.innerText = totalShares.toLocaleString('en-IN');
         if (amountEl) amountEl.innerText = `₹${formatCurrency(totalAmount)}`;
+        if (feeEl) feeEl.innerText = `₹${formatCurrency(totalFee)}`;
         if (pnlEl) {
             const isPos = totalPnl >= 0;
             const sign = isPos ? '+' : '';
             const pnlPct = totalCost > 0 ? (totalPnl / totalCost * 100) : 0;
-            pnlEl.innerText = `${sign}₹${formatCurrency(totalPnl)} (${sign}${pnlPct.toFixed(2)}%)`;
+            pnlEl.innerText = totalShares > 0
+                ? `${sign}₹${formatCurrency(totalPnl)} (${sign}${pnlPct.toFixed(2)}%)`
+                : '₹0.00 (0.00%)';
             pnlEl.style.color = totalShares > 0 ? (isPos ? '#10b981' : '#ef4444') : 'var(--text-secondary)';
         }
 
@@ -2387,8 +2443,9 @@
     }
 
     async function submitStrategyWithdrawal() {
-        if (!currentStrategy) return;
+        if (!currentStrategy || isSubmitting) return;
 
+        const batchComments = (document.getElementById('mscWithdrawalComments')?.value || '').trim();
         const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
         const withdrawals = [];
 
@@ -2396,14 +2453,17 @@
             const sym = tr.getAttribute('data-symbol');
             const maxQty = parseInt(tr.getAttribute('data-max-qty'), 10) || 0;
             const cmp = parseFloat(tr.getAttribute('data-cmp')) || 0;
-            const input = tr.querySelector('.msc-withdraw-qty-input');
-            const reqQty = parseInt(input?.value, 10) || 0;
+            const qtyInput = tr.querySelector('.msc-withdraw-qty-input');
+            const commentInput = tr.querySelector('.msc-withdraw-comment-input');
+            const reqQty = parseInt(qtyInput?.value, 10) || 0;
+            const rowComment = (commentInput?.value || '').trim() || batchComments;
 
             if (reqQty > 0 && reqQty <= maxQty) {
                 withdrawals.push({
                     symbol: sym,
                     quantity: reqQty,
-                    price: cmp
+                    price: cmp,
+                    comments: rowComment
                 });
             }
         });
@@ -2413,18 +2473,17 @@
             return;
         }
 
-        const comments = (document.getElementById('mscWithdrawalComments')?.value || '').trim();
-
         const submitBtn = document.getElementById('mscSubmitWithdrawalBtn');
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span>⏳</span> <span>Executing Withdrawal...</span>';
         }
+        isSubmitting = true;
 
         showSmallcaseGlobalLoader({
             title: 'Processing Withdrawal...',
             badge: 'Portfolio Liquidation',
-            subtitle: `Selling ${withdrawals.length} positions and updating smallcase capital & cash flows...`
+            subtitle: `Liquidating ${withdrawals.length} position(s) and updating smallcase capital & transactions...`
         });
 
         try {
@@ -2433,7 +2492,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     withdrawals: withdrawals,
-                    comments: comments
+                    comments: batchComments
                 })
             });
 
@@ -2445,29 +2504,31 @@
             closeStrategyWithdrawalModal();
             alertToast(data.message || `Withdrawn ₹${formatCurrency(data.withdrawn_amount || 0)} successfully!`, 'success');
 
-            // Refresh strategy state from returned strategy
-            currentStrategy = data.strategy;
-            renderStrategyDetails(currentStrategy);
-
-            // Select the newly added WITHDRAWAL run on timeline
-            if (currentStrategy.runs && currentStrategy.runs.length > 0) {
-                selectTimelineRun(currentStrategy.runs.length - 1);
-            }
+            currentStrategy = data.strategy || currentStrategy;
+            const runsLen = (currentStrategy.runs || []).length;
+            const targetRunIdx = runsLen > 0 ? runsLen - 1 : null;
+            selectedRunIndex = targetRunIdx;
+            await openStrategyDetailView(currentStrategy.id, targetRunIdx);
+            await loadStrategiesList();
         } catch (e) {
             console.error('Withdrawal error:', e);
             alertToast(`Withdrawal Error: ${e.message}`, 'error');
         } finally {
+            isSubmitting = false;
             hideSmallcaseGlobalLoader();
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<span>💸</span> <span>Confirm Withdrawal</span>';
             }
+            updateWithdrawalSummary();
         }
     }
 
     window.openStrategyWithdrawalModal = openStrategyWithdrawalModal;
     window.closeStrategyWithdrawalModal = closeStrategyWithdrawalModal;
     window.setWithdrawalMax = setWithdrawalMax;
+    window.withdrawAllHoldingsMax = withdrawAllHoldingsMax;
+    window.resetWithdrawalInputs = resetWithdrawalInputs;
     window.updateWithdrawalSummary = updateWithdrawalSummary;
     window.submitStrategyWithdrawal = submitStrategyWithdrawal;
 
@@ -3180,9 +3241,11 @@
         const runs = strategy.runs || [];
         const runIdx = runs.indexOf(run);
         const snapshot = run.portfolio_snapshot || {};
+        const runIsoDate = (run.executed_date || run.scheduled_date || '').substring(0, 10);
         const runDate = formatDateDisplay(run.executed_date || run.scheduled_date || '');
         const isInit = run.run_type === 'INIT' || runIdx === 0;
-        const runTitle = isInit ? 'Init' : (run.title || `Rebalance #${runIdx}`);
+        const isWithdraw = run.run_type === 'WITHDRAWAL';
+        const runTitle = isInit ? 'Init' : (run.title || (isWithdraw ? 'Withdrawal' : `Rebalance #${runIdx}`));
 
         // 1. Check if pre-calculated transactions exist
         if (snapshot.transactions && Array.isArray(snapshot.transactions) && snapshot.transactions.length > 0) {
@@ -3203,8 +3266,9 @@
                     pnl: pnl != null ? Math.round(Number(pnl) * 100) / 100 : null,
                     pnl_percent: pnlPct != null ? Math.round(Number(pnlPct) * 100) / 100 : null,
                     run_index: runIdx,
-                    run_title: runTitle,
-                    run_date: runDate
+                    run_title: t.run_title || runTitle,
+                    run_date: runDate,
+                    run_iso_date: runIsoDate
                 };
             });
         }
@@ -3226,8 +3290,9 @@
                     pnl: pnl != null ? Math.round(Number(pnl) * 100) / 100 : null,
                     pnl_percent: pnlPct != null ? Math.round(Number(pnlPct) * 100) / 100 : null,
                     run_index: runIdx,
-                    run_title: runTitle,
-                    run_date: runDate
+                    run_title: t.run_title || runTitle,
+                    run_date: runDate,
+                    run_iso_date: runIsoDate
                 };
             });
         }
@@ -3450,9 +3515,11 @@
             let optsHtml = `<option value="all">🌐 All Transactions (Entire History)</option>`;
             runs.forEach((r, idx) => {
                 const isInit = r.run_type === 'INIT' || idx === 0;
-                const title = isInit ? 'Init' : (r.title || `Rebalance #${idx}`);
+                const isWithdraw = r.run_type === 'WITHDRAWAL';
+                const title = isInit ? 'Init' : (r.title || (isWithdraw ? 'Withdrawal' : `Rebalance #${idx}`));
                 const dateStr = formatDateDisplay(r.executed_date || r.scheduled_date || '');
-                optsHtml += `<option value="${idx}">${isInit ? '🚀' : '🔄'} ${title} (${dateStr})</option>`;
+                const icon = isInit ? '🚀' : (isWithdraw ? '💸' : '🔄');
+                optsHtml += `<option value="${idx}">${icon} ${title} (${dateStr})</option>`;
             });
             scopeSelect.innerHTML = optsHtml;
             // Initially select the active/selected rebalance or init milestone
@@ -3608,13 +3675,13 @@
         if (scope === 'all') {
             if (fromDate) {
                 filtered = filtered.filter(t => {
-                    const d = (t.date || t.run_date || t.executed_date || '').substring(0, 10);
+                    const d = (t.date || t.run_iso_date || t.executed_date || '').substring(0, 10);
                     return !d || d >= fromDate;
                 });
             }
             if (toDate) {
                 filtered = filtered.filter(t => {
-                    const d = (t.date || t.run_date || t.executed_date || '').substring(0, 10);
+                    const d = (t.date || t.run_iso_date || t.executed_date || '').substring(0, 10);
                     return !d || d <= toDate;
                 });
             }
@@ -3630,12 +3697,13 @@
             filtered = filtered.filter(t => t.action === 'SELL' || t.type === 'WITHDRAWAL' || t.action === 'WITHDRAW');
         }
 
-        // 3. Filter by search query (symbol, action_label, notes, or run_title)
+        // 3. Filter by search query (symbol, action_label, notes, comments, or run_title)
         if (query && query.trim()) {
             const q = query.trim().toUpperCase();
             filtered = filtered.filter(t => 
                 (t.symbol || '').toUpperCase().includes(q) ||
                 (t.notes || '').toUpperCase().includes(q) ||
+                (t.comments || '').toUpperCase().includes(q) ||
                 (t.action_label || '').toUpperCase().includes(q) ||
                 (t.run_title || '').toUpperCase().includes(q)
             );
@@ -3738,7 +3806,7 @@
                         ₹${formatCurrency(fee)}
                     </td>
                     <td style="font-size: 11.5px; color: var(--text-secondary);">
-                        ${escapeHtml(t.notes || '—')}
+                        ${escapeHtml(t.notes || t.comments || '—')}
                     </td>
                 </tr>
             `;

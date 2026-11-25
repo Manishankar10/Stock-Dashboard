@@ -134,11 +134,13 @@ def _calculate_rebalance_milestone_points(strategy, runs, today_d, progress_call
             continue
 
         snap = r.get("portfolio_snapshot") or {}
-        invested = float(snap.get("total_capital") or strategy.get("amount_to_invest") or 0.0)
-        val = float(snap.get("total_portfolio_value") or snap.get("current_value") or invested)
+        raw_cap = snap.get("total_capital")
+        invested = float(raw_cap if raw_cap is not None else (strategy.get("amount_to_invest") or 0.0))
+        raw_val = snap.get("total_portfolio_value") if snap.get("total_portfolio_value") is not None else snap.get("current_value")
+        val = float(raw_val if raw_val is not None else invested)
 
         # In case total_capital was not stored on old snapshot, fallback
-        if invested <= 0:
+        if raw_cap is None and invested <= 0:
             invested = float(strategy.get("amount_to_invest") or 0.0)
 
         points.append({
@@ -255,8 +257,9 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
         r_d = _parse_date(d_raw)
         if r_d:
             snap = r.get("portfolio_snapshot") or {}
-            invested = float(snap.get("total_capital") or strategy.get("amount_to_invest") or 0.0)
-            if invested <= 0:
+            raw_cap = snap.get("total_capital")
+            invested = float(raw_cap if raw_cap is not None else (strategy.get("amount_to_invest") or 0.0))
+            if raw_cap is None and invested <= 0:
                 invested = float(strategy.get("amount_to_invest") or 0.0)
 
             parsed_runs.append({
@@ -268,7 +271,7 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
                 "holdings": snap.get("holdings") or []
             })
 
-    parsed_runs.sort(key=lambda x: x["date"])
+    parsed_runs.sort(key=lambda x: (x["date"], x["run_index"]))
     if not parsed_runs:
         return []
 

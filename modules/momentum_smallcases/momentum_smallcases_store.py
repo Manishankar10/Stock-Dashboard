@@ -11,6 +11,7 @@ import logging
 import threading
 from datetime import datetime, date
 from flask import session
+from modules.common.ist_datetime import now_ist
 
 logger = logging.getLogger(__name__)
 
@@ -1019,7 +1020,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     # Next future rebalance date
     _, next_rebal, _ = calculate_strategy_next_rebalance(exec_date, target["rebalance_day"])
 
-    rebal_number = len(runs)
+    rebal_number = len([r for r in runs if r.get("run_type") == "REBALANCE"]) + 1
     rebal_run_entry = {
         "run_id": f"run_rebal_{uuid.uuid4().hex[:10]}",
         "run_type": "REBALANCE",
@@ -1104,10 +1105,12 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     holdings_by_sym = {h["symbol"].strip().upper(): h for h in current_holdings}
 
     transactions = []
+    exited_stocks = []
     total_withdrawn_amount = 0.0
     total_withdrawn_cost = 0.0
     total_withdrawn_pnl = 0.0
     total_withdrawn_fees = 0.0
+    item_notes_collected = []
 
     runs = target.setdefault("runs", [])
     withdrawal_num = len([r for r in runs if r.get("run_type") == "WITHDRAWAL"]) + 1
@@ -1131,6 +1134,9 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
         pnl = round(amt - cost, 2)
         pnl_pct = round((pnl / cost) * 100.0, 2) if cost > 0 else 0.0
         fee = round(amt * 0.0010, 2)  # 0.10% transaction fee
+        item_comment = str(item.get("comments") or comments or "Portfolio Withdrawal").strip()
+        if item_comment and item_comment != "Portfolio Withdrawal" and item_comment not in item_notes_collected:
+            item_notes_collected.append(item_comment)
 
         total_withdrawn_amount += amt
         total_withdrawn_cost += cost
@@ -1151,7 +1157,8 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
             "pnl_percent": pnl_pct,
             "fee": fee,
             "type": "WITHDRAWAL",
-            "comments": comments or "Portfolio Withdrawal",
+            "comments": item_comment,
+            "notes": item_comment,
             "date": now_date_str,
             "run_title": f"Withdrawal #{withdrawal_num}",
             "timestamp": now_iso
@@ -1167,6 +1174,16 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
             h["pnl"] = round(h["current_value"] - h["invested"], 2)
             h["pnl_percent"] = round((h["pnl"] / h["invested"]) * 100.0, 2) if h["invested"] > 0 else 0.0
         else:
+            exited_stocks.append({
+                "symbol": sym,
+                "quantity": req_qty,
+                "average_price": round(buy_price, 2),
+                "exit_price": round(curr_price, 2),
+                "invested": cost,
+                "exit_value": amt,
+                "pnl": pnl,
+                "pnl_percent": pnl_pct
+            })
             h["quantity"] = 0
             h["current_value"] = 0.0
             h["invested"] = 0.0
@@ -1177,16 +1194,21 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     # Filter out holdings that now have 0 quantity
     updated_holdings = [h for h in current_holdings if h.get("quantity", 0) > 0]
 
-    # Recalculate weights for remaining holdings
-    total_remaining_val = sum(h.get("current_value", 0.0) for h in updated_holdings)
-    for h in updated_holdings:
-        h["weight_percent"] = round((h["current_value"] / total_remaining_val) * 100.0, 2) if total_remaining_val > 0 else 0.0
-
     # Adjust strategy invested capital and valuation
     curr_cap = float(target.get("total_capital") if target.get("total_capital") is not None else target.get("amount_to_invest", 0.0))
     new_cap = max(0.0, round(curr_cap - total_withdrawn_cost, 2))
     target["total_capital"] = new_cap
     target["amount_to_invest"] = new_cap
+
+    # Recalculate weights and remaining valuation
+    total_remaining_val = sum(h.get("current_value", 0.0) for h in updated_holdings)
+    for h in updated_holdings:
+        if new_cap > 0:
+            h["weight_percent"] = round((h.get("invested", 0.0) / new_cap) * 100.0, 2)
+        elif total_remaining_val > 0:
+            h["weight_percent"] = round((h["current_value"] / total_remaining_val) * 100.0, 2)
+        else:
+            h["weight_percent"] = 0.0
 
     wallet_bal = float(target.get("current_wallet") or 0.0)
     target["holdings"] = updated_holdings
@@ -1196,7 +1218,11 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     target["total_pnl_percent"] = round((target["total_pnl"] / new_cap) * 100.0, 2) if new_cap > 0 else 0.0
     target["updated_at"] = now_iso
 
+    eff_comments = str(comments or "").strip() or ("; ".join(item_notes_collected) if item_notes_collected else "")
+
     # Append WITHDRAWAL run entry
+    import copy
+    snapshot_holdings = copy.deepcopy(updated_holdings)
     run_entry = {
         "run_id": f"run_wdr_{uuid.uuid4().hex[:10]}",
         "run_type": "WITHDRAWAL",
@@ -1204,14 +1230,16 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
         "title": f"Withdrawal #{withdrawal_num}",
         "scheduled_date": now_date_str,
         "executed_date": now_date_str,
-        "comments": comments,
+        "comments": eff_comments,
         "total_withdrawn_amount": round(total_withdrawn_amount, 2),
         "total_withdrawn_pnl": round(total_withdrawn_pnl, 2),
         "total_withdrawn_cost": round(total_withdrawn_cost, 2),
         "fees_paid": round(total_withdrawn_fees, 2),
+        "exited_stocks": exited_stocks,
         "transactions": transactions,
         "portfolio_snapshot": {
-            "holdings": updated_holdings,
+            "holdings": snapshot_holdings,
+            "exited_stocks": exited_stocks,
             "wallet_balance": wallet_bal,
             "total_portfolio_value": target["current_portfolio_value"],
             "total_capital": new_cap,
@@ -1232,7 +1260,7 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
         "realized_pnl": round(total_withdrawn_pnl, 2),
         "fees": round(total_withdrawn_fees, 2),
         "wallet_after": wallet_bal,
-        "notes": f"Withdrawal #{withdrawal_num}: Withdrawn ₹{total_withdrawn_amount:,.2f} across {len(transactions)} stocks. Realized P&L: ₹{total_withdrawn_pnl:,.2f}. {comments}".strip()
+        "notes": f"Withdrawal #{withdrawal_num}: Withdrawn ₹{total_withdrawn_amount:,.2f} across {len(transactions)} stocks. Realized P&L: ₹{total_withdrawn_pnl:,.2f}. {eff_comments}".strip()
     })
 
     save_user_momentum_smallcases(data, username)
